@@ -1,6 +1,7 @@
 package note
 
 import (
+	"encoding/json"
 	"fmt"
 	"text/template"
 )
@@ -11,6 +12,7 @@ func typeNotes() template.FuncMap {
 		"toFloat":  noteToFloat,
 		"toBool":   noteToBool,
 		"toString": noteToString,
+		"toJson":   noteToJson,
 
 		// typeOf v — returns the type name as a string
 		// "string", "number", "bool", "map", "slice", "null", "unknown"
@@ -93,6 +95,19 @@ func noteToString(v interface{}) string {
 		return ""
 	}
 	return fmt.Sprintf("%v", v)
+}
+
+// noteToJson converts any value to its JSON string representation.
+// Returns an error if marshaling fails (e.g., channel, function).
+//
+//	{{ toJson .spec }}                →  `{"replicas":3,"enabled":true}`
+//	{{ toJson .children.replicaset }} →  full ReplicaSet object as JSON
+func noteToJson(v interface{}) (string, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return "", fmt.Errorf("toJson: %w", err)
+	}
+	return string(b), nil
 }
 
 // typeOf — returns the runtime type name of any value.

@@ -1,4 +1,4 @@
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 

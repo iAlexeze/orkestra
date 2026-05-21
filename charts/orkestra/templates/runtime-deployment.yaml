@@ -1,12 +1,5 @@
 {{- if .Values.runtime.enabled }}
 
-{{- $webhooks := .Values.runtime.webhooks }}
-{{- $tlsEnabled := and $webhooks.enabled (or $webhooks.admission $webhooks.conversion) }}
-
-{{- if and $tlsEnabled (not $webhooks.existingSecret) }}
-{{- fail "runtime.webhooks.existingSecret required when webhooks.enabled=true and admission or conversion is true" }}
-{{- end }}
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -43,7 +36,7 @@ spec:
         {{- toYaml .Values.runtime.podSecurityContext | nindent 8 }}
 
       containers:
-        - name: orkestra
+        - name: runtime
           image: {{ include "orkestra.runtimeImage" . }}
           imagePullPolicy: {{ .Values.runtime.image.pullPolicy }}
           securityContext:
@@ -57,7 +50,7 @@ spec:
           env:
             - name: LOG_LEVEL
               value: {{ .Values.runtime.config.logLevel | quote }}
-            - name: ORKESTRA_PORT
+            - name: ORK_PORT
               value: {{ .Values.runtime.server.httpPort | quote }}
             - name: DEFAULT_WORKERS
               value: {{ .Values.runtime.config.defaultWorkers | quote }}
@@ -65,16 +58,20 @@ spec:
               value: {{ .Values.runtime.config.defaultResync | quote }}
             - name: MAX_QUEUE_DEPTH
               value: {{ .Values.runtime.config.maxQueueDepth | quote }}
-            - name: ORKESTRA_NAMESPACE
+            - name: ORK_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-            - name: ORKESTRA_ENV
+            - name: ORK_ENV
               value: {{ .Values.runtime.config.environment | quote }}
             - name: DEGRADE_THRESHOLD
               value: {{ .Values.runtime.config.degradeThreshold | quote }}
-            - name: ORKESTRA_REGISTRY
+            - name: ORK_REGISTRY
               value: {{ .Values.runtime.registry.url | quote }}
+            {{- if .Values.runtime.gatewayEndpoint }}
+            - name: ORK_GATEWAY_ENDPOINT
+              value: {{ .Values.runtime.gatewayEndpoint | quote }}
+            {{- end }}
             {{- if .Values.runtime.leaderElection.enabled }}
             - name: LEADER_ELECTION
               value: "true"
@@ -89,20 +86,6 @@ spec:
             - name: SRV_WRITE_TIMEOUT
               value: {{ .Values.runtime.server.writeTimeout | quote }}
             {{- end }}
-            {{- if $webhooks.admission }}
-            - name: ENABLE_ADMISSION_WEBHOOK
-              value: "true"
-            {{- end }}
-            {{- if $webhooks.conversion }}
-            - name: ENABLE_CONVERSION
-              value: "true"
-            {{- end }}
-            {{- if $tlsEnabled }}
-            - name: TLS_CERT_FILE
-              value: /tls/{{ $webhooks.certKey }}
-            - name: TLS_KEY_FILE
-              value: /tls/{{ $webhooks.keyKey }}
-            {{- end }}
             {{- with .Values.runtime.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -115,9 +98,6 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.runtime.server.httpPort }}
-              protocol: TCP
-            - name: https
-              containerPort: {{ .Values.runtime.server.httpsPort }}
               protocol: TCP
 
           startupProbe:
@@ -151,11 +131,6 @@ spec:
             {{- toYaml .Values.runtime.resources | nindent 12 }}
 
           volumeMounts:
-            {{- if $tlsEnabled }}
-            - name: orkestra-tls
-              mountPath: /tls
-              readOnly: true
-            {{- end }}
             - name: katalog
               mountPath: {{ .Values.runtime.katalog.mountPath }}
               readOnly: true
@@ -166,11 +141,6 @@ spec:
             {{- end }}
 
       volumes:
-        {{- if $tlsEnabled }}
-        - name: orkestra-tls
-          secret:
-            secretName: {{ $webhooks.existingSecret }}
-        {{- end }}
         - name: katalog
           configMap:
             name: {{ include "orkestra.katalogConfigMapName" . }}

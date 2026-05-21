@@ -1,11 +1,9 @@
-// cmd/cli/registry.go
-//
 // ork registry — push, pull, info, list
 //
 // All four commands follow the same pattern as ork notes and ork init:
 // minimal flags, clear output, no hidden state.
 
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 
@@ -24,8 +22,8 @@ var registryCmd = &cobra.Command{
 Authentication uses ~/.docker/config.json — run 'docker login' first.
 Override the default registries with environment variables:
 
-  export ORKESTRA_REGISTRY=oci://myregistry.internal/patterns
-  export ORKESTRA_MOTIFS_REGISTRY=oci://myregistry.internal/motifs`,
+  export ORK_REGISTRY=oci://myregistry.internal/patterns
+  export ORK_MOTIFS_REGISTRY=oci://myregistry.internal/motifs`,
 }
 
 // ── registration ──────────────────────────────────────────────────────────────

@@ -50,6 +50,18 @@ type KatalogNotification struct {
 	// without removing the configuration.
 	Enabled *bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
 
+	// Standalone controls whether notifications are dispatched directly from the
+	// runtime process rather than delegated to a gateway.
+	//
+	// When true: the runtime calls SMTP/Slack directly — no gateway required.
+	// When false (or unset in-cluster): a gateway endpoint must be configured.
+	//
+	// Defaults to true when not running inside a Kubernetes cluster so that
+	// local development and CLI usage work without standing up a gateway.
+	// In-cluster, set standalone: true explicitly to opt out of the gateway
+	// requirement (e.g. single-binary deployments that do not use gateway features).
+	Standalone *bool `yaml:"standalone,omitempty" json:"standalone,omitempty"`
+
 	// Defaults defines global notification behavior applied when a team does
 	// not specify its own override.
 	Defaults *NotificationDefaults `yaml:"defaults,omitempty" json:"defaults,omitempty"`
@@ -57,6 +69,15 @@ type KatalogNotification struct {
 	// Teams declares named notification targets. Conditions and rollback blocks
 	// reference teams by name via notify: ["platform", "oncall"].
 	Teams map[string]*NotificationTeam `yaml:"teams,omitempty" json:"teams,omitempty"`
+}
+
+// IsStandalone returns whether standalone mode is explicitly declared.
+// Does NOT apply the in-cluster implicit default — use Katalog.IsNotificationStandalone() for that.
+func (n *KatalogNotification) IsStandalone() bool {
+	if n == nil || n.Standalone == nil {
+		return false
+	}
+	return *n.Standalone
 }
 
 // NotificationDefaults defines global defaults applied when a team does not

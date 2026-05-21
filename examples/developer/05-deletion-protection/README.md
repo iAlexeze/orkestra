@@ -46,7 +46,7 @@ Error from server: admission webhook "protect.resources.orkestra.orkspace.io" de
 
 To delete it:
 - Set security.deletionProtection.enabled: false in the Katalog
-- Redeploy Orkestra, then delete the resource.
+- Redeploy Orkestra Gateway, then delete the resource.
 ```
 
 Try the namespace:

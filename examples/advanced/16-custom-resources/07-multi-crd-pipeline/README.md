@@ -133,7 +133,7 @@ kubectl apply -f crd-auditor.yaml
 ### 2. Start the operator
 
 ```bash
-ork run -f katalog.yaml --dev
+ork run --dev
 ```
 
 You should see four controllers start — `Pipeline`, `Loader`, `Processor`, `Auditor` — all in the same process.

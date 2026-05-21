@@ -1,4 +1,4 @@
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 
@@ -26,13 +26,22 @@ The document kind is detected automatically from the 'kind' field:
   Motif     — reusable operator pattern
   E2E       — declarative end-to-end test spec
 
+Reads katalog.yaml or komposer.yaml from the current directory by default.
+Pass -f to validate a different file.
+
 Examples:
-  ork validate -f katalog.yaml
+  ork validate
   ork validate -f e2e.yaml
   ork validate -f motif.yaml`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		paths, _ := cmd.Flags().GetStringSlice("file")
 		expanded := parseFilePaths(paths)
+		if len(expanded) == 0 {
+			expanded = defaultFilePaths()
+		}
+		if len(expanded) == 0 {
+			return fmt.Errorf(errNoKatalog)
+		}
 
 		var docKind string
 		for _, path := range expanded {

@@ -838,6 +838,11 @@ type PodTemplateSource struct {
 	// Probes — startup, liveness, and readiness probe configuration.
 	Probes *ProbesConfig `yaml:"probes,omitempty" json:"probes,omitempty"`
 
+	// Reconcile: true — also apply this declaration as drift correction on every
+	// reconcile, not just on create. Equivalent to declaring the same entry under
+	// onReconcile. When false (default), only runs on onCreate (idempotent create).
+	Reconcile bool `yaml:"reconcile,omitempty" json:"reconcile,omitempty" validate:"omitempty"`
+
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).
@@ -1497,7 +1502,7 @@ type IngressTemplateSource struct {
 	PathType string `yaml:"pathType,omitempty" json:"pathType,omitempty"`
 
 	// IngressClass — Ingress class name (nginx, traefik, etc.). Optional.
-	IngressClass string `yaml:"ingressClass,omitempty" json:"ingressClass,omitempty"`
+	IngressClass string `yaml:"className,omitempty" json:"className,omitempty"`
 
 	// Labels applied to Ingress metadata. Values support template expressions.
 	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty"`
@@ -1521,11 +1526,11 @@ type IngressTemplateSource struct {
 }
 
 // IngressTLSSpec configures TLS for an Ingress resource.
-// When Enabled is true, Orkestra generates a kubernetes.io/tls Secret before
+// When Create is true, Orkestra generates a kubernetes.io/tls Secret before
 // the Ingress is applied so the Ingress can reference it immediately.
 type IngressTLSSpec struct {
-	// Enabled — when true, create a TLS secret and populate ingress.spec.tls.
-	Enabled bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+	// Create — when true, create a TLS secret and populate ingress.spec.tls.
+	Create bool `yaml:"create,omitempty" json:"create,omitempty"`
 
 	// SecretName — name of the TLS secret. Supports template expressions.
 	// Default: "{{ .metadata.name }}-tls"
@@ -2418,6 +2423,11 @@ type CRDEntry struct {
 	// against apiTypes to catch mismatches before deployment.
 	CRDFile string `yaml:"crdFile,omitempty" json:"crdFile,omitempty"`
 
+	// CRFiles is an ordered list of CR YAML files to apply before the runtime
+	// starts. Applied in declaration order after the CRD is registered.
+	// Same path resolution as CRDFile. Dev mode only.
+	CRFiles []string `yaml:"crFiles,omitempty" json:"crFiles,omitempty"`
+
 	// ── Runtime objects ───────────────────────────────────────────────────────
 	// Set by addRuntimeObjects() during Katalog validation. Never set from YAML.
 	//
@@ -2476,6 +2486,19 @@ type CRDEntry struct {
 	// Cycle detection runs at validation time — cycles fail fast with a clear error.
 	// Supports three YAML formats (list, key-value, full map) — see DependsOnMap.
 	DependsOn DependsOnMap `yaml:"dependsOn,omitempty" json:"dependsOn,omitempty"`
+
+	// ── Enrichment ─────────────────────────────────────────────────────────────
+	// Controls which secondary data is fetched and embedded into child resource
+	// maps before they are available in template context.
+	//
+	// Only one of EnrichAll or Enrich may be set — setting both is a validation error.
+	//
+	//	enrichAll: true    — enrich all supported resource types (currently: pods)
+	//	enrich: [pods]     — enrich only the listed targets
+	//
+	// Supported targets: "pods"
+	EnrichAll bool     `yaml:"enrichAll,omitempty" json:"enrichAll,omitempty"`
+	Enrich    []string `yaml:"enrich,omitempty"    json:"enrich,omitempty"`
 
 	// ── OperatorBox ────────────────────────────────────────────────────
 	OperatorBox OperatorBoxConfig `yaml:"operatorBox,omitempty" json:"operatorBox,omitempty"`

@@ -124,6 +124,7 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 	m.security = doc.Security
 	m.notification = doc.Notification
 	m.providers = doc.Providers
+	m.gateway = doc.Gateway
 
 	return result, nil
 }
@@ -314,6 +315,9 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 		m.providers = doc.Providers
 	} else {
 		m.providers = accProviders
+	}
+	if doc.Gateway != nil {
+		m.gateway = doc.Gateway
 	}
 
 	logger.Debug().

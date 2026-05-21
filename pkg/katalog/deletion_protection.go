@@ -20,7 +20,12 @@
 //	deletions when unreachable. Only register when running inside the cluster.
 package katalog
 
-import "github.com/orkspace/orkestra/pkg/utils"
+import (
+	"fmt"
+
+	"github.com/orkspace/orkestra/pkg/children"
+	"github.com/orkspace/orkestra/pkg/utils"
+)
 
 // DeletionProtectionGVRs returns the list of GVRs that the deletion‑protection
 // admission webhook should intercept.
@@ -49,7 +54,27 @@ func (k *Katalog) DeletionProtectionGVRs() []GVREntry {
 	// Orkestra’s internal control‑plane resources.
 	// These are defined declaratively in the built‑ins registry via
 	// the OrkestraInternal flag.
-	return OrkestraInternalGVRs()
+	return orkestraInternalGVRs()
+}
+
+// orkestraInternalGVRs builds the GVREntry list for Orkestra's own control-plane
+// resources by iterating over the children built-in registry and filtering on
+// the OrkestraInternal flag.
+func orkestraInternalGVRs() []GVREntry {
+	var out []GVREntry
+	for _, b := range children.AllBuiltInKindDefs() {
+		if !b.OrkestraInternal {
+			continue
+		}
+		out = append(out, GVREntry{
+			Key:        fmt.Sprintf("%s/%s/%s", b.Group, b.Version, b.Plural),
+			Group:      b.Group,
+			Version:    b.Version,
+			Resource:   b.Plural,
+			Operations: []string{"DELETE"},
+		})
+	}
+	return out
 }
 
 // DeletionProtectedCRDNames returns the set of CRD full names managed by this Katalog.

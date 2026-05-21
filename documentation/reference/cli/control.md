@@ -17,7 +17,7 @@ The Control Center provides a web‑based UI for monitoring multiple Orkestra ru
 Start the Orkestra Control Center.
 
 ```bash
-ork control start [flags]
+ork control [flags]
 ```
 
 #### Flags
@@ -35,25 +35,25 @@ ork control start [flags]
 Start with defaults:
 
 ```bash
-ork control start
+ork control
 ```
 
 Custom port and multiple instances:
 
 ```bash
-ork control start --port 9090 --urls "http://localhost:8080,http://localhost:8082"
+ork control --port 9090 --urls "http://localhost:8080,http://localhost:8082"
 ```
 
 Debug logging:
 
 ```bash
-ork control start --log-level debug --refresh 5s
+ork control --log-level debug --refresh 5s
 ```
 
 Remote runtimes:
 
 ```bash
-ork control start --urls "https://prod.orkestra:8080,https://staging.orkestra:8080"
+ork control --urls "https://prod.orkestra:8080,https://staging.orkestra:8080"
 ```
 
 ---
@@ -70,7 +70,7 @@ ork control version
 
 ## Behavior
 
-- `ork control start` locates the `orkcc` binary in:
+- `ork control` locates the `orkcc` binary in:
   - `$PATH`
   - next to the `ork` binary
   - `~/.orkestra/bin/`

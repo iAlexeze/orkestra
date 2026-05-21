@@ -7,13 +7,13 @@ All configuration is read from the environment at startup by `cc/konfig.go`. The
 | Variable | Default | Type | Description |
 |----------|---------|------|-------------|
 | `PORT` | `8081` | string | HTTP listen port |
-| `ORKESTRA_URLS` | `""` | comma-separated | Orkestra runtime URLs to connect to at boot |
+| `ORK_URLS` | `""` | comma-separated | Orkestra runtime URLs to connect to at boot |
 | `REFRESH_INTERVAL` | `15` | seconds (int) | How often to poll each runtime |
 | `LOG_LEVEL` | `info` | string | Log verbosity (debug, info, warn, error) |
 | `IGNORE_DEFAULT` | `false` | bool | If true, do not add `http://localhost:8080` when no URLs are given |
 | `ENABLE_RUNTIME_MANAGER` | `true` | bool | Show the runtime manager UI (add/edit/delete instances) |
 
-`ORKESTRA_URLS` is split on commas. Leading and trailing spaces around each URL are trimmed.
+`ORK_URLS` is split on commas. Leading and trailing spaces around each URL are trimmed.
 
 ## ENABLE_RUNTIME_MANAGER
 
@@ -35,7 +35,7 @@ Runtime URLs added through the UI are persisted to `~/.orkestra/instances.json` 
 {"urls": ["http://runtime-a:8080", "http://runtime-b:8080"]}
 ```
 
-`LoadRuntimeStorage` is called in `cc.New` before the first fetch. Persisted URLs are merged with URLs passed via `ORKESTRA_URLS` — the union is used. Duplicate URLs (by string equality after normalization) are deduplicated.
+`LoadRuntimeStorage` is called in `cc.New` before the first fetch. Persisted URLs are merged with URLs passed via `ORK_URLS` — the union is used. Duplicate URLs (by string equality after normalization) are deduplicated.
 
 `SaveRuntimeStorage` is called on every add, update, or delete via the runtime manager UI. It overwrites the file with the current `cc.urls` slice.
 

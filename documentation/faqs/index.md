@@ -103,7 +103,7 @@ spec:
     for the full reasoning. The short version: your CRD should be the focus,
     not Orkestra's management infrastructure.
 
-See the [Katalog Schema](../reference/katalog-schema.md) for all available fields.
+See the [Katalog Schema](../reference/schema/katalog.md) for all available fields.
 
 ---
 
@@ -138,7 +138,7 @@ spec:
 The `spec.crds` inline block always wins on name conflict — it is the override
 mechanism. Platform teams publish Katalogs; application teams compose and override.
 
-See the [Komposer Schema](../reference/komposer-schema.md) for all options.
+See the [Komposer Schema](../reference/schema/komposer.md) for all options.
 
 ---
 
@@ -197,14 +197,15 @@ health server, leader election — is paid once.
 Locally, for development:
 
 ```bash
-ork run --file katalog.yaml
+ork run
+# Orkestra reads katalog.yaml from the current directory and starts the runtime.
 ```
 
 In a cluster, via Helm:
 
 ```bash
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
   --create-namespace \
   --set runtime.katalog.existingConfigMap=my-katalog-configmap
@@ -222,7 +223,8 @@ It surfaces every configuration error — bad YAML, unknown kinds, circular depe
 missing registry files, empty pattern files — before any cluster changes are made.
 
 ```bash
-ork validate --file katalog.yaml
+ork validate
+# Orkestra reads katalog.yaml from the current directory and reports every error without touching the cluster.
 
 ✓ website
     kind: Website
@@ -239,7 +241,7 @@ ork validate --file katalog.yaml
     pipeline to catch Katalog errors before they reach the cluster:
     ```yaml
     - name: Validate Katalog
-      run: ork validate --file katalog.yaml
+      run: ork validate
     ```
     It requires no cluster connection — safe to run in any CI environment.
 
@@ -272,7 +274,7 @@ mounts the resulting Secret automatically.
 
 | Variable | Default | Description |
 |---|---|---|
-| `ORKESTRA_PORT` | `8080` | HTTP server port |
+| `ORK_PORT` | `8080` | HTTP server port |
 | `ENABLE_CONVERSION` | `false` | Enable the `/convert` HTTPS endpoint |
 | `ENABLE_ADMISSION_WEBHOOK` | `false` | Enable `/validate` and `/mutate` (requires `ENABLE_CONVERSION`) |
 | `TLS_CERT` | — | Path to TLS certificate |
@@ -283,7 +285,7 @@ mounts the resulting Secret automatically.
 | `MAX_QUEUE_DEPTH` | `100` | Max queue depth when not set in Katalog |
 | `LOG_LEVEL` | `info` | Log verbosity: `debug`, `info`, `warn`, `error` |
 | `NAMESPACE` | — | Namespace where Orkestra runs — used in webhook configurations |
-| `ORKESTRA_SERVICE_NAME` | `orkestra` | Service name for webhook clientConfig |
+| `ORK_SERVICE_NAME` | `orkestra` | Service name for webhook clientConfig |
 | `CONVERSION_WINDOW` | `1000` | Rolling window size for conversion and admission latency percentiles |
 
 ---
@@ -338,7 +340,7 @@ Orkestra enriches them automatically from its internal registry:
     validates it at reconcile time, and optionally intercepts at admission time
     when `ENABLE_ADMISSION_WEBHOOK=true`.
 
-Run `ork validate --file katalog.yaml` to see exactly what Orkestra resolves
+Run `ork validate` to see exactly what Orkestra resolves
 for a kind-only declaration.
 
 ---

@@ -23,6 +23,8 @@ Safe access notes return a typed value with a fallback default. They remove the 
 
 Return `val` if non-empty, otherwise `def`. The generic version — same semantics as `default` but reads more naturally when chaining with other notes.
 
+Keywords: safe, default, fallback, access, nil, absent, get
+
 ```yaml
 # value: "{{ getOr .spec.replicas 1 }}"
 # replicas=3       → 3
@@ -34,6 +36,8 @@ Return `val` if non-empty, otherwise `def`. The generic version — same semanti
 ### `getStringOr`
 
 Return `val` as a string if it is a non-empty string, otherwise return `def`.
+
+Keywords: safe, default, fallback, string, typed, absent, get
 
 ```yaml
 # value: "{{ getStringOr .spec.image \"nginx:latest\" }}"
@@ -50,6 +54,8 @@ Unlike `default`, `getStringOr` rejects non-string types — it does not coerce.
 
 Return `val` as `int` if it is a numeric type (`int`, `int64`, `float64`), otherwise return `def`.
 
+Keywords: safe, default, fallback, integer, typed, absent, get, number
+
 ```yaml
 # value: "{{ getIntOr .spec.replicas 1 }}"
 # spec.replicas=3      → 3
@@ -65,6 +71,8 @@ For numeric fields from Kubernetes unstructured objects (which arrive as `float6
 ### `getBoolOr`
 
 Return `val` as `bool` if it is a `bool`, otherwise return `def`.
+
+Keywords: safe, default, fallback, boolean, typed, absent, get, bool
 
 ```yaml
 # value: "{{ getBoolOr .spec.enabled false }}"

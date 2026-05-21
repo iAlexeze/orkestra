@@ -2,6 +2,24 @@ package generate
 
 import "time"
 
+// BundleOptions controls which components are included in a generated bundle.
+// Each flag defaults to true; pass false to exclude that component's ServiceAccount,
+// ClusterRole, and ClusterRoleBinding from the output.
+// IncludeConfigMap follows: included when IncludeRuntime || IncludeGateway.
+type BundleOptions struct {
+	IncludeRuntime       bool
+	IncludeGateway       bool
+	IncludeControlCenter bool
+}
+
+func DefaultBundleOptions() BundleOptions {
+	return BundleOptions{
+		IncludeRuntime:       true,
+		IncludeGateway:       true,
+		IncludeControlCenter: true,
+	}
+}
+
 type registryTemplateData struct {
 	Timestamp string
 	Imports   []importEntry
@@ -76,12 +94,6 @@ type CRDMeta struct {
 		Alias  string
 		Import string
 	}
-}
-
-type DocsTemplateData struct {
-	Timestamp time.Time
-	CRDs      []CRDMeta
-	CRD       CRDMeta // for per‑CRD templates
 }
 
 type DashboardTemplateData struct {

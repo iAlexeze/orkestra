@@ -29,6 +29,20 @@ func (c *CRDEntry) SkipStatusSubresource() bool {
 	return c.IgnoreStatusPatch
 }
 
+// ShouldEnrich returns true when the given enrichment target is enabled —
+// either via EnrichAll: true or an explicit entry in Enrich.
+func (c *CRDEntry) ShouldEnrich(target string) bool {
+	if c.EnrichAll {
+		return true
+	}
+	for _, t := range c.Enrich {
+		if t == target {
+			return true
+		}
+	}
+	return false
+}
+
 // SkipObservedGeneration reports whether this CRD belongs to a list to be ignored during status patches.
 // This is applied mainly to builtins or if specifically required by the crd through crd.IgnoreStatusPatch
 func (c *CRDEntry) SkipObservedGeneration() bool {

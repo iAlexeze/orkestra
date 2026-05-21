@@ -8,7 +8,7 @@ ork generate registry --file <file> [flags]
 
 This command produces:
 
-- `pkg/runtime/zz_generated_runtime_registry.go`
+- `pkg/typeregistry/zz_generated_typeregistry.go`
 - containing `RegisterRuntimeObjects()` and `RegisterScheme()`
 - for all **enabled CRDs** with `reconciler.default: false`
 
@@ -76,6 +76,6 @@ ork generate registry --file katalog.yaml --dry-run
   - type registrations  
   - scheme registrations  
   - runtime object constructors  
-- Writes to `pkg/runtime/zz_generated_runtime_registry.go` (idempotent).
+- Writes to `pkg/typeregistry/zz_generated_typeregistry.go` (idempotent).
 
 ---

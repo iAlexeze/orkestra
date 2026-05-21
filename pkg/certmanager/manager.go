@@ -55,6 +55,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+const (
+	// DefaultCertValidFor is the default certificate validity duration.
+	DefaultCertValidFor = "1y"
+)
+
 // DefaultTLSSecretName is the Secret name used for Orkestra's auto-generated TLS bundle.
 var DefaultTLSSecretName = konfig.DefaultInternalTLSName()
 
@@ -118,16 +123,7 @@ func (m *k8sManager) EnsureCertificate(ctx context.Context, spec CertificateSpec
 	}
 
 	// 2. Generate a new TLS bundle (secret does not exist or was deleted)
-	bundle, err := GenerateTLSBundle(
-		spec.ServiceName+"."+spec.Namespace+".svc",
-		[]string{
-			spec.ServiceName,
-			spec.ServiceName + "." + spec.Namespace,
-			spec.ServiceName + "." + spec.Namespace + ".svc",
-			spec.ServiceName + "." + spec.Namespace + ".svc.cluster.local",
-		},
-		spec.ValidFor,
-	)
+	bundle, err := GenerateClusterBundle(spec.ServiceName, spec.Namespace, BundleOpts{ValidFor: spec.ValidFor})
 	if err != nil {
 		return nil, fmt.Errorf("generating tls bundle: %w", err)
 	}

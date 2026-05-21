@@ -14,8 +14,8 @@ on:
         default: ${{ github.repository }}
 
 jobs:
-  image:
-    name: Build and Push Image
+  build-runtime:
+    name: Build and Push Runtime
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,7 +26,6 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4.0.0
-        id: setup-buildx
         with:
           driver-opts: |
             image=moby/buildkit:buildx-stable-1
@@ -38,8 +37,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.ORK_PUBLISH_PAT }}
 
-      - name: Extract metadata for runtime
-        id: meta-runtime
+      - name: Extract metadata
+        id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ inputs.repository }}
@@ -49,8 +48,153 @@ jobs:
             type=semver,pattern={{major}},value=${{ inputs.image_tag }}
             type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
 
-      - name: Extract metadata for control center
-        id: meta-cc
+      - name: Cache compiled Linux binaries
+        id: cache-binaries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ork-amd64
+            ork-arm64
+          key: linux-binaries-runtime-${{ hashFiles('go.sum', '**/*.go', 'cmd/**/*.go') }}
+
+      - name: Build Linux binaries (if cache miss)
+        if: steps.cache-binaries.outputs.cache-hit != 'true'
+        run: |
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          LDFLAGS="-X github.com/orkspace/orkestra/pkg/version.Version=${{ github.ref_name }} -X github.com/orkspace/orkestra/pkg/version.Commit=${{ github.sha }} -X github.com/orkspace/orkestra/pkg/version.Date=$DATE"
+          for arch in amd64 arm64; do
+            echo "Building ork-$arch"
+            GOOS=linux GOARCH=$arch CGO_ENABLED=0 go build \
+              -tags runtime \
+              -trimpath \
+              -ldflags="-s -w $LDFLAGS" \
+              -o ork-$arch ./cmd/orkestra
+          done
+
+      - name: Build and push runtime image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ inputs.image_tag }}
+            COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Write image summary
+        run: |
+          echo "## Runtime Image" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`ghcr.io/${{ inputs.repository }}:${{ inputs.image_tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  build-gateway:
+    name: Build and Push Gateway
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.0.0
+        with:
+          driver-opts: |
+            image=moby/buildkit:buildx-stable-1
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.ORK_PUBLISH_PAT }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ inputs.repository }}-gateway
+          tags: |
+            type=semver,pattern={{version}},value=${{ inputs.image_tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.image_tag }}
+            type=semver,pattern={{major}},value=${{ inputs.image_tag }}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+
+      - name: Cache compiled Linux binaries
+        id: cache-binaries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ork-gateway-amd64
+            ork-gateway-arm64
+          key: linux-binaries-gateway-${{ hashFiles('go.sum', '**/*.go', 'cmd/**/*.go') }}
+
+      - name: Build Linux binaries (if cache miss)
+        if: steps.cache-binaries.outputs.cache-hit != 'true'
+        run: |
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          LDFLAGS="-X github.com/orkspace/orkestra/pkg/version.Version=${{ github.ref_name }} -X github.com/orkspace/orkestra/pkg/version.Commit=${{ github.sha }} -X github.com/orkspace/orkestra/pkg/version.Date=$DATE"
+          for arch in amd64 arm64; do
+            echo "Building ork-gateway-$arch"
+            GOOS=linux GOARCH=$arch CGO_ENABLED=0 go build \
+              -tags gateway \
+              -trimpath \
+              -ldflags="-s -w $LDFLAGS" \
+              -o ork-$arch ./cmd/orkestra
+          done
+
+      - name: Build and push gateway image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ inputs.image_tag }}
+            COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Write image summary
+        run: |
+          echo "## Gateway Image" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`ghcr.io/${{ inputs.repository }}-gateway:${{ inputs.image_tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  build-controlcenter:
+    name: Build and Push Control Center
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.0.0
+        with:
+          driver-opts: |
+            image=moby/buildkit:buildx-stable-1
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.ORK_PUBLISH_PAT }}
+
+      - name: Extract metadata
+        id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ inputs.repository }}-cc
@@ -65,80 +209,41 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ork-amd64
-            ork-arm64
             cmd/controlcenter/orkcc-amd64
             cmd/controlcenter/orkcc-arm64
-          key: linux-binaries-${{ hashFiles('go.sum', '**/*.go', 'cmd/**/*.go') }}
+          key: linux-binaries-cc-${{ hashFiles('go.sum', 'cmd/controlcenter/**/*.go') }}
 
       - name: Build Linux binaries (if cache miss)
         if: steps.cache-binaries.outputs.cache-hit != 'true'
-        env:
-          ORK: "ork"
-          ORKCC: "orkcc"
         run: |
           DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          RUNTIME_LDFLAGS="-X github.com/orkspace/orkestra/pkg/version.Version=${{ github.ref_name }} -X github.com/orkspace/orkestra/pkg/version.Commit=${{ github.sha }} -X github.com/orkspace/orkestra/pkg/version.Date=$DATE"
-          CC_LDFLAGS="-X github.com/orkspace/orkestra-cc/version.Version=${{ github.ref_name }} -X github.com/orkspace/orkestra-cc/version.Commit=${{ github.sha }} -X github.com/orkspace/orkestra-cc/version.Date=$DATE"
-
+          LDFLAGS="-X github.com/orkspace/orkestra-cc/version.Version=${{ github.ref_name }} -X github.com/orkspace/orkestra-cc/version.Commit=${{ github.sha }} -X github.com/orkspace/orkestra-cc/version.Date=$DATE"
+          cd ./cmd/controlcenter
           for arch in amd64 arm64; do
-            echo "Building $ORK-$arch"
-            GOOS=linux GOARCH=$arch CGO_ENABLED=0 go build \
-              -tags runtime \
-              -trimpath \
-              -ldflags="-s -w $RUNTIME_LDFLAGS" \
-              -o $ORK-$arch ./cmd/orkestra
-
-            echo "Building $ORKCC-$arch"
-            cd ./cmd/controlcenter
+            echo "Building orkcc-$arch"
             GOOS=linux GOARCH=$arch CGO_ENABLED=0 go build \
               -trimpath \
-              -ldflags="-s -w $CC_LDFLAGS" \
-              -o $ORKCC-$arch .
-            cd ../..
+              -ldflags="-s -w $LDFLAGS" \
+              -o orkcc-$arch .
           done
 
-      - name: Build and push runtime image
-        id: push-runtime
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta-runtime.outputs.tags }}
-          labels: ${{ steps.meta-runtime.outputs.labels }}
-          build-args: |
-            VERSION=${{ inputs.image_tag }}
-            COMMIT=${{ github.sha }}
-            BUILD_DATE=${{ fromJSON(steps.meta-runtime.outputs.json).labels['org.opencontainers.image.created'] }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
       - name: Build and push control center image
-        id: push-cc
         uses: docker/build-push-action@v5
         with:
           context: cmd/controlcenter
           file: cmd/controlcenter/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta-cc.outputs.tags }}
-          labels: ${{ steps.meta-cc.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             VERSION=${{ inputs.image_tag }}
             COMMIT=${{ github.sha }}
-            BUILD_DATE=${{ fromJSON(steps.meta-cc.outputs.json).labels['org.opencontainers.image.created'] }}
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Write image summary
         run: |
-          echo "## 🐳 Container Images" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Component | Registry | Image |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|-----------|----------|-------|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Runtime | GHCR | \`ghcr.io/${{ inputs.repository }}:${{ inputs.image_tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Control Center | GHCR | \`ghcr.io/${{ inputs.repository }}-cc:${{ inputs.image_tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Platforms:** \`linux/amd64\`, \`linux/arm64\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Control Center Image" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`ghcr.io/${{ inputs.repository }}-cc:${{ inputs.image_tag }}\`" >> "$GITHUB_STEP_SUMMARY"

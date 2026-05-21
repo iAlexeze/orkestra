@@ -49,7 +49,7 @@ ork generate registry --file katalog.yaml
 
 It creates (or updates) two files:
 
-- `pkg/runtime/zz_generated_runtime_registry.go` – registers your Go types and hooks.
+- `pkg/typeregistry/zz_generated_typeregistry.go` – registers your Go types and hooks.
 - `cmd/orkestra/main.go` – the entrypoint that imports the generated registry.
 
 Both files are marked `DO NOT EDIT` – they are regenerated whenever you change the Katalog.
@@ -62,7 +62,7 @@ The standard `ork` CLI does not know about your Go types. Validate it to see the
 expected error:
 
 ```bash
-ork validate -f katalog.yaml
+ork validate
 ```
 
 Output:
@@ -108,7 +108,7 @@ Now you have a custom `./ork` binary that knows your CRD type.
 ## Step 5 — Validate with your own binary
 
 ```bash
-./ork validate -f katalog.yaml
+./ork validate
 ```
 
 It should pass without errors. The debug output (from the generated registry)
@@ -125,7 +125,7 @@ will confirm that `ObjectRegistry` is populated.
 Run your custom operator:
 
 ```bash
-./ork run -f katalog.yaml --dev
+./ork run --dev
 ```
 
 In another terminal, apply the custom resource:
@@ -180,7 +180,7 @@ kubectl apply -f bundle.yaml
 
 ```bash
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --set runtime.image.repository=yourregistry/your-operator \
   --set runtime.image.tag=v1.0.0 \
   --namespace orkestra-system \

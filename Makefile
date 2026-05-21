@@ -1,4 +1,4 @@
-.PHONY: build orkcc clean test test-unit test-race test-integration test-all test-coverage test-coverage-text vet certs docs docs-sync docs-build docs-serve hugo-install generate-notes test-fixture-note test-fixture-reconciler
+.PHONY: build orkcc clean test test-unit test-race test-integration test-all test-coverage test-coverage-text vet certs docs docs-sync docs-build docs-serve hugo-install generate-notes test-fixture-note test-fixture-reconciler ork-gateway-linux docker-gateway gateway-reload runtime-reload controlcenter-reload reload
 
 # ── Configuration ────────────────────────────────────────────────────────────
 ORKESTRA_DIR := .
@@ -78,12 +78,14 @@ endif
 
 ORK_IMAGE ?= ghcr.io/orkspace/orkestra:$(GIT_COMMIT)
 ORK_CC_IMAGE ?= ghcr.io/orkspace/orkestra-cc:$(GIT_COMMIT)
+ORK_GATEWAY_IMAGE ?= ghcr.io/orkspace/orkestra-gateway:$(GIT_COMMIT)
 
 # Target architectures
 ORK_AMD64_TARGET="ork-amd64"
 ORK_ARM64_TARGET="ork-arm64"
 ORK_CC_AMD64_TARGET="orkcc-amd64"
 ORK_CC_ARM64_TARGET="orkcc-arm64"
+ORK_GATEWAY_AMD64_TARGET="ork-amd64"
 
 
 
@@ -107,6 +109,15 @@ orkcc-linux:
 	cd $(CONTROL_CENTER_DIR) && gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o $(OUTPUT_DIR)/orkcc .
 	@echo "✅ Linux Control Center binary built: $(OUTPUT_DIR)/orkcc"
 
+ork-gateway-linux: generate-notes
+	@echo "Building Orkestra Gateway (Linux amd64)..."
+	@mkdir -p $(OUTPUT_DIR)
+	gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
+		-tags "gateway" \
+		-ldflags "$(ORK_LDFLAGS)" \
+		-o $(OUTPUT_DIR)/ork-gateway ./cmd/orkestra
+	@echo "✅ Linux Gateway binary built: $(OUTPUT_DIR)/ork-gateway"
+
 # ── Docker Build ──────────────────────────────────────────────────────────────
 
 docker:
@@ -124,6 +135,13 @@ docker-cc: orkcc-linux
 	cd $(CONTROL_CENTER_DIR) && docker build -t $(ORK_CC_IMAGE) . && rm -rf ./$(ORK_CC_AMD64_TARGET)
 	@echo "✔ Docker image built: $(ORK_CC_IMAGE)"
 
+docker-gateway: ork-gateway-linux
+	@echo "Building Docker image: $(ORK_GATEWAY_IMAGE)"
+	@cp $(OUTPUT_DIR)/ork-gateway ./$(ORK_GATEWAY_AMD64_TARGET)
+	docker build -t $(ORK_GATEWAY_IMAGE) .
+	@rm -f ./$(ORK_GATEWAY_AMD64_TARGET)
+	@echo "✔ Docker image built: $(ORK_GATEWAY_IMAGE)"
+
 # ── Docker Push ───────────────────────────────────────────────────────────────
 
 docker-push:
@@ -133,17 +151,20 @@ docker-push:
 	@echo "Pushing Docker image: $(ORK_CC_IMAGE)"
 	docker push $(ORK_CC_IMAGE)
 	@echo "✔ Docker image pushed: $(ORK_CC_IMAGE)"
+	@echo "Pushing Docker image: $(ORK_GATEWAY_IMAGE)"
+	docker push $(ORK_GATEWAY_IMAGE)
+	@echo "✔ Docker image pushed: $(ORK_GATEWAY_IMAGE)"
 
 # ── Docker Release (build + push) ─────────────────────────────────────────────
 
-docker-release: docker docker-cc docker-push
-	@echo "✔ Docker release complete: $(ORK_IMAGE)"
+docker-release: docker docker-cc docker-gateway docker-push
+	@echo "✔ Docker release complete"
 
 # ── Runtime Reload (local dev) ────────────────────────────────────────────────
 
 KIND_CLUSTER ?= orkestra-playground
 RUNTIME_DEPLOYMENT ?= orkestra-runtime
-RUNTIME_CONTAINER_NAME ?= orkestra
+RUNTIME_CONTAINER_NAME ?= runtime
 RUNTIME_NAMESPACE  ?= orkestra-system
 
 runtime-reload: docker
@@ -186,8 +207,30 @@ controlcenter-reload: docker-cc
 
 	@echo "✔ Control Center updated to image: $(ORK_CC_IMAGE)-$(CC_TAG)"
 
-orkestra-reload: runtime-reload controlcenter-reload
-	@echo "✔ Orkestra runtime and Control Center reloaded successfully"
+GATEWAY_DEPLOYMENT ?= orkestra-gateway
+GATEWAY_CONTAINER_NAME ?= gateway
+GATEWAY_NAMESPACE ?= orkestra-system
+
+gateway-reload: docker-gateway
+	@echo "Generating unique tag..."
+	$(eval GATEWAY_TAG := $(shell date +%s))
+	@echo "Tag: $(GATEWAY_TAG)"
+
+	@echo "Retagging image..."
+	docker tag $(ORK_GATEWAY_IMAGE) $(ORK_GATEWAY_IMAGE)-$(GATEWAY_TAG)
+
+	@echo "Loading image into kind cluster: $(KIND_CLUSTER)"
+	kind load docker-image $(ORK_GATEWAY_IMAGE)-$(GATEWAY_TAG) --name $(KIND_CLUSTER)
+	@echo "✔ Image loaded"
+
+	@echo "Updating deployment $(GATEWAY_DEPLOYMENT) in namespace $(GATEWAY_NAMESPACE)..."
+	kubectl -n $(GATEWAY_NAMESPACE) set image deploy/$(GATEWAY_DEPLOYMENT) \
+        $(GATEWAY_CONTAINER_NAME)=$(ORK_GATEWAY_IMAGE)-$(GATEWAY_TAG)
+
+	@echo "✔ Gateway updated to image: $(ORK_GATEWAY_IMAGE)-$(GATEWAY_TAG)"
+
+reload: runtime-reload gateway-reload controlcenter-reload
+	@echo "✔ Runtime, Gateway, and Control Center reloaded successfully"
 
 # ── Primary targets ───────────────────────────────────────────────────────────
 

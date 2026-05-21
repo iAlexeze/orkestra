@@ -17,8 +17,8 @@ import (
 // Must be called after KomposeRuntimeKatalog; returns an error if no CRDs
 // are present (indicates expansion hasn't been run yet).
 func (k *Katalog) SerializeExpanded() ([]byte, error) {
-	if len(k.enabledCRDs) == 0 {
-		return nil, fmt.Errorf("SerializeExpanded called before KomposeRuntimeKatalog or katalog has no enabled CRDs")
+	if len(k.enabledCRDs) == 0 && !k.IsStandaloneGateway() {
+		return nil, fmt.Errorf("Katalog has no enabled CRDs")
 	}
 
 	// Reconstruct a KatalogFile from the fully expanded state.
@@ -29,6 +29,7 @@ func (k *Katalog) SerializeExpanded() ([]byte, error) {
 		Metadata:     k.metadata,
 		Spec:         orktypes.KatalogSpec{CRDs: k.enabledCRDs},
 		Security:     k.Security,
+		Gateway:      k.Gateway,
 		Notification: k.Notification,
 		Providers:    k.Providers,
 	}

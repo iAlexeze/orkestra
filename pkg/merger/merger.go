@@ -50,6 +50,9 @@ type Merger struct {
 	// providers holds the top-level provider requirements of the final katalog
 	providers []orktypes.KatalogProviderRequirement
 
+	// gateway holds the gateway deployment config of the final katalog
+	gateway *orktypes.GatewayConfig
+
 	// projects holds the merged projectInfo configuration of the final katalog
 	projects map[string]orktypes.ProjectInfo
 
@@ -333,6 +336,13 @@ func (m *Merger) ToProviders() []orktypes.KatalogProviderRequirement {
 func (m *Merger) ToNotification() *orktypes.KatalogNotification {
 	m.mustBeMerged()
 	return m.notification
+}
+
+// ToGateway returns the gateway deployment config of the merged result.
+// Used by KomposeRuntimeKatalog to populate Katalog.Gateway.
+func (m *Merger) ToGateway() *orktypes.GatewayConfig {
+	m.mustBeMerged()
+	return m.gateway
 }
 
 // ToProjectInfo returns merged project information of the merged result

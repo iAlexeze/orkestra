@@ -6,8 +6,9 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"errors"
 	"github.com/orkspace/orkestra/domain"
-	orkerror "github.com/orkspace/orkestra/pkg/error"
+
 	"github.com/orkspace/orkestra/pkg/event"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 
@@ -100,7 +101,7 @@ func (k *Kontroller) Start(ctx context.Context) error {
 			continue
 		}
 		logger.Warn().Str("gvk", gvk).Msg("CRD missing — marking as degraded")
-		k.crdHealthMap[gvk].RecordStartupFailure(orkerror.ErrCRDNotFound, crd.Queue.DegradeThreshold)
+		k.crdHealthMap[gvk].RecordStartupFailure(errors.New("CRD not found"), crd.Queue.DegradeThreshold)
 	}
 
 	// All CRDs confirmed (filtered by informer) — now sync caches

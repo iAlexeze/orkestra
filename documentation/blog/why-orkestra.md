@@ -120,7 +120,8 @@ spec:
 You run:
 
 ```bash
-ork run --file katalog.yaml
+ork run
+# Orkestra reads katalog.yaml from the current directory and starts the runtime.
 ```
 
 The `Website` CRD now has:

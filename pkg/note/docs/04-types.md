@@ -22,6 +22,8 @@ spec:
 
 Return the runtime type name of any value. The canonical way to branch on field type.
 
+Keywords: type, inspect, runtime, branch, kind, detect
+
 ```yaml
 # value: "{{ typeOf .spec.schedule }}"
 ```
@@ -43,6 +45,8 @@ Return the runtime type name of any value. The canonical way to branch on field 
 ### `typeMap` / `typeList` / `typeString` / `typeNumber` / `typeBool` / `typeNull`
 
 Shorthand predicates — return `true` when the value matches that type. Cleaner than `eq (typeOf .field) "map"` in normalize expressions.
+
+Keywords: type, predicate, check, boolean, map, list, string, number, bool, null
 
 ```yaml
 normalize:
@@ -67,6 +71,8 @@ normalize:
 
 Return `true` when the value is nil, an empty string, an empty slice, or an empty map.
 
+Keywords: type, empty, nil, check, boolean, absent
+
 ```yaml
 # value: "{{ isEmpty .spec.annotations }}"
 # {}          → true
@@ -79,6 +85,8 @@ Return `true` when the value is nil, an empty string, an empty slice, or an empt
 ### `len`
 
 Return the length of a string, slice, or map. Overrides Go's built-in `len` with one that handles all three types uniformly.
+
+Keywords: type, length, count, string, slice, map, size
 
 ```yaml
 # value: "{{ len .spec.regions }}"
@@ -97,6 +105,8 @@ Return the length of a string, slice, or map. Overrides Go's built-in `len` with
 
 Convert any value to `int64`. Truncates floats.
 
+Keywords: type, convert, integer, coerce, number, cast
+
 ```yaml
 # value: "{{ toInt .spec.replicas }}"
 # "3"   → 3
@@ -111,6 +121,8 @@ Convert any value to `int64`. Truncates floats.
 
 Convert any value to `float64`.
 
+Keywords: type, convert, float, coerce, number, cast, decimal
+
 ```yaml
 # value: "{{ toFloat .spec.threshold }}"
 # "0.75" → 0.75
@@ -122,6 +134,8 @@ Convert any value to `float64`.
 ### `toBool`
 
 Convert a value to `bool`. Returns an error for unrecognized strings.
+
+Keywords: type, convert, boolean, coerce, parse, cast, bool
 
 | Truthy | Falsy |
 |--------|-------|
@@ -141,11 +155,25 @@ Convert a value to `bool`. Returns an error for unrecognized strings.
 
 Convert any value to its string representation. Uses `fmt.Sprintf("%v", v)`.
 
+Keywords: type, convert, string, coerce, format, cast, stringify
+
 ```yaml
 # value: "{{ toString .spec.replicas }}"
 # 3     → "3"
 # true  → "true"
 # 3.14  → "3.14"
+```
+
+---
+
+### `toJson`
+
+Convert any value to its JSON representation. Returns an error for unrecognized types.
+
+Keywords: type, convert, json, serialize, format, encode
+
+```yaml
+# value: "{{ toJson .spec }}"    →  `{"replicas":3,"enabled":true}`
 ```
 
 ---
@@ -182,6 +210,8 @@ This symmetry means you can use `typeOf` in status fields to surface the detecte
 | `toFloat` | `(v any)` | `float64` |
 | `toBool` | `(v any)` | `bool` |
 | `toString` | `(v any)` | `string` |
+| `toJson` | `(v any)` | `string` |
+
 
 ---
 

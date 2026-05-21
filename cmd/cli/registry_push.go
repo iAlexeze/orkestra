@@ -1,4 +1,4 @@
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 
@@ -31,7 +31,7 @@ var registryPushCmd = &cobra.Command{
 	Args:  cobra.RangeArgs(1, 2),
 	Example: `  ork registry push postgres:v14 ./patterns/postgres/
   ork registry push redis:v7 ./motifs/redis/
-  ORKESTRA_REGISTRY=oci://myregistry.io/patterns ork registry push payments:v1.0 ./payments/
+  ORK_REGISTRY=oci://myregistry.io/patterns ork registry push payments:v1.0 ./payments/
   ork registry push ./patterns/postgres/   # use metadata.name:metadata.version from the pattern`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (

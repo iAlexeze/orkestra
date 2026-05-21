@@ -112,14 +112,22 @@ type WebhookServer struct {
 	conversionRegistry katalog.ConversionRegistry
 	admissionRegistry  katalog.AdmissionRegistry
 
-	// Stats — types live in pkg/health for compatibility with kordinator.
-	// Always initialized so callers never receive nil even when webhooks are disabled.
-	conversionStats *health.ConversionStats
-	admissionStats  *health.AdmissionStats
-	protectionStats *health.DeletionProtectionStats
+	// Stats — per-CRD maps keyed by GVR string ("group/version/resource").
+	// Pre-populated from the Katalog in NewWebhookServer so each CRD gets its
+	// own counters. infraProtectionStats covers self-protection and Orkestra
+	// infra resources (Deployment, Service, etc.) that have no CRD GVR.
+	admissionStats  map[string]*health.AdmissionStats
+	conversionStats map[string]*health.ConversionStats
+	protectionStats map[string]*health.DeletionProtectionStats
+	namespaceStats  map[string]*health.NamespaceProtectionStats
+	infraProtStats  *health.DeletionProtectionStats // webhook self + Orkestra infra
+	strictModeStats *health.DeletionProtectionStats // process-global; strict mode is not per-CRD
 	webhookStats    *health.WebhookStats
-	namespaceStats  *health.NamespaceProtectionStats
-	strictModeStats *health.DeletionProtectionStats
+
+	// Reverse-lookup tables built from the Katalog for handlers that identify
+	// the target CRD by name/kind rather than GVR.
+	crdNameToGVRKey map[string]string // "plural.group" → "group/version/resource"
+	kindToGVRKey    map[string]string // "Kind" → "group/version/resource"
 
 	// Deletion protection — set of CRD full names (plural.group) that are protected.
 	protectedCRDNames map[string]struct{}
@@ -131,8 +139,22 @@ type WebhookServer struct {
 	// Nil when the user provided explicit TLS_CERT/TLS_KEY env vars.
 	certMgr certManagerIface
 
+	// certSecretData holds the TLS bundle used at startup so the housekeeper can
+	// restore the Secret if it is deleted (e.g. by a concurrent pod during rollout).
+	// Nil when the user provided explicit TLS_CERT/TLS_KEY env vars.
+	certSecretData      *certSecretBundle
+	certSecretName      string
+	certSecretNamespace string
+
 	// Full konfig for namespace access during shutdown cleanup.
 	konfig *konfig.Konfig
+}
+
+// certSecretBundle carries the raw PEM bytes needed to restore the TLS Secret.
+type certSecretBundle struct {
+	certPEM []byte
+	keyPEM  []byte
+	caPEM   []byte
 }
 
 // NewWebhookServer constructs a WebhookServer and resolves all declarative
@@ -167,11 +189,30 @@ func NewWebhookServer(kubeClient kubernetes.Interface, kat *katalog.Katalog, kfg
 		mux:                http.NewServeMux(),
 		conversionRegistry: kat.ConversionRegistry(),
 		admissionRegistry:  kat.AdmissionRegistry(),
-		conversionStats:    health.NewConversionStats(convWindow),
-		admissionStats:     health.NewAdmissionStats(convWindow),
-		protectionStats:    health.NewDeletionProtectionStats(),
+		admissionStats:     make(map[string]*health.AdmissionStats),
+		conversionStats:    make(map[string]*health.ConversionStats),
+		protectionStats:    make(map[string]*health.DeletionProtectionStats),
+		namespaceStats:     make(map[string]*health.NamespaceProtectionStats),
+		infraProtStats:     health.NewDeletionProtectionStats(),
 		webhookStats:       health.NewWebhookStats(),
 		strictModeStats:    health.NewDeletionProtectionStats(),
+		crdNameToGVRKey:    make(map[string]string),
+		kindToGVRKey:       make(map[string]string),
+	}
+
+	// Pre-populate per-CRD stat instances and reverse-lookup tables from the Katalog.
+	// Every CRD gets its own counters so the gateway /katalog can return accurate
+	// per-CRD breakdowns without mixing traffic across resources.
+	for _, crd := range kat.All() {
+		gvr := crd.GVR()
+		gvrKey := crdGVRKey(gvr.Group, gvr.Version, gvr.Resource)
+		ws.admissionStats[gvrKey] = health.NewAdmissionStats(convWindow)
+		ws.conversionStats[gvrKey] = health.NewConversionStats(convWindow)
+		ws.protectionStats[gvrKey] = health.NewDeletionProtectionStats()
+		ws.namespaceStats[gvrKey] = health.NewNamespaceProtectionStats()
+		crdFullName := crd.APITypes.Plural + "." + crd.APITypes.Group
+		ws.crdNameToGVRKey[crdFullName] = gvrKey
+		ws.kindToGVRKey[crd.APITypes.Kind] = gvrKey
 	}
 
 	// Precompute deletion-protection CRD name set.
@@ -198,10 +239,59 @@ func NewWebhookServer(kubeClient kubernetes.Interface, kat *katalog.Katalog, kfg
 				ws.namespaceRuleMap[key] = rules
 			}
 		}
-		ws.namespaceStats = health.NewNamespaceProtectionStats()
 	}
 
 	return ws
+}
+
+// crdGVRKey formats a GVR triple into a canonical string key used throughout
+// the webhook stats maps: "group/version/resource" (or "version/resource" for core group).
+func crdGVRKey(group, version, resource string) string {
+	if group == "" {
+		return version + "/" + resource
+	}
+	return group + "/" + version + "/" + resource
+}
+
+// ── Per-CRD stat accessors ────────────────────────────────────────────────────
+// These helpers return the per-CRD stats instance for a given GVR key.
+// A nil-safe fallback is created on first miss (defensive; should not occur for
+// CRDs declared in the Katalog).
+
+func (ws *WebhookServer) admissionStatsFor(gvrKey string) *health.AdmissionStats {
+	if s, ok := ws.admissionStats[gvrKey]; ok {
+		return s
+	}
+	s := health.NewAdmissionStats(ws.conversionWindow)
+	ws.admissionStats[gvrKey] = s
+	return s
+}
+
+func (ws *WebhookServer) conversionStatsFor(gvrKey string) *health.ConversionStats {
+	if s, ok := ws.conversionStats[gvrKey]; ok {
+		return s
+	}
+	s := health.NewConversionStats(ws.conversionWindow)
+	ws.conversionStats[gvrKey] = s
+	return s
+}
+
+func (ws *WebhookServer) protectionStatsFor(gvrKey string) *health.DeletionProtectionStats {
+	if s, ok := ws.protectionStats[gvrKey]; ok {
+		return s
+	}
+	s := health.NewDeletionProtectionStats()
+	ws.protectionStats[gvrKey] = s
+	return s
+}
+
+func (ws *WebhookServer) namespaceStatsFor(gvrKey string) *health.NamespaceProtectionStats {
+	if s, ok := ws.namespaceStats[gvrKey]; ok {
+		return s
+	}
+	s := health.NewNamespaceProtectionStats()
+	ws.namespaceStats[gvrKey] = s
+	return s
 }
 
 // SetCertManager provides the cert manager for TLS secret cleanup on graceful shutdown.
@@ -209,6 +299,19 @@ func NewWebhookServer(kubeClient kubernetes.Interface, kat *katalog.Katalog, kfg
 // user provided explicit TLS_CERT/TLS_KEY).
 func (ws *WebhookServer) SetCertManager(m certManagerIface) {
 	ws.certMgr = m
+}
+
+// SetCertBundle stores the TLS bundle and Secret coordinates so the housekeeper can
+// restore the Secret if it is deleted during a rollout. Only called when Orkestra
+// generated the certificates (not when the user provides TLS_CERT/TLS_KEY).
+func (ws *WebhookServer) SetCertBundle(certPEM, keyPEM, caPEM []byte, secretName, namespace string) {
+	ws.certSecretData = &certSecretBundle{
+		certPEM: certPEM,
+		keyPEM:  keyPEM,
+		caPEM:   caPEM,
+	}
+	ws.certSecretName = secretName
+	ws.certSecretNamespace = namespace
 }
 
 // Start activates the WebhookServer. It registers all declared webhook endpoints,
@@ -501,28 +604,49 @@ func (ws *WebhookServer) Name() string { return ws.name }
 // Started reports whether Start() has been called.
 func (ws *WebhookServer) Started() bool { return ws.started.Load() }
 
-// ── Stats getters — called from konstructor.go to wire into BuildCRDInfoHandler ─
+// ── Stats getters — used by BuildGatewayKatalogHandler ───────────────────────
+// All stat getters are keyed by GVR string ("group/version/resource") so the
+// gateway /katalog handler can serve accurate per-CRD breakdowns.
 
-// GetConversionStats returns the conversion statistics instance.
-func (ws *WebhookServer) GetConversionStats() *health.ConversionStats { return ws.conversionStats }
-
-// GetAdmissionStats returns the admission statistics instance.
-func (ws *WebhookServer) GetAdmissionStats() *health.AdmissionStats { return ws.admissionStats }
-
-// GetProtectionStats returns the deletion-protection statistics instance.
-func (ws *WebhookServer) GetProtectionStats() *health.DeletionProtectionStats {
-	return ws.protectionStats
+// AdmissionStatsFor returns the admission stats for the CRD identified by gvrKey.
+// Returns nil when no stats exist for that key (CRD has no admission webhooks).
+func (ws *WebhookServer) AdmissionStatsFor(gvrKey string) *health.AdmissionStats {
+	return ws.admissionStats[gvrKey]
 }
 
-// GetWebhookStats returns the webhook reconciliation statistics instance.
-func (ws *WebhookServer) GetWebhookStats() *health.WebhookStats { return ws.webhookStats }
-
-// GetNamespaceStats returns the namespace-protection statistics instance.
-func (ws *WebhookServer) GetNamespaceStats() *health.NamespaceProtectionStats {
-	return ws.namespaceStats
+// ConversionStatsFor returns the conversion stats for the CRD identified by gvrKey.
+func (ws *WebhookServer) ConversionStatsFor(gvrKey string) *health.ConversionStats {
+	return ws.conversionStats[gvrKey]
 }
 
-// GetStrictModeStats returns the strict-mode-protection statistics instance.
-func (ws *WebhookServer) GetStrictModeStats() *health.DeletionProtectionStats {
+// ProtectionStatsFor returns the deletion-protection stats for the CRD identified by gvrKey.
+func (ws *WebhookServer) ProtectionStatsFor(gvrKey string) *health.DeletionProtectionStats {
+	return ws.protectionStats[gvrKey]
+}
+
+// NamespaceStatsFor returns the namespace-protection stats for the CRD identified by gvrKey.
+func (ws *WebhookServer) NamespaceStatsFor(gvrKey string) *health.NamespaceProtectionStats {
+	return ws.namespaceStats[gvrKey]
+}
+
+// InfraProtectionStats returns the process-level deletion-protection stats that
+// cover the webhook configuration itself and Orkestra infra resources (Deployment,
+// Service, etc.) — events not attributable to a specific CRD GVR.
+func (ws *WebhookServer) InfraProtectionStats() *health.DeletionProtectionStats {
+	return ws.infraProtStats
+}
+
+// WebhookControllerStats returns the webhook reconciliation statistics.
+func (ws *WebhookServer) WebhookControllerStats() *health.WebhookStats { return ws.webhookStats }
+
+// StrictModeStats returns the strict-mode-protection statistics (process-global).
+func (ws *WebhookServer) StrictModeStats() *health.DeletionProtectionStats {
 	return ws.strictModeStats
+}
+
+// GVRKey formats group/version/resource into the canonical stats key.
+// Exported so the gateway handler can build keys from crd.GVR() without
+// duplicating the formatting logic.
+func GVRKey(group, version, resource string) string {
+	return crdGVRKey(group, version, resource)
 }

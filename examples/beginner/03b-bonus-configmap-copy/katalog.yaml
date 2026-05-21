@@ -13,6 +13,8 @@ spec:
   crds:
     configmap-distribution:
       crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
       namespaced: false             # Default: (true)
 
       operatorBox:

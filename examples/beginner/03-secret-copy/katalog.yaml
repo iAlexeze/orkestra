@@ -17,6 +17,8 @@ spec:
   crds:
     secret-distribution:
       crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
       namespaced: false             # Default: (true)
 
       operatorBox:

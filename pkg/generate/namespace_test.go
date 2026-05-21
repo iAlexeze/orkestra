@@ -45,7 +45,13 @@ func TestRBAC_ContainsNamespaceFirst(t *testing.T) {
 }
 
 func TestRBAC_ContainsExpectedResources(t *testing.T) {
-	output, err := generate.RBAC(nil, testNamespace, "")
+	// Pass at least one rule so that ClusterRole + ClusterRoleBinding are emitted.
+	someRule := rbacv1.PolicyRule{
+		APIGroups: []string{""},
+		Resources: []string{"pods"},
+		Verbs:     []string{"get"},
+	}
+	output, err := generate.RBAC([]rbacv1.PolicyRule{someRule}, testNamespace, "")
 	if err != nil {
 		t.Fatalf("RBAC: %v", err)
 	}
@@ -111,7 +117,7 @@ func TestConfigMap_NamespaceAppearsOnce(t *testing.T) {
 // ── Bundle ───────────────────────────────────────────────────────────────────
 
 func TestRenderBundle_NamespaceAppearsOnce(t *testing.T) {
-	bundle, err := generate.RenderBundle(nil, minimalExpandedKatalog(), testNamespace, "")
+	bundle, err := generate.RenderBundle(nil, nil, minimalExpandedKatalog(), testNamespace, "", generate.DefaultBundleOptions())
 	if err != nil {
 		t.Fatalf("RenderBundle: %v", err)
 	}
@@ -122,7 +128,7 @@ func TestRenderBundle_NamespaceAppearsOnce(t *testing.T) {
 }
 
 func TestRenderBundle_ContainsAllResources(t *testing.T) {
-	bundle, err := generate.RenderBundle([]rbacv1.PolicyRule{}, minimalExpandedKatalog(), testNamespace, "")
+	bundle, err := generate.RenderBundle([]rbacv1.PolicyRule{}, nil, minimalExpandedKatalog(), testNamespace, "", generate.DefaultBundleOptions())
 	if err != nil {
 		t.Fatalf("RenderBundle: %v", err)
 	}
@@ -130,8 +136,6 @@ func TestRenderBundle_ContainsAllResources(t *testing.T) {
 	for _, want := range []string{
 		"kind: Namespace",
 		"kind: ServiceAccount",
-		"kind: ClusterRole",
-		"kind: ClusterRoleBinding",
 		"kind: ConfigMap",
 		testNamespace,
 	} {
@@ -142,7 +146,7 @@ func TestRenderBundle_ContainsAllResources(t *testing.T) {
 }
 
 func TestRenderBundle_NamespaceBeforeEverythingElse(t *testing.T) {
-	bundle, err := generate.RenderBundle(nil, minimalExpandedKatalog(), testNamespace, "")
+	bundle, err := generate.RenderBundle(nil, nil, minimalExpandedKatalog(), testNamespace, "", generate.DefaultBundleOptions())
 	if err != nil {
 		t.Fatalf("RenderBundle: %v", err)
 	}
@@ -159,7 +163,7 @@ func TestRenderBundle_NamespaceBeforeEverythingElse(t *testing.T) {
 func TestRenderBundle_WorkloadNamespace(t *testing.T) {
 	workloadNS := "myapp-orkestra-ns"
 
-	bundle, err := generate.RenderBundle(nil, minimalExpandedKatalog(), testNamespace, workloadNS)
+	bundle, err := generate.RenderBundle(nil, nil, minimalExpandedKatalog(), testNamespace, workloadNS, generate.DefaultBundleOptions())
 	if err != nil {
 		t.Fatalf("RenderBundle: %v", err)
 	}
@@ -177,7 +181,7 @@ func TestRenderBundle_WorkloadNamespace(t *testing.T) {
 
 func TestRenderBundle_NoDoubleDocSeparators(t *testing.T) {
 	for _, workloadNS := range []string{"", "myapp-orkestra-ns"} {
-		bundle, err := generate.RenderBundle(nil, minimalExpandedKatalog(), testNamespace, workloadNS)
+		bundle, err := generate.RenderBundle(nil, nil, minimalExpandedKatalog(), testNamespace, workloadNS, generate.DefaultBundleOptions())
 		if err != nil {
 			t.Fatalf("RenderBundle (workloadNS=%q): %v", workloadNS, err)
 		}

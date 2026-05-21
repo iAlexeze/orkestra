@@ -50,6 +50,20 @@ Complete documentation is in [docs/](docs/README.md).
 | Access fields safely with defaults | [08 — Safe Access Notes](docs/08-safe-access.md) |
 | Navigate child/cross-CRD objects | [09 — Kubernetes Notes](docs/09-kubernetes.md) |
 | Read container images and env vars | [10 — Container Notes](docs/10-container.md) |
+| Parse resource quantities | [11 — Quantity Notes](docs/11-quantity.md) |
+| Inspect replica / rollout state | [12 — Replica Notes](docs/12-replica.md) |
+| Gate on Job and CronJob lifecycle | [13 — Job Notes](docs/13-job.md) |
+| Surface Service networking details | [14 — Service Notes](docs/14-service.md) |
+| Read raw object fields | [15 — Field Notes](docs/15-fields.md) |
+| Work with network addresses | [16 — Net Notes](docs/16-net.md) |
+| Inspect enriched pod state | [17 — Pod Notes](docs/17-pods.md) |
+| Surface Kubernetes warnings | [18 — Warning Notes](docs/18-warnings.md) |
+| Read HPA scaling state | [19 — HPA Notes](docs/19-hpa.md) |
+| Inspect Ingress routing | [20 — Ingress Notes](docs/20-ingress.md) |
+| Read PVC / StorageClass details | [21 — PVC Notes](docs/21-pvc.md) |
+| Inspect node topology | [22 — Node Notes](docs/22-node.md) |
+| Read StatefulSet revision state | [23 — StatefulSet Notes](docs/23-statefulset.md) |
+| Navigate ReplicaSet ownership | [24 — ReplicaSet Notes](docs/24-replicaset.md) |
 
 ## Adding a new note
 
@@ -58,7 +72,11 @@ Complete documentation is in [docs/](docs/README.md).
 - Identify the domain (`cron`, `strings`, `math`, `types`, `conditional`, `kubernetes`, `replica`, `container`, `job`, `service`, …)
 - Add the function to the appropriate `*.go` file
 - Register it in that file's `xxxNotes()` function — it is automatically included via `note.Map()`
-- Document it in the corresponding `docs/` file
+
+> [!IMPORTANT]
+> Document the note in the corresponding `docs/` file under `pkg/note/docs/` using this [template](./docs/_template.md).
+> The [note catalog](./catalog_generated.go) is **generated automatically** from these markdown files by `make generate-notes` — it must **never be edited directly**. 
+> A note that is not documented in `docs/` will not appear in `ork notes`, even if it is registered and working.
 
 **Contract:** handle empty/nil input with a safe zero value, not a panic. Return `(value, error)` for functions that can meaningfully fail; return just `value` for infallible ones.
 

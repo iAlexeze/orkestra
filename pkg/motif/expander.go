@@ -85,8 +85,10 @@ func Expand(m *orktypes.Motif, bindings map[string]string) (*ExpandedMotif, erro
 			return nil, fmt.Errorf("parsing expanded motif %q resources: %w", m.Metadata.Name, err)
 		}
 		if mr.OnCreate != nil {
+			filterExpandedResources(mr.OnCreate)
 			onCreate = mr.OnCreate
 		}
+		filterExpandedResources(&mr.HookTemplates)
 		inline := mr.HookTemplates
 		if !inline.IsEmpty() {
 			onReconcile = &inline
@@ -301,6 +303,330 @@ func ValidateMotifTemplates(m *orktypes.Motif) []string {
 		}
 	}
 	return errs
+}
+
+// evalMotifCondition evaluates a single motif condition against already-resolved values.
+// The field is treated as a literal value (not a dot-notation path to look up),
+// because inputs have already been substituted by renderInputs.
+func evalMotifCondition(cond orktypes.Condition) bool {
+	field := cond.Field
+
+	// exists / notExists shorthands
+	if cond.Exists != nil {
+		return *cond.Exists == (field != "")
+	}
+	if cond.NotExists != nil {
+		return *cond.NotExists == (field == "")
+	}
+
+	// operator or shorthand comparisons
+	op, val := orktypes.ResolveConditionOp(cond)
+	switch op {
+	case orktypes.ConditionEquals:
+		return field == val
+	case orktypes.ConditionNotEquals:
+		return field != val
+	case orktypes.ConditionContains:
+		return strings.Contains(field, val)
+	case orktypes.ConditionPrefix:
+		return strings.HasPrefix(field, val)
+	case orktypes.ConditionSuffix:
+		return strings.HasSuffix(field, val)
+	}
+	// Unknown or empty operator — treat as pass (don't silently drop resources)
+	return true
+}
+
+// passesMotifConditions reports whether all conditions pass.
+// Empty condition slice → unconditional (true).
+func passesMotifConditions(conditions []orktypes.Condition, anyOf []orktypes.Condition) bool {
+	// AND conditions
+	for _, c := range conditions {
+		if !evalMotifCondition(c) {
+			return false
+		}
+	}
+	// anyOf (OR) — if any pass, the block passes
+	if len(anyOf) > 0 {
+		for _, c := range anyOf {
+			if evalMotifCondition(c) {
+				return true
+			}
+		}
+		return false
+	}
+	return true
+}
+
+func filterDeployments(srcs []orktypes.DeploymentTemplateSource) []orktypes.DeploymentTemplateSource {
+	var out []orktypes.DeploymentTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterReplicaSets(srcs []orktypes.ReplicaSetTemplateSource) []orktypes.ReplicaSetTemplateSource {
+	var out []orktypes.ReplicaSetTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterServices(srcs []orktypes.ServiceTemplateSource) []orktypes.ServiceTemplateSource {
+	var out []orktypes.ServiceTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterPods(srcs []orktypes.PodTemplateSource) []orktypes.PodTemplateSource {
+	var out []orktypes.PodTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterJobs(srcs []orktypes.JobTemplateSource) []orktypes.JobTemplateSource {
+	var out []orktypes.JobTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterCronJobs(srcs []orktypes.CronJobTemplateSource) []orktypes.CronJobTemplateSource {
+	var out []orktypes.CronJobTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterSecrets(srcs []orktypes.SecretTemplateSource) []orktypes.SecretTemplateSource {
+	var out []orktypes.SecretTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterConfigMaps(srcs []orktypes.ConfigMapTemplateSource) []orktypes.ConfigMapTemplateSource {
+	var out []orktypes.ConfigMapTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterServiceAccounts(srcs []orktypes.ServiceAccountTemplateSource) []orktypes.ServiceAccountTemplateSource {
+	var out []orktypes.ServiceAccountTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterStatefulSets(srcs []orktypes.StatefulSetTemplateSource) []orktypes.StatefulSetTemplateSource {
+	var out []orktypes.StatefulSetTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterIngresses(srcs []orktypes.IngressTemplateSource) []orktypes.IngressTemplateSource {
+	var out []orktypes.IngressTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterPersistentVolumes(srcs []orktypes.PVTemplateSource) []orktypes.PVTemplateSource {
+	var out []orktypes.PVTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterPersistentVolumeClaims(srcs []orktypes.PVCTemplateSource) []orktypes.PVCTemplateSource {
+	var out []orktypes.PVCTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterHPAs(srcs []orktypes.HPATemplateSource) []orktypes.HPATemplateSource {
+	var out []orktypes.HPATemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterPDBs(srcs []orktypes.PDBTemplateSource) []orktypes.PDBTemplateSource {
+	var out []orktypes.PDBTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterNamespaces(srcs []orktypes.NamespaceTemplateSource) []orktypes.NamespaceTemplateSource {
+	var out []orktypes.NamespaceTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterRoles(srcs []orktypes.RoleTemplateSource) []orktypes.RoleTemplateSource {
+	var out []orktypes.RoleTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterRoleBindings(srcs []orktypes.RoleBindingTemplateSource) []orktypes.RoleBindingTemplateSource {
+	var out []orktypes.RoleBindingTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterCustomResources(srcs []orktypes.CustomResourceTemplateSource) []orktypes.CustomResourceTemplateSource {
+	var out []orktypes.CustomResourceTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+// filterExpandedResources filters each resource list in ht by motif conditions
+// and strips Conditions/AnyOf from kept resources (they are motif-only, not runtime).
+func filterExpandedResources(ht *orktypes.HookTemplates) {
+	ht.Deployments = filterDeployments(ht.Deployments)
+	ht.ReplicaSets = filterReplicaSets(ht.ReplicaSets)
+	ht.Services = filterServices(ht.Services)
+	ht.Pods = filterPods(ht.Pods)
+	ht.Jobs = filterJobs(ht.Jobs)
+	ht.CronJobs = filterCronJobs(ht.CronJobs)
+	ht.Secrets = filterSecrets(ht.Secrets)
+	ht.ConfigMaps = filterConfigMaps(ht.ConfigMaps)
+	ht.ServiceAccounts = filterServiceAccounts(ht.ServiceAccounts)
+	ht.StatefulSets = filterStatefulSets(ht.StatefulSets)
+	ht.Ingresses = filterIngresses(ht.Ingresses)
+	ht.PersistentVolumes = filterPersistentVolumes(ht.PersistentVolumes)
+	ht.PersistentVolumeClaims = filterPersistentVolumeClaims(ht.PersistentVolumeClaims)
+	ht.HorizontalPodAutoscalers = filterHPAs(ht.HorizontalPodAutoscalers)
+	ht.PodDisruptionBudgets = filterPDBs(ht.PodDisruptionBudgets)
+	ht.Namespaces = filterNamespaces(ht.Namespaces)
+	ht.Roles = filterRoles(ht.Roles)
+	ht.RoleBindings = filterRoleBindings(ht.RoleBindings)
+	ht.CustomResource = filterCustomResources(ht.CustomResource)
 }
 
 // MergeHookTemplates appends resources from src into dst.

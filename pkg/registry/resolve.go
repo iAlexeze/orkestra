@@ -6,7 +6,7 @@
 // using the following priority:
 //
 //  1. Full OCI reference (starts with "oci://") — used as-is
-//  2. ORKESTRA_REGISTRY env var + "/name:version"
+//  2. ORK_REGISTRY env var + "/name:version"
 //  3. Default: ghcr.io/orkspace/orkestra-registry/patterns/katalogs/name:version
 //
 // The "oci://" prefix is stripped before passing to ORAS — it is a user-facing
@@ -41,7 +41,7 @@ type Ref struct {
 //
 //	"postgres:v14"                                           → ghcr.io/orkspace/orkestra-registry/patterns/katalogs/postgres:v14
 //	"oci://ghcr.io/myorg/patterns/katalogs/redis:v7"        → ghcr.io/myorg/patterns/katalogs/redis:v7
-//	"myorg/redis:v7" (with ORKESTRA_REGISTRY set)           → resolved against env
+//	"myorg/redis:v7" (with ORK_REGISTRY set)           → resolved against env
 func Resolve(input string) (*Ref, error) {
 	input = strings.TrimSpace(input)
 	if input == "" {
@@ -56,7 +56,7 @@ func Resolve(input string) (*Ref, error) {
 		return parseRef(raw)
 	}
 
-	// Use ORKESTRA_REGISTRY env var or default
+	// Use ORK_REGISTRY env var or default
 	base := os.Getenv(EnvRegistry)
 	if base == "" {
 		base = DefaultRegistry

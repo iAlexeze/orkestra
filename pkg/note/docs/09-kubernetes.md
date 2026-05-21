@@ -35,6 +35,8 @@ when:
 
 Return the `metadata` map of a Kubernetes object. Returns an empty map if metadata is absent — never nil.
 
+Keywords: kubernetes, metadata, object, navigate, map
+
 ```yaml
 # value: "{{ meta .children.cronjob }}"
 # Useful as an intermediate value when chaining with mapGet:
@@ -47,6 +49,8 @@ Return the `metadata` map of a Kubernetes object. Returns an empty map if metada
 
 Return the `metadata.labels` map. Returns an empty map if absent.
 
+Keywords: kubernetes, metadata, labels, map, selector, tags
+
 ```yaml
 # value: "{{ mapGet (labels .children.deployment) \"app\" }}"
 # {app: frontend, tier: web} → "frontend"
@@ -57,6 +61,8 @@ Return the `metadata.labels` map. Returns an empty map if absent.
 ### `annotations`
 
 Return the `metadata.annotations` map. Returns an empty map if absent.
+
+Keywords: kubernetes, metadata, annotations, map, tags
 
 ```yaml
 # value: "{{ mapGet (annotations .children.deployment) \"orkestra.io/phase\" }}"
@@ -70,6 +76,8 @@ Return the `metadata.annotations` map. Returns an empty map if absent.
 
 Return the `spec` map of a Kubernetes object. Returns an empty map if absent.
 
+Keywords: kubernetes, spec, object, navigate, map
+
 ```yaml
 # value: "{{ mapGet (spec .children.cronjob) \"schedule\" }}"
 # Equivalent to: .children.cronjob.spec.schedule
@@ -81,6 +89,8 @@ Return the `spec` map of a Kubernetes object. Returns an empty map if absent.
 
 Return the `status` map of a Kubernetes object. Returns an empty map if absent.
 
+Keywords: kubernetes, status, object, navigate, map
+
 ```yaml
 # value: "{{ mapGet (status .children.deployment) \"readyReplicas\" }}"
 # Equivalent to: .children.deployment.status.readyReplicas
@@ -91,6 +101,8 @@ Return the `status` map of a Kubernetes object. Returns an empty map if absent.
 ### `phase`
 
 Return `status.phase` as a string. Returns `""` when absent.
+
+Keywords: kubernetes, status, phase, string, pod, lifecycle
 
 ```yaml
 # value: "{{ phase .children.pod }}"
@@ -109,6 +121,8 @@ Return `status.phase` as a string. Returns `""` when absent.
 
 Navigate a nested path through a Kubernetes object using variadic string segments. Returns `nil` if any segment is missing. Nil-safe at every level.
 
+Keywords: kubernetes, navigate, nested, path, safe, access, deep
+
 ```yaml
 # value: "{{ get .children.cronjob \"status\" \"lastScheduleTime\" }}"
 # value: "{{ get .children.deployment \"spec\" \"template\" \"spec\" \"containers\" }}"
@@ -122,6 +136,8 @@ Navigate a nested path through a Kubernetes object using variadic string segment
 
 Return the `kind` of the first `ownerReference`.
 
+Keywords: kubernetes, owner, reference, kind, controller
+
 ```yaml
 # value: "{{ ownerKind .children.replicaset }}"
 # → "Deployment"
@@ -132,6 +148,8 @@ Return the `kind` of the first `ownerReference`.
 ### `ownerName`
 
 Return the `name` of the first `ownerReference`.
+
+Keywords: kubernetes, owner, reference, name, controller
 
 ```yaml
 # value: "{{ ownerName .children.replicaset }}"
@@ -146,6 +164,8 @@ Return the `name` of the first `ownerReference`.
 
 Return `true` if `status.conditions` contains a condition of the given type with `status: "True"`.
 
+Keywords: kubernetes, condition, status, check, boolean, ready, available
+
 ```yaml
 # value: "{{ hasCondition .children.deployment \"Available\" }}"
 # Standard types: Available, Progressing, Degraded, Ready, Complete
@@ -157,6 +177,8 @@ Return `true` if `status.conditions` contains a condition of the given type with
 
 Return the `reason` field of a named condition. Returns `""` when absent.
 
+Keywords: kubernetes, condition, reason, status, string, message
+
 ```yaml
 # value: "{{ conditionReason .children.deployment \"Available\" }}"
 # → "MinimumReplicasAvailable" or ""
@@ -167,6 +189,8 @@ Return the `reason` field of a named condition. Returns `""` when absent.
 ### `conditionMessage`
 
 Return the `message` field of a named condition. Returns `""` when absent.
+
+Keywords: kubernetes, condition, message, status, string, detail
 
 ```yaml
 # value: "{{ conditionMessage .children.deployment \"Progressing\" }}"
@@ -180,6 +204,8 @@ Return the `message` field of a named condition. Returns `""` when absent.
 ### `resourceExists`
 
 Return `true` when the object is a non-nil `map[string]interface{}`. Use to check whether a child resource has been created.
+
+Keywords: kubernetes, exists, check, boolean, nil, created, present
 
 ```yaml
 # value: "{{ resourceExists .children.deployment }}"
@@ -196,6 +222,8 @@ Return `true` when the object is a non-nil `map[string]interface{}`. Use to chec
 
 Return `true` when `metadata.deletionTimestamp` is set — the object exists but is being deleted.
 
+Keywords: kubernetes, terminating, deleting, boolean, lifecycle, deletion
+
 ```yaml
 # Gate traffic routing away from terminating pods:
 # when:
@@ -211,6 +239,8 @@ Return `true` when `metadata.deletionTimestamp` is set — the object exists but
 
 Return `metadata.generation` as int64. Increments on every spec change. Returns `0` when absent.
 
+Keywords: kubernetes, generation, metadata, revision, int
+
 ```yaml
 # value: "{{ generation .children.deployment }}"
 # → 3
@@ -222,6 +252,8 @@ Return `metadata.generation` as int64. Increments on every spec change. Returns 
 
 Return `status.observedGeneration` as int64. This is the generation the controller last acted on.
 
+Keywords: kubernetes, generation, status, observed, revision, int
+
 ```yaml
 # value: "{{ observedGeneration .children.deployment }}"
 # → 3
@@ -232,6 +264,8 @@ Return `status.observedGeneration` as int64. This is the generation the controll
 ### `isSynced`
 
 Return `true` when `metadata.generation == status.observedGeneration`, meaning the controller has fully processed the current spec. Returns `true` for resources without generation tracking (both 0).
+
+Keywords: kubernetes, synced, generation, rollout, boolean, ready, reconciled
 
 ```yaml
 # Gate dependent resources on rollout completion:

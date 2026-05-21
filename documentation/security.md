@@ -287,7 +287,7 @@ Orkestra generates and rotates its own TLS certificate automatically. No manual 
 To supply your own certificate:
 
 ```bash
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --set tls.certFile=/path/to/tls.crt \
   --set tls.keyFile=/path/to/tls.key \
   --namespace orkestra-system

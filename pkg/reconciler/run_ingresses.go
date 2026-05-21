@@ -76,7 +76,7 @@ func runIngresses(
 		spec := orkingress.Resolve(resolved, resolver.OwnerName())
 
 		// Ensure TLS secret exists before applying the Ingress.
-		if spec.TLS != nil && spec.TLS.Enabled {
+		if spec.TLS != nil && spec.TLS.Create {
 			if err := ensureIngressTLSSecret(ctx, kube, owner, spec, ns); err != nil {
 				return fmt.Errorf("ingresses[%d]: tls secret: %w", i, err)
 			}

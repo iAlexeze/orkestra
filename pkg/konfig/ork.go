@@ -1,6 +1,24 @@
 // pkg/konfig/ork.go
 package konfig
 
+// Runtime returns the instance identifier
+// Used by pkg/orkestra and other packages to determine what is running.
+func Runtime() Instance {
+	return InstanceRuntime
+}
+
+// Gateway returns the instance identifier for the gateway service,
+// Used by pkg/orkestra and other packages to determine what is running.
+func Gateway() Instance {
+	return InstanceGateway
+}
+
+// String returns the string representation of the Instance, suitable for
+// logging, printing, and serialization.
+func (i Instance) String() string {
+	return string(i)
+}
+
 // KatalogKind returns the kind string for a Katalog document.
 // Katalogs declare CRDs in spec.crds. No sources block.
 func KatalogKind() string {

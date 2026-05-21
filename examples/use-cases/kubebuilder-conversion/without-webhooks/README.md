@@ -144,7 +144,7 @@ For production, deploy using Helm with the same Katalog:
 ```bash
 # Install Orkestra with this Katalog
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install cronjob-operator orkestra/orkestra \
+helm upgrade --install cronjob-operator orkestra/orkestra \
   --set katalog.configMap=cronjob-katalog \
   --namespace cronjob-system \
   --create-namespace \

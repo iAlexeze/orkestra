@@ -42,7 +42,7 @@ ork version
 Always validate before applying:
 
 ```bash
-ork validate -f katalog.yaml
+ork validate
 ```
 
 Expected output:
@@ -75,7 +75,7 @@ kubectl apply -f crd-unprotected.yaml
 The bundle contains the ConfigMap (your Katalog), ServiceAccount, ClusterRole, and ClusterRoleBinding:
 
 ```bash
-ork generate bundle -k katalog.yaml -o bundle.yaml
+ork generate bundle -f katalog.yaml -o bundle.yaml
 kubectl apply -f bundle.yaml
 ```
 
@@ -85,12 +85,12 @@ kubectl apply -f bundle.yaml
 
 ```bash
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
+  --create-namespace \
+  --set gateway.enabled=true \
   --wait --timeout 120s
 ```
-
-**TLS certificates:** Orkestra generates and rotates its own TLS certificate automatically. If you want to supply your own, pass `--set tls.certFile=/path/to/tls.crt --set tls.keyFile=/path/to/tls.key` to Helm.
 
 At startup you will see:
 
@@ -147,7 +147,7 @@ Error from server: admission webhook "protect.crds.orkestra.orkspace.io" denied 
 
 To delete it:
 - Set security.deletionProtection.enabled: false in the Katalog
-- Redeploy Orkestra, then delete the CRD.
+- Redeploy Orkestra Gateway, then delete the CRD.
 ```
 
 The same applies to `databases.security.orkestra.io` and `caches.security.orkestra.io`. Every CRD in the Katalog is protected.
@@ -189,7 +189,7 @@ Error from server: admission webhook "protect.resources.orkestra.orkspace.io" de
 
 To disable:
 - Set security.deletionProtection.enabled: false in the Katalog first.
-- Redeploy Orkestra, then delete the resource.
+- Redeploy Orkestra Gateway, then delete the resource.
 ```
 
 If you installed Orkestra with optional components, those are protected too:

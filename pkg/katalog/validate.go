@@ -147,5 +147,21 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 21. Validate Gateway requirement
+	// Security features and notifications require a companion gateway process.
+	// Fail fast so users are never surprised by silently inactive features.
+	// -------------------------------------------------------------------------
+	if err := k.validateGateway(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 22. Validate Enrich config
+	// -------------------------------------------------------------------------
+	if err := k.validateEnrich(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }

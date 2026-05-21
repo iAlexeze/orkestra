@@ -39,7 +39,7 @@ Both CRDs live in the same Katalog, the same binary, the same process.
 ## Step 1 — Validate the Katalog
 
 ```bash
-ork validate -f katalog.yaml
+ork validate
 ```
 
 Expected:
@@ -65,7 +65,7 @@ kubectl apply -f crd.yaml
 
 ```bash
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
   --wait --timeout 120s
 ```

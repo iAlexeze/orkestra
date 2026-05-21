@@ -202,6 +202,34 @@ func (c *Client) FetchCREvents(instanceURL, crdName, namespace, name string) (*C
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Gateway endpoints
+// ─────────────────────────────────────────────────────────────────────────────
+
+// FetchGatewayCRDStats fetches per-CRD webhook stats from the gateway process.
+// gatewayURL is the base URL of the gateway (e.g. "http://orkestra-gateway:8080").
+// Returns nil without error when the gateway returns 404 (CRD not registered).
+func FetchGatewayCRDStats(gatewayURL, crdName string) (*GatewayCRDStats, error) {
+	client := &http.Client{Timeout: 5 * time.Second}
+	url := strings.TrimSuffix(gatewayURL, "/") + "/katalog/" + strings.ToLower(crdName)
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("gateway fetch: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("gateway: HTTP %d for %s", resp.StatusCode, crdName)
+	}
+	var stats GatewayCRDStats
+	if err := json.NewDecoder(resp.Body).Decode(&stats); err != nil {
+		return nil, fmt.Errorf("gateway decode: %w", err)
+	}
+	return &stats, nil
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Internal helpers
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -47,23 +47,17 @@ kubectl get secret database-credentials -n platform
 ### 2. Start the operator
 
 ```bash
-ork run -f katalog.yaml
+ork run
 ```
 
-Orkestra reads `crdFile: ./crd.yaml`, applies the CRD to the cluster, and starts the operator.
+Orkestra reads `crdFile: ./crd.yaml`, applies the CRD and `cr.yaml` to the cluster, and starts the operator.
 
-### 3. Apply the CR
-
-```bash
-kubectl apply -f cr.yaml
-```
-
-### 4. Open the Control Center
+### 3. Open the Control Center
 
 In a third terminal:
 
 ```bash
-ork control start
+ork control
 # username:password → orkestra
 # username:password → orkestra
 ```

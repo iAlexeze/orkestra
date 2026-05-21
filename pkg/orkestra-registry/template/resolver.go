@@ -135,6 +135,20 @@ func (r *Resolver) Resolve(value string) (string, error) {
 	return out, nil
 }
 
+// resolveResourceRequirements resolves template expressions in resources.profile.
+// All other ResourceRequirements fields (Requests, Limits) are static k8s quantity strings — not templates.
+func (r *Resolver) resolveResourceRequirements(src *orktypes.ResourceRequirements) (*orktypes.ResourceRequirements, error) {
+	if src == nil {
+		return nil, nil
+	}
+	out := *src
+	var err error
+	if out.Profile, err = r.Resolve(src.Profile); err != nil {
+		return nil, fmt.Errorf("resources.profile: %w", err)
+	}
+	return &out, nil
+}
+
 // ResolvePodTemplate resolves all template expressions in a PodTemplateSource.
 // Returns a new PodTemplateSource with all expressions evaluated — safe to pass
 // directly to pods.Resolve().
@@ -145,13 +159,15 @@ func (r *Resolver) Resolve(value string) (string, error) {
 //	Namespace → ownerNamespace          (applied here so downstream has it)
 func (r *Resolver) ResolvePodTemplate(src orktypes.PodTemplateSource) (orktypes.PodTemplateSource, error) {
 	resolved := orktypes.PodTemplateSource{
-		Version:   src.Version,
-		Resources: src.Resources, // static — not resolved
-		Probes:    src.Probes,    // static — passed through
+		Version: src.Version,
+		Probes:  src.Probes, // static — passed through
 	}
 
 	var err error
 
+	if resolved.Resources, err = r.resolveResourceRequirements(src.Resources); err != nil {
+		return resolved, fmt.Errorf("pod.resources: %w", err)
+	}
 	if resolved.Name, err = r.Resolve(src.Name); err != nil {
 		return resolved, fmt.Errorf("pod.name: %w", err)
 	}
@@ -192,13 +208,15 @@ func (r *Resolver) ResolvePodTemplate(src orktypes.PodTemplateSource) (orktypes.
 // directly to deployments.Resolve().
 func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSource) (orktypes.DeploymentTemplateSource, error) {
 	resolved := orktypes.DeploymentTemplateSource{
-		Version:   src.Version,
-		Resources: src.Resources, // static — not resolved
-		Probes:    src.Probes,    // static — passed through
+		Version: src.Version,
+		Probes:  src.Probes, // static — passed through
 	}
 
 	var err error
 
+	if resolved.Resources, err = r.resolveResourceRequirements(src.Resources); err != nil {
+		return resolved, fmt.Errorf("deployment.resources: %w", err)
+	}
 	if resolved.Name, err = r.Resolve(src.Name); err != nil {
 		return resolved, fmt.Errorf("deployment.name: %w", err)
 	}
@@ -295,12 +313,15 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 // directly to replicasets.Resolve().
 func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSource) (orktypes.ReplicaSetTemplateSource, error) {
 	resolved := orktypes.ReplicaSetTemplateSource{
-		Version:   src.Version,
-		Resources: src.Resources, // static — not resolved
-		Probes:    src.Probes,    // static — passed through
+		Version: src.Version,
+		Probes:  src.Probes, // static — passed through
 	}
 
 	var err error
+
+	if resolved.Resources, err = r.resolveResourceRequirements(src.Resources); err != nil {
+		return resolved, fmt.Errorf("replicaset.resources: %w", err)
+	}
 
 	// Name
 	if resolved.Name, err = r.Resolve(src.Name); err != nil {
@@ -490,11 +511,13 @@ func (r *Resolver) ResolveJobTemplate(src orktypes.JobTemplateSource) (orktypes.
 	resolved := orktypes.JobTemplateSource{
 		Version:      src.Version,
 		BackoffLimit: src.BackoffLimit,
-		Resources:    src.Resources,
 	}
 
 	var err error
 
+	if resolved.Resources, err = r.resolveResourceRequirements(src.Resources); err != nil {
+		return resolved, fmt.Errorf("job.resources: %w", err)
+	}
 	if resolved.Name, err = r.Resolve(src.Name); err != nil {
 		return resolved, fmt.Errorf("job.name: %w", err)
 	}
@@ -725,12 +748,14 @@ func (r *Resolver) ResolveConfigMapTemplate(src orktypes.ConfigMapTemplateSource
 // ResolveCronJobTemplate resolves all template expressions in a CronJobTemplateSource.
 func (r *Resolver) ResolveCronJobTemplate(src orktypes.CronJobTemplateSource) (orktypes.CronJobTemplateSource, error) {
 	resolved := orktypes.CronJobTemplateSource{
-		Version:   src.Version,
-		Resources: src.Resources,
+		Version: src.Version,
 	}
 
 	var err error
 
+	if resolved.Resources, err = r.resolveResourceRequirements(src.Resources); err != nil {
+		return resolved, fmt.Errorf("cronjob.resources: %w", err)
+	}
 	if resolved.Name, err = r.Resolve(src.Name); err != nil {
 		return resolved, fmt.Errorf("cronjob.name: %w", err)
 	}
@@ -956,7 +981,7 @@ func (r *Resolver) ResolveIngressTemplate(src orktypes.IngressTemplateSource) (o
 
 	if src.TLS != nil {
 		resolvedTLS := &orktypes.IngressTLSSpec{
-			Enabled:  src.TLS.Enabled,
+			Create:   src.TLS.Create,
 			ValidFor: src.TLS.ValidFor,
 		}
 		if resolvedTLS.SecretName, err = r.Resolve(src.TLS.SecretName); err != nil {
@@ -1067,13 +1092,15 @@ func (r *Resolver) ResolvePDBTemplate(src orktypes.PDBTemplateSource) (orktypes.
 // ResolveStatefulSetTemplate resolves all template expressions in a StatefulSetTemplateSource.
 func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSource) (orktypes.StatefulSetTemplateSource, error) {
 	resolved := orktypes.StatefulSetTemplateSource{
-		Version:   src.Version,
-		Resources: src.Resources,
-		Probes:    src.Probes, // static — passed through
+		Version: src.Version,
+		Probes:  src.Probes, // static — passed through
 	}
 
 	var err error
 
+	if resolved.Resources, err = r.resolveResourceRequirements(src.Resources); err != nil {
+		return resolved, fmt.Errorf("statefulset.resources: %w", err)
+	}
 	if resolved.Name, err = r.Resolve(src.Name); err != nil {
 		return resolved, fmt.Errorf("statefulset.name: %w", err)
 	}

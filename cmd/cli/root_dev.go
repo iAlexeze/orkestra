@@ -1,4 +1,4 @@
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 
@@ -23,7 +23,6 @@ func init() {
 		validateCmd,
 		templateCmd,
 		generateRegistryCmd,
-		generateDocsCmd,
 		generateDashboardsCmd,
 		generateAllCmd,
 	} {

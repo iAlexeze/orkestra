@@ -1,4 +1,4 @@
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 
@@ -28,6 +28,14 @@ Shows resource creation and state transitions across reconcile cycles.
   ork simulate -f katalog.yaml --cr cr.yaml --crd website --cycles 5`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		katalogFile, _ := cmd.Flags().GetString("file")
+		if katalogFile == "" {
+			if d := defaultFilePaths(); len(d) > 0 {
+				katalogFile = d[0]
+			}
+		}
+		if katalogFile == "" {
+			return fmt.Errorf(errNoKatalog)
+		}
 		crFile, _ := cmd.Flags().GetString("cr")
 		crdName, _ := cmd.Flags().GetString("crd")
 		maxCycles, _ := cmd.Flags().GetInt("cycles")

@@ -15,7 +15,8 @@ ork validate --file <path>
 ## Examples
 
 ```bash
-ork validate --file ./katalog.yaml
+ork validate
+# Orkestra reads katalog.yaml from the current directory.
 ork validate --file ./infra.yaml --file ./apps.yaml
 ork validate --file https://raw.github.com/.../katalog.yaml
 ```

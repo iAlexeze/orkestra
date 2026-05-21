@@ -41,16 +41,20 @@ func Underline(text string) string { return Colorize(ColorUnderline, text) }
 func Reset(text string) string { return Colorize(ColorReset, text) }
 
 // SuccessMark returns a green checkmark symbol for successful operations.
-func SuccessMark() string { return Green("✓") }
+func SuccessMark() string      { return Green("✓") }
+func SuccessMarkPlain() string { return "✓" }
 
 // FailureMark returns a red cross symbol for failed operations.
-func FailureMark() string { return Red("✗") }
+func FailureMark() string      { return Red("✗") }
+func FailureMarkPlain() string { return "✗" }
 
 // WarningMark returns a yellow warning symbol for non-fatal issues.
-func WarningMark() string { return Yellow("⚠") }
+func WarningMark() string      { return Yellow("⚠") }
+func WarningMarkPlain() string { return "⚠" }
 
 // InfoMark returns a cyan arrow symbol for informational messages.
-func InfoMark() string { return Cyan("→") }
+func InfoMark() string      { return Cyan("→") }
+func InfoMarkPlain() string { return "→" }
 
 var OrkestraLogo = `
    ____             _           _

@@ -12,6 +12,8 @@ spec:
   crds:
     application:
       crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
       workers: 3
       resync: 15s
 

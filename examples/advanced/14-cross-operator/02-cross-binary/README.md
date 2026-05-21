@@ -31,7 +31,7 @@ Orkestra calls that URL at most once every 15 s, regardless of resync frequency.
 ## Step 1 — Validate the Katalog
 
 ```bash
-ork validate -f katalog.yaml
+ork validate
 ```
 
 ---
@@ -50,7 +50,7 @@ kubectl apply -f crd.yaml
 kubectl create namespace producer-system
 
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra-producer orkestra/orkestra \
+helm upgrade --install orkestra-producer orkestra/orkestra \
   --namespace producer-system \
   --set katalog.configMapNamespace=producer-system \
   --wait --timeout 120s
@@ -63,7 +63,7 @@ helm install orkestra-producer orkestra/orkestra \
 ```bash
 kubectl create namespace consumer-system
 
-helm install orkestra-consumer orkestra/orkestra \
+helm upgrade --install orkestra-consumer orkestra/orkestra \
   --namespace consumer-system \
   --set katalog.configMapNamespace=consumer-system \
   --wait --timeout 120s

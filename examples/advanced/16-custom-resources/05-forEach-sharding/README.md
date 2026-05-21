@@ -80,7 +80,7 @@ kubectl apply -f crd-shard.yaml
 ### 2. Start the operator
 
 ```bash
-ork run -f katalog.yaml 
+ork run 
 ```
 
 ### 3. Apply the ShardedStore CR

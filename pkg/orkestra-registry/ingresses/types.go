@@ -47,8 +47,8 @@ type ResolvedIngressSpec struct {
 
 // ResolvedIngressTLS holds the fully resolved TLS configuration for an Ingress.
 type ResolvedIngressTLS struct {
-	// Enabled — whether to configure TLS on this Ingress.
-	Enabled bool
+	// Create — whether to configure TLS on this Ingress.
+	Create bool
 
 	// SecretName — name of the kubernetes.io/tls Secret.
 	SecretName string

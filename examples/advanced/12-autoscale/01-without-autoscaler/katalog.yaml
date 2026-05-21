@@ -13,6 +13,8 @@ spec:
   crds:
     ingestor:
       crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
       workers: 2
       resync: 60s
 

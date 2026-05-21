@@ -84,7 +84,7 @@ This example demonstrates a constructor that runs a series of Jobs (build → te
 ├── reconciler/            ← custom reconciler implementation
 │   └── reconciler.go      ← NewPipelineReconciler + Reconcile logic
 ├── cmd/orkestra/          ← main.go (imports generated registry)
-├── pkg/runtime/           ← generated registry (after `make registry`)
+├── pkg/typeregistry/           ← generated registry (after `make registry`)
 ├── katalog.yaml
 ├── Makefile
 ├── Dockerfile
@@ -109,7 +109,7 @@ ork generate registry --file katalog.yaml
 
 It creates (or updates) two files:
 
-- `pkg/runtime/zz_generated_runtime_registry.go` – registers your Go types and hooks.
+- `pkg/typeregistry/zz_generated_typeregistry.go` – registers your Go types and hooks.
 - `cmd/orkestra/main.go` – the entrypoint that imports the generated registry.
 
 Both files are marked `DO NOT EDIT` – they are regenerated whenever you change the Katalog.
@@ -121,7 +121,7 @@ Both files are marked `DO NOT EDIT` – they are regenerated whenever you change
 First, see the expected error with the standard `ork` CLI:
 
 ```bash
-ork validate -f katalog.yaml
+ork validate
 # error: no reconciler constructor registered for Kind=Pipeline
 ```
 
@@ -136,7 +136,7 @@ cp ~/.orkestra/bin/ork ./ork
 Validate with your binary:
 
 ```bash
-./ork validate -f katalog.yaml   # passes
+./ork validate   # passes
 ```
 
 ---
@@ -144,7 +144,7 @@ Validate with your binary:
 ## Step 3 – Run locally
 
 ```bash
-./ork run -f katalog.yaml --dev     # creates a local kind cluster
+./ork run --dev     # creates a local kind cluster
 
 kubectl apply -f crd.yaml
 ```
@@ -175,7 +175,7 @@ kubectl apply -f bundle.yaml
 
 # Deploy orkestra
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --set runtime.image.repository=yourregistry/pipeline-operator \
   --set runtime.image.tag=v1 \
   --namespace orkestra-system \

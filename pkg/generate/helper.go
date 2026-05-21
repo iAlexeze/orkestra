@@ -31,7 +31,7 @@ func renderTemplateToFile(tmpl *template.Template, data any, outPath string, gof
 	}
 
 	if dryRun {
-		fmt.Println("--- dry run: would write to", filepath.Join(RuntimePackage, RegistryFile), "---")
+		fmt.Println("--- dry run: would write to", filepath.Join(TypeRegistryPackage, RegistryFile), "---")
 		fmt.Println(string(formatted))
 		return nil
 	}

@@ -23,7 +23,7 @@
 //	ork generate crd --file katalog.yaml --crd pipeline -o pipeline-crd.yaml
 //	ork generate cr  --file katalog.yaml --crd pipeline -o pipeline-cr.yaml
 
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 

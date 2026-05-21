@@ -4,12 +4,20 @@ metadata:
   name: noteprobes.note.orkestra.io
 spec:
   group: note.orkestra.io
+  names:
+    kind: NoteProbe
+    plural: noteprobes
+    singular: noteprobe
+  scope: Namespaced
+
   versions:
     - name: v1alpha1
       served: true
       storage: true
+
       subresources:
         status: {}
+
       additionalPrinterColumns:
         - name: Phase
           type: string
@@ -23,13 +31,14 @@ spec:
         - name: Age
           type: date
           jsonPath: .metadata.creationTimestamp
+
       schema:
         openAPIV3Schema:
           type: object
           properties:
             spec:
               type: object
-              required: [image]
+              required: ["image"]
               properties:
                 image:
                   type: string
@@ -38,15 +47,52 @@ spec:
                   type: integer
                   default: 1
                   description: Number of desired replicas
+
+                minReplicas:
+                  type: integer
+                  default: 1
+                  description: Minimum number of replicas
+
+                maxReplicas:
+                  type: integer
+                  default: 1
+                  description: Maximum number of replicas
+
+                host:
+                  type: string
+                  default: notes.orkestra.io
+                  description: Hostname for the service
+
+                storageClassName:
+                  type: string
+                  default: standard
+                  description: StorageClass to use for PVC provisioning
+
+                storage:
+                  type: string
+                  default: 10Gi
+                  description: Storage size (e.g. 10Gi)
+
                 port:
                   type: integer
                   default: 8080
                   description: Port exposed by the container
+                
+                resourceProfile:
+                  type: string
+                  default: burst
+                  description: Resource profile to use for HPA
+
+                schedule:
+                  type: string
+                  description: |
+                    Standard cron expression. Examples:
+                      "*/5 * * * *"   — every 5 minutes
+                      "0 2 * * *"     — daily at 2am
+                      "0 0 * * 1"     — every Monday at midnight
+                      "@hourly"       — once an hour
+                      "@daily"        — once a day
+                  default: "@hourly"
             status:
               type: object
               x-kubernetes-preserve-unknown-fields: true
-  names:
-    kind: NoteProbe
-    plural: noteprobes
-    singular: noteprobe
-  scope: Namespaced

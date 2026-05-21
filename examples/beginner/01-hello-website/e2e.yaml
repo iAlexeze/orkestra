@@ -2,7 +2,7 @@ apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
   name: hello-website-e2e
-  description: Deploy a single nginx website and verify the deployment comes up and is cleaned up on delete
+  description: Deploy a single nginx website and verify the deployment and service comes up and are cleaned up on delete
 
 spec:
   katalog: ./katalog.yaml
@@ -30,6 +30,8 @@ spec:
         - kind: Deployment
           namespace: default
           ready: true
+        - kind: Service
+          namespace: default
 
     - name: Cleanup verified
       after: cr-deleted
@@ -37,6 +39,10 @@ spec:
       resources:
         - kind: Deployment
           name: hello-website
+          namespace: default
+          count: 0
+        - kind: Service
+          name: hello-website-svc
           namespace: default
           count: 0
         - kind: Website

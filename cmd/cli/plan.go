@@ -1,4 +1,4 @@
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 
@@ -31,6 +31,14 @@ With --bundle, reads the ConfigMap from a local bundle file instead — no clust
   ork plan -f katalog.yaml --cm my-katalog --namespace my-ns`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		file, _ := cmd.Flags().GetString("file")
+		if file == "" {
+			if d := defaultFilePaths(); len(d) > 0 {
+				file = d[0]
+			}
+		}
+		if file == "" {
+			return fmt.Errorf(errNoKatalog)
+		}
 		bundle, _ := cmd.Flags().GetString("bundle")
 		cm, _ := cmd.Flags().GetString("cm")
 		ns, _ := cmd.Flags().GetString("namespace")

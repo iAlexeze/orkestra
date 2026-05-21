@@ -85,7 +85,7 @@ kubectl apply -f bundle.yaml
 
 ```bash
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra --namespace orkestra-system
+helm upgrade --install orkestra orkestra/orkestra --namespace orkestra-system
 ```
 
 Replace `orkestra-system` if you used a different namespace in Step 1.
@@ -106,7 +106,7 @@ kubectl get websites -A   # if your Katalog defines the Website CRD
 If you renamed the `ServiceAccounts` in the generated bundle, pass the custom names to Helm:
 
 ```bash
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
   --set runtime.serviceAccount=my-runtime \
   --set controlCenter.serviceAccount=my-cc
@@ -123,7 +123,7 @@ controlCenter:
 ```
 
 ```bash
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
   --create-namespace \
   --values runtime-only.yaml
@@ -150,7 +150,7 @@ runtime:
 ```
 
 ```bash
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
   --create-namespace \
   --values my-values.yaml
@@ -186,7 +186,7 @@ controlCenter:
 ```
 
 ```bash
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
   --values control-center-values.yaml
 ```

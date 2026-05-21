@@ -104,7 +104,7 @@ func (ko *KonductorElection) Shutdown(ctx context.Context) {
 
 	// Give it a moment to release the lease
 	utils.Sleep(2)
-	logger.Info().Msg("✅ Konductor election shut down")
+	logger.Info().Msgf("%s Konductor election shut down", utils.SuccessMark())
 }
 
 func (ko *KonductorElection) Name() string {

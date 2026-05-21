@@ -1,24 +1,30 @@
-#
+# Typed Operators
 
-If an operatorBox entry sets `version` and `fetch: true`, the CLI will attempt a best-effort
-`go get <location>@<version>` after ensuring the project is a valid Go module. This may update
-go.mod/go.sum. For private modules, set GOPRIVATE and ensure credentials are available.
+Orkestra operators are declarative by default — no Go required. Typed operators are the escape hatch for the cases that genuinely need code.
 
-```yaml
-operatorBox:
-  hooks:
-    location: github.com/myorg/hooks
-    version: v2.1.0
-    fetch: true                     # Orkestra will try to fetch the module at: <location>@<version>
-    function: ProjectHooks
-    alias: projecthooks
+A typed operator references compiled Go types. Everything else — informers, workqueues, drift correction, status, metrics — works exactly as it does for a pure YAML operator.
 
-  constructor:
-    # If @version in location differs from explicit declaration:
-    # Orkestra will warn, but use the explicit version (v0.3.1) instead
-    location: github.com/myorg/constructors@v0.3.0
-    version: v0.3.1
-    fetch: false
-    function: NewManagedNamespaceReconciler
-    alias: nsrec
-```
+---
+
+## When to use typed operators
+
+Use a typed operator when your reconcile logic needs:
+
+- **External calls the `external:` block cannot express** — the `external:` block handles HTTP calls declaratively (GET/POST, bearer tokens, response gating). Use hooks when you need non-HTTP protocols, SDK calls, database connections, or multi-step interactions that can't be expressed as "call a URL and gate on the response". If you need to provision a user inside PostgreSQL, call an AWS SDK, or run a gRPC call, that needs a hook.
+- **Complex computed fields** — deriving values from multiple sources, running logic that template expressions cannot express
+- **A fully custom reconciler** — integrating an existing operator's logic without rewriting it
+
+If your operator only creates Kubernetes resources and applies rules, stay declarative.
+
+!!! note "Templates already see the full spec"
+    Template expressions have access to the complete CR — `{{ .spec.* }}`, `{{ .status.* }}`, `{{ .metadata.* }}` — regardless of whether `apiTypes.location` is set. The template resolver converts any object to `map[string]interface{}` before executing expressions. Setting `location` is for Go code only.
+
+---
+
+## The two patterns
+
+→ [Hooks](./hooks.md) — add Go logic alongside declarative templates. The hook runs, then Orkestra applies `onCreate`/`onReconcile` templates as normal.
+
+→ [Constructor](./constructor.md) — replace the reconciler entirely. Your Go code owns the full reconcile loop; declarative templates are not applied.
+
+→ [Mixing all three](./mixed.md) — a declarative operator, a hooks operator, and a constructor operator composed into one runtime from a single Komposer.

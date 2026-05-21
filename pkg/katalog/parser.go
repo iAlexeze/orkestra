@@ -35,6 +35,7 @@ func BuildExpanded(kfg *konfig.Konfig, m *merger.Merger) (*Katalog, error) {
 func (k *Katalog) KomposeRuntimeKatalog(kfg *konfig.Konfig, m *merger.Merger, paths ...string) (map[string]orktypes.CRDEntry, error) {
 	k.Spec = m.ToSpec()
 	k.Security = m.ToSecurity()
+	k.Gateway = m.ToGateway()
 	k.Notification = m.ToNotification()
 	k.Providers = m.ToProviders()
 	k.projectInfo = m.ToProjectInfo()

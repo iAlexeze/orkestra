@@ -26,6 +26,8 @@ Container notes navigate this path safely — they return empty/false values rat
 
 Return the container image at the given index.
 
+Keywords: container, image, deployment, pod, version, runtime
+
 ```yaml
 # value: "{{ containerImage .children.deployment 0 }}"
 # → "nginx:1.25"  (image of the first container)
@@ -45,6 +47,8 @@ status:
 ### `containerEnv`
 
 Return the value of a named environment variable from the container at the given index.
+
+Keywords: container, environment, env, variable, deployment, pod, config
 
 ```yaml
 # value: "{{ containerEnv .children.deployment 0 \"APP_ENV\" }}"
@@ -67,6 +71,8 @@ status:
 ### `containerPort`
 
 Return `true` when the container at the given index exposes the specified port number.
+
+Keywords: container, port, expose, deployment, pod, boolean, network
 
 ```yaml
 # value: "{{ containerPort .children.deployment 0 8080 }}"

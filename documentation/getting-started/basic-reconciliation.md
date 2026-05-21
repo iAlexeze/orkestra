@@ -136,7 +136,7 @@ curl localhost:8080/katalog/website | jq
 Or open the Control Center for a visual view:
 
 ```bash
-ork control start
+ork control
 # → localhost:8081
 ```
 
