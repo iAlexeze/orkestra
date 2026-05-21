@@ -268,16 +268,32 @@ func (ws *WebhookServer) maybeRotateCert(ctx context.Context, existing *corev1.S
 		return
 	}
 
-	existing.Data["tls.crt"] = newBundle.CertPEM
-	existing.Data["tls.key"] = newBundle.KeyPEM
-	existing.Data["ca.crt"] = newBundle.CACertPEM
-	if existing.Annotations == nil {
-		existing.Annotations = map[string]string{}
+	// Re-fetch immediately before Update to get the latest ResourceVersion.
+	// This avoids a UID/ResourceVersion conflict when restoreCertSecret ran
+	// concurrently (e.g. cleanupOnShutdown deleted the Secret mid-reconcile).
+	fresh, err := ws.kubeClient.CoreV1().Secrets(ws.certSecretNamespace).
+		Get(ctx, ws.certSecretName, metav1.GetOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			// Secret was deleted between our Get and now — let the next reconcile handle it.
+			logger.Warn().Msg("housekeeper: cert rotation — secret vanished before update, skipping")
+		} else {
+			logger.Error().Err(err).Msg("housekeeper: cert rotation — re-fetch before update failed")
+			metrics.RecordWebhookReconciliationFailure("tls-secret-rotation")
+		}
+		return
 	}
-	existing.Annotations["orkestra.orkspace.io/rotated-at"] = time.Now().UTC().Format(time.RFC3339)
+
+	fresh.Data["tls.crt"] = newBundle.CertPEM
+	fresh.Data["tls.key"] = newBundle.KeyPEM
+	fresh.Data["ca.crt"] = newBundle.CACertPEM
+	if fresh.Annotations == nil {
+		fresh.Annotations = map[string]string{}
+	}
+	fresh.Annotations["orkestra.orkspace.io/rotated-at"] = time.Now().UTC().Format(time.RFC3339)
 
 	if _, err := ws.kubeClient.CoreV1().Secrets(ws.certSecretNamespace).
-		Update(ctx, existing, metav1.UpdateOptions{}); err != nil {
+		Update(ctx, fresh, metav1.UpdateOptions{}); err != nil {
 		logger.Error().Err(err).Msg("housekeeper: cert rotation — failed to update secret")
 		metrics.RecordWebhookReconciliationFailure("tls-secret-rotation")
 		return

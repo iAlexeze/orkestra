@@ -146,14 +146,14 @@ jobs:
               -tags gateway \
               -trimpath \
               -ldflags="-s -w $LDFLAGS" \
-              -o ork-gateway-$arch ./cmd/orkestra
+              -o ork-$arch ./cmd/orkestra
           done
 
       - name: Build and push gateway image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: Dockerfile.gateway
+          file: Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

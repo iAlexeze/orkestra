@@ -85,7 +85,7 @@ ORK_AMD64_TARGET="ork-amd64"
 ORK_ARM64_TARGET="ork-arm64"
 ORK_CC_AMD64_TARGET="orkcc-amd64"
 ORK_CC_ARM64_TARGET="orkcc-arm64"
-ORK_GATEWAY_AMD64_TARGET="ork-gateway-amd64"
+ORK_GATEWAY_AMD64_TARGET="ork-amd64"
 
 
 
@@ -138,7 +138,7 @@ docker-cc: orkcc-linux
 docker-gateway: ork-gateway-linux
 	@echo "Building Docker image: $(ORK_GATEWAY_IMAGE)"
 	@cp $(OUTPUT_DIR)/ork-gateway ./$(ORK_GATEWAY_AMD64_TARGET)
-	docker build -f Dockerfile.gateway -t $(ORK_GATEWAY_IMAGE) .
+	docker build -t $(ORK_GATEWAY_IMAGE) .
 	@rm -f ./$(ORK_GATEWAY_AMD64_TARGET)
 	@echo "✔ Docker image built: $(ORK_GATEWAY_IMAGE)"
 

@@ -370,7 +370,7 @@ func (s *KatalogSecurity) CertRotationThresholdVal(envDefault string) string {
 // Falls back to the provided ENV default.
 func (s *KatalogSecurity) ValidForVal(envDefault string) string {
 	if s != nil && s.CertManager != nil && s.CertManager.ValidFor != "" {
-		return s.CertManager.RotationThreshold
+		return s.CertManager.ValidFor
 	}
 	return envDefault
 }

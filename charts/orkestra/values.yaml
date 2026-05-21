@@ -161,7 +161,7 @@ gateway:
   imagePullSecrets: []
 
   image:
-    repository: ghcr.io/orkspace/orkestra
+    repository: ghcr.io/orkspace/orkestra-gateway
     tag: ""
     pullPolicy: IfNotPresent
 

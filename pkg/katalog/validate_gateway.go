@@ -38,21 +38,8 @@ func (k *Katalog) validateGateway() error {
 
 	return fmt.Errorf(
 		"orkestra: gateway endpoint required but not configured\n\n"+
-			"The following features are enabled and require a companion gateway:\n\n"+
-			"%s\n\n"+
-			"The gateway process owns webhook serving (TLS, /validate, /mutate,\n"+
-			"/convert, /deletion-protection) and notification dispatch.\n"+
-			"Without it these features will silently do nothing.\n\n"+
-			"Fix — set the endpoint in your Katalog gateway block:\n\n"+
-			"  gateway:\n"+
-			"    endpoint: \"http://orkestra-gateway.<namespace>.svc:8080\"\n\n"+
-			"Or declare a standalone gateway (no companion runtime):\n\n"+
-			"  gateway:\n"+
-			"    standalone: true\n\n"+
-			"Or set the environment variable on the runtime deployment:\n\n"+
-			"  ORK_GATEWAY_ENDPOINT=http://orkestra-gateway.<namespace>.svc:8080\n\n"+
-			"To generate gateway manifests run:\n\n"+
-			"  ork generate bundle --for gateway",
+			"Enabled features that need a gateway:\n%s\n\n"+
+			"Fix - set gateway.endpoint, enable gateway.standalone, or set ORK_GATEWAY_ENDPOINT.",
 		strings.Join(reasons, "\n"),
 	)
 }

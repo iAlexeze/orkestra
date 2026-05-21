@@ -668,7 +668,9 @@ kubectl apply -f bundle.yaml
 
 The output contains only the permissions your Katalog actually uses: specific groups, resources, and verbs derived from what you declared.
 
-**Runtime binary** — build tag `runtime` strips all non-execution commands at compile time. The production binary cannot scaffold operators, enumerate CRDs, or generate RBAC. If it runs in your cluster, that is all it does.
+**Runtime** — build tag `runtime`. Knows how to run operators. Cannot scaffold, enumerate CRDs, or generate RBAC. If it runs in your cluster, that is all it does.
+
+**Gateway** — build tag `gateway`. Knows how to gate the way. Admission webhooks, deletion protection, namespace protection, and TLS cert management. No operator logic. Runs standalone or alongside the runtime.
 
 ---
 
@@ -723,23 +725,9 @@ Cross-CRD scaling is also supported — scale one operator based on another oper
 
 ## Production
 
-```bash
-# Step 1 — generate minimal RBAC from the Katalog
-ork generate bundle -f katalog.yaml -o bundle.yaml
-kubectl apply -f bundle.yaml
-
-# Step 2 — deploy with Helm
-helm repo add orkestra https://orkspace.github.io/orkestra
-helm upgrade --install orkestra orkestra/orkestra \
-  --set runtime.katalog.existingConfigMap=my-platform-katalog \
-  --namespace orkestra-system \
-  --create-namespace
-
-# Step 3 — verify
-kubectl get pods -n orkestra-system
-```
-
 The same Katalog you ran locally is what runs in production. No build pipeline per operator. No environment-specific configurations. No new binaries to maintain.
+
+Full deployment guide → [orkspace.github.io/orkestra](https://orkspace.github.io/orkestra)
 
 ---
 
