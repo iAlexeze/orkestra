@@ -18,6 +18,8 @@ spec:
   crds:
     myapp:
       crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
       operatorBox:
         default: true
 ```
@@ -25,6 +27,9 @@ spec:
 This tells Orkestra: read the CRD from `crd.yaml`, apply it to the cluster, and watch for `MyApp` CRs. No resources are created yet.
 
 `crdFile` is how you declare a CRD. Orkestra reads `group`, `version`, `kind`, and `plural` directly from the file and applies it to the cluster when `ork run` starts. No separate `kubectl apply -f crd.yaml` needed.
+
+`crFiles` is how you declare a CR. Orkestra applies it at startup. No separate `kubectl apply -f cr.yaml` needed.
+
 
 ---
 
@@ -77,6 +82,8 @@ spec:
   crds:
     myapp:
       crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
       operatorBox:
         default: true
         onCreate:
@@ -161,10 +168,15 @@ spec:
   crds:
     database:
       crdFile: ./database-crd.yaml
+      crFiles:
+        - ./database-cr.yaml
+        - ./mongodb-cr.yaml
       operatorBox:
         default: true
     application:
       crdFile: ./application-crd.yaml
+      crFiles:
+        - ./application-cr.yaml
       dependsOn:
         - database
       operatorBox:
@@ -182,11 +194,11 @@ ork run
 # Orkestra reads katalog.yaml from the current directory and starts the runtime.
 ```
 
-Apply a CR:
+Verify it works:
 
 ```bash
-kubectl apply -f myapp-cr.yaml
 kubectl get deployments
+kubectl get services
 ```
 
 ---

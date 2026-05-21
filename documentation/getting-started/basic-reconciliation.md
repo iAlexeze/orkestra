@@ -92,7 +92,7 @@ Orkestra detects the change, re-reconciles, and updates the Deployment image. Be
 ## Step 5 — Delete the CR
 
 ```bash
-kubectl delete -f examples/beginner/01-hello-website/cr.yaml
+kubectl delete -f cr.yaml
 ```
 
 Orkestra:

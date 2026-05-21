@@ -72,7 +72,9 @@ INFO  Workers started            crd=website  workers=3
 INFO  Health server ready        addr=:8080
 ```
 
+
 **Step 3 — Reconciliation**
+
 Watch Orkestra's output in the first terminal. You'll see the reconcile event arrive and the Deployment get created.
 
 **Step 4 — Verify**
@@ -110,6 +112,8 @@ spec:
   crds:
     website:
       crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
 
       operatorBox:
         default: true
