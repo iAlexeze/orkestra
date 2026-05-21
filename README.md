@@ -1,20 +1,23 @@
 # Orkestra Helm Chart
 
-> **Chart version:** 0.4.9 | **App version:** 0.4.9
+> **Chart version:** 0.5.0 | **App version:** 0.5.0
 
 
+Declarative Kubernetes Operator Runtime • Security-First • GitOps-Native
 
+Orkestra is a **declarative operator runtime**: a platform for building Kubernetes operators using pure YAML. This Helm chart deploys:
 
+- **Orkestra Runtime** — the operator engine that reconciles your CRDs
+- **Orkestra Gateway** — admission webhooks, deletion protection, namespace protection, and TLS — runs standalone or alongside the runtime
+- **Orkestra Control Center** — multi-instance observability UI
 
-
-
-
-
-
-
-
-
-Deploy Orkestra — the declarative Kubernetes operator runtime — along with its Control Center for multi‑instance observability.
+```bash
+helm repo add orkestra https://orkspace.github.io/orkestra
+helm repo update
+helm upgrade --install orkestra orkestra/orkestra \
+  --namespace orkestra-system \
+  --create-namespace
+```
 
 ---
 
@@ -23,25 +26,23 @@ Deploy Orkestra — the declarative Kubernetes operator runtime — along with i
 - Kubernetes 1.28+
 - Helm 3.10+
 - `kubectl` configured for your cluster
-- `ork` CLI installed (see [Orkestra CLI installation](https://github.com/orkspace/orkestra#getting-started))
-
----
-
-## Before you begin
-
-1. **Install the Orkestra CLI**
+- `ork` CLI installed
 
 ```bash
 curl -sSL https://get.orkestra.sh | bash
 ```
 
-2. **Create a minimal Katalog** (save as `katalog.yaml`)
+---
+
+## Before you begin
+
+Create a minimal Katalog (save as `katalog.yaml`):
 
 ```yaml
 apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
-  name: my-first-katalog
+  name: my-platform
 spec:
   crds:
     website:
@@ -59,300 +60,258 @@ spec:
               replicas: 1
 ```
 
-> [!TIP]
-> This assumes you have a website CRD installed in your cluster. If not, generate one from your Katalog:
-> ```bash
-> ork generate crd -f katalog.yaml -o my-website-crd.yaml
-> kubectl apply -f my-website-crd.yaml
-> ```
+If your CRD is not installed yet:
+
+```bash
+ork generate crd -f katalog.yaml -o website-crd.yaml
+kubectl apply -f website-crd.yaml
+```
 
 ---
-## Security‑First Installation (Recommended)
 
-Orkestra generates **minimal RBAC** from your Katalog – no wildcards, no excess permissions.  
-The entire flow from zero to running is **four steps**:
+## Security-First Installation (Recommended)
 
-### Step 1 – Generate a bundle
+Orkestra generates **minimal RBAC** from your Katalog — no wildcards, no excess permissions. The full flow is four steps.
+
+### Step 1 — Generate a bundle
 
 ```bash
 ork generate bundle -f katalog.yaml -o bundle.yaml
 ```
 
-This produces a single YAML file containing:
-- A `Namespace` named `orkestra-system `. Use `-n <my-namespace>` to override
-- `ServiceAccounts` for Runtime (`orkestra`) and Control Center (`orkestra-cc`)
-- A `ClusterRole` with **only** the permissions your Katalog needs
-- A `ClusterRoleBinding`
-- A `ConfigMap` named `orkestra-katalog` with your Katalog data
+This produces a single YAML containing: a `Namespace`, `ServiceAccounts` for Runtime, Gateway, and Control Center, a `ClusterRole` with only the permissions your Katalog needs, a `ClusterRoleBinding`, and a `ConfigMap` with your Katalog data.
 
-### Step 2 – Apply the bundle
+### Step 2 — Apply the bundle
 
 ```bash
 kubectl apply -f bundle.yaml
 ```
 
-### Step 3 – Deploy with Helm
+### Step 3 — Deploy with Helm
 
 ```bash
-helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra --namespace orkestra-system
-
-# Replace 'orkestra-system' if you used a different namespace in Step 1
+helm upgrade --install orkestra orkestra/orkestra \
+  --namespace orkestra-system \
+  --create-namespace
 ```
 
-That’s it. The Helm chart automatically uses the `ServiceAccount` and `ConfigMap` you just applied.
+The chart automatically uses the `ServiceAccount` and `ConfigMap` you just applied.
 
-### Step 4 – Verify everything works
+### Step 4 — Verify
 
 ```bash
 kubectl get pods -n orkestra-system
-kubectl get websites -A   # (if your Katalog defines the Website CRD)
+kubectl get websites -A
 ```
 
-> [!IMPORTANT]
-> **Why this matters**: Traditional operators are massively over‑permissioned. Orkestra generates RBAC from your **declared intent**, giving you least‑privilege security by default.
+> **Why this matters:** Traditional operators are massively over-permissioned. Orkestra generates RBAC from your declared intent — least-privilege security by default. Every permission is visible in source control before it reaches the cluster.
 
 ---
 
-## Customising service accounts (advanced)
+## Deployment Topologies
 
-If you renamed the `ServiceAccounts` in the generated bundle, pass the custom names to Helm:
+Orkestra's runtime and gateway are independent. Deploy what you need.
 
-```bash
-helm install orkestra orkestra/orkestra \
-  --namespace orkestra-system \
-  --set runtime.serviceAccount=my-runtime \
-  --set controlCenter.serviceAccount=my-cc
-```
-
----
-
-## Install runtime only (without Control Center)
-
-```yaml
-# runtime-only.yaml
-controlCenter:
-  enabled: false
-```
-
-```bash
-helm install orkestra orkestra/orkestra \
-  --namespace orkestra-system \
-  --create-namespace \
-  --values runtime-only.yaml
-```
+| Topology | `runtime.enabled` | `gateway.enabled` | Use case |
+|----------|--------------------|-------------------|----------|
+| Runtime only | `true` | `false` | Operators without admission control |
+| **Gateway only** | `false` | `true` | Deletion protection, namespace protection — no operators required |
+| Full split | `true` | `true` | Operators with admission webhooks and protection |
 
 ---
 
-## Install with your own Katalog (advanced)
+## Gateway Only — Deletion Protection Without an Operator
 
-You can also provide the Katalog directly to Helm without using a ConfigMap bundle:
+The gateway runs standalone. No operator, no CRDs, no reconcile loop required. Use it to protect any existing Kubernetes resources.
 
-```yaml
-# my-values.yaml
-runtime:
-  katalog:
-    inline: |
-      apiVersion: orkestra.orkspace.io/v1Alpha
-      kind: Katalog
-      metadata:
-        name: my-katalog
-      spec:
-        crds:
-          - name: website
-            enabled: true
-            # ... rest of your Katalog
-```
-
-```bash
-helm install orkestra orkestra/orkestra \
-  --namespace orkestra-system \
-  --create-namespace \
-  --values my-values.yaml
-```
-
-Or use an existing ConfigMap managed by GitOps:
+### Step 1 — Write a standalone Katalog
 
 ```yaml
-runtime:
-  katalog:
-    existingConfigMap: my-katalog-configmap
-    configMapKey: katalog.yaml
-```
+# gateway-katalog.yaml
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: platform-security
+  author: platform-team
 
----
+gateway:
+  standalone: true
 
-## Control Center multi‑runtime monitoring
-
-To monitor multiple Orkestra runtimes, set the list of runtime URLs:
-
-```yaml
-# control-center-values.yaml
-controlCenter:
-  config:
-    orkestraURLs:
-      - http://orkestra-prod:8080
-      - http://orkestra-staging:8080
-    refreshInterval: 30s
-  ingress:
+security:
+  deletionProtection:
     enabled: true
-    hosts:
-      - host: control-center.orkestra.io
+    failurePolicy: Fail
+    cleanupOnShutdown: false
+  namespaceProtection:
+    enabled: true
+    failurePolicy: Fail
+    restrictedNamespaces:
+      - kube-system
+      - kube-public
+  certManager:
+    autoRotate: true
+    rotationThreshold: "30d"
+    validFor: "2y"
+
+spec: {}
 ```
 
+`gateway.standalone: true` — no runtime required. No `spec.crds` needed.
+
+### Step 2 — Generate and apply the bundle
+
 ```bash
-helm install orkestra orkestra/orkestra \
+ork generate bundle -f gateway-katalog.yaml | kubectl apply -f -
+```
+
+### Step 3 — Install gateway only
+
+```bash
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
-  --values control-center-values.yaml
+  --create-namespace \
+  --set runtime.enabled=false \
+  --set controlCenter.enabled=false \
+  --set gateway.enabled=true \
+  --set gateway.katalog.existingConfigMap=platform-security
 ```
+
+Label any resource `orkestra.io/deletion-protection: "true"` — the gateway intercepts every DELETE request for it at the API server.
 
 ---
 
-## Upgrade
+## GitOps Workflow (Recommended)
+
+In CI:
 
 ```bash
-helm repo update
-helm upgrade orkestra orkestra/orkestra --namespace orkestra-system
+ork validate -f katalog.yaml
+ork generate bundle -f katalog.yaml -n orkestra-system -o orkestra-bundle.yaml
+# Commit orkestra-bundle.yaml to your GitOps repo
 ```
+
+ArgoCD or Flux syncs the bundle (RBAC + ConfigMap) and the Helm release. This is the cleanest, most auditable way to run Orkestra.
 
 ---
 
-## Uninstall
-
-```bash
-helm uninstall orkestra --namespace orkestra-system
-```
-
-Uninstalling removes the Orkestra Runtime and Control Center Deployments and all chart resources.  
-CRDs and custom resources that Orkestra was managing are **not** deleted – they remain in the cluster and must be cleaned up separately if desired.
-
----
-
-## Configuration Reference
-
-<details>
-<summary>Click to expand full configuration options</summary>
-
-
-### Runtime Configuration
+## Runtime Configuration
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `runtime.enabled` | Deploy the Orkestra runtime | `true` |
-| `runtime.image.repository` | Runtime container image | `ghcr.io/orkspace/orkestra` |
+| `runtime.enabled` | Deploy the runtime | `true` |
+| `runtime.image.repository` | Runtime image | `ghcr.io/orkspace/orkestra` |
 | `runtime.image.tag` | Image tag | Chart `appVersion` |
-| `runtime.image.pullPolicy` | Image pull policy | `IfNotPresent` |
-| `runtime.replicaCount` | Number of replicas (leader election) | `2` |
+| `runtime.image.pullPolicy` | Pull policy | `IfNotPresent` |
+| `runtime.replicaCount` | Replicas (leader election active) | `2` |
+| `runtime.serviceAccount` | ServiceAccount name — must match generated RBAC | `"orkestra"` |
 | `runtime.service.type` | Service type | `ClusterIP` |
 | `runtime.service.port` | Service port | `8080` |
-| `runtime.service.annotations` | Service annotations | `{}` |
-| `runtime.resources` | Resource limits and requests | See [values.yaml](https://github.com/orkspace/orkestra/blob/main/charts/orkestra/values.yaml) |
-| `runtime.serviceAccount` | ServiceAccount name (must match generated RBAC) | `"orkestra"` |
-| `runtime.server.readTimeout` | HTTP server read timeout (seconds) | `30` |
-| `runtime.server.writeTimeout` | HTTP server write timeout (seconds) | `60` |
-| `runtime.server.port` | HTTP server port | `8080` |
+| `runtime.server.readTimeout` | HTTP read timeout (seconds) | `30` |
+| `runtime.server.writeTimeout` | HTTP write timeout (seconds) | `60` |
 | `runtime.config.logLevel` | Log level: debug, info, warn, error | `info` |
-| `runtime.config.defaultWorkers` | Default reconcile workers per CRD | `2` |
-| `runtime.config.defaultResync` | Default resync interval | `30s` |
+| `runtime.config.defaultWorkers` | Reconcile workers per CRD | `2` |
+| `runtime.config.defaultResync` | Resync interval | `30s` |
 | `runtime.config.maxQueueDepth` | Max workqueue depth per CRD | `500` |
-| `runtime.config.degradeThreshold` | Consecutive failures before degraded | `10` |
-| `runtime.config.environment` | Deployment environment | `development` |
-| `runtime.config.watchNamespace` | Restrict to single namespace (empty = all) | `""` |
-| `runtime.startupProbe` | Startup probe configuration | See [values.yaml](https://github.com/orkspace/orkestra/blob/main/charts/orkestra/values.yaml) |
-| `runtime.livenessProbe` | Liveness probe configuration | See values.yaml |
-| `runtime.readinessProbe` | Readiness probe configuration | See values.yaml |
-| `runtime.podSecurityContext` | Pod security context | Non-root (1000) |
-| `runtime.securityContext` | Container security context | Non-root, read-only root |
-| `runtime.leaderElection.enabled` | Enable leader election for HA | `true` |
-| `runtime.leaderElection.leaseDuration` | Leader lease duration | `15s` |
-| `runtime.leaderElection.renewDeadline` | Renew deadline | `10s` |
-| `runtime.leaderElection.retryPeriod` | Retry period | `5s` |
-| `runtime.webhooks.enabled` | Master switch for webhooks | `false` |
-| `runtime.webhooks.admission` | Enable admission webhook | `false` |
-| `runtime.webhooks.conversion` | Enable conversion webhook | `false` |
-| `runtime.webhooks.existingSecret` | TLS secret name (required if enabled) | `""` |
-| `runtime.webhooks.certSecretKey` | Key in secret for certificate | `tls.crt` |
-| `runtime.webhooks.keySecretKey` | Key in secret for private key | `tls.key` |
-| `runtime.katalog.inline` | Inline Katalog YAML | (starter Katalog) |
-| `runtime.katalog.existingConfigMap` | Use existing ConfigMap | `""` |
-| `runtime.katalog.configMapKey` | Key in ConfigMap | `katalog.yaml` |
-| `runtime.katalog.mountPath` | Mount path inside container | `/etc/orkestra/katalog` |
+| `runtime.config.degradeThreshold` | Failures before degraded state | `10` |
+| `runtime.config.environment` | Deployment environment | `production` |
+| `runtime.leaderElection.enabled` | HA leader election | `true` |
+| `runtime.leaderElection.leaseDuration` | Lease duration (seconds) | `15` |
+| `runtime.leaderElection.renewDeadline` | Renew deadline (seconds) | `10` |
+| `runtime.leaderElection.retryPeriod` | Retry period (seconds) | `5` |
+| `runtime.katalog.inline` | Inline Katalog YAML | starter Katalog |
+| `runtime.katalog.existingConfigMap` | Use a pre-existing ConfigMap | `""` |
+| `runtime.katalog.configMapKey` | Key inside the ConfigMap | `katalog.yaml` |
+| `runtime.katalog.mountPath` | Mount path in container | `/etc/orkestra/katalog` |
+| `runtime.gatewayEndpoint` | Gateway URL advertised on `/katalog` | `""` |
+| `runtime.registry.enabled` | Enable OCI registry integration | `false` |
+| `runtime.registry.url` | Registry URL | `""` |
+| `runtime.resources` | CPU/memory requests and limits | see values.yaml |
 
-### Control Center Configuration
+---
+
+## Gateway Configuration
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `gateway.enabled` | Deploy the gateway | `false` |
+| `gateway.image.repository` | Gateway image | `ghcr.io/orkspace/orkestra-gateway` |
+| `gateway.image.tag` | Image tag | Chart `appVersion` |
+| `gateway.image.pullPolicy` | Pull policy | `IfNotPresent` |
+| `gateway.replicaCount` | Replicas (stateless, no leader election) | `2` |
+| `gateway.serviceAccount` | ServiceAccount name | `"orkestra-gateway"` |
+| `gateway.service.type` | Service type | `ClusterIP` |
+| `gateway.server.httpPort` | Health + metrics port | `8080` |
+| `gateway.server.httpsPort` | Webhook (HTTPS) port | `8443` |
+| `gateway.config.logLevel` | Log level | `info` |
+| `gateway.webhooks.enabled` | Master switch for webhooks | `false` |
+| `gateway.webhooks.admission` | Enable admission webhook | `false` |
+| `gateway.webhooks.conversion` | Enable conversion webhook | `false` |
+| `gateway.katalog.existingConfigMap` | ConfigMap containing the gateway Katalog | `""` |
+| `gateway.katalog.configMapKey` | Key inside the ConfigMap | `katalog.yaml` |
+| `gateway.resources` | CPU/memory requests and limits | see values.yaml |
+
+---
+
+## Control Center Configuration
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `controlCenter.enabled` | Deploy the Control Center | `true` |
 | `controlCenter.image.repository` | Control Center image | `ghcr.io/orkspace/orkestra-cc` |
-| `controlCenter.image.tag` | Image tag | Chart `appVersion` |
-| `controlCenter.image.pullPolicy` | Image pull policy | `IfNotPresent` |
-| `controlCenter.replicaCount` | Number of replicas | `1` |
-| `controlCenter.resources` | Resource limits and requests | See values.yaml |
+| `controlCenter.replicaCount` | Replicas | `1` |
 | `controlCenter.serviceAccount` | ServiceAccount name | `"orkestra-cc"` |
-| `controlCenter.config.orkestraURLs` | List of runtime URLs to monitor | `[]` (must be set in production) |
-| `controlCenter.config.port` | Control Center port | `8090` |
+| `controlCenter.config.orkestraURLs` | Runtime URLs to monitor | `[]` |
 | `controlCenter.config.refreshInterval` | Katalog refresh interval | `10s` |
 | `controlCenter.config.logLevel` | Log level | `info` |
 | `controlCenter.service.type` | Service type | `ClusterIP` |
 | `controlCenter.service.port` | Service port | `8081` |
-| `controlCenter.service.annotations` | Service annotations | `{}` |
 | `controlCenter.ingress.enabled` | Enable Ingress | `false` |
-| `controlCenter.ingress.className` | Ingress class name | `""` |
-| `controlCenter.ingress.annotations` | Ingress annotations | `{}` |
+| `controlCenter.ingress.className` | Ingress class | `""` |
 | `controlCenter.ingress.hosts` | Ingress hosts | `[]` |
 | `controlCenter.ingress.tls` | TLS configuration | `[]` |
-| `controlCenter.securityContext` | Container security context | Non-root (1001) |
-| `controlCenter.podSecurityContext` | Pod security context | Non-root (1001) |
-| `controlCenter.livenessProbe` | Liveness probe configuration | See values.yaml |
-| `controlCenter.readinessProbe` | Readiness probe configuration | See values.yaml |
 
-### Global Configuration
+---
+
+## Global Settings
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `global.namespace` | Default namespace hint | `orkestra-system` |
+| `global.namespace` | Namespace hint for all components | `orkestra-system` |
 | `global.nameOverride` | Override chart name | `""` |
 | `global.fullnameOverride` | Override full resource name | `""` |
 
-### Per-Component Configuration (Runtime and Control Center)
+---
 
-All keys below exist under **both** `runtime:` and `controlCenter:` independently. `registry` is runtime-only.
+## Per-Component Settings
+
+All keys below apply independently under `runtime:`, `gateway:`, and `controlCenter:`.
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `<component>.imagePullSecrets` | Image pull secrets for this component | `[]` |
-| `runtime.registry.enabled` | Enable registry integration (runtime only) | `false` |
-| `runtime.registry.url` | Registry URL (runtime only) | `""` |
+| `<component>.imagePullSecrets` | Image pull secrets | `[]` |
 | `<component>.hpa.enabled` | Enable HorizontalPodAutoscaler | `false` |
-| `<component>.hpa.minReplicas` | HPA minimum replicas | `2` / `1` |
-| `<component>.hpa.maxReplicas` | HPA maximum replicas | `5` / `3` |
+| `<component>.hpa.minReplicas` | HPA minimum replicas | `2` |
+| `<component>.hpa.maxReplicas` | HPA maximum replicas | `5` |
 | `<component>.hpa.targetCPUUtilizationPercentage` | HPA CPU target | `80` |
 | `<component>.hpa.targetMemoryUtilizationPercentage` | HPA memory target | `80` |
 | `<component>.networkPolicy.enabled` | Enable NetworkPolicy | `false` |
 | `<component>.networkPolicy.ingressFrom` | Allowed ingress sources | `[]` |
 | `<component>.pdb.enabled` | Enable PodDisruptionBudget | `true` |
 | `<component>.pdb.minAvailable` | Minimum available pods | `1` |
-| `<component>.pdb.maxUnavailable` | Maximum unavailable pods | `""` |
 | `<component>.nodeSelector` | Node selector | `{}` |
 | `<component>.tolerations` | Tolerations | `[]` |
 | `<component>.affinity` | Affinity rules | `{}` |
 | `<component>.topologySpreadConstraints` | Topology spread constraints | `[]` |
 | `<component>.extraEnv` | Extra environment variables | `[]` |
-| `<component>.extraEnvFrom` | Extra env var sources (ConfigMap/Secret) | `[]` |
+| `<component>.extraEnvFrom` | Extra env sources (ConfigMap/Secret) | `[]` |
 | `<component>.extraVolumes` | Extra volumes | `[]` |
 | `<component>.extraVolumeMounts` | Extra volume mounts | `[]` |
 | `<component>.podAnnotations` | Pod annotations | `{}` |
 | `<component>.podLabels` | Extra pod labels | `{}` |
 
-</details>
-
 ---
 
 ## Production Example
-
-<details>
-<summary>Click to expand full production values</summary>
-
 
 ```yaml
 # production-values.yaml
@@ -371,7 +330,8 @@ runtime:
     defaultWorkers: 4
     defaultResync: 1m
   katalog:
-    existingConfigMap: platform-katalog   # managed by GitOps
+    existingConfigMap: platform-katalog
+  gatewayEndpoint: "http://orkestra-gateway.orkestra-system.svc:8080"
   hpa:
     enabled: true
     minReplicas: 3
@@ -384,8 +344,18 @@ runtime:
           matchLabels:
             kubernetes.io/metadata.name: monitoring
 
-controlCenter:
+gateway:
   enabled: true
+  replicaCount: 2
+  serviceAccount: orkestra-gateway
+  katalog:
+    existingConfigMap: platform-katalog
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+
+controlCenter:
   replicaCount: 2
   serviceAccount: orkestra-cc
   config:
@@ -410,18 +380,10 @@ controlCenter:
     enabled: true
     minReplicas: 2
     maxReplicas: 5
-    targetCPUUtilizationPercentage: 70
-  networkPolicy:
-    enabled: true
-    ingressFrom:
-      - namespaceSelector:
-          matchLabels:
-            kubernetes.io/metadata.name: monitoring
 ```
-</details>
 
 ```bash
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system --create-namespace \
   --values production-values.yaml
 ```
@@ -430,113 +392,146 @@ helm install orkestra orkestra/orkestra \
 
 ## Observability
 
-After installing, Orkestra exposes:
-
-### Runtime Endpoints
-
 ```bash
+# Runtime
 kubectl port-forward svc/orkestra-runtime 8080:8080 -n orkestra-system
+curl localhost:8080/health
+curl localhost:8080/metrics
+curl localhost:8080/katalog | jq
 
-curl localhost:8080/health          # liveness
-curl localhost:8080/ready           # readiness
-curl localhost:8080/metrics         # Prometheus metrics
-curl localhost:8080/katalog | jq    # all CRDs
-```
+# Gateway
+kubectl port-forward svc/orkestra-gateway 8080:8080 -n orkestra-system
+curl localhost:8080/health
+curl localhost:8080/metrics
 
-### Control Center Endpoints
-
-```bash
+# Control Center
 kubectl port-forward svc/orkestra-cc 8081:8081 -n orkestra-system
-
-# Open in browser
 open http://localhost:8081/controlcenter
 ```
 
-### Prometheus Scrape Configuration
+Prometheus scrape configuration:
 
 ```yaml
 - job_name: orkestra-runtime
   static_configs:
     - targets: ['orkestra-runtime.orkestra-system.svc.cluster.local:8080']
-  metrics_path: /metrics
+
+- job_name: orkestra-gateway
+  static_configs:
+    - targets: ['orkestra-gateway.orkestra-system.svc.cluster.local:8080']
 
 - job_name: orkestra-control-center
   static_configs:
     - targets: ['orkestra-cc.orkestra-system.svc.cluster.local:8081']
-  metrics_path: /metrics
 ```
+
+---
+
+## Upgrade
+
+```bash
+helm repo update
+helm upgrade orkestra orkestra/orkestra \
+  --namespace orkestra-system \
+  --values values.yaml
+```
+
+---
+
+## Uninstall
+
+```bash
+helm uninstall orkestra --namespace orkestra-system
+```
+
+Uninstalling removes Deployments and Services. CRDs and custom resources Orkestra was managing are **not** deleted — they remain in the cluster and must be cleaned up separately.
 
 ---
 
 ## Troubleshooting
 
-### Control Center cannot connect to Runtime
+**Control Center cannot connect to Runtime**
 
 ```bash
 kubectl get svc -n orkestra-system
 kubectl logs -n orkestra-system deployment/orkestra-cc
 ```
 
-Ensure `orkestraURLs` is set correctly.
+Ensure `controlCenter.config.orkestraURLs` points to the runtime service.
 
-### Katalog not loaded
+**Katalog not loaded**
 
 ```bash
 kubectl get configmap -n orkestra-system
 kubectl logs -n orkestra-system deployment/orkestra-runtime | grep -i katalog
 ```
 
-### RBAC permission denied
-
-Regenerate the bundle and re‑apply:
+**RBAC permission denied**
 
 ```bash
 ork generate bundle -f katalog.yaml -o bundle.yaml
 kubectl apply -f bundle.yaml
 ```
 
-### Webhooks not working
-
-Verify TLS secret exists and webhooks are enabled:
+**Webhooks not working**
 
 ```bash
-kubectl get secret -n orkestra-system
-kubectl logs -n orkestra-system deployment/orkestra-runtime | grep -i webhook
+kubectl get validatingwebhookconfigurations
+kubectl logs -n orkestra-system deployment/orkestra-gateway | grep -i webhook
 ```
 
 ---
 
-## Security Defaults
+## Security Posture
 
-Out of the box, the chart applies:
+### Minimal production binaries
 
-- **Runtime**  
-  - `runAsNonRoot: true` with uid/gid 1000  
-  - `readOnlyRootFilesystem: true` (with `/tmp` as emptyDir)  
-  - `allowPrivilegeEscalation: false`  
-  - `capabilities.drop: [ALL]`  
-  - `seccompProfile: RuntimeDefault`  
-  - Pod anti‑affinity spreads replicas across nodes
+Two binaries, two build tags, two attack surfaces:
 
-- **Control Center**  
-  - `runAsNonRoot: true` with uid/gid 1001  
-  - `readOnlyRootFilesystem: true`  
-  - `allowPrivilegeEscalation: false`  
-  - `capabilities.drop: [ALL]`  
-  - No RBAC permissions (read‑only access to Runtime API only)
+| Command | Developer CLI | Runtime binary | Gateway binary |
+|---------|:---:|:---:|:---:|
+| `ork run` | ✓ | ✓ | — |
+| `ork gateway` | — | — | ✓ |
+| `ork version` | ✓ | ✓ | ✓ |
+| `ork generate` | ✓ | — | — |
+| `ork validate` | ✓ | — | — |
+| `ork init` | ✓ | — | — |
+
+A compromised runtime container cannot serve webhooks. A compromised gateway container cannot generate RBAC bundles or enumerate CRDs. Each binary does exactly one thing.
+
+### Explicit, auditable RBAC
+
+Orkestra never auto-creates `ServiceAccount`, `ClusterRole`, or `ClusterRoleBinding` resources. You generate them from your Katalog, review the output, commit it, and apply it explicitly. Every permission is visible in source control before it reaches the cluster.
+
+### Deletion protection
+
+Label any resource `orkestra.io/deletion-protection: "true"`. The gateway intercepts every DELETE request at the API server before it reaches etcd. The webhook configuration is self-healing — if deleted, the housekeeper recreates it within the configured sync interval.
+
+### TLS — automatic rotation
+
+The gateway generates its own TLS certificate and rotates it pre-emptively before expiry. Configure via the Katalog:
+
+```yaml
+security:
+  certManager:
+    autoRotate: true
+    rotationThreshold: "30d"
+    validFor: "2y"
+```
+
+To supply your own certificate: set `TLS_CERT` and `TLS_KEY` in the gateway environment — Orkestra will not touch the cert lifecycle.
 
 ---
 
-## Why Security‑First?
+## Why Security-First?
 
 | Traditional operators | Orkestra |
 |----------------------|----------|
 | Wildcard permissions (`*/*/*`) | Minimal, derived from your Katalog |
 | RBAC written by hand | Generated automatically |
 | Drifts over time | Always in sync |
-| Over‑permissioned by default | Least privilege by default |
-
-The generated bundle gives you exactly what your Katalog declares – nothing more.
+| Over-permissioned by default | Least privilege by default |
+| One binary does everything | Runtime runs, Gateway gates |
 
 ---
 
