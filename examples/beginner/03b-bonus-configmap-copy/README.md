@@ -27,39 +27,33 @@ Orkestra reads the source ConfigMap and creates copies in each target namespace,
 
 ## Steps
 
-### 1. Create namespaces and the source ConfigMap
+### 1. Verify CR and source ConfigMap (optional)
 
 ```bash
-kubectl apply -f setup.yaml
-```
-
-Verify:
-
-```bash
+kubectl get cd -n default
 kubectl get configmap app-config -n platform
 ```
 
 ### 2. Start the operator
 
 ```bash
-ork run
+ork run       # add --dev if you don't have a cluster; Orkestra will create a kind cluster
 ```
 
-Orkestra reads `crdFile: ./crd.yaml`, applies the CRD and `cr.yaml` to the cluster, and starts the operator.
+Orkestra reads `crdFile: ./crd.yaml`, applies the CRD, , setup file `./setup.yaml` and  `cr.yaml` to the cluster, and starts the operator.
 
 ### 3. Open the Control Center
 
-In a third terminal:
+In a second terminal:
 
 ```bash
 ork control
 # username:password → orkestra
-# username:password → orkestra
 ```
 
-Open [http://localhost:8081](http://localhost:8081) to see the live operator.
+Open [http://localhost:8081](http://localhost:8081) to see the live operator, and the resources created.
 
-### 5. Verify copies exist
+### 4. Verify copies exist
 
 ```bash
 kubectl get configmap app-config -n team-alpha
@@ -68,7 +62,7 @@ kubectl get configmap app-config -n team-beta
 
 Both should exist and contain the same data as the source.
 
-### 6. Verify owner references
+### 5. Verify owner references
 
 ```bash
 kubectl get configmap app-config -n team-alpha -o yaml | grep -A8 ownerReferences
@@ -76,15 +70,24 @@ kubectl get configmap app-config -n team-alpha -o yaml | grep -A8 ownerReference
 
 The owner is the `ConfigMapDistribution` CR — deletion of the CR triggers garbage collection of all copies.
 
-### 7. Test sync (source change propagation)
+### 6. Test sync (source change propagation)
 
 Update the source ConfigMap from loglevel 'info' to 'debug':
+
+#### Confirm the current log level
+```bash
+kubectl get configmap app-config -n team-alpha -o jsonpath='{.data.logLevel}' && echo
+# info
+```
+
+#### Update the source ConfigMap
 
 ```bash
 kubectl patch configmap app-config -n platform \
   --type=merge -p '{"data":{"logLevel":"debug"}}'
 ```
 
+#### Verify the new log level
 Wait one resync interval (15s), then check a copy:
 
 ```bash
@@ -92,7 +95,7 @@ kubectl get configmap app-config -n team-alpha -o jsonpath='{.data.logLevel}' &&
 # debug
 ```
 
-### 8. Test cleanup
+### 7. Test cleanup
 
 Delete the CR and watch copies disappear:
 

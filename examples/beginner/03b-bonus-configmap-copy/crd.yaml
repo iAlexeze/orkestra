@@ -36,4 +36,6 @@ spec:
     kind: ConfigMapDistribution
     plural: configmapdistributions
     singular: configmapdistribution
+    shortNames:
+      - cd
   scope: Cluster  # This is so it can distribute to all namespaces

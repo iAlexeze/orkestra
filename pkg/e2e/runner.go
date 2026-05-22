@@ -211,9 +211,21 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 	appliedSetupPaths = setupPaths
 
 	// ── 6. Install Orkestra ──────────────────────────────────────────────
+	args := []string{}
+	text := "..."
+
+	gatewayEnabled, err := resolveGatewayEnabled(r.katalogFile)
+	if err != nil {
+		return nil, err
+	}
+	if gatewayEnabled {
+		args = append(args, "--set", "gateway.enabled=true")
+		text = " with gateway..."
+	}
+
 	if !doctor.OrkestraInstalled() {
-		fmt.Printf("→ Installing Orkestra...\n")
-		if err := doctor.InstallOrUpgradeOrkestra("", nil, false); err != nil {
+		fmt.Printf("→ Installing Orkestra%s\n", text)
+		if err := doctor.InstallOrUpgradeOrkestra("", nil, args...); err != nil {
 			return nil, fmt.Errorf("helm install: %w", err)
 		}
 		installedOrkestra = true
@@ -327,6 +339,25 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 		return result, fmt.Errorf("%d of %d expectations failed", result.Total()-result.Passed(), result.Total())
 	}
 	return result, nil
+}
+
+// resolveGatewayEnabled inspects the katalog file and returns true if the
+// gateway block is present. This allows Helm installation to automatically
+// enable the gateway chart when required by the katalog.
+func resolveGatewayEnabled(katalogFile string) (bool, error) {
+	var raw struct {
+		Gateway *orktypes.GatewayConfig `yaml:"gateway,omitempty"`
+	}
+
+	data, err := os.ReadFile(katalogFile)
+	if err != nil {
+		return false, err
+	}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return false, err
+	}
+
+	return raw.Gateway != nil, nil
 }
 
 // ensureCluster sets up the cluster according to the spec.

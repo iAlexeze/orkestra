@@ -327,3 +327,8 @@ func runSteps(steps []initStep) error {
 func printBanner() {
 	fmt.Printf("\n%s\n\n", utils.Green(utils.OrkestraLogoCLI))
 }
+
+// isCurrentDirectory reports whether the project name is "."
+func isCurrentDirectory(name string) bool {
+	return name == "."
+}

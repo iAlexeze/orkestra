@@ -32,40 +32,48 @@ func BuildControlCenterValues(host string) (string, error) {
 	return tmp.Name(), nil
 }
 
-func InstallOrUpgradeOrkestra(version string, valueFiles []string, upgrade bool) error {
+// InstallOrUpgradeOrkestra installs or upgrades the Orkestra Helm chart in an
+// idempotent way. This function:
+//
+//  1. Ensures the Orkestra Helm repo exists and updates its index
+//  2. Builds a complete `helm upgrade --install` command
+//  3. Applies optional version constraints
+//  4. Applies any number of values files (`-f file.yaml`)
+//  5. Applies any additional Helm arguments (e.g. --set, --set-string, --atomic)
+//
+// The caller may pass arbitrary Helm flags through `args`, allowing full control
+// over the installation behaviour while keeping Orkestra defaults intact.
+func InstallOrUpgradeOrkestra(version string, valueFiles []string, args ...string) error {
 	// Always add and update repo — add is idempotent, update ensures fresh index.
-	repoAdd := exec.Command("helm", "repo", "add", Orkestra, OrkestraChartRepo)
-	repoAdd.Stdout = os.Stdout
-	repoAdd.Stderr = os.Stderr
-	_ = repoAdd.Run() // ignore "already exists"
+	_ = exec.Command("helm", "repo", "add", Orkestra, OrkestraChartRepo).Run()
+	_ = exec.Command("helm", "repo", "update", Orkestra).Run()
 
-	update := exec.Command("helm", "repo", "update", Orkestra)
-	update.Stdout = os.Stdout
-	update.Stderr = os.Stderr
-	_ = update.Run() // non-fatal if offline or repo not yet populated
-
-	// Build Helm args — always use upgrade --install (idempotent)
-	args := []string{"upgrade", "--install"}
-
-	args = append(args,
+	// Base Helm args — always upgrade --install (idempotent)
+	helmArgs := []string{
+		"upgrade", "--install",
 		Orkestra,
 		fmt.Sprintf("%s/%s", Orkestra, OrkestraChartName),
 		"--namespace", OrkestraNamespace,
 		"--create-namespace",
-	)
-
-	if version != "" {
-		args = append(args, "--version", version)
 	}
 
+	// Optional version
+	if version != "" {
+		helmArgs = append(helmArgs, "--version", version)
+	}
+
+	// Values files
 	for _, f := range valueFiles {
 		if f != "" {
-			args = append(args, "-f", f)
+			helmArgs = append(helmArgs, "-f", f)
 		}
 	}
 
+	// Additional Helm args (e.g. --set foo=bar)
+	helmArgs = append(helmArgs, args...)
+
 	// Run Helm
-	cmd := exec.Command("helm", args...)
+	cmd := exec.Command("helm", helmArgs...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
