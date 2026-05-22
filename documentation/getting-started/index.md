@@ -88,7 +88,7 @@ A Deployment named `hello-website-deployment` appears. Orkestra set owner refere
 
 **Step 5 — Open the Control Center**
 
-In a third terminal:
+In a second terminal:
 
 ```bash
 ork control

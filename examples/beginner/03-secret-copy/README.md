@@ -32,39 +32,33 @@ namespace stays in sync automatically.
 
 ## Steps
 
-### 1. Create namespaces and the source Secret
+### 1. Start the operator
 
 ```bash
-kubectl apply -f setup.yaml
+ork run       # add --dev if you don't have a cluster; Orkestra will create a kind cluster
 ```
 
-Verify:
+Orkestra reads `crdFile: ./crd.yaml`, applies the CRD, , setup file `./setup.yaml` and  `cr.yaml` to the cluster, and starts the operator.
+
+### 2. Verify CR and source Secret (optional)
 
 ```bash
+kubectl get sd -n default
 kubectl get secret database-credentials -n platform
 ```
 
-### 2. Start the operator
-
-```bash
-ork run
-```
-
-Orkestra reads `crdFile: ./crd.yaml`, applies the CRD and `cr.yaml` to the cluster, and starts the operator.
-
 ### 3. Open the Control Center
 
-In a third terminal:
+In a second terminal:
 
 ```bash
 ork control
 # username:password → orkestra
-# username:password → orkestra
 ```
 
-Open [http://localhost:8081](http://localhost:8081) to see the live operator.
+Open [http://localhost:8081](http://localhost:8081) to see the live operator, and the resources created.
 
-### 5. Verify copies exist
+### 4. Verify copies exist
 
 ```bash
 kubectl get secret database-credentials -n team-alpha
@@ -73,7 +67,7 @@ kubectl get secret database-credentials -n team-beta
 
 Both should exist and have the same data as the source.
 
-### 6. Verify owner references
+### 5. Verify owner references
 
 ```bash
 kubectl get secret database-credentials -n team-alpha -o yaml | grep -A8 ownerReferences
@@ -82,14 +76,24 @@ kubectl get secret database-credentials -n team-alpha -o yaml | grep -A8 ownerRe
 The owner is the `SecretDistribution` CR — deletion of the CR triggers
 garbage collection of all copies.
 
-### 7. Test sync (source change propagation)
+### 6. Test sync (source change propagation)
 
-Update the source Secret:
+#### Confirm the current password
+
+```bash
+kubectl get secret database-credentials -n team-alpha \
+  -o jsonpath='{.data.password}' | base64 -d && echo
+# supersecret
+```
+
+#### Update the source Secret:
 
 ```bash
 kubectl patch secret database-credentials -n platform \
   --type=merge -p '{"stringData":{"password":"newpassword"}}'
 ```
+
+#### Verify the new password
 
 Wait one resync interval (15s), then check a copy:
 
@@ -99,7 +103,7 @@ kubectl get secret database-credentials -n team-alpha \
 # newpassword
 ```
 
-### 8. Test cleanup
+### 7. Test cleanup
 
 Delete the CR and watch copies disappear:
 

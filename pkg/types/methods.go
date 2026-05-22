@@ -310,6 +310,18 @@ func (c *CRDEntry) HasCRDFile() bool {
 	return c != nil && c.CRDFile != ""
 }
 
+// HasCRFiles reports whether this CRDEntry declares CR YAML files
+// to be applied before the runtime starts.
+func (c *CRDEntry) HasCRFiles() bool {
+	return c != nil && len(c.CRFiles) > 0
+}
+
+// HasSetup reports whether this CRDEntry declares setup YAML files
+// to be applied before Orkestra starts.
+func (c *CRDEntry) HasSetup() bool {
+	return c != nil && len(c.Setup) > 0
+}
+
 // NotificationEnabled reports whether this CRD declares the notification block
 // Enabled by default
 func (c *CRDEntry) IsNotificationEnabled() bool {

@@ -8,7 +8,9 @@ spec:
     database:                  # ← this is the name
       enabled: true
       description: string
-      crdFile: ./crd.yaml
+      crdFile: ./my-crd.yaml
+      crFiles: [./my-cr.yaml]
+      setup: [./my-setup.yaml]
 
       apiTypes:                # → apitypes.md
         ...
@@ -77,6 +79,8 @@ spec:
 | `description` | string | — | Shown in the `/katalog` endpoint. |
 | `mode` | string | auto | `typed` or `dynamic`. Auto-detected from `apiTypes.location`. |
 | `crdFile` | string | — | Path or HTTPS URL to the CRD YAML. Used for CRD-driven API inference in dev mode. |
+| ``crFiles`` | list(string) | — | Ordered list of CR YAML files to apply **after** the CRD is registered but **before** the runtime starts. Dev mode only. Supports relative paths and HTTPS URLs. |
+| ``setup`` | list(string) | — | Ordered list of YAML files to apply **before** the operator starts. Use for external dependencies such as namespaces, Secrets, or additional CRDs. Applied with ``kubectl ``apply ``-f`` in declaration order. |
 
 ## Scope
 

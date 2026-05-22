@@ -46,7 +46,7 @@ Expected output:
 ## Step 2 — Start the operator
 
 ```bash
-ork run
+ork run       # add --dev if you don't have a cluster; Orkestra will create a kind cluster
 ```
 
 Orkestra applies the CRD, waits for it to be established, applies `cr.yaml`,
