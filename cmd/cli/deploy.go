@@ -45,7 +45,6 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 		clean, _ := cmd.Flags().GetBool("clean")
 		orkestraVersion, _ := cmd.Flags().GetString("orkestra-version")
 		values, _ := cmd.Flags().GetString("values")
-		upgradeOrkestra, _ := cmd.Flags().GetBool("upgrade-orkestra")
 		dev, _ := cmd.Flags().GetBool("dev")
 		enableMetrics, _ := cmd.Flags().GetBool("enable-metrics")
 		expose, _ := cmd.Flags().GetBool("expose")
@@ -106,7 +105,6 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				clean:           clean,
 				values:          values,
 				orkestraVersion: orkestraVersion,
-				upgradeOrkestra: upgradeOrkestra,
 				expose:          expose,
 				tunnelProvider:  tunnelProvider,
 				tunnelToken:     tunnelToken,
@@ -313,20 +311,9 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			repoAdd.Stderr = os.Stderr
 			_ = repoAdd.Run()
 
-			if upgradeOrkestra {
-				updateRepo := exec.Command("helm", "repo", "update", doctor.Orkestra)
-				updateRepo.Stdout = os.Stdout
-				updateRepo.Stderr = os.Stderr
-				if err := updateRepo.Run(); err != nil {
-					return fmt.Errorf("updating Orkestra repo: %w", err)
-				}
-			}
-
-			if !doctor.OrkestraInstalled() || upgradeOrkestra {
+			if !doctor.OrkestraInstalled() {
 				fmt.Println("  ⠸ Installing Orkestra...")
-				if err := doctor.InstallOrUpgradeOrkestra(
-					orkestraVersion, helmValues, upgradeOrkestra,
-				); err != nil {
+				if err := doctor.InstallOrUpgradeOrkestra(orkestraVersion, helmValues, ""); err != nil {
 					return err
 				}
 				fmt.Printf("  %s Orkestra installed", utils.SuccessMark())
@@ -410,7 +397,6 @@ type deployContext struct {
 	clean           bool
 	values          string
 	orkestraVersion string
-	upgradeOrkestra bool
 	expose          bool
 	tunnelProvider  string
 	tunnelToken     string
@@ -621,9 +607,9 @@ func deployMultiApp(dc deployContext) error {
 		repoAdd.Stderr = os.Stderr
 		_ = repoAdd.Run()
 
-		if !doctor.OrkestraInstalled() || dc.upgradeOrkestra {
+		if !doctor.OrkestraInstalled() {
 			fmt.Println("  ⠸ Installing Orkestra...")
-			if err := doctor.InstallOrUpgradeOrkestra(dc.orkestraVersion, helmValues, dc.upgradeOrkestra); err != nil {
+			if err := doctor.InstallOrUpgradeOrkestra(dc.orkestraVersion, helmValues, ""); err != nil {
 				return err
 			}
 			fmt.Printf("  %s Orkestra installed", utils.SuccessMark())

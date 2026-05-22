@@ -4,14 +4,95 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/orkspace/orkestra/pkg/doctor"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/utils"
 )
+
+// applyPreRuntimeResources applies all pre-runtime resources declared in the
+// merged CRD entries. This includes:
+//
+//  1. CRD files      (crdFile)
+//  2. Waiting for CRDs to establish
+//  3. CR files       (crFiles) — dev mode only
+//  4. Setup files    (setup)
+//
+// All resources are applied in the correct order before the operator runtime
+// starts. Relative paths are resolved against the katalog directory. This
+// function is a no-op when running inside the cluster.
+func applyPreRuntimeResources(ctx context.Context, katalogPath string, m *merger.Merger) {
+	if utils.IsRunningInCluster() {
+		return
+	}
+
+	applyCRDFilesIfNeeded(ctx, katalogPath, m)
+	waitForCRDsEstablished(ctx, m)
+	applyCRFilesIfNeeded(ctx, katalogPath, m)
+	applySetupIfNeeded(ctx, katalogPath, m)
+}
+
+// ensureClusterReady ensures that a Kubernetes cluster is reachable before
+// starting the operator. In dev mode, this installs missing dependencies and
+// creates a local Kind cluster if needed. Outside dev mode, this reports
+// missing dependencies and unreachable cluster state to the user.
+func ensureClusterReady(dev bool) error {
+	if dev {
+		if err := doctor.EnsureDependencies(); err != nil {
+			return fmt.Errorf("installing dependencies: %w", err)
+		}
+
+		if !doctor.ClusterReachable() {
+			fmt.Println("\n  Cannot reach Kubernetes cluster.")
+			fmt.Printf("  Creating local Kind cluster '%s'...\n", doctor.KindClusterName)
+
+			if err := doctor.EnsureKindCluster(doctor.KindClusterName); err != nil {
+				return fmt.Errorf("setting up kind cluster: %w", err)
+			}
+		}
+
+		return nil
+	}
+
+	// non-dev mode
+	if doctor.ClusterReachable() {
+		return nil
+	}
+
+	fmt.Println("\n  Cannot reach Kubernetes cluster.")
+	fmt.Println("  Check your kubeconfig, or run with --dev to deploy to a local kind cluster.")
+
+	var missing []string
+	helm := doctor.HelmAvailable()
+	kubectl := doctor.KubectlAvailable()
+
+	if !kubectl {
+		missing = append(missing, "kubectl")
+	}
+	if !helm {
+		missing = append(missing, "helm")
+	}
+
+	if len(missing) > 0 {
+		text := "these missing dependencies"
+		if len(missing) == 1 {
+			text = "this missing dependency"
+		}
+
+		fmt.Printf("  This will install %s:\n", text)
+		for _, m := range missing {
+			fmt.Printf("    • %s\n", m)
+		}
+		fmt.Println()
+	}
+
+	return fmt.Errorf("cluster not reachable")
+}
 
 // applyCRFilesIfNeeded applies crFiles declarations via kubectl in order before
 // the runtime starts. Only runs outside the cluster (dev mode).
