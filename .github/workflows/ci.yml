@@ -93,6 +93,11 @@ jobs:
             -timeout 120s \
             2>&1 | tee test_output.txt
 
+      - name: Vulnerability scan
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
       - name: Coverage report
         run: |
           go tool cover -func=coverage.out | tail -1

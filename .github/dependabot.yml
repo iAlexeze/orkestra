@@ -1,0 +1,31 @@
+version: 2
+updates:
+  # Root module — ork CLI + core packages
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      stdlib-patch:
+        patterns: ["golang.org/x/*"]
+      aws-sdk:
+        patterns: ["github.com/aws/*"]
+      azure-sdk:
+        patterns: ["github.com/Azure/*"]
+      k8s:
+        patterns: ["k8s.io/*", "sigs.k8s.io/*"]
+
+  # Control center — separate module
+  - package-ecosystem: gomod
+    directory: /cmd/controlcenter
+    schedule:
+      interval: weekly
+      day: monday
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday

@@ -66,22 +66,22 @@ annotations:
   artifacthub.io/crds: |
     - kind: Katalog
       version: v1
-      name: orkestra.orkspace.io
+      name: katalogs.orkestra.orkspace.io
       displayName: Katalog
       description: Declarative operator definition for one or more CRDs
     - kind: Komposer
       version: v1
-      name: orkestra.orkspace.io
+      name: komposers.orkestra.orkspace.io
       displayName: Komposer
       description: Compose multiple Katalogs from different sources
     - kind: Motif
       version: v1
-      name: orkestra.orkspace.io
+      name: motifs.orkestra.orkspace.io
       displayName: Motif
       description: A parameterized set of resource declarations. Write once, import from any Katalog.
     - kind: E2E
       version: v1
-      name: orkestra.orkspace.io
+      name: e2es.orkestra.orkspace.io
       displayName: E2E
       description: Declarative end-to-end testing for Kubernetes operators
   artifacthub.io/changes: |
