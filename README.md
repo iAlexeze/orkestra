@@ -1,6 +1,6 @@
 # Orkestra Helm Chart
 
-> **Chart version:** 0.5.1 | **App version:** 0.5.1
+> **Chart version:** 0.5.2 | **App version:** 0.5.2
 
 
 Declarative Kubernetes Operator Runtime • Security-First • GitOps-Native
