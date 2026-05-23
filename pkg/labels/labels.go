@@ -29,7 +29,11 @@ import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 //
 // will be matched by the deletion‑protection admission webhook. This protects
 // both Orkestra control‑plane resources and developer‑opt‑in resources.
-const DeletionProtectionLabel = "orkestra.io/deletion-protection"
+const (
+	DeletionProtectionLabel = "orkestra.io/deletion-protection"
+	// DeletionProtectionValue is the label value that enables protection.
+	DeletionProtectionValue = "true"
+)
 
 // WithDeletionProtection returns a copy of m with the deletion‑protection label
 // set to "true". The input map is never modified.
@@ -105,7 +109,7 @@ func OrkestraResourceSelector() *metav1.LabelSelector {
 //
 
 // Managed marks resources that Orkestra actively manages.
-const Managed = "orkestra.orkspace.io/managed"
+const ManagedKey = "orkestra.orkspace.io/managed"
 
 // ManagedValue is always "true".
 const ManagedValue = "true"
@@ -128,10 +132,11 @@ const CreatedByOrkDoctor = "orkdoctor"
 //
 
 // AnnotationManagedBy identifies which Orkestra operator instance manages a CR.
-const AnnotationManagedBy = "orkestra.orkspace.io/managed-by"
-
-// AnnotationManagedSince records when Orkestra first took ownership of a CR.
-const AnnotationManagedSince = "orkestra.orkspace.io/managed-since"
+const (
+	AnnotationManagedBy = "orkestra.orkspace.io/managed-by"
+	// AnnotationManagedSince records when Orkestra first took ownership of a CR.
+	AnnotationManagedSince = "orkestra.orkspace.io/managed-since"
+)
 
 //
 // ────────────────────────────────────────────────────────────────────────────────

@@ -114,19 +114,19 @@ func orkestraInternalGVRs() []GVREntry {
 // Those are protected separately by the first webhook (CRD protection) using
 // DeletionProtectedCRDNames().
 func (k *Katalog) customResourceGVRs() []GVREntry {
-	gvrList := []GVREntry{}
-
+	var gvrList []GVREntry
 	for _, crd := range k.enabledCRDs {
-		if crd.APITypes.Plural != "" && crd.APITypes.Group != "" {
-			gvr := crd.GVR()
-			return append(gvrList, GVREntry{
-				Key:        gvr.String(),
-				Group:      gvr.Group,
-				Version:    gvr.Version,
-				Resource:   gvr.Resource,
-				Operations: []string{"DELETE"},
-			})
+		if crd.APITypes.Plural == "" || crd.APITypes.Group == "" {
+			continue
 		}
+		gvr := crd.GVR()
+		gvrList = append(gvrList, GVREntry{
+			Key:        gvr.String(),
+			Group:      gvr.Group,
+			Version:    gvr.Version,
+			Resource:   gvr.Resource,
+			Operations: []string{"DELETE"},
+		})
 	}
 	return gvrList
 }

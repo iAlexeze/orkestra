@@ -34,7 +34,7 @@ import (
 //	After calling ensureManagedLabel on a Resource:
 //	  metadata:
 //	    labels:
-//	      orkestra.workspace.io/managed: "true"
+//	      orkestra.orkspace.io/managed: "true"
 func (r *GenericReconciler[PTR]) ensureManagedLabel(ctx context.Context, obj PTR) error {
 	labels := obj.GetLabels()
 	if labels == nil {
@@ -42,12 +42,12 @@ func (r *GenericReconciler[PTR]) ensureManagedLabel(ctx context.Context, obj PTR
 	}
 
 	// Already present?
-	if v, ok := labels[orklabels.Managed]; ok && v == orklabels.ManagedValue {
+	if v, ok := labels[orklabels.ManagedKey]; ok && v == orklabels.ManagedValue {
 		return nil
 	}
 
 	// Add/overwrite the managed label
-	labels[orklabels.Managed] = orklabels.ManagedValue
+	labels[orklabels.ManagedKey] = orklabels.ManagedValue
 
 	return r.kube.PatchLabels(ctx, obj, r.crd.GVR(), labels)
 }
@@ -118,8 +118,8 @@ func (r *GenericReconciler[PTR]) ensureDeletionProtectionLabel(ctx context.Conte
 //	After calling ensureManagedAnnotations:
 //	  metadata:
 //	    annotations:
-//	      orkestra.workspace.io/managed-by: "platform-security"
-//	      orkestra.workspace.io/managed-since: "2026-05-23T12:34:56Z"
+//	      orkestra.orkspace.io/managed-by: "platform-security"
+//	      orkestra.orkspace.io/managed-since: "2026-05-23T12:34:56Z"
 func (r *GenericReconciler[PTR]) ensureManagedAnnotations(ctx context.Context, obj PTR, operator string) error {
 	ann := obj.GetAnnotations()
 	if ann == nil {

@@ -126,7 +126,8 @@ func seedManagedMeta(cr *unstructured.Unstructured, katalogName string) {
 	if labels == nil {
 		labels = map[string]string{}
 	}
-	labels[orklabels.Managed] = orklabels.ManagedValue
+	labels[orklabels.ManagedKey] = orklabels.ManagedValue
+	labels[orklabels.DeletionProtectionLabel] = orklabels.DeletionProtectionValue
 	cr.SetLabels(labels)
 
 	ann := cr.GetAnnotations()

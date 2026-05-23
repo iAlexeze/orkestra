@@ -286,7 +286,7 @@ func Resolve(src orktypes.ConfigMapTemplateSource, ownerName string) ResolvedCon
 		spec.Labels[l.Key] = l.Value
 	}
 
-	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.ManagedKey] = labels.ManagedValue
 	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec

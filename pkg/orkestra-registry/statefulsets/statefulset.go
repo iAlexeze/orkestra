@@ -199,7 +199,7 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedS
 		spec.Annotations[a.Key] = a.Value
 	}
 
-	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.ManagedKey] = labels.ManagedValue
 	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
