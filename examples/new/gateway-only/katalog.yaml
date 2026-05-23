@@ -2,19 +2,49 @@ apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: platform-security
+  description: >
+    Platform security Katalog for managing namespaces, service accounts, and website deployments with deletion protection.
+  author: orkspace
+  license: Apache2.0
+  version: v0.1.0
 
 gateway:
-  standalone: true
-
+  enabled: true
 
 security:
   deletionProtection:
     enabled: true
-    strictMode: true
+    strictMode: false
     cleanupOnShutdown: true
 
 spec:
   crds:
+    website:
+      apiTypes:
+        kind: Website
+        group: demo.orkestra.io
+        version: v1alpha1
+        plural: websites
+      allowedNamespaces:
+        - default
+
+      operatorBox:
+        default: true
+
+        status:
+          fields:
+            - path: phase
+              value: "Running"
+            - path: endpoint
+              value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}"
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: "{{ .spec.port }}"
+              reconcile: true
     platform:
       apiTypes:
         kind: Namespace
@@ -30,23 +60,15 @@ spec:
               data:
                 API_KEY: "{{ randomHex 16 }}"
                 JWT_SECRET: "{{ randomBase64 32 }}"
-              labels:
-                - key: orkestra.io/deletion-protection
-                  value: "true"
         onReconcile:
           namespaces:
             - name: "{{ .metadata.name }}"
-              labels:
-                - key: orkestra.io/deletion-protection
-                  value: "true"
           serviceAccounts:
             - name: "{{ .metadata.name }}-sa"
               namespace: "{{ .metadata.name }}"
               labels:
                 - key: app
                   value: my-operator-sa
-                - key: orkestra.io/deletion-protection
-                  value: "true"
           deployments:
             - name: "{{ .metadata.name }}"
               namespace: "{{ .metadata.name }}"
@@ -55,42 +77,26 @@ spec:
               replicas: 4
               serviceAccountName: "{{ .metadata.name }}-sa"
               envFrom:
-                secretRef: 
+                secretRef:
                   - "{{ .metadata.name }}-creds"
-              labels:
-                - key: orkestra.io/deletion-protection
-                  value: "true"
           services:
             - name: "{{ .metadata.name }}-svc"
               port: "80"
               targetPort: "80"
-              labels:
-                - key: orkestra.io/deletion-protection
-                  value: "true"
-
     identity:
       apiTypes:
         kind: ServiceAccount
       labelSelector:
-        app: my-operator-sa
+        app: my-operator
       operatorBox:
         onCreate:
           namespaces:
             - name: "{{ .metadata.name }}"
-              labels:
-                - key: orkestra.io/deletion-protection
-                  value: "true"
               reconcile: true
           serviceAccounts:
             - name: "{{ .metadata.name }}-minor"
               namespace: "{{ .metadata.namespace }}"
-              labels:
-                - key: orkestra.io/deletion-protection-spotter
-                  value: "true"
               reconcile: true
             - name: "{{ .metadata.name }}"
               namespace: "{{ .metadata.namespace }}"
-              labels:
-                - key: orkestra.io/deletion-protection-spotter
-                  value: "true"
               reconcile: true

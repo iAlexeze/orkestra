@@ -127,6 +127,12 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		}
 	}
 
+	// labels
+	if !common.LabelsEqual(existing.Labels, spec.Labels) {
+		updated.Labels = spec.Labels
+		drifted = true
+	}
+
 	if !drifted {
 		logger.Debug().
 			Str("deployment", spec.Name).

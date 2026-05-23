@@ -346,10 +346,16 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 		logger.FromContext(ctx).Debug().Msgf("finalizers removed for %s", obj.GetName())
 	}
 
-	// Ensure managed label and annotations — idempotent, like finalizer patching.
+	// Ensure managed and deletion protectionlabels and annotations — idempotent, like finalizer patching.
 	// This is how ork reconcile knows what this operator instance manages.
 	// Labels
+	// 	Managed
 	if err := r.ensureManagedLabel(ctx, obj); err != nil {
+		return err
+	}
+
+	// Deletion protection
+	if err := r.ensureDeletionProtectionLabel(ctx, obj); err != nil {
 		return err
 	}
 
