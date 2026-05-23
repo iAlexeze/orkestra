@@ -1,4 +1,32 @@
-# **CHANGELOG — simulate, validate, e2e, ork-action, CRD-driven inference**
+## Deletion Protection (Security)
+
+- Added cluster‑wide deletion protection for any resource (custom or built‑in) labelled `orkestra.io/deletion-protection=true`.
+- A new `ValidatingWebhookConfiguration` (`protect.resources.orkestra.orkspace.io`) intercepts DELETE requests on all configured GVRs and denies them if the target has the protection label.
+- The webhook rules are automatically built from:
+  - All custom CRDs enabled in the Katalog.
+  - All built‑in resources marked `OrkestraInternal` (e.g., deployments, services, namespaces, RBAC objects, etc.).
+- When `security.deletionProtection.enabled` is true, the reconciler automatically adds the protection label to every resource it creates or updates.
+- In standalone mode (no reconciler), users can manually label existing resources; the webhook still honours the label.
+- Fixed a bug in `customResourceGVRs()` that previously added only the first custom CRD GVR, causing incomplete webhook rules.
+- Webhook `failurePolicy: Fail` ensures deletions are blocked when Orkestra Gateway is unreachable.
+- `cleanupOnShutdown: true` removes the webhook configuration when the Gateway stops gracefully.
+
+**Example Katalog snippet:**
+```yaml
+security:
+  deletionProtection:
+    enabled: true          # global switch
+    cleanupOnShutdown: true
+    failurePolicy: Fail
+```
+
+**Usage:**
+- Orkestra‑managed resources are protected automatically.
+- For external resources: `kubectl label <resource> orkestra.io/deletion-protection=true`
+- Protected deletions are denied with a clear error message and remediation hint.
+
+---
+## CHANGELOG — simulate, validate, e2e, ork-action, CRD-driven inference
 
 ### **Added — `ork simulate` (in-memory operator simulation)**
 

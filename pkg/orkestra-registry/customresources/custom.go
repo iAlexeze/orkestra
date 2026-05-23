@@ -336,7 +336,7 @@ func buildUnstructured(spec ResolvedCustomResourceSpec, owner domain.Object, gvk
 	if lbls == nil {
 		lbls = make(map[string]string)
 	}
-	lbls[orklabels.Managed] = orklabels.ManagedValue
+	lbls[orklabels.ManagedKey] = orklabels.ManagedValue
 	lbls[orklabels.OrkestraOwner] = owner.GetName()
 	u.SetLabels(lbls)
 

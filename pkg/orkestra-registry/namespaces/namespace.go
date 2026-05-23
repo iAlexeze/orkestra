@@ -76,6 +76,53 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
+// Update reconciles an existing Namespace to match the resolved spec.
+// Handles drift — if replicas or image have changed, patches the Namespace.
+// If the Namespace does not exist, creates it.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedNamespaceSpec) error {
+	if err := validateSpec(spec); err != nil {
+		return fmt.Errorf("namespace.Update: invalid spec: %w", err)
+	}
+
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
+
+	existing, err := kube.Clientset().CoreV1().Namespaces().Get(ctx, spec.Name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			logger.Info().
+				Str("namespace", spec.Name).
+				Msg("namespace not found during reconcile — recreating")
+			return Create(ctx, kube, owner, spec)
+		}
+		return fmt.Errorf("namespace.Update: getting namespace %q: %w", spec.Name, err)
+	}
+
+	// Check for drift — replicas and image are the reconcilable fields
+	drifted := false
+	updated := existing.DeepCopy()
+
+	if !common.LabelsEqual(existing.Labels, spec.Labels) {
+		updated.Labels = spec.Labels
+		drifted = true
+	}
+
+	if !drifted {
+		logger.Debug().
+			Str("namespace", spec.Name).
+			Msg("namespace in sync — no update needed")
+		return nil
+	}
+
+	_, err = kube.Clientset().CoreV1().Namespaces().Update(ctx, updated, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("namespace.Update: updating namespace %q: %w", spec.Name, err)
+	}
+
+	return nil
+}
+
 // Delete deletes the Namespace if it exists.
 // For most cases owner references handle cleanup automatically —
 // only use this when explicit cleanup control is needed.
@@ -141,7 +188,7 @@ func Resolve(src orktypes.NamespaceTemplateSource, ownerName string) ResolvedNam
 		spec.Labels[l.Key] = l.Value
 	}
 
-	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.ManagedKey] = labels.ManagedValue
 	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec

@@ -54,7 +54,11 @@ func (k *Katalog) DeletionProtectionGVRs() []GVREntry {
 	// Orkestra’s internal control‑plane resources.
 	// These are defined declaratively in the built‑ins registry via
 	// the OrkestraInternal flag.
-	return orkestraInternalGVRs()
+
+	// Add child resources of CRDs created
+	// Builtin or not
+	gvr := append(k.customResourceGVRs(), orkestraInternalGVRs()...)
+	return gvr
 }
 
 // orkestraInternalGVRs builds the GVREntry list for Orkestra's own control-plane
@@ -75,6 +79,56 @@ func orkestraInternalGVRs() []GVREntry {
 		})
 	}
 	return out
+}
+
+// customResourceGVRs returns the list of GVRs for all custom resource instances
+// managed by this Katalog. These GVRs are used to extend deletion protection
+// from the CRD definitions (the types) to individual custom resource instances.
+//
+// The returned slice is intended to be added to the second webhook in
+// registerDeletionProtectionWebhook (the "protect.resources" webhook).
+// That webhook intercepts DELETE requests on these GVRs and the handler checks
+// whether the specific instance has the label `orkestra.io/deletion-protection=true`.
+//
+// Built-in resource types (e.g., ConfigMap, Deployment, Namespace) are excluded
+// from this list — they are handled separately via the built‑in registry
+// (OrkestraInternal flag) and appear in orkestraInternalGVRs().
+//
+// When running outside the cluster (e.g. `ork run`), the webhook is not reachable
+// and this function returns nil (via the caller's guard).
+//
+// Example:
+//
+//	For a Katalog enabling "websites.demo.orkestra.io", this returns:
+//	[
+//	  {
+//	    Key: "demo.orkestra.io/v1, Resource=websites",
+//	    Group: "demo.orkestra.io",
+//	    Version: "v1",
+//	    Resource: "websites",
+//	    Operations: ["DELETE"]
+//	  }
+//	]
+//
+// Important: This function does NOT protect the CRD definitions themselves.
+// Those are protected separately by the first webhook (CRD protection) using
+// DeletionProtectedCRDNames().
+func (k *Katalog) customResourceGVRs() []GVREntry {
+	var gvrList []GVREntry
+	for _, crd := range k.enabledCRDs {
+		if crd.APITypes.Plural == "" || crd.APITypes.Group == "" {
+			continue
+		}
+		gvr := crd.GVR()
+		gvrList = append(gvrList, GVREntry{
+			Key:        gvr.String(),
+			Group:      gvr.Group,
+			Version:    gvr.Version,
+			Resource:   gvr.Resource,
+			Operations: []string{"DELETE"},
+		})
+	}
+	return gvrList
 }
 
 // DeletionProtectedCRDNames returns the set of CRD full names managed by this Katalog.

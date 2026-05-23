@@ -227,7 +227,7 @@ func Resolve(src orktypes.ServiceTemplateSource, ownerName string) ResolvedServi
 	}
 
 	// System labels
-	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.ManagedKey] = labels.ManagedValue
 	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec

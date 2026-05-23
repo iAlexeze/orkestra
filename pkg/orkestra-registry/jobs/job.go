@@ -160,7 +160,7 @@ func Resolve(src orktypes.JobTemplateSource, backoffLimit int, ownerName string)
 	}
 
 	// System labels
-	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.ManagedKey] = labels.ManagedValue
 	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec

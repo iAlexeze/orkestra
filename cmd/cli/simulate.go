@@ -39,6 +39,15 @@ Shows resource creation and state transitions across reconcile cycles.
 		crFile, _ := cmd.Flags().GetString("cr")
 		crdName, _ := cmd.Flags().GetString("crd")
 		maxCycles, _ := cmd.Flags().GetInt("cycles")
+
+		// resolve default paths
+		if crFile == "" {
+			crFile = fileCr
+		}
+		if crFile == "" {
+			return fmt.Errorf("--cr is required")
+		}
+
 		return runSimulate(cmd.Context(), katalogFile, crFile, crdName, maxCycles)
 	},
 }

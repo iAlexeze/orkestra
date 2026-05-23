@@ -97,6 +97,12 @@ Validating Katalog...
 
 ## Step 3 — Apply the CRD
 
+If you do not have a cluster yet, run:
+
+```bash
+ork create cluster            # creates a kind cluster
+```
+
 ```bash
 kubectl apply -f crd.yaml
 ```
@@ -290,7 +296,7 @@ A safety poll (`WEBHOOK_CONTROLLER_SYNC_INTERVAL`, default 30 s) continues in pa
 Run the full lifecycle in one command — spins up a kind cluster, deploys the operator, applies the valid CR, asserts admission behaviour, then tears down:
 
 ```bash
-ork e2e -f e2e.yaml
+ork e2e
 ```
 
 This runs everything defined in [e2e.yaml](./e2e.yaml):

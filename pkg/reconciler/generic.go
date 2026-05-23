@@ -14,6 +14,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/kordinator"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/notification"
 	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
@@ -329,7 +330,10 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 		}
 	}
 
-	// Ensure finalizers
+	// ── Finalizer management ─────────────────────────────────────────────────────
+	// Finalizers block deletion until cleanup is complete.
+	// If RemoveFinalizers is false (normal operation), ensure required finalizers exist.
+	// If RemoveFinalizers is true (e.g., for testing or forced cleanup), remove them.
 	if !r.crd.RemoveFinalizers {
 		if err := r.ensureFinalizers(ctx, obj); err != nil {
 			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"FinalizerError",
@@ -346,16 +350,34 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 		logger.FromContext(ctx).Debug().Msgf("finalizers removed for %s", obj.GetName())
 	}
 
-	// Ensure managed label and annotations — idempotent, like finalizer patching.
-	// This is how ork reconcile knows what this operator instance manages.
-	// Labels
-	if err := r.ensureManagedLabel(ctx, obj); err != nil {
-		return err
+	// ── Label & annotation management (idempotent) ──────────────────────────────
+	// These labels/annotations identify Orkestra‑managed resources.
+	// The label manager uses the Katalog configuration to decide whether to add
+	// deletion protection and whether the reconciler runs in standalone mode.
+	labelMgr := labels.NewManager(labels.Config{
+		Standalone:                r.kat.IsStandaloneGateway(),
+		DeletionProtectionEnabled: r.kat.IsDeletionProtectionEnabled(),
+	})
+
+	// Ensure the `managed: true` label (identifies Orkestra ownership)
+	if labelMgr.EnsureManagedLabel(obj) {
+		if err := r.kube.PatchLabels(ctx, obj, r.crd.GVR(), obj.GetLabels()); err != nil {
+			return err
+		}
 	}
 
-	// Annotations
-	if err := r.ensureManagedAnnotations(ctx, obj, r.crd.KatalogName); err != nil {
-		return err
+	// Ensure `managed‑by` and `managed‑since` annotations (audit trail)
+	if labelMgr.EnsureManagedAnnotations(obj, r.crd.KatalogName) {
+		if err := r.kube.PatchAnnotations(ctx, obj, r.crd.GVR(), obj.GetAnnotations()); err != nil {
+			return err
+		}
+	}
+
+	// Add deletion‑protection label when globally enabled (security)
+	if labelMgr.EnsureDeletionProtectionLabel(obj) {
+		if err := r.kube.PatchLabels(ctx, obj, r.crd.GVR(), obj.GetLabels()); err != nil {
+			return err
+		}
 	}
 
 	// ── Step 5: Reconcile implementation ──────────────────────────────────────

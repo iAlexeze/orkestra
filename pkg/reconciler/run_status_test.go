@@ -14,7 +14,7 @@ import (
 // ── buildReadyCondition ───────────────────────────────────────────────────
 
 func TestBuildReadyCondition_Success(t *testing.T) {
-	cond := buildReadyCondition(nil, 3)
+	cond := buildReadyCondition(nil, 3, false)
 
 	if cond["type"] != "Ready" {
 		t.Errorf("type: expected Ready, got %v", cond["type"])
@@ -38,7 +38,7 @@ func TestBuildReadyCondition_Success(t *testing.T) {
 
 func TestBuildReadyCondition_Failure(t *testing.T) {
 	err := errors.New("deployment: image pull failed")
-	cond := buildReadyCondition(err, 5)
+	cond := buildReadyCondition(err, 5, false)
 
 	if cond["status"] != "False" {
 		t.Errorf("status: expected False, got %v", cond["status"])
@@ -53,7 +53,7 @@ func TestBuildReadyCondition_Failure(t *testing.T) {
 
 func TestBuildReadyCondition_LongErrorTruncated(t *testing.T) {
 	longErr := errors.New(string(make([]byte, 300)))
-	cond := buildReadyCondition(longErr, 1)
+	cond := buildReadyCondition(longErr, 1, false)
 
 	msg, ok := cond["message"].(string)
 	if !ok {
@@ -68,7 +68,7 @@ func TestBuildReadyCondition_LongErrorTruncated(t *testing.T) {
 }
 
 func TestBuildReadyCondition_HasValidTimestamp(t *testing.T) {
-	cond := buildReadyCondition(nil, 1)
+	cond := buildReadyCondition(nil, 1, false)
 
 	ts, ok := cond["lastTransitionTime"].(string)
 	if !ok {

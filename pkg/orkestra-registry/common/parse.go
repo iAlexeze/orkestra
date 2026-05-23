@@ -105,3 +105,17 @@ func SleepIfNeeded(s string) error {
 
 	return nil
 }
+
+// LabelsEqual reports whether two maps of labels are equivalent.
+func LabelsEqual(a, b map[string]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, va := range a {
+		vb, ok := b[k]
+		if !ok || va != vb {
+			return false
+		}
+	}
+	return true
+}

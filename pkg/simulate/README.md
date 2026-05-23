@@ -3,7 +3,12 @@
 `simulate` runs your operator's reconcile loop against an in-memory fake cluster — no Kubernetes required. Give it a Katalog and a CR file and it shows exactly which resources your operator creates, updates, or deletes, and when it converges.
 
 ```sh
-ork simulate -f katalog.yaml --cr cr.yaml
+ork simulate                        # Defaults to katalog.yaml/komposer.yaml and cr.yaml
+```
+
+Or pass custom files:
+```sh
+ork simulate -f my-katalog.yaml --cr my-cr.yaml
 ```
 
 ## Developer documentation
