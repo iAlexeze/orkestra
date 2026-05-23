@@ -116,8 +116,8 @@ func HealthIcon(status string) string {
 	switch strings.ToLower(status) {
 	case "ready", "running", "active", "true", "healthy":
 		return ColorGreen + "●" + ColorReset
-	case "pending", "progressing":
-		return ColorYellow + "●" + ColorReset
+	case "pending", "progressing", "warning":
+		return ColorYellow + "⚠" + ColorReset
 	case "error", "failed", "false", "unhealthy", "degraded":
 		return ColorRed + "●" + ColorReset
 	default:

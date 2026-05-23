@@ -32,13 +32,16 @@ import (
 //
 // This includes:
 //   - CRDs managed by this Katalog (broad match; handler filters by name)
-//   - Orkestra’s own admission webhooks (validating + mutating)
 //   - Orkestra’s internal control‑plane resources (deployment, service,
 //     serviceaccount, configmap, RBAC objects, ingress, etc.)
 //
 // The internal resources are derived from the built‑ins registry via
 // OrkestraInternalGVRs(), ensuring the list is declarative and maintained
 // in a single place.
+//
+// For custom CRDs, the inclusion of their GVRs is controlled by
+// CRDEntry.ShouldProtectCRs() (default true). This allows per‑CRD opt‑out
+// of instance‑level protection.
 //
 // When running outside the cluster (e.g. `ork run`), the webhook cannot be
 // reached, so no rules are returned.
@@ -50,13 +53,6 @@ func (k *Katalog) DeletionProtectionGVRs() []GVREntry {
 		return nil
 	}
 
-	// Protect all CRDs managed by this Katalog and
-	// Orkestra’s internal control‑plane resources.
-	// These are defined declaratively in the built‑ins registry via
-	// the OrkestraInternal flag.
-
-	// Add child resources of CRDs created
-	// Builtin or not
 	gvr := append(k.customResourceGVRs(), orkestraInternalGVRs()...)
 	return gvr
 }
@@ -82,8 +78,7 @@ func orkestraInternalGVRs() []GVREntry {
 }
 
 // customResourceGVRs returns the list of GVRs for all custom resource instances
-// managed by this Katalog. These GVRs are used to extend deletion protection
-// from the CRD definitions (the types) to individual custom resource instances.
+// managed by this Katalog that should be protected at the instance level.
 //
 // The returned slice is intended to be added to the second webhook in
 // registerDeletionProtectionWebhook (the "protect.resources" webhook).
@@ -94,12 +89,20 @@ func orkestraInternalGVRs() []GVREntry {
 // from this list — they are handled separately via the built‑in registry
 // (OrkestraInternal flag) and appear in orkestraInternalGVRs().
 //
+// Per‑CRD control: a custom resource is added only if
+//   - Global deletion protection is enabled
+//   - The CRD is fully specified (plural, group)
+//   - CRDEntry.ShouldProtectCRs() returns true
+//
+// This allows administrators to opt out of instance protection for specific CRDs
+// via the Katalog's per‑CRD `deletionProtection.protectCRs: false` override.
+//
 // When running outside the cluster (e.g. `ork run`), the webhook is not reachable
 // and this function returns nil (via the caller's guard).
 //
 // Example:
 //
-//	For a Katalog enabling "websites.demo.orkestra.io", this returns:
+//	For a Katalog enabling "websites.demo.orkestra.io" with protectCRs=true:
 //	[
 //	  {
 //	    Key: "demo.orkestra.io/v1, Resource=websites",
@@ -112,10 +115,13 @@ func orkestraInternalGVRs() []GVREntry {
 //
 // Important: This function does NOT protect the CRD definitions themselves.
 // Those are protected separately by the first webhook (CRD protection) using
-// DeletionProtectedCRDNames().
+// DeletionProtectedCRDNames(), which respects ShouldProtectCRD().
 func (k *Katalog) customResourceGVRs() []GVREntry {
 	var gvrList []GVREntry
 	for _, crd := range k.enabledCRDs {
+		if !crd.ShouldProtectCRs() {
+			continue
+		}
 		if crd.APITypes.Plural == "" || crd.APITypes.Group == "" {
 			continue
 		}
@@ -131,26 +137,37 @@ func (k *Katalog) customResourceGVRs() []GVREntry {
 	return gvrList
 }
 
-// DeletionProtectedCRDNames returns the set of CRD full names managed by this Katalog.
+// DeletionProtectedCRDNames returns the set of CRD full names (plural.group)
+// managed by this Katalog that should be protected at the **CRD type level**.
 // e.g. {"cronjobs.demo.orkestra.io": {}}
-// Used by the /deletion-protection handler for name-based filtering.
-// A CRD not in this set is allowed through even though the webhook intercepted it.
+//
+// Used by the /deletion-protection handler for name‑based filtering when a DELETE
+// request arrives on the CRD endpoint. A CRD not in this set is allowed through
+// even though the webhook intercepted it.
+//
+// Per‑CRD control: a CRD name is included only if:
+//   - Global deletion protection is enabled
+//   - The CRD is not a built‑in (only custom CRDs can be protected at type level)
+//   - CRDEntry.ShouldProtectCRD() returns true
+//
+// This allows administrators to opt out of CRD type protection for specific CRDs
+// via the Katalog's per‑CRD `deletionProtection.protectCRD: false` override.
+//
 // When running outside the cluster (e.g. `ork run`), the webhook cannot be
 // reached, so no protection is guaranteed.
 func (k *Katalog) DeletionProtectedCRDNames() map[string]struct{} {
 	if !k.IsDeletionProtectionEnabled() {
 		return nil
 	}
-
 	if !utils.IsRunningInCluster() {
 		return nil
 	}
-
 	names := make(map[string]struct{}, len(k.enabledCRDs))
 	for _, crd := range k.enabledCRDs {
 		if crd.IsBuiltIn {
-			// Built-in types (ConfigMap, Deployment) are not CRDs —
-			// they cannot be deleted via the CRD API and need no protection here.
+			continue
+		}
+		if !crd.ShouldProtectCRD() {
 			continue
 		}
 		if crd.APITypes.Plural != "" && crd.APITypes.Group != "" {

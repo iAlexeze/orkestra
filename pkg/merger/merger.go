@@ -167,6 +167,19 @@ func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
 		result.Queue.DegradeThreshold = override.Queue.DegradeThreshold
 	}
 
+	// ── Deletion Protection ───────────────────────────────────────────────
+	if override.DeletionProtection != nil {
+		if override.DeletionProtection.ProtectCRD != nil {
+			result.DeletionProtection.ProtectCRD = override.DeletionProtection.ProtectCRD
+		}
+		if override.DeletionProtection.ProtectCRs != nil {
+			result.DeletionProtection.ProtectCRs = override.DeletionProtection.ProtectCRs
+		}
+		if override.DeletionProtection.StrictMode != nil {
+			result.DeletionProtection.StrictMode = override.DeletionProtection.StrictMode
+		}
+	}
+
 	// ── Namespace ─────────────────────────────────────────────────────────
 	if override.Namespace != "" {
 		result.Namespace = override.Namespace

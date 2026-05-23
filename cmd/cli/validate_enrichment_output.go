@@ -28,39 +28,71 @@ import (
 )
 
 // printCRDValidationLine prints one CRD entry's validation result.
-// Shows enrichment clearly when it occurred.
-func printCRDValidationLine(entry orktypes.CRDEntry) {
-	icon := utils.HealthIcon("ready")
+// Shows enrichment clearly when it occurred, and any warnings.
+func printCRDValidationLine(entry orktypes.CRDEntry, protected bool) {
+	// Decide icon: warning mark if warnings exist, otherwise success mark
+	var icon string
+	if entry.Warnings.HasWarnings() {
+		icon = utils.HealthIconWarning()
+	} else {
+		icon = utils.HealthIconReady()
+	}
 	fmt.Printf("%s %s\n", icon, utils.Bold(entry.Name))
 
+	// Print kind/group/version/scope line (existing)
 	if entry.IsBuiltIn {
 		// Enriched from built-in — tell the user what was resolved
 		scope := "Namespaced"
 		if !entry.IsNamespaced() {
 			scope = "ClusterScoped"
 		}
-
-		fmt.Printf("    %s\n",
-			utils.Gray(fmt.Sprintf("kind: %s → enriched from built-in registry", utils.Bold(entry.APITypes.Kind))),
-		)
-		fmt.Printf("    %s\n",
-			utils.Gray(fmt.Sprintf("group: %s / version: %s / plural: %s / scope: %s",
-				entry.BuiltInGroup, entry.APITypes.Version, entry.APITypes.Plural, scope)),
-		)
+		fmt.Printf("    %s\n", utils.Gray(fmt.Sprintf(
+			"kind: %s → enriched from built-in registry", utils.Bold(entry.APITypes.Kind),
+		)))
+		fmt.Printf("    %s\n", utils.Gray(fmt.Sprintf(
+			"group: %s / version: %s / plural: %s / scope: %s",
+			entry.BuiltInGroup, entry.APITypes.Version, entry.APITypes.Plural, scope,
+		)))
 	} else {
 		// Custom CRD — show the declared values
 		scope := "Namespaced"
 		if !entry.IsNamespaced() {
 			scope = "ClusterScoped"
 		}
-		fmt.Printf("    %s\n",
-			utils.Gray(fmt.Sprintf("kind: %s / group: %s / version: %s / plural: %s / scope: %s",
-				entry.APITypes.Kind, entry.APITypes.Group, entry.APITypes.Version, entry.APITypes.Plural, scope)),
-		)
+		fmt.Printf("    %s\n", utils.Gray(fmt.Sprintf(
+			"kind: %s / group: %s / version: %s / plural: %s / scope: %s",
+			entry.APITypes.Kind, entry.APITypes.Group, entry.APITypes.Version, entry.APITypes.Plural, scope,
+		)))
 	}
 
-	// Add mode / workers / resync
-	fmt.Printf("    %s\n",
-		utils.Gray(fmt.Sprintf("mode: %s / workers: %v / resync: %v", entry.Mode, entry.Workers, entry.Resync)),
-	)
+	// Mode / workers / resync line
+	fmt.Printf("    %s\n", utils.Gray(fmt.Sprintf(
+		"mode: %s / workers: %v / resync: %v",
+		entry.Mode, entry.Workers, entry.Resync,
+	)))
+
+	// Protection status (only meaningful for custom CRDs; built‑ins show a simplified message)
+	if entry.IsBuiltInType() {
+		fmt.Printf("    %s\n", utils.Gray("protection: label‑based (built‑in)"))
+	} else {
+		if protected {
+			protectCRD := entry.ShouldProtectCRD()
+			protectCRs := entry.ShouldProtectCRs()
+			switch {
+			case protectCRD && protectCRs:
+				fmt.Printf("    %s\n", utils.Gray("protection: "+utils.SecureMark()+"  full (CRD + CRs)"))
+			case protectCRD && !protectCRs:
+				fmt.Printf("    %s\n", utils.Gray("protection: "+utils.SomeSecureMark()+" CRD only (CRs not protected)"))
+			case !protectCRD && protectCRs:
+				fmt.Printf("    %s\n", utils.Gray("protection: "+utils.WarningMark()+" CRs only (CRD not protected – see warning)"))
+			default:
+				fmt.Printf("    %s\n", utils.Gray("protection: "+utils.NoSecurityMark()+" none"))
+			}
+		}
+	}
+
+	// Print any warnings (indented, one per line)
+	for _, w := range entry.Warnings {
+		fmt.Printf("    warning: %s\n", utils.Gray(w))
+	}
 }

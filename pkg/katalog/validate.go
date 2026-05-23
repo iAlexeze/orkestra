@@ -163,5 +163,12 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 23. Validate Deletion Protection
+	// -------------------------------------------------------------------------
+	if err := k.validateDeletionProtection(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }

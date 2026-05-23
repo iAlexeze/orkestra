@@ -43,7 +43,7 @@ The Runtime is deliberately minimal. What it does not do is as important as what
 - No cluster-admin permissions — RBAC is scoped to exactly the resources declared in the Katalog
 - No arbitrary code execution from configuration — Katalog templates are pure data transformation notes, not eval
 
-**Validation boundary.** Before the Runtime starts a single reconciler, the Katalog passes through 22 sequential validation checks — field constraints, uniqueness, dependency cycle detection, reconciler mode consistency, status types, service shapes, custom resource declarations, gateway requirements, and more. This runs on every cluster-bound operation: `ork run`, `ork generate bundle`, `ork validate`. Any invalid declaration fails immediately with an error, before anything touches the cluster.
+**Validation boundary.** Before the Runtime starts a single reconciler, the Katalog passes through 22+ sequential validation checks — field constraints, uniqueness, dependency cycle detection, reconciler mode consistency, status types, service shapes, custom resource declarations, gateway requirements, and more. This runs on every cluster-bound operation: `ork run`, `ork generate bundle`, `ork validate`. Any invalid declaration fails immediately with an error, before anything touches the cluster.
 
 YAML is strictly marshalled. Unknown keys are rejected at parse time — there is no silent ingestion of unexpected fields. The validation layer only ever sees a structurally valid, fully known input.
 
