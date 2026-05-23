@@ -53,8 +53,10 @@ spec:
             default: "Allow"
           - field: spec.successfulJobsHistoryLimit
             default: 3
+            valueType: int
           - field: spec.failedJobsHistoryLimit
             default: 1
+            valueType: int
           - field: spec.suspend
             default: false
 

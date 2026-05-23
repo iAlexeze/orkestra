@@ -6,9 +6,17 @@ package types
 // YAML shape:
 //
 //	gateway:
-//	  standalone: true   # gateway runs without a companion runtime operator
-//	  endpoint: ""       # leave empty when standalone; runtime sets this when paired
+//	  enabled: true     # explicitly enable gateway installation
+//	  standalone: true  # gateway runs without a companion runtime operator
+//	  endpoint: ""      # leave empty when standalone; sets this when paired with runtime
 type GatewayConfig struct {
+	// Enabled declares whether the gateway should be installed for this katalog.
+	// When true, this means:
+	//   - Helm installation was done with '--set gateway.enabled=true'
+	//   - The runtime expects a gateway to exist
+	// Default: false.
+	Enabled bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+
 	// Standalone declares that this Katalog is deployed as a gateway-only installation
 	// with no companion runtime operator. When true:
 	//   - gatewayEndpoint validation is skipped (the gateway is self-contained)

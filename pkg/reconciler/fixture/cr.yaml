@@ -7,7 +7,7 @@ spec:
   image: nginx:1.25
   replicas: 1
   port: 8080
-  tier: premium
+  tier: premiumc
   schedule: "*/15 * * * *"
   extraLabels:
     - "team=platform"

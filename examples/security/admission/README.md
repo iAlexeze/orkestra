@@ -42,9 +42,9 @@ validation:
 mutation:
   mutateFirst: true
   rules:
-    - field: spec.replicas    default: "2"
+    - field: spec.replicas    default: 2    valueType: int
     - field: spec.environment default: "development"
-    - field: spec.rateLimit   default: "100"
+    - field: spec.rateLimit   default: 100  valueType: int
 ```
 
 At startup Orkestra:

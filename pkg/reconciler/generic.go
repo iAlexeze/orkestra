@@ -376,29 +376,32 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 	var err error
 
 	// ── Phase 1: Rollback gate ────────────────────────────────────────────────
-	if isRollbackActive(obj) {
-		logger.FromContext(ctx).Info().
-			Str("name", obj.GetName()).
-			Msg("rollback: active — blocking normal reconcile")
-		if rbErr := r.runRollback(ctx, resolver, obj); rbErr != nil {
-			logger.FromContext(ctx).Error().Err(rbErr).
-				Str("name", obj.GetName()).
-				Msg("rollback: failed to re-apply previous state")
-		}
-		r.patchStatusWithChildren(ctx, obj, resolver, fmt.Errorf("rollback active"))
-		return nil // do not propagate — stays in rollback loop
-	}
+	//
+	// 	In Development
+	//
+	// if isRollbackActive(obj) {
+	// 	logger.FromContext(ctx).Info().
+	// 		Str("name", obj.GetName()).
+	// 		Msg("rollback: active — blocking normal reconcile")
+	// 	if rbErr := r.runRollback(ctx, resolver, obj); rbErr != nil {
+	// 		logger.FromContext(ctx).Error().Err(rbErr).
+	// 			Str("name", obj.GetName()).
+	// 			Msg("rollback: failed to re-apply previous state")
+	// 	}
+	// 	r.patchStatusWithChildren(ctx, obj, resolver, fmt.Errorf("rollback active"))
+	// 	return nil // do not propagate — stays in rollback loop
+	// }
 
 	// ── Reconcile-time mutation and validation ────────────────────────────────
 	// Ordering respects MutationConfig.MutateFirst:
-	//   false (default) — validate → mutate valid objects → reconcile
-	//   true            — mutate first (apply defaults) → validate → reconcile
+	//   true (default)           — mutate first (apply defaults) → validate → reconcile
+	//   false 					  — validate → mutate valid objects → reconcile
 	//
 	// Mutation failures are non-fatal: logged, reconcile continues.
 	// Validation deny failures halt reconcile and return an error.
 
 	// ── Reconcile-time mutation and validation ────────────────────────────────
-	if r.crd.HasMutationRules() && r.crd.Mutation.MutateFirst {
+	if r.crd.HasMutationRules() && r.crd.ShouldMutateFirst() {
 		if mutErr := r.applyReconcileTimeMutation(ctx, resolver, obj); mutErr != nil {
 			logger.FromContext(ctx).Warn().Err(mutErr).
 				Str("name", obj.GetName()).
@@ -428,7 +431,7 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 		}
 	}
 
-	if r.crd.HasMutationRules() && !r.crd.Mutation.MutateFirst {
+	if r.crd.HasMutationRules() && !r.crd.ShouldMutateFirst() {
 		if mutErr := r.applyReconcileTimeMutation(ctx, resolver, obj); mutErr != nil {
 			logger.FromContext(ctx).Warn().Err(mutErr).
 				Str("name", obj.GetName()).

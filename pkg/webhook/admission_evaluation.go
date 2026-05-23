@@ -155,42 +155,57 @@ func (ws *WebhookServer) applyMutationRules(
 	var changes []fieldChange
 
 	for _, rule := range cfg.Rules {
-		currentVal, found := resolveFieldPath(obj, rule.Field)
-		var newVal, changeType string
+		// Resolve raw value (string from template or static value) first
+		var rawResolved string
+		var changeType string
+		var err error
 
 		switch {
 		case rule.Override != nil && anyToString(rule.Override) != "":
-			resolved, err := resolver.Resolve(anyToString(rule.Override))
+			raw, err := resolver.Resolve(anyToString(rule.Override))
 			if err != nil {
 				return nil, fmt.Errorf("mutation rule override for field %q: %w", rule.Field, err)
 			}
-			newVal = resolved
+			rawResolved = raw
 			changeType = "override"
 
 		case rule.Default != nil:
+			currentVal, found := resolveFieldPath(obj, rule.Field)
 			if found && currentVal != "" {
-				continue
+				continue // already set, skip default
 			}
-			resolved, err := resolver.Resolve(anyToString(rule.Default))
+			raw, err := resolver.Resolve(anyToString(rule.Default))
 			if err != nil {
 				return nil, fmt.Errorf("mutation rule default for field %q: %w", rule.Field, err)
 			}
-			newVal = resolved
+			rawResolved = raw
 			changeType = "default"
 
 		default:
 			continue
 		}
 
-		if newVal == currentVal {
-			continue
+		// Convert to the target type based on valueType
+		typedVal, err := convertToType(rawResolved, rule.ValueType)
+		if err != nil {
+			logger.Error().Err(err).Str("field", rule.Field).Str("valueType", rule.ValueType).Msg("admission/mutate: type conversion failed")
+			continue // skip this field instead of failing the whole admission
 		}
 
-		setFieldPath(obj, rule.Field, newVal)
+		// Compare with current value (as string for simplicity)
+		currentVal, _ := resolveFieldPath(obj, rule.Field)
+		if fmt.Sprintf("%v", typedVal) == currentVal {
+			continue // unchanged
+		}
+
+		// Apply the typed value to the object
+		setFieldPath(obj, rule.Field, typedVal)
+
 		changes = append(changes, fieldChange{
 			Field:      rule.Field,
 			OldValue:   currentVal,
-			NewValue:   newVal,
+			NewValue:   fmt.Sprintf("%v", typedVal),
+			TypedValue: typedVal,
 			ChangeType: changeType,
 		})
 
@@ -198,12 +213,40 @@ func (ws *WebhookServer) applyMutationRules(
 			Str("kind", kindName).
 			Str("field", rule.Field).
 			Str("was", currentVal).
-			Str("now", newVal).
+			Str("now", fmt.Sprintf("%v", typedVal)).
 			Str("type", changeType).
 			Msg("admission/mutate: rule applied")
 	}
 
 	return changes, nil
+}
+
+// convertToType converts a string value to the requested type.
+// Supported valueType: "int", "integer", "bool", "boolean", "float", "number", "string" (default).
+// Returns the typed value (int64, bool, float64, or string) suitable for JSON patch.
+func convertToType(val string, valueType string) (interface{}, error) {
+	switch valueType {
+	case "int", "integer":
+		i, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert %q to int: %w", val, err)
+		}
+		return i, nil
+	case "bool", "boolean":
+		b, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert %q to bool: %w", val, err)
+		}
+		return b, nil
+	case "float", "number":
+		f, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert %q to float: %w", val, err)
+		}
+		return f, nil
+	default: // "string" or empty
+		return val, nil
+	}
 }
 
 // ── Field path helpers ────────────────────────────────────────────────────────
@@ -229,7 +272,7 @@ func resolveFieldPath(obj map[string]interface{}, path string) (string, bool) {
 	return "", false
 }
 
-func setFieldPath(obj map[string]interface{}, path string, value string) {
+func setFieldPath(obj map[string]interface{}, path string, value interface{}) {
 	parts := strings.Split(path, ".")
 	current := obj
 
