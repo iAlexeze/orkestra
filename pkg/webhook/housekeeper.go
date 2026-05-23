@@ -504,10 +504,10 @@ func (ws *WebhookServer) reconcileAdmissionWebhooks() {
 					ws.webhookStats.RecordFailure()
 				}
 				if cleanupOpts.validating {
-					metrics.RecordWebhookReconciliationFailure("validation")
+					metrics.RecordWebhookReconciliationFailure(validation)
 				}
 				if cleanupOpts.mutating {
-					metrics.RecordWebhookReconciliationFailure("mutation")
+					metrics.RecordWebhookReconciliationFailure(mutation)
 				}
 			}
 		}
@@ -521,16 +521,20 @@ func (ws *WebhookServer) reconcileAdmissionWebhooks() {
 	if ws.kubeClient != nil && ws.admissionRegistry != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), highTimeout)
 		defer cancel()
+
+		// logger information
+		ws.hookReg.Caller = housekeeper
+
 		if err := RegisterAdmissionWebhooks(ctx, ws.kubeClient, ws.admissionRegistry, ws.hookReg); err != nil {
-			logger.Error().Err(err).Msg("housekeeper: admission registration failed")
+			logger.Error().Err(err).Msgf("%s: admission registration failed", housekeeper)
 			if ws.webhookStats != nil {
 				ws.webhookStats.RecordFailure()
 			}
 			if kat.HasValidationRules() {
-				metrics.RecordWebhookReconciliationFailure("validation")
+				metrics.RecordWebhookReconciliationFailure(validation)
 			}
 			if kat.HasMutationRules() {
-				metrics.RecordWebhookReconciliationFailure("mutation")
+				metrics.RecordWebhookReconciliationFailure(mutation)
 			}
 		}
 	}
@@ -545,11 +549,11 @@ func (ws *WebhookServer) reconcileDeletionProtectionWebhook() {
 			ctx, cancel := context.WithTimeout(context.Background(), lowTimeout)
 			defer cancel()
 			if err := cleanupValidatingWebhook(ctx, ws.kubeClient, deletionProtectionWebhookConfigName); err != nil {
-				logger.Debug().Err(err).Msg("housekeeper: deletion protection cleanup skipped or failed")
+				logger.Debug().Err(err).Msgf("%s: deletion protection cleanup skipped or failed", housekeeper)
 				if ws.webhookStats != nil {
 					ws.webhookStats.RecordFailure()
 				}
-				metrics.RecordWebhookReconciliationFailure("deletion-protection")
+				metrics.RecordWebhookReconciliationFailure(deletionProtection)
 			}
 		}
 		return
@@ -566,11 +570,11 @@ func (ws *WebhookServer) reconcileDeletionProtectionWebhook() {
 
 	caBundle, err := readCABundle(ws.hookReg.TLSCertFile)
 	if err != nil {
-		logger.Error().Err(err).Msg("housekeeper: cannot read CA bundle for deletion protection")
+		logger.Error().Err(err).Msgf("%s: cannot read CA bundle for deletion protection", housekeeper)
 		if ws.webhookStats != nil {
 			ws.webhookStats.RecordFailure()
 		}
-		metrics.RecordWebhookReconciliationFailure("deletion-protection")
+		metrics.RecordWebhookReconciliationFailure(deletionProtection)
 		return
 	}
 
@@ -578,11 +582,11 @@ func (ws *WebhookServer) reconcileDeletionProtectionWebhook() {
 	defer cancel()
 
 	if err := registerDeletionProtectionWebhook(ctx, ws.kubeClient, dpGVRs, caBundle, ws.hookReg); err != nil {
-		logger.Error().Err(err).Msg("housekeeper: deletion protection registration failed")
+		logger.Error().Err(err).Msgf("%s: deletion protection registration failed", housekeeper)
 		if ws.webhookStats != nil {
 			ws.webhookStats.RecordFailure()
 		}
-		metrics.RecordWebhookReconciliationFailure("deletion-protection")
+		metrics.RecordWebhookReconciliationFailure(deletionProtection)
 	}
 }
 
@@ -595,11 +599,11 @@ func (ws *WebhookServer) reconcileNamespaceProtectionWebhook() {
 			ctx, cancel := context.WithTimeout(context.Background(), lowTimeout)
 			defer cancel()
 			if err := cleanupValidatingWebhook(ctx, ws.kubeClient, namespaceProtectionWebhookConfigName); err != nil {
-				logger.Debug().Err(err).Msg("housekeeper: namespace protection cleanup skipped or failed")
+				logger.Debug().Err(err).Msgf("%s: namespace protection cleanup skipped or failed", housekeeper)
 				if ws.webhookStats != nil {
 					ws.webhookStats.RecordFailure()
 				}
-				metrics.RecordWebhookReconciliationFailure("namespace-protection")
+				metrics.RecordWebhookReconciliationFailure(namespaceProtection)
 			}
 		}
 		return
@@ -616,11 +620,11 @@ func (ws *WebhookServer) reconcileNamespaceProtectionWebhook() {
 
 	caBundle, err := readCABundle(ws.hookReg.TLSCertFile)
 	if err != nil {
-		logger.Error().Err(err).Msg("housekeeper: cannot read CA bundle for namespace protection")
+		logger.Error().Err(err).Msgf("%s: cannot read CA bundle for namespace protection", housekeeper)
 		if ws.webhookStats != nil {
 			ws.webhookStats.RecordFailure()
 		}
-		metrics.RecordWebhookReconciliationFailure("namespace-protection")
+		metrics.RecordWebhookReconciliationFailure(namespaceProtection)
 		return
 	}
 
@@ -630,11 +634,11 @@ func (ws *WebhookServer) reconcileNamespaceProtectionWebhook() {
 	svcName := kat.NamespaceProtectionServiceName()
 	failurePolicy := kat.NamespaceProtectionFailurePolicy()
 	if err := registerNamespaceProtectionWebhook(ctx, ws.kubeClient, npGVRs, caBundle, ws.hookReg, svcName, failurePolicy); err != nil {
-		logger.Error().Err(err).Msg("housekeeper: namespace protection registration failed")
+		logger.Error().Err(err).Msgf("%s: namespace protection registration failed", housekeeper)
 		if ws.webhookStats != nil {
 			ws.webhookStats.RecordFailure()
 		}
-		metrics.RecordWebhookReconciliationFailure("namespace-protection")
+		metrics.RecordWebhookReconciliationFailure(namespaceProtection)
 	}
 }
 
@@ -646,11 +650,11 @@ func (ws *WebhookServer) reconcileStrictModeWebhook() {
 			ctx, cancel := context.WithTimeout(context.Background(), lowTimeout)
 			defer cancel()
 			if err := cleanupValidatingWebhook(ctx, ws.kubeClient, strictModeProtectionWebhookConfigName); err != nil {
-				logger.Debug().Err(err).Msg("housekeeper: strict mode cleanup skipped or failed")
+				logger.Debug().Err(err).Msgf("%s: strict mode cleanup skipped or failed", housekeeper)
 				if ws.webhookStats != nil {
 					ws.webhookStats.RecordFailure()
 				}
-				metrics.RecordWebhookReconciliationFailure("strict-mode-protection")
+				metrics.RecordWebhookReconciliationFailure(strictModeProtection)
 			}
 		}
 		return
@@ -662,11 +666,11 @@ func (ws *WebhookServer) reconcileStrictModeWebhook() {
 
 	caBundle, err := readCABundle(ws.hookReg.TLSCertFile)
 	if err != nil {
-		logger.Error().Err(err).Msg("housekeeper: cannot read CA bundle for strict mode protection")
+		logger.Error().Err(err).Msgf("%s: cannot read CA bundle for strict mode protection", housekeeper)
 		if ws.webhookStats != nil {
 			ws.webhookStats.RecordFailure()
 		}
-		metrics.RecordWebhookReconciliationFailure("strict-mode-protection")
+		metrics.RecordWebhookReconciliationFailure(strictModeProtection)
 		return
 	}
 
@@ -674,10 +678,10 @@ func (ws *WebhookServer) reconcileStrictModeWebhook() {
 	defer cancel()
 
 	if err := registerStrictModeProtectionWebhook(ctx, ws.kubeClient, caBundle, ws.hookReg); err != nil {
-		logger.Error().Err(err).Msg("housekeeper: strict mode protection registration failed")
+		logger.Error().Err(err).Msgf("%s: strict mode protection registration failed", housekeeper)
 		if ws.webhookStats != nil {
 			ws.webhookStats.RecordFailure()
 		}
-		metrics.RecordWebhookReconciliationFailure("strict-mode-protection")
+		metrics.RecordWebhookReconciliationFailure(strictModeProtection)
 	}
 }

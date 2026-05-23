@@ -281,6 +281,17 @@ func (c *CRDEntry) HasMutationRules() bool {
 	return len(c.Mutation.Rules) > 0
 }
 
+// ShouldMutateFirst reports whether this CRD prefers mutation first or not
+//
+// Default is true
+func (c *CRDEntry) ShouldMutateFirst() bool {
+	if c.Mutation == nil {
+		return true
+	}
+	return c.Mutation.MutateFirst
+}
+
+// HasValidationRules reports whether this CRD has any validation behavior configured
 func (c *CRDEntry) HasValidationRules() bool {
 	if c.Validation == nil {
 		return false

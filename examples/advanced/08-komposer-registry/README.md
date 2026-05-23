@@ -187,7 +187,7 @@ helm upgrade --install orkestra orkestra/orkestra \
 ### 4. Verify both CRDs are managed
 
 ```bash
-kubectl port-forward svc/orkestra 8080:8080 -n orkestra-system &
+kubectl port-forward svc/orkestra-runtime 8080:8080 -n orkestra-system &
 
 curl localhost:8080/katalog | jq '.crds[] | {name: .name, workers: .workers,}'
 ```

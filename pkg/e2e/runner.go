@@ -357,7 +357,11 @@ func resolveGatewayEnabled(katalogFile string) (bool, error) {
 		return false, err
 	}
 
-	return raw.Gateway != nil, nil
+	if raw.Gateway == nil {
+		return false, nil
+	}
+
+	return raw.Gateway.Enabled, nil
 }
 
 // ensureCluster sets up the cluster according to the spec.

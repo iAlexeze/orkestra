@@ -38,10 +38,20 @@ const (
 	maxAttempts          = 5
 	delayBetweenAttempts = 5 * time.Second
 	gracePeriodSeconds   = int64(30)
+
+	// For informational logging
+	housekeeper          = "housekeeper"
+	registrar            = "registrar"
+	validation           = "validation"
+	mutation             = "mutation"
+	deletionProtection   = "deletion-protection"
+	namespaceProtection  = "namespace-protection"
+	strictModeProtection = "strict-mode-protection"
 )
 
 // WebhookRegistrationOptions holds the configuration for webhook registration.
 type WebhookRegistrationOptions struct {
+	Caller                 string
 	ServiceName            string
 	ServiceNamespace       string
 	Port                   int32
@@ -82,15 +92,30 @@ func RegisterAdmissionWebhooks(
 		return fmt.Errorf("webhook registration: reading CA bundle: %w", err)
 	}
 
+	caller := registrar
+	if opts.Caller != "" {
+		caller = opts.Caller
+	}
+
 	valGVRs := registry.ValidationGVRs()
 	if len(valGVRs) > 0 {
 		if err := registerValidatingWebhook(ctx, client, valGVRs, caBundle, opts); err != nil {
 			return fmt.Errorf("webhook registration: validating: %w", err)
 		}
-		logger.Info().
-			Int("crds", len(valGVRs)).
-			Str("config", validatingWebhookConfigName).
-			Msg("webhook: ValidatingWebhookConfiguration registered")
+
+		// Avoid noisy logging
+		switch caller {
+		case registrar:
+			logger.Info().
+				Int("crds", len(valGVRs)).
+				Str("config", validatingWebhookConfigName).
+				Msgf("%s: ValidatingWebhookConfiguration registered", caller)
+		case housekeeper:
+			logger.Debug().
+				Int("crds", len(valGVRs)).
+				Str("config", validatingWebhookConfigName).
+				Msgf("%s: ValidatingWebhookConfiguration status check", caller)
+		}
 	}
 
 	mutGVRs := registry.MutationGVRs()
@@ -98,10 +123,20 @@ func RegisterAdmissionWebhooks(
 		if err := registerMutatingWebhook(ctx, client, mutGVRs, caBundle, opts); err != nil {
 			return fmt.Errorf("webhook registration: mutating: %w", err)
 		}
-		logger.Info().
-			Int("crds", len(mutGVRs)).
-			Str("config", mutatingWebhookConfigName).
-			Msg("webhook: MutatingWebhookConfiguration registered")
+
+		// Avoid noisy logging
+		switch caller {
+		case registrar:
+			logger.Info().
+				Int("crds", len(mutGVRs)).
+				Str("config", mutatingWebhookConfigName).
+				Msgf("%s: MutatingWebhookConfiguration registered", caller)
+		case housekeeper:
+			logger.Debug().
+				Int("crds", len(mutGVRs)).
+				Str("config", mutatingWebhookConfigName).
+				Msgf("%s: MutatingWebhookConfiguration status check", caller)
+		}
 	}
 
 	return nil

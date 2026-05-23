@@ -5,12 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
-	"github.com/orkspace/orkestra/pkg/metrics"
+	// "github.com/orkspace/orkestra/pkg/metrics"
 	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -118,7 +119,7 @@ func runMutation(
 			Type:     mutationType,
 		})
 
-		metrics.RecordMutationFieldDetail(crdName, rule.Field, mutationType)
+		// metrics.RecordMutationFieldDetail(crdName, rule.Field, mutationType)
 
 		logger.Debug().
 			Str("crd", crdName).
@@ -158,7 +159,7 @@ func runMutation(
 	}
 
 	result.Applied = len(result.Changes)
-	metrics.RecordMutationTotal(crdName)
+	// metrics.RecordMutationTotal(crdName)
 
 	logger.Info().
 		Str("crd", crdName).
@@ -188,7 +189,7 @@ func resolveRuleValue(
 	case rule.Override != nil:
 		// Override — always apply, regardless of current value
 		mutationType = "override"
-		rawVal, err = resolveTypedValue(rule.Override, resolver)
+		rawVal, err = resolveTypedValue(rule.Override, rule.ValueType, resolver)
 
 	case rule.Default != nil:
 		// Default — apply only when the field is absent or empty
@@ -196,7 +197,7 @@ func resolveRuleValue(
 			return nil, "", nil // field already has a value — skip
 		}
 		mutationType = "default"
-		rawVal, err = resolveTypedValue(rule.Default, resolver)
+		rawVal, err = resolveTypedValue(rule.Default, rule.ValueType, resolver)
 
 	default:
 		return nil, "", nil // rule declares neither Default nor Override
@@ -205,37 +206,79 @@ func resolveRuleValue(
 	return rawVal, mutationType, err
 }
 
-// resolveTypedValue converts a mutation rule value to its final form.
+// resolveTypedValue converts a mutation rule value to the desired type.
 //
-// If the value is a string containing "{{", it is treated as a template
-// expression and resolved against the CR. The result is always a string.
+// valueType can be "int", "bool", "float", "string", or empty (defaults to "string").
+// The value may be a literal YAML type (int64, bool, string) or a template result (always string).
 //
-// If the value is a string without "{{", it is returned as-is.
-//
-// If the value is a non-string native YAML type (int64, bool, float64),
-// it is returned directly — preserving the type for the JSON patch.
-// The API server receives an integer, not a string.
-func resolveTypedValue(val interface{}, resolver *orktmpl.Resolver) (interface{}, error) {
+// Returns the typed value suitable for JSON patch, or an error if conversion fails.
+func resolveTypedValue(val interface{}, valueType string, resolver *orktmpl.Resolver) (interface{}, error) {
+	// First resolve template if needed
 	strVal, isStr := val.(string)
-	if !isStr {
-		// Native YAML type — int64, bool, float64
-		// Return directly: JSON marshal will produce 2, true, 3.14 — not "2", "true", "3.14"
-		return val, nil
+	if isStr && strings.Contains(strVal, "{{") {
+		resolved, err := resolver.Resolve(strVal)
+		if err != nil {
+			return nil, fmt.Errorf("resolving template expression %q: %w", strVal, err)
+		}
+		val = resolved
+		// Template result is always a string; we will convert later according to valueType.
 	}
 
-	// String value — check for template expression
-	if !strings.Contains(strVal, "{{") {
-		// Static string — return as-is
-		return strVal, nil
-	}
+	// Apply type conversion based on valueType
+	switch valueType {
+	case "int", "integer":
+		switch v := val.(type) {
+		case int64:
+			return v, nil
+		case float64:
+			return int64(v), nil
+		case string:
+			i, err := strconv.ParseInt(v, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("cannot convert %q to int64: %w", v, err)
+			}
+			return i, nil
+		default:
+			return nil, fmt.Errorf("cannot convert %T to int64", val)
+		}
 
-	// Template expression — resolve against the CR
-	// Template expressions always produce strings. Only use them on string fields.
-	resolved, err := resolver.Resolve(strVal)
-	if err != nil {
-		return nil, fmt.Errorf("resolving template expression %q: %w", strVal, err)
+	case "bool", "boolean":
+		switch v := val.(type) {
+		case bool:
+			return v, nil
+		case string:
+			b, err := strconv.ParseBool(v)
+			if err != nil {
+				return nil, fmt.Errorf("cannot convert %q to bool: %w", v, err)
+			}
+			return b, nil
+		default:
+			return nil, fmt.Errorf("cannot convert %T to bool", val)
+		}
+
+	case "float", "number":
+		switch v := val.(type) {
+		case float64:
+			return v, nil
+		case int64:
+			return float64(v), nil
+		case string:
+			f, err := strconv.ParseFloat(v, 64)
+			if err != nil {
+				return nil, fmt.Errorf("cannot convert %q to float64: %w", v, err)
+			}
+			return f, nil
+		default:
+			return nil, fmt.Errorf("cannot convert %T to float64", val)
+		}
+
+	default: // "string" or empty
+		// Return as string – convert any non-string to its string representation
+		if s, ok := val.(string); ok {
+			return s, nil
+		}
+		return fmt.Sprintf("%v", val), nil
 	}
-	return resolved, nil
 }
 
 // setNestedPatch sets a value at a dot-notation path inside a patch map,
@@ -268,10 +311,3 @@ func setNestedPatch(patch map[string]interface{}, path string, value interface{}
 		current = next
 	}
 }
-
-// toUnstructured attempts to cast a domain.Object to *unstructured.Unstructured.
-// Returns false for typed objects — declarative mutation is not supported for typed CRDs.
-// func toUnstructured(obj domain.Object) (*unstructured.Unstructured, bool) {
-// 	u, ok := obj.(*unstructured.Unstructured)
-// 	return u, ok
-// }

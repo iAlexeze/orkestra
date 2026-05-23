@@ -301,7 +301,7 @@ func buildJSONPatch(changes []fieldChange) ([]byte, error) {
 		if change.OldValue == "" {
 			op = "add"
 		}
-		ops = append(ops, JSONPatchOp{Op: op, Path: ptr, Value: change.NewValue})
+		ops = append(ops, JSONPatchOp{Op: op, Path: ptr, Value: change.TypedValue})
 	}
 	return json.Marshal(ops)
 }
@@ -309,6 +309,7 @@ func buildJSONPatch(changes []fieldChange) ([]byte, error) {
 type fieldChange struct {
 	Field      string
 	OldValue   string
-	NewValue   string
+	NewValue   string      // for logging only
+	TypedValue interface{} // for JSON patch (preserves type)
 	ChangeType string
 }

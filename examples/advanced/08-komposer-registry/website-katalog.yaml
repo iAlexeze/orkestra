@@ -30,6 +30,7 @@ spec:
         rules:
           - field: spec.replicas
             default: 2
+            valueType: int
           - field: spec.port
             default: "8080"
 
@@ -40,7 +41,7 @@ spec:
             - path: phase
               value: "Running"
             - path: readyReplicas
-              value: "{{ get .children.deployment "status" "readyReplicas" }}"
+              value: '{{ get .children.deployment "status" "readyReplicas" }}'
         onCreate:
           deployments:
             - image: "{{ .spec.image }}"

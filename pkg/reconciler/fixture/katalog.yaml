@@ -15,6 +15,9 @@ security:
     admission:
       enabled: true     # Requires running in cluster for apply-time validation/mutation
 
+gateway:
+  enabled: true
+
 spec:
   crds:
     reconciler-probe:
@@ -31,13 +34,15 @@ spec:
       validation:
         rules:
           - field: spec.replicas
-            operator: gt
-            value: "0"
+            greaterThan: 0
+            valueType: integer
             message: "replicas must be at least 1"
+            action: deny
           - field: spec.tier
             operator: in
             value: "basic,premium"
             message: "tier must be basic or premium"
+            action: deny
 
       # ── Mutation ──────────────────────────────────────────────────────────
       # run_mutations.go
@@ -47,8 +52,6 @@ spec:
             default: "nginx:stable"
 
       operatorBox:
-        default: true
-
         # ── ServiceAccount ─────────────────────────────────────────────────
         # run_serviceaccounts.go
         onCreate:
