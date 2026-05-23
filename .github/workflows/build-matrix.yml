@@ -183,7 +183,7 @@ jobs:
       cache-miss: ${{ steps.check-miss.outputs.cache-miss }}
     steps:
       - name: Download all cache miss flags
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: cache-miss-flags
           path: /tmp/collected-flags
