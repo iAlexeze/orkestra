@@ -12,7 +12,9 @@ import (
 //  3. Paths defined in the Konfig (kfg.Katalog().Paths())
 //
 // Returns an error if no katalog file can be resolved.
-func resolveKatalogPaths(cliPaths, cfgPaths []string) ([]string, error) {
+func resolveKatalogPaths(cliPaths []string) ([]string, error) {
+	cfgPaths := kfg.Katalog().Paths()
+
 	// 1. CLI-provided paths
 	if len(cliPaths) > 0 {
 		return cliPaths, nil

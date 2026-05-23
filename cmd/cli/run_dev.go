@@ -30,7 +30,7 @@ var runCmd = &cobra.Command{
 
 		// Resolve katalog paths
 		paths, _ := cmd.Flags().GetStringSlice("file")
-		paths, err := resolveKatalogPaths(paths, kfg.Katalog().Paths())
+		paths, err := resolveKatalogPaths(paths)
 		if err != nil {
 			return err
 		}

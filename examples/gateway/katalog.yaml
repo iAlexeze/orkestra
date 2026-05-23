@@ -14,6 +14,7 @@ metadata:
 # standalone: true — this katalog runs as a gateway-only installation.
 # No companion runtime operator is required. spec: is intentionally empty.
 gateway:
+  enabled: true
   standalone: true
   endpoint: ""
 

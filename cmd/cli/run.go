@@ -33,7 +33,7 @@ var runCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Resolve katalog paths
 		paths, _ := cmd.Flags().GetStringSlice("file")
-		paths, err := resolveKatalogPaths(paths, kfg)
+		paths, err := resolveKatalogPaths(paths)
 		if err != nil {
 			return err
 		}
