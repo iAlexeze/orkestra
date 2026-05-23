@@ -237,7 +237,7 @@ Katalog handles it without a line of Go.
 Run the full typed operator lifecycle in one command — spins up a kind cluster, builds and deploys the operator, applies the CR, asserts that your Go hooks fired and the expected resources exist, then tears down:
 
 ```bash
-ork e2e -f e2e.yaml
+ork e2e
 ```
 
 This runs everything defined in [e2e.yaml](./e2e.yaml):

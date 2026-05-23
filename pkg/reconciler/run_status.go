@@ -90,11 +90,12 @@ func runStatusPatch[PTR domain.Object](
 
 	patch := map[string]interface{}{}
 
-	cond := buildReadyCondition(reconcileErr, obj.GetGeneration())
+	skipObservedGen := r.crd.SkipObservedGeneration() // true for Namespace etc
+	cond := buildReadyCondition(reconcileErr, obj.GetGeneration(), skipObservedGen)
 	patch["conditions"] = []interface{}{cond}
 
 	// Only patch if necessary
-	if !r.crd.SkipObservedGeneration() {
+	if !skipObservedGen {
 		patch["observedGeneration"] = obj.GetGeneration()
 	}
 
@@ -135,31 +136,31 @@ func runStatusPatch[PTR domain.Object](
 //
 // The condition is returned as map[string]interface{} for direct inclusion
 // in the status patch — avoids an extra metav1.Condition → unstructured conversion.
-func buildReadyCondition(reconcileErr error, generation int64) map[string]interface{} {
+func buildReadyCondition(reconcileErr error, generation int64, skipObservedGeneration bool) map[string]interface{} {
 	now := time.Now().UTC().Format(time.RFC3339)
 
-	if reconcileErr == nil {
-		return map[string]interface{}{
-			"type":               "Ready",
-			"status":             "True",
-			"reason":             "ReconcileSucceeded",
-			"message":            "",
-			"lastTransitionTime": now,
-			"observedGeneration": generation,
-		}
-	}
-
-	msg := reconcileErr.Error()
-	if len(msg) > 256 {
-		msg = msg[:253] + "..."
-	}
-
-	return map[string]interface{}{
+	cond := map[string]interface{}{
 		"type":               "Ready",
-		"status":             "False",
-		"reason":             "ReconcileError",
-		"message":            msg,
+		"status":             "True",
+		"reason":             "ReconcileSucceeded",
+		"message":            "",
 		"lastTransitionTime": now,
-		"observedGeneration": generation,
 	}
+
+	if reconcileErr != nil {
+		cond["status"] = "False"
+		cond["reason"] = "ReconcileError"
+		msg := reconcileErr.Error()
+		if len(msg) > 256 {
+			msg = msg[:253] + "..."
+		}
+		cond["message"] = msg
+	}
+
+	// Only add observedGeneration if the resource supports it
+	if !skipObservedGeneration {
+		cond["observedGeneration"] = generation
+	}
+
+	return cond
 }

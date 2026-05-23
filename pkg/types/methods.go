@@ -29,6 +29,16 @@ func (c *CRDEntry) SkipStatusSubresource() bool {
 	return c.IgnoreStatusPatch
 }
 
+// SkipObservedGeneration reports whether this CRD should ignore the
+// status.observedGeneration field during readiness checks.
+//
+// This is applied mainly to built‑in Kubernetes resources or CRDs that do not
+// implement observedGeneration semantics. When true, Orkestra will NOT use
+// generation-based readiness logic for this CRD.
+func (c *CRDEntry) SkipObservedGeneration() bool {
+	return c.IgnoreObservedGeneration
+}
+
 // ShouldEnrich returns true when the given enrichment target is enabled —
 // either via EnrichAll: true or an explicit entry in Enrich.
 func (c *CRDEntry) ShouldEnrich(target string) bool {
@@ -41,12 +51,6 @@ func (c *CRDEntry) ShouldEnrich(target string) bool {
 		}
 	}
 	return false
-}
-
-// SkipObservedGeneration reports whether this CRD belongs to a list to be ignored during status patches.
-// This is applied mainly to builtins or if specifically required by the crd through crd.IgnoreStatusPatch
-func (c *CRDEntry) SkipObservedGeneration() bool {
-	return c.IgnoreObservedGeneration
 }
 
 // IsStatusless reports whether this CRD has no meaningful readiness semantics.

@@ -17,6 +17,7 @@ CRD apply → bundle apply → Orkestra install → CR apply → expectation che
 
 The same command runs locally and in CI. The e2e.yaml file is the source of truth.
 
+  ork e2e
   ork e2e -f e2e.yaml
   ork e2e -f e2e.yaml --keep-cluster
   ork e2e -f e2e.yaml --cluster my-existing-context`,

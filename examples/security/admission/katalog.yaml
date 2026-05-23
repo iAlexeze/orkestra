@@ -11,6 +11,7 @@ metadata:
     again at every reconcile cycle by the reconciler itself.
 
 gateway:
+  enabled: true     # optional if endpoint is set
   endpoint: http://orkestra-gateway:8080
 
 security:

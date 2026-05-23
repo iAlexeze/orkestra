@@ -61,6 +61,12 @@ Validating Katalog...
 
 ## Step 3 — Apply the CRDs
 
+If you do not have a cluster yet, run:
+
+```bash
+ork create cluster            # creates a kind cluster
+```
+
 Apply both files — the three protected CRDs and the one unprotected CRD:
 
 ```bash
@@ -268,7 +274,7 @@ A safety poll (`WEBHOOK_CONTROLLER_SYNC_INTERVAL`, default 30 s) continues in pa
 Run the full lifecycle in one command — spins up a kind cluster, deploys the operator, applies CRs, asserts protection behaviour, then tears down:
 
 ```bash
-ork e2e -f e2e.yaml
+ork e2e
 ```
 
 This runs everything defined in [e2e.yaml](./e2e.yaml):

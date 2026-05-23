@@ -1,7 +1,7 @@
 apiVersion: v2
 name: orkestra
 description: >-
-  Declarative Kubernetes Operator Runtime with a built-in Security Gateway.
+  Declarative Operator Runtime with a built-in Security Gateway.
   Define operators in YAML, generate minimal RBAC, enforce deletion protection and
   namespace protection with admission webhooks, and observe everything in the
   Control Center. Runtime and Gateway deploy independently.

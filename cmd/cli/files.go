@@ -5,6 +5,14 @@ import (
 	"os"
 )
 
+const (
+	fileKatalog  = "katalog.yaml"
+	fileKomposer = "komposer.yaml"
+	fileE2e      = "e2e.yaml"
+	fileCrd      = "crd.yaml"
+	fileCr       = "cr.yaml"
+)
+
 // resolveKatalogPaths resolves the katalog file paths in the following order:
 //
 //  1. Explicit CLI paths (highest priority)
@@ -37,7 +45,7 @@ func resolveKatalogPaths(cliPaths []string) ([]string, error) {
 // current directory and no -f flag was provided. Tries katalog.yaml first,
 // then komposer.yaml — the same precedence as Docker's Dockerfile / compose.yaml.
 func defaultFilePaths() []string {
-	for _, name := range []string{"katalog.yaml", "komposer.yaml"} {
+	for _, name := range []string{fileKatalog, fileKomposer} {
 		if _, err := os.Stat(name); err == nil {
 			return []string{name}
 		}
