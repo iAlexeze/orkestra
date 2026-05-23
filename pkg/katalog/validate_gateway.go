@@ -9,8 +9,14 @@ import (
 // no gatewayEndpoint is set. It collects every active feature that needs a
 // gateway so the error tells the user everything at once.
 // validateGateway fails fast when both standalone mode and an explicit endpoint are set.
+// A simple "enabled: true" works
 func (k *Katalog) validateGateway() error {
 	if !k.NeedsGateway() {
+		return nil
+	}
+
+	// If enabled, return early
+	if k.IsGatewayEnabled() {
 		return nil
 	}
 

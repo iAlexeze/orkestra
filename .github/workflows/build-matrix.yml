@@ -37,7 +37,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -183,7 +183,7 @@ jobs:
       cache-miss: ${{ steps.check-miss.outputs.cache-miss }}
     steps:
       - name: Download all cache miss flags
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: cache-miss-flags
           path: /tmp/collected-flags

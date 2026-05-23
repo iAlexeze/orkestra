@@ -52,7 +52,7 @@ func (ws *WebhookServer) strictModeProtectionHandler(w http.ResponseWriter, r *h
 
 	var review AdmissionReview
 	if err := json.NewDecoder(r.Body).Decode(&review); err != nil {
-		logger.Error().Err(err).Msg("strict-mode-protection: failed to decode AdmissionReview")
+		logger.Error().Err(err).Msgf("%s: failed to decode AdmissionReview", strictModeProtection)
 		http.Error(w, "invalid AdmissionReview", http.StatusBadRequest)
 		return
 	}
@@ -87,7 +87,7 @@ func (ws *WebhookServer) strictModeProtectionHandler(w http.ResponseWriter, r *h
 			Str("name", name).
 			Str("namespace", ns).
 			Str("uid", req.UID).
-			Msg("strict-mode-protection: blocking deletion-protection label removal")
+			Msgf("%s: blocking deletion-protection label removal", strictModeProtection)
 
 		metrics.RecordDeletionProtectionBlocked("strict-mode:" + kind)
 		ws.strictModeStats.RecordBlocked()

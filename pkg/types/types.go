@@ -2428,6 +2428,11 @@ type CRDEntry struct {
 	// Same path resolution as CRDFile. Dev mode only.
 	CRFiles []string `yaml:"crFiles,omitempty" json:"crFiles,omitempty"`
 
+	// Setup lists YAML files to apply before Orkestra starts.
+	// Use this for external dependencies: namespaces, secrets, additional CRDs.
+	// Applied in order with kubectl apply -f, after spec.crd.
+	Setup []string `yaml:"setup,omitempty" json:"setup,omitempty"`
+
 	// ── Runtime objects ───────────────────────────────────────────────────────
 	// Set by addRuntimeObjects() during Katalog validation. Never set from YAML.
 	//

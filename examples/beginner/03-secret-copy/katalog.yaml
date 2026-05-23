@@ -19,11 +19,11 @@ spec:
       crdFile: ./crd.yaml
       crFiles:
         - ./cr.yaml
+      setup:
+        - ./setup.yaml
       namespaced: false             # Default: (true)
 
       operatorBox:
-        default: true
-
         status:
           fields:
             - path: phase

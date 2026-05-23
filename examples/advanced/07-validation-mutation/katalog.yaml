@@ -15,6 +15,10 @@ security:
       enabled: true
     cleanupOnShutdown: true
 
+gateway:
+  enabled: true
+  endpoint: http://orkestra-gateway:8080
+
 spec:
   crds:
     website:
@@ -63,6 +67,7 @@ spec:
         rules:
           - field: spec.replicas
             default: 2           # if replicas not declared, default to 2
+            valueType: int
 
           - field: spec.port
             default: "8080"        # if port not declared, default to 8080

@@ -63,7 +63,7 @@ That is the whole operator.
 
 ## Run
 
-```bash
+```console
 ork run
 ```
 
@@ -122,7 +122,7 @@ ork run
 
 For working examples across beginner → advanced patterns:
 
-```bash
+```console
 ork init --pack beginner
 cd beginner/01-hello-website
 ork run
@@ -134,11 +134,12 @@ ork run
 
 In another terminal:
 
-```bash
+```console
 ork control
-# → localhost:8081
-# username:password → orkestra
 ```
+> → localhost:8081
+> 
+> username:password → orkestra
 
 ![Control Center — multi-Katalog view](./documentation/assets/controlcenter/control-center-landing.png)
 
@@ -202,7 +203,7 @@ spec:
           count: 0
 ```
 
-```bash
+```console
 ork e2e
 ```
 
@@ -230,7 +231,7 @@ operatorBox:
 
 `allReplicasReady` is a [Note](https://docs.orkestra.sh/docs/reference/orkestra-notes) — one of 200+ built-in functions that read live cluster state. The result is written to the CR's `/status` subresource after every reconcile. No `updateStatus` calls. No diff logic.
 
-```bash
+```console
 ork notes              # browse all built-in functions
 ork notes search replica
 ork notes show allReplicasReady
@@ -679,7 +680,7 @@ security:
 
 **Derived RBAC** — generate minimal permissions from the Katalog. No wildcards.
 
-```bash
+```console
 ork generate bundle -f katalog.yaml -o bundle.yaml
 kubectl apply -f bundle.yaml
 ```

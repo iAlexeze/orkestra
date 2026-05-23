@@ -380,6 +380,15 @@ func (k *Katalog) ConversionWindow() int {
 
 // ── Gateway config ────────────────────────────────────────────────────────────
 
+// IsGatewayEnabled reports whether this Katalog requires the gateway to be
+// installed (paired mode). When true:
+//   - Helm must install the gateway chart
+//   - endpoint is optional (runtime may populate it)
+//   - spec: must be present (CRDs required)
+func (k *Katalog) IsGatewayEnabled() bool {
+	return k.Gateway != nil && k.Gateway.Enabled
+}
+
 // IsStandaloneGateway reports whether this Katalog is deployed as a standalone
 // gateway with no companion runtime operator.
 //

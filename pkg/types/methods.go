@@ -281,6 +281,17 @@ func (c *CRDEntry) HasMutationRules() bool {
 	return len(c.Mutation.Rules) > 0
 }
 
+// ShouldMutateFirst reports whether this CRD prefers mutation first or not
+//
+// Default is true
+func (c *CRDEntry) ShouldMutateFirst() bool {
+	if c.Mutation == nil {
+		return true
+	}
+	return c.Mutation.MutateFirst
+}
+
+// HasValidationRules reports whether this CRD has any validation behavior configured
 func (c *CRDEntry) HasValidationRules() bool {
 	if c.Validation == nil {
 		return false
@@ -308,6 +319,18 @@ func (c *CRDEntry) HasRollbackRules() bool {
 // to be auto-applied before the operator starts.
 func (c *CRDEntry) HasCRDFile() bool {
 	return c != nil && c.CRDFile != ""
+}
+
+// HasCRFiles reports whether this CRDEntry declares CR YAML files
+// to be applied before the runtime starts.
+func (c *CRDEntry) HasCRFiles() bool {
+	return c != nil && len(c.CRFiles) > 0
+}
+
+// HasSetup reports whether this CRDEntry declares setup YAML files
+// to be applied before Orkestra starts.
+func (c *CRDEntry) HasSetup() bool {
+	return c != nil && len(c.Setup) > 0
 }
 
 // NotificationEnabled reports whether this CRD declares the notification block

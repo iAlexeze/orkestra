@@ -36,7 +36,7 @@ spec:
                   type: integer
                 tier:
                   type: string
-                  enum: [basic, premium]
+                  # enum: [basic, premium]
                 schedule:
                   type: string
                 # Used by forEach
