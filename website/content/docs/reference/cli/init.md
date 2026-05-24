@@ -1,6 +1,6 @@
 ---
 title: "ork init"
-weight: 28
+weight: 38
 ---
 
 Initialize a new Orkestra operator project using a versioned example pack.
@@ -77,7 +77,7 @@ ork init my-operator --refresh-cache
 Running:
 
 ```
-ork init my-operator
+ork init my-operator --pack beginner
 ```
 
 Produces:
@@ -86,7 +86,7 @@ Produces:
 my-operator/
   examples/
     <pack>/
-      01-hello-website/
+      <pack-example>/
         crd.yaml
         katalog.yaml
         cr.yaml
@@ -100,16 +100,14 @@ my-operator/
 Inside the project:
 
 ```
-cd my-operator
-kubectl apply -f examples/<pack>/01-hello-website/crd.yaml
-ork run --file examples/<pack>/01-hello-website/katalog.yaml
-kubectl apply -f examples/<pack>/01-hello-website/cr.yaml
+cd my-operator/examples/<pack>/<pack-example>
+ork run
 ```
 
 Open Control Center:
 
 ```
-ork control start
+ork control
 ```
 
 ---

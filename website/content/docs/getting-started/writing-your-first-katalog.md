@@ -1,6 +1,6 @@
 ---
 title: "Writing Your First Katalog"
-weight: 10
+weight: 15
 ---
 
 A **Katalog** is a YAML file that tells Orkestra what to do when a Custom Resource is created, updated, or deleted. This guide builds one from scratch.
@@ -21,6 +21,8 @@ spec:
   crds:
     myapp:
       crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
       operatorBox:
         default: true
 ```
@@ -28,6 +30,9 @@ spec:
 This tells Orkestra: read the CRD from `crd.yaml`, apply it to the cluster, and watch for `MyApp` CRs. No resources are created yet.
 
 `crdFile` is how you declare a CRD. Orkestra reads `group`, `version`, `kind`, and `plural` directly from the file and applies it to the cluster when `ork run` starts. No separate `kubectl apply -f crd.yaml` needed.
+
+`crFiles` is how you declare a CR. Orkestra applies it at startup. No separate `kubectl apply -f cr.yaml` needed.
+
 
 ---
 
@@ -80,6 +85,8 @@ spec:
   crds:
     myapp:
       crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
       operatorBox:
         default: true
         onCreate:
@@ -164,10 +171,15 @@ spec:
   crds:
     database:
       crdFile: ./database-crd.yaml
+      crFiles:
+        - ./database-cr.yaml
+        - ./mongodb-cr.yaml
       operatorBox:
         default: true
     application:
       crdFile: ./application-crd.yaml
+      crFiles:
+        - ./application-cr.yaml
       dependsOn:
         - database
       operatorBox:
@@ -181,14 +193,15 @@ Orkestra starts `database` first and waits until it is healthy before starting `
 ## Running It
 
 ```bash
-ork run -f katalog.yaml
+ork run
+# Orkestra reads katalog.yaml from the current directory and starts the runtime.
 ```
 
-Apply a CR:
+Verify it works:
 
 ```bash
-kubectl apply -f myapp-cr.yaml
 kubectl get deployments
+kubectl get services
 ```
 
 ---
@@ -196,7 +209,6 @@ kubectl get deployments
 ## Validate Without Running
 
 ```bash
-ork validate -f katalog.yaml
+ork validate
+# Orkestra reads katalog.yaml from the current directory and reports every error without touching the cluster.
 ```
-
-Resolves the CRD, merges all sources, and reports every error without touching the cluster.

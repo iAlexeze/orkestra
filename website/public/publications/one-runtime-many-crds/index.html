@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.ed4127849a94162676f586309f939b9ad14e1a02ea340295071b0613d5493ba5.css">
+<link rel="stylesheet" href="/css/main.min.5b3bd5229f53306ec1d1616f2c44ff2123c3a5b21f15000e4106c950fbf88eac.css">
 
 
 
@@ -377,7 +377,7 @@ GET /katalog/{crd}/health      200 or 503, per-CRD
 GET /metrics                   All CRD metrics, labeled by GVK
 </code></pre><p>This is impossible with separate operators. Orkestra provides it automatically.</p>
 <h3 id="42-declared-dependency-ordering">4.2 Declared Dependency Ordering</h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">crds</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">crds</span>:
 </span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">name</span>: project
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">dependsOn</span>: []
 </span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">name</span>: namespace
@@ -394,7 +394,7 @@ chooses and fail unpredictably when dependencies are unavailable.</p>
 a CRD is a separate Katalog entry with its own operator stack. Conversion
 rules are declared alongside reconcile templates in the same Katalog entry,
 evaluated by the same template resolver.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span>- <span style="color:#ff79c6">name</span>: website-v1
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span>- <span style="color:#ff79c6">name</span>: website-v1
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">apiTypes</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">version</span>: v1
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">kind</span>: Website
@@ -415,7 +415,7 @@ Conversion for Kubernetes CRDs</em>, provides a full treatment.</p>
 URLs, and private registries. Platform teams publish CRD operator definitions.
 Application teams consume and selectively override. Environment-specific
 configuration is a Komposer override, not a fork.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
 </span></span><span style="display:flex;"><span>    - https://platform.myorg.io/crds/base.yaml

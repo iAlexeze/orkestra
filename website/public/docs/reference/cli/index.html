@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.ed4127849a94162676f586309f939b9ad14e1a02ea340295071b0613d5493ba5.css">
+<link rel="stylesheet" href="/css/main.min.5b3bd5229f53306ec1d1616f2c44ff2123c3a5b21f15000e4106c950fbf88eac.css">
 
 
 
@@ -58,7 +58,6 @@
     <a href="/" class="navbar-logo" aria-label="Orkestra home">
       <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="36" width="36">
       <span class="logo-text">Orkestra</span>
-      <span class="version-badge">v1</span>
     </a>
 
     
@@ -205,6 +204,8 @@
               </div>
               <ul class="sidebar-section-pages" role="list" style="display:none">
                 
+                
+                
                 <li>
                   <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link">
                     Basic Reconciliation
@@ -241,8 +242,8 @@
             
             <div class="sidebar-section">
               <div class="sidebar-section-header">
-                <a href="/docs/controlcenter/" class="sidebar-section-link">Control Center</a>
-                <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Control Center">
+                <a href="/docs/orkestra-core/" class="sidebar-section-link">Orkestra Core</a>
+                <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Orkestra Core">
                   <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
                     <path d="M19 9l-7 7-7-7"/>
                   </svg>
@@ -250,15 +251,23 @@
               </div>
               <ul class="sidebar-section-pages" role="list" style="display:none">
                 
+                
+                
                 <li>
-                  <a href="/docs/controlcenter/crd-detail/" class="sidebar-link">
-                    CRD Detail View
+                  <a href="/docs/orkestra-core/controlcenter/" class="sidebar-link">
+                    Control Center
                   </a>
                 </li>
                 
                 <li>
-                  <a href="/docs/controlcenter/health-states/" class="sidebar-link">
-                    Health States
+                  <a href="/docs/orkestra-core/gateway/" class="sidebar-link">
+                    Gateway
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/orkestra-core/runtime/" class="sidebar-link">
+                    Runtime
                   </a>
                 </li>
                 
@@ -283,6 +292,8 @@
               </div>
               <ul class="sidebar-section-pages" role="list">
                 
+                
+                
                 <li>
                   <a href="/docs/reference/cli/" class="sidebar-link active">
                     Orkestra CLI Reference
@@ -290,56 +301,26 @@
                 </li>
                 
                 <li>
+                  <a href="/docs/reference/orkestra-notes/" class="sidebar-link">
+                    Orkestra Notes
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/reference/orkestra-registry/" class="sidebar-link">
+                    Orkestra Registry
+                  </a>
+                </li>
+                
+                <li>
                   <a href="/docs/reference/schema/" class="sidebar-link">
-                    Schema
+                    Schema Reference
                   </a>
                 </li>
                 
                 <li>
-                  <a href="/docs/reference/katalog-api/" class="sidebar-link">
-                    Orkestra Runtime API Reference
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/runtime/" class="sidebar-link">
-                    Runtime
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/katalog-schema-status/" class="sidebar-link">
-                    Katalog Schema — Status Block
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/metrics/" class="sidebar-link">
-                    Orkestra Metrics
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/mutation-schema/" class="sidebar-link">
-                    Mutation Schema
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/registry-schema/" class="sidebar-link">
-                    Registry Import Schema
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/shutdown/" class="sidebar-link">
-                    Shutdown
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/validation-schema/" class="sidebar-link">
-                    Validation Schema
+                  <a href="/docs/reference/typed-operators/" class="sidebar-link">
+                    Typed Operators
                   </a>
                 </li>
                 
@@ -363,11 +344,53 @@
           
           
           
-          <div class="sidebar-standalone">
-            <a href="/docs/security/" class="sidebar-standalone-link">
-              Security
-            </a>
-          </div>
+            
+            <div class="sidebar-section">
+              <div class="sidebar-section-header">
+                <a href="/docs/security/" class="sidebar-section-link">Security</a>
+                <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Security">
+                  <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </button>
+              </div>
+              <ul class="sidebar-section-pages" role="list" style="display:none">
+                
+                
+                
+                <li>
+                  <a href="/docs/security/admission/" class="sidebar-link">
+                    Admission webhooks
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/security/binaries/" class="sidebar-link">
+                    Binaries &amp; build tags
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/security/deletion-protection/" class="sidebar-link">
+                    Deletion protection
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/security/namespace-protection/" class="sidebar-link">
+                    Namespace protection
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/security/rbac/" class="sidebar-link">
+                    RBAC
+                  </a>
+                </li>
+                
+              </ul>
+            </div>
+          
         
       
         
@@ -385,6 +408,8 @@
                 </button>
               </div>
               <ul class="sidebar-section-pages" role="list" style="display:none">
+                
+                
                 
                 <li>
                   <a href="/docs/faqs/why-not-crds/" class="sidebar-link">
@@ -463,6 +488,17 @@
       <header class="docs-header">
         <h1 class="docs-title">Orkestra CLI Reference</h1>
         
+        <div class="docs-meta">
+          
+          <time datetime="2026-05-17" class="docs-date">
+            Updated May 17, 2026
+          </time>
+          
+
+          
+          <span class="docs-reading-time">1 min read</span>
+          
+        </div>
       </header>
 
       
@@ -527,187 +563,6 @@ Select a command to view its full documentation.</p>
       
 
       
-      
-      <nav class="docs-index-nav" aria-label="Section pages">
-        
-        
-        <a href="/docs/reference/cli/generate/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Generate</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        
-        <a href="/docs/reference/cli/generate/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Generate</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/cli/control/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">ork control</span>
-            
-            <span class="docs-index-item-desc">Manage the Orkestra Control Center (CC).
-ork control [command] The Control Center provides a web‑based UI for monitoring …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/cli/diff/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">ork diff</span>
-            
-            <span class="docs-index-item-desc">Show a unified diff between two files.
-ork diff &lt;file1&gt; &lt;file2&gt; ork diff compares two files line‑by‑line and …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/cli/e2e/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">ork e2e</span>
-            
-            <span class="docs-index-item-desc">Run declarative end-to-end tests against a real cluster.
-ork e2e -f e2e.yaml ork e2e is the complement to ork simulate — …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/cli/init/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">ork init</span>
-            
-            <span class="docs-index-item-desc">Initialize a new Orkestra operator project using a versioned example pack.
-ork init &lt;project-name&gt; [flags] ork …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/cli/notes/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">ork notes</span>
-            
-            <span class="docs-index-item-desc">Browse and search the built-in Orkestra note functions without leaving the terminal.
-Notes are the template functions …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/cli/plan/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">ork plan</span>
-            
-            <span class="docs-index-item-desc">Compare a local Katalog against the currently deployed one in the cluster. Shows what would change — added CRDs, removed …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/cli/run/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">ork run</span>
-            
-            <span class="docs-index-item-desc">Start the Orkestra operator runtime.
-ork run --file &lt;path&gt; Merges and validates before starting workers.
-Endpoints …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/cli/simulate/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">ork simulate</span>
-            
-            <span class="docs-index-item-desc">Run the operator reconcile loop against a fake in-memory cluster — no real Kubernetes cluster required. Useful for …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/cli/template/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">ork template</span>
-            
-            <span class="docs-index-item-desc">Render the merged, validated Katalog exactly as Orkestra will see it at runtime.
-ork template --file &lt;path&gt; Flags …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/cli/upgrade/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">ork upgrade</span>
-            
-            <span class="docs-index-item-desc">Upgrade the Orkestra CLI to the latest release or to a specific version.
-ork upgrade [flags] This command downloads the …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/cli/validate/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">ork validate</span>
-            
-            <span class="docs-index-item-desc">Validate a Katalog or Komposer. Resolves sources, merges, and runs the full validation pipeline.
-ork validate --file …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/cli/version/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">ork version</span>
-            
-            <span class="docs-index-item-desc">Print version, commit, and build date.
-ork version </span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-      </nav>
       
     </div>
   </article>

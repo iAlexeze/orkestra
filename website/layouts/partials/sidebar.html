@@ -11,7 +11,7 @@
 
     <nav class="sidebar-nav">
       {{ $currentPage := . }}
-      {{ range hugo.Data.sidebar.nav }}
+      {{ range $currentPage.Site.Data.sidebar.nav }}
         {{ if .page }}
           {{/* Standalone page link */}}
           {{ $page := $currentPage.Site.GetPage (printf "docs/%s" (strings.TrimSuffix "/" (path.Base .url))) }}
@@ -36,9 +36,11 @@
                 </button>
               </div>
               <ul class="sidebar-section-pages" role="list"{{ if not $isActiveSection }} style="display:none"{{ end }}>
-                {{ range $section.Pages.ByWeight }}
+                {{ $children := $section.RegularPages }}
+                {{ range $section.Sections }}{{ $children = $children | append . }}{{ end }}
+                {{ range sort $children "Weight" "asc" }}
                 <li>
-                  <a href="{{ .RelPermalink }}" class="sidebar-link{{ if eq $currentPage . }} active{{ end }}">
+                  <a href="{{ .RelPermalink }}" class="sidebar-link{{ if or (eq $currentPage .) ($currentPage.IsDescendant .) }} active{{ end }}">
                     {{ .Title }}
                   </a>
                 </li>

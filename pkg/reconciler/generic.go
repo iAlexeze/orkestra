@@ -350,20 +350,32 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 		logger.FromContext(ctx).Debug().Msgf("finalizers removed for %s", obj.GetName())
 	}
 
-	// ── Label & annotation management (idempotent) ──────────────────────────────
-	// These labels/annotations identify Orkestra‑managed resources.
-	// The label manager uses the Katalog configuration to decide whether to add
-	// deletion protection and whether the reconciler runs in standalone mode.
+	// ── Label & annotation management ────────────────────────────────────────────
+	// The label manager applies three label invariants derived from the Katalog:
+	//   1. managed=true           — ownership marker, always present
+	//   2. deletion-protection    — present iff global protection + CRD protectCRs
+	//   3. strict-mode-exempt     — present iff the CRD has opted out of strictMode
+	//
+	// All three are computed in memory first and sent as a single JSON Merge Patch
+	// (the controller-runtime MergeFrom pattern). Absent keys in a Merge Patch are
+	// left unchanged by the server; to delete a key the patch must set it to null.
+	// PatchLabels handles this by diffing serverLabels (snapshot) against the
+	// post-mutation desired state.
+	//
+	// Two-phase protection removal: when transitioning from protected→unprotected,
+	// both the deletion-protection label and the exempt label would normally be
+	// removed. But the strict-mode webhook intercepts the UPDATE and only allows
+	// removal when strict-mode-exempt=true appears in the new object. Removing both
+	// in the same patch fails that check. The reconciler therefore forces the exempt
+	// label ON for the first cycle; on the next cycle deletion-protection is already
+	// gone, the webhook objectSelector no longer matches, and the exempt label can
+	// be cleaned up without any webhook interception.
 	labelMgr := labels.NewManager(labels.Config{
 		Standalone:                r.kat.IsStandaloneGateway(),
 		DeletionProtectionEnabled: r.kat.IsDeletionProtectionEnabled(),
 	})
 
-	// ── Labels: snapshot → mutate → one atomic patch ─────────────────────────
-	// Snapshot the server-side labels before any in-memory mutations (the
-	// controller-runtime MergeFrom pattern). PatchLabels diffs base→desired and
-	// sets deleted keys to null in the merge patch body so the server removes them.
-	serverLabels := copyStringMap(obj.GetLabels())
+	serverLabels := copyStringMap(obj.GetLabels()) // snapshot before any mutation
 
 	labelMgr.EnsureManagedLabel(obj)
 
@@ -371,17 +383,9 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	labelMgr.EnsureDeletionProtectionLabel(obj, shouldHaveProtection)
 
 	effectiveStrict := r.crd.IsStrictDeletionProtection(r.kat.IsStrictModeEnabled())
-
-	// When transitioning from protected→unprotected (deletion-protection being
-	// removed), the strict-mode admission webhook intercepts the UPDATE and allows
-	// the removal only when strict-mode-exempt=true appears in the new object.
-	// Removing both labels in the same patch would fail that check, so we force
-	// the exempt label ON for this cycle. On the next reconcile the
-	// deletion-protection label is already gone, the webhook objectSelector no
-	// longer matches, and the exempt label can be cleaned up freely.
 	currentlyProtected := serverLabels[labels.DeletionProtectionLabel] == labels.DeletionProtectionValue
 	if !shouldHaveProtection && currentlyProtected {
-		effectiveStrict = false
+		effectiveStrict = false // keep exempt label present so the webhook allows the removal
 	}
 
 	logger.Debug().
@@ -392,11 +396,13 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 		Msg("label: evaluating strict mode")
 	labelMgr.EnsureStrictModeExemptLabel(obj, effectiveStrict)
 
+	// One atomic patch: diff serverLabels → desired. No-op if nothing changed.
 	if err := r.kube.PatchLabels(ctx, obj, r.crd.GVR(), serverLabels, obj.GetLabels()); err != nil {
 		return err
 	}
 
-	// Ensure `managed‑by` and `managed‑since` annotations (audit trail)
+	// Annotations only ever add keys (managed-by, managed-since are write-once),
+	// so a plain Merge Patch with the desired map is correct here.
 	if labelMgr.EnsureManagedAnnotations(obj, r.crd.KatalogName) {
 		if err := r.kube.PatchAnnotations(ctx, obj, r.crd.GVR(), obj.GetAnnotations()); err != nil {
 			return err

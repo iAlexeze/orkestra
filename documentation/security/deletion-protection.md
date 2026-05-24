@@ -1,233 +1,222 @@
-# Orkestra Deletion Protection – Architecture & Design
+# Deletion protection
 
-## Overview
+Deletion protection prevents CRs — and Orkestra's own infrastructure — from being accidentally (or maliciously) deleted. It works by attaching a label to every protected resource and registering a validating webhook that intercepts DELETE requests on those resources.
 
-Orkestra provides a **declarative, label‑based deletion protection** system that works for any resource – custom CRDs, built‑in Kubernetes resources, and Orkestra’s own control‑plane components.  
-
-The system is built on three pillars:
-
-1. **Automatic labelling** by the runtime reconciler (when global protection is enabled).  
-2. **Admission webhook** (Gateway) that intercepts DELETE requests on all managed resource types and blocks them if the protection label is present.  
-3. **Per‑CRD overrides** that allow fine‑grained control over which CRDs and instances are protected, including a label‑based exemption for strict mode.
-
----
-
-## Architecture
-
-```mermaid
-graph TB
-    subgraph Katalog["Katalog (Declarative Config)"]
-        Global["Global: security.deletionProtection.enabled"]
-        Overrides["Per-CRD overrides: protectCRD, protectCRs, strictMode"]
-    end
-
-    subgraph Runtime["Orkestra Runtime (Reconciler)"]
-        Labeler["Label Manager"]
-        Labeler -->|"Adds label: orkestra.io/deletion-protection=true"| Resource["Any Resource (CR or built-in)"]
-        Labeler -->|"When strictMode=false: adds exemption label"| ExemptLabel["orkestra.io/strict-mode-exempt=true"]
-    end
-
-    subgraph Gateway["Orkestra Gateway"]
-        RuleBuilder["Builds GVR list from Katalog"]
-        RuleBuilder -->|"Respects protectCRs"| GVRs["Custom CRD GVRs"]
-        Builtins["OrkestraInternal built-ins"] -->|"Always included"| GVRs
-        GVRs --> Webhook["ValidatingWebhookConfiguration (DELETE)"]
-        Webhook -->|"protect.resources webhook"| InterceptDel["Intercepts DELETE on matched GVRs<br/>objectSelector: deletion-protection=true"]
-        InterceptDel --> DecisionDel{"Allow / Deny"}
-
-        StrictWebhook["Strict-mode ValidatingWebhookConfiguration (UPDATE)"]
-        StrictWebhook -->|"Intercepts UPDATE on any resource<br/>objectSelector: deletion-protection=true"| InterceptUpd["Inspect labels"]
-        InterceptUpd -->|"Exemption label present?"| ExemptCheck{"Allow label removal?"}
-    end
-
-    subgraph Cluster["Kubernetes API Server"]
-        Delete["DELETE request"]
-        Delete -->|"Matches webhook rules"| InterceptDel
-        DecisionDel -->|Deny| DenyMsg["Admission denied + error message"]
-        DecisionDel -->|Allow| AllowDel["Deletion proceeds"]
-
-        Update["UPDATE request (label change)"]
-        Update -->|"Matches strict-mode webhook"| InterceptUpd
-        ExemptCheck -->|Yes| AllowUpdate["Allow removal of protection label"]
-        ExemptCheck -->|No| DenyUpdate["Block label removal (strict mode)"]
-    end
-
-    Global -->|"enabled=true"| Runtime
-    Global -->|"enabled=true"| Gateway
-    Overrides -->|"Affects GVR inclusion"| RuleBuilder
-    Overrides -->|"Affects labelling and exemption label"| Labeler
+```yaml
+security:
+  deletionProtection:
+    enabled: true
+    cleanupOnShutdown: true
+    failurePolicy: Fail
 ```
 
 ---
 
-## Component Responsibilities
+## How it works
 
-### 1. Katalog (Declarative Configuration)
-- **Global switch** `security.deletionProtection.enabled`:  
-  - When `true`, the system is active.  
-  - When `false`, no labels are added, no webhook is registered (if already present, it may be removed if `cleanupOnShutdown` is true).
-- **Global strictMode**:  
-  - When `true`, removing the protection label from a protected resource is blocked (treated as a deletion attempt).  
-  - Per‑CRD `strictMode` overrides this.
-- **Per‑CRD overrides** (inside `spec.crds.<name>.deletionProtection`):  
-  - `protectCRD` (default `true`): Should the CRD definition itself be protected from deletion?  
-  - `protectCRs` (default `true`): Should instances of this CRD be protected?  
-  - `strictMode` (defaults to global `strictMode`): Per‑CRD strict mode.
+When deletion protection is enabled, Orkestra does two things:
 
-### 2. Runtime (Reconciler)
-- **Always** runs (even when Gateway is absent).  
-- Reads the global flag and per‑CRD overrides.  
-- For every resource it creates or updates, it adds:  
-  - Protection label: `orkestra.io/deletion-protection: "true"` **if** `protectCRs == true` **and** global protection is enabled.  
-  - `managed` label and annotations (ownership tracking).  
-  - **Exemption label** `orkestra.io/strict-mode-exempt: "true"` **if** effective strict mode for the CRD is `false` (i.e., global strictMode enabled but per‑CRD `strictMode: false`).  
-- **Never** removes the protection label – that is considered a change in desired state (see strict mode handling).
+1. **Labels every managed CR** with `orkestra.io/deletion-protection: "true"`. In runtime mode, the reconciler applies and maintains this label automatically. In gateway-only mode, you apply it yourself.
 
-### 3. Gateway (Admission Webhook)
-- **Only runs** when deployed in‑cluster (not in `ork run` mode).  
-- Builds the list of GVRs to protect from two sources:  
-  - **Custom CRDs**: includes a GVR only if `protectCRs == true` for that CRD.  
-  - **Built‑in resources**: includes all resources marked `OrkestraInternal` (e.g., Deployments, Services, Namespaces, RBAC) – these are always protected by label, no per‑resource opt‑out.
-- Registers two `ValidatingWebhookConfiguration` resources:  
-  1. **`protect.crds.orkestra.workspace.io`** – intercepts DELETE on `customresourcedefinitions` (CRD type protection).  
-  2. **`protect.resources.orkestra.workspace.io`** – intercepts DELETE on all GVRs from the built list, filtered by `objectSelector` that matches `orkestra.io/deletion-protection=true`. Denies deletion if the label is present.  
-  3. **`strict-mode.orkestra.workspace.io`** – intercepts **UPDATE** operations on any resource that has the protection label (using the same `objectSelector`). Checks for the presence of the exemption label. If `orkestra.io/strict-mode-exempt: "true"` is present, the update is allowed; otherwise, any removal or change of the protection label is blocked.
+2. **Registers a `ValidatingWebhookConfiguration`** that intercepts every DELETE request. If the target resource carries the protection label, the request is denied before it reaches etcd.
 
-### 4. Strict Mode
-- **Global** or **per‑CRD** flag that controls whether **removing** the protection label is allowed.  
-- Implementation uses a **second admission webhook** that watches UPDATE requests.  
-- When effective strict mode is `true` for a resource:  
-  - The exemption label is **not** added by the runtime.  
-  - The strict‑mode webhook, which sees the protection label, will deny any update that removes or alters that label.  
-- When effective strict mode is `false` for a resource:  
-  - The runtime adds the exemption label `orkestra.io/strict-mode-exempt: "true"`.  
-  - The strict‑mode webhook notices the exemption label and **allows** the update, thereby permitting removal of the protection label.  
-- In standalone mode (no runtime), users can manually add or remove the exemption label to opt out of strict mode for individual resources.
+```bash
+kubectl delete app my-app
+# Error from server: admission webhook "delete-protection.orkestra.orkspace.io" denied the request:
+# [App "my-app"] deletion is blocked by Orkestra deletion protection.
+```
+
+### Orkestra's own infrastructure is protected too
+
+Every resource the Helm chart creates — the `Deployment`, `Service`, `ServiceAccount`, `ClusterRoleBinding`, TLS `Secret`, and webhook configurations — carries the protection label. The webhook protects them the same way it protects your CRs. You cannot accidentally `kubectl delete` the operator out of the cluster while deletion protection is active.
 
 ---
 
-## Behaviour Matrix (Global Protection Enabled)
+## Strict mode
 
-| protectCRD | protectCRs | CRD Deletion | Instance Deletion (label present) | Instance Deletion (label removed) |
-|------------|------------|--------------|-----------------------------------|-----------------------------------|
-| true       | true       | blocked      | blocked                           | blocked if strictMode enabled     |
-| true       | false      | blocked      | allowed                           | allowed                           |
-| false      | true       | allowed      | blocked (until CRD is deleted)    | allowed (strict mode irrelevant)  |
-| false      | false      | allowed      | allowed                           | allowed                           |
+By default, deletion protection blocks DELETE operations but the protection label itself can be removed with `kubectl label`. Removing the label silently unprotects the resource.
 
-- **Note**: When `protectCRD=false` and `protectCRs=true`, a validation warning is issued because instance protection is ephemeral (garbage‑collected with the CRD). The webhook still blocks deletion of existing instances, but the warning alerts the administrator to the mismatch.
+Strict mode closes this gap:
 
----
-
-## Exemption Label Lifecycle
-
-| Scenario | Protection label added? | Exemption label added? | Strict mode enforced? |
-|----------|------------------------|------------------------|----------------------|
-| Global strictMode = true, per‑CRD strictMode = true (or omitted) | Yes (if protectCRs) | No | Yes – label removal blocked |
-| Global strictMode = true, per‑CRD strictMode = false | Yes (if protectCRs) | Yes | No – label removal allowed |
-| Global strictMode = false | Yes (if protectCRs) | No (not needed) | No – label removal allowed regardless |
-
-The exemption label is never added when strict mode is globally disabled. It is only added when strict mode is globally enabled but a specific CRD overrides it to `false`, so that the webhook can distinguish the override.
-
----
-
-## User Experience
-
-### Enabling Protection
 ```yaml
 security:
   deletionProtection:
     enabled: true
     strictMode: true
-    cleanupOnShutdown: true
 ```
 
-### Per‑CRD Override for Strict Mode
-```yaml
-spec:
-  crds:
-    database:
-      deletionProtection:
-        protectCRD: true
-        protectCRs: true
-        strictMode: false   # instances of Database can be unprotected by removing the label
+With strict mode on, Orkestra registers a second webhook (`strict-mode.orkestra.orkspace.io`) that intercepts UPDATE operations on any labeled resource and blocks any request that removes the `orkestra.io/deletion-protection` label:
+
 ```
-
-### Validation Output
-```
-$ ork validate
-⚠ cache
-    kind: Cache / group: security.orkestra.io / version: v1alpha1 / plural: caches
-    protection: ⚠ CRs only (CRD not protected – see warning)
-    warning: protectCRs=true is ineffective once the CRD is deleted.
-             Consider setting protectCRD=true if you intend to protect instances permanently.
-
-● database
-    protection: 🛡️ full (CRD + CRs)
-    strictMode: overridden to false (exemption label will be added)
-
-● app
-    protection: 🔓 CRD only (CRs not protected)
-```
-
-### Attempt to Remove Protection Label (Strict Mode Enforced)
-```bash
-$ kubectl label database my-database orkestra.io/deletion-protection-
-Error from server: admission webhook "strict-mode.orkestra.workspace.io" denied the request:
-
-[Orkestra Security] The Database "my-database" in namespace "default" carries the deletion-protection label.
-
+Error from server: admission webhook "strict-mode.orkestra.orkspace.io" denied the request:
+[Orkestra Security] The App "my-app" in namespace "default" carries the deletion-protection label.
 Removing this label is blocked because strictMode is enabled.
 
 To unprotect this resource:
-- Set security.deletionProtection.strictMode: false in the Katalog (or per CRD)
-- Redeploy Orkestra Gateway
-- Retry the label removal
+- Opt out in the katalog using: '<crd>.deletionProtection.strictMode: false'
 ```
 
-### Allowed Label Removal when Override Active
+**To unprotect a resource under strict mode**, change the Katalog — not the label. This requires the same access level as operating Orkestra itself. There is no label-level escape hatch.
+
+---
+
+## Per-CRD overrides
+
+The global `deletionProtection` setting applies to every CRD in your Katalog. You can override three settings per CRD:
+
+```yaml
+spec:
+  crds:
+    app:
+      deletionProtection:
+        protectCRD: true      # protect the CRD object itself (default: true)
+        protectCRs: false     # protect instances of this CRD (default: true)
+        strictMode: false     # override the global strictMode for this CRD (default: inherits global)
+```
+
+### `protectCRs: false` — instances can be deleted
+
+When `protectCRs: false`, the reconciler does not add the deletion-protection label to instances of this CRD. Existing instances that already carry the label will have it removed on the next reconcile cycle.
+
+Use this when you want to register a CRD with Orkestra (for reconciliation, status management, etc.) but not prevent users from deleting instances.
+
+### `protectCRD: false` — the CRD resource itself can be deleted
+
+When `protectCRD: false`, Orkestra does not protect the CRD object (`apps.security.orkestra.io`) itself. The CRD can be deleted from the cluster. Note that if the CRD is deleted, all instances are garbage-collected by Kubernetes.
+
+### `strictMode: false` — this CRD's instances can have the label removed
+
+When `strictMode: false` on a CRD (even while global `strictMode: true`), the strict-mode webhook allows the deletion-protection label to be removed from instances of this CRD. Orkestra signals this by adding the exemption label `orkestra.io/strict-mode-exempt: "true"` to every instance.
+
+The webhook checks for this exemption label before enforcing strict mode:
+- Exempt label present → label removal is allowed
+- Exempt label absent → label removal is blocked
+
+---
+
+## The three protection profiles
+
+These per-CRD settings produce four distinct combinations. The examples below use global `strictMode: true`.
+
+### Fully protected (default)
+
+```yaml
+deletionProtection:
+  # all defaults
+```
+
+- Instance has: `deletion-protection=true`
+- No exemption label
+- Cannot be deleted. Cannot have label removed. Fully locked.
+
+### Protected, strict mode exempt
+
+```yaml
+deletionProtection:
+  strictMode: false   # this CRD opts out of strict mode
+```
+
+- Instance has: `deletion-protection=true`, `strict-mode-exempt=true`
+- Cannot be deleted via `kubectl delete`
+- The deletion-protection label CAN be removed (`kubectl label`) because the exemption label tells the webhook to allow it
+- Use this for resources that need protection but where an administrator may need to override it manually
+
+### Unprotected instances, protected CRD
+
+```yaml
+deletionProtection:
+  protectCRs: false   # instances are not protected
+```
+
+- Instances have: no deletion-protection label
+- Instances can be deleted freely
+- The CRD object itself is still protected
+- `ork run` will remove the deletion-protection label from existing instances on its first reconcile cycle
+
+### Warning: `protectCRD: false` + `protectCRs: true`
+
+This combination is semantically inconsistent: you are asking Orkestra to protect instances of a CRD that can itself be deleted. Orkestra will log a validation warning at startup but will still honour the settings as declared.
+
+---
+
+## How the reconciler removes the label (two-phase)
+
+When a CRD moves from `protectCRs: true` to `protectCRs: false`, the reconciler must remove the deletion-protection label from existing instances. This is non-trivial under strict mode because the strict-mode webhook blocks any UPDATE that removes the deletion-protection label — unless the resource also carries the exemption label in the same update.
+
+Orkestra handles this automatically in two phases:
+
+**Phase 1 (first reconcile after the config change)**
+
+The reconciler removes `deletion-protection` and ensures `strict-mode-exempt: true` is present in the same patch. The webhook sees the exemption label in the new object and allows the update.
+
+**Phase 2 (next reconcile)**
+
+`deletion-protection` is now gone. The webhook's objectSelector no longer matches the resource, so the webhook is not called. The reconciler removes the `strict-mode-exempt` label freely.
+
+You do not need to manage this transition manually. Change the Katalog; the reconciler handles the rest over two cycles.
+
+---
+
+## Gateway-only mode
+
+In gateway-only mode (no `ork run`), there is no reconciler to manage labels. The webhook still enforces the protection contract — but **you are responsible for applying the labels yourself**:
+
 ```bash
-$ kubectl label database my-database orkestra.io/deletion-protection-
-database.security.orkestra.io/my-database labeled
+# Protect a resource manually
+kubectl label app my-app orkestra.io/deletion-protection=true
+
+# Remove protection (only possible if strict mode is off or the resource has the exemption label)
+kubectl label app my-app orkestra.io/deletion-protection-
+```
+
+The webhook does not care how the label got there. It only checks whether the label is present at the time of the DELETE request.
+
+For drift correction (reconciling label state back to what the Katalog declares), you need the runtime. In gateway-only mode, label state is whatever you make it.
+
+---
+
+## Scenarios and edge cases
+
+### "I want to delete a protected resource right now"
+
+1. If strict mode is **off**: `kubectl label <kind> <name> orkestra.io/deletion-protection-` removes the label, then `kubectl delete` succeeds.
+2. If strict mode is **on**: set `strictMode: false` for the CRD in your Katalog, apply the change, wait for the reconciler to add the exemption label, then `kubectl label` to remove the protection label, then `kubectl delete`.
+3. If you need it **immediately**: set `deletionProtection.enabled: false` globally, restart Orkestra Gateway (the webhook is deregistered), then delete.
+
+### "The operator was deleted and now nothing enforces protection"
+
+If deletion protection itself is deleted while protection is active, the webhook is gone and CRs can be deleted. This is why Orkestra self-heals its own webhook configurations — see the [self-healing section](admission.md#webhook-self-healing). And why the Helm chart protects the operator's own Deployment with the same label.
+
+### "I manually added the exemption label to a strictly protected resource"
+
+The reconciler will remove it on the next reconcile cycle. The reconciler's job is to enforce the label state declared in the Katalog. Manual drift is corrected automatically in runtime mode.
+
+### "A new resource was created after I disabled protectCRs"
+
+The reconciler will not add the deletion-protection label to it. The label is only applied to resources that Orkestra reconciles while `protectCRs: true`.
+
+---
+
+## Working example
+
+For a complete scenario including per-CRD overrides and the standard deletion-protection flow, run:
+
+```bash
+ork init --pack security
+cd deletion-protection
+```
+
+Then:
+
+```bash
+ork validate        # inspect the security posture of each CRD
+ork run --dev       # run Orkestra locally (--dev creates a kind cluster if needed)
+ork e2e             # declarative end-to-end testing
 ```
 
 ---
 
-## Edge Cases & Guarantees
+## Next
 
-### 1. No Protection without Gateway
-
-**Problem:**  
-If the Orkestra Gateway is not deployed in the cluster (e.g., you only run `ork run` locally), the deletion‑protection webhook does not exist. Consequently, DELETE requests are never intercepted, and resources are deletable regardless of the `orkestra.io/deletion-protection=true` label. The runtime reconciler (running locally) still adds the label (harmless), but it provides no protection.
-
-**Solution:**  
-To enable deletion protection, the Gateway **must** be deployed inside the cluster with its webhook active. This is done by installing the [Orkestra Helm Chart](https://artifacthub.io/packages/helm/orkestra/orkestra) with `--set gateway.enabled=true`. Once the Gateway is running, the webhook is registered and will intercept DELETE requests. You may now run `ork run` locally for development or debugging – the reconciler will add labels, and the in‑cluster Gateway will enforce protection.
-
-> **Note:** This is only a development convenience. In production, deploy both `runtime` and `gateway` with the [Orkestra Helm Chart](https://artifacthub.io/packages/helm/orkestra/orkestra).
-
-### 2. Race Conditions
-
-A resource may be created and labelled, then a DELETE arrives before the webhook is fully registered? The webhook is registered before the Gateway starts serving traffic (readiness probe). Standard Kubernetes admission ordering guarantees that once the webhook is ready, it intercepts all matching requests.
-
-### 3. CRD Deletion Cleaning
-
-If a CRD is deleted while its instances are protected, the instances become **inaccessible** via the Kubernetes API but remain in etcd indefinitely. Kubernetes does not automatically garbage‑collect orphaned custom resources. Orkestra does not attempt to clean them up because it can no longer watch the CRD. Administrators should delete all instances before deleting the CRD, or accept that orphaned data will persist.
-
-### 4. Strict Mode Label Removal with Exemption
-
-When global `strictMode` is enabled and a CRD has no override (or `strictMode: true`), the strict‑mode webhook blocks removal of the protection label. To allow removal for a specific CRD, set `strictMode: false` in its per‑CRD override. The runtime will then automatically add the exemption label `orkestra.io/strict-mode-exempt: "true"` to all instances, and the webhook will permit label removal. For standalone mode (no runtime), users can manually add the exemption label to any resource to bypass strict mode enforcement.
-
----
-
-## Summary
-
-The Orkestra deletion protection system is:
-
-- **Declarative** – all configuration lives in the Katalog.  
-- **Generic** – works for any custom or built‑in resource without per‑type code.  
-- **Fine‑grained** – per‑CRD overrides for protection levels and strict mode.  
-- **Label‑based exemption** – clean separation between global strict mode and per‑CRD opt‑out using a simple exemption label.  
-- **Self‑documenting** – `ork validate` shows warnings and override status.  
-- **Secure by default** – when enabled, everything is protected unless explicitly opted out.
-
-This design gives cluster administrators a simple, powerful tool to prevent accidental deletion of critical resources, while preserving flexibility for non‑critical workloads.
+- [Namespace protection](namespace-protection.md) — restrict which namespaces CRs can be applied to
+- [Security overview](index.md) — return to the index

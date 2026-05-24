@@ -12,7 +12,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// Patch Finalizers
+// PatchFinalizers replaces the object's finalizer list with finalizers by
+// sending a minimal JSON Merge Patch that touches only metadata.finalizers.
+// Sending only the changed field avoids resourceVersion conflicts that would
+// arise from patching the full object.
 func (k *Kubeclient) PatchFinalizers(
 	ctx context.Context,
 	obj runtime.Object,
@@ -24,8 +27,6 @@ func (k *Kubeclient) PatchFinalizers(
 		return fmt.Errorf("getting accessor: %w", err)
 	}
 
-	// Build a minimal merge patch — only touch finalizers
-	// Never send the full object — avoids resourceVersion conflicts
 	patch := map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"finalizers": finalizers,
@@ -124,15 +125,15 @@ func (k *Kubeclient) PatchLabels(
 	return err
 }
 
-// PatchAnnotations transitions the object's annotations from base to desired by
-// sending a JSON Merge Patch. Keys present in base but absent in desired are
-// set to null so the server deletes them. Keys in desired that differ from base
-// are added or updated. Unchanged keys are omitted from the patch body.
+// PatchAnnotations merges annotations onto the object by sending a JSON Merge
+// Patch containing only the desired annotation keys. Keys present in annotations
+// are added or updated on the server; keys absent from the patch are left
+// unchanged (not deleted).
 //
-// base must be a snapshot of the annotations as they exist on the server
-// immediately before any in‑memory mutations are applied (the
-// controller‑runtime MergeFrom pattern). Pass nil for base when the object is
-// brand‑new and has no annotations.
+// This is intentionally a one-way merge: Orkestra's annotation management
+// only ever adds keys (managed-by and managed-since are write-once and never
+// removed). If key deletion is ever needed, mirror the base/desired pattern
+// used by [PatchLabels].
 func (k *Kubeclient) PatchAnnotations(
 	ctx context.Context,
 	obj runtime.Object,

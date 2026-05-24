@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.ed4127849a94162676f586309f939b9ad14e1a02ea340295071b0613d5493ba5.css">
+<link rel="stylesheet" href="/css/main.min.5b3bd5229f53306ec1d1616f2c44ff2123c3a5b21f15000e4106c950fbf88eac.css">
 
 
 
@@ -58,7 +58,6 @@
     <a href="/" class="navbar-logo" aria-label="Orkestra home">
       <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="36" width="36">
       <span class="logo-text">Orkestra</span>
-      <span class="version-badge">v1</span>
     </a>
 
     
@@ -205,6 +204,8 @@
               </div>
               <ul class="sidebar-section-pages" role="list">
                 
+                
+                
                 <li>
                   <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link active">
                     Basic Reconciliation
@@ -241,8 +242,8 @@
             
             <div class="sidebar-section">
               <div class="sidebar-section-header">
-                <a href="/docs/controlcenter/" class="sidebar-section-link">Control Center</a>
-                <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Control Center">
+                <a href="/docs/orkestra-core/" class="sidebar-section-link">Orkestra Core</a>
+                <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Orkestra Core">
                   <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
                     <path d="M19 9l-7 7-7-7"/>
                   </svg>
@@ -250,15 +251,23 @@
               </div>
               <ul class="sidebar-section-pages" role="list" style="display:none">
                 
+                
+                
                 <li>
-                  <a href="/docs/controlcenter/crd-detail/" class="sidebar-link">
-                    CRD Detail View
+                  <a href="/docs/orkestra-core/controlcenter/" class="sidebar-link">
+                    Control Center
                   </a>
                 </li>
                 
                 <li>
-                  <a href="/docs/controlcenter/health-states/" class="sidebar-link">
-                    Health States
+                  <a href="/docs/orkestra-core/gateway/" class="sidebar-link">
+                    Gateway
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/orkestra-core/runtime/" class="sidebar-link">
+                    Runtime
                   </a>
                 </li>
                 
@@ -283,6 +292,8 @@
               </div>
               <ul class="sidebar-section-pages" role="list" style="display:none">
                 
+                
+                
                 <li>
                   <a href="/docs/reference/cli/" class="sidebar-link">
                     Orkestra CLI Reference
@@ -290,56 +301,26 @@
                 </li>
                 
                 <li>
+                  <a href="/docs/reference/orkestra-notes/" class="sidebar-link">
+                    Orkestra Notes
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/reference/orkestra-registry/" class="sidebar-link">
+                    Orkestra Registry
+                  </a>
+                </li>
+                
+                <li>
                   <a href="/docs/reference/schema/" class="sidebar-link">
-                    Schema
+                    Schema Reference
                   </a>
                 </li>
                 
                 <li>
-                  <a href="/docs/reference/katalog-api/" class="sidebar-link">
-                    Orkestra Runtime API Reference
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/runtime/" class="sidebar-link">
-                    Runtime
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/katalog-schema-status/" class="sidebar-link">
-                    Katalog Schema — Status Block
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/metrics/" class="sidebar-link">
-                    Orkestra Metrics
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/mutation-schema/" class="sidebar-link">
-                    Mutation Schema
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/registry-schema/" class="sidebar-link">
-                    Registry Import Schema
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/shutdown/" class="sidebar-link">
-                    Shutdown
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/validation-schema/" class="sidebar-link">
-                    Validation Schema
+                  <a href="/docs/reference/typed-operators/" class="sidebar-link">
+                    Typed Operators
                   </a>
                 </li>
                 
@@ -363,11 +344,53 @@
           
           
           
-          <div class="sidebar-standalone">
-            <a href="/docs/security/" class="sidebar-standalone-link">
-              Security
-            </a>
-          </div>
+            
+            <div class="sidebar-section">
+              <div class="sidebar-section-header">
+                <a href="/docs/security/" class="sidebar-section-link">Security</a>
+                <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Security">
+                  <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </button>
+              </div>
+              <ul class="sidebar-section-pages" role="list" style="display:none">
+                
+                
+                
+                <li>
+                  <a href="/docs/security/admission/" class="sidebar-link">
+                    Admission webhooks
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/security/binaries/" class="sidebar-link">
+                    Binaries &amp; build tags
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/security/deletion-protection/" class="sidebar-link">
+                    Deletion protection
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/security/namespace-protection/" class="sidebar-link">
+                    Namespace protection
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/security/rbac/" class="sidebar-link">
+                    RBAC
+                  </a>
+                </li>
+                
+              </ul>
+            </div>
+          
         
       
         
@@ -385,6 +408,8 @@
                 </button>
               </div>
               <ul class="sidebar-section-pages" role="list" style="display:none">
+                
+                
                 
                 <li>
                   <a href="/docs/faqs/why-not-crds/" class="sidebar-link">
@@ -465,8 +490,8 @@
         
         <div class="docs-meta">
           
-          <time datetime="2026-05-16" class="docs-date">
-            Updated May 16, 2026
+          <time datetime="2026-05-17" class="docs-date">
+            Updated May 17, 2026
           </time>
           
 
@@ -487,7 +512,7 @@
 <li><code>cr.yaml</code> — a sample <code>Website</code> CR</li>
 </ul>
 <p>Start the operator:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run -f examples/beginner/01-hello-website/katalog.yaml
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run
 </span></span></code></pre></div><hr>
 <h2 id="step-1--orkestra-starts">Step 1 — Orkestra starts</h2>
 <p>When <code>ork run</code> starts:</p>
@@ -500,14 +525,13 @@
 </ol>
 <p>You will see:</p>
 <pre tabindex="0"><code>INFO  CRD applied                crd=websites.demo.orkestra.io
+INFO  CR applied                 name=hello-website namespace=default
 INFO  Informer synced            crd=website
 INFO  Workers started            crd=website  workers=3
 INFO  Health server ready        addr=:8080
 </code></pre><hr>
-<h2 id="step-2--apply-a-cr">Step 2 — Apply a CR</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl apply -f examples/beginner/01-hello-website/cr.yaml
-</span></span></code></pre></div><p>The CR:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: demo.orkestra.io/v1alpha1
+<h2 id="step-2--the-cr">Step 2 — The CR:</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: demo.orkestra.io/v1alpha1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Website
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: hello-website
@@ -527,16 +551,16 @@ INFO  Health server ready        addr=:8080
 <li>Prometheus counter increments: <code>controller_reconcile_total{result=&quot;success&quot;}</code></li>
 </ol>
 <p>Check the result:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl get deployments
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl get deployments
 </span></span><span style="display:flex;"><span>kubectl describe website hello-website
 </span></span></code></pre></div><hr>
 <h2 id="step-4--update-the-cr">Step 4 — Update the CR</h2>
 <p>Edit the image:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl patch website hello-website --type<span style="color:#ff79c6">=</span>merge -p <span style="color:#f1fa8c">&#39;{&#34;spec&#34;:{&#34;image&#34;:&#34;nginx:1.27&#34;}}&#39;</span>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl patch website hello-website --type<span style="color:#ff79c6">=</span>merge -p <span style="color:#f1fa8c">&#39;{&#34;spec&#34;:{&#34;image&#34;:&#34;nginx:1.27&#34;}}&#39;</span>
 </span></span></code></pre></div><p>Orkestra detects the change, re-reconciles, and updates the Deployment image. Because <code>reconcile: true</code> is set, if the Deployment is edited manually between reconciles, Orkestra corrects it back.</p>
 <hr>
 <h2 id="step-5--delete-the-cr">Step 5 — Delete the CR</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl delete -f examples/beginner/01-hello-website/cr.yaml
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl delete -f cr.yaml
 </span></span></code></pre></div><p>Orkestra:</p>
 <ol>
 <li>Receives the delete event</li>
@@ -547,8 +571,8 @@ INFO  Health server ready        addr=:8080
 <hr>
 <h2 id="observing-reconciliation">Observing Reconciliation</h2>
 <p>The health endpoint shows everything:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl localhost:8080/katalog/website/health | jq
-</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl localhost:8080/katalog/website/health | jq
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;status&#34;</span>: <span style="color:#f1fa8c">&#34;healthy&#34;</span>,
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;lastReconcile&#34;</span>: <span style="color:#f1fa8c">&#34;2026-05-16T18:00:01Z&#34;</span>,
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;reconcileCount&#34;</span>: <span style="color:#bd93f9">3</span>,
@@ -556,9 +580,9 @@ INFO  Health server ready        addr=:8080
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;workerCount&#34;</span>: <span style="color:#bd93f9">3</span>
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div><p>Full detail including queue depth and active workers:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl localhost:8080/katalog/website | jq
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl localhost:8080/katalog/website | jq
 </span></span></code></pre></div><p>Or open the Control Center for a visual view:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork control start
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork control
 </span></span><span style="display:flex;"><span><span style="color:#6272a4"># → localhost:8081</span>
 </span></span></code></pre></div><hr>
 <h2 id="reconcile-lifecycle-summary">Reconcile Lifecycle Summary</h2>
@@ -615,7 +639,7 @@ INFO  Health server ready        addr=:8080
   <ul>
     <li><a href="#the-setup">The Setup</a></li>
     <li><a href="#step-1--orkestra-starts">Step 1 — Orkestra starts</a></li>
-    <li><a href="#step-2--apply-a-cr">Step 2 — Apply a CR</a></li>
+    <li><a href="#step-2--the-cr">Step 2 — The CR:</a></li>
     <li><a href="#step-3--reconcile-happens">Step 3 — Reconcile happens</a></li>
     <li><a href="#step-4--update-the-cr">Step 4 — Update the CR</a></li>
     <li><a href="#step-5--delete-the-cr">Step 5 — Delete the CR</a></li>

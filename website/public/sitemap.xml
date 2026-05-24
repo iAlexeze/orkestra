@@ -2,47 +2,73 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>http://localhost:8090/docs/controlcenter/</loc>
+    <loc>http://localhost:8090/docs/contributing/codebase-map/</loc>
   </url><url>
-    <loc>http://localhost:8090/docs/faqs/</loc>
-  </url><url>
-    <loc>http://localhost:8090/docs/reference/cli/generate/</loc>
-  </url><url>
-    <loc>http://localhost:8090/docs/getting-started/</loc>
+    <loc>http://localhost:8090/publications/declarative-operators-whitepaper/</loc>
     <lastmod>2026-05-16T21:26:38+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:8090/docs/reference/cli/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
+    <loc>http://localhost:8090/blog/security-by-default/</loc>
   </url><url>
-    <loc>http://localhost:8090/docs/reference/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
+    <loc>http://localhost:8090/docs/contributing/contributing-controlcenter/</loc>
   </url><url>
-    <loc>http://localhost:8090/docs/reference/schema/</loc>
+    <loc>http://localhost:8090/publications/trust-and-failure-model/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:8090/docs/controlcenter/crd-detail/</loc>
+    <loc>http://localhost:8090/blog/why-orkestra/</loc>
   </url><url>
-    <loc>http://localhost:8090/docs/controlcenter/health-states/</loc>
+    <loc>http://localhost:8090/docs/contributing/contributing-examples/</loc>
   </url><url>
-    <loc>http://localhost:8090/docs/deploying/</loc>
+    <loc>http://localhost:8090/blog/your-crd-is-enough/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/contributing/contributing-providers/</loc>
   </url><url>
     <loc>http://localhost:8090/publications/</loc>
     <lastmod>2026-04-07T05:44:50+00:00</lastmod>
   </url><url>
+    <loc>http://localhost:8090/docs/contributing/contributing-registry/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/security/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/contributing/contributing-rollback/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/contributing/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/contributing/publishing-a-new-pack/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/deploying/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/faqs/</loc>
+  </url><url>
     <loc>http://localhost:8090/docs/faqs/why-not-crds/</loc>
   </url><url>
     <loc>http://localhost:8090/docs/getting-started/basic-reconciliation/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
+    <lastmod>2026-05-17T00:45:56+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/getting-started/</loc>
+    <lastmod>2026-05-17T00:45:56+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/getting-started/learning-to-orkestrate/</loc>
   </url><url>
     <loc>http://localhost:8090/docs/getting-started/writing-your-first-katalog/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
+    <lastmod>2026-05-17T00:45:56+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/getting-started/writing-your-first-komposer/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
+    <lastmod>2026-05-17T00:45:56+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/</loc>
-    <lastmod>2026-04-06T05:32:57+00:00</lastmod>
+    <lastmod>2026-05-17T00:45:56+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/orkestra-core/controlcenter/crd-detail/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/orkestra-core/controlcenter/health-states/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/orkestra-core/controlcenter/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/orkestra-core/gateway/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/orkestra-core/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/orkestra-core/runtime/</loc>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/control/</loc>
   </url><url>
@@ -50,21 +76,19 @@
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/e2e/</loc>
   </url><url>
-    <loc>http://localhost:8090/docs/reference/cli/generate/__index/</loc>
-  </url><url>
     <loc>http://localhost:8090/docs/reference/cli/generate/all/</loc>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/generate/bundle/</loc>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/generate/configmap/</loc>
   </url><url>
-    <loc>http://localhost:8090/docs/reference/cli/generate/cr/</loc>
-  </url><url>
     <loc>http://localhost:8090/docs/reference/cli/generate/crd/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/cli/generate/cr/</loc>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/generate/dashboards/</loc>
   </url><url>
-    <loc>http://localhost:8090/docs/reference/cli/generate/docs/</loc>
+    <loc>http://localhost:8090/docs/reference/cli/generate/</loc>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/generate/katalog/</loc>
   </url><url>
@@ -72,62 +96,96 @@
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/generate/registry/</loc>
   </url><url>
+    <loc>http://localhost:8090/docs/reference/cli/</loc>
+    <lastmod>2026-05-17T00:45:56+00:00</lastmod>
+  </url><url>
     <loc>http://localhost:8090/docs/reference/cli/init/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
+    <lastmod>2026-05-17T00:45:56+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/notes/</loc>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/plan/</loc>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/run/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
+    <lastmod>2026-05-17T00:45:56+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/simulate/</loc>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/template/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
+    <lastmod>2026-05-17T00:45:56+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/upgrade/</loc>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/validate/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
+    <lastmod>2026-05-17T00:45:56+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/version/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
+    <lastmod>2026-05-17T00:45:56+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:8090/docs/reference/katalog-api/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
+    <loc>http://localhost:8090/docs/reference/</loc>
+    <lastmod>2026-05-17T00:45:56+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:8090/docs/reference/runtime/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/coercion/</loc>
   </url><url>
-    <loc>http://localhost:8090/docs/reference/schema/__index/</loc>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/conditional/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/container/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/cron/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/data/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/job/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/kubernetes/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/listmap/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/math/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/network/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/quantities/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/random/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/replicas/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/safeaccess/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/semver/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/service/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/string/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/time/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-notes/type/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-registry/how-it-works/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/orkestra-registry/</loc>
   </url><url>
     <loc>http://localhost:8090/docs/reference/schema/apitypes/</loc>
   </url><url>
-    <loc>http://localhost:8090/docs/reference/katalog-schema-status/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
-  </url><url>
     <loc>http://localhost:8090/docs/reference/schema/conversion/</loc>
-  </url><url>
-    <loc>http://localhost:8090/docs/reference/metrics/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/schema/crd-entry/</loc>
   </url><url>
-    <loc>http://localhost:8090/docs/reference/mutation-schema/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
+    <loc>http://localhost:8090/docs/reference/schema/enrich/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/katalog/</loc>
   </url><url>
     <loc>http://localhost:8090/docs/reference/schema/katalog-notification/</loc>
-  </url><url>
-    <loc>http://localhost:8090/docs/reference/registry-schema/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/schema/katalog-providers/</loc>
   </url><url>
     <loc>http://localhost:8090/docs/reference/schema/katalog-security/</loc>
-  </url><url>
-    <loc>http://localhost:8090/docs/reference/schema/katalog/</loc>
   </url><url>
     <loc>http://localhost:8090/docs/reference/schema/komposer/</loc>
   </url><url>
@@ -137,107 +195,33 @@
   </url><url>
     <loc>http://localhost:8090/docs/reference/schema/operatorbox/</loc>
   </url><url>
-    <loc>http://localhost:8090/publications/when-conditions-paper/</loc>
-    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/declarative-operators-whitepaper/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/declarative-state-machines/</loc>
-    <lastmod>2026-04-18T03:55:25+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/declarative-conversion/</loc>
-    <lastmod>2026-04-18T03:55:25+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/evolve-apis-without-code/</loc>
-    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/from-programs-to-data/</loc>
-    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/introducing-orkestra-notes/</loc>
-    <lastmod>2026-04-20T19:47:13+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/one-runtime-many-crds/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/operator-authoring-vs-infrastructure-controlplane/</loc>
-    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/orkestra-and-gitops/</loc>
-    <lastmod>2026-05-07T08:22:56+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/no-autosync-by-design/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/metrics-analysis-old/</loc>
-    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/metrics-analysis/</loc>
-    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/value-proposition/</loc>
-    <lastmod>2026-04-16T19:28:30+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/universal-observer-whitepaper/</loc>
-    <lastmod>2026-04-16T19:28:30+00:00</lastmod>
-  </url><url>
     <loc>http://localhost:8090/docs/reference/schema/status/</loc>
-  </url><url>
-    <loc>http://localhost:8090/publications/orkestra-registry/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/operator-sprawl-problem/</loc>
-    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/provider-library/</loc>
-    <lastmod>2026-04-18T03:55:25+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/reconcile-contract/</loc>
-    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/no-trace-runtime/</loc>
-    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/publications/trust-and-failure-model/</loc>
-    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/schema/validation/</loc>
   </url><url>
     <loc>http://localhost:8090/docs/reference/schema/when-conditions/</loc>
   </url><url>
+    <loc>http://localhost:8090/docs/reference/typed-operators/constructor/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/typed-operators/hooks/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/typed-operators/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/typed-operators/mixed/</loc>
+  </url><url>
     <loc>http://localhost:8090/docs/roadmap/</loc>
   </url><url>
-    <loc>http://localhost:8090/docs/security/</loc>
+    <loc>http://localhost:8090/docs/security/admission/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/security/binaries/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/security/deletion-protection/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/security/namespace-protection/</loc>
+  </url><url>
+    <loc>http://localhost:8090/docs/security/rbac/</loc>
   </url><url>
     <loc>http://localhost:8090/docs/support/</loc>
-  </url><url>
-    <loc>http://localhost:8090/docs/reference/shutdown/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/docs/reference/validation-schema/</loc>
-    <lastmod>2026-05-16T21:26:38+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/tags/concepts/</loc>
-    <lastmod>2026-05-15T06:48:04+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/blog/declarative-state-machines/</loc>
-    <lastmod>2026-05-15T06:48:04+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/tags/engineering/</loc>
-    <lastmod>2026-05-15T06:48:04+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/tags/</loc>
-    <lastmod>2026-05-15T06:48:04+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/tags/announcement/</loc>
-    <lastmod>2026-05-07T08:22:56+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/blog/introducing-orkestra/</loc>
-    <lastmod>2026-05-07T08:22:56+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/tags/release/</loc>
-    <lastmod>2026-05-07T08:22:56+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/blog/</loc>
     <lastmod>2026-04-06T15:47:01+00:00</lastmod>
@@ -246,5 +230,7 @@
   </url><url>
     <loc>http://localhost:8090/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/tags/</loc>
   </url>
 </urlset>

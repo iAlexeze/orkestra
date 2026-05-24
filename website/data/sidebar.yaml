@@ -2,9 +2,9 @@ nav:
   - title: Getting Started
     section: getting-started
     url: /docs/getting-started/
-  - title: Control Center
-    section: controlcenter
-    url: /docs/controlcenter/
+  - title: Orkestra Core
+    section: orkestra-core
+    url: /docs/orkestra-core/
   - title: Reference
     section: reference
     url: /docs/reference/
@@ -12,8 +12,8 @@ nav:
     url: /docs/deploying/
     page: true
   - title: Security
+    section: security
     url: /docs/security/
-    page: true
   - title: FAQs
     section: faqs
     url: /docs/faqs/

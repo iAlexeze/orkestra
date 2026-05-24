@@ -1,6 +1,6 @@
 ---
 title: "Getting Started"
-weight: 1
+weight: 13
 ---
 
 Orkestra turns a YAML file into a working Kubernetes operator. This guide takes you from zero to a running operator — no Go, no code generation.
@@ -49,38 +49,34 @@ ork init my-operator
 cd my-operator
 ```
 
-`ork init` creates a workspace with ready-to-run examples. The first example is a `Website` operator at `examples/beginner/01-hello-website/`.
+`ork init` creates a workspace with ready-to-run katalog.
 
 **Step 2 — Start the operator**
 
 If you have a running cluster:
 
 ```bash
-ork run -f examples/beginner/01-hello-website/katalog.yaml
+ork run
 ```
 
 If you have no cluster yet, add `--dev` — Orkestra creates a kind cluster automatically:
 
 ```bash
-ork run --dev -f examples/beginner/01-hello-website/katalog.yaml
+ork run --dev
 ```
 
 You will see:
 
 ```
 INFO  CRD applied                crd=websites.demo.orkestra.io
+INFO  CR applied                 name=hello-website namespace=default
 INFO  Informer synced            crd=website
 INFO  Workers started            crd=website  workers=3
 INFO  Health server ready        addr=:8080
 ```
 
-**Step 3 — Apply a Custom Resource**
 
-In a second terminal:
-
-```bash
-kubectl apply -f examples/beginner/01-hello-website/cr.yaml
-```
+**Step 3 — Reconciliation**
 
 Watch Orkestra's output in the first terminal. You'll see the reconcile event arrive and the Deployment get created.
 
@@ -95,10 +91,10 @@ A Deployment named `hello-website-deployment` appears. Orkestra set owner refere
 
 **Step 5 — Open the Control Center**
 
-In a third terminal:
+In a second terminal:
 
 ```bash
-ork control start
+ork control
 ```
 
 Open [http://localhost:8081](http://localhost:8081) to see the live operator — CRD health, worker state, reconcile metrics, queue depth.
@@ -107,7 +103,7 @@ Open [http://localhost:8081](http://localhost:8081) to see the live operator —
 
 ## What the Katalog Looks Like
 
-The katalog at `examples/beginner/01-hello-website/katalog.yaml`:
+The katalog at `katalog.yaml`:
 
 ```yaml
 apiVersion: orkestra.orkspace.io/v1
@@ -119,6 +115,8 @@ spec:
   crds:
     website:
       crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
 
       operatorBox:
         default: true
@@ -174,7 +172,7 @@ Ctrl+C
 | `ork run --dev -f <path>` | Start the operator, create kind cluster if needed |
 | `ork validate -f <path>` | Validate a Katalog without starting |
 | `ork template -f <path>` | Preview the merged, resolved Katalog |
-| `ork control start` | Start the Control Center at localhost:8081 |
+| `ork control` | Start the Control Center at localhost:8081 |
 | `ork version` | Print version |
 
 ---

@@ -1,6 +1,6 @@
 ---
 title: "ork template"
-weight: 33
+weight: 43
 ---
 
 Render the merged, validated Katalog exactly as Orkestra will see it at runtime.

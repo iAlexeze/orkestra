@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.ed4127849a94162676f586309f939b9ad14e1a02ea340295071b0613d5493ba5.css">
+<link rel="stylesheet" href="/css/main.min.5b3bd5229f53306ec1d1616f2c44ff2123c3a5b21f15000e4106c950fbf88eac.css">
 
 
 
@@ -58,7 +58,6 @@
     <a href="/" class="navbar-logo" aria-label="Orkestra home">
       <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="36" width="36">
       <span class="logo-text">Orkestra</span>
-      <span class="version-badge">v1</span>
     </a>
 
     
@@ -205,6 +204,8 @@
               </div>
               <ul class="sidebar-section-pages" role="list" style="display:none">
                 
+                
+                
                 <li>
                   <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link">
                     Basic Reconciliation
@@ -241,8 +242,8 @@
             
             <div class="sidebar-section">
               <div class="sidebar-section-header">
-                <a href="/docs/controlcenter/" class="sidebar-section-link">Control Center</a>
-                <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Control Center">
+                <a href="/docs/orkestra-core/" class="sidebar-section-link">Orkestra Core</a>
+                <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Orkestra Core">
                   <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
                     <path d="M19 9l-7 7-7-7"/>
                   </svg>
@@ -250,15 +251,23 @@
               </div>
               <ul class="sidebar-section-pages" role="list" style="display:none">
                 
+                
+                
                 <li>
-                  <a href="/docs/controlcenter/crd-detail/" class="sidebar-link">
-                    CRD Detail View
+                  <a href="/docs/orkestra-core/controlcenter/" class="sidebar-link">
+                    Control Center
                   </a>
                 </li>
                 
                 <li>
-                  <a href="/docs/controlcenter/health-states/" class="sidebar-link">
-                    Health States
+                  <a href="/docs/orkestra-core/gateway/" class="sidebar-link">
+                    Gateway
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/orkestra-core/runtime/" class="sidebar-link">
+                    Runtime
                   </a>
                 </li>
                 
@@ -283,6 +292,8 @@
               </div>
               <ul class="sidebar-section-pages" role="list">
                 
+                
+                
                 <li>
                   <a href="/docs/reference/cli/" class="sidebar-link">
                     Orkestra CLI Reference
@@ -290,56 +301,26 @@
                 </li>
                 
                 <li>
+                  <a href="/docs/reference/orkestra-notes/" class="sidebar-link">
+                    Orkestra Notes
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/reference/orkestra-registry/" class="sidebar-link">
+                    Orkestra Registry
+                  </a>
+                </li>
+                
+                <li>
                   <a href="/docs/reference/schema/" class="sidebar-link">
-                    Schema
+                    Schema Reference
                   </a>
                 </li>
                 
                 <li>
-                  <a href="/docs/reference/katalog-api/" class="sidebar-link">
-                    Orkestra Runtime API Reference
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/runtime/" class="sidebar-link">
-                    Runtime
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/katalog-schema-status/" class="sidebar-link">
-                    Katalog Schema — Status Block
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/metrics/" class="sidebar-link">
-                    Orkestra Metrics
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/mutation-schema/" class="sidebar-link">
-                    Mutation Schema
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/registry-schema/" class="sidebar-link">
-                    Registry Import Schema
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/shutdown/" class="sidebar-link">
-                    Shutdown
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/validation-schema/" class="sidebar-link">
-                    Validation Schema
+                  <a href="/docs/reference/typed-operators/" class="sidebar-link">
+                    Typed Operators
                   </a>
                 </li>
                 
@@ -363,11 +344,53 @@
           
           
           
-          <div class="sidebar-standalone">
-            <a href="/docs/security/" class="sidebar-standalone-link">
-              Security
-            </a>
-          </div>
+            
+            <div class="sidebar-section">
+              <div class="sidebar-section-header">
+                <a href="/docs/security/" class="sidebar-section-link">Security</a>
+                <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Security">
+                  <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </button>
+              </div>
+              <ul class="sidebar-section-pages" role="list" style="display:none">
+                
+                
+                
+                <li>
+                  <a href="/docs/security/admission/" class="sidebar-link">
+                    Admission webhooks
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/security/binaries/" class="sidebar-link">
+                    Binaries &amp; build tags
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/security/deletion-protection/" class="sidebar-link">
+                    Deletion protection
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/security/namespace-protection/" class="sidebar-link">
+                    Namespace protection
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/security/rbac/" class="sidebar-link">
+                    RBAC
+                  </a>
+                </li>
+                
+              </ul>
+            </div>
+          
         
       
         
@@ -385,6 +408,8 @@
                 </button>
               </div>
               <ul class="sidebar-section-pages" role="list" style="display:none">
+                
+                
                 
                 <li>
                   <a href="/docs/faqs/why-not-crds/" class="sidebar-link">
@@ -456,6 +481,17 @@
       <header class="docs-header">
         <h1 class="docs-title">Reference</h1>
         
+        <div class="docs-meta">
+          
+          <time datetime="2026-05-17" class="docs-date">
+            Updated May 17, 2026
+          </time>
+          
+
+          
+          <span class="docs-reading-time">1 min read</span>
+          
+        </div>
       </header>
 
       
@@ -555,155 +591,6 @@
       
 
       
-      
-      <nav class="docs-index-nav" aria-label="Section pages">
-        
-        
-        <a href="/docs/reference/cli/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Orkestra CLI Reference</span>
-            
-            <span class="docs-index-item-desc">The ork CLI manages the full lifecycle of an Orkestra operator — scaffolding, validation, templating, code generation, …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/schema/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Schema</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        
-        <a href="/docs/reference/cli/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Orkestra CLI Reference</span>
-            
-            <span class="docs-index-item-desc">The ork CLI manages the full lifecycle of an Orkestra operator — scaffolding, validation, templating, code generation, …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/schema/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Schema</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/katalog-api/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Orkestra Runtime API Reference</span>
-            
-            <span class="docs-index-item-desc">Orkestra Runtime API Reference The Orkestra operator exposes a small, stable HTTP API for inspecting CRDs, their …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/runtime/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Runtime</span>
-            
-            <span class="docs-index-item-desc">Runtime The Orkestra Runtime is the engine that executes Katalogs and Komposers.
-It handles CRD activation, dependency …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/katalog-schema-status/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Katalog Schema — Status Block</span>
-            
-            <span class="docs-index-item-desc">Katalog Schema — Status Block reconciler.status Declares how Orkestra manages the CR&rsquo;s /status subresource after …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/metrics/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Orkestra Metrics</span>
-            
-            <span class="docs-index-item-desc">Orkestra Metrics High‑signal, per‑CRD observability for declarative operators
-Orkestra exposes a focused set of …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/mutation-schema/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Mutation Schema</span>
-            
-            <span class="docs-index-item-desc">Mutation Schema Complete schema reference for reconciler.mutation in a Katalog CRD entry.
-reconciler.mutation …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/registry-schema/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Registry Import Schema</span>
-            
-            <span class="docs-index-item-desc">Registry Import Schema Complete schema reference for imports.registry entries in a Komposer.
-RegistryImport One entry in …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/shutdown/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Shutdown</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/validation-schema/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Validation Schema</span>
-            
-            <span class="docs-index-item-desc">Validation Schema Complete schema reference for reconciler.validation in a Katalog CRD entry.
-reconciler.validation …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-      </nav>
       
     </div>
   </article>
