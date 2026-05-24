@@ -4,148 +4,45 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"time"
 
 	"github.com/orkspace/orkestra/domain"
-	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-// ── Label management ──────────────────────────────────────────────────────
-// ensureManagedLabel adds the Orkestra managed label to the given object
-// if it is not already present with the correct value.
+// getLatestObject fetches the current state of the object directly from the
+// Kubernetes API server, bypassing any local informer cache.
 //
-// The managed label (`orkestra.orkspace.io/managed: "true"`) identifies
-// resources that Orkestra owns and controls. It is applied unconditionally
-// to every resource created or updated by Orkestra, including the main
-// custom resource and all child resources (Deployment, Service, ConfigMap, etc.).
+// It is used when label or annotation decisions depend on the latest cluster
+// state and cannot tolerate cache staleness (e.g., after a Katalog reload or
+// when reconciler configuration changes). The fresh object is returned as the
+// same concrete type PTR (e.g., *unstructured.Unstructured or a typed client).
 //
-// This label is used by the Orkestra ecosystem for:
-//   - Resource ownership tracking (e.g., garbage collection decisions)
-//   - Webhook selectors (e.g., mutation/validation scoping)
-//   - CLI and UI filtering of Orkestra-managed resources
+// Parameters:
+//   - ctx:        context for the API call
+//   - namespace:  namespace of the object (empty for cluster-scoped resources)
+//   - name:       name of the object
 //
-// The function patches the object's metadata.labels only when a change is
-// required. It returns an error if the API patch fails.
-//
-// Example:
-//
-//	After calling ensureManagedLabel on a Resource:
-//	  metadata:
-//	    labels:
-//	      orkestra.orkspace.io/managed: "true"
-func (r *GenericReconciler[PTR]) ensureManagedLabel(ctx context.Context, obj PTR) error {
-	labels := obj.GetLabels()
-	if labels == nil {
-		labels = map[string]string{}
+// Returns:
+//   - The freshly fetched object, already converted to PTR
+//   - An error if the API Get fails (e.g., resource not found, network issue)
+func (r *GenericReconciler[PTR]) getLatestObject(ctx context.Context, namespace, name string) (PTR, error) {
+	gvr := r.crd.GVR()
+	var unstructuredObj *unstructured.Unstructured
+	var err error
+
+	if namespace == "" {
+		unstructuredObj, err = r.kube.DynamicClient().Resource(gvr).Get(ctx, name, metav1.GetOptions{})
+	} else {
+		unstructuredObj, err = r.kube.DynamicClient().Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 	}
-
-	// Already present?
-	if v, ok := labels[orklabels.ManagedKey]; ok && v == orklabels.ManagedValue {
-		return nil
+	if err != nil {
+		return any(unstructuredObj).(PTR), err
 	}
-
-	// Add/overwrite the managed label
-	labels[orklabels.ManagedKey] = orklabels.ManagedValue
-
-	return r.kube.PatchLabels(ctx, obj, r.crd.GVR(), labels)
-}
-
-// ensureDeletionProtectionLabel adds the deletion‑protection label to the
-// given object when the Orkestra security feature is globally enabled.
-//
-// The label (`orkestra.io/deletion-protection: "true"`) marks a resource
-// as protected from accidental deletion. The deletion‑protection webhook
-// intercepts DELETE requests on resources with this label and denies them
-// unless the protection is explicitly disabled by the administrator.
-//
-// This function is called for every resource that Orkestra creates or
-// updates (including the main CR and all child resources) when:
-//   - security.deletionProtection.enabled is true in the Katalog
-//   - the resource does not already have the label set to "true"
-//
-// If deletion protection is disabled globally, this function does nothing.
-//
-// The label is only applied to resources that Orkestra directly manages.
-// Users may manually add the same label to any resource (even those not
-// created by Orkestra) to extend protection; the webhook will honour it.
-//
-// Example:
-//
-//	After calling ensureDeletionProtectionLabel on a Resource:
-//	  metadata:
-//	    labels:
-//	      orkestra.io/deletion-protection: "true"
-func (r *GenericReconciler[PTR]) ensureDeletionProtectionLabel(ctx context.Context, obj PTR) error {
-	if !r.kat.IsDeletionProtectionEnabled() {
-		return nil
-	}
-	labels := obj.GetLabels()
-	if labels == nil {
-		labels = map[string]string{}
-	}
-
-	// Already present?
-	if v, ok := labels[orklabels.DeletionProtectionLabel]; ok && v == "true" {
-		return nil
-	}
-
-	// Add/overwrite the deletio protection label
-	labels[orklabels.DeletionProtectionLabel] = "true"
-	return r.kube.PatchLabels(ctx, obj, r.crd.GVR(), labels)
-}
-
-// ── Annotation management ──────────────────────────────────────────────────────
-// ensureManagedAnnotations adds Orkestra's management tracking annotations to the
-// given object if they are missing.
-//
-// The managed-by annotation (`orkestra.orkspace.io/managed-by`) records the operator
-// name (e.g., the Katalog name or "orkestra-gateway") that controls this resource.
-// This is useful for debugging, auditing, and multi-operator environments where
-// different controllers may manage different resources.
-//
-// The managed-since annotation (`orkestra.orkspace.io/managed-since`) stores the
-// UTC timestamp when Orkestra first took ownership of the resource. It does not
-// change on subsequent updates, providing a reliable creation‑handover time.
-//
-// Both annotations are only set if they are absent or empty. Existing values are
-// never overwritten. The function patches the object's metadata.annotations only
-// when a change is necessary.
-//
-// Example:
-//
-//	After calling ensureManagedAnnotations:
-//	  metadata:
-//	    annotations:
-//	      orkestra.orkspace.io/managed-by: "platform-security"
-//	      orkestra.orkspace.io/managed-since: "2026-05-23T12:34:56Z"
-func (r *GenericReconciler[PTR]) ensureManagedAnnotations(ctx context.Context, obj PTR, operator string) error {
-	ann := obj.GetAnnotations()
-	if ann == nil {
-		ann = map[string]string{}
-	}
-
-	changed := false
-
-	// Ensure managed-by annotation
-	if v, ok := ann[orklabels.AnnotationManagedBy]; !ok || v == "" {
-		ann[orklabels.AnnotationManagedBy] = operator
-		changed = true
-	}
-
-	// Ensure managed-since annotation
-	if v, ok := ann[orklabels.AnnotationManagedSince]; !ok || v == "" {
-		ann[orklabels.AnnotationManagedSince] = time.Now().UTC().Format(time.RFC3339)
-		changed = true
-	}
-
-	// Nothing to patch
-	if !changed {
-		return nil
-	}
-
-	return r.kube.PatchAnnotations(ctx, obj, r.crd.GVR(), ann)
+	// Convert back to PTR
+	return any(unstructuredObj).(PTR), nil
 }
 
 // ── Finalizer management ──────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/logger"
 )
 
 // Manager handles label and annotation mutations on domain objects.
@@ -35,6 +36,7 @@ type Manager struct {
 	managedLabel            string
 	managedByAnnotation     string
 	managedSinceAnnotation  string
+	strictModeExemptLabel   string
 }
 
 // Config holds the configuration for the LabelManager.
@@ -54,6 +56,7 @@ func NewManager(cfg Config) *Manager {
 	}
 
 	mgr.deletionProtectionLabel = DeletionProtectionLabel
+	mgr.strictModeExemptLabel = StrictModeExemptKey
 	mgr.managedLabel = ManagedKey
 	mgr.managedByAnnotation = AnnotationManagedBy
 	mgr.managedSinceAnnotation = AnnotationManagedSince
@@ -115,30 +118,72 @@ func (m *Manager) EnsureManagedAnnotations(obj domain.Object, operatorName strin
 //
 // It returns true if the label was added or already present, false if the
 // feature is disabled (no action taken).
-func (m *Manager) EnsureDeletionProtectionLabel(obj domain.Object) bool {
-	if !m.deletionProtectionEnabled {
-		return false
-	}
+// EnsureDeletionProtectionLabel ensures the deletion‑protection label is present
+// when shouldHave is true, and absent when shouldHave is false.
+// Returns true if the labels were modified.
+func (m *Manager) EnsureDeletionProtectionLabel(obj domain.Object, shouldHave bool) bool {
 	labels := obj.GetLabels()
 	if labels == nil {
 		labels = map[string]string{}
 	}
-	if v, ok := labels[DeletionProtectionLabel]; ok && v == DeletionProtectionValue {
-		return true // already present
+
+	desiredValue := ""
+	if shouldHave {
+		desiredValue = DeletionProtectionValue
 	}
-	labels[DeletionProtectionLabel] = DeletionProtectionValue
+
+	currentValue := labels[DeletionProtectionLabel]
+	if currentValue == desiredValue {
+		return false
+	}
+
+	if desiredValue == "" {
+		delete(labels, DeletionProtectionLabel)
+	} else {
+		labels[DeletionProtectionLabel] = desiredValue
+	}
 	obj.SetLabels(labels)
 	return true
 }
 
-// contains checks if a string slice contains a given element.
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
+// EnsureStrictModeExemptLabel ensures the strict‑mode exemption label is present
+// when strict mode is disabled for this resource, and absent when strict mode is enabled.
+// Returns true if the labels were modified.
+func (m *Manager) EnsureStrictModeExemptLabel(obj domain.Object, strictModeEnabled bool) bool {
+	labels := obj.GetLabels()
+	if labels == nil {
+		labels = map[string]string{}
 	}
-	return false
+
+	desiredValue := ""
+	if !strictModeEnabled {
+		desiredValue = StrictModeExemptValue
+	}
+
+	currentValue := labels[StrictModeExemptKey]
+	if currentValue == desiredValue {
+		logger.Debug().
+			Str("resource", obj.GetName()).
+			Bool("strictModeEnabled", strictModeEnabled).
+			Str("current", currentValue).
+			Str("desired", desiredValue).
+			Msg("label: exemption label already correct")
+		return false // no change needed
+	}
+
+	if desiredValue == "" {
+		delete(labels, StrictModeExemptKey)
+		logger.Debug().
+			Str("resource", obj.GetName()).
+			Msg("label: removing exemption label")
+	} else {
+		labels[StrictModeExemptKey] = desiredValue
+		logger.Debug().
+			Str("resource", obj.GetName()).
+			Msg("label: adding exemption label")
+	}
+	obj.SetLabels(labels)
+	return true
 }
 
 // Getters
@@ -153,6 +198,10 @@ func (m *Manager) IsDeletionProtectionEnabled() bool {
 
 func (m *Manager) GetDeletionProtectionLabel() string {
 	return m.deletionProtectionLabel
+}
+
+func (m *Manager) GetStrictModeExemptLabel() string {
+	return m.strictModeExemptLabel
 }
 
 func (m *Manager) GetManagedLabel() string {

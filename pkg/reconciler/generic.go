@@ -359,6 +359,17 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 		DeletionProtectionEnabled: r.kat.IsDeletionProtectionEnabled(),
 	})
 
+	// Fetch the latest object from the API server before label management.
+	// Label decisions depend on the current Katalog configuration (which may have
+	// changed after the object was initially queued). Using a stale in‑memory object
+	// can cause incorrect label states – for example, a previously added exemption
+	// label may not be removed when strict mode is later enabled.
+	freshObj, err := r.getLatestObject(ctx, obj.GetNamespace(), obj.GetName())
+	if err != nil {
+		return err
+	}
+	obj = freshObj
+
 	// Ensure the `managed: true` label (identifies Orkestra ownership)
 	if labelMgr.EnsureManagedLabel(obj) {
 		if err := r.kube.PatchLabels(ctx, obj, r.crd.GVR(), obj.GetLabels()); err != nil {
@@ -374,7 +385,21 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	}
 
 	// Add deletion‑protection label when globally enabled (security)
-	if labelMgr.EnsureDeletionProtectionLabel(obj) {
+	shouldHaveProtection := r.kat.IsDeletionProtectionEnabled() && r.crd.ShouldProtectCRs()
+	if labelMgr.EnsureDeletionProtectionLabel(obj, shouldHaveProtection) {
+		if err := r.kube.PatchLabels(ctx, obj, r.crd.GVR(), obj.GetLabels()); err != nil {
+			return err
+		}
+	}
+
+	// Add strictMode exemption label based on global state (security)
+	effectiveStrict := r.crd.IsStrictDeletionProtection(r.kat.IsStrictModeEnabled())
+	logger.Debug().
+		Str("crd", r.crd.Name).
+		Str("resource", obj.GetName()).
+		Bool("effectiveStrict", effectiveStrict).
+		Msg("label: evaluating strict mode")
+	if labelMgr.EnsureStrictModeExemptLabel(obj, effectiveStrict) {
 		if err := r.kube.PatchLabels(ctx, obj, r.crd.GVR(), obj.GetLabels()); err != nil {
 			return err
 		}

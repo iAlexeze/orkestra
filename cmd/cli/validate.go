@@ -105,7 +105,7 @@ Examples:
 
 		// Print each CRD entry with enrichment info
 		for _, entry := range entries {
-			printCRDValidationLine(entry, k.IsDeletionProtectionEnabled())
+			printCRDValidationLine(entry, k.IsDeletionProtectionEnabled(), k.IsStrictModeEnabled())
 			fmt.Println()
 
 			if entry.IsBuiltIn {
