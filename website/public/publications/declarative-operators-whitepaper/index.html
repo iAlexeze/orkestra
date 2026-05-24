@@ -1,857 +1,289 @@
-<!DOCTYPE html>
-<html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8090&amp;path=livereload" data-no-instant defer></script>
-  <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
-
-<title>Declarative Operators: A New Model for Kubernetes Extensibility — Orkestra</title>
-
-<meta name="description" content="The declarative control plane for Kubernetes operators">
-<meta name="author" content="Orkestra">
-
-
-<meta property="og:type" content="article">
-<meta property="og:title" content="Declarative Operators: A New Model for Kubernetes Extensibility — Orkestra">
-<meta property="og:description" content="The declarative control plane for Kubernetes operators">
-<meta property="og:url" content="http://localhost:8090/publications/declarative-operators-whitepaper/">
-<meta property="og:site_name" content="Orkestra">
-
-
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Declarative Operators: A New Model for Kubernetes Extensibility — Orkestra">
-<meta name="twitter:description" content="The declarative control plane for Kubernetes operators">
-
-
-<link rel="icon" type="image/png" href="/img/fav.png">
-
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
-
-
-
-<link rel="stylesheet" href="/css/main.min.6ebc1f0e0c3fa5e1a512c5ff018759760f0892e8fddc3cc0ccd2d0eacc239ec4.css">
-
-
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@docsearch/css@3" crossorigin>
-
-
-
-<script>
-  (function() {
-    var saved = localStorage.getItem('theme');
-    
-    var theme = saved ? saved : 'dark';
-    document.documentElement.setAttribute('data-theme', theme);
-  })();
-</script>
-
-</head>
-<body class="page-publication-single">
-
-  <nav class="navbar" role="navigation" aria-label="Main navigation">
-  <div class="navbar-inner">
-    
-    <a href="/" class="navbar-logo" aria-label="Orkestra home">
-      <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="36" width="36">
-      <span class="logo-text">Orkestra</span>
-    </a>
-
-    
-    <ul class="navbar-links" role="list">
-      
-      <li>
-        <a href="/docs/getting-started/" class="navbar-link"
-          >
-          Docs
-          
-        </a>
-      </li>
-      
-      <li>
-        <a href="/docs/reference/" class="navbar-link"
-          >
-          Reference
-          
-        </a>
-      </li>
-      
-      <li>
-        <a href="/blog/" class="navbar-link"
-          >
-          Blog
-          
-        </a>
-      </li>
-      
-      <li>
-        <a href="/publications/" class="navbar-link"
-          >
-          Publications
-          
-        </a>
-      </li>
-      
-    </ul>
-
-    
-    <div class="navbar-controls">
-      
-      <a href="https://cc.orkestra.sh" class="btn-controlcenter" target="_blank" rel="noopener noreferrer" aria-label="Open Control Center">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
-        </svg>
-        Control Center
-        <span class="cc-live-dot" title="Live instance"></span>
-      </a>
-
-      
-      <a href="https://github.com/orkspace/orkestra" class="btn-github" target="_blank" rel="noopener noreferrer" aria-label="View on GitHub">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-          <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
-        </svg>
-        <span>GitHub</span>
-      </a>
-
-      
-      <button class="btn-theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
-        <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="5"/>
-          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-        </svg>
-        <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
-        </svg>
-      </button>
-
-      
-      <button class="btn-hamburger" id="mobile-menu-toggle" aria-label="Toggle menu" aria-expanded="false">
-        <span class="hamburger-bar"></span>
-        <span class="hamburger-bar"></span>
-        <span class="hamburger-bar"></span>
-      </button>
-    </div>
-  </div>
-
-  
-  <div class="navbar-mobile" id="mobile-menu" aria-hidden="true">
-    <ul role="list">
-      
-      <li>
-        <a href="/docs/getting-started/" class="navbar-mobile-link"
-          >
-          Docs
-        </a>
-      </li>
-      
-      <li>
-        <a href="/docs/reference/" class="navbar-mobile-link"
-          >
-          Reference
-        </a>
-      </li>
-      
-      <li>
-        <a href="/blog/" class="navbar-mobile-link"
-          >
-          Blog
-        </a>
-      </li>
-      
-      <li>
-        <a href="/publications/" class="navbar-mobile-link"
-          >
-          Publications
-        </a>
-      </li>
-      
-      <li class="navbar-mobile-divider"></li>
-      <li>
-        <a href="https://github.com/orkspace/orkestra" class="navbar-mobile-link" target="_blank" rel="noopener noreferrer">
-          GitHub
-        </a>
-      </li>
-      <li>
-        <a href="https://cc.orkestra.sh" class="navbar-mobile-link" target="_blank" rel="noopener noreferrer">
-          Control Center
-        </a>
-      </li>
-    </ul>
-  </div>
-</nav>
-
-
-  <main id="main-content" tabindex="-1">
-
-    
-    <header class="paper-header">
-      <div class="paper-header-inner">
-        <a href="/publications/" class="pub-back-link">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          Publications
-        </a>
-
-        <h1 class="paper-title">Declarative Operators: A New Model for Kubernetes Extensibility</h1>
-
-        
-
-        <div class="paper-meta">
-          
-          <span class="paper-meta-item">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            May 2026
-          </span>
-          
-          <span class="paper-meta-item">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            12 min read
-          </span>
-          
-        </div>
-
-        
-      </div>
-    </header>
-
-    
-    <div class="paper-layout">
-      <article class="paper-body prose">
-        <p><em>Orkestra Project — March 2026</em></p>
-<hr>
-<h2 id="abstract">Abstract</h2>
-<p>Kubernetes operators encode domain knowledge as reconciliation logic. Every
+<!doctype html><html lang=en-us data-theme><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta http-equiv=X-UA-Compatible content="IE=edge"><title>Declarative Operators: A New Model for Kubernetes Extensibility — Orkestra</title>
+<meta name=description content="The declarative control plane for Kubernetes operators"><meta name=author content="Orkestra"><meta property="og:type" content="article"><meta property="og:title" content="Declarative Operators: A New Model for Kubernetes Extensibility — Orkestra"><meta property="og:description" content="The declarative control plane for Kubernetes operators"><meta property="og:url" content="https://orkestra.sh/publications/declarative-operators-whitepaper/"><meta property="og:site_name" content="Orkestra"><meta name=twitter:card content="summary_large_image"><meta name=twitter:title content="Declarative Operators: A New Model for Kubernetes Extensibility — Orkestra"><meta name=twitter:description content="The declarative control plane for Kubernetes operators"><link rel=icon type=image/png href=/img/fav.png><link rel=preconnect href=https://fonts.googleapis.com><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel=stylesheet><link rel=stylesheet href=/css/main.min.482d2685c0c52aa91980a57370f29e8711b1d60438ac5bca43a09566525a6a8f.css><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/@docsearch/css@3 crossorigin><script>(function(){var e=localStorage.getItem("theme"),t=e||"dark";document.documentElement.setAttribute("data-theme",t)})()</script></head><body class=page-publication-single><nav class=navbar role=navigation aria-label="Main navigation"><div class=navbar-inner><a href=/ class=navbar-logo aria-label="Orkestra home"><img src=/img/logo.png alt=Orkestra class=logo-img height=36 width=36>
+<span class=logo-text>Orkestra</span></a><ul class=navbar-links role=list><li><a href=/docs/getting-started/ class=navbar-link>Docs</a></li><li><a href=/docs/reference/ class=navbar-link>Reference</a></li><li><a href=/blog/ class=navbar-link>Blog</a></li><li><a href=/publications/ class=navbar-link>Publications</a></li></ul><div class=navbar-controls><a href=https://cc.orkestra.sh class=btn-controlcenter target=_blank rel="noopener noreferrer" aria-label="Open Control Center"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentcolor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+Control Center
+<span class=cc-live-dot title="Live instance"></span>
+</a><a href=https://github.com/orkspace/orkestra class=btn-github target=_blank rel="noopener noreferrer" aria-label="View on GitHub"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentcolor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483.0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951.0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65.0.0.84-.27 2.75 1.026A9.564 9.564.0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688.0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855.0 1.338-.012 2.419-.012 2.747.0.268.18.58.688.482A10.019 10.019.0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+<span>GitHub</span>
+</a><button class=btn-theme-toggle id=theme-toggle aria-label="Toggle dark mode" title="Toggle dark mode">
+<svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentcolor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+<svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentcolor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+</button>
+<button class=btn-hamburger id=mobile-menu-toggle aria-label="Toggle menu" aria-expanded=false>
+<span class=hamburger-bar></span>
+<span class=hamburger-bar></span>
+<span class=hamburger-bar></span></button></div></div><div class=navbar-mobile id=mobile-menu aria-hidden=true><ul role=list><li><a href=/docs/getting-started/ class=navbar-mobile-link>Docs</a></li><li><a href=/docs/reference/ class=navbar-mobile-link>Reference</a></li><li><a href=/blog/ class=navbar-mobile-link>Blog</a></li><li><a href=/publications/ class=navbar-mobile-link>Publications</a></li><li class=navbar-mobile-divider></li><li><a href=https://github.com/orkspace/orkestra class=navbar-mobile-link target=_blank rel="noopener noreferrer">GitHub</a></li><li><a href=https://cc.orkestra.sh class=navbar-mobile-link target=_blank rel="noopener noreferrer">Control Center</a></li></ul></div></nav><main id=main-content tabindex=-1><header class=paper-header><div class=paper-header-inner><a href=/publications/ class=pub-back-link><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentcolor" stroke-width="2"><path d="M19 12H5m7 7-7-7 7-7"/></svg>
+Publications</a><h1 class=paper-title>Declarative Operators: A New Model for Kubernetes Extensibility</h1><div class=paper-meta><span class=paper-meta-item><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentcolor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+May 2026
+</span><span class=paper-meta-item><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentcolor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+12 min read</span></div></div></header><div class=paper-layout><article class="paper-body prose"><p><em>Orkestra Project — March 2026</em></p><hr><h2 id=abstract>Abstract</h2><p>Kubernetes operators encode domain knowledge as reconciliation logic. Every
 major operator framework to date requires this logic to be written in a
 programming language, compiled into a binary, and deployed as a separate
 long-running process — one per CRD. The result, at scale, is operator sprawl:
 dozens of binaries each with independent lifecycle, observability, and
-resource consumption.</p>
-<p>This paper presents a different model. We argue that the operator pattern
+resource consumption.</p><p>This paper presents a different model. We argue that the operator pattern
 is fundamentally correct, but its implementation has been conflated with its
 mechanism. The pattern requires one reconciler per CRD with proper isolation.
 It does not require one binary per CRD. When a shared runtime provides the
 isolation, each CRD becomes a complete, independent operator — with its own
 informer, worker pool, workqueue, health endpoint, and metrics — while the
-operational overhead of running them collapses to a single process.</p>
-<p>We describe Orkestra, a runtime for declarative operators built on this
+operational overhead of running them collapses to a single process.</p><p>We describe Orkestra, a runtime for declarative operators built on this
 principle. Users declare CRDs and their reconcile behavior in a YAML Katalog.
 The runtime interprets these declarations, provides full operator lifecycle,
 and composes multiple Katalogs through a Komposer model. We demonstrate that
 this approach eliminates code generation, build pipelines, and per-operator
 deployments while preserving and strengthening the isolation properties that
-operator frameworks seek.</p>
-<hr>
-<h2 id="1-the-operator-pattern-and-its-costs">1. The Operator Pattern and Its Costs</h2>
-<h3 id="11-the-original-model">1.1 The Original Model</h3>
-<p>The operator pattern, introduced in 2016, proposed encoding operational
+operator frameworks seek.</p><hr><h2 id=1-the-operator-pattern-and-its-costs>1. The Operator Pattern and Its Costs</h2><h3 id=11-the-original-model>1.1 The Original Model</h3><p>The operator pattern, introduced in 2016, proposed encoding operational
 knowledge as a reconciliation loop: a controller that watches a custom
 resource and continuously drives the cluster toward the desired state declared
 in it. The pattern was correct. Its implementation required intimate
 familiarity with client-go internals — informers, workqueues, REST mappers,
 and scheme registration. The business logic was a small fraction of the total
-code. The remainder was identical across every operator ever written.</p>
-<h3 id="12-frameworks-address-boilerplate">1.2 Frameworks Address Boilerplate</h3>
-<p>Kubebuilder, Operator SDK, and controller-runtime addressed the boilerplate
+code. The remainder was identical across every operator ever written.</p><h3 id=12-frameworks-address-boilerplate>1.2 Frameworks Address Boilerplate</h3><p>Kubebuilder, Operator SDK, and controller-runtime addressed the boilerplate
 by generating the common parts. The operator developer could focus on the
 reconcile function rather than its surrounding infrastructure. This was
-genuine progress.</p>
-<p>The cost did not disappear. The generated project still required Go, a build
+genuine progress.</p><p>The cost did not disappear. The generated project still required Go, a build
 pipeline, an image registry, and a deployment manifest. Adding a new CRD
 meant adding a new Go type, running code generation, rebuilding the binary,
 pushing the image, and rolling the deployment. The development loop was
-compressed but not eliminated.</p>
-<p>More significantly, the framework design encoded an assumption that would
-compound over time: one operator per CRD, one binary per operator.</p>
-<h3 id="13-the-operator-sprawl-problem">1.3 The Operator Sprawl Problem</h3>
-<p>The one-binary-per-CRD assumption produces predictable operational overhead
+compressed but not eliminated.</p><p>More significantly, the framework design encoded an assumption that would
+compound over time: one operator per CRD, one binary per operator.</p><h3 id=13-the-operator-sprawl-problem>1.3 The Operator Sprawl Problem</h3><p>The one-binary-per-CRD assumption produces predictable operational overhead
 at scale. A production cluster running Prometheus, Cert Manager, External
 Secrets, an Ingress controller, a service mesh, and a collection of internal
 CRDs routinely runs twenty to fifty operator processes. Each consumes memory
 and CPU even when idle. Each maintains its own informer cache, duplicating
 watch traffic against the API server. Each has its own RBAC configuration,
 its own metrics endpoint (if any), its own upgrade cadence, and its own
-health story.</p>
-<p>Platform engineers managing these clusters do not have one observability
+health story.</p><p>Platform engineers managing these clusters do not have one observability
 problem. They have fifty. Understanding why an application failed requires
 consulting multiple dashboards, multiple log streams, multiple health
 endpoints — each with its own format, its own conventions, and its own
-operational vocabulary.</p>
-<p>This is operator sprawl. It is not a consequence of the operator pattern.
-It is a consequence of the assumption that operator equals binary.</p>
-<hr>
-<h2 id="2-reframing-the-super-operator-model">2. Reframing: The Super-Operator Model</h2>
-<p>The Kubernetes community has long held that the correct design is one operator
+operational vocabulary.</p><p>This is operator sprawl. It is not a consequence of the operator pattern.
+It is a consequence of the assumption that operator equals binary.</p><hr><h2 id=2-reframing-the-super-operator-model>2. Reframing: The Super-Operator Model</h2><p>The Kubernetes community has long held that the correct design is one operator
 per CRD. This paper agrees — and argues that Orkestra fulfills this principle
-more completely than previous frameworks.</p>
-<p>The confusion lies in what &ldquo;one operator&rdquo; means. In traditional frameworks,
+more completely than previous frameworks.</p><p>The confusion lies in what &ldquo;one operator&rdquo; means. In traditional frameworks,
 it means one process, one binary, one deployment. The per-CRD isolation is
 an architectural intention, but it is implemented at the process boundary —
-not within the runtime.</p>
-<p>Orkestra makes the isolation explicit and structural. Each CRD in Orkestra
-receives its own isolated operator stack:</p>
-<ul>
-<li><strong>Informer</strong> — watches exactly one GVK with its own resync interval</li>
-<li><strong>Workqueue</strong> — independent depth, backoff, and rate limiting</li>
-<li><strong>Worker pool</strong> — dedicated goroutines; no other CRD can consume them</li>
-<li><strong>Reconciler</strong> — interprets this CRD&rsquo;s templates and hooks only</li>
-<li><strong>Health endpoint</strong> — <code>/katalog/{crd}/health</code> per CRD</li>
-<li><strong>Metrics</strong> — robust Prometheus metrics, all labeled by GVK</li>
-<li><strong>Control Center</strong> — Real-time visibility dashboard by default</li>
-<li><strong>Failure domain</strong> — a panic in one reconciler is recovered; others continue</li>
-</ul>
-<p>These components are hosted by a shared runtime that provides the
+not within the runtime.</p><p>Orkestra makes the isolation explicit and structural. Each CRD in Orkestra
+receives its own isolated operator stack:</p><ul><li><strong>Informer</strong> — watches exactly one GVK with its own resync interval</li><li><strong>Workqueue</strong> — independent depth, backoff, and rate limiting</li><li><strong>Worker pool</strong> — dedicated goroutines; no other CRD can consume them</li><li><strong>Reconciler</strong> — interprets this CRD&rsquo;s templates and hooks only</li><li><strong>Health endpoint</strong> — <code>/katalog/{crd}/health</code> per CRD</li><li><strong>Metrics</strong> — robust Prometheus metrics, all labeled by GVK</li><li><strong>Control Center</strong> — Real-time visibility dashboard by default</li><li><strong>Failure domain</strong> — a panic in one reconciler is recovered; others continue</li></ul><p>These components are hosted by a shared runtime that provides the
 infrastructure — API server connections, leader election, dependency ordering,
 the informer factory, the queue registry. The runtime is infrastructure. The
-operator stack per CRD is the tenant.</p>
-<p>This is the super-operator model: each CRD becomes a complete, production-grade
+operator stack per CRD is the tenant.</p><p>This is the super-operator model: each CRD becomes a complete, production-grade
 operator. They share infrastructure the way microservices share a Kubernetes
-cluster — not by merging their logic, but by running on common platforms.</p>
-<hr>
-<h2 id="3-orkestra">3. Orkestra</h2>
-<h3 id="31-the-katalog">3.1 The Katalog</h3>
-<p>A Katalog is a YAML document that declares one or more CRDs and how they
-should be reconciled. It is the unit of operator definition in Orkestra.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Katalog
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: website-operator
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">website</span>:
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">workers</span>: <span style="color:#bd93f9">3</span>
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">resync</span>: 30s
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">crdFile</span>: ./crd.yaml
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">crFiles</span>:
-</span></span><span style="display:flex;"><span>        - ./cr.yaml
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">operatorBox</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">onCreate</span>:
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">deployments</span>:
-</span></span><span style="display:flex;"><span>            - <span style="color:#ff79c6">image</span>: <span style="color:#f1fa8c">&#34;{{ .spec.image }}&#34;</span>
-</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">replicas</span>: <span style="color:#f1fa8c">&#34;{{ .spec.replicas }}&#34;</span>
-</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">services</span>:
-</span></span><span style="display:flex;"><span>            - <span style="color:#ff79c6">port</span>: <span style="color:#f1fa8c">&#34;80&#34;</span>
-</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">targetPort</span>: <span style="color:#f1fa8c">&#34;{{ .spec.port }}&#34;</span>
-</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
+cluster — not by merging their logic, but by running on common platforms.</p><hr><h2 id=3-orkestra>3. Orkestra</h2><h3 id=31-the-katalog>3.1 The Katalog</h3><p>A Katalog is a YAML document that declares one or more CRDs and how they
+should be reconciled. It is the unit of operator definition in Orkestra.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=display:flex><span><span style=color:#ff79c6>apiVersion</span>: orkestra.orkspace.io/v1
+</span></span><span style=display:flex><span><span style=color:#ff79c6>kind</span>: Katalog
+</span></span><span style=display:flex><span><span style=color:#ff79c6>metadata</span>:
+</span></span><span style=display:flex><span>  <span style=color:#ff79c6>name</span>: website-operator
+</span></span><span style=display:flex><span><span style=color:#ff79c6>spec</span>:
+</span></span><span style=display:flex><span>  <span style=color:#ff79c6>crds</span>:
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>website</span>:
+</span></span><span style=display:flex><span>      <span style=color:#ff79c6>workers</span>: <span style=color:#bd93f9>3</span>
+</span></span><span style=display:flex><span>      <span style=color:#ff79c6>resync</span>: 30s
+</span></span><span style=display:flex><span>      <span style=color:#ff79c6>crdFile</span>: ./crd.yaml
+</span></span><span style=display:flex><span>      <span style=color:#ff79c6>crFiles</span>:
+</span></span><span style=display:flex><span>        - ./cr.yaml
+</span></span><span style=display:flex><span>      <span style=color:#ff79c6>operatorBox</span>:
+</span></span><span style=display:flex><span>        <span style=color:#ff79c6>default</span>: <span style=color:#ff79c6>true</span>
+</span></span><span style=display:flex><span>        <span style=color:#ff79c6>onCreate</span>:
+</span></span><span style=display:flex><span>          <span style=color:#ff79c6>deployments</span>:
+</span></span><span style=display:flex><span>            - <span style=color:#ff79c6>image</span>: <span style=color:#f1fa8c>&#34;{{ .spec.image }}&#34;</span>
+</span></span><span style=display:flex><span>              <span style=color:#ff79c6>replicas</span>: <span style=color:#f1fa8c>&#34;{{ .spec.replicas }}&#34;</span>
+</span></span><span style=display:flex><span>              <span style=color:#ff79c6>reconcile</span>: <span style=color:#ff79c6>true</span>
+</span></span><span style=display:flex><span>          <span style=color:#ff79c6>services</span>:
+</span></span><span style=display:flex><span>            - <span style=color:#ff79c6>port</span>: <span style=color:#f1fa8c>&#34;80&#34;</span>
+</span></span><span style=display:flex><span>              <span style=color:#ff79c6>targetPort</span>: <span style=color:#f1fa8c>&#34;{{ .spec.port }}&#34;</span>
+</span></span><span style=display:flex><span>              <span style=color:#ff79c6>reconcile</span>: <span style=color:#ff79c6>true</span>
 </span></span></code></pre></div><p>This is a complete operator declaration. <code>ork run</code>
 starts the runtime. Every <code>Website</code> CR triggers a reconcile that creates
 and drift-corrects a Deployment and Service. Deletion cascades via owner
-references. Finalizers ensure cleanup completes before CR removal.</p>
-<p>The field <code>reconcile: true</code> on each resource means it is also corrected on
+references. Finalizers ensure cleanup completes before CR removal.</p><p>The field <code>reconcile: true</code> on each resource means it is also corrected on
 every reconcile cycle — not just created. Drift is detected and corrected
-without additional configuration.</p>
-<h3 id="32-the-dynamic-client-model">3.2 The Dynamic Client Model</h3>
-<p>Orkestra operates on unstructured CRDs by default — the same
+without additional configuration.</p><h3 id=32-the-dynamic-client-model>3.2 The Dynamic Client Model</h3><p>Orkestra operates on unstructured CRDs by default — the same
 <code>*unstructured.Unstructured</code> representation Kubernetes uses internally.
 <code>crdFile</code> points to the CRD you maintain; Orkestra reads the group, version,
 kind, and plural directly from it at startup. Typed Go hooks that require
 concrete type assertions can declare <code>apiTypes</code> explicitly, but the common
-case needs none. This distinction matters for three reasons.</p>
-<p>First, it eliminates the code generation step for the common case. The
+case needs none. This distinction matters for three reasons.</p><p>First, it eliminates the code generation step for the common case. The
 cluster already holds the CRD schema. Orkestra reads it at startup via the
-discovery API. The user does not need to replicate it in Go structs.</p>
-<p>Second, it enables watching any CRD — including ones the operator does not
+discovery API. The user does not need to replicate it in Go structs.</p><p>Second, it enables watching any CRD — including ones the operator does not
 own. A Katalog entry with <code>kind: Deployment</code> and no <code>apiTypes.location</code> is
 sufficient for Orkestra to watch all Deployments in the cluster. The cluster
-knows the schema. Orkestra asks for it.</p>
-<p>Third, it is the mechanism that makes multi-version CRDs tractable. Each
+knows the schema. Orkestra asks for it.</p><p>Third, it is the mechanism that makes multi-version CRDs tractable. Each
 version of a CRD is registered as a separate Katalog entry. Each version
 gets its own complete operator stack. The conversion logic is declared
-alongside the reconcile logic, interpreted by the same template resolver.</p>
-<h3 id="33-the-template-resolver">3.3 The Template Resolver</h3>
-<p>Orkestra&rsquo;s template resolver evaluates Go <code>text/template</code> expressions
+alongside the reconcile logic, interpreted by the same template resolver.</p><h3 id=33-the-template-resolver>3.3 The Template Resolver</h3><p>Orkestra&rsquo;s template resolver evaluates Go <code>text/template</code> expressions
 against the live CR object at reconcile time. This is the mechanism
-through which declarative templates become Kubernetes API calls.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">deployments</span>:
-</span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}&#34;</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">image</span>: <span style="color:#f1fa8c">&#34;{{ .spec.image }}&#34;</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">replicas</span>: <span style="color:#f1fa8c">&#34;{{ .spec.replicas }}&#34;</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
+through which declarative templates become Kubernetes API calls.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=display:flex><span><span style=color:#ff79c6>deployments</span>:
+</span></span><span style=display:flex><span>  - <span style=color:#ff79c6>name</span>: <span style=color:#f1fa8c>&#34;{{ .metadata.name }}&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>image</span>: <span style=color:#f1fa8c>&#34;{{ .spec.image }}&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>replicas</span>: <span style=color:#f1fa8c>&#34;{{ .spec.replicas }}&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>reconcile</span>: <span style=color:#ff79c6>true</span>
 </span></span></code></pre></div><p>The resolver resolves each field against the CR&rsquo;s unstructured map before
 calling the OrkestraRegistry. The OrkestraRegistry handles the Kubernetes
 API calls — create, update, delete, owner references, idempotency — for
 each resource type. Adding a new resource type to the registry is a single
-file addition.</p>
-<h3 id="34-dependency-ordering">3.4 Dependency Ordering</h3>
-<p>CRDs can declare dependencies with an explicit condition:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">crds</span>:
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">project</span>:
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">workers</span>: <span style="color:#bd93f9">3</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">namespace</span>:
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">dependsOn</span>:
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">project</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">condition</span>: started
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">application</span>:
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">dependsOn</span>:
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">project</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">condition</span>: healthy
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">namespace</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">condition</span>: healthy
+file addition.</p><h3 id=34-dependency-ordering>3.4 Dependency Ordering</h3><p>CRDs can declare dependencies with an explicit condition:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=display:flex><span><span style=color:#ff79c6>crds</span>:
+</span></span><span style=display:flex><span>  <span style=color:#ff79c6>project</span>:
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>workers</span>: <span style=color:#bd93f9>3</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#ff79c6>namespace</span>:
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>dependsOn</span>:
+</span></span><span style=display:flex><span>      <span style=color:#ff79c6>project</span>:
+</span></span><span style=display:flex><span>        <span style=color:#ff79c6>condition</span>: started
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#ff79c6>application</span>:
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>dependsOn</span>:
+</span></span><span style=display:flex><span>      <span style=color:#ff79c6>project</span>:
+</span></span><span style=display:flex><span>        <span style=color:#ff79c6>condition</span>: healthy
+</span></span><span style=display:flex><span>      <span style=color:#ff79c6>namespace</span>:
+</span></span><span style=display:flex><span>        <span style=color:#ff79c6>condition</span>: healthy
 </span></span></code></pre></div><p>Two conditions are available. <code>started</code> gates startup — the upstream CRD&rsquo;s
 workers have started and it is processing events, but it may not yet have
 reconciled any CRs successfully. <code>healthy</code> is stricter: the upstream must
 have completed at least one successful reconcile. Until that threshold is
 crossed, the Control Center shows a dependency issue and the dependent CRD&rsquo;s
-workers do not start.</p>
-<p><code>started</code> is the right choice when the downstream operator can tolerate
+workers do not start.</p><p><code>started</code> is the right choice when the downstream operator can tolerate
 upstream CRs being in an initial state. <code>healthy</code> is the right choice when
 the downstream operator reads from the upstream&rsquo;s status — if the upstream
-has not reconciled, there is nothing to read.</p>
-<p>Orkestra computes the topological order from the dependency graph and starts
+has not reconciled, there is nothing to read.</p><p>Orkestra computes the topological order from the dependency graph and starts
 CRDs in that order. Missing CRDs — declared but not yet installed in the
-cluster — are retried in the background without blocking healthy CRDs.</p>
-<p>This capability is structurally impossible with separate operators. Separate
+cluster — are retried in the background without blocking healthy CRDs.</p><p>This capability is structurally impossible with separate operators. Separate
 processes have no coordination mechanism. Orkestra provides it as a declared
-property of the Katalog.</p>
-<p>Shutdown runs in reverse dependency order. No partial reconciliations. No
-orphaned resources.</p>
-<h3 id="35-the-komposer">3.5 The Komposer</h3>
-<p>A Komposer composes Katalogs from multiple sources into one runtime:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: platform-komposer
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
-</span></span><span style="display:flex;"><span>    - ./katalogs/website.yaml
-</span></span><span style="display:flex;"><span>    - https://platform.myorg.io/crds/database.yaml
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://private.myorg.io/crds/internal.yaml
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">auth</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">type</span>: bearer
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">fromEnv</span>: PLATFORM_TOKEN
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">helm</span>:
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">repo</span>: https://charts.myorg.io
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">chart</span>: platform-crds
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">version</span>: <span style="color:#bd93f9">2.1.0</span>
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">registry</span>:
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: oci://ghcr.io/orkspace/registry/application:v1.4.0
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">oci</span>: <span style="color:#ff79c6">true</span>
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
-</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Inline override — wins on name conflict with any source</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">application</span>:
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">workers</span>: <span style="color:#bd93f9">8</span>
+property of the Katalog.</p><p>Shutdown runs in reverse dependency order. No partial reconciliations. No
+orphaned resources.</p><h3 id=35-the-komposer>3.5 The Komposer</h3><p>A Komposer composes Katalogs from multiple sources into one runtime:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=display:flex><span><span style=color:#ff79c6>apiVersion</span>: orkestra.orkspace.io/v1
+</span></span><span style=display:flex><span><span style=color:#ff79c6>kind</span>: Komposer
+</span></span><span style=display:flex><span><span style=color:#ff79c6>metadata</span>:
+</span></span><span style=display:flex><span>  <span style=color:#ff79c6>name</span>: platform-komposer
+</span></span><span style=display:flex><span><span style=color:#ff79c6>imports</span>:
+</span></span><span style=display:flex><span>  <span style=color:#ff79c6>files</span>:
+</span></span><span style=display:flex><span>    - ./katalogs/website.yaml
+</span></span><span style=display:flex><span>    - https://platform.myorg.io/crds/database.yaml
+</span></span><span style=display:flex><span>    - <span style=color:#ff79c6>url</span>: https://private.myorg.io/crds/internal.yaml
+</span></span><span style=display:flex><span>      <span style=color:#ff79c6>auth</span>:
+</span></span><span style=display:flex><span>        <span style=color:#ff79c6>type</span>: bearer
+</span></span><span style=display:flex><span>        <span style=color:#ff79c6>fromEnv</span>: PLATFORM_TOKEN
+</span></span><span style=display:flex><span>  <span style=color:#ff79c6>helm</span>:
+</span></span><span style=display:flex><span>    - <span style=color:#ff79c6>repo</span>: https://charts.myorg.io
+</span></span><span style=display:flex><span>      <span style=color:#ff79c6>chart</span>: platform-crds
+</span></span><span style=display:flex><span>      <span style=color:#ff79c6>version</span>: <span style=color:#bd93f9>2.1.0</span>
+</span></span><span style=display:flex><span>  <span style=color:#ff79c6>registry</span>:
+</span></span><span style=display:flex><span>    - <span style=color:#ff79c6>url</span>: oci://ghcr.io/orkspace/registry/application:v1.4.0
+</span></span><span style=display:flex><span>      <span style=color:#ff79c6>oci</span>: <span style=color:#ff79c6>true</span>
+</span></span><span style=display:flex><span><span style=color:#ff79c6>spec</span>:
+</span></span><span style=display:flex><span>  <span style=color:#ff79c6>crds</span>:
+</span></span><span style=display:flex><span>    <span style=color:#6272a4># Inline override — wins on name conflict with any source</span>
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>application</span>:
+</span></span><span style=display:flex><span>      <span style=color:#ff79c6>workers</span>: <span style=color:#bd93f9>8</span>
 </span></span></code></pre></div><p>Orkestra&rsquo;s in-built merger resolves all sources, deduplicates by CRD name, and produces one
 validated configuration. Inline <code>spec.crds</code> are merged last and override
 source definitions — the mechanism for environment-specific configuration
-without forking source Katalogs.</p>
-<p>This is the pattern that Helm brought to deployment manifests, applied to
+without forking source Katalogs.</p><p>This is the pattern that Helm brought to deployment manifests, applied to
 operator behavior. Platform teams publish Katalogs. Application teams
-compose and selectively override.</p>
-<h3 id="36-observability">3.6 Observability</h3>
-<p>Every CRD managed by Orkestra automatically exposes:</p>
-<pre tabindex="0"><code>GET /katalog                   All CRDs — health, dependency graph, stats
+compose and selectively override.</p><h3 id=36-observability>3.6 Observability</h3><p>Every CRD managed by Orkestra automatically exposes:</p><pre tabindex=0><code>GET /katalog                   All CRDs — health, dependency graph, stats
 GET /katalog/{crd}             Single CRD — config, reconcile stats
 GET /katalog/{crd}/health      200 healthy / 503 degraded
 GET /metrics                   Prometheus metrics for all CRDs
-</code></pre><p>Five metrics, all per-CRD, all labeled by full GVK:</p>
-<pre tabindex="0"><code>controller_reconcile_total{crd, result}
+</code></pre><p>Five metrics, all per-CRD, all labeled by full GVK:</p><pre tabindex=0><code>controller_reconcile_total{crd, result}
 controller_reconcile_duration_seconds{crd}
 controller_queue_depth{crd}
 controller_workers_active{crd}
 controller_resource_count{crd}
 </code></pre><p>This unified observability is a structural consequence of the single-runtime
-model. Separate operators cannot provide it.</p>
-<hr>
-<h2 id="4-multi-version-crds-declarative-conversion">4. Multi-Version CRDs: Declarative Conversion</h2>
-<h3 id="41-the-standard-approach">4.1 The Standard Approach</h3>
-<p>Kubernetes CRDs support multiple API versions through a conversion webhook.
+model. Separate operators cannot provide it.</p><hr><h2 id=4-multi-version-crds-declarative-conversion>4. Multi-Version CRDs: Declarative Conversion</h2><h3 id=41-the-standard-approach>4.1 The Standard Approach</h3><p>Kubernetes CRDs support multiple API versions through a conversion webhook.
 When a client requests a version different from the storage version, the API
 server sends a <code>ConversionReview</code> request to the webhook. The webhook must
-return the converted objects.</p>
-<p>The standard implementation requires writing conversion functions in Go,
+return the converted objects.</p><p>The standard implementation requires writing conversion functions in Go,
 deploying a separate webhook server, managing TLS certificates, configuring
 the CRD to point to the webhook, and maintaining conversion logic as versions
 evolve. For a change as simple as adding a field, this infrastructure overhead
-frequently exceeds the development cost of the change itself.</p>
-<h3 id="42-conversion-as-a-consequence-of-the-super-operator-model">4.2 Conversion as a Consequence of the Super-Operator Model</h3>
-<p>The super-operator model makes declarative conversion architecturally natural.
+frequently exceeds the development cost of the change itself.</p><h3 id=42-conversion-as-a-consequence-of-the-super-operator-model>4.2 Conversion as a Consequence of the Super-Operator Model</h3><p>The super-operator model makes declarative conversion architecturally natural.
 Each version of a CRD is a separate Katalog entry with its own complete
 operator stack — its own informer watching that specific version, its own
 workers, its own reconciler. The version boundary is a first-class concept
-in the runtime.</p>
-<p>Conversion rules are declared alongside reconcile templates using the same
-template resolver:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span>- <span style="color:#ff79c6">name</span>: website-v1
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">apiTypes</span>:
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">group</span>: demo.orkestra.io
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">version</span>: v1
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">kind</span>: Website
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">conversion</span>:
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">storageVersion</span>: v1
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">paths</span>:
-</span></span><span style="display:flex;"><span>      - <span style="color:#ff79c6">from</span>: v1alpha1
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">to</span>: v1
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">spec</span>:
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">image</span>: <span style="color:#f1fa8c">&#34;{{ .spec.image }}&#34;</span>
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">replicas</span>: <span style="color:#f1fa8c">&#34;{{ .spec.replicas }}&#34;</span>
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">seo</span>:
-</span></span><span style="display:flex;"><span>            <span style="color:#ff79c6">enabled</span>: <span style="color:#ff79c6">false</span>   <span style="color:#6272a4"># default — v1alpha1 has no seo field</span>
-</span></span><span style="display:flex;"><span>      - <span style="color:#ff79c6">from</span>: v1
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">to</span>: v1alpha1
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">spec</span>:
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">image</span>: <span style="color:#f1fa8c">&#34;{{ .spec.image }}&#34;</span>
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">replicas</span>: <span style="color:#f1fa8c">&#34;{{ .spec.replicas }}&#34;</span>
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">theme</span>: <span style="color:#f1fa8c">&#34;default&#34;</span>   <span style="color:#6272a4"># default — v1 has no theme field</span>
+in the runtime.</p><p>Conversion rules are declared alongside reconcile templates using the same
+template resolver:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=display:flex><span>- <span style=color:#ff79c6>name</span>: website-v1
+</span></span><span style=display:flex><span>  <span style=color:#ff79c6>apiTypes</span>:
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>group</span>: demo.orkestra.io
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>version</span>: v1
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>kind</span>: Website
+</span></span><span style=display:flex><span>  <span style=color:#ff79c6>conversion</span>:
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>storageVersion</span>: v1
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>paths</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ff79c6>from</span>: v1alpha1
+</span></span><span style=display:flex><span>        <span style=color:#ff79c6>to</span>: v1
+</span></span><span style=display:flex><span>        <span style=color:#ff79c6>spec</span>:
+</span></span><span style=display:flex><span>          <span style=color:#ff79c6>image</span>: <span style=color:#f1fa8c>&#34;{{ .spec.image }}&#34;</span>
+</span></span><span style=display:flex><span>          <span style=color:#ff79c6>replicas</span>: <span style=color:#f1fa8c>&#34;{{ .spec.replicas }}&#34;</span>
+</span></span><span style=display:flex><span>          <span style=color:#ff79c6>seo</span>:
+</span></span><span style=display:flex><span>            <span style=color:#ff79c6>enabled</span>: <span style=color:#ff79c6>false</span>   <span style=color:#6272a4># default — v1alpha1 has no seo field</span>
+</span></span><span style=display:flex><span>      - <span style=color:#ff79c6>from</span>: v1
+</span></span><span style=display:flex><span>        <span style=color:#ff79c6>to</span>: v1alpha1
+</span></span><span style=display:flex><span>        <span style=color:#ff79c6>spec</span>:
+</span></span><span style=display:flex><span>          <span style=color:#ff79c6>image</span>: <span style=color:#f1fa8c>&#34;{{ .spec.image }}&#34;</span>
+</span></span><span style=display:flex><span>          <span style=color:#ff79c6>replicas</span>: <span style=color:#f1fa8c>&#34;{{ .spec.replicas }}&#34;</span>
+</span></span><span style=display:flex><span>          <span style=color:#ff79c6>theme</span>: <span style=color:#f1fa8c>&#34;default&#34;</span>   <span style=color:#6272a4># default — v1 has no theme field</span>
 </span></span></code></pre></div><p>Orkestra&rsquo;s HTTPS server serves the <code>/convert</code> endpoint. The conversion
 handler resolves each path&rsquo;s spec template against the source object and
 returns the converted objects. The CRD&rsquo;s <code>conversion</code> block points to this
-endpoint.</p>
-<h3 id="43-production-results">4.3 Production Results</h3>
-<p>The following is from a live deployment managing both versions of the
-Website CRD:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;name&#34;</span>: <span style="color:#f1fa8c">&#34;website-v1alpha1&#34;</span>,
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;conversion&#34;</span>: {
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">&#34;enabled&#34;</span>: <span style="color:#ff79c6">true</span>,
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">&#34;total&#34;</span>: <span style="color:#bd93f9">62</span>,
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">&#34;success&#34;</span>: <span style="color:#bd93f9">62</span>,
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">&#34;failures&#34;</span>: <span style="color:#bd93f9">0</span>,
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">&#34;avgLatencyMs&#34;</span>: <span style="color:#bd93f9">0.5</span>,
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">&#34;p95LatencyMs&#34;</span>: <span style="color:#bd93f9">1.2</span>
-</span></span><span style="display:flex;"><span>  }
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><pre tabindex="0"><code>orkestra_conversion_requests_total{kind=&#34;Website&#34;,from=&#34;v1alpha1&#34;,to=&#34;v1&#34;,result=&#34;success&#34;} 14
+endpoint.</p><h3 id=43-production-results>4.3 Production Results</h3><p>The following is from a live deployment managing both versions of the
+Website CRD:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-json data-lang=json><span style=display:flex><span>{
+</span></span><span style=display:flex><span>  <span style=color:#ff79c6>&#34;name&#34;</span>: <span style=color:#f1fa8c>&#34;website-v1alpha1&#34;</span>,
+</span></span><span style=display:flex><span>  <span style=color:#ff79c6>&#34;conversion&#34;</span>: {
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>&#34;enabled&#34;</span>: <span style=color:#ff79c6>true</span>,
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>&#34;total&#34;</span>: <span style=color:#bd93f9>62</span>,
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>&#34;success&#34;</span>: <span style=color:#bd93f9>62</span>,
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>&#34;failures&#34;</span>: <span style=color:#bd93f9>0</span>,
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>&#34;avgLatencyMs&#34;</span>: <span style=color:#bd93f9>0.5</span>,
+</span></span><span style=display:flex><span>    <span style=color:#ff79c6>&#34;p95LatencyMs&#34;</span>: <span style=color:#bd93f9>1.2</span>
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><pre tabindex=0><code>orkestra_conversion_requests_total{kind=&#34;Website&#34;,from=&#34;v1alpha1&#34;,to=&#34;v1&#34;,result=&#34;success&#34;} 14
 orkestra_conversion_requests_total{kind=&#34;Website&#34;,from=&#34;v1&#34;,to=&#34;v1alpha1&#34;,result=&#34;success&#34;} 17
 orkestra_conversion_duration_seconds_sum{from=&#34;v1alpha1&#34;,to=&#34;v1&#34;} 0.007
 </code></pre><p>62 successful conversions. Zero failures. Sub-millisecond average latency.
 Zero lines of Go written for the conversion. Zero additional deployments.
-Zero TLS certificates to manage.</p>
-<hr>
-<h2 id="5-addressing-the-one-operator-per-crd-principle">5. Addressing the One-Operator-Per-CRD Principle</h2>
-<h3 id="51-the-principle-is-correct">5.1 The Principle is Correct</h3>
-<p>The Operator SDK best practices document states: &ldquo;Avoid a design solution
+Zero TLS certificates to manage.</p><hr><h2 id=5-addressing-the-one-operator-per-crd-principle>5. Addressing the One-Operator-Per-CRD Principle</h2><h3 id=51-the-principle-is-correct>5.1 The Principle is Correct</h3><p>The Operator SDK best practices document states: &ldquo;Avoid a design solution
 where more than one Kind is reconciled by the same controller.&rdquo; The concerns
 articulated are encapsulation, Single Responsibility, cohesion, and
-preventing unexpected side effects between CRDs.</p>
-<p>These concerns are valid. Orkestra does not disagree with them.</p>
-<h3 id="52-the-principle-refers-to-reconciler-logic-not-process-boundaries">5.2 The Principle Refers to Reconciler Logic, Not Process Boundaries</h3>
-<p>The Operator SDK&rsquo;s concerns are about reconciler logic — that a reconciler
+preventing unexpected side effects between CRDs.</p><p>These concerns are valid. Orkestra does not disagree with them.</p><h3 id=52-the-principle-refers-to-reconciler-logic-not-process-boundaries>5.2 The Principle Refers to Reconciler Logic, Not Process Boundaries</h3><p>The Operator SDK&rsquo;s concerns are about reconciler logic — that a reconciler
 for <code>Website</code> should not contain logic for <code>Database</code>. Orkestra enforces
-this more strictly than any previous framework.</p>
-<p>In Orkestra, the reconciler for <code>Website</code> is a closure that closes over
+this more strictly than any previous framework.</p><p>In Orkestra, the reconciler for <code>Website</code> is a closure that closes over
 exactly the Katalog entry for <code>Website</code>. It has no access to the reconciler
 for <code>Database</code>. It cannot affect the <code>Database</code> workqueue. It cannot observe
-the <code>Database</code> informer. The isolation is structural.</p>
-<p>What is shared is the orchestration infrastructure: the API server connection,
+the <code>Database</code> informer. The isolation is structural.</p><p>What is shared is the orchestration infrastructure: the API server connection,
 the informer factory, the queue registry, the health server, the leader
 election lease. This is analogous to how the Kubernetes
 <code>kube-controller-manager</code> runs the Deployment controller, the ReplicaSet
 controller, the Endpoint controller, and dozens of others in a single process —
 each isolated, each maintaining the Single Responsibility Principle, all
-sharing infrastructure.</p>
-<p>No one argues that <code>kube-controller-manager</code> violates good design. Orkestra
-applies the same principle to user-defined operators.</p>
-<h3 id="53-the-shared-failure-domain">5.3 The Shared Failure Domain</h3>
-<p>The legitimate remaining concern is that a single process is a single failure
-domain. If the Orkestra process crashes, all CRD operators stop together.</p>
-<p>This is addressed the same way Kubernetes addresses it for
+sharing infrastructure.</p><p>No one argues that <code>kube-controller-manager</code> violates good design. Orkestra
+applies the same principle to user-defined operators.</p><h3 id=53-the-shared-failure-domain>5.3 The Shared Failure Domain</h3><p>The legitimate remaining concern is that a single process is a single failure
+domain. If the Orkestra process crashes, all CRD operators stop together.</p><p>This is addressed the same way Kubernetes addresses it for
 <code>kube-controller-manager</code>: multiple replicas with leader election and warm
 informer caches. Followers are not idle — they maintain synced informer
 caches. When the leader fails, a follower takes over within the lease renewal
-period, already warm.</p>
-<p>Within the process, Orkestra&rsquo;s <code>safeReconcile</code> wrapper recovers from panics
+period, already warm.</p><p>Within the process, Orkestra&rsquo;s <code>safeReconcile</code> wrapper recovers from panics
 in individual reconcilers. A <code>nil</code> pointer dereference in the <code>Website</code>
-reconciler does not crash the <code>Database</code> reconciler.</p>
-<hr>
-<h2 id="6-what-this-replaces">6. What This Replaces</h2>
-<table>
-  <thead>
-      <tr>
-          <th>Traditional</th>
-          <th>Orkestra</th>
-      </tr>
-  </thead>
-  <tbody>
-      <tr>
-          <td>Go operator binary per CRD</td>
-          <td>Katalog YAML</td>
-      </tr>
-      <tr>
-          <td>Kubebuilder scaffolding</td>
-          <td><code>ork init</code></td>
-      </tr>
-      <tr>
-          <td>One deployment per CRD</td>
-          <td>One runtime per operator surface</td>
-      </tr>
-      <tr>
-          <td>Per-operator health endpoints</td>
-          <td>Unified <code>/katalog/*</code> API</td>
-      </tr>
-      <tr>
-          <td>Per-operator metrics (or none)</td>
-          <td>Unified per-CRD metrics</td>
-      </tr>
-      <tr>
-          <td>Manual dependency management</td>
-          <td>Declared <code>dependsOn</code></td>
-      </tr>
-      <tr>
-          <td>Helm chart per operator</td>
-          <td>Komposer</td>
-      </tr>
-      <tr>
-          <td>Conversion webhook binary + TLS</td>
-          <td>Conversion rules in Katalog</td>
-      </tr>
-      <tr>
-          <td>Operator sprawl</td>
-          <td>One runtime</td>
-      </tr>
-  </tbody>
-</table>
-<hr>
-<h2 id="7-conclusion">7. Conclusion</h2>
-<p>The operator pattern is the right abstraction for Kubernetes extensibility.
+reconciler does not crash the <code>Database</code> reconciler.</p><hr><h2 id=6-what-this-replaces>6. What This Replaces</h2><table><thead><tr><th>Traditional</th><th>Orkestra</th></tr></thead><tbody><tr><td>Go operator binary per CRD</td><td>Katalog YAML</td></tr><tr><td>Kubebuilder scaffolding</td><td><code>ork init</code></td></tr><tr><td>One deployment per CRD</td><td>One runtime per operator surface</td></tr><tr><td>Per-operator health endpoints</td><td>Unified <code>/katalog/*</code> API</td></tr><tr><td>Per-operator metrics (or none)</td><td>Unified per-CRD metrics</td></tr><tr><td>Manual dependency management</td><td>Declared <code>dependsOn</code></td></tr><tr><td>Helm chart per operator</td><td>Komposer</td></tr><tr><td>Conversion webhook binary + TLS</td><td>Conversion rules in Katalog</td></tr><tr><td>Operator sprawl</td><td>One runtime</td></tr></tbody></table><hr><h2 id=7-conclusion>7. Conclusion</h2><p>The operator pattern is the right abstraction for Kubernetes extensibility.
 The requirement to implement one binary per CRD has been a constraint of
-implementation convention, not of the pattern itself.</p>
-<p>Orkestra demonstrates that when a runtime provides per-CRD isolation
+implementation convention, not of the pattern itself.</p><p>Orkestra demonstrates that when a runtime provides per-CRD isolation
 structurally — through dedicated informers, workqueues, worker pools, and
 failure domains — the isolation properties the community seeks are preserved
 and strengthened. Each CRD becomes a complete, production-grade operator.
-They share only the infrastructure that makes this possible.</p>
-<p>The consequences extend beyond simplification. When each CRD version is its
+They share only the infrastructure that makes this possible.</p><p>The consequences extend beyond simplification. When each CRD version is its
 own operator entry, multi-version conversion becomes a declaration rather
 than an infrastructure project. When operators are YAML declarations, they
 become composable through the same mechanisms as any other Kubernetes
 resource. When one runtime watches all managed CRDs, unified observability
-is a structural consequence, not an integration project.</p>
-<p>Operators become data, not code.
+is a structural consequence, not an integration project.</p><p>Operators become data, not code.
 They are composed, not programmed.
-They are versioned, shared, and reused like any other Kubernetes resource.</p>
-<p>Kubernetes made infrastructure declarative.
+They are versioned, shared, and reused like any other Kubernetes resource.</p><p>Kubernetes made infrastructure declarative.
 Orkestra makes the operators that extend Kubernetes declarative.
-The same principle, applied one level up.</p>
-<hr>
-<p><em>Orkestra — Declarative Operators for Kubernetes</em>
-<em>March 2026 — <a href="https://github.com/orkspace/orkestra">https://github.com/orkspace/orkestra</a></em></p>
-
-      </article>
-
-      
-      <aside class="paper-footer-aside">
-        <div class="paper-aside-card">
-          <div class="paper-aside-title">Share this paper</div>
-          <a href="https://github.com/orkspace/orkestra/discussions" target="_blank" rel="noopener noreferrer" class="paper-aside-link">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-            Discuss on GitHub
-          </a>
-          <a href="/publications/" class="paper-aside-link">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            All Publications
-          </a>
-        </div>
-      </aside>
-    </div>
-
-  </main>
-
-  <footer class="site-footer">
-  <div class="footer-inner">
-    <div class="footer-brand">
-      <a href="/" class="footer-logo" aria-label="Orkestra home">
-        <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="28">
-        <span class="footer-logo-text">Orkestra</span>
-      </a>
-      <p class="footer-tagline">The declarative control plane<br>for Kubernetes operators.</p>
-      <div class="footer-social">
-        <a href="https://github.com/orkspace/orkestra" target="_blank" rel="noopener noreferrer" aria-label="GitHub" class="footer-social-link">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
-          </svg>
-        </a>
-        <a href="https://twitter.com/orkspace" target="_blank" rel="noopener noreferrer" aria-label="Twitter / X" class="footer-social-link">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-          </svg>
-        </a>
-      </div>
-    </div>
-
-    <div class="footer-links">
-      <div class="footer-col">
-        <h4 class="footer-col-title">Documentation</h4>
-        <ul role="list">
-          <li><a href="/docs/getting-started/">Getting Started</a></li>
-          <li><a href="/docs/getting-started/learning-to-orkestrate/">Basics</a></li>
-          <li><a href="/docs/orkestra-core/">Concepts</a></li>
-          <li><a href="/docs/orkestra-registry/">Guides</a></li>
-          <li><a href="/docs/reference/">Reference</a></li>
-        </ul>
-      </div>
-
-      <div class="footer-col">
-        <h4 class="footer-col-title">Community</h4>
-        <ul role="list">
-          <li><a href="https://github.com/orkspace/orkestra" target="_blank" rel="noopener noreferrer">GitHub</a></li>
-          <li><a href="https://github.com/orkspace/orkestra/issues" target="_blank" rel="noopener noreferrer">Issues</a></li>
-          <li><a href="https://github.com/orkspace/orkestra/discussions" target="_blank" rel="noopener noreferrer">Discussions</a></li>
-          <li><a href="https://twitter.com/orkspace" target="_blank" rel="noopener noreferrer">@orkspace</a></li>
-        </ul>
-      </div>
-
-      <div class="footer-col">
-        <h4 class="footer-col-title">Resources</h4>
-        <ul role="list">
-          <li><a href="https://github.com/orkspace/orkestra/releases" target="_blank" rel="noopener noreferrer">Releases</a></li>
-          <li><a href="https://github.com/orkspace/orkestra/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License</a></li>
-          <li><a href="https://github.com/orkspace/orkestra/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a></li>
-          <li><a href="/docs/reference/">API Reference</a></li>
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <div class="footer-bottom">
-    <p>&copy; 2026 Orkestra. Released under the Apache 2.0 License.</p>
-    <p class="footer-built">Built with <a href="https://gohugo.io" target="_blank" rel="noopener noreferrer">Hugo</a></p>
-  </div>
-</footer>
-
-
-  
-  <script src="/js/main.min.88b9ce7a2b233118e952d50980bc043edc7dd529e488094656b20556f96f996d.js" defer></script>
-
-  <style>
-     
-    .paper-header {
-      background: linear-gradient(160deg, rgba(76,32,133,0.12) 0%, transparent 70%);
-      border-bottom: 1px solid var(--color-border);
-      padding: 4rem 0 3rem;
-    }
-    .paper-header-inner {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 0 2rem;
-    }
-    .pub-back-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      font-size: 0.8125rem;
-      color: var(--color-text-muted);
-      text-decoration: none;
-      margin-bottom: 1.75rem;
-      transition: color var(--transition-fast);
-    }
-    .pub-back-link:hover { color: var(--color-primary); }
-
-    .paper-title {
-      font-size: clamp(1.6rem, 3.5vw, 2.4rem);
-      font-weight: 600;
-      letter-spacing: -0.02em;
-      line-height: 1.2;
-      color: var(--color-text);
-      margin: 0 0 1rem;
-    }
-    .paper-subtitle {
-      font-size: 1.125rem;
-      color: var(--color-text-muted);
-      line-height: 1.6;
-      margin: 0 0 1.5rem;
-      max-width: 640px;
-    }
-    .paper-meta {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 1.25rem;
-      margin-bottom: 1.25rem;
-    }
-    .paper-meta-item {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      font-size: 0.8125rem;
-      color: var(--color-text-muted);
-      font-family: var(--font-mono);
-    }
-    .paper-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-    .paper-tag {
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 0.2rem 0.65rem;
-      background: rgba(76,32,133,0.1);
-      color: var(--color-primary);
-      border: 1px solid rgba(76,32,133,0.2);
-      border-radius: 20px;
-      letter-spacing: 0.02em;
-    }
-    [data-theme="dark"] .paper-tag {
-      background: rgba(167,139,250,0.1);
-      color: #A78BFA;
-      border-color: rgba(167,139,250,0.2);
-    }
-
-     
-    .paper-layout {
-      display: grid;
-      grid-template-columns: 1fr 240px;
-      gap: 3rem;
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 3rem 2rem 5rem;
-      align-items: start;
-    }
-    @media (max-width: 900px) {
-      .paper-layout {
-        grid-template-columns: 1fr;
-      }
-      .paper-aside-card { order: -1; }
-    }
-
-    .paper-body {
-      max-width: 72ch;
-      min-width: 0;
-    }
-
-     
-    .paper-footer-aside {
-      position: sticky;
-      top: calc(var(--navbar-height) + 2rem);
-    }
-    .paper-aside-card {
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-lg);
-      padding: 1.25rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    .paper-aside-title {
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: var(--color-text-faint);
-      margin-bottom: 0.5rem;
-    }
-    .paper-aside-link {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.875rem;
-      color: var(--color-text-muted);
-      text-decoration: none;
-      padding: 0.5rem 0.75rem;
-      border-radius: var(--radius);
-      transition: background var(--transition-fast), color var(--transition-fast);
-    }
-    .paper-aside-link:hover {
-      background: var(--color-surface-2);
-      color: var(--color-text);
-    }
-  </style>
-</body>
-</html>
+The same principle, applied one level up.</p><hr><p><em>Orkestra — Declarative Operators for Kubernetes</em>
+<em>March 2026 — <a href=https://github.com/orkspace/orkestra>https://github.com/orkspace/orkestra</a></em></p></article><aside class=paper-footer-aside><div class=paper-aside-card><div class=paper-aside-title>Share this paper</div><a href=https://github.com/orkspace/orkestra/discussions target=_blank rel="noopener noreferrer" class=paper-aside-link><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentcolor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+Discuss on GitHub
+</a><a href=/publications/ class=paper-aside-link><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentcolor" stroke-width="2"><path d="M19 12H5m7 7-7-7 7-7"/></svg>
+All Publications</a></div></aside></div></main><footer class=site-footer><div class=footer-inner><div class=footer-brand><a href=/ class=footer-logo aria-label="Orkestra home"><img src=/img/logo.png alt=Orkestra class=logo-img height=28>
+<span class=footer-logo-text>Orkestra</span></a><p class=footer-tagline>The declarative control plane<br>for Kubernetes operators.</p><div class=footer-social><a href=https://github.com/orkspace/orkestra target=_blank rel="noopener noreferrer" aria-label=GitHub class=footer-social-link><svg viewBox="0 0 24 24" width="20" height="20" fill="currentcolor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483.0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951.0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65.0.0.84-.27 2.75 1.026A9.564 9.564.0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688.0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855.0 1.338-.012 2.419-.012 2.747.0.268.18.58.688.482A10.019 10.019.0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+</a><a href=https://twitter.com/orkspace target=_blank rel="noopener noreferrer" aria-label="Twitter / X" class=footer-social-link><svg viewBox="0 0 24 24" width="20" height="20" fill="currentcolor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a></div></div><div class=footer-links><div class=footer-col><h4 class=footer-col-title>Documentation</h4><ul role=list><li><a href=/docs/getting-started/>Getting Started</a></li><li><a href=/docs/getting-started/learning-to-orkestrate/>Basics</a></li><li><a href=/docs/orkestra-core/>Concepts</a></li><li><a href=/docs/orkestra-registry/>Guides</a></li><li><a href=/docs/reference/>Reference</a></li></ul></div><div class=footer-col><h4 class=footer-col-title>Community</h4><ul role=list><li><a href=https://github.com/orkspace/orkestra target=_blank rel="noopener noreferrer">GitHub</a></li><li><a href=https://github.com/orkspace/orkestra/issues target=_blank rel="noopener noreferrer">Issues</a></li><li><a href=https://github.com/orkspace/orkestra/discussions target=_blank rel="noopener noreferrer">Discussions</a></li><li><a href=https://twitter.com/orkspace target=_blank rel="noopener noreferrer">@orkspace</a></li></ul></div><div class=footer-col><h4 class=footer-col-title>Resources</h4><ul role=list><li><a href=https://github.com/orkspace/orkestra/releases target=_blank rel="noopener noreferrer">Releases</a></li><li><a href=https://github.com/orkspace/orkestra/blob/main/LICENSE target=_blank rel="noopener noreferrer">License</a></li><li><a href=https://github.com/orkspace/orkestra/blob/main/CONTRIBUTING.md target=_blank rel="noopener noreferrer">Contributing</a></li><li><a href=/docs/reference/>API Reference</a></li></ul></div></div></div><div class=footer-bottom><p>&copy; 2026 Orkestra. Released under the Apache 2.0 License.</p><p class=footer-built>Built with <a href=https://gohugo.io target=_blank rel="noopener noreferrer">Hugo</a></p></div></footer><script src=/js/main.min.88b9ce7a2b233118e952d50980bc043edc7dd529e488094656b20556f96f996d.js defer></script><style>.paper-header{background:linear-gradient(160deg,rgba(76,32,133,.12) 0%,transparent 70%);border-bottom:1px solid var(--color-border);padding:4rem 0 3rem}.paper-header-inner{max-width:800px;margin:0 auto;padding:0 2rem}.pub-back-link{display:inline-flex;align-items:center;gap:.4rem;font-size:.8125rem;color:var(--color-text-muted);text-decoration:none;margin-bottom:1.75rem;transition:color var(--transition-fast)}.pub-back-link:hover{color:var(--color-primary)}.paper-title{font-size:clamp(1.6rem,3.5vw,2.4rem);font-weight:600;letter-spacing:-.02em;line-height:1.2;color:var(--color-text);margin:0 0 1rem}.paper-subtitle{font-size:1.125rem;color:var(--color-text-muted);line-height:1.6;margin:0 0 1.5rem;max-width:640px}.paper-meta{display:flex;flex-wrap:wrap;align-items:center;gap:1.25rem;margin-bottom:1.25rem}.paper-meta-item{display:flex;align-items:center;gap:.4rem;font-size:.8125rem;color:var(--color-text-muted);font-family:var(--font-mono)}.paper-tags{display:flex;flex-wrap:wrap;gap:.5rem}.paper-tag{font-size:.75rem;font-weight:600;padding:.2rem .65rem;background:rgba(76,32,133,.1);color:var(--color-primary);border:1px solid rgba(76,32,133,.2);border-radius:20px;letter-spacing:.02em}[data-theme=dark] .paper-tag{background:rgba(167,139,250,.1);color:#a78bfa;border-color:rgba(167,139,250,.2)}.paper-layout{display:grid;grid-template-columns:1fr 240px;gap:3rem;max-width:1100px;margin:0 auto;padding:3rem 2rem 5rem;align-items:start}@media(max-width:900px){.paper-layout{grid-template-columns:1fr}.paper-aside-card{order:-1}}.paper-body{max-width:72ch;min-width:0}.paper-footer-aside{position:sticky;top:calc(var(--navbar-height) + 2rem)}.paper-aside-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:1.25rem;display:flex;flex-direction:column;gap:.5rem}.paper-aside-title{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--color-text-faint);margin-bottom:.5rem}.paper-aside-link{display:flex;align-items:center;gap:.5rem;font-size:.875rem;color:var(--color-text-muted);text-decoration:none;padding:.5rem .75rem;border-radius:var(--radius);transition:background var(--transition-fast),color var(--transition-fast)}.paper-aside-link:hover{background:var(--color-surface-2);color:var(--color-text)}</style></body></html>

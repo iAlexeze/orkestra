@@ -1,12 +1,1 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
-  <channel>
-    <title>Reference on Orkestra</title>
-    <link>http://localhost:8090/docs/reference/</link>
-    <description>Recent content in Reference on Orkestra</description>
-    <generator>Hugo</generator>
-    <language>en-us</language>
-    <lastBuildDate></lastBuildDate>
-    <atom:link href="http://localhost:8090/docs/reference/index.xml" rel="self" type="application/rss+xml" />
-  </channel>
-</rss>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Reference on Orkestra</title><link>https://orkestra.sh/docs/reference/</link><description>Recent content in Reference on Orkestra</description><generator>Hugo</generator><language>en-us</language><lastBuildDate/><atom:link href="https://orkestra.sh/docs/reference/index.xml" rel="self" type="application/rss+xml"/></channel></rss>

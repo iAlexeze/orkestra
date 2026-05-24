@@ -360,6 +360,8 @@ p:last-child { margin-bottom: 0; }
   align-items: center;
   gap: 0.5rem;
   margin-left: auto;
+  flex-shrink: 0;
+  min-width: 0;
 }
 
 .btn-github {
@@ -3648,7 +3650,10 @@ code:not(pre > code) {
   .multi-crd-inner {
     grid-template-columns: 1fr;
   }
-  .multi-crd-code { display: none; }
+  .multi-crd-code {
+    width: 100%;
+    min-width: 0;
+  }
   .cc-content {
     grid-template-columns: 1fr;
   }
@@ -3696,6 +3701,12 @@ code:not(pre > code) {
 
   .check-list {
     gap: 0.75rem;
+  }
+
+  .multi-crd-code .code-block {
+    font-size: 0.8125rem;
+    padding: 1rem;
+    margin: 0;
   }
 }
 
