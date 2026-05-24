@@ -51,8 +51,5 @@ Paths are bidirectional — declare both directions explicitly.
 
 `security.conversion.enabled: true` must be set for the `/convert` endpoint to be registered.
 
-→ See [katalog-security.md](katalog-security.md) for enabling conversion globally.
 
 ---
-
-→ Next: [katalog-security.md](katalog-security.md)

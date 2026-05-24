@@ -17,7 +17,7 @@ The code you would have written does not exist.
     Every operator framework before Orkestra reduced the code you write.
     Orkestra removes the need to write code at all.
 
-See [Your CRD Is Enough](../blog/your-crd-is-enough.md) for the full picture.
+See [Your CRD Is Enough](/blog/your-crd-is-enough/) for the full picture.
 
 ---
 

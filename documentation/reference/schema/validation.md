@@ -64,5 +64,3 @@ Each rule describes one check. Rules are evaluated in order.
 - **At reconcile**: always — even without a webhook, rules are checked during each cycle.
 
 ---
-
-→ Next: [mutation.md](mutation.md)

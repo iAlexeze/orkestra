@@ -124,7 +124,3 @@ ork e2e
 ```
 
 ---
-
-## Next
-
-Return to [Security overview](index.md) or explore [Deletion protection](deletion-protection.md).

@@ -215,8 +215,3 @@ ork e2e             # declarative end-to-end testing
 ```
 
 ---
-
-## Next
-
-- [Namespace protection](namespace-protection.md) — restrict which namespaces CRs can be applied to
-- [Security overview](index.md) — return to the index

@@ -144,7 +144,6 @@ status:
       value: "postgres://{{ inputs.user }}@{{ .metadata.name }}-postgres.{{ .metadata.namespace }}.svc.cluster.local:5432"
 ```
 
-→ See [status.md](status.md) for the full field reference.
 
 ## `admission`
 
@@ -164,7 +163,6 @@ admission:
         default: "2"
 ```
 
-→ See [validation.md](validation.md) and [mutation.md](mutation.md) for the full rule schema.
 
 ## Importing a Motif
 

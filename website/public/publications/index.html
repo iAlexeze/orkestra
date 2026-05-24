@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.5b3bd5229f53306ec1d1616f2c44ff2123c3a5b21f15000e4106c950fbf88eac.css">
+<link rel="stylesheet" href="/css/main.min.d0461eef93935ad6f7f33456783d63ad50138705c51dac85c9394c58e78b2f6d.css">
 
 
 
@@ -57,7 +57,6 @@
       <a href="/" class="navbar-logo" aria-label="Orkestra home">
         <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="36" width="36">
         <span class="logo-text">Orkestra</span>
-        <span class="version-badge">v1</span>
       </a>
       <ul class="navbar-links" role="list">
         
@@ -176,36 +175,32 @@
         
         <li class="pub-scholar-item">
           <h2 class="pub-scholar-title">
-            <a href="/publications/trust-and-failure-model/" class="pub-scholar-link">Trust and Failure Model</a>
+            <a href="/publications/declarative-operators-whitepaper/" class="pub-scholar-link">Declarative Operators: A New Model for Kubernetes Extensibility</a>
           </h2>
           <div class="pub-scholar-meta">
-            
+            <span>May 2026</span>
             <span class="pub-meta-sep">·</span>
             <span>12 min read</span>
             
           </div>
           
-          <p class="pub-scholar-abstract"><p>This document describes exactly what happens when Orkestra fails, degrades, or is deliberately stopped. It covers every failure mode — process crash, panic, leader loss, API server disconnect, node …</p></p>
+          <p class="pub-scholar-abstract">Orkestra Project — March 2026
+Abstract Kubernetes operators encode domain knowledge as reconciliation logic. Every major operator framework to date requires this logic to be written in a programming …</p>
           
         </li>
         
         <li class="pub-scholar-item">
           <h2 class="pub-scholar-title">
-            <a href="/publications/declarative-operators-whitepaper/" class="pub-scholar-link">Declarative Operators: A New Model for Kubernetes Extensibility</a>
+            <a href="/publications/trust-and-failure-model/" class="pub-scholar-link">Trust and Failure Model</a>
           </h2>
           <div class="pub-scholar-meta">
-            
+            <span>May 2026</span>
             <span class="pub-meta-sep">·</span>
-            <span>12 min read</span>
+            <span>6 min read</span>
             
           </div>
           
-          <p class="pub-scholar-abstract"><p><em>Orkestra Project — March 2026</em></p>
-<hr>
-<h2 id="abstract">Abstract</h2>
-<p>Kubernetes operators encode domain knowledge as reconciliation logic. Every
-major operator framework to date requires this logic to be written in a
-programming …</p></p>
+          <p class="pub-scholar-abstract">Trust in a distributed system is not a feature you add — it is a property that either emerges from the design or does not. Orkestra&rsquo;s approach is to make trustworthy behavior the default at …</p>
           
         </li>
         
@@ -278,7 +273,7 @@ programming …</p></p>
 
 
   
-  <script src="/js/main.min.d2e794f76bf881e2b24e29e56610c51d43db4fe37e7050090ef272ef855893af.js" defer></script>
+  <script src="/js/main.min.543f7d98f205af5cb4a3dd44b917d8e83c2e2d9c93d4398d5565d75656c2d586.js" defer></script>
 
   <style>
     .pub-page-inner {
@@ -336,18 +331,25 @@ programming …</p></p>
       border-bottom: none;
     }
     .pub-scholar-title {
-      font-size: 1rem;
-      font-weight: 400;
+      font-size: 1.0625rem;
+      font-weight: 600;
       margin: 0 0 0.3rem;
-      line-height: 1.4;
+      line-height: 1.35;
     }
     .pub-scholar-link {
-      color: var(--color-primary);
+      color: var(--color-text);
       text-decoration: none;
     }
     .pub-scholar-link:hover {
+      color: var(--color-primary);
       text-decoration: underline;
       text-underline-offset: 2px;
+    }
+    [data-theme="dark"] .pub-scholar-link {
+      color: var(--color-text);
+    }
+    [data-theme="dark"] .pub-scholar-link:hover {
+      color: #A78BFA;
     }
     .pub-scholar-meta {
       display: flex;

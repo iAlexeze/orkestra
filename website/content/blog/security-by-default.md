@@ -1,21 +1,10 @@
 ---
 title: "Why Operators Are Over-Permissioned — And How We Fixed It"
+date: 2026-05-16
 weight: 1
 ---
 
-*Orkestra Project — March 2026*
-
----
-
-## The uncomfortable truth
-
-Most Kubernetes operators are massively over-permissioned.
-
-Not slightly. Not accidentally.
-
-**Structurally.**
-
-If you inspect the RBAC of many production operators, you’ll find something like this:
+Most Kubernetes operators are massively over-permissioned. Not slightly, not accidentally — structurally. Inspect the RBAC of a typical production operator and you will find something like this:
 
 ```yaml
 - apiGroups: ["*"]
@@ -23,299 +12,36 @@ If you inspect the RBAC of many production operators, you’ll find something li
   verbs: ["*"]
 ```
 
-Cluster-wide. Full access.
-
-And it’s not because engineers are careless.
-
-It’s because the system makes it easier to be unsafe than correct.
+Cluster-wide. Full access. And it is not because the engineers who wrote them were careless. It is because the system makes it easier to be unsafe than correct.
 
 ---
 
-## How we got here
+The operator model evolved around one assumption: an operator is a program. You write Go, scaffold controllers, wire informers. Somewhere in that process you add RBAC. Then you add more. Then you hit a permissions error in production at 2am and do the fastest thing possible — widen the scope until it works. And it stays that way. Not because it is right, but because RBAC is painful to maintain, operators evolve, and nobody wants to debug fine-grained permissions under pressure. So teams converge on a pattern: over-permission once, never touch it again.
 
-The Kubernetes operator model evolved around one assumption:
+The real problem is not RBAC. RBAC is doing exactly what it was designed to do. The problem is that RBAC is disconnected from intent. Permissions are written by hand, but operators are dynamic systems — they reconcile different resources as they evolve, they compose with other operators, their scope changes. The RBAC drifts. And drift in security always goes in one direction: more access, not less.
 
-> an operator is a program
-
-You write Go code.
-You use frameworks like Kubebuilder.
-You scaffold RBAC alongside your controller.
-
-Somewhere in that process, you add permissions.
-
-Then you add more.
-
-Then you hit a permissions error in production and do the fastest thing possible:
-
-> widen the scope until it works
-
-And it stays that way.
-
-Not because it’s right — but because:
-
-* RBAC is painful to maintain
-* operators evolve over time
-* no one wants to debug permissions at 2am
-
-So teams converge on a pattern:
-
-> **over-permission once, never touch it again**
+This compounds as operator count grows. A typical cluster might run ten community operators and five internal ones, each with its own RBAC, its own assumptions, its own blast radius. No single person has a complete picture. Security becomes "we trust these operators" rather than "we understand what they can do."
 
 ---
 
-## The real problem isn’t RBAC
+The industry has treated RBAC as something you write. But an operator already tells you everything you need to know about what it needs: what CRDs it watches, what resources it creates, what resources it updates. That information is already present in the operator's declaration. The permission model is implicit in the behavior model. We just have not been using it.
 
-RBAC is doing exactly what it was designed to do.
-
-The problem is this:
-
-> **RBAC is disconnected from intent**
-
-Permissions are written manually.
-
-But operators are dynamic systems:
-
-* they reconcile different resources over time
-* they evolve
-* they compose with other systems
-
-So the RBAC drifts.
-
-And drift in security always goes in one direction:
-
-> **more access, not less**
-
----
-
-## It gets worse with scale
-
-This problem compounds as operator count grows.
-
-A typical cluster might run:
-
-* 10–20 community operators
-* 5–10 internal operators
-
-Each with:
-
-* its own RBAC
-* its own assumptions
-* its own blast radius
-
-No one has a complete picture anymore.
-
-At that point, security becomes:
-
-> “we trust these operators”
-
-Not:
-
-> “we understand what they can do”
-
----
-
-## The missing idea
-
-The industry has treated RBAC as something you *write*.
-
-But what if that’s wrong?
-
-What if:
-
-> **permissions should be derived, not declared**
-
-Because the truth is:
-
-An operator already tells you everything you need to know:
-
-* what CRDs it watches
-* what resources it creates
-* what resources it updates
-
-That *is* the permission model.
-
-We just haven’t been using it.
-
----
-
-## How Orkestra approaches this
-
-Orkestra flips the model.
-
-Instead of writing RBAC, you write a **Katalog** — a declarative definition of your operator:
-
-```yaml
-spec:
-  crds:
-    website:
-      apiTypes:
-        group: demo.orkestra.io
-        version: v1
-        kind: Website
-      operatorBox:
-        onCreate:
-          deployments:
-            - image: "nginx"
-              reconcile: true
-```
-
-From this, Orkestra knows:
-
-* it needs access to `websites.demo.orkestra.io`
-* it needs to manage `deployments`
-* it may create `services`, `configmaps`, etc.
-
-So instead of asking you to write RBAC…
-
-It generates it.
+Orkestra makes it explicit. You write a Katalog — a declarative definition of your operator — and Orkestra derives the permissions from what the Katalog declares:
 
 ```bash
-ork generate rbac --file katalog.yaml
+ork generate bundle
 ```
 
-Result:
+The output is a ClusterRole containing exactly the resources declared in the Katalog's `onCreate`, `onReconcile`, and `onDelete` blocks. If your operator creates Deployments and Services, it gets permissions for Deployments and Services. Nothing more. The permissions are not a parallel document you maintain — they are a derivative of the declaration you already wrote.
 
-```yaml
-- apiGroups: ["demo.orkestra.io"]
-  resources: ["websites"]
-  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-
-- apiGroups: ["apps"]
-  resources: ["deployments"]
-  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-```
-
-Nothing more.
+This changes the security posture in a few ways that matter. First, security becomes the default. You do not need to think about RBAC to be secure — you define what your operator does and the permissions follow. Second, there is no silent expansion. When the Katalog changes, the generated bundle changes deterministically. You see exactly what is being added or removed before it reaches the cluster, diffable in any GitOps workflow. Third, composition stays safe. Orkestra runs multiple CRDs in one runtime, and without precise per-CRD permissions that would be dangerous — one CRD could inadvertently expand the access available to another. Derived permissions prevent this because each Katalog defines a bounded capability.
 
 ---
 
-## Why this matters
+This is not only about RBAC. It is about changing the unit of trust. The traditional model trusts the operator binary — a compiled program with whatever permissions it was given. Orkestra's model trusts the declaration of behavior, which is a much smaller, clearer surface. The declaration is readable, diffable, auditable. The binary is not.
 
-### 1. Security becomes the default
+The industry default today is: start permissive, tighten later — maybe. Orkestra takes the opposite approach: start minimal, expand only when required. That is the model Kubernetes itself uses internally for its own controllers. We are applying it one level up, to the operators that extend Kubernetes.
 
-You don’t need to think about RBAC to be secure.
+Operators were meant to encode domain knowledge. Somewhere along the way they also became the thing you trusted with your entire cluster. Fixing that is not about better RBAC templates. It is about aligning permissions with intent — and making that alignment automatic.
 
-You just define what your operator does.
-
-The permissions follow automatically.
-
----
-
-### 2. No silent privilege expansion
-
-In traditional setups:
-
-* dependencies change
-* operators evolve
-* RBAC gets patched ad hoc
-
-With Orkestra:
-
-* change the Katalog → permissions update deterministically
-
-No drift.
-
----
-
-### 3. Composition stays safe
-
-Orkestra runs multiple CRDs in one runtime.
-
-Without precise RBAC, that would be dangerous:
-
-* one CRD could unintentionally expand access for another
-
-Derived permissions prevent that.
-
-Each Katalog defines a bounded capability.
-
----
-
-### 4. It matches how operators actually work
-
-Operators are not arbitrary programs.
-
-They are:
-
-* watchers
-* reconcilers
-* resource managers
-
-Their behavior is already declarative in nature.
-
-Orkestra simply extends that:
-
-> if behavior is declarative, permissions should be too
-
----
-
-## The deeper shift
-
-This isn’t just about RBAC.
-
-It’s about changing the unit of trust.
-
-Traditional model:
-
-> trust the operator binary
-
-Orkestra model:
-
-> trust the declaration of behavior
-
-That’s a much smaller, clearer surface.
-
----
-
-## Why this hasn’t been done before
-
-Because most operator frameworks are built around code.
-
-And once you start from code:
-
-* permissions feel external
-* RBAC becomes configuration
-* drift is inevitable
-
-Orkestra starts from declarations.
-
-So permissions are not an afterthought.
-
-They are a **derivative**.
-
----
-
-## A better default
-
-The industry standard today is:
-
-> start permissive, tighten later (maybe)
-
-Orkestra takes the opposite approach:
-
-> start minimal, expand only when required
-
-That’s the model Kubernetes itself uses internally.
-
-We’re just applying it to operators.
-
----
-
-## Final thought
-
-Operators were meant to encode domain knowledge.
-
-But somewhere along the way, they became:
-
-* heavy
-* over-privileged
-* hard to reason about
-
-Fixing that isn’t about better RBAC templates.
-
-It’s about aligning permissions with intent.
-
----
-
-**Orkestra doesn’t ask you to secure your operator.**
-**It makes your operator secure by construction.**
+Orkestra does not ask you to secure your operator. It makes your operator secure by construction.

@@ -10,7 +10,6 @@
       <a href="/" class="navbar-logo" aria-label="Orkestra home">
         <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="36" width="36">
         <span class="logo-text">Orkestra</span>
-        <span class="version-badge">{{ .Site.Params.version }}</span>
       </a>
       <ul class="navbar-links" role="list">
         {{ range .Site.Menus.main }}
@@ -101,7 +100,7 @@
           {{ with .Description }}
           <p class="pub-scholar-abstract">{{ . | markdownify }}</p>
           {{ else }}{{ with .Summary }}
-          <p class="pub-scholar-abstract">{{ . | truncate 200 }}</p>
+          <p class="pub-scholar-abstract">{{ . | plainify | truncate 200 }}</p>
           {{ end }}{{ end }}
         </li>
         {{ end }}
@@ -171,18 +170,25 @@
       border-bottom: none;
     }
     .pub-scholar-title {
-      font-size: 1rem;
-      font-weight: 400;
+      font-size: 1.0625rem;
+      font-weight: 600;
       margin: 0 0 0.3rem;
-      line-height: 1.4;
+      line-height: 1.35;
     }
     .pub-scholar-link {
-      color: var(--color-primary);
+      color: var(--color-text);
       text-decoration: none;
     }
     .pub-scholar-link:hover {
+      color: var(--color-primary);
       text-decoration: underline;
       text-underline-offset: 2px;
+    }
+    [data-theme="dark"] .pub-scholar-link {
+      color: var(--color-text);
+    }
+    [data-theme="dark"] .pub-scholar-link:hover {
+      color: #A78BFA;
     }
     .pub-scholar-meta {
       display: flex;

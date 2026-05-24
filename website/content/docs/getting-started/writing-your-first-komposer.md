@@ -1,5 +1,6 @@
 ---
 title: "Writing Your First Komposer"
+date: 2026-05-20
 weight: 16
 ---
 

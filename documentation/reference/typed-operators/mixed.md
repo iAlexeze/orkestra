@@ -6,7 +6,15 @@ A single Orkestra runtime can run all three operator patterns together. Each CRD
 
 ## Example
 
-[`examples/advanced/11-mixed-operator-patterm`](../../../examples/advanced/11-mixed-operator-patterm/) composes three Katalogs into one runtime:
+To try this example:
+
+```bash
+ork init --pack advanced
+cd 11-mixed-operator-patterm
+ork run
+```
+
+The example composes three Katalogs into one runtime:
 
 ```yaml
 # komposer.yaml
@@ -37,9 +45,9 @@ spec:
 
 The three Katalogs:
 
-- **Declarative** — [`01-hello-website/katalog.yaml`](../../../examples/advanced/11-mixed-operator-patterm/01-hello-website/katalog.yaml): creates Deployments and Services from templates, no Go
-- **Hooks** — [`09-hooks/katalog.yaml`](../../../examples/advanced/11-mixed-operator-patterm/09-hooks/katalog.yaml): typed Go hooks for the Database CRD, declarative status layer still applies
-- **Constructor** — [`10-constructor/katalog.yaml`](../../../examples/advanced/11-mixed-operator-patterm/10-constructor/katalog.yaml): custom reconciler for the Pipeline CRD, state machine pattern
+- **Declarative** — `01-hello-website/katalog.yaml`: creates Deployments and Services from templates, no Go
+- **Hooks** — `09-hooks/katalog.yaml`: typed Go hooks for the Database CRD, declarative status layer still applies
+- **Constructor** — `10-constructor/katalog.yaml`: custom reconciler for the Pipeline CRD, state machine pattern
 
 ---
 

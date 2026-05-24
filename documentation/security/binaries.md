@@ -88,7 +88,7 @@ The image runs as a non-root user (UID 65532) and is not given any Linux capabil
 
 ## Pod security context
 
-The Helm chart applies a hardened security context to every pod by default:
+The [Helm chart](https://artifacthub.io/packages/helm/orkestra/orkestra) applies a hardened security context to every pod by default:
 
 ```yaml
 podSecurityContext:
@@ -160,8 +160,3 @@ runtime:
 The runtime includes this URL in its `/katalog` API response. When the Control Center queries the runtime for state, it reads the gateway endpoint from that response and calls the Gateway directly to fetch webhook statistics (admission decisions, deletion protection events, strict-mode blocks). The runtime never proxies this traffic — it just advertises where the Gateway lives so the Control Center can pull from both sources and merge the view.
 
 ---
-
-## Next
-
-- [RBAC](rbac.md) — how permissions are derived from your Katalog
-- [Admission webhooks](admission.md) — validation, mutation, and conversion

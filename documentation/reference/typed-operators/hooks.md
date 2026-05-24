@@ -105,4 +105,10 @@ You write neither generated file. Re-run `ork generate registry` whenever you ch
 
 ---
 
-→ See the full working example: [`examples/advanced/09-hooks`](../../../examples/advanced/09-hooks/katalog.yaml)
+To try the full working example:
+
+```bash
+ork init --pack advanced
+cd 09-hooks
+ork run
+```

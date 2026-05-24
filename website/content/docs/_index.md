@@ -1,5 +1,6 @@
 ---
 title: "Why Orkestra"
+date: 2026-05-20
 weight: 17
 ---
 
@@ -79,6 +80,6 @@ ork run
 
 ## Further Reading
 
-- [Your CRD Is Enough](./blog/your-crd-is-enough/) — the idea behind Orkestra
-- [Why Orkestra](./blog/why-orkestra/) — a deeper look at the problem
+- [Your CRD Is Enough](/blog/your-crd-is-enough/) — the idea behind Orkestra
+- [Why Orkestra](/blog/why-orkestra/) — a deeper look at the problem
 - [FAQs](./faqs/) — common questions, including comparisons with Kubebuilder and Helm

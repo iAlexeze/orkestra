@@ -172,8 +172,3 @@ ork e2e
 ```
 
 ---
-
-## Next
-
-- [Deletion protection](deletion-protection.md) — protecting CRs from accidental deletion
-- [Namespace protection](namespace-protection.md) — restricting which namespaces CRs can be applied to

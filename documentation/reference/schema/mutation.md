@@ -69,5 +69,3 @@ rules:
 - **At reconcile**: always — even without a webhook, mutation rules are applied each cycle before the operator writes resources.
 
 ---
-
-→ Next: [conversion.md](conversion.md)

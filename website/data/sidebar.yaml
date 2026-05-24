@@ -5,6 +5,9 @@ nav:
   - title: Orkestra Core
     section: orkestra-core
     url: /docs/orkestra-core/
+  - title: Orkestra Registry
+    section: orkestra-registry
+    url: /docs/orkestra-registry/
   - title: Reference
     section: reference
     url: /docs/reference/

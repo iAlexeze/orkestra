@@ -1,6 +1,7 @@
 ---
 title: "ork template"
-weight: 43
+date: 2026-05-17
+weight: 48
 ---
 
 Render the merged, validated Katalog exactly as Orkestra will see it at runtime.

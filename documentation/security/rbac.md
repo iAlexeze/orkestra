@@ -148,8 +148,3 @@ Run `ork generate bundle` whenever you add a new CRD or resource type. The outpu
 The generated bundle is a plain Kubernetes YAML file. It works with any GitOps tool (Flux, ArgoCD, Helm, plain `kubectl apply`). Lint it, diff it in PRs, require approval before it reaches the cluster. No cluster-admin access required at any point.
 
 ---
-
-## Next
-
-- [Admission webhooks](admission.md) — validation, mutation, and conversion
-- [Deletion protection](deletion-protection.md) — protecting your CRs from accidental deletion

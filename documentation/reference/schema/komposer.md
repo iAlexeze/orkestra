@@ -124,5 +124,3 @@ CRD names must be unique across all imports. A duplicate name is a hard error.
 | `providers` | Union; deduplicated by name. |
 
 ---
-
-→ Next: [motif.md](motif.md)

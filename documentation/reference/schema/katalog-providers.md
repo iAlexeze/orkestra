@@ -46,5 +46,3 @@ operatorBox:
 The provider declaration at the top level is the dependency claim. The provider block in `operatorBox` is where calls are made.
 
 ---
-
-→ Next: [komposer.md](komposer.md)

@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.5b3bd5229f53306ec1d1616f2c44ff2123c3a5b21f15000e4106c950fbf88eac.css">
+<link rel="stylesheet" href="/css/main.min.d0461eef93935ad6f7f33456783d63ad50138705c51dac85c9394c58e78b2f6d.css">
 
 
 
@@ -190,8 +190,13 @@
         <div class="paper-meta">
           
           <span class="paper-meta-item">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            May 2026
+          </span>
+          
+          <span class="paper-meta-item">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            12 min read
+            6 min read
           </span>
           
         </div>
@@ -203,447 +208,53 @@
     
     <div class="paper-layout">
       <article class="paper-body prose">
-        <p>This document describes exactly what happens when Orkestra fails, degrades, or is deliberately stopped. It covers every failure mode — process crash, panic, leader loss, API server disconnect, node failure, graceful shutdown — and what each means for the CRs Orkestra manages.</p>
-<p>The answer is strong. The failure model is designed to never corrupt CR state, never orphan child resources, and never block cluster operations. Understanding it is essential for production operations and for evaluating Orkestra&rsquo;s reliability for your use case.</p>
+        <p>Trust in a distributed system is not a feature you add — it is a property that either emerges from the design or does not. Orkestra&rsquo;s approach is to make trustworthy behavior the default at every layer, and to ensure those layers compound rather than exist independently. This is a description of how that works.</p>
 <hr>
 <h2 id="the-foundational-guarantee">The foundational guarantee</h2>
-<p>Orkestra&rsquo;s failure model rests on a single foundational guarantee:</p>
-<p><strong>Any operation that Orkestra does not complete will be completed on the next reconcile.</strong></p>
-<p>Kubernetes provides the infrastructure for this guarantee: CRs are stored in etcd, watch events are delivered reliably, and the informer pattern ensures no events are missed across restarts. Orkestra&rsquo;s reconciler is level-triggered — it always works from the current desired state, not from a log of events. A reconcile that is interrupted half-way through leaves the cluster in a partially-applied state, not a corrupted one. The next reconcile corrects it.</p>
-<p>This guarantee holds for every failure mode described below.</p>
+<p>Every Orkestra reconciler is level-triggered. It does not replay a log of events — it reads current desired state and drives toward it. This is the same model Kubernetes uses for its own controllers, and it carries the same property: any operation that is interrupted half-way through leaves the cluster in a partial state, not a corrupted one. The next reconcile corrects it.</p>
+<p>This guarantee is not contingent on clean shutdowns or graceful restarts. A process crash, a node failure, a SIGKILL — they all produce the same outcome. The next reconciler that runs will see current state and close the gap.</p>
 <hr>
-<h2 id="leader-election-konductor-election">Leader election (konductor election)</h2>
-<p>Orkestra uses Kubernetes leader election — the same mechanism used by <code>kube-controller-manager</code> — to ensure that only one Orkestra instance actively reconciles at any time.</p>
-<h3 id="how-it-works">How it works</h3>
-<p>Leader election uses a Kubernetes <code>Lease</code> object (in <code>coordination.k8s.io/v1</code>):</p>
-<pre tabindex="0"><code>Lease: orkestra-leader
-  holder: orkestra-pod-a
-  renewTime: &lt;timestamp&gt;
-  leaseDuration: 15s
-  renewDeadline: 10s
-  retryPeriod: 2s
-</code></pre>
-
-
-
-
-
-
-
-
-
-<div class="callout callout-tip" role="note">
-  <div class="callout-header">
-    <span class="callout-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>
-    <span class="callout-title">Leader configuration</span>
-  </div>
-  <div class="callout-body">
-    These values are all configurable using the following environment variables:
-  </div>
-</div>
-
-<pre><code>LEADER_ELECTION_NAMESPACE=  # Default: default
-LEASE_DURATION=             # Seconds; total lease duration
-RENEW_DEADLINE=             # Seconds; must be &lt; LEASE_DURATION
-RETRY_PERIOD=               # Seconds; retry interval for leader election
-</code></pre>
-<p>The active leader renews the lease every 10 seconds. If renewal fails for 15 seconds (leaseDuration), the lease expires and any other instance can acquire it.</p>
-<h3 id="what-followers-do-while-not-leading">What followers do while not leading</h3>
-
-
-
-
-
-
-
-
-
-
-<div class="callout callout-important" role="note">
-  <div class="callout-header">
-    <span class="callout-icon"></span>
-    <span class="callout-title">Followers are not idle</span>
-  </div>
-  <div class="callout-body">
-    This is the most important thing to understand about the failure model.
-Follower instances are <strong>not</strong> idle while waiting for the lease.
-  </div>
-</div>
-
-<pre><code>Every Orkestra instance — leader and followers — runs its informers and
-populates its local caches continuously. When a follower wins the lease,
-it has a warm cache and starts reconciling in seconds, not minutes.
-</code></pre>
-<p>The informers run in all instances. All caches are warm. The workqueues are dormant in followers — events are added to the queue but workers do not dequeue. When leadership transfers, the new leader&rsquo;s workers start draining a queue that already contains all pending events.</p>
-<h3 id="failover-timeline">Failover timeline</h3>
-<pre tabindex="0"><code>t=0:  Leader pod crashes (OOM, node failure, SIGKILL)
-t=0:  Lease stops being renewed
-t=15: Lease expires (leaseDuration)
-t=15: Follower acquires lease immediately (it was waiting)
-t=15: Follower workers start dequeuing
-t=16: First reconcile completes in the new leader
-</code></pre><p>Worst-case failover time: <strong>leaseDuration</strong> (default 15 seconds). In practice, if a follower is already running with a warm cache, it is closer to 16-17 seconds from crash to first reconcile in the new leader.</p>
-<p>During this 15-second window, reconciliation is paused. CRs created or updated during this window are queued and will be processed when the new leader starts. No CR changes are lost — etcd stores them and the informer delivers them to the new leader&rsquo;s queue.</p>
-
-
-
-
-
-
-
-
-
-
-<div class="callout callout-note" role="note">
-  <div class="callout-header">
-    <span class="callout-icon"></span>
-    <span class="callout-title">Admission webhooks during failover</span>
-  </div>
-  <div class="callout-body">
-    If ENABLE_ADMISSION_WEBHOOK=true, the /validate and /mutate endpoints are served
-by all running Orkestra pods (the HTTPS server runs in all instances, not
-just the leader). Admission interception continues during leader failover
-because the HTTPS server does not participate in leader election.
-  </div>
-</div>
-
-<pre><code>The ValidatingWebhookConfiguration points to the Service, which load-balances
-across all healthy pods. As long as one Orkestra pod is running, admission
-webhooks work.
-</code></pre>
+<h2 id="two-processes-two-trust-domains">Two processes, two trust domains</h2>
+<p>Orkestra deploys as two binaries: the Runtime and the Gateway. They have separate Kubernetes ServiceAccounts, separate ClusterRoles, and separate deployments. Neither process carries the permissions of the other.</p>
+<p>The Runtime reconciles custom resources. It reads CRs, applies templates, manages the resources declared in <code>onCreate</code> and <code>onReconcile</code> blocks, and emits events. It has no permissions to manage webhook configurations or TLS certificates.</p>
+<p>The Gateway serves admission webhooks — validation, mutation, and version conversion — and manages TLS automatically. It has no permissions to reconcile CRs or manage the resources your operator controls.</p>
+<p>This split is structural, not policy. The RBAC that <code>ork generate bundle</code> produces is derived directly from what your Katalog declares. If your operator creates Deployments and Services, the Runtime gets exactly those permissions. The Gateway gets permissions for webhook configurations and certificate secrets, and nothing else. No wildcards. No cluster-wide write access unless the Katalog explicitly declares resources that require it.</p>
+<p>The result is that a compromise of either process has a bounded blast radius. The Runtime cannot touch webhook infrastructure. The Gateway cannot touch your CRs or their child resources.</p>
 <hr>
-<h2 id="panic-recovery-safereconcile">Panic recovery (safeReconcile)</h2>
-<p>Every reconcile call is wrapped in <code>safeReconcile</code>:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">func</span> <span style="color:#50fa7b">safeReconcile</span>(ctx context.Context, fn <span style="color:#8be9fd;font-style:italic">func</span>(ctx context.Context, key <span style="color:#8be9fd">string</span>) <span style="color:#8be9fd">error</span>, key <span style="color:#8be9fd">string</span>) (err <span style="color:#8be9fd">error</span>) {
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">defer</span> <span style="color:#8be9fd;font-style:italic">func</span>() {
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">if</span> r <span style="color:#ff79c6">:=</span> <span style="color:#8be9fd;font-style:italic">recover</span>(); r <span style="color:#ff79c6">!=</span> <span style="color:#ff79c6">nil</span> {
-</span></span><span style="display:flex;"><span>            err = fmt.<span style="color:#50fa7b">Errorf</span>(<span style="color:#f1fa8c">&#34;reconciler panic recovered: %v\n%s&#34;</span>, r, debug.<span style="color:#50fa7b">Stack</span>())
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>    }()
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">return</span> <span style="color:#50fa7b">fn</span>(ctx, key)
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><h3 id="what-happens-when-a-reconciler-panics">What happens when a reconciler panics</h3>
-<ol>
-<li>The panic is caught by the deferred recover</li>
-<li>The stack trace is logged at ERROR level with the full goroutine stack</li>
-<li>A Warning Kubernetes event is emitted on the CR that caused the panic</li>
-<li>The error is returned to the workqueue</li>
-<li>The workqueue requeues the item with exponential backoff</li>
-<li><strong>Other CRDs are completely unaffected</strong> — each CRD has its own worker pool</li>
-</ol>
-<p>The panic does not crash the process. It does not affect other CRDs. The affected CR is retried after a backoff delay.</p>
-<h3 id="what-gets-logged">What gets logged</h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;level&#34;</span>: <span style="color:#f1fa8c">&#34;error&#34;</span>,
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;crd&#34;</span>: <span style="color:#f1fa8c">&#34;demo.orkestra.io/v1alpha1, Kind=Website&#34;</span>,
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;cr&#34;</span>: <span style="color:#f1fa8c">&#34;my-site&#34;</span>,
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;message&#34;</span>: <span style="color:#f1fa8c">&#34;reconciler panic recovered: runtime error: index out of range [5] with length 3&#34;</span>,
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;stacktrace&#34;</span>: <span style="color:#f1fa8c">&#34;goroutine 42 [running]:\nruntime/debug.Stack()\n\t/usr/local/go/src/runtime/debug/stack.go:24 +0x5b\n...&#34;</span>
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><p>The full stack trace is logged. The CR name and CRD are logged. You can identify exactly which CR triggered the panic and which line of code caused it.</p>
-<h3 id="what-happens-to-the-cr">What happens to the CR</h3>
-<p>The CR is left in whatever state it was in when the panic occurred. If the panic happened after the Deployment was created but before the Service was created, the Deployment exists and the Service does not. On the next reconcile cycle, the Service will be created. The state is partial, not corrupted.</p>
-
-
-
-
-
-
-
-
-
-
-<div class="callout callout-note" role="note">
-  <div class="callout-header">
-    <span class="callout-icon"></span>
-    <span class="callout-title">safeReconcile is not optional</span>
-  </div>
-  <div class="callout-body">
-    safeReconcile wraps every reconcile call — built-in GenericReconciler and
-custom constructors. It cannot be disabled. A Go panic in your hook code
-or custom reconciler will always be caught and the process will always
-continue running.
-  </div>
-</div>
-
+<h2 id="the-production-binary-is-not-the-development-binary">The production binary is not the development binary</h2>
+<p><code>ork</code> in development includes every command: <code>init</code>, <code>generate</code>, <code>validate</code>, <code>template</code>, <code>diff</code>, <code>upgrade</code>, <code>controlcenter</code>, and <code>run</code>. The production runtime is compiled with a build tag that removes everything except <code>run</code> and <code>version</code>. This is a compile-time exclusion — no configuration can re-enable it.</p>
+<p>An attacker who reaches the container cannot use <code>ork generate</code> to modify cluster state, cannot use <code>ork init</code> to write arbitrary files, and cannot trigger any code path that exists only for local development. The runtime binary is a smaller, narrower artifact than the full CLI: fewer dependencies, fewer entry points, fewer things that can go wrong.</p>
+<p>This is a narrow surface by construction, not by configuration.</p>
 <hr>
-<h2 id="api-server-disconnect">API server disconnect</h2>
-<p>If the Kubernetes API server becomes unreachable, Orkestra&rsquo;s behavior depends on the operation:</p>
-<p><strong>Informer watches:</strong> The informer library handles reconnection automatically with exponential backoff. The local cache remains valid during the disconnect — events are buffered by the API server and delivered when the connection is restored. Orkestra will not miss events that occurred during the disconnect.</p>
-<p><strong>Reconcile writes:</strong> Any reconcile that attempts to create or update a Kubernetes resource will fail with a connection error. The error is logged, the item is requeued with backoff, and the reconcile retries when the API server is reachable again.</p>
-<p><strong>Leader election renewal:</strong> If the API server is unreachable for longer than <code>renewDeadline</code> (default 10 seconds), the current leader cannot renew its lease. After <code>leaseDuration</code> (default 15 seconds), the lease expires. If no other instance can reach the API server either, the lease simply remains expired and no instance leads. Reconciliation pauses until connectivity is restored.</p>
-<p>There is no split-brain risk — the lease is stored in etcd, and etcd requires quorum. If the API server is unreachable, no instance can claim leadership.</p>
+<h2 id="isolation-within-the-runtime">Isolation within the runtime</h2>
+<p>Each CRD in a Katalog runs inside its own <strong>OperatorBox</strong> — an isolated runtime cell that owns everything needed to reconcile that CRD independently. Its own informer. Its own event queue. Its own worker pool. Its own health state. Its own reconciler instance. Nothing is shared with any other CRD.</p>
+<p>This is the same idea as containerization, applied inside a single binary. A CRD goes into an OperatorBox and comes out as an operator: self-contained, with its own resource scope and its own lifecycle. Thirteen operatorBoxes can run simultaneously in one process. They do not know each other exists.</p>
+<p>The consequences are structural, not just operational. Queue pressure in one operatorBox does not affect reconcile latency in another. A panic in one reconciler — a nil pointer, an index out of range, any unrecovered Go panic — is caught, logged with the full stack trace, and requeued with backoff. The affected operatorBox retries. Every other operatorBox continues uninterrupted.</p>
+<p>CRDs that need to observe each other&rsquo;s state do so through an explicit declaration — <code>cross:</code> in the operatorBox configuration — that names the source CRD, the CR selector, and the field to read. The read is in-memory, zero API calls for same-binary operatorBoxes. Startup sequencing works the same way: a <code>dependsOn</code> declaration tells Orkestra to hold this operatorBox&rsquo;s workers until another has reconciled successfully at least once.</p>
+<p>Communication is always opt-in and always visible in the Katalog. What is not declared does not happen.</p>
 <hr>
-<h2 id="node-failure">Node failure</h2>
-<p>If the node running the active Orkestra leader fails:</p>
-<ol>
-<li>The lease stops being renewed at <code>t=0</code> (node failure)</li>
-<li>At <code>t=15</code> (leaseDuration), the lease expires</li>
-<li>A follower on a healthy node acquires the lease</li>
-<li>The follower&rsquo;s warm cache contains all CR states</li>
-<li>Reconciliation resumes</li>
-</ol>
-<p>The failed node&rsquo;s pod will be rescheduled by Kubernetes (if Deployment replicas &gt; 1). When it restarts, it joins as a follower with a fresh informer cache that warms within seconds.</p>
-<p><strong>During failover</strong>, CRs are not deleted or modified by Orkestra. Kubernetes objects are persistent in etcd — they do not disappear because the operator is unavailable.</p>
+<h2 id="leader-election-and-failover">Leader election and failover</h2>
+<p>Exactly one Orkestra instance actively reconciles at any time. Leadership is held via a Kubernetes Lease object — the same mechanism <code>kube-controller-manager</code> uses. While one instance leads, all other instances run their informers and maintain warm caches. They are not idle.</p>
+<p>When the leader crashes or its node fails, the Lease expires after the configured lease duration. A follower acquires the lease immediately — it already has a warm cache and a queue populated with pending events. Reconciliation resumes within seconds, not minutes.</p>
+<p>During that window, CRs are not modified or deleted. They wait in etcd, unchanged, until the new leader processes them.</p>
 <hr>
-<h2 id="graceful-shutdown">Graceful shutdown</h2>
-<p>When Orkestra receives SIGTERM (standard Kubernetes pod termination):</p>
-<pre tabindex="0"><code>SIGTERM received
-  │
-  ▼
-Context cancelled — propagates to all components
-  │
-  ▼
-Workers stop accepting new queue items (queue.ShutDown())
-  │  In-flight reconciles are allowed to complete
-  │  No new items are dequeued after ShutDown() is called
-  │
-  ▼
-Workers exit when current reconcile completes
-  │  Timeout is configurable using &#34;SHUTDOWN_TIMEOUT&#34; and &#34;SHUTDOWN_GRACE_PERIOD&#34;
-  │
-  │
-  ▼
-Informers stop watching
-  │
-  ▼
-HTTPS server drains open connections (30s timeout)
-  │
-  ▼
-HTTP server shuts down
-  │
-  ▼
-Process exits 0
-</code></pre><h3 id="graceful-shutdown-timeline">Graceful shutdown timeline</h3>
-<p>Orkestra performs a coordinated, configurable shutdown when it receives SIGTERM.<br>
-Two settings control how long the system waits for in‑flight work to finish:</p>
-<ul>
-<li><strong><code>SHUTDOWN_TIMEOUT</code></strong> — how long each CRD’s workers are allowed to drain ongoing reconciles before Orkestra moves on.</li>
-<li><strong><code>SHUTDOWN_GRACE_PERIOD</code></strong> — the overall upper bound for the entire shutdown sequence; once this expires, Orkestra exits immediately.</li>
-</ul>
-<p><code>SHUTDOWN_GRACE_PERIOD</code> should always be larger than <code>SHUTDOWN_TIMEOUT</code>.<br>
-Users can tune both values based on the expected duration of their reconcile or cleanup logic.</p>
+<h2 id="how-the-layers-compound">How the layers compound</h2>
+<p>None of these properties work in isolation — they build on each other.</p>
+<p>The level-triggered reconciler assumes it will be interrupted. The panic recovery assumes individual reconciles will fail. The isolated worker pools assume one CRD&rsquo;s failure will happen. The leader election assumes the entire process will crash. The production binary assumes someone might try to misuse whatever surface is exposed.</p>
+<p>Each layer is designed for the one below it to fail, and to remain correct when it does. The result is a system where trustworthy behavior does not depend on everything going right — it depends on the guarantees holding even when things go wrong.</p>
 <hr>
-<h3 id="finalizer-safety-during-shutdown">Finalizer safety during shutdown</h3>
-<p>If a CR is being deleted (DeletionTimestamp set) and the reconcile is interrupted by shutdown before finalizers are removed, the CR will be stuck in terminating state until the next Orkestra instance starts and processes it.</p>
-<p>This is a safe state — the CR is not deleted, its child resources are not deleted, and the cluster is consistent. The next reconcile will run the <code>onDelete</code> templates or hooks and then remove the finalizers.</p>
+<h2 id="admission-and-the-gateway">Admission and the Gateway</h2>
+<p>The Gateway adds a second enforcement point on top of the runtime guarantees. Every CR creation and update passes through the Gateway&rsquo;s admission webhooks before it reaches etcd. Validation rules catch schema violations at admission time. Mutation rules apply defaults synchronously. Conversion webhooks handle schema evolution across CRD versions.</p>
+<p>If the Gateway is unavailable during admission, the configured <code>failurePolicy</code> determines behavior. The default is <code>Ignore</code> — CRs are admitted and the Runtime validates them at reconcile time. This keeps the system non-blocking during a brief outage. If synchronous enforcement is required, <code>failurePolicy: Fail</code> ensures no CR reaches etcd without Gateway approval.</p>
+<p>Deletion protection is enforced by the Gateway. A CR with the protection label cannot be deleted without either removing the label first or using the explicit override mechanism. In strict mode, deletion attempts are rejected outright at admission — they never reach the Runtime.</p>
+<p>These admission-layer guarantees exist independently of the reconcile loop. They are enforced before the Runtime sees the resource.</p>
 <hr>
-<h2 id="production-binary-minimal-surface-maximal-trust">Production binary: minimal surface, maximal trust</h2>
-<p>Orkestra’s development CLI includes every command: <code>init</code>, <code>generate</code>, <code>validate</code>, <code>template</code>, <code>diff</code>, <code>upgrade</code>, <code>controlcenter</code>, and <code>run</code>.<br>
-The production runtime is built with a <strong>build tag</strong> (<code>-tags runtime</code>) that excludes all commands except <code>run</code> (and <code>version</code> for diagnostics).</p>
-<h3 id="what-is-removed-in-production">What is removed in production</h3>
-<ul>
-<li><code>ork init</code> – scaffolding new operators</li>
-<li><code>ork generate</code> – generating CRDs, bundles, registry, documentation</li>
-<li><code>ork validate</code> – offline Katalog validation</li>
-<li><code>ork template</code> – rendering resource templates</li>
-<li><code>ork diff</code> – comparing Katalogs</li>
-<li><code>ork upgrade</code> – self‑upgrade logic</li>
-<li><code>ork controlcenter</code> – local development UI</li>
-</ul>
-<p>The resulting binary contains <strong>only</strong> <code>ork run</code>, <code>ork version</code>, and the shared runtime packages (reconciler, informers, webhook server, metrics, health endpoints).</p>
-<h3 id="why-this-strengthens-trust">Why this strengthens trust</h3>
-<ol>
-<li>
-<p><strong>Reduced attack surface</strong></p>
-<ul>
-<li>No code for generating and writing files, or parsing user‑supplied templates exists in the runtime.</li>
-<li>An attacker who compromises the container cannot run <code>ork init</code> to write arbitrary files or <code>ork generate</code> to modify cluster state outside the intended reconciliation loop.</li>
-</ul>
-</li>
-<li>
-<p><strong>Smaller binary, fewer dependencies</strong></p>
-<ul>
-<li>The production binary is stripped of all development‑only libraries (e.g., YAML generators).</li>
-<li>Binary size drops from ~60 MB to ~20 MB, reducing memory footprint and image pull time.</li>
-</ul>
-</li>
-<li>
-<p><strong>Prevents accidental misuse</strong></p>
-<ul>
-<li>An operator cannot be accidentally started in development mode inside the cluster.</li>
-<li>The only supported entrypoint is <code>ork run</code> (or the container’s default <code>ENTRYPOINT [&quot;/usr/local/bin/ork&quot;]</code>).</li>
-</ul>
-</li>
-<li>
-<p><strong>Build‑time guarantee</strong></p>
-<ul>
-<li>Exclusion is enforced at compile time using Go build constraints.</li>
-<li>No runtime configuration can re‑enable the excluded commands – they are simply not linked.</li>
-</ul>
-</li>
-</ol>
-<h3 id="effect-on-failure-model">Effect on failure model</h3>
-<p>The failure guarantees documented above (leader election, panic recovery, graceful shutdown, etc.) <strong>remain unchanged</strong> – the runtime engine is identical. The only difference is that the production binary cannot execute any command that would bypass the normal reconciliation lifecycle. This makes the system more predictable and harder to subvert.</p>
-<h3 id="verification">Verification</h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#6272a4"># Check which commands are present in the runtime image</span>
-</span></span><span style="display:flex;"><span>docker run --rm ghcr.io/orkspace/orkestra:latest ork --help
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#6272a4"># The output should show only &#34;run&#34; and &#34;version&#34;</span>
-</span></span></code></pre></div><hr>
-<h2 id="crd-health-states">CRD health states</h2>
-<p>Each CRD has one of four health states, reported by <code>/katalog/{crd}/health</code> and <code>ork status</code>:</p>
-<table>
-  <thead>
-      <tr>
-          <th>State</th>
-          <th>Meaning</th>
-          <th><code>/katalog/{crd}/health</code></th>
-      </tr>
-  </thead>
-  <tbody>
-      <tr>
-          <td><code>starting</code></td>
-          <td>Informer not yet synced, workers not yet running</td>
-          <td>503</td>
-      </tr>
-      <tr>
-          <td><code>healthy</code></td>
-          <td>All workers running, recent reconcile succeeded</td>
-          <td>200</td>
-      </tr>
-      <tr>
-          <td><code>degraded</code></td>
-          <td><code>consecutiveFails &gt;= degradeThreshold</code></td>
-          <td>503</td>
-      </tr>
-      <tr>
-          <td><code>disabled</code></td>
-          <td><code>enabled: false</code> in Katalog</td>
-          <td>200 (excluded from runtime)</td>
-      </tr>
-  </tbody>
-</table>
-<p><strong>Degraded</strong> does not stop reconciliation — workers continue running. It is a signal that something is systematically wrong. The CRD recovers to healthy when a reconcile succeeds (resets <code>consecutiveFails</code> to zero).</p>
-<!-- **Critical CRDs:** A CRD marked `critical: true` that becomes degraded transitions the entire Orkestra health state to degraded. This causes the `/health` probe to return 503, which may trigger pod restart depending on the liveness probe configuration. -->
+<h2 id="what-this-looks-like-in-practice">What this looks like in practice</h2>
+<p>The Katalog is the source of truth for what permissions the runtime needs. <code>ork generate bundle</code> reads the Katalog and produces a YAML bundle — Namespace, ServiceAccounts, ClusterRoles, ClusterRoleBindings — containing exactly those permissions and nothing more. The bundle diffs cleanly in GitOps workflows. You see what is being added or removed before it reaches the cluster.</p>
+<p><code>ork validate</code> reads the Katalog and shows you the security posture of each CRD before deployment: which permissions will be requested, which admission rules are active, and whether any configuration conflicts with the security model.</p>
+<p>The flow from Katalog to running operator is auditable at every step. No step requires cluster-admin access. No step produces broader permissions than the Katalog declares.</p>
 <hr>
-<h2 id="admission-webhook-failure-model">Admission webhook failure model</h2>
-<p>If <code>ENABLE_ADMISSION_WEBHOOK=true</code> and the Orkestra HTTPS server is unreachable when the API server calls <code>/validate</code> or <code>/mutate</code>:</p>
-<p>The behavior depends on <code>FailurePolicy</code> in the webhook configuration:</p>
-<table>
-  <thead>
-      <tr>
-          <th>FailurePolicy</th>
-          <th>Behavior when Orkestra unreachable</th>
-      </tr>
-  </thead>
-  <tbody>
-      <tr>
-          <td><code>Ignore</code> (default)</td>
-          <td>API server allows the operation. Object is stored. Reconcile-time validation catches violations on the next cycle.</td>
-      </tr>
-      <tr>
-          <td><code>Fail</code></td>
-          <td>API server rejects the operation with <code>503 Service Unavailable</code>. <code>kubectl apply</code> returns an error.</td>
-      </tr>
-  </tbody>
-</table>
-<p>Orkestra uses <code>FailurePolicy: Ignore</code> by default. This means:</p>
-<ul>
-<li>A brief Orkestra outage does not prevent users from deploying CRs</li>
-<li>CRs deployed during an outage are validated at reconcile time when Orkestra restarts</li>
-<li>Users experience slightly degraded validation (later feedback, not no feedback)</li>
-</ul>
-
-
-
-
-
-
-
-
-
-
-<div class="callout callout-warning" role="note">
-  <div class="callout-header">
-    <span class="callout-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
-    <span class="callout-title">Choosing FailurePolicy: Fail</span>
-  </div>
-  <div class="callout-body">
-    Setting <code>FailurePolicy: Fail</code> means Orkestra&rsquo;s availability directly
-gates all CR deployments. If Orkestra is unavailable for any reason
-(restart, update, outage), no CRs can be created or updated.
-  </div>
-</div>
-
-<pre><code>Only set `Fail` when you require strict synchronous enforcement and
-have high-availability Orkestra deployments (multiple replicas, PodDisruptionBudget).
-</code></pre>
-<hr>
-<h2 id="mutation-webhook-failure-model">Mutation webhook failure model</h2>
-<p>Mutation webhooks follow a stricter non-blocking rule. If a mutation rule fails — template evaluation error, patch construction error, any error — the webhook returns <code>allowed: true</code> without a patch. The object is stored without mutation.</p>
-<p>This is intentional: <strong>mutation must never block.</strong> A bug in a mutation rule expression should not prevent a CR from being created. The reconciler will apply defaults at reconcile time if the admission-time mutation failed.</p>
-<p>If you observe <code>admission/mutate: error applying rules — allowing without mutation</code> in logs, the CR was stored without defaults being applied. The reconciler will correct this on the next cycle.</p>
-<hr>
-<h2 id="the-kube-controller-manager-analogy">The kube-controller-manager analogy</h2>
-<p>The Orkestra failure model is identical to <code>kube-controller-manager</code> — the process that manages Deployments, ReplicaSets, Jobs, and dozens of other controllers. <code>kube-controller-manager</code>:</p>
-<ul>
-<li>Uses Kubernetes leader election</li>
-<li>Runs multiple isolated controllers in one process</li>
-<li>Wraps each reconcile to prevent panics from crashing the process</li>
-<li>Uses informer-based level-triggered reconciliation</li>
-<li>Provides no stronger delivery guarantees than &ldquo;at least once&rdquo;</li>
-</ul>
-<p>Kubernetes clusters trust <code>kube-controller-manager</code> with cluster-wide control plane management. The failure model that makes this trustworthy is the same model Orkestra uses for custom resources.</p>
-<p>The operational question is not &ldquo;can this process fail?&rdquo; — all processes fail. The question is &ldquo;what happens when it does?&rdquo; For both <code>kube-controller-manager</code> and Orkestra, the answer is: failover within the lease duration, no data corruption, no orphaned resources, and full correctness restoration on the next reconcile.</p>
-<hr>
-<h2 id="summary-what-can-go-wrong-and-what-orkestra-does">Summary: what can go wrong and what Orkestra does</h2>
-<table>
-  <thead>
-      <tr>
-          <th>Failure</th>
-          <th>Effect</th>
-          <th>Recovery</th>
-      </tr>
-  </thead>
-  <tbody>
-      <tr>
-          <td>Reconciler panic</td>
-          <td>CR left in partial state</td>
-          <td>Requeued with backoff, corrected on next reconcile</td>
-      </tr>
-      <tr>
-          <td>Process crash</td>
-          <td>Reconciliation paused for up to 15s</td>
-          <td>Follower acquires lease, resumes immediately</td>
-      </tr>
-      <tr>
-          <td>Node failure</td>
-          <td>Reconciliation paused for up to 15s</td>
-          <td>Follower on healthy node acquires lease</td>
-      </tr>
-      <tr>
-          <td>API server disconnect</td>
-          <td>Reconcile writes fail, queued for retry</td>
-          <td>Automatic reconnection, retry on restore</td>
-      </tr>
-      <tr>
-          <td>Graceful shutdown</td>
-          <td>In-flight reconcile completes, then stops</td>
-          <td>New instance picks up pending events</td>
-      </tr>
-      <tr>
-          <td>Admission webhook unreachable</td>
-          <td>Objects stored without synchronous validation</td>
-          <td>Reconcile-time validation corrects violations</td>
-      </tr>
-      <tr>
-          <td>Mutation error</td>
-          <td>Object stored without defaults</td>
-          <td>Reconcile-time mutation applies defaults</td>
-      </tr>
-      <tr>
-          <td>Leader lease expired (no follower)</td>
-          <td>Reconciliation paused until a leader is elected</td>
-          <td>New instance or connectivity restore</td>
-      </tr>
-      <tr>
-          <td>CRD degraded</td>
-          <td>Reconciliation continues, health API shows degraded</td>
-          <td>Recovers when a reconcile succeeds</td>
-      </tr>
-  </tbody>
-</table>
+<p>For a complete description of the security mechanisms — deletion protection, namespace restrictions, admission webhook configuration, RBAC generation, and binary provenance — see the <a href="/docs/security/">Security</a> documentation.</p>
 
       </article>
 
@@ -729,7 +340,7 @@ have high-availability Orkestra deployments (multiple replicas, PodDisruptionBud
 
 
   
-  <script src="/js/main.min.d2e794f76bf881e2b24e29e56610c51d43db4fe37e7050090ef272ef855893af.js" defer></script>
+  <script src="/js/main.min.543f7d98f205af5cb4a3dd44b917d8e83c2e2d9c93d4398d5565d75656c2d586.js" defer></script>
 
   <style>
      
