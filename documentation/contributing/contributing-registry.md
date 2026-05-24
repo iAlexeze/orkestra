@@ -1,4 +1,4 @@
-# Contributing to `pkg/orkestra-registry`
+# Contributing to pkg/orkestra-registry
 
 The registry is the library of built-in Kubernetes resource handlers Orkestra knows how to create, update, and delete on behalf of an operator. Each resource type lives in its own subdirectory.
 

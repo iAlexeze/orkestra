@@ -453,6 +453,12 @@ p:last-child { margin-bottom: 0; }
   border-bottom: none;
 }
 
+.navbar-mobile-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 0.25rem 0;
+}
+
 .navbar-mobile-link:hover {
   color: var(--color-text);
 }

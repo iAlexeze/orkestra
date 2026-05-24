@@ -408,12 +408,25 @@
     });
   }
 
-  /* ── 10. Init all ─────────────────────────────────────────── */
+  /* ── 10. Scroll sidebar to active item ─────────────────────── */
+  function scrollSidebarToActive() {
+    var sidebar = document.getElementById('docs-sidebar');
+    if (!sidebar) return;
+    var active = sidebar.querySelector('.sidebar-link.active, .sidebar-standalone-link.active');
+    if (!active) return;
+    var sidebarRect = sidebar.getBoundingClientRect();
+    var activeRect = active.getBoundingClientRect();
+    var targetScrollTop = sidebar.scrollTop + (activeRect.top - sidebarRect.top) - (sidebarRect.height / 2) + (activeRect.height / 2);
+    sidebar.scrollTop = Math.max(0, targetScrollTop);
+  }
+
+  /* ── 11. Init all ─────────────────────────────────────────── */
   document.addEventListener('DOMContentLoaded', function () {
     addCopyButtons();
     addLangLabels();
     initSidebar();
     initSidebarSections();
+    scrollSidebarToActive();
     initTOC();
     initMobileMenu();
     initHeroTabs();
