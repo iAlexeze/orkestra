@@ -118,9 +118,9 @@ func (ws *WebhookServer) strictModeProtectionHandler(w http.ResponseWriter, r *h
 						"To unprotect this resource:\n"+
 						"- Opt out in the katalog using: '<crd>.deletionProtection.strictMode: false'\n\n"+
 
-						"To disable strict mode globally:"+
+						"To disable strict mode globally:\n"+
 						"- Set security.deletionProtection.strictMode: false in the Katalog\n"+
-						"- Regenerate and apply a bundle, and restart the Gateway\n\n",
+						"- Regenerate and apply the bundle, and restart the Gateway\n\n",
 					header,
 				),
 				Code: 403,

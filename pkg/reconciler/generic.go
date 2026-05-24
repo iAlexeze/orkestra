@@ -359,48 +359,46 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 		DeletionProtectionEnabled: r.kat.IsDeletionProtectionEnabled(),
 	})
 
-	// Fetch the latest object from the API server before label management.
-	// Label decisions depend on the current Katalog configuration (which may have
-	// changed after the object was initially queued). Using a stale in‑memory object
-	// can cause incorrect label states – for example, a previously added exemption
-	// label may not be removed when strict mode is later enabled.
-	freshObj, err := r.getLatestObject(ctx, obj.GetNamespace(), obj.GetName())
-	if err != nil {
-		return err
-	}
-	obj = freshObj
+	// ── Labels: snapshot → mutate → one atomic patch ─────────────────────────
+	// Snapshot the server-side labels before any in-memory mutations (the
+	// controller-runtime MergeFrom pattern). PatchLabels diffs base→desired and
+	// sets deleted keys to null in the merge patch body so the server removes them.
+	serverLabels := copyStringMap(obj.GetLabels())
 
-	// Ensure the `managed: true` label (identifies Orkestra ownership)
-	if labelMgr.EnsureManagedLabel(obj) {
-		if err := r.kube.PatchLabels(ctx, obj, r.crd.GVR(), obj.GetLabels()); err != nil {
-			return err
-		}
+	labelMgr.EnsureManagedLabel(obj)
+
+	shouldHaveProtection := r.kat.IsDeletionProtectionEnabled() && r.crd.ShouldProtectCRs()
+	labelMgr.EnsureDeletionProtectionLabel(obj, shouldHaveProtection)
+
+	effectiveStrict := r.crd.IsStrictDeletionProtection(r.kat.IsStrictModeEnabled())
+
+	// When transitioning from protected→unprotected (deletion-protection being
+	// removed), the strict-mode admission webhook intercepts the UPDATE and allows
+	// the removal only when strict-mode-exempt=true appears in the new object.
+	// Removing both labels in the same patch would fail that check, so we force
+	// the exempt label ON for this cycle. On the next reconcile the
+	// deletion-protection label is already gone, the webhook objectSelector no
+	// longer matches, and the exempt label can be cleaned up freely.
+	currentlyProtected := serverLabels[labels.DeletionProtectionLabel] == labels.DeletionProtectionValue
+	if !shouldHaveProtection && currentlyProtected {
+		effectiveStrict = false
+	}
+
+	logger.Debug().
+		Str("crd", r.crd.Name).
+		Str("resource", obj.GetName()).
+		Bool("effectiveStrict", effectiveStrict).
+		Bool("currentlyProtected", currentlyProtected).
+		Msg("label: evaluating strict mode")
+	labelMgr.EnsureStrictModeExemptLabel(obj, effectiveStrict)
+
+	if err := r.kube.PatchLabels(ctx, obj, r.crd.GVR(), serverLabels, obj.GetLabels()); err != nil {
+		return err
 	}
 
 	// Ensure `managed‑by` and `managed‑since` annotations (audit trail)
 	if labelMgr.EnsureManagedAnnotations(obj, r.crd.KatalogName) {
 		if err := r.kube.PatchAnnotations(ctx, obj, r.crd.GVR(), obj.GetAnnotations()); err != nil {
-			return err
-		}
-	}
-
-	// Add deletion‑protection label when globally enabled (security)
-	shouldHaveProtection := r.kat.IsDeletionProtectionEnabled() && r.crd.ShouldProtectCRs()
-	if labelMgr.EnsureDeletionProtectionLabel(obj, shouldHaveProtection) {
-		if err := r.kube.PatchLabels(ctx, obj, r.crd.GVR(), obj.GetLabels()); err != nil {
-			return err
-		}
-	}
-
-	// Add strictMode exemption label based on global state (security)
-	effectiveStrict := r.crd.IsStrictDeletionProtection(r.kat.IsStrictModeEnabled())
-	logger.Debug().
-		Str("crd", r.crd.Name).
-		Str("resource", obj.GetName()).
-		Bool("effectiveStrict", effectiveStrict).
-		Msg("label: evaluating strict mode")
-	if labelMgr.EnsureStrictModeExemptLabel(obj, effectiveStrict) {
-		if err := r.kube.PatchLabels(ctx, obj, r.crd.GVR(), obj.GetLabels()); err != nil {
 			return err
 		}
 	}

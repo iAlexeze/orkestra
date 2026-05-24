@@ -160,3 +160,11 @@ func RemoveFinalizer(o domain.Object, finalizer string) (updated bool) {
 func ContainsFinalizer(o domain.Object, finalizer string) bool {
 	return slices.Contains(o.GetFinalizers(), finalizer)
 }
+
+func copyStringMap(m map[string]string) map[string]string {
+	out := make(map[string]string, len(m))
+	for k, v := range m {
+		out[k] = v
+	}
+	return out
+}
