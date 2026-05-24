@@ -56,7 +56,7 @@ Orkestra requires one of the following tools to build images:
 
 Install one of them and re-run your command.
 
-Docs: https://docs.orkestra.sh/cli/build
+Docs: https://orkestra.sh/cli/build
 ───────────────────────────────────────────────────────────────`)
 }
 

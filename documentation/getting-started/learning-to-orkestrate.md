@@ -1,213 +1,126 @@
 # Learning to Orkestrate
 
-Kubernetes operators are for everyone. That is Orkestra's promise — and the
-best way to experience it is to run a real operator yourself, see it reconcile,
-and work through progressively more capable patterns until the model clicks.
-
-**Learning to Orkestrate** is the guided path for doing exactly that. It is a
-series of example packs — collections of real, runnable operators — that ship
-alongside every version of Orkestra. The examples are versioned with the runtime.
-When Orkestra gains new capabilities, new examples follow. You always have access
-to examples that work with the version you have installed.
+Every Orkestra capability is demonstrated in a runnable example. This page is the map. Whether you are writing your first operator or converting an existing Go controller, start here.
 
 ---
 
-## Getting started in two commands
-
-No reading required to get your first operator running.
-
-```bash
-# Step 1: Install Orkestra
-curl -sSL https://get.orkestra.sh | sh
-
-# Step 2: Initialize your first operator project
-mkdir my-first-operator && cd my-first-operator
-ork init
-```
-
-`ork init` with no arguments initializes in the current directory — like `terraform init`.
-Pass a name to create a new folder: `ork init my-operator`.
-
-Orkestra scaffolds the project and prints exactly what to run next. The first operator —
-a Website CRD that creates a Deployment and Service — takes about five minutes from
-installation to a reconciling CR.
-
----
-
-## Example packs
-
-Each pack is a collection of complete, working operator examples. They are
-intentionally ordered: start at the beginning even if you have Kubernetes
-experience. The patterns build on each other.
-
-### Beginner
-
-The foundation. Every concept here is used in every more advanced example.
+## Two commands to your first operator
 
 ```bash
 ork init --pack beginner
-# or: ork init my-operator --pack beginner
+cd beginner/01-hello-website
+ork run
 ```
 
-| Example | What it demonstrates |
-|---|---|
-| `01-hello-website` | Your first operator. Deployment, Service, owner references, status, `reconcile: true`. |
-| `02-with-serviceaccount` | Adding a ServiceAccount. Wiring pod identity at creation time. |
-| `03-secret-copy` | Secret distribution across namespaces. `once:` and idempotency. |
-| `03b-configmap-copy` | ConfigMap distribution. Statusless resource patterns. |
-| `04-multi-resource` | Creating many resource types from one CR. |
-| `05-when-conditions` | Async reconciliation. Gates that wait for readiness before proceeding. |
-| `06-komposer-basic` | Composing multiple operators from one runtime. |
+No cluster? Add `--dev` to create a temporary kind cluster. Requires Docker.
 
-### Intermediate
+---
 
-Deeper patterns for operators that handle real production requirements.
+## Beginner pack
+
+The foundation. Every concept here appears in every more advanced example. Work through these in order.
 
 ```bash
-ork init --pack intermediate
+ork init --pack beginner
 ```
 
-| Example | What it demonstrates |
+| Example | What it teaches |
 |---|---|
-| `07-validation-mutation` | Admission-time field validation. Default injection. |
-| `08-komposer-registry` | Pulling operators from the Orkestra Registry. |
-| `09-hooks` | When the declarative layer is not enough. Typed Go hooks. |
-| `10-constructor` | Full ownership of the reconcile loop. Custom constructors. |
+| `01-hello-website` | Your first operator. CRD declaration, Katalog template expressions, `reconcile: true`, owner references, status fields. The mental model everything else builds on. |
+| `02-with-serviceaccount` | Three resources from one CR. ServiceAccount wiring, pod identity, reading live cluster state into status via Notes. |
+| `03-secret-copy` | Built-in Kubernetes resource management. A Secret distribution operator: copies a Secret from a platform namespace into every team namespace. `fromSecret`, `toNamespaces`, `reconcile: true` keeping copies in sync. |
+| `03b-configmap-copy` | Same pattern as 03 applied to ConfigMaps. Statusless resource distribution. Good companion to 03. |
 
-### Advanced
+---
 
-Patterns that solve the hard problems. These are the capabilities that
-traditionally require expert-level operator engineering.
+## Advanced pack
+
+Every production operator pattern. Some examples have sub-examples showing the same concept across different deployment topologies (in-binary, cross-binary, cross-cluster).
 
 ```bash
 ork init --pack advanced
 ```
 
-| Example | What it demonstrates |
+### Rules and lifecycle
+
+| Example | What it teaches |
 |---|---|
-| `11-cross-crd-ipc` | Operators that observe each other. Declarative dependency graphs. |
-| `12-conversion` | Multi-version CRDs with lossless bidirectional conversion. No extra deployment. |
-| `13-normalize` | Schema flexibility without conversion webhooks. The normalize block. |
-| `14-foreach` | One declaration, N resources. List and map expansion. |
-| `15-external-gate` | HTTP policy checks before resource creation. |
-| `16-security` | Deletion protection, RBAC auto-apply, namespace guard. |
-| `17-providers` | AWS and MongoDB integration without a single line of provider code. |
+| `07-validation-mutation` | Admission-time policy without a webhook server. `deny` and `warn` rules. `default` and `override` mutation. `mutateFirst`. Two enforcement boundaries: admission and reconcile, from one declaration. |
+| `16-custom-resources` | The full resource lifecycle in one place. Seven sub-examples: single child, status propagation, conditional children with `when:`, drift correction with `reconcile: true`, `forEach` sharding across a list, full platform composition, multi-CRD pipeline. |
 
-### Use Cases
+### Composition
 
-Full-stack, end-to-end operator scenarios that mirror real platform engineering problems.
-
-```bash
-ork init --pack use-cases
-```
-
-| Example | What it demonstrates |
+| Example | What it teaches |
 |---|---|
-| `uc-01-platform-operator` | Complete platform team operator. Namespaces, RBAC, network policies, secrets. |
-| `uc-02-multi-region-app` | forEach expansion across regions. Cross-CRD health gates. |
-| `uc-03-configmap-operator` | ConfigMap as the input surface. Zero CRD, zero versioning. |
-| `uc-04-cicd-pipeline` | Git + Docker build integration. Annotation-based state. |
+| `08-komposer-registry` | Production Komposer pulling from OCI registry, local Katalog, and Helm chart sources simultaneously. Version pinning, multi-source composition, environment-specific overrides. |
+| `13-dependencies` | Startup ordering with `dependsOn`. Three sub-examples: in-binary (same Orkestra process), cross-binary (different processes), cross-cluster. The `healthy` vs `started` condition difference. |
+| `14-cross-operator` | CRDs reading each other's live state. Two operators sharing data via the informer cache — zero API server calls. Three sub-examples: in-binary, cross-binary, cross-cluster. |
+| `17-apitype-override` | White-label operator pattern. Import a vendor Katalog and override only `apiTypes` — your API group, your CRD identity, identical reconcile logic. |
+| `18-crd-file-komposer` | Combine `apiTypes` override and `crdFile` in one Komposer. Fully self-contained: hand it off and `ork run` handles the rest. |
+
+### Escape hatches
+
+| Example | What it teaches |
+|---|---|
+| `09-hooks` | When the declarative layer is not enough. Typed Go hooks called at `OnReconcile` and `OnDelete`. You write the function; Orkestra calls it at the right point. The runtime still manages informers, workqueue, health, metrics, and events. |
+| `10-constructor` | Full ownership of the reconcile loop. Replace the GenericReconciler entirely. For migrating existing Go controllers or building custom state machines. Orkestra still manages informers, workqueue, and workers. |
+| `11-mixed-operator-patterm` | All three patterns in one Komposer: pure declarative, hooks, and constructor operators running side-by-side in the same runtime. |
+
+### Operations
+
+| Example | What it teaches |
+|---|---|
+| `12-autoscale` | Dynamic worker and resync scaling based on metrics. Five sub-examples: no-autoscaler baseline, own metrics, sibling operator metrics (in-binary), sibling operator metrics (cross-cluster), external metrics source. |
+
+### Tooling
+
+| Example | What it teaches |
+|---|---|
+| `15-any-language` | Orkestra only cares about the final Katalog YAML. Generate it from Python, Go, or Node.js — three language examples producing identical output. |
 
 ---
 
-## Running an example
+## Running any example
 
 Every example follows the same pattern:
 
 ```bash
-# Initialize the pack
+# Pull the pack
 ork init --pack beginner
 
-# Navigate to an example
+# Enter an example
 cd beginner/01-hello-website
 
-# Start the operator — Orkestra applies the CRD, applies cr.yaml, and starts the operator
+# Run — Orkestra applies the CRD, applies cr.yaml, starts the operator
 ork run
 
-# Watch it reconcile
-kubectl get websites
-kubectl get deployments
-kubectl get services
-
-# Open the Control Center
+# Open the Control Center in another terminal
 ork control
-# → localhost:8081
+# → localhost:8081 · username:password → orkestra
 ```
-
-The Control Center shows the operator's health, the CR's status, its child
-resources, and the events emitted on every reconcile — all in real time.
 
 ---
 
-## Keeping examples fresh
+## Which example to start with
 
-Examples are versioned with Orkestra. When you upgrade Orkestra, you get the
-examples that ship with that version. Run `ork init` again after upgrading to
-pull the updated pack.
+**New to Kubernetes operators** — start with `beginner/01-hello-website`. The mental model it builds is the foundation for everything else.
 
-```bash
-# Check what you have
-ork version
+**Know Kubernetes, new to Orkestra** — start with `beginner/01`, then jump to `advanced/07-validation-mutation`. The declarative model will be familiar; the depth may surprise you.
 
-# Check if there's a newer version
-ork upgrade --check
+**Migrating from Kubebuilder or Operator SDK** — start with `advanced/09-hooks` to wrap existing Go logic, or `advanced/10-constructor` to bring a full reconciler across intact.
 
-# Upgrade to the latest
-ork upgrade
+**Building a platform** — start with `advanced/08-komposer-registry` and `advanced/13-dependencies`. These are the composition patterns platform teams actually use.
 
-# Pull fresh examples for the new version
-ork init my-operator-v2 --pack beginner
-cd my-operator-v2
-```
+**Want status propagation and drift correction** — `advanced/16-custom-resources` sub-examples 02 and 04.
 
-The upgrade command downloads the correct binary for your platform, replaces
-the existing installation, and prints the new version. Your existing katalogs
-and CRDs are unaffected — `ork upgrade` only updates the CLI.
+**Cross-operator data sharing** — `advanced/14-cross-operator/01-in-binary`.
 
-> **Tip:** If you want to upgrade only the Orkestra runtime and skip the
-> Control Center binary:
->
-> ```bash
-> ork upgrade --runtime-only
-> ```
-
----
-
-## Which pack to start with
-
-**If you are new to Kubernetes operators:** Start with `beginner`. Work through
-`01-hello-website` before anything else. The mental model it builds — declare
-desired state, watch it reconcile — is the foundation for every other example.
-
-**If you know Kubernetes but are new to Orkestra:** Start with `beginner/01`
-to understand the Katalog, then skip to `intermediate/07` to see validation and
-mutation. The declarative model will be familiar; the depth may surprise you.
-
-**If you are migrating from Kubebuilder or Operator SDK:** Start with
-`advanced/12-conversion` if you have multi-version CRDs, or `intermediate/09-hooks`
-if you have existing Go reconcilers you want to preserve. Orkestra can wrap them.
-
-**If you are building a platform:** Start with `use-cases`. These examples are
-designed for the problems platform teams actually face — namespace provisioning,
-secret distribution, multi-region deployments.
+**Autoscaling workers** — `advanced/12-autoscale/02-based-on-own-metrics`.
 
 ---
 
 ## Available packs
 
-Run this at any time to see all available packs for your installed version:
-
 ```bash
 ork init --list-packs
 ```
-
----
-
-> **Tip — Contribution**
->
-> When you finish working through a pack, you are a contribution away from
-> making Orkestra better for everyone. You can add a new example to an existing
-> pack, open a PR, and help grow the set of working operator patterns.
->
-> Open a [GitHub issue](https://github.com/orkspace/orkestra/issues) or
-> [Discussion](https://github.com/orkspace/orkestra/discussions) to get started.

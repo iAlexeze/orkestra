@@ -213,7 +213,7 @@ func buildDeveloperCR(name string, info *orktypes.ProjectInfo, opts GenerateOpti
 	fmt.Fprintf(&b, "  replicas: \"%s\"\n\n", replicas)
 
 	b.WriteString("  # How much CPU and memory your app should get. Choose a profile:\n")
-	b.WriteString("  # docs.orkestra.sh/concepts/resource-profiles\n")
+	b.WriteString("  # orkestra.sh/concepts/resource-profiles\n")
 	b.WriteString("  resourceProfile: \"burst\"\n\n")
 
 	if !opts.NoHA {
@@ -650,7 +650,7 @@ func buildCR(name string, info *orktypes.ProjectInfo, opts GenerateOptions) stri
 	fmt.Fprintf(&b, "  replicas: \"%s\"\n\n", replicas)
 
 	b.WriteString("  # How much CPU and memory your app should get. Choose a profile:\n")
-	b.WriteString("  # docs.orkestra.sh/concepts/resource-profiles\n")
+	b.WriteString("  # orkestra.sh/concepts/resource-profiles\n")
 	b.WriteString("  resourceProfile: \"burst\"\n\n")
 
 	if !opts.NoHA {

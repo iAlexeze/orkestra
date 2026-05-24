@@ -10,14 +10,14 @@
     <item>
       <title>Declarative Operators: A New Model for Kubernetes Extensibility</title>
       <link>http://localhost:8090/publications/declarative-operators-whitepaper/</link>
-      <pubDate>Wed, 20 May 2026 00:00:00 +0000</pubDate>
+      <pubDate>Sun, 24 May 2026 00:00:00 +0000</pubDate>
       <guid>http://localhost:8090/publications/declarative-operators-whitepaper/</guid>
       <description>&lt;p&gt;&lt;em&gt;Orkestra Project — March 2026&lt;/em&gt;&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;abstract&#34;&gt;Abstract&lt;/h2&gt;&#xA;&lt;p&gt;Kubernetes operators encode domain knowledge as reconciliation logic. Every&#xA;major operator framework to date requires this logic to be written in a&#xA;programming language, compiled into a binary, and deployed as a separate&#xA;long-running process — one per CRD. The result, at scale, is operator sprawl:&#xA;dozens of binaries each with independent lifecycle, observability, and&#xA;resource consumption.&lt;/p&gt;&#xA;&lt;p&gt;This paper presents a different model. We argue that the operator pattern&#xA;is fundamentally correct, but its implementation has been conflated with its&#xA;mechanism. The pattern requires one reconciler per CRD with proper isolation.&#xA;It does not require one binary per CRD. When a shared runtime provides the&#xA;isolation, each CRD becomes a complete, independent operator — with its own&#xA;informer, worker pool, workqueue, health endpoint, and metrics — while the&#xA;operational overhead of running them collapses to a single process.&lt;/p&gt;</description>
     </item>
     <item>
       <title>Trust and Failure Model</title>
       <link>http://localhost:8090/publications/trust-and-failure-model/</link>
-      <pubDate>Tue, 19 May 2026 00:00:00 +0000</pubDate>
+      <pubDate>Sun, 24 May 2026 00:00:00 +0000</pubDate>
       <guid>http://localhost:8090/publications/trust-and-failure-model/</guid>
       <description>&lt;p&gt;Trust in a distributed system is not a feature you add — it is a property that either emerges from the design or does not. Orkestra&amp;rsquo;s approach is to make trustworthy behavior the default at every layer, and to ensure those layers compound rather than exist independently. This is a description of how that works.&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;the-foundational-guarantee&#34;&gt;The foundational guarantee&lt;/h2&gt;&#xA;&lt;p&gt;Every Orkestra reconciler is level-triggered. It does not replay a log of events — it reads current desired state and drives toward it. This is the same model Kubernetes uses for its own controllers, and it carries the same property: any operation that is interrupted half-way through leaves the cluster in a partial state, not a corrupted one. The next reconcile corrects it.&lt;/p&gt;</description>
     </item>

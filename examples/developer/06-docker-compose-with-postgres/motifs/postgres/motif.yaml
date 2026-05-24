@@ -36,7 +36,7 @@ inputs:
 
   - name: resourceProfile
     description: >
-      CPU and memory profile for this service. Choose from the built‑in presets: docs.orkestra.sh/concepts/resource-profiles
+      CPU and memory profile for this service. Choose from the built‑in presets: orkestra.sh/concepts/resource-profiles
     default: burst
 
 

@@ -3655,3 +3655,62 @@ code:not(pre > code) {
     flex-direction: column;
   }
 }
+
+/* ── Section padding reduction on mobile ─────────────────── */
+@media (max-width: 768px) {
+  .features,
+  .how-it-works,
+  .controlcenter-section,
+  .multi-crd-section {
+    padding: 3rem 0;
+  }
+
+  .cta-banner {
+    padding: 3rem 0;
+  }
+
+  .section-header {
+    margin-bottom: 2rem;
+  }
+
+  .cc-header {
+    margin-bottom: 2rem;
+  }
+
+  .cc-features {
+    gap: 1.25rem;
+  }
+
+  .check-list {
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .features,
+  .how-it-works,
+  .controlcenter-section,
+  .multi-crd-section {
+    padding: 2.5rem 0;
+  }
+
+  .cta-banner {
+    padding: 2.5rem 0;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+  }
+
+  .section-inner {
+    padding: 0 1rem;
+  }
+
+  .feature-card {
+    padding: 1.25rem;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+  }
+}

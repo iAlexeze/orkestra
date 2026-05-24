@@ -1,6 +1,6 @@
 ---
 title: "Why Operators Are Over-Permissioned — And How We Fixed It"
-date: 2026-05-16
+date: 2026-05-24
 weight: 1
 ---
 

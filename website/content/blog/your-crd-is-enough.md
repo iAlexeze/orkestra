@@ -1,6 +1,6 @@
 ---
 title: "Your CRD Is Enough"
-date: 2026-05-16
+date: 2026-05-24
 weight: 3
 ---
 

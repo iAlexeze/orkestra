@@ -49,13 +49,13 @@ annotations:
       image: ghcr.io/orkspace/orkestra-cc
   artifacthub.io/links: |
     - name: Documentation
-      url: https://docs.orkestra.sh
+      url: https://orkestra.sh
     - name: Why Orkestra?
-      url: https://docs.orkestra.sh/blog/why-orkestra
+      url: https://orkestra.sh/blog/why-orkestra
     - name: Control Center Dashboard
       url: https://cc.orkestra.sh
     - name: Orkestra Registry
-      url: https://docs.orkestra.sh/docs/reference/orkestra-registry
+      url: https://orkestra.sh/docs/reference/orkestra-registry
   artifacthub.io/screenshots: |
     - title: Orkestra Control Center
       url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-center-landing.png

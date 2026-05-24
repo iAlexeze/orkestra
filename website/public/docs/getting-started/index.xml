@@ -6,7 +6,7 @@
     <description>Recent content in Getting Started on Orkestra</description>
     <generator>Hugo</generator>
     <language>en-us</language>
-    <lastBuildDate>Sun, 24 May 2026 04:23:41 +0000</lastBuildDate>
+    <lastBuildDate>Sun, 24 May 2026 05:58:59 +0000</lastBuildDate>
     <atom:link href="http://localhost:8090/docs/getting-started/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Basic Reconciliation</title>
@@ -18,9 +18,9 @@
     <item>
       <title>Learning to Orkestrate</title>
       <link>http://localhost:8090/docs/getting-started/learning-to-orkestrate/</link>
-      <pubDate>Wed, 20 May 2026 00:00:00 +0000</pubDate>
+      <pubDate>Sun, 24 May 2026 00:00:00 +0000</pubDate>
       <guid>http://localhost:8090/docs/getting-started/learning-to-orkestrate/</guid>
-      <description>&lt;p&gt;Kubernetes operators are for everyone. That is Orkestra&amp;rsquo;s promise — and the&#xA;best way to experience it is to run a real operator yourself, see it reconcile,&#xA;and work through progressively more capable patterns until the model clicks.&lt;/p&gt;&#xA;&lt;p&gt;&lt;strong&gt;Learning to Orkestrate&lt;/strong&gt; is the guided path for doing exactly that. It is a&#xA;series of example packs — collections of real, runnable operators — that ship&#xA;alongside every version of Orkestra. The examples are versioned with the runtime.&#xA;When Orkestra gains new capabilities, new examples follow. You always have access&#xA;to examples that work with the version you have installed.&lt;/p&gt;</description>
+      <description>&lt;p&gt;Every Orkestra capability is demonstrated in a runnable example. This page is the map. Whether you are writing your first operator or converting an existing Go controller, start here.&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;two-commands-to-your-first-operator&#34;&gt;Two commands to your first operator&lt;/h2&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;ork init --pack beginner&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#8be9fd;font-style:italic&#34;&gt;cd&lt;/span&gt; beginner/01-hello-website&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;ork run&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;No cluster? Add &lt;code&gt;--dev&lt;/code&gt; to create a temporary kind cluster. Requires Docker.&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;beginner-pack&#34;&gt;Beginner pack&lt;/h2&gt;&#xA;&lt;p&gt;The foundation. Every concept here appears in every more advanced example. Work through these in order.&lt;/p&gt;</description>
     </item>
     <item>
       <title>Writing Your First Katalog</title>

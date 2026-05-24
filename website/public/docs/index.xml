@@ -6,7 +6,7 @@
     <description>Recent content in Why Orkestra on Orkestra</description>
     <generator>Hugo</generator>
     <language>en-us</language>
-    <lastBuildDate>Tue, 19 May 2026 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Sun, 24 May 2026 00:00:00 +0000</lastBuildDate>
     <atom:link href="http://localhost:8090/docs/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Deploying Orkestra</title>
@@ -18,14 +18,14 @@
     <item>
       <title>Roadmap</title>
       <link>http://localhost:8090/docs/roadmap/</link>
-      <pubDate>Sat, 16 May 2026 00:00:00 +0000</pubDate>
+      <pubDate>Sun, 24 May 2026 00:00:00 +0000</pubDate>
       <guid>http://localhost:8090/docs/roadmap/</guid>
       <description>&lt;p&gt;&lt;em&gt;Last updated: March 2026&lt;/em&gt;&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;where-we-are&#34;&gt;Where we are&lt;/h2&gt;&#xA;&lt;p&gt;Orkestra v1.0 is the first complete declarative operator runtime for Kubernetes.&#xA;The core promise is delivered: write a Katalog, run &lt;code&gt;ork run&lt;/code&gt;, get a&#xA;production-grade operator — with its own informer, workqueue, worker pool, health&#xA;endpoint, metrics, leader election, and drift correction — without writing a single&#xA;line of Go.&lt;/p&gt;&#xA;&lt;p&gt;What exists in production today:&lt;/p&gt;&#xA;&lt;p&gt;&lt;strong&gt;Runtime&lt;/strong&gt;&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;Dynamic mode — zero-code operators, no generated types, no compilation step&lt;/li&gt;&#xA;&lt;li&gt;Typed mode — Go types, Go hooks, custom constructors when you need them&lt;/li&gt;&#xA;&lt;li&gt;GenericReconciler with three-path dispatch: templates, hooks, constructor&lt;/li&gt;&#xA;&lt;li&gt;Per-CRD isolation — dedicated informer, workqueue, and worker pool per CRD&lt;/li&gt;&#xA;&lt;li&gt;Dependency graph — topological startup order, cycle detection, missing CRD retry&lt;/li&gt;&#xA;&lt;li&gt;safeReconcile — panic recovery per CRD, other CRDs unaffected&lt;/li&gt;&#xA;&lt;li&gt;Konductor election — leader election with warm-cache follower failover&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;p&gt;&lt;strong&gt;Declarations&lt;/strong&gt;&lt;/p&gt;</description>
     </item>
     <item>
       <title>Support</title>
       <link>http://localhost:8090/docs/support/</link>
-      <pubDate>Sat, 16 May 2026 00:00:00 +0000</pubDate>
+      <pubDate>Sun, 24 May 2026 00:00:00 +0000</pubDate>
       <guid>http://localhost:8090/docs/support/</guid>
       <description>&lt;p&gt;Orkestra is an open-source project. This page explains how to get help, report&#xA;issues, and engage with the community.&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;before-asking-for-help&#34;&gt;Before asking for help&lt;/h2&gt;&#xA;&lt;p&gt;Most questions are answered in:&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;strong&gt;&lt;a href=&#34;./faqs/&#34;&gt;FAQ&lt;/a&gt;&lt;/strong&gt; — the most common questions about how Orkestra works&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;&lt;a href=&#34;./getting-started/index.md/#troubleshooting&#34;&gt;Troubleshooting section&lt;/a&gt;&lt;/strong&gt; in the Getting Started guide&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Health endpoints&lt;/strong&gt; — &lt;code&gt;curl localhost:8080/katalog/website | jq&lt;/code&gt; often shows the issue directly&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Orkestra logs&lt;/strong&gt; — structured JSON logs with &lt;code&gt;crd&lt;/code&gt;, &lt;code&gt;cr&lt;/code&gt;, and &lt;code&gt;error&lt;/code&gt; fields&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Existing GitHub issues&lt;/strong&gt; — search before opening a new one&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;p&gt;The &lt;code&gt;/katalog/{crd}&lt;/code&gt; endpoint resolves the majority of operational questions without any external help. For a full live view, use the &lt;a href=&#34;./controlcenter/controlcenter/&#34;&gt;Control Center&lt;/a&gt;.&lt;/p&gt;</description>
     </item>

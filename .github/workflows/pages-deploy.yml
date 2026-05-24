@@ -1,4 +1,4 @@
-name: Deploy Docs (docs.orkestra.sh)
+name: Deploy (orkestra.sh)
 
 on:
   push:
@@ -45,7 +45,7 @@ jobs:
           hugo --source ./website \
                --gc \
                --minify \
-               --baseURL "https://docs.orkestra.sh/" \
+               --baseURL "https://orkestra.sh/" \
                --cacheDir "${{ runner.temp }}/hugo_cache"
 
       - name: Create Pages project (no-op if already exists)
