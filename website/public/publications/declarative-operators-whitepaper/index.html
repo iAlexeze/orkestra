@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.ba3afe8b368095de9864661f5b4c3fe8814d8ceea79ba28a637cdf7958c64c52.css">
+<link rel="stylesheet" href="/css/main.min.fac13dfe86c4f21d6f5e5735096cd79486892913384a61bf585c56054c5401d2.css">
 
 
 
@@ -311,11 +311,9 @@ should be reconciled. It is the unit of operator definition in Orkestra.</p>
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">website</span>:
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">workers</span>: <span style="color:#bd93f9">3</span>
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">resync</span>: 30s
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">apiTypes</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">group</span>: demo.orkestra.io
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">version</span>: v1alpha1
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">kind</span>: Website
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">plural</span>: websites
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">crdFile</span>: ./crd.yaml
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">crFiles</span>:
+</span></span><span style="display:flex;"><span>        - ./cr.yaml
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">operatorBox</span>:
 </span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
 </span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">onCreate</span>:
@@ -337,9 +335,10 @@ without additional configuration.</p>
 <h3 id="32-the-dynamic-client-model">3.2 The Dynamic Client Model</h3>
 <p>Orkestra operates on unstructured CRDs by default — the same
 <code>*unstructured.Unstructured</code> representation Kubernetes uses internally.
-The API types (<code>apiTypes.location</code>) field is optional, needed only when
-Go hooks require concrete type assertions. This distinction matters for
-three reasons.</p>
+<code>crdFile</code> points to the CRD you maintain; Orkestra reads the group, version,
+kind, and plural directly from it at startup. Typed Go hooks that require
+concrete type assertions can declare <code>apiTypes</code> explicitly, but the common
+case needs none. This distinction matters for three reasons.</p>
 <p>First, it eliminates the code generation step for the common case. The
 cluster already holds the CRD schema. Orkestra reads it at startup via the
 discovery API. The user does not need to replicate it in Go structs.</p>
@@ -366,18 +365,35 @@ API calls — create, update, delete, owner references, idempotency — for
 each resource type. Adding a new resource type to the registry is a single
 file addition.</p>
 <h3 id="34-dependency-ordering">3.4 Dependency Ordering</h3>
-<p>CRDs can declare dependencies:</p>
+<p>CRDs can declare dependencies with an explicit condition:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">crds</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">project</span>:
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">dependsOn</span>: []
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">workers</span>: <span style="color:#bd93f9">3</span>
+</span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">namespace</span>:
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">dependsOn</span>: [project]
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">dependsOn</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">project</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">condition</span>: started
+</span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">application</span>:
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">dependsOn</span>: [project, namespace]
-</span></span></code></pre></div><p>Orkestra computes the topological order from the dependency graph and starts
-CRDs in that order. Each CRD waits for its dependencies to signal readiness
-before its workers start. Missing CRDs — declared but not yet installed in
-the cluster — are retried in the background without blocking healthy CRDs.</p>
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">dependsOn</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">project</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">condition</span>: healthy
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">namespace</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">condition</span>: healthy
+</span></span></code></pre></div><p>Two conditions are available. <code>started</code> gates startup — the upstream CRD&rsquo;s
+workers have started and it is processing events, but it may not yet have
+reconciled any CRs successfully. <code>healthy</code> is stricter: the upstream must
+have completed at least one successful reconcile. Until that threshold is
+crossed, the Control Center shows a dependency issue and the dependent CRD&rsquo;s
+workers do not start.</p>
+<p><code>started</code> is the right choice when the downstream operator can tolerate
+upstream CRs being in an initial state. <code>healthy</code> is the right choice when
+the downstream operator reads from the upstream&rsquo;s status — if the upstream
+has not reconciled, there is nothing to read.</p>
+<p>Orkestra computes the topological order from the dependency graph and starts
+CRDs in that order. Missing CRDs — declared but not yet installed in the
+cluster — are retried in the background without blocking healthy CRDs.</p>
 <p>This capability is structurally impossible with separate operators. Separate
 processes have no coordination mechanism. Orkestra provides it as a declared
 property of the Katalog.</p>
@@ -402,9 +418,8 @@ orphaned resources.</p>
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">chart</span>: platform-crds
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">version</span>: <span style="color:#bd93f9">2.1.0</span>
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">registry</span>:
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">katalog</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">application</span>:
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">version</span>: v1.4.0
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: oci://ghcr.io/orkspace/registry/application:v1.4.0
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">oci</span>: <span style="color:#ff79c6">true</span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Inline override — wins on name conflict with any source</span>
@@ -653,9 +668,9 @@ The same principle, applied one level up.</p>
         <h4 class="footer-col-title">Documentation</h4>
         <ul role="list">
           <li><a href="/docs/getting-started/">Getting Started</a></li>
-          <li><a href="/docs/basics/">Basics</a></li>
-          <li><a href="/docs/concepts/">Concepts</a></li>
-          <li><a href="/docs/guides/">Guides</a></li>
+          <li><a href="/docs/getting-started/learning-to-orkestrate/">Basics</a></li>
+          <li><a href="/docs/orkestra-core/">Concepts</a></li>
+          <li><a href="/docs/orkestra-registry/">Guides</a></li>
           <li><a href="/docs/reference/">Reference</a></li>
         </ul>
       </div>

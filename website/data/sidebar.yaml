@@ -26,3 +26,6 @@ nav:
   - title: Support
     url: /docs/support/
     page: true
+  - title: Contributing
+    section: contributing
+    url: /docs/contributing/

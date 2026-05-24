@@ -1,7 +1,7 @@
 ---
 title: "Why Orkestra"
 date: 2026-05-24
-weight: 17
+weight: 22
 ---
 
 Building a Kubernetes operator means writing Go: controllers, informers, reconcilers, finalizers, events, metrics. Every team does this. Every team builds the same infrastructure. The only part that differs is the business logic — and it is usually just 10 lines of YAML describing what you want.

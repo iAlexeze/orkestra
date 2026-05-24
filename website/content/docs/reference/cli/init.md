@@ -1,7 +1,7 @@
 ---
 title: "ork init"
 date: 2026-05-21
-weight: 43
+weight: 48
 ---
 
 Initialize a new Orkestra operator project using a versioned example pack.
@@ -92,6 +92,23 @@ my-operator/
         katalog.yaml
         cr.yaml
   examples_<pack>_<version>.tar.gz
+```
+
+---
+
+## Next Steps
+
+Inside the project:
+
+```
+cd my-operator/examples/<pack>/<pack-example>
+ork run
+```
+
+Open Control Center:
+
+```
+ork control
 ```
 
 ---

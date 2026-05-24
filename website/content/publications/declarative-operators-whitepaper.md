@@ -136,11 +136,9 @@ spec:
     website:
       workers: 3
       resync: 30s
-      apiTypes:
-        group: demo.orkestra.io
-        version: v1alpha1
-        kind: Website
-        plural: websites
+      crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
       operatorBox:
         default: true
         onCreate:
@@ -167,9 +165,10 @@ without additional configuration.
 
 Orkestra operates on unstructured CRDs by default — the same
 `*unstructured.Unstructured` representation Kubernetes uses internally.
-The API types (`apiTypes.location`) field is optional, needed only when
-Go hooks require concrete type assertions. This distinction matters for
-three reasons.
+`crdFile` points to the CRD you maintain; Orkestra reads the group, version,
+kind, and plural directly from it at startup. Typed Go hooks that require
+concrete type assertions can declare `apiTypes` explicitly, but the common
+case needs none. This distinction matters for three reasons.
 
 First, it eliminates the code generation step for the common case. The
 cluster already holds the CRD schema. Orkestra reads it at startup via the
@@ -207,22 +206,41 @@ file addition.
 
 ### 3.4 Dependency Ordering
 
-CRDs can declare dependencies:
+CRDs can declare dependencies with an explicit condition:
 
 ```yaml
 crds:
   project:
-    dependsOn: []
+    workers: 3
+
   namespace:
-    dependsOn: [project]
+    dependsOn:
+      project:
+        condition: started
+
   application:
-    dependsOn: [project, namespace]
+    dependsOn:
+      project:
+        condition: healthy
+      namespace:
+        condition: healthy
 ```
 
+Two conditions are available. `started` gates startup — the upstream CRD's
+workers have started and it is processing events, but it may not yet have
+reconciled any CRs successfully. `healthy` is stricter: the upstream must
+have completed at least one successful reconcile. Until that threshold is
+crossed, the Control Center shows a dependency issue and the dependent CRD's
+workers do not start.
+
+`started` is the right choice when the downstream operator can tolerate
+upstream CRs being in an initial state. `healthy` is the right choice when
+the downstream operator reads from the upstream's status — if the upstream
+has not reconciled, there is nothing to read.
+
 Orkestra computes the topological order from the dependency graph and starts
-CRDs in that order. Each CRD waits for its dependencies to signal readiness
-before its workers start. Missing CRDs — declared but not yet installed in
-the cluster — are retried in the background without blocking healthy CRDs.
+CRDs in that order. Missing CRDs — declared but not yet installed in the
+cluster — are retried in the background without blocking healthy CRDs.
 
 This capability is structurally impossible with separate operators. Separate
 processes have no coordination mechanism. Orkestra provides it as a declared
@@ -253,9 +271,8 @@ imports:
       chart: platform-crds
       version: 2.1.0
   registry:
-    - katalog:
-        application:
-          version: v1.4.0
+    - url: oci://ghcr.io/orkspace/registry/application:v1.4.0
+      oci: true
 spec:
   crds:
     # Inline override — wins on name conflict with any source

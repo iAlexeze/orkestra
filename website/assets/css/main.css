@@ -927,9 +927,10 @@ p:last-child { margin-bottom: 0; }
 .code-block-wrapper {
   background: var(--color-code-bg);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow: clip; /* clips visual overflow for border-radius without killing child scroll */
   box-shadow: var(--shadow-xl);
   border: 1px solid rgba(255,255,255,0.06);
+  min-width: 0; /* prevent grid blowout */
 }
 
 .code-block-header {
@@ -2382,6 +2383,12 @@ code:not(pre > code) {
 
   .navbar-inner {
     height: var(--navbar-height);
+  }
+
+  /* Hide Control Center and GitHub from navbar on mobile — in mobile menu instead */
+  .btn-controlcenter,
+  .btn-github {
+    display: none;
   }
 
   /* Docs layout: sidebar becomes drawer */

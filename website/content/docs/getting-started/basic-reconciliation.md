@@ -1,7 +1,7 @@
 ---
 title: "Basic Reconciliation"
 date: 2026-05-21
-weight: 12
+weight: 17
 ---
 
 This guide walks through exactly what happens when Orkestra reconciles a CR — from the moment you apply it to the moment it's deleted.

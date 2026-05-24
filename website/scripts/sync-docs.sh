@@ -115,8 +115,8 @@ text = re.sub(r'^→ Previous:.*\n?', '', text, flags=re.MULTILINE)
 # (starts with "→ See [") — avoids removing inline mid-paragraph cross-refs
 text = re.sub(r'^→ See \[.*\n?', '', text, flags=re.MULTILINE)
 
-# Remove entire "## Next" sections (heading + all lines until next ## or EOF)
-text = re.sub(r'^## Next\b.*?(?=^##|\Z)', '', text, flags=re.MULTILINE | re.DOTALL)
+# Remove bare "## Next" sections (heading alone, not "## Next Steps" etc.)
+text = re.sub(r'^## Next[ \t]*\n.*?(?=^##|\Z)', '', text, flags=re.MULTILINE | re.DOTALL)
 
 # Remove entire "## See also" sections (heading + all lines until next ## or EOF)
 text = re.sub(r'^## See also\b.*?(?=^##|\Z)', '', text, flags=re.MULTILINE | re.DOTALL)

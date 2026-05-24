@@ -1,7 +1,7 @@
 ---
 title: "Writing Your First Komposer"
 date: 2026-05-20
-weight: 16
+weight: 21
 ---
 
 A **Komposer** defines where Orkestra loads Katalogs from. A Katalog defines what your operator does — a Komposer defines where those Katalogs come from.

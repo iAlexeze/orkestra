@@ -3,25 +3,25 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>http://localhost:8090/publications/declarative-operators-whitepaper/</loc>
-    <lastmod>2026-05-24T05:58:59+00:00</lastmod>
+    <lastmod>2026-05-24T06:41:26+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/blog/security-by-default/</loc>
-    <lastmod>2026-05-24T05:58:59+00:00</lastmod>
+    <lastmod>2026-05-24T06:41:26+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/contributing/codebase-map/</loc>
     <lastmod>2026-05-20T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/publications/trust-and-failure-model/</loc>
-    <lastmod>2026-05-24T05:58:59+00:00</lastmod>
+    <lastmod>2026-05-24T06:41:26+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/blog/why-orkestra/</loc>
-    <lastmod>2026-05-24T05:58:59+00:00</lastmod>
+    <lastmod>2026-05-24T06:41:26+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/contributing/contributing-controlcenter/</loc>
     <lastmod>2026-05-19T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/blog/your-crd-is-enough/</loc>
-    <lastmod>2026-05-24T05:58:59+00:00</lastmod>
+    <lastmod>2026-05-24T06:41:26+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/contributing/contributing-examples/</loc>
     <lastmod>2026-05-20T00:00:00+00:00</lastmod>
@@ -40,6 +40,21 @@
   </url><url>
     <loc>http://localhost:8090/docs/contributing/contributing-rollback/</loc>
     <lastmod>2026-05-19T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/contributing/docs/01-structure/</loc>
+    <lastmod>2026-05-24T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/contributing/docs/02-writing/</loc>
+    <lastmod>2026-05-24T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/contributing/docs/03-new-page/</loc>
+    <lastmod>2026-05-24T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/contributing/docs/04-local/</loc>
+    <lastmod>2026-05-24T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/contributing/docs/</loc>
+    <lastmod>2026-05-24T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/contributing/</loc>
     <lastmod>2026-05-24T00:00:00+00:00</lastmod>
@@ -72,7 +87,7 @@
     <lastmod>2026-05-24T05:58:59+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/</loc>
-    <lastmod>2026-05-24T05:58:59+00:00</lastmod>
+    <lastmod>2026-05-24T06:41:26+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/orkestra-core/controlcenter/crd-detail/</loc>
     <lastmod>2026-05-21T00:00:00+00:00</lastmod>

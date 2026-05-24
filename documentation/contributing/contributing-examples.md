@@ -8,7 +8,7 @@ Examples are the fastest way for new users to understand what Orkestra can do. E
 
 Examples are grouped into packs by difficulty and topic:
 
-```
+```text
 examples/
   beginner/
     01-hello-world/
@@ -52,7 +52,7 @@ No code changes are needed for examples within an existing pack.
 
 Adding a new pack (a new top-level directory under `examples/`) requires changes in four places. Miss any of them and CI fails.
 
-See [publishing-a-new-pack.md](publishing-a-new-pack.md) for the exact checklist.
+See [Publishing a new pack](../publishing-a-new-pack.md) for the exact checklist.
 
 ---
 
