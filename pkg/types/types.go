@@ -2608,6 +2608,13 @@ type CRDEntry struct {
 	// RemoveFinalizers -> testing
 	RemoveFinalizers bool `yaml:"removeFinalizers,omitempty" json:"removeFinalizers,omitempty"`
 
+	// DeletionProtection overrides the global deletion protection policy
+	// for this specific CRD. If nil, both ProtectCRD and ProtectCRs default to true.
+	DeletionProtection *DeletionProtectionOverride `yaml:"deletionProtection,omitempty" json:"deletionProtection,omitempty"`
+
+	// Warnings collects non‑fatal validation messages for this CRD.
+	Warnings Warnings `json:"-"` // not serialized
+
 	// Imports declares Motif imports for this operatorBox.
 	// Each import references a Motif by OCI reference, file path, or short name,
 	// and binds its inputs via with:. Resources from imported Motifs are merged

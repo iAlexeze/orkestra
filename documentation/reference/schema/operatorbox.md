@@ -162,5 +162,3 @@ autoscale:
 | `do.resync` | Override resync interval |
 
 ---
-
-→ Next: [status.md](status.md)

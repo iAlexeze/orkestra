@@ -97,7 +97,7 @@ html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
@@ -111,7 +111,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 main {
@@ -1309,6 +1309,64 @@ code:not(pre > code) {
 [data-theme="dark"] .sidebar-link.active {
   color: #A78BFA;
   background: rgba(167, 139, 250, 0.1);
+}
+
+/* ── Sidebar subsections (second-level collapsible) ── */
+.sidebar-subsection {
+  list-style: none;
+}
+
+.sidebar-subsection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-subsection-header .sidebar-link {
+  flex: 1;
+}
+
+.sidebar-subsection-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  border-radius: 3px;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.sidebar-subsection-toggle:hover {
+  color: var(--color-text);
+  background: var(--color-hover);
+}
+
+.sidebar-subsection-toggle .chevron {
+  transition: transform 0.2s ease;
+}
+
+.sidebar-subsection.open .sidebar-subsection-toggle .chevron {
+  transform: rotate(180deg);
+}
+
+.sidebar-subsection-pages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sidebar-link--nested {
+  padding-left: 1.25rem;
+  font-size: 0.8rem;
 }
 
 /* Overlay for mobile */

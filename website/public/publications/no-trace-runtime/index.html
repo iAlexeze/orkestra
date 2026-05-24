@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.ed4127849a94162676f586309f939b9ad14e1a02ea340295071b0613d5493ba5.css">
+<link rel="stylesheet" href="/css/main.min.5b3bd5229f53306ec1d1616f2c44ff2123c3a5b21f15000e4106c950fbf88eac.css">
 
 
 
@@ -231,14 +231,12 @@ They outlive their purpose.</p>
 <p>The result is not just operational overhead.
 It is a violation of the original model:</p>
 <blockquote>
-<p>The thing that interprets the declaration becomes part of the state being declared.</p>
-</blockquote>
+<p>The thing that interprets the declaration becomes part of the state being declared.</p></blockquote>
 <hr>
 <h2 id="the-alternative-a-runtime-not-a-resident">The Alternative: A Runtime, Not a Resident</h2>
 <p>Orkestra takes a different position:</p>
 <blockquote>
-<p>The interpreter should not become part of the system it interprets.</p>
-</blockquote>
+<p>The interpreter should not become part of the system it interprets.</p></blockquote>
 <p>It is a <strong>continuous runtime</strong>—not a job, not a one-off process—but it refuses to become a persistent resource inside the cluster.</p>
 <p>While running, it behaves like a full operator system:</p>
 <ul>
@@ -314,8 +312,7 @@ It does not bind the cluster to its existence.</p>
 <h2 id="the-moment-it-stops">The Moment It Stops</h2>
 <p>When Orkestra shuts down, it does something most systems cannot:</p>
 <blockquote>
-<p>It removes every trace of its presence—without affecting the system it managed.</p>
-</blockquote>
+<p>It removes every trace of its presence—without affecting the system it managed.</p></blockquote>
 <ul>
 <li>webhook configurations → deleted</li>
 <li>conversion endpoints → removed</li>
@@ -387,14 +384,12 @@ It is restartable.
 It is optional.</p>
 <p>And critically:</p>
 <blockquote>
-<p>It is forgettable.</p>
-</blockquote>
+<p>It is forgettable.</p></blockquote>
 <hr>
 <h2 id="the-principle">The Principle</h2>
 <p>Orkestra is built on a simple constraint:</p>
 <blockquote>
-<p>The runtime must not become part of the system it operates.</p>
-</blockquote>
+<p>The runtime must not become part of the system it operates.</p></blockquote>
 <p>From that constraint, everything else follows:</p>
 <ul>
 <li>no CRDs for itself</li>

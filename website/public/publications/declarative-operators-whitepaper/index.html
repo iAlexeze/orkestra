@@ -7,20 +7,20 @@
 
 <title>Declarative Operators: A New Model for Kubernetes Extensibility — Orkestra</title>
 
-<meta name="description" content="*Orkestra Project — March 2026*">
+<meta name="description" content="The declarative control plane for Kubernetes operators">
 <meta name="author" content="Orkestra">
 
 
 <meta property="og:type" content="article">
 <meta property="og:title" content="Declarative Operators: A New Model for Kubernetes Extensibility — Orkestra">
-<meta property="og:description" content="*Orkestra Project — March 2026*">
+<meta property="og:description" content="The declarative control plane for Kubernetes operators">
 <meta property="og:url" content="http://localhost:8090/publications/declarative-operators-whitepaper/">
 <meta property="og:site_name" content="Orkestra">
 
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Declarative Operators: A New Model for Kubernetes Extensibility — Orkestra">
-<meta name="twitter:description" content="*Orkestra Project — March 2026*">
+<meta name="twitter:description" content="The declarative control plane for Kubernetes operators">
 
 
 <link rel="icon" type="image/png" href="/img/fav.png">
@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.ed4127849a94162676f586309f939b9ad14e1a02ea340295071b0613d5493ba5.css">
+<link rel="stylesheet" href="/css/main.min.d0461eef93935ad6f7f33456783d63ad50138705c51dac85c9394c58e78b2f6d.css">
 
 
 
@@ -58,7 +58,6 @@
     <a href="/" class="navbar-logo" aria-label="Orkestra home">
       <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="36" width="36">
       <span class="logo-text">Orkestra</span>
-      <span class="version-badge">v1</span>
     </a>
 
     
@@ -187,10 +186,13 @@
         <h1 class="paper-title">Declarative Operators: A New Model for Kubernetes Extensibility</h1>
 
         
-        <p class="paper-subtitle">*Orkestra Project — March 2026*</p>
-        
 
         <div class="paper-meta">
+          
+          <span class="paper-meta-item">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            May 2026
+          </span>
           
           <span class="paper-meta-item">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -284,7 +286,8 @@ receives its own isolated operator stack:</p>
 <li><strong>Worker pool</strong> — dedicated goroutines; no other CRD can consume them</li>
 <li><strong>Reconciler</strong> — interprets this CRD&rsquo;s templates and hooks only</li>
 <li><strong>Health endpoint</strong> — <code>/katalog/{crd}/health</code> per CRD</li>
-<li><strong>Metrics</strong> — five Prometheus metrics, all labeled by GVK</li>
+<li><strong>Metrics</strong> — robust Prometheus metrics, all labeled by GVK</li>
+<li><strong>Control Center</strong> — Real-time visibility dashboard by default</li>
 <li><strong>Failure domain</strong> — a panic in one reconciler is recovered; others continue</li>
 </ul>
 <p>These components are hosted by a shared runtime that provides the
@@ -299,13 +302,13 @@ cluster — not by merging their logic, but by running on common platforms.</p>
 <h3 id="31-the-katalog">3.1 The Katalog</h3>
 <p>A Katalog is a YAML document that declares one or more CRDs and how they
 should be reconciled. It is the unit of operator definition in Orkestra.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Katalog
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: website-operator
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: website
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">website</span>:
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">workers</span>: <span style="color:#bd93f9">3</span>
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">resync</span>: 30s
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">apiTypes</span>:
@@ -324,7 +327,7 @@ should be reconciled. It is the unit of operator definition in Orkestra.</p>
 </span></span><span style="display:flex;"><span>            - <span style="color:#ff79c6">port</span>: <span style="color:#f1fa8c">&#34;80&#34;</span>
 </span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">targetPort</span>: <span style="color:#f1fa8c">&#34;{{ .spec.port }}&#34;</span>
 </span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
-</span></span></code></pre></div><p>This is a complete operator declaration. <code>ork run --file katalog.yaml</code>
+</span></span></code></pre></div><p>This is a complete operator declaration. <code>ork run</code>
 starts the runtime. Every <code>Website</code> CR triggers a reconcile that creates
 and drift-corrects a Deployment and Service. Deletion cascades via owner
 references. Finalizers ensure cleanup completes before CR removal.</p>
@@ -352,7 +355,7 @@ alongside the reconcile logic, interpreted by the same template resolver.</p>
 <p>Orkestra&rsquo;s template resolver evaluates Go <code>text/template</code> expressions
 against the live CR object at reconcile time. This is the mechanism
 through which declarative templates become Kubernetes API calls.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">deployments</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">deployments</span>:
 </span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}&#34;</span>
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">image</span>: <span style="color:#f1fa8c">&#34;{{ .spec.image }}&#34;</span>
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">replicas</span>: <span style="color:#f1fa8c">&#34;{{ .spec.replicas }}&#34;</span>
@@ -364,12 +367,12 @@ each resource type. Adding a new resource type to the registry is a single
 file addition.</p>
 <h3 id="34-dependency-ordering">3.4 Dependency Ordering</h3>
 <p>CRDs can declare dependencies:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">crds</span>:
-</span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">name</span>: project
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">crds</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">project</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">dependsOn</span>: []
-</span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">name</span>: namespace
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">namespace</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">dependsOn</span>: [project]
-</span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">name</span>: application
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">application</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">dependsOn</span>: [project, namespace]
 </span></span></code></pre></div><p>Orkestra computes the topological order from the dependency graph and starts
 CRDs in that order. Each CRD waits for its dependencies to signal readiness
@@ -382,7 +385,7 @@ property of the Katalog.</p>
 orphaned resources.</p>
 <h3 id="35-the-komposer">3.5 The Komposer</h3>
 <p>A Komposer composes Katalogs from multiple sources into one runtime:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: platform-komposer
@@ -405,7 +408,7 @@ orphaned resources.</p>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Inline override — wins on name conflict with any source</span>
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: application
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">application</span>:
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">workers</span>: <span style="color:#bd93f9">8</span>
 </span></span></code></pre></div><p>Orkestra&rsquo;s in-built merger resolves all sources, deduplicates by CRD name, and produces one
 validated configuration. Inline <code>spec.crds</code> are merged last and override
@@ -448,7 +451,7 @@ workers, its own reconciler. The version boundary is a first-class concept
 in the runtime.</p>
 <p>Conversion rules are declared alongside reconcile templates using the same
 template resolver:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span>- <span style="color:#ff79c6">name</span>: website-v1
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span>- <span style="color:#ff79c6">name</span>: website-v1
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">apiTypes</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">group</span>: demo.orkestra.io
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">version</span>: v1
@@ -476,7 +479,7 @@ endpoint.</p>
 <h3 id="43-production-results">4.3 Production Results</h3>
 <p>The following is from a live deployment managing both versions of the
 Website CRD:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;name&#34;</span>: <span style="color:#f1fa8c">&#34;website-v1alpha1&#34;</span>,
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;conversion&#34;</span>: {
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">&#34;enabled&#34;</span>: <span style="color:#ff79c6">true</span>,
@@ -687,7 +690,7 @@ The same principle, applied one level up.</p>
 
 
   
-  <script src="/js/main.min.d2e794f76bf881e2b24e29e56610c51d43db4fe37e7050090ef272ef855893af.js" defer></script>
+  <script src="/js/main.min.543f7d98f205af5cb4a3dd44b917d8e83c2e2d9c93d4398d5565d75656c2d586.js" defer></script>
 
   <style>
      

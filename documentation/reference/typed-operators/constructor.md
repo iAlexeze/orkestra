@@ -97,4 +97,10 @@ You write neither generated file. Re-run `ork generate registry` whenever you ch
 
 ---
 
-→ See the full working example: [`examples/advanced/10-constructor`](../../../examples/advanced/10-constructor/katalog.yaml)
+To try the full working example:
+
+```bash
+ork init --pack advanced
+cd 10-constructor
+ork run
+```

@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.ed4127849a94162676f586309f939b9ad14e1a02ea340295071b0613d5493ba5.css">
+<link rel="stylesheet" href="/css/main.min.5b3bd5229f53306ec1d1616f2c44ff2123c3a5b21f15000e4106c950fbf88eac.css">
 
 
 
@@ -231,7 +231,7 @@ editing Go, rebuilding, pushing an image, rolling the deployment.</p>
 <p>The Pipeline operator from Orkestra&rsquo;s example 10 implements a five-state
 machine: <code>Pending → Running → Succeeded | Failed</code>, with a Job created at each
 step transition. Here is the reconcile dispatch from the constructor:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">func</span> (r <span style="color:#ff79c6">*</span>PipelineReconciler) <span style="color:#50fa7b">Reconcile</span>(ctx context.Context, key <span style="color:#8be9fd">string</span>) <span style="color:#8be9fd">error</span> {
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">func</span> (r <span style="color:#ff79c6">*</span>PipelineReconciler) <span style="color:#50fa7b">Reconcile</span>(ctx context.Context, key <span style="color:#8be9fd">string</span>) <span style="color:#8be9fd">error</span> {
 </span></span><span style="display:flex;"><span>    <span style="color:#6272a4">// ... cache lookup, deep copy ...</span>
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">switch</span> pipeline.Status.Phase {
@@ -246,7 +246,7 @@ step transition. Here is the reconcile dispatch from the constructor:</p>
 </span></span><span style="display:flex;"><span>    }
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div><p>And one of the phase handlers:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">func</span> (r <span style="color:#ff79c6">*</span>PipelineReconciler) <span style="color:#50fa7b">handlePending</span>(ctx context.Context, p <span style="color:#ff79c6">*</span>apiv1.Pipeline) <span style="color:#8be9fd">error</span> {
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">func</span> (r <span style="color:#ff79c6">*</span>PipelineReconciler) <span style="color:#50fa7b">handlePending</span>(ctx context.Context, p <span style="color:#ff79c6">*</span>apiv1.Pipeline) <span style="color:#8be9fd">error</span> {
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">if</span> <span style="color:#8be9fd;font-style:italic">len</span>(p.Spec.Steps) <span style="color:#ff79c6">==</span> <span style="color:#bd93f9">0</span> {
 </span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">return</span> r.<span style="color:#50fa7b">setPhase</span>(ctx, p, apiv1.PipelinePhaseSucceeded, <span style="color:#f1fa8c">&#34;no steps defined&#34;</span>)
 </span></span><span style="display:flex;"><span>    }
@@ -279,7 +279,7 @@ opaque to anyone who cannot read Go.</p>
 <hr>
 <h2 id="the-declarative-alternative--what-it-looks-like-now">The declarative alternative — what it looks like now</h2>
 <p>The same state machine, declared in a Katalog:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">operatorBox</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">operatorBox</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">onReconcile</span>:
@@ -378,7 +378,7 @@ resource gating now applies to individual status field declarations. The last
 field whose conditions pass wins — this is the override semantics that makes
 the phase progression work.</p>
 <p>Declare terminal states last:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span>- <span style="color:#ff79c6">path</span>: phase
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span>- <span style="color:#ff79c6">path</span>: phase
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">value</span>: <span style="color:#f1fa8c">&#34;Running/build&#34;</span>   <span style="color:#6272a4"># written first</span>
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">when</span>: [...]
 </span></span><span style="display:flex;"><span>

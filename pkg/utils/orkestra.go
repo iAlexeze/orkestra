@@ -52,6 +52,20 @@ func FailureMarkPlain() string { return "✗" }
 func WarningMark() string      { return Yellow("⚠") }
 func WarningMarkPlain() string { return "⚠" }
 
+// SecureMark returns a shield emoji indicating full security protection.
+// Used in CLI output to show that deletion protection is enabled and active.
+func SecureMark() string { return "🛡️" }
+
+// SomeSecureMark returns an unlocked padlock emoji indicating partial or
+// no security protection. Used in CLI output to show that deletion protection
+// is disabled or only partially active (e.g., protectCRD=false but protectCRs=true).
+func SomeSecureMark() string { return "🔓" }
+
+// NoSecurityMark returns a cross mark indicating no security protection.
+// Used when deletion protection is completely disabled for a resource
+// (e.g., security.deletionProtection.enabled = false or per‑CRD protectCRs=false).
+func NoSecurityMark() string { return "⛔" }
+
 // InfoMark returns a cyan arrow symbol for informational messages.
 func InfoMark() string      { return Cyan("→") }
 func InfoMarkPlain() string { return "→" }

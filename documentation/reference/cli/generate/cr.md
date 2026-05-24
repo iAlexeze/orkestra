@@ -62,4 +62,3 @@ ork generate cr --file katalog.yaml --crd pipeline -o pipeline-cr.yaml
   - source katalog path  
   - usage hint (`kubectl apply -f`)  
 - The generated CR is ready for immediate use with `kubectl apply`.
-

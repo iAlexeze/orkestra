@@ -1,9 +1,10 @@
 ---
 title: "ork run"
-weight: 31
+date: 2026-05-20
+weight: 46
 ---
 
-Start the Orkestra operator runtime.
+Start the Orkestra Runtime.
 
 ```bash
 ork run --file <path>

@@ -75,5 +75,3 @@ when:
 ```
 
 ---
-
-→ Next: [validation.md](validation.md)

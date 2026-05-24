@@ -1,6 +1,7 @@
 ---
 title: "Basic Reconciliation"
-weight: 7
+date: 2026-05-21
+weight: 12
 ---
 
 This guide walks through exactly what happens when Orkestra reconciles a CR — from the moment you apply it to the moment it's deleted.
@@ -18,7 +19,7 @@ We'll use the `hello-website` example from `ork init`. It has:
 Start the operator:
 
 ```bash
-ork run -f examples/beginner/01-hello-website/katalog.yaml
+ork run
 ```
 
 ---
@@ -37,6 +38,7 @@ You will see:
 
 ```
 INFO  CRD applied                crd=websites.demo.orkestra.io
+INFO  CR applied                 name=hello-website namespace=default
 INFO  Informer synced            crd=website
 INFO  Workers started            crd=website  workers=3
 INFO  Health server ready        addr=:8080
@@ -44,13 +46,7 @@ INFO  Health server ready        addr=:8080
 
 ---
 
-## Step 2 — Apply a CR
-
-```bash
-kubectl apply -f examples/beginner/01-hello-website/cr.yaml
-```
-
-The CR:
+## Step 2 — The CR:
 
 ```yaml
 apiVersion: demo.orkestra.io/v1alpha1
@@ -100,7 +96,7 @@ Orkestra detects the change, re-reconciles, and updates the Deployment image. Be
 ## Step 5 — Delete the CR
 
 ```bash
-kubectl delete -f examples/beginner/01-hello-website/cr.yaml
+kubectl delete -f cr.yaml
 ```
 
 Orkestra:
@@ -139,7 +135,7 @@ curl localhost:8080/katalog/website | jq
 Or open the Control Center for a visual view:
 
 ```bash
-ork control start
+ork control
 # → localhost:8081
 ```
 

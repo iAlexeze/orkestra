@@ -1,11 +1,12 @@
 ---
 title: "Writing Your First Komposer"
-weight: 11
+date: 2026-05-20
+weight: 16
 ---
 
 A **Komposer** defines where Orkestra loads Katalogs from. A Katalog defines what your operator does — a Komposer defines where those Katalogs come from.
 
-You do not need a Komposer to use Orkestra. `ork run -f katalog.yaml` works without one. Komposers become useful when you want to compose Katalogs from multiple sources or apply overrides.
+You do not need a Komposer to use Orkestra. `ork run` works without one. Komposers become useful when you want to compose Katalogs from multiple sources or apply overrides.
 
 ---
 
@@ -25,7 +26,8 @@ imports:
 Run it the same way:
 
 ```bash
-ork run -f komposer.yaml
+ork run
+# Orkestra reads komposer.yaml from the current directory and starts the runtime.
 ```
 
 ---
@@ -91,7 +93,7 @@ spec:
 ## Validating Without Running
 
 ```bash
-ork validate -f komposer.yaml
+ork validate
 ```
 
 Resolves all sources, merges everything, and reports errors — without touching the cluster.

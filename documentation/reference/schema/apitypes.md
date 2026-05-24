@@ -61,5 +61,3 @@ apiTypes:
 Run `ork generate registry` after setting typed mode to produce the Go registry that wires the scheme.
 
 ---
-
-→ Next: [operatorbox.md](operatorbox.md)

@@ -1,6 +1,7 @@
 ---
 title: "ork validate"
-weight: 35
+date: 2026-05-20
+weight: 50
 ---
 
 Validate a Katalog or Komposer. Resolves sources, merges, and runs the full validation pipeline.
@@ -18,7 +19,8 @@ ork validate --file <path>
 ## Examples
 
 ```bash
-ork validate --file ./katalog.yaml
+ork validate
+# Orkestra reads katalog.yaml from the current directory.
 ork validate --file ./infra.yaml --file ./apps.yaml
 ork validate --file https://raw.github.com/.../katalog.yaml
 ```

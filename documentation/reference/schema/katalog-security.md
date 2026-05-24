@@ -93,5 +93,3 @@ Enables the `/convert` endpoint for multi-version CRD support.
 Requires `conversion` to be declared on the CRD entry. → See [conversion.md](conversion.md).
 
 ---
-
-→ Next: [katalog-notification.md](katalog-notification.md)

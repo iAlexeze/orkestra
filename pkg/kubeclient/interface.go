@@ -22,7 +22,7 @@ type KubeClient interface {
 	// Patch helpers — used by the reconciler for finalizer, label,
 	// annotation, and status updates. Implementations must be idempotent.
 	PatchFinalizers(ctx context.Context, obj runtime.Object, gvr schema.GroupVersionResource, finalizers []string) error
-	PatchLabels(ctx context.Context, obj runtime.Object, gvr schema.GroupVersionResource, labels map[string]string) error
+	PatchLabels(ctx context.Context, obj runtime.Object, gvr schema.GroupVersionResource, base, desired map[string]string) error
 	PatchAnnotations(ctx context.Context, obj runtime.Object, gvr schema.GroupVersionResource, annotations map[string]string) error
 	PatchStatus(ctx context.Context, obj domain.Object, gvr schema.GroupVersionResource, statusFields map[string]interface{}) error
 }

@@ -11,7 +11,7 @@
 
     <nav class="sidebar-nav">
       {{ $currentPage := . }}
-      {{ range hugo.Data.sidebar.nav }}
+      {{ range $currentPage.Site.Data.sidebar.nav }}
         {{ if .page }}
           {{/* Standalone page link */}}
           {{ $page := $currentPage.Site.GetPage (printf "docs/%s" (strings.TrimSuffix "/" (path.Base .url))) }}
@@ -36,12 +36,37 @@
                 </button>
               </div>
               <ul class="sidebar-section-pages" role="list"{{ if not $isActiveSection }} style="display:none"{{ end }}>
-                {{ range $section.Pages.ByWeight }}
-                <li>
-                  <a href="{{ .RelPermalink }}" class="sidebar-link{{ if eq $currentPage . }} active{{ end }}">
-                    {{ .Title }}
-                  </a>
-                </li>
+                {{ $children := $section.RegularPages }}
+                {{ range $section.Sections }}{{ $children = $children | append . }}{{ end }}
+                {{ range sort $children "Weight" "asc" }}
+                  {{ $childActive := or (eq $currentPage .) ($currentPage.IsDescendant .) }}
+                  {{ if .IsSection }}
+                    {{ $subChildren := .RegularPages }}
+                    {{ range .Sections }}{{ $subChildren = $subChildren | append . }}{{ end }}
+                    <li class="sidebar-subsection{{ if $childActive }} open{{ end }}">
+                      <div class="sidebar-subsection-header">
+                        <a href="{{ .RelPermalink }}" class="sidebar-link{{ if $childActive }} active{{ end }}">{{ .Title }}</a>
+                        {{ if $subChildren }}
+                        <button class="sidebar-subsection-toggle" aria-expanded="{{ if $childActive }}true{{ else }}false{{ end }}" aria-label="Toggle {{ .Title }}">
+                          <svg class="chevron" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        {{ end }}
+                      </div>
+                      {{ if $subChildren }}
+                      <ul class="sidebar-subsection-pages" role="list"{{ if not $childActive }} style="display:none"{{ end }}>
+                        {{ range sort $subChildren "Weight" "asc" }}
+                        <li>
+                          <a href="{{ .RelPermalink }}" class="sidebar-link sidebar-link--nested{{ if eq $currentPage . }} active{{ end }}">{{ .Title }}</a>
+                        </li>
+                        {{ end }}
+                      </ul>
+                      {{ end }}
+                    </li>
+                  {{ else }}
+                  <li>
+                    <a href="{{ .RelPermalink }}" class="sidebar-link{{ if $childActive }} active{{ end }}">{{ .Title }}</a>
+                  </li>
+                  {{ end }}
                 {{ end }}
               </ul>
             </div>

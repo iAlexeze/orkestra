@@ -242,6 +242,23 @@
         if (pagesList) pagesList.style.display = 'flex';
       });
     });
+
+    // Second-level subsection toggles
+    var subToggles = document.querySelectorAll('.sidebar-subsection-toggle');
+    subToggles.forEach(function(toggle) {
+      var subsection = toggle.closest('.sidebar-subsection');
+      var pagesList = subsection ? subsection.querySelector('.sidebar-subsection-pages') : null;
+
+      toggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!subsection) return;
+        var willOpen = !subsection.classList.contains('open');
+        subsection.classList.toggle('open', willOpen);
+        toggle.setAttribute('aria-expanded', String(willOpen));
+        if (pagesList) pagesList.style.display = willOpen ? 'flex' : 'none';
+      });
+    });
   }
 
   /* ── 5. Active TOC on Scroll ────────────────────────────── */

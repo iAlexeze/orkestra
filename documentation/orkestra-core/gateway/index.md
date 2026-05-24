@@ -46,7 +46,7 @@ The Gateway sits at a trust boundary — it is the only Orkestra component with 
 
 **No outbound connections on the webhook path.** The Gateway only makes outbound calls for notification dispatch, which is isolated from the webhook serving path.
 
-**Validation boundary.** The same 22-check validation pass that runs in the Runtime also runs in the Gateway at startup. Strict YAML marshalling rejects unknown keys at parse time. The Gateway never processes a Katalog that has not passed every check.
+**Validation boundary.** The same 22+ check validation pass that runs in the Runtime also runs in the Gateway at startup. Strict YAML marshalling rejects unknown keys at parse time. The Gateway never processes a Katalog that has not passed every check.
 
 **Cleanup on shutdown.** Webhook configurations registered by the Gateway are removed when it exits cleanly. A cluster does not accumulate stale webhook registrations across deployments.
 

@@ -67,5 +67,3 @@ When a condition triggers, the runtime evaluates `standalone` to choose how to d
 If `standalone` is not declared, the default is `false` when running inside a cluster and `true` when running locally (outside a cluster).
 
 ---
-
-→ Next: [katalog-providers.md](katalog-providers.md)

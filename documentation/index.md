@@ -76,6 +76,6 @@ ork run
 
 ## Further Reading
 
-- [Your CRD Is Enough](./blog/your-crd-is-enough.md) — the idea behind Orkestra
-- [Why Orkestra](./blog/why-orkestra.md) — a deeper look at the problem
+- [Your CRD Is Enough](/blog/your-crd-is-enough/) — the idea behind Orkestra
+- [Why Orkestra](/blog/why-orkestra/) — a deeper look at the problem
 - [FAQs](./faqs/index.md) — common questions, including comparisons with Kubebuilder and Helm

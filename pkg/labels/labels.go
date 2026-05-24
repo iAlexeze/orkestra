@@ -33,6 +33,12 @@ const (
 	DeletionProtectionLabel = "orkestra.io/deletion-protection"
 	// DeletionProtectionValue is the label value that enables protection.
 	DeletionProtectionValue = "true"
+
+	// StrictModeExemptKey is the label that exempts a resource from strict‑mode
+	// enforcement. When present with value "true", the resource's deletion‑protection
+	// label can be removed even if strictMode is enabled.
+	StrictModeExemptKey   = "orkestra.io/strict-mode-exempt"
+	StrictModeExemptValue = "true"
 )
 
 // WithDeletionProtection returns a copy of m with the deletion‑protection label
@@ -42,7 +48,7 @@ func WithDeletionProtection(m map[string]string) map[string]string {
 	for k, v := range m {
 		out[k] = v
 	}
-	out[DeletionProtectionLabel] = "true"
+	out[DeletionProtectionLabel] = DeletionProtectionValue
 	return out
 }
 
@@ -51,7 +57,7 @@ func WithDeletionProtection(m map[string]string) map[string]string {
 func DeletionProtectionSelector() *metav1.LabelSelector {
 	return &metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			DeletionProtectionLabel: "true",
+			DeletionProtectionLabel: DeletionProtectionValue,
 		},
 	}
 }
@@ -70,7 +76,7 @@ func DeletionProtectionSelector() *metav1.LabelSelector {
 var orkestraResourceLabels = map[string]string{
 	"app.kubernetes.io/name": "orkestra",
 	"app.kubernetes.io/tag":  "orkestra-internal",
-	DeletionProtectionLabel:  "true",
+	DeletionProtectionLabel:  DeletionProtectionValue,
 }
 
 // OrkestraBaseLabels returns a copy of the standard Orkestra control‑plane
@@ -109,40 +115,40 @@ func OrkestraResourceSelector() *metav1.LabelSelector {
 //
 
 // Managed marks resources that Orkestra actively manages.
-const ManagedKey = "orkestra.orkspace.io/managed"
-
-// ManagedValue is always "true".
-const ManagedValue = "true"
-
-// OrkestraOwner identifies which CR owns a generated resource. Used by
-// reconcile loops to determine whether a resource should be updated or deleted.
-const OrkestraOwner = "orkestra-owner"
-
-// LabelCreatedBy identifies the creator of a resource.
-const LabelCreatedBy = "app.kubernetes.io/createdBy"
-
-// CreatedByOrkDoctor marks resources created by orkdoctor. These are excluded
-// from cleanup logic even if ownership matches.
-const CreatedByOrkDoctor = "orkdoctor"
-
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//   Annotations
-// ────────────────────────────────────────────────────────────────────────────────
-//
-
-// AnnotationManagedBy identifies which Orkestra operator instance manages a CR.
 const (
+	ManagedKey = "orkestra.orkspace.io/managed"
+
+	// ManagedValue is always "true".
+	ManagedValue = "true"
+
+	// OrkestraOwner identifies which CR owns a generated resource. Used by
+	// reconcile loops to determine whether a resource should be updated or deleted.
+	OrkestraOwner = "orkestra-owner"
+
+	// LabelCreatedBy identifies the creator of a resource.
+	LabelCreatedBy = "app.kubernetes.io/createdBy"
+
+	// CreatedByOrkDoctor marks resources created by orkdoctor. These are excluded
+	// from cleanup logic even if ownership matches.
+	CreatedByOrkDoctor = "orkdoctor"
+
+	//
+	// ────────────────────────────────────────────────────────────────────────────────
+	//   Annotations
+	// ────────────────────────────────────────────────────────────────────────────────
+	//
+
+	// AnnotationManagedBy identifies which Orkestra operator instance manages a CR.
 	AnnotationManagedBy = "orkestra.orkspace.io/managed-by"
 	// AnnotationManagedSince records when Orkestra first took ownership of a CR.
 	AnnotationManagedSince = "orkestra.orkspace.io/managed-since"
+
+	//
+	// ────────────────────────────────────────────────────────────────────────────────
+	//   Finalizers
+	// ────────────────────────────────────────────────────────────────────────────────
+	//
+
+	// FinalizerOrkestra ensures cleanup runs before a CR is removed.
+	FinalizerOrkestra = "orkestra.orkspace.io/finalizer"
 )
-
-//
-// ────────────────────────────────────────────────────────────────────────────────
-//   Finalizers
-// ────────────────────────────────────────────────────────────────────────────────
-//
-
-// FinalizerOrkestra ensures cleanup runs before a CR is removed.
-const FinalizerOrkestra = "orkestra.orkspace.io/finalizer"

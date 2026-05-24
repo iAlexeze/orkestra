@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.ed4127849a94162676f586309f939b9ad14e1a02ea340295071b0613d5493ba5.css">
+<link rel="stylesheet" href="/css/main.min.5b3bd5229f53306ec1d1616f2c44ff2123c3a5b21f15000e4106c950fbf88eac.css">
 
 
 
@@ -217,8 +217,7 @@
 <h2 id="1-the-industry-default-continuous-sync">1. The Industry Default: Continuous Sync</h2>
 <p>Tools like GitOps controllers, CI/CD pipelines, and deployment managers are built around a simple loop:</p>
 <blockquote>
-<p>Source changes → system detects → system applies</p>
-</blockquote>
+<p>Source changes → system detects → system applies</p></blockquote>
 <p>This works because the unit being deployed is typically:</p>
 <ul>
 <li>A stateless service</li>
@@ -228,8 +227,7 @@
 <p>Frequent updates are expected. Drift is undesirable. Automation is the goal.</p>
 <p>But this model assumes something critical:</p>
 <blockquote>
-<p>That the source of truth is always safe to apply immediately.</p>
-</blockquote>
+<p>That the source of truth is always safe to apply immediately.</p></blockquote>
 <p>For CRDs, this assumption breaks.</p>
 <hr>
 <h2 id="2-crds-are-not-deployments--they-are-apis">2. CRDs Are Not Deployments — They Are APIs</h2>
@@ -252,8 +250,7 @@
 </ul>
 <p>In other words:</p>
 <blockquote>
-<p>Auto-syncing CRDs is equivalent to auto-deploying breaking API changes.</p>
-</blockquote>
+<p>Auto-syncing CRDs is equivalent to auto-deploying breaking API changes.</p></blockquote>
 <p>Orkestra refuses to do this.</p>
 <hr>
 <h2 id="3-orkestras-model-stability-over-reactivity">3. Orkestra&rsquo;s Model: Stability Over Reactivity</h2>
@@ -269,8 +266,7 @@
 <p>Then it stops listening.</p>
 <p>From that point forward:</p>
 <blockquote>
-<p>The runtime is fixed. Only the cluster state changes.</p>
-</blockquote>
+<p>The runtime is fixed. Only the cluster state changes.</p></blockquote>
 <p>This creates a clear separation:</p>
 <table>
   <thead>
@@ -301,7 +297,7 @@ It does not auto-reload.</p>
 <hr>
 <h2 id="4-purity-of-input">4. Purity of Input</h2>
 <p>A single Orkestra instance can compose multiple imports:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
 </span></span><span style="display:flex;"><span>    - https://raw.github.com/myorg/public-baseline/main/katalog.yaml
 </span></span><span style="display:flex;"><span>
@@ -335,8 +331,7 @@ It is a <em>composition of truths</em>.</p>
 </ul>
 <p>In a system managing multiple CRDs simultaneously:</p>
 <blockquote>
-<p>The correctness of the whole depends on the integrity of every input.</p>
-</blockquote>
+<p>The correctness of the whole depends on the integrity of every input.</p></blockquote>
 <p>This is why Orkestra treats input as immutable during execution.</p>
 <hr>
 <h2 id="5-production-is-the-default-not-the-mode">5. Production Is the Default, Not the Mode</h2>
@@ -366,8 +361,7 @@ It is a <em>composition of truths</em>.</p>
 <h2 id="6-human-controlled-evolution">6. Human-Controlled Evolution</h2>
 <p>Orkestra places the responsibility where it belongs:</p>
 <blockquote>
-<p>On the operator of the system.</p>
-</blockquote>
+<p>On the operator of the system.</p></blockquote>
 <p>If you want to update:</p>
 <ul>
 <li>You change a version</li>
@@ -405,15 +399,13 @@ It is a <em>composition of truths</em>.</p>
 <h3 id="74-loss-of-auditability">7.4 Loss of auditability</h3>
 <p>You lose a clear answer to:</p>
 <blockquote>
-<p>&ldquo;What version of the system is running right now?&rdquo;</p>
-</blockquote>
+<p>&ldquo;What version of the system is running right now?&rdquo;</p></blockquote>
 <hr>
 <h2 id="8-the-principle">8. The Principle</h2>
 <p>Orkestra is built on a simple principle:</p>
 <blockquote>
 <p>Reconciliation should be continuous.
-Configuration should be intentional.</p>
-</blockquote>
+Configuration should be intentional.</p></blockquote>
 <p>Everything else follows from this.</p>
 <hr>
 <h2 id="9-conclusion">9. Conclusion</h2>

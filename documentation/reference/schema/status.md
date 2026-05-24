@@ -227,5 +227,3 @@ status:
 ```
 
 ---
-
-→ Next: [when-conditions.md](when-conditions.md)

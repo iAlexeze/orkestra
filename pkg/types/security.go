@@ -150,7 +150,7 @@ type DeletionProtectionConfig struct {
 	// StrictMode controls whether removing the deletion-protection label from a resource
 	// is itself treated as a deletion attempt and blocked.
 	// When true, the only way to remove the label (and thus unprotect a resource) is to
-	// disable strictMode in the Katalog and restart Orkestra.
+	// disable strictMode in the Katalog and restart Orkestra Gateway.
 	// Default: false.
 	StrictMode bool `yaml:"strictMode,omitempty" json:"strictMode,omitempty"`
 }

@@ -17,8 +17,10 @@
   <p>
     <a href="https://docs.orkestra.sh/getting-started">Quick Start</a> ·
     <a href="https://docs.orkestra.sh">Docs</a> ·
-    <a href="https://github.com/orkspace/orkestra/discussions">Discussions</a>
+    <a href="https://github.com/orkspace/orkestra/discussions">Discussions</a> ·
+    <a href="https://orkspace-group.slack.com/archives/C0B5RT8JUEA">Early Access Slack</a>
   </p>
+</p>⚠️ <em>Pre‑alpha – We’re actively iterating – breakage expected, feedback welcome.</em></p>
 </div>
 
 ---
@@ -127,6 +129,7 @@ ork init --pack beginner
 cd beginner/01-hello-website
 ork run
 ```
+> _if you do not have a cluster yet, run with `--dev` to create a kind cluster. Requires docker._
 
 ---
 
@@ -159,32 +162,12 @@ Orkestra makes it declarative:
 
 ```yaml
 # e2e.yaml
-apiVersion: orkestra.orkspace.io/v1
-kind: E2E
-metadata:
-  name: admission-webhooks-e2e
-  description: Verify webhooks accept valid CRs and reject invalid ones at apply time
-
 spec:
   katalog: ./katalog.yaml
   crd: ./crd.yaml
-  cr: ./cr-valid.yaml
-
-  cluster:
-    provider: kind
-    name: ork-e2e
-    reuse: false
-
+  cr: ./cr-invalid.yaml
+...
   expect:
-    - name: Valid CR accepted — Deployment created
-      after: cr-applied
-      timeout: 90s
-      resources:
-        - kind: Deployment
-          name: my-platform
-          namespace: default
-          ready: true
-
     - name: Invalid CR rejected by webhook
       after: cr-applied
       timeout: 30s
@@ -323,7 +306,8 @@ mutation:
 
 Each rule enforces at two points: **admission time** (`Gateway` intercepts `kubectl apply`) and **reconcile time** (`Runtime` re-evaluates on every cycle). One declaration. Two enforcement points.
 
-Webhooks are opt-in via `security.webhooks.admission.enabled: true` and enable `gateway` in helm [values](https://github.com/orkspace/orkestra/blob/main/charts/orkestra/values.yaml#L159). Without them, rules still run on every reconcile.
+Webhooks are opt-in via `security.webhooks.admission.enabled: true`.
+Then enable `gateway` in helm [values](https://github.com/orkspace/orkestra/blob/main/charts/orkestra/values.yaml#L159). Without them, rules still run on every reconcile.
 
 ---
 

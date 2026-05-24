@@ -1,3 +1,23 @@
+## Deletion Protection with Per‑CRD Overrides
+
+- Added cluster‑wide deletion protection for any resource (custom or built‑in) labelled `orkestra.io/deletion-protection=true`.
+- New `ValidatingWebhookConfiguration` (`protect.resources.orkestra.orkspace.io`) intercepts DELETE on all configured GVRs and denies if the label is present.
+- Webhook rules are automatically built from:
+  - All custom CRDs enabled in the Katalog (respecting per‑CRD `protectCRs` flag).
+  - All built‑in resources marked `OrkestraInternal` (deployments, services, namespaces, RBAC, etc.).
+- When `security.deletionProtection.enabled` is true, the reconciler automatically adds the protection label to every resource it creates or updates.
+- Per‑CRD overrides allow fine‑grained control:
+  ```yaml
+  deletionProtection:
+    protectCRD: false   # allow deletion of the CRD definition itself
+    protectCRs: true    # protect instances (only effective if protectCRD=true)
+    strictMode: true    # block removal of the protection label (per‑CRD override of global strictMode)
+  ```
+- Validation warnings (`ork validate`) appear for inconsistent combinations (e.g., `protectCRD=false` with `protectCRs=true`), guiding users toward correct configuration.
+- The `ork validate` output now shows protection status with icons (🛡️ full, 🔓 CRD only, ⚠️ warning, ⛔ none) and lists warnings per CRD.
+- Fixed a bug where `customResourceGVRs()` only added the first custom CRD’s GVR, causing incomplete webhook rules.
+- Added `cleanupOnShutdown: true` to automatically remove the webhook configuration when the Gateway stops gracefully.
+
 ## Deletion Protection (Security)
 
 - Added cluster‑wide deletion protection for any resource (custom or built‑in) labelled `orkestra.io/deletion-protection=true`.

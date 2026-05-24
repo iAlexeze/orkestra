@@ -1,6 +1,7 @@
 ---
 title: "Why Orkestra"
-weight: 12
+date: 2026-05-20
+weight: 17
 ---
 
 Building a Kubernetes operator means writing Go: controllers, informers, reconcilers, finalizers, events, metrics. Every team does this. Every team builds the same infrastructure. The only part that differs is the business logic — and it is usually just 10 lines of YAML describing what you want.
@@ -41,7 +42,7 @@ That is a fully working operator. Orkestra reads the CRD from `crdFile`, applies
 
 ## What Orkestra Does
 
-When you run `ork run -f katalog.yaml`:
+When you run `ork run`:
 
 1. Reads your Katalog and finds `crdFile: ./crd.yaml`
 2. Applies the CRD to the cluster automatically
@@ -67,8 +68,10 @@ All of this from a YAML file.
 ```bash
 curl -sSL https://get.orkestra.sh | bash
 ork init my-operator
-cd my-operator
-ork run -f examples/beginner/01-hello-website/katalog.yaml
+cd my-operator/examples/beginner/01-hello-website
+
+ork run
+# Orkestra reads katalog.yaml from the current directory and starts the runtime.
 ```
 
 → [Getting Started](./getting-started/)
@@ -77,6 +80,6 @@ ork run -f examples/beginner/01-hello-website/katalog.yaml
 
 ## Further Reading
 
-- [Your CRD Is Enough](./blog/your-crd-is-enough/) — the idea behind Orkestra
-- [Why Orkestra](./blog/why-orkestra/) — a deeper look at the problem
+- [Your CRD Is Enough](/blog/your-crd-is-enough/) — the idea behind Orkestra
+- [Why Orkestra](/blog/why-orkestra/) — a deeper look at the problem
 - [FAQs](./faqs/) — common questions, including comparisons with Kubebuilder and Helm

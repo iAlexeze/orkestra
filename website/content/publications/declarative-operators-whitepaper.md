@@ -1,7 +1,7 @@
 ---
 title: "Declarative Operators: A New Model for Kubernetes Extensibility"
-weight: 50
-description: "*Orkestra Project — March 2026*"
+date: 2026-05-20
+weight: 1
 ---
 
 *Orkestra Project — March 2026*
@@ -104,7 +104,8 @@ receives its own isolated operator stack:
 - **Worker pool** — dedicated goroutines; no other CRD can consume them
 - **Reconciler** — interprets this CRD's templates and hooks only
 - **Health endpoint** — `/katalog/{crd}/health` per CRD
-- **Metrics** — five Prometheus metrics, all labeled by GVK
+- **Metrics** — robust Prometheus metrics, all labeled by GVK
+- **Control Center** — Real-time visibility dashboard by default
 - **Failure domain** — a panic in one reconciler is recovered; others continue
 
 These components are hosted by a shared runtime that provides the
@@ -132,7 +133,7 @@ metadata:
   name: website-operator
 spec:
   crds:
-    - name: website
+    website:
       workers: 3
       resync: 30s
       apiTypes:
@@ -153,7 +154,7 @@ spec:
               reconcile: true
 ```
 
-This is a complete operator declaration. `ork run --file katalog.yaml`
+This is a complete operator declaration. `ork run`
 starts the runtime. Every `Website` CR triggers a reconcile that creates
 and drift-corrects a Deployment and Service. Deletion cascades via owner
 references. Finalizers ensure cleanup completes before CR removal.
@@ -210,11 +211,11 @@ CRDs can declare dependencies:
 
 ```yaml
 crds:
-  - name: project
+  project:
     dependsOn: []
-  - name: namespace
+  namespace:
     dependsOn: [project]
-  - name: application
+  application:
     dependsOn: [project, namespace]
 ```
 
@@ -258,7 +259,7 @@ imports:
 spec:
   crds:
     # Inline override — wins on name conflict with any source
-    - name: application
+    application:
       workers: 8
 ```
 
