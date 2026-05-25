@@ -62,6 +62,10 @@ type ResolvedDeploymentSpec struct {
 	// PodSecurity — pod-level security settings.
 	PodSecurity *orktypes.PodSecurityContext
 
+	// RollingUpdate — resolved rolling update strategy.
+	// nil means use Kubernetes defaults (25%/25%).
+	RollingUpdate *orktypes.RollingUpdateBehavior
+
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).

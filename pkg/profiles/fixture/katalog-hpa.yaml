@@ -6,14 +6,14 @@ metadata:
   version: 0.1.0
   description: >
     ProfileProbe — living integration test for HPA behavior profiles.
-    Each CRD deploys a Deployment and an HPA that scales it using a named
+    One CRD deploys five Deployments and five HPAs, each using a different
     behavior profile. The profile expands at katalog load time into a full
     HorizontalPodAutoscalerBehavior block. Run the operator and generate
     load to observe scale-up and scale-down behavior per profile.
 
 spec:
   crds:
-    profile-probe-hpa-web:
+    profile-probe-hpa:
       crdFile: ./crd.yaml
       crFiles:
         - ./cr.yaml
@@ -28,7 +28,27 @@ spec:
               port: "{{ .spec.port }}"
               reconcile: true
 
-          hpas:
+            - name: "{{ .metadata.name }}-api"
+              image: "{{ .spec.image }}"
+              port: "{{ .spec.port }}"
+              reconcile: true
+
+            - name: "{{ .metadata.name }}-latency"
+              image: "{{ .spec.image }}"
+              port: "{{ .spec.port }}"
+              reconcile: true
+
+            - name: "{{ .metadata.name }}-batch"
+              image: "{{ .spec.image }}"
+              port: "{{ .spec.port }}"
+              reconcile: true
+
+            - name: "{{ .metadata.name }}-cost"
+              image: "{{ .spec.image }}"
+              port: "{{ .spec.port }}"
+              reconcile: true
+
+          hpa:
             - name: "{{ .metadata.name }}-web-hpa"
               scaleTargetRef:
                 apiVersion: apps/v1
@@ -39,36 +59,6 @@ spec:
               behavior:
                 profile: web
 
-        status:
-          fields:
-            - path: phase
-              value: "Pending"
-              when:
-                - field: status.phase
-                  operator: notExists
-
-            - path: phase
-              value: "Ready"
-              when:
-                - field: "{{ allReplicasReady .children.deployment }}"
-                  equals: "true"
-
-    profile-probe-hpa-api:
-      crdFile: ./crd.yaml
-      crFiles:
-        - ./cr.yaml
-
-      operatorBox:
-        default: true
-
-        onCreate:
-          deployments:
-            - name: "{{ .metadata.name }}-api"
-              image: "{{ .spec.image }}"
-              port: "{{ .spec.port }}"
-              reconcile: true
-
-          hpas:
             - name: "{{ .metadata.name }}-api-hpa"
               scaleTargetRef:
                 apiVersion: apps/v1
@@ -79,36 +69,6 @@ spec:
               behavior:
                 profile: api
 
-        status:
-          fields:
-            - path: phase
-              value: "Pending"
-              when:
-                - field: status.phase
-                  operator: notExists
-
-            - path: phase
-              value: "Ready"
-              when:
-                - field: "{{ allReplicasReady .children.deployment }}"
-                  equals: "true"
-
-    profile-probe-hpa-latency-sensitive:
-      crdFile: ./crd.yaml
-      crFiles:
-        - ./cr.yaml
-
-      operatorBox:
-        default: true
-
-        onCreate:
-          deployments:
-            - name: "{{ .metadata.name }}-latency"
-              image: "{{ .spec.image }}"
-              port: "{{ .spec.port }}"
-              reconcile: true
-
-          hpas:
             - name: "{{ .metadata.name }}-latency-hpa"
               scaleTargetRef:
                 apiVersion: apps/v1
@@ -119,36 +79,6 @@ spec:
               behavior:
                 profile: latency-sensitive
 
-        status:
-          fields:
-            - path: phase
-              value: "Pending"
-              when:
-                - field: status.phase
-                  operator: notExists
-
-            - path: phase
-              value: "Ready"
-              when:
-                - field: "{{ allReplicasReady .children.deployment }}"
-                  equals: "true"
-
-    profile-probe-hpa-batch:
-      crdFile: ./crd.yaml
-      crFiles:
-        - ./cr.yaml
-
-      operatorBox:
-        default: true
-
-        onCreate:
-          deployments:
-            - name: "{{ .metadata.name }}-batch"
-              image: "{{ .spec.image }}"
-              port: "{{ .spec.port }}"
-              reconcile: true
-
-          hpas:
             - name: "{{ .metadata.name }}-batch-hpa"
               scaleTargetRef:
                 apiVersion: apps/v1
@@ -159,36 +89,6 @@ spec:
               behavior:
                 profile: batch
 
-        status:
-          fields:
-            - path: phase
-              value: "Pending"
-              when:
-                - field: status.phase
-                  operator: notExists
-
-            - path: phase
-              value: "Ready"
-              when:
-                - field: "{{ allReplicasReady .children.deployment }}"
-                  equals: "true"
-
-    profile-probe-hpa-cost-optimized:
-      crdFile: ./crd.yaml
-      crFiles:
-        - ./cr.yaml
-
-      operatorBox:
-        default: true
-
-        onCreate:
-          deployments:
-            - name: "{{ .metadata.name }}-cost"
-              image: "{{ .spec.image }}"
-              port: "{{ .spec.port }}"
-              reconcile: true
-
-          hpas:
             - name: "{{ .metadata.name }}-cost-hpa"
               scaleTargetRef:
                 apiVersion: apps/v1

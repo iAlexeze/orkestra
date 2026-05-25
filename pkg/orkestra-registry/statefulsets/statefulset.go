@@ -11,6 +11,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
+	"github.com/orkspace/orkestra/pkg/profiles"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
@@ -204,6 +205,21 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedS
 	spec.Labels[labels.ManagedKey] = labels.ManagedValue
 	spec.Labels[labels.OrkestraOwner] = ownerName
 
+	if src.RollingUpdate != nil && src.RollingUpdate.Profile != "" {
+		expansion, err := profiles.ApplyRollingUpdateProfile(src.RollingUpdate.Profile)
+		if err != nil {
+			logger.Warn().Str("profile", src.RollingUpdate.Profile).Err(err).Msg("unknown rolling update profile — skipping")
+		} else {
+			spec.RollingUpdate = &orktypes.RollingUpdateBehavior{
+				MaxSurge:       expansion.MaxSurge,
+				MaxUnavailable: expansion.MaxUnavailable,
+			}
+		}
+	} else if src.RollingUpdate != nil {
+		r := *src.RollingUpdate
+		spec.RollingUpdate = &r
+	}
+
 	return spec
 }
 
@@ -337,9 +353,12 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 				WhenDeleted: appsv1.PersistentVolumeClaimRetentionPolicyType(spec.VolumeClaimRetentionPolicy.WhenDeleted),
 				WhenScaled:  appsv1.PersistentVolumeClaimRetentionPolicyType(spec.VolumeClaimRetentionPolicy.WhenScaled),
 			},
-			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
-				Type: appsv1.OnDeleteStatefulSetStrategyType,
-			},
+			UpdateStrategy: func() appsv1.StatefulSetUpdateStrategy {
+				if spec.RollingUpdate != nil {
+					return common.BuildStatefulSetUpdateStrategy(spec.RollingUpdate)
+				}
+				return appsv1.StatefulSetUpdateStrategy{Type: appsv1.OnDeleteStatefulSetStrategyType}
+			}(),
 			PodManagementPolicy: appsv1.ParallelPodManagement,
 		},
 	}

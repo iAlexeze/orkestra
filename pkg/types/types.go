@@ -512,6 +512,12 @@ type DeploymentTemplateSource struct {
 	// Set podSecurity.profile for a named preset or declare individual fields.
 	PodSecurity *PodSecurityContext `yaml:"podSecurity,omitempty" json:"podSecurity,omitempty"`
 
+	// RollingUpdate — rolling update strategy for this Deployment.
+	// Set rollingUpdate.profile for a named preset (safe, fast, blue-green),
+	// or declare maxSurge/maxUnavailable explicitly.
+	// Profile and explicit fields are mutually exclusive.
+	RollingUpdate *RollingUpdateBehavior `yaml:"rollingUpdate,omitempty" json:"rollingUpdate,omitempty"`
+
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).
@@ -649,6 +655,11 @@ type ReplicaSetTemplateSource struct {
 	// PodSecurity — pod-level security settings applied to the pod spec.
 	// Set podSecurity.profile for a named preset or declare individual fields.
 	PodSecurity *PodSecurityContext `yaml:"podSecurity,omitempty" json:"podSecurity,omitempty"`
+
+	// RollingUpdate — rolling update strategy for this ReplicaSet.
+	// Set rollingUpdate.profile for a named preset (safe, fast, blue-green),
+	// or declare maxSurge/maxUnavailable explicitly.
+	RollingUpdate *RollingUpdateBehavior `yaml:"rollingUpdate,omitempty" json:"rollingUpdate,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
@@ -1700,6 +1711,11 @@ type PDBTemplateSource struct {
 	// Labels applied to PDB metadata. Values support template expressions.
 	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty"`
 
+	// Behavior — disruption limit configuration.
+	// Set behavior.profile for a named preset, or declare minAvailable/maxUnavailable explicitly.
+	// Profile and explicit fields are mutually exclusive.
+	Behavior *PDBBehavior `yaml:"behavior,omitempty" json:"behavior,omitempty"`
+
 	Reconcile  bool         `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`
 	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
 	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
@@ -1802,6 +1818,11 @@ type StatefulSetTemplateSource struct {
 	// PodSecurity — pod-level security settings applied to the pod spec.
 	// Set podSecurity.profile for a named preset or declare individual fields.
 	PodSecurity *PodSecurityContext `yaml:"podSecurity,omitempty" json:"podSecurity,omitempty"`
+
+	// RollingUpdate — rolling update strategy for this StatefulSet.
+	// Set rollingUpdate.profile for a named preset (safe, fast, blue-green),
+	// or declare maxSurge/maxUnavailable explicitly.
+	RollingUpdate *RollingUpdateBehavior `yaml:"rollingUpdate,omitempty" json:"rollingUpdate,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.

@@ -30,7 +30,7 @@ Set `behavior.profile` on any HPA resource:
 
 ```yaml
 onCreate:
-  hpas:
+  hpa:
     - name: "{{ .metadata.name }}-hpa"
       scaleTargetRef:
         apiVersion: apps/v1
@@ -45,7 +45,7 @@ onCreate:
 The profile sets both the `behavior` block and `targetCPUUtilizationPercentage`. To override the CPU target while keeping the scaling behavior, declare `targetCPUUtilizationPercentage` explicitly:
 
 ```yaml
-hpas:
+hpa:
   - name: "{{ .metadata.name }}-hpa"
     scaleTargetRef:
       apiVersion: apps/v1

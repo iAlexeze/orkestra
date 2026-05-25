@@ -21,6 +21,8 @@ All katalogs use the same `ProfileProbe` CRD. One CRD is enough to probe every p
 | `katalog-probes.yaml` | fast, standard, patient, slow-start |
 | `katalog-autoscale.yaml` | burst, steady, batch, latency-sensitive, cost-optimized |
 | `katalog-hpa.yaml` | web, api, latency-sensitive, batch, cost-optimized (HPA behavior) |
+| `katalog-pdb.yaml` | zero-downtime, rolling, relaxed (PDB disruption budget) |
+| `katalog-rolling.yaml` | safe, fast, blue-green (Deployment/StatefulSet/ReplicaSet rolling update) |
 
 ---
 
@@ -36,6 +38,8 @@ ork run -f katalog-security.yaml   # security profiles
 ork run -f katalog-probes.yaml     # probe profiles
 ork run -f katalog-autoscale.yaml  # autoscale profiles
 ork run -f katalog-hpa.yaml        # HPA behavior profiles
+ork run -f katalog-pdb.yaml        # PDB disruption budget profiles
+ork run -f katalog-rolling.yaml    # rolling update strategy profiles
 
 # Inspect child Deployments:
 kubectl get deployments -o yaml | grep -A 10 "resources:"
