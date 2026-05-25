@@ -25,7 +25,7 @@ jobs:
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.0.0
+        uses: docker/setup-buildx-action@v4.1.0
         with:
           driver-opts: |
             image=moby/buildkit:buildx-stable-1
@@ -103,7 +103,7 @@ jobs:
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.0.0
+        uses: docker/setup-buildx-action@v4.1.0
         with:
           driver-opts: |
             image=moby/buildkit:buildx-stable-1
@@ -181,7 +181,7 @@ jobs:
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.0.0
+        uses: docker/setup-buildx-action@v4.1.0
         with:
           driver-opts: |
             image=moby/buildkit:buildx-stable-1
