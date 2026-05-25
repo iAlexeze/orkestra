@@ -1,49 +1,93 @@
 # Komposers
 
-A Komposer is a platform declaration that composes multiple Katalogs into a single runtime. It can be published to the registry so platform teams can distribute a complete control plane as one versioned artifact.
+A Komposer is the **composition plane**: it declares where to pull operator patterns from and how to compose them into a running platform. Komposers are the only document type with a top-level `imports` block (registry, file, and Helm sources). Katalogs import only Motifs, and only at the CRD level — they cannot pull other Katalogs or Komposers.
 
-## Publishing a Komposer pattern
+---
 
-A Komposer pattern directory follows the same shape as a Katalog:
+## The `komposer.yaml` in a Katalog pattern
+
+When you publish a Katalog pattern, you can include a `komposer.yaml` alongside it. This companion file ships as part of the same artifact and shows consumers how to use the pattern in a Komposer composition:
 
 ```text
-platform/
-  komposer.yaml   # required — the Komposer declaration
-  e2e.yaml        # optional — E2E expectations
-  README.md       # optional
+postgres/
+  katalog.yaml    # the operator definition (required)
+  komposer.yaml   # optional — companion showing how to compose this pattern
+  crd.yaml
+  cr.yaml
+  e2e.yaml
 ```
 
 ```bash
-ork registry push platform:v2 ./patterns/platform/
+ork registry push postgres:v14 ./patterns/postgres/
 ```
 
-The registry detects `komposer.yaml` as the primary file and records the pattern kind accordingly.
+The `komposer.yaml` is not a separate publish step — it travels with the Katalog. Consumers who want to load it instead of `katalog.yaml` set `useKomposer: true` in their import entry.
 
-## Importing a Komposer pattern
+---
 
-Consumers use `useKomposer: true` to tell Orkestra to load `komposer.yaml` from the artifact instead of `katalog.yaml`:
+## Two kinds of registry import
+
+Every registry entry in your Komposer resolves either the `katalog.yaml` or the `komposer.yaml` from the upstream artifact. The `useKomposer` field controls which:
+
+### `useKomposer: false` (default)
+
+Orkestra loads `katalog.yaml` from the artifact. Only the CRD entries from `spec.crds` are extracted. You get the raw CRD definitions and compose them your own way:
 
 ```yaml
 imports:
   registry:
-    - url: ghcr.io/myorg/patterns/platform:v2
+    - url: ghcr.io/myorg/patterns/postgres:v14
       oci: true
-      useKomposer: true
+      # useKomposer defaults to false → loads postgres/katalog.yaml
 ```
 
-This is how a platform team distributes a complete, pre-composed control plane: one reference, one version, one runtime.
+Use this when you want the upstream's CRD data but will apply your own overrides or composition inline.
+
+### `useKomposer: true`
+
+Orkestra loads `komposer.yaml` from the artifact instead. The upstream's composition — its imports, its defaults — is resolved in full. If the upstream `komposer.yaml` itself imports other patterns, those are resolved too:
+
+```yaml
+imports:
+  registry:
+    - url: ghcr.io/myorg/patterns/postgres:v14
+      oci: true
+      useKomposer: true
+      # loads postgres/komposer.yaml — resolves all of its imports recursively
+```
+
+Use this when you want to accept the upstream's pre-composed form as-is.
+
+Orkestra validates that the `kind:` field in the loaded file matches what `useKomposer` expects. If you set `useKomposer: true` but the file has `kind: Katalog`, the pull fails with a clear error.
+
+---
 
 ## Overriding on import
 
-The consuming Komposer's inline `spec.crds` always wins. Environment-specific overrides require no changes to the upstream pattern:
+Your inline `spec.crds` always wins over imported values, regardless of `useKomposer`. Environment-specific overrides require no changes to the upstream pattern:
 
 ```yaml
 imports:
   registry:
-    - url: platform:v2
+    - url: postgres:v14
+      oci: true
       useKomposer: true
 spec:
   crds:
     database:
-      workers: 10    # production override
+      workers: 10    # production override — takes precedence over upstream defaults
 ```
+
+---
+
+## Transitive imports
+
+When you load an upstream `komposer.yaml` with `useKomposer: true`, its own registry, file, and Helm imports are also resolved. If the upstream composition pulls three other patterns, you get all three. Understand the upstream's dependency tree before enabling this in production.
+
+---
+
+## Where to go next
+
+- **[Katalogs](./katalogs.md)** — publishing operator patterns
+- **[E2E](./e2e.md)** — gating publication with declarative tests
+- **[Schema: Komposer](../reference/schema/komposer.md)** — full field reference

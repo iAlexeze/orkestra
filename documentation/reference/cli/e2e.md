@@ -3,10 +3,10 @@
 Run declarative end-to-end tests against a real cluster.
 
 ```bash
-ork e2e -f e2e.yaml
+ork e2e
 ```
 
-`ork e2e` is the complement to `ork simulate` — it runs against a real kind cluster, applying the full operator lifecycle and verifying that resources reach the expected state. The same command runs locally and in CI.
+`--file` defaults to `e2e.yaml` — the flag is only required when your spec file has a non-standard name. `ork e2e` is the complement to `ork simulate` — it runs against a real kind cluster, applying the full operator lifecycle and verifying that resources reach the expected state. The same command runs locally and in CI.
 
 ## Flags
 

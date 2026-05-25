@@ -204,7 +204,7 @@ where you speak. The `/katalog` endpoint is where Orkestra reports back.
 
 ## The model in full
 
-```
+```text
 Katalog (file)          ← where you declare intent
     │
     ▼

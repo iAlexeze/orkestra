@@ -30,3 +30,12 @@ export ORK_MOTIFS_REGISTRY=oci://myregistry.internal/motifs
 - [Katalogs](katalogs.md) — complete operator declarations, one CRD or many
 - [Komposers](komposers.md) — platform declarations that compose multiple Katalogs
 - [E2E](e2e.md) — verification framework that gates publication
+
+---
+
+## Where to go next
+
+- **[Motifs](./motifs.md)** — reusable resource primitives
+- **[Katalogs](./katalogs.md)** — publishing and pulling complete operator patterns
+- **[Komposers](./komposers.md)** — platform-level composition across multiple Katalogs
+- **[E2E](./e2e.md)** — gating publication with declarative verification

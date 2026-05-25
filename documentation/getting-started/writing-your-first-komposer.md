@@ -93,3 +93,10 @@ ork validate
 ```
 
 Resolves all sources, merges everything, and reports errors — without touching the cluster.
+
+---
+
+## Next
+
+- **[Learning to Orkestrate](./learning-to-orkestrate.md)** — progression through the full example library
+- **[Komposers](../orkestra-registry/komposers.md)** — publishing and pulling Komposers from the registry

@@ -47,7 +47,7 @@ security:
 
 With strict mode on, Orkestra registers a second webhook (`strict-mode.orkestra.orkspace.io`) that intercepts UPDATE operations on any labeled resource and blocks any request that removes the `orkestra.io/deletion-protection` label:
 
-```
+```text
 Error from server: admission webhook "strict-mode.orkestra.orkspace.io" denied the request:
 [Orkestra Security] The App "my-app" in namespace "default" carries the deletion-protection label.
 Removing this label is blocked because strictMode is enabled.

@@ -20,6 +20,7 @@ Orkestra's security model has five interlocking layers, each described in its ow
 | **Admission control** | Bad CRs are rejected before they reach etcd | [Admission webhooks](admission.md) |
 | **Deletion protection** | CRs and the operator itself cannot be accidentally deleted | [Deletion protection](deletion-protection.md) |
 | **Namespace isolation** | CRs are confined to the namespaces you allow | [Namespace protection](namespace-protection.md) |
+| **Validation pipeline** | Strict parsing and multi-stage validation before anything runs | [Validation pipeline](validation-pipeline.md) |
 
 These layers are independent and can be enabled in any combination. You do not need all five to get value from any one of them.
 
@@ -31,7 +32,7 @@ Understanding Orkestra's deployment modes is essential before reading any securi
 
 ### Runtime mode (full)
 
-```
+```text
 ┌────────────────────────────────────────────┐
 │  Kubernetes cluster                        │
 │                                            │
@@ -46,7 +47,7 @@ In this mode the reconciler continuously enforces the label invariants declared 
 
 ### Gateway-only mode (standalone)
 
-```
+```text
 ┌────────────────────────────────────────────┐
 │  Kubernetes cluster                        │
 │                                            │
@@ -61,11 +62,26 @@ This mode is useful when you bring your own operator or a cluster with Kubernete
 
 ---
 
+## Minimal cluster access surface
+
+Only two commands connect to and actively manage a real Kubernetes cluster:
+
+| Command | What it does in the cluster |
+|---------|-----------------------------|
+| `ork run` | Applies CRDs, starts reconcilers, watches and manages resources |
+| `ork gate` | Registers webhooks, processes admission requests |
+
+Every other command — `ork validate`, `ork simulate`, `ork template`, `ork notes`, `ork generate`, `ork init`, `ork plan --bundle` — runs entirely offline. No cluster credentials are read, no API server calls are made.
+
+This minimal surface is intentional. If a command does not need the cluster, it does not touch it. The [Validation pipeline](./validation-pipeline.md) covers the full offline path.
+
+---
+
 ## Enforcement at two independent points
 
 For every security rule declared in the Katalog, Orkestra enforces it at two independent places:
 
-```
+```bash
 kubectl apply
     │
     ▼
@@ -95,7 +111,7 @@ ork validate
 
 The output shows each CRD's protection level at a glance:
 
-```
+```text
 ● app
     kind: App / group: security.orkestra.io / version: v1alpha1
     strict-protection: 🔓 CRD only (CRs not protected)
@@ -135,3 +151,14 @@ ork init --pack security
 ## Vulnerabilities
 
 Report security issues privately with reproduction steps, relevant logs, and an impact assessment. Responsible disclosure is appreciated and protects all users.
+
+---
+
+## Where to go next
+
+- **[Admission Control](./admission.md)** — deny/warn rules at admission time
+- **[RBAC](./rbac.md)** — generating and scoping ClusterRoles
+- **[Namespace Protection](./namespace-protection.md)** — admission and runtime enforcement
+- **[Deletion Protection](./deletion-protection.md)** — preventing accidental CR and CRD deletion
+- **[Binaries](./binaries.md)** — verifying Orkestra release artifacts
+- **[Validation Pipeline](./validation-pipeline.md)** — strict parsing, offline validation, and minimal cluster access

@@ -1,6 +1,6 @@
-# 01 — How the pipeline works
+# How the pipeline works
 
-```
+```text
 documentation/          ← you write here
     getting-started/
     orkestra-core/

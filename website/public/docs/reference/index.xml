@@ -1,1 +1,19 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Reference on Orkestra</title><link>https://orkestra.sh/docs/reference/</link><description>Recent content in Reference on Orkestra</description><generator>Hugo</generator><language>en-us</language><lastBuildDate/><atom:link href="https://orkestra.sh/docs/reference/index.xml" rel="self" type="application/rss+xml"/></channel></rss>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Reference on Orkestra</title>
+    <link>http://localhost:8090/docs/reference/</link>
+    <description>Recent content in Reference on Orkestra</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Mon, 25 May 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="http://localhost:8090/docs/reference/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Operator as library</title>
+      <link>http://localhost:8090/docs/reference/operator-as-library/</link>
+      <pubDate>Mon, 25 May 2026 00:00:00 +0000</pubDate>
+      <guid>http://localhost:8090/docs/reference/operator-as-library/</guid>
+      <description>&lt;p&gt;Orkestra is a Go library. You can import it with a version-pinned &lt;code&gt;go.mod&lt;/code&gt; entry and write your own entrypoint — full control, no fork needed.&lt;/p&gt;&#xA;&lt;p&gt;This is not the common path. Most teams use &lt;code&gt;ork run&lt;/code&gt; directly. This page is for teams who need to embed Orkestra in a larger binary, add a custom webhook, or integrate it with an existing Go application.&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;the-entrypoint&#34;&gt;The entrypoint&lt;/h2&gt;&#xA;&lt;p&gt;Orkestra&amp;rsquo;s own &lt;code&gt;main.go&lt;/code&gt; is 12 lines:&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

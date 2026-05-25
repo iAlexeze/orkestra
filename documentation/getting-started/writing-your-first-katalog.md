@@ -178,12 +178,22 @@ spec:
       crFiles:
         - ./application-cr.yaml
       dependsOn:
-        - database
+        database:
+          condition: healthy   # wait until database workers are running and failure-free
+      operatorBox:
+        default: true
+    analytics:
+      crdFile: ./analytics-crd.yaml
+      crFiles:
+        - ./analytics-cr.yaml
+      dependsOn:
+        database:
+          condition: started   # wait only until database workers are running
       operatorBox:
         default: true
 ```
 
-Orkestra starts `database` first and waits until it is healthy before starting `application`.
+`condition: healthy` waits until the dependency's workers are running and its consecutive failure count is zero — use this when the downstream CRD needs the upstream to be stable before it starts. `condition: started` waits only until workers are running — useful when you want ordering without blocking on health (for example, when the dependency might legitimately fail during startup and you want the downstream to proceed anyway).
 
 ---
 
@@ -209,3 +219,10 @@ kubectl get services
 ork validate
 # Orkestra reads katalog.yaml from the current directory and reports every error without touching the cluster.
 ```
+
+---
+
+## Next
+
+- **[Writing Your First Komposer](./writing-your-first-komposer.md)** — compose multiple Katalogs into a platform declaration
+- **[Learning to Orkestrate](./learning-to-orkestrate.md)** — full progression through the example packs

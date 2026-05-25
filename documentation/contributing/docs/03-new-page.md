@@ -1,4 +1,4 @@
-# 03 — Adding a page or section
+# Adding a page or section
 
 ## Adding a page to an existing section
 

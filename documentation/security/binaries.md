@@ -10,7 +10,7 @@ Orkestra ships as three distinct compiled binaries from a single codebase. Go bu
 |--------|-------------|-------------|
 | **ork** (developer CLI) | `ork run`, `ork generate`, `ork init`, … | Everything. Used locally, never in production. |
 | **ork** (runtime) | `ork run` only | Watches CRDs and reconciles. No generation surface. |
-| **ork-gateway** | `ork gateway` only | Serves webhooks, TLS, admission. No reconcile surface. |
+| **ork-gateway** | `ork gate` only | Serves webhooks, TLS, admission. No reconcile surface. |
 
 All three binaries are compiled from the same Go source files. The `runtime` and `gateway` build tags strip out the commands that are not relevant to each role.
 
@@ -51,7 +51,7 @@ The gateway binary is compiled separately (`cmd/gateway/`). It receives only the
 | Command | Developer CLI | Runtime binary | Gateway binary |
 |---------|:---:|:---:|:---:|
 | `ork run` | ✓ | ✓ | — |
-| `ork gateway` | ✓ | — | ✓ |
+| `ork gate` | ✓ | — | ✓ |
 | `ork version` | ✓ | ✓ | ✓ |
 | `ork generate bundle` | ✓ | — | — |
 | `ork generate rbac` | ✓ | — | — |

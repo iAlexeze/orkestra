@@ -14,7 +14,7 @@ ork registry push postgres:v14 ./patterns/postgres/ --force
 
 Whether the gate passed, was skipped, or was force-overridden, the result is baked into the OCI artifact as annotations:
 
-```
+```text
 io.orkestra.e2e.status     passed | skipped | forced
 io.orkestra.e2e.duration   45s
 io.orkestra.e2e.tested_at  2026-05-24T10:00:00Z

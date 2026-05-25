@@ -63,9 +63,7 @@ All of this from a YAML file.
 
 ```bash
 curl -sSL https://get.orkestra.sh | bash
-ork init my-operator
-cd my-operator/examples/beginner/01-hello-website
-
+ork init
 ork run
 # Orkestra reads katalog.yaml from the current directory and starts the runtime.
 ```

@@ -1,16 +1,17 @@
 ---
 title: "ork init"
 date: 2026-05-21
-weight: 48
+weight: 52
 ---
 
-Initialize a new Orkestra operator project using a versioned example pack.
+Initialize a new Orkestra operator project.
 
-```
-ork init <project-name> [flags]
+```bash
+ork init [project-name] [flags]
 ```
 
-`ork init` downloads a version‑matched example pack, extracts it into a new project directory, and prepares a ready‑to‑run scaffold.  
+With no arguments, `ork init` creates a `katalog.yaml` in the current directory — a ready-to-run hello-website operator scaffold. Pass a name to create a new subdirectory. Use `--pack` to initialize from an example pack instead.
+
 Packs are cached locally for fast repeated use and offline initialization.
 
 ---
@@ -20,7 +21,7 @@ Packs are cached locally for fast repeated use and offline initialization.
 | Flag | Description |
 |------|-------------|
 | `-p, --pack <name>` | Example pack to initialize (default: `beginner`) |
-| `-l, --list-packs` | List available example packs |
+| `-l, --list` | List available example packs |
 | `--clear-cache` | Clear all cached example packs |
 | `--refresh-cache` | Force re-download of the selected pack |
 
@@ -32,8 +33,8 @@ Global flags (`--kubeconfig`, `--file`, `--debug`, `--verbose`) are intentionall
 
 List available packs:
 
-```
-ork init --list-packs
+```bash
+ork init --list
 ```
 
 Available packs:
@@ -45,7 +46,13 @@ Available packs:
 
 Use a specific pack:
 
+```bash
+ork init --pack advanced
 ```
+
+Or init into a named subdirectory:
+
+```bash
 ork init my-operator --pack advanced
 ```
 
@@ -55,20 +62,20 @@ ork init my-operator --pack advanced
 
 Packs are cached under:
 
-```
+```text
 ~/.orkestra/packs/
 ```
 
 Clear cache:
 
-```
+```bash
 ork init --clear-cache
 ```
 
 Force re-download:
 
-```
-ork init my-operator --refresh-cache
+```bash
+ork init --refresh-cache
 ```
 
 ---
@@ -77,37 +84,37 @@ ork init my-operator --refresh-cache
 
 Running:
 
-```
-ork init my-operator --pack beginner
+```bash
+ork init --pack beginner
 ```
 
-Produces:
+Produces (in current directory):
 
-```
-my-operator/
-  examples/
-    <pack>/
-      <pack-example>/
-        crd.yaml
-        katalog.yaml
-        cr.yaml
-  examples_<pack>_<version>.tar.gz
+```text
+beginner/
+  01-hello-website/
+    crd.yaml
+    katalog.yaml
+    cr.yaml
+    README.md
+  02-configmap-operator/
+    ...
 ```
 
 ---
 
 ## Next Steps
 
-Inside the project:
+Inside the example:
 
-```
-cd my-operator/examples/<pack>/<pack-example>
+```bash
+cd beginner/01-hello-website
 ork run
 ```
 
 Open Control Center:
 
-```
+```bash
 ork control
 ```
 
@@ -115,7 +122,7 @@ ork control
 
 ## Notes
 
-- `--list-packs`, `--clear-cache`, and `--refresh-cache` do **not** require a project name.
+- `--list`, `--clear-cache`, and `--refresh-cache` do **not** require a project name.
 - Packs are version‑matched to the installed Orkestra CLI.
 - Initialization works offline if the pack is already cached.
 

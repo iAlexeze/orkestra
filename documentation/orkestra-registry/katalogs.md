@@ -10,10 +10,13 @@ postgres/
   crd.yaml        # optional — CRD manifest to apply before the operator starts
   cr.yaml         # optional — sample CR for testing
   e2e.yaml        # optional — E2E expectations (gates publication)
+  komposer.yaml   # optional — companion showing how to import this pattern in a Komposer
   README.md       # optional — shown in registry UI
 ```
 
 `katalog.yaml` is the only required file. `crd.yaml` is optional because the consumer may already have the CRD installed, or may want to bring their own version — Orkestra does not force a CRD on import. Including it is recommended for patterns intended as a complete drop-in, but omitting it lets the consumer control the CRD independently. `cr.yaml` gives consumers a working sample, and `e2e.yaml` means the pattern was verified before it was published.
+
+Including a `komposer.yaml` is optional but useful: it ships alongside the Katalog in the same artifact and shows consumers exactly how to compose this pattern. Consumers who want to load it instead of `katalog.yaml` set `useKomposer: true` in their import entry — see [Komposers](./komposers.md).
 
 ## Publishing
 

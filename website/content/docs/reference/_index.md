@@ -1,7 +1,7 @@
 ---
 title: "Reference"
 date: 2026-05-17
-weight: 57
+weight: 61
 ---
 
 Technical reference for the Orkestra runtime, schemas, and CLI.
@@ -37,3 +37,11 @@ Complete field reference for every Orkestra document type.
 | [ork template](./cli/template/) | Render the merged, resolved Katalog |
 | [ork simulate](./cli/simulate/) | Simulate reconciliation in memory |
 | [ork init](./cli/init/) | Scaffold a new operator project |
+
+---
+
+## Where to go next
+
+- **[Schema Reference](./schema/katalog/)** — every field in every document type
+- **[CLI Reference](./cli/run/)** — full flag reference for every command
+- **[Typed Operators](./typed-operators/)** — hooks, constructors, and mixed patterns

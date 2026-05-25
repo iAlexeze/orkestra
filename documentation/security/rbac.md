@@ -28,7 +28,7 @@ kubectl apply -f bundle.yaml
 
 ## What the bundle contains
 
-```
+```text
 Namespace
 ServiceAccount     orkestra              (runtime)
 ServiceAccount     orkestra-gateway      (gateway)

@@ -2,7 +2,7 @@
 
 A Motif is the smallest reusable unit in Orkestra's composition model. It declares named inputs and resource blocks. It cannot run alone — it must be imported by a Katalog that provides its inputs via `with:`.
 
-```
+```text
 Motif     — smallest reusable unit. Declared inputs. One concern.
     ↓
 Katalog   — operator declaration. Imports Motifs.
@@ -244,7 +244,7 @@ A Motif can itself import other Motifs — a `postgres-with-backup` Motif could 
 
 ## Pattern directory structure
 
-```
+```text
 postgres/
   motif.yaml      # required — the Motif spec
   README.md       # optional — shown in registry UI

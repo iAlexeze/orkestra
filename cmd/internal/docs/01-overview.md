@@ -20,7 +20,7 @@ so only one replica runs the reconcile loop at a time. It is called by `ork run`
 `KonductGateway` is the gateway entrypoint. It assembles only the parts needed to
 serve TLS and admission webhooks — the health server, the webhook server, and the
 kubeclient. It does not run reconcilers and does not participate in leader election.
-It is called by `ork gateway`. The gateway exits immediately if not running inside
+It is called by `ork gate`. The gateway exits immediately if not running inside
 a Kubernetes pod.
 
 ## The split
@@ -44,7 +44,7 @@ Deployment exists by default; the gateway Deployment is opt-in
 
 ```
 ork run      →  KonductRuntime →  konstructRuntime   →  reconcile loop
-ork gateway  →  KonductGateway →  gateway wiring     →  TLS + webhooks
+ork gate  →  KonductGateway →  gateway wiring     →  TLS + webhooks
 ```
 
 → Next: [02-runtime.md](02-runtime.md)

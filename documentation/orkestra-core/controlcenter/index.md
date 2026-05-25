@@ -62,7 +62,7 @@ Set `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `SESSION_SECRET` to non-default valu
 
 ## Architecture
 
-```
+```text
 Browser
    │
    ▼

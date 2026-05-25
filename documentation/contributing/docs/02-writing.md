@@ -1,4 +1,4 @@
-# 02 — Writing content
+# Writing content
 
 ## Edit an existing page
 

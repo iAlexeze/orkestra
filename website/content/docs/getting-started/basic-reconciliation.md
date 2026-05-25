@@ -1,7 +1,7 @@
 ---
 title: "Basic Reconciliation"
 date: 2026-05-21
-weight: 17
+weight: 21
 ---
 
 This guide walks through exactly what happens when Orkestra reconciles a CR — from the moment you apply it to the moment it's deleted.
@@ -36,7 +36,7 @@ When `ork run` starts:
 
 You will see:
 
-```
+```text
 INFO  CRD applied                crd=websites.demo.orkestra.io
 INFO  CR applied                 name=hello-website namespace=default
 INFO  Informer synced            crd=website
@@ -149,3 +149,6 @@ ork control
 | CR updated | Resources updated to match new CR spec |
 | Resource drifts (if `reconcile: true`) | Resource corrected on next reconcile cycle |
 | CR deleted | Resources removed, finalizer released |
+
+---
+

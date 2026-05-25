@@ -31,3 +31,13 @@ The three components share nothing at rest. No shared database, no shared cache,
 - The **Runtime** advertises the Gateway's location. Its `/katalog` response includes a `gatewayEndpoint` field. The Control Center follows that link to fetch webhook stats and merge them into the per-CRD view — without either component needing to be co-located.
 
 This means you can run them on the same pod or on entirely separate deployments. The architecture does not care.
+
+
+---
+
+## Where to go next
+
+- **[Runtime](./runtime/index.md)** — reconciliation engine, worker configuration, health model
+- **[Gateway](./gateway/index.md)** — webhooks, notifications, TLS setup
+- **[Control Center](./controlcenter/index.md)** — live operator dashboard
+- **[Deploying](../deploying.md)** — running the full stack in a real cluster

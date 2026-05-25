@@ -55,7 +55,7 @@ crds:
 
 When a user applies a CR with `spec.image: docker.io/nginx:latest`, the webhook returns:
 
-```
+```text
 Error from server: admission webhook "admission.orkestra.orkspace.io" denied the request:
 [platform/my-platform] spec.image: images must come from the internal registry (registry.internal/)
 ```

@@ -50,7 +50,7 @@ spec:
             {{- toYaml .Values.gateway.securityContext | nindent 12 }}
 
           args:
-            - gateway
+            - gate
             - --file
             - {{ .Values.gateway.katalog.mountPath }}/{{ .Values.gateway.katalog.configMapKey }}
 

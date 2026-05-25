@@ -1,7 +1,7 @@
 ---
 title: "Writing Your First Komposer"
 date: 2026-05-20
-weight: 21
+weight: 25
 ---
 
 A **Komposer** defines where Orkestra loads Katalogs from. A Katalog defines what your operator does — a Komposer defines where those Katalogs come from.
@@ -97,3 +97,6 @@ ork validate
 ```
 
 Resolves all sources, merges everything, and reports errors — without touching the cluster.
+
+---
+

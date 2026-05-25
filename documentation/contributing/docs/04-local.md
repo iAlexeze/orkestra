@@ -1,4 +1,4 @@
-# 04 — Local preview
+# Local preview
 
 ## Requirements
 
@@ -14,7 +14,7 @@ bash website/scripts/sync-docs.sh && hugo server --source ./website
 
 Hugo starts a live-reload server:
 
-```
+```text
 Web Server is available at http://localhost:1313/
 ```
 
@@ -30,7 +30,7 @@ bash website/scripts/sync-docs.sh
 
 Output shows every file synced and any section indices auto-created:
 
-```
+```text
 Cleaning content/docs ...
 Syncing docs: .../documentation → .../website/content/docs
   docs: getting-started/index.md

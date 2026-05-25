@@ -3,34 +3,39 @@
 Run the operator reconcile loop against a fake in-memory cluster — no real Kubernetes cluster required. Useful for verifying that a declarative Katalog creates the right resources in the right order.
 
 ```bash
-ork simulate -f katalog.yaml --cr cr.yaml
+ork simulate
 ```
+
+`--file` defaults to `katalog.yaml` (then `komposer.yaml`) and `--cr` defaults to `cr.yaml` — both are optional when your files use the standard names.
 
 ## Flags
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
-| `--file` | `-f` | | Path to katalog.yaml |
-| `--cr` | | | Path to the CR YAML file to reconcile |
+| `--file` | `-f` | `katalog.yaml` | Path to katalog or komposer file |
+| `--cr` | | `cr.yaml` | Path to the CR YAML file to reconcile |
 | `--crd` | | *(all)* | CRD name to simulate. Defaults to all CRDs in the Katalog. |
 | `--cycles` | | `10` | Maximum number of reconcile cycles per CRD |
 
 ## Examples
 
 ```bash
-# Simulate all CRDs using a sample CR
-ork simulate -f katalog.yaml --cr cr.yaml
+# Standard layout — no flags needed
+ork simulate
+
+# Non-standard filenames
+ork simulate -f my-operator.yaml --cr my-cr.yaml
 
 # Simulate a specific CRD only
-ork simulate -f katalog.yaml --cr cr.yaml --crd website
+ork simulate --crd website
 
 # Run up to 5 reconcile cycles
-ork simulate -f katalog.yaml --cr cr.yaml --cycles 5
+ork simulate --cycles 5
 ```
 
 ## Output
 
-```
+```text
 Simulating website/my-site
 
   Cycle 1:

@@ -78,7 +78,7 @@ Follow the pattern of any complete resource (e.g., `deployments/`):
 
 ### 1. Create the directory
 
-```
+```text
 pkg/orkestra-registry/<resourcename>/
   <resourcename>.go   — Create, Update, Delete, Resolve functions
   types.go            — ResolvedSpec struct

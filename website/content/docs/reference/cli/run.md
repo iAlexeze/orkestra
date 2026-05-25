@@ -1,7 +1,7 @@
 ---
 title: "ork run"
 date: 2026-05-20
-weight: 51
+weight: 55
 ---
 
 Start the Orkestra Runtime.
@@ -14,7 +14,7 @@ Merges and validates before starting workers.
 
 Endpoints exposed:
 
-```
+```text
 /health
 /ready
 /metrics

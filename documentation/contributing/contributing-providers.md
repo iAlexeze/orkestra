@@ -49,7 +49,7 @@ Orkestra does not yet have providers for:
 
 ### 1. Create the package
 
-```
+```text
 pkg/provider/<name>/
   provider.go
 ```

@@ -42,11 +42,10 @@ ork version
 **Step 1 — Scaffold a project**
 
 ```bash
-ork init my-operator
-cd my-operator
+ork init
 ```
 
-`ork init` creates a workspace with ready-to-run katalog.
+`ork init` creates a `katalog.yaml` in the current directory, ready to run.
 
 **Step 2 — Start the operator**
 
@@ -64,7 +63,7 @@ ork run --dev
 
 You will see:
 
-```
+```text
 INFO  CRD applied                crd=websites.demo.orkestra.io
 INFO  CR applied                 name=hello-website namespace=default
 INFO  Informer synced            crd=website
@@ -164,7 +163,7 @@ Ctrl+C
 
 | Command | Description |
 |---------|-------------|
-| `ork init <name>` | Scaffold a new operator project |
+| `ork init` | Scaffold a new operator project in the current directory |
 | `ork run -f <path>` | Start the operator runtime |
 | `ork run --dev -f <path>` | Start the operator, create kind cluster if needed |
 | `ork validate -f <path>` | Validate a Katalog without starting |

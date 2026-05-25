@@ -1,7 +1,7 @@
 ---
 title: "ork validate"
 date: 2026-05-20
-weight: 55
+weight: 59
 ---
 
 Validate a Katalog or Komposer. Resolves sources, merges, and runs the full validation pipeline.

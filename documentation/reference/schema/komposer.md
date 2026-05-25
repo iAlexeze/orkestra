@@ -106,7 +106,7 @@ imports:
 
 ## Resolution order
 
-```
+```text
 1. imports.registry
 2. imports.files
 3. imports.helm

@@ -39,6 +39,9 @@ Every production operator pattern. Some examples have sub-examples showing the s
 
 ```bash
 ork init --pack advanced
+cd advanced/09-hooks
+ork run
+# follow the README inside each example — they each show what to observe
 ```
 
 ### Rules and lifecycle
@@ -122,5 +125,13 @@ ork control
 ## Available packs
 
 ```bash
-ork init --list-packs
+ork init --list
 ```
+
+---
+
+## Next
+
+- **[Orkestra Core](../orkestra-core/index.md)** — runtime, gateway, and control center architecture
+- **[Security](../security/index.md)** — admission control, RBAC, namespace protection
+- **[Reference](../reference/index.md)** — full schema and CLI reference

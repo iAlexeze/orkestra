@@ -32,7 +32,7 @@ When `ork run` starts:
 
 You will see:
 
-```
+```text
 INFO  CRD applied                crd=websites.demo.orkestra.io
 INFO  CR applied                 name=hello-website namespace=default
 INFO  Informer synced            crd=website
@@ -145,3 +145,9 @@ ork control
 | CR updated | Resources updated to match new CR spec |
 | Resource drifts (if `reconcile: true`) | Resource corrected on next reconcile cycle |
 | CR deleted | Resources removed, finalizer released |
+
+---
+
+## Next
+
+- **[Writing Your First Katalog](./writing-your-first-katalog.md)** — put the reconcile model into practice with a real operator

@@ -31,7 +31,7 @@ import (
 func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 
 	if !utils.IsRunningInCluster() {
-		fmt.Println("orkestra: ork gateway only runs inside a Kubernetes pod. Use 'ork run' for local development.")
+		fmt.Println("orkestra: ork gate only runs inside a Kubernetes pod. Use 'ork run' for local development.")
 		os.Exit(1)
 	}
 

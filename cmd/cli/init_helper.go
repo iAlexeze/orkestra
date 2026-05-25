@@ -24,7 +24,7 @@ import (
 func extractEmbeddedPack(root, pack string) error {
 	p, ok := Packs[pack]
 	if !ok {
-		return fmt.Errorf("unknown pack %q — run `ork init --list-packs` to see available packs", pack)
+		return fmt.Errorf("unknown pack %q — run `ork init --list` to see available packs", pack)
 	}
 	srcPath := p.Path
 

@@ -16,7 +16,7 @@ var initCmd = &cobra.Command{
 	Use:   "init [project-name]",
 	Short: "Initialize a new Orkestra operator project",
 	Args: func(cmd *cobra.Command, args []string) error {
-		list, _ := cmd.Flags().GetBool("list-packs")
+		list, _ := cmd.Flags().GetBool("list")
 		clear, _ := cmd.Flags().GetBool("clear-cache")
 
 		if list || clear {
@@ -30,8 +30,8 @@ var initCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Handle --list-packs
-		list, _ := cmd.Flags().GetBool("list-packs")
+		// Handle --list
+		list, _ := cmd.Flags().GetBool("list")
 		if list {
 			return listPacks()
 		}
@@ -178,7 +178,7 @@ func listPacks() error {
 func init() {
 	rootCmd.AddCommand(initCmd)
 	initCmd.Flags().StringP("pack", "p", "", "Example pack to copy into the project (beginner, intermediate, advanced, …)")
-	initCmd.Flags().BoolP("list-packs", "l", false, "List available example packs")
+	initCmd.Flags().BoolP("list", "l", false, "List available example packs")
 	initCmd.Flags().Bool("clear-cache", false, "Clear cached example packs")
 	initCmd.Flags().Bool("refresh-cache", false, "Fetch pack from GitHub Releases instead of using the built-in copy")
 

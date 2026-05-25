@@ -487,7 +487,7 @@ Two binaries, two build tags, two attack surfaces:
 | Command | Developer CLI | Runtime binary | Gateway binary |
 |---------|:---:|:---:|:---:|
 | `ork run` | ✓ | ✓ | — |
-| `ork gateway` | — | — | ✓ |
+| `ork gate` | — | — | ✓ |
 | `ork version` | ✓ | ✓ | ✓ |
 | `ork generate` | ✓ | — | — |
 | `ork validate` | ✓ | — | — |

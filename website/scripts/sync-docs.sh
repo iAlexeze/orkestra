@@ -133,23 +133,54 @@ rewrite_links() {
   local file="$1"
   # Rewrite markdown cross-references: foo.md) → foo/) and index.md) → )
   # Hugo serves pages at /path/ not /path/index.md or /path.md
-  # Anchor links (file.md#section) are handled first so the # isn't consumed
-  # by the greedy non-anchor patterns. Bare paths (no ./ or ../ prefix) are
-  # handled last; the [a-zA-Z] anchor and : exclusion prevent matching URLs.
+  #
+  # Leaf pages (not _index.md) are rendered at /section/page/ — a bare relative
+  # link "sibling/" from that URL resolves to /section/page/sibling/ (wrong).
+  # For leaf pages, bare sibling .md links need "../" prepended so they resolve
+  # to /section/sibling/ correctly. Index pages don't need this adjustment.
+  #
+  # Anchor links are handled first so the # isn't consumed by greedy patterns.
+  # The [a-zA-Z] anchor and : exclusion prevent matching absolute URLs.
+
+  local base
+  base="$(basename "$file")"
+  local is_index=false
+  [[ "$base" == "_index.md" || "$base" == "index.md" ]] && is_index=true
+
+  # ./ and ../ prefix links — safe, these prefixes never appear in plain prose
   sed -i \
     -e 's|\(\.\/[^)#]*\)\/index\.md\(#[^)]*\))|\1/\2)|g' \
     -e 's|\(\.\.[^)#]*\)\/index\.md\(#[^)]*\))|\1/\2)|g' \
-    -e 's|\([a-zA-Z][^):#]*\)\/index\.md\(#[^)]*\))|\1/\2)|g' \
     -e 's|\(\.\/[^)#]*\)\.md\(#[^)]*\))|\1/\2)|g' \
     -e 's|\(\.\.[^)#]*\)\.md\(#[^)]*\))|\1/\2)|g' \
-    -e 's|\([a-zA-Z][^):#]*\)\.md\(#[^)]*\))|\1/\2)|g' \
     -e 's|\(\.\/[^)]*\)\/index\.md)|\1/)|g' \
     -e 's|\(\.\.[^)]*\)\/index\.md)|\1/)|g' \
-    -e 's|\([a-zA-Z][^):]*\)\/index\.md)|\1/)|g' \
     -e 's|\(\.\/[^)]*\)\.md)|\1/)|g' \
     -e 's|\(\.\.[^)]*\)\.md)|\1/)|g' \
-    -e 's|\([a-zA-Z][^):]*\)\.md)|\1/)|g' \
     "$file"
+
+  # Bare letter-prefixed links — anchor with ( to prevent matching plain prose.
+  # Without ( the greedy [^):^]* would match from any sentence-starting letter
+  # all the way to the .md) closing paren of an unrelated link.
+  sed -i \
+    -e 's|(\([a-zA-Z][^):#]*\)\/index\.md\(#[^)]*\))|(\1/\2)|g' \
+    -e 's|(\([a-zA-Z][^):#]*\)\.md\(#[^)]*\))|(\1/\2)|g' \
+    "$file"
+
+  # Bare sibling links (no ./ or ../ prefix):
+  # Index pages: sibling.md → sibling/ (correct — resolves from /section/)
+  # Leaf pages:  sibling.md → ../sibling/ (correct — resolves from /section/page/)
+  if $is_index; then
+    sed -i \
+      -e 's|(\([a-zA-Z][^):]*\)\/index\.md)|(\1/)|g' \
+      -e 's|(\([a-zA-Z][^):]*\)\.md)|(\1/)|g' \
+      "$file"
+  else
+    sed -i \
+      -e 's|(\([a-zA-Z][^):]*\)\/index\.md)|(../\1/)|g' \
+      -e 's|(\([a-zA-Z][^):]*\)\.md)|(../\1/)|g' \
+      "$file"
+  fi
 }
 
 sync_file() {

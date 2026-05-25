@@ -293,7 +293,7 @@ compose and selectively override.
 
 Every CRD managed by Orkestra automatically exposes:
 
-```
+```text
 GET /katalog                   All CRDs — health, dependency graph, stats
 GET /katalog/{crd}             Single CRD — config, reconcile stats
 GET /katalog/{crd}/health      200 healthy / 503 degraded
@@ -302,7 +302,7 @@ GET /metrics                   Prometheus metrics for all CRDs
 
 Five metrics, all per-CRD, all labeled by full GVK:
 
-```
+```text
 controller_reconcile_total{crd, result}
 controller_reconcile_duration_seconds{crd}
 controller_queue_depth{crd}
@@ -389,7 +389,7 @@ Website CRD:
 }
 ```
 
-```
+```text
 orkestra_conversion_requests_total{kind="Website",from="v1alpha1",to="v1",result="success"} 14
 orkestra_conversion_requests_total{kind="Website",from="v1",to="v1alpha1",result="success"} 17
 orkestra_conversion_duration_seconds_sum{from="v1alpha1",to="v1"} 0.007

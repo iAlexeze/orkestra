@@ -1,23 +1,390 @@
-<!doctype html><html lang=en-us data-theme><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta http-equiv=X-UA-Compatible content="IE=edge"><title>Publications — Orkestra</title>
-<meta name=description content="Technical papers, whitepapers, and deep-dives from the Orkestra team"><meta name=author content="Orkestra"><meta property="og:type" content="article"><meta property="og:title" content="Publications — Orkestra"><meta property="og:description" content="Technical papers, whitepapers, and deep-dives from the Orkestra team"><meta property="og:url" content="https://orkestra.sh/publications/"><meta property="og:site_name" content="Orkestra"><meta name=twitter:card content="summary_large_image"><meta name=twitter:title content="Publications — Orkestra"><meta name=twitter:description content="Technical papers, whitepapers, and deep-dives from the Orkestra team"><link rel=icon type=image/png href=/img/fav.png><link rel=preconnect href=https://fonts.googleapis.com><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel=stylesheet><link rel=stylesheet href=/css/main.min.482d2685c0c52aa91980a57370f29e8711b1d60438ac5bca43a09566525a6a8f.css><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/@docsearch/css@3 crossorigin><script>(function(){var e=localStorage.getItem("theme"),t=e||"dark";document.documentElement.setAttribute("data-theme",t)})()</script></head><body class=page-publications><nav class=navbar role=navigation aria-label="Main navigation"><div class=navbar-inner><a href=/ class=navbar-logo aria-label="Orkestra home"><img src=/img/logo.png alt=Orkestra class=logo-img height=36 width=36>
-<span class=logo-text>Orkestra</span></a><ul class=navbar-links role=list><li><a href=/docs/getting-started/ class=navbar-link>Docs</a></li><li><a href=/docs/reference/ class=navbar-link>Reference</a></li><li><a href=/blog/ class=navbar-link>Blog</a></li><li><a href=/publications/ class=navbar-link>Publications</a></li></ul><div class=navbar-controls><a href=https://cc.orkestra.sh class=btn-controlcenter target=_blank rel="noopener noreferrer" aria-label="Open Control Center"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentcolor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
-Control Center
-<span class=cc-live-dot title="Live instance"></span>
-</a><a href=https://github.com/orkspace/orkestra class=btn-github target=_blank rel="noopener noreferrer" aria-label="View on GitHub"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentcolor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483.0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951.0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65.0.0.84-.27 2.75 1.026A9.564 9.564.0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688.0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855.0 1.338-.012 2.419-.012 2.747.0.268.18.58.688.482A10.019 10.019.0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
-<span>GitHub</span>
-</a><button class=btn-theme-toggle id=theme-toggle aria-label="Toggle dark mode" title="Toggle dark mode">
-<svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentcolor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-<svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentcolor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-</button>
-<button class=btn-hamburger id=mobile-menu-toggle aria-label="Toggle menu" aria-expanded=false>
-<span class=hamburger-bar></span>
-<span class=hamburger-bar></span>
-<span class=hamburger-bar></span></button></div></div><div class=navbar-mobile id=mobile-menu aria-hidden=true><ul role=list><li><a href=/docs/getting-started/ class=navbar-mobile-link>Docs</a></li><li><a href=/docs/reference/ class=navbar-mobile-link>Reference</a></li><li><a href=/blog/ class=navbar-mobile-link>Blog</a></li><li><a href=/publications/ class=navbar-mobile-link>Publications</a></li></ul></div></nav><main id=main-content tabindex=-1><div class=pub-page-inner><header class=pub-page-header><a href=/ class=pub-back-link><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentcolor" stroke-width="2"><path d="M19 12H5m7 7-7-7 7-7"/></svg>
-Home</a><h1 class=pub-page-title>Publications</h1><p class=pub-page-desc>Technical papers, whitepapers, and deep-dives from the Orkestra team</p><p class=pub-page-count>2 papers</p></header><ol class=pub-scholar-list reversed><li class=pub-scholar-item><h2 class=pub-scholar-title><a href=/publications/trust-and-failure-model/ class=pub-scholar-link>Trust and Failure Model</a></h2><div class=pub-scholar-meta><span>May 2026</span>
-<span class=pub-meta-sep>·</span>
-<span>6 min read</span></div><p class=pub-scholar-abstract>Trust in a distributed system is not a feature you add — it is a property that either emerges from the design or does not. Orkestra&rsquo;s approach is to make trustworthy behavior the default at …</p></li><li class=pub-scholar-item><h2 class=pub-scholar-title><a href=/publications/declarative-operators-whitepaper/ class=pub-scholar-link>Declarative Operators: A New Model for Kubernetes Extensibility</a></h2><div class=pub-scholar-meta><span>May 2026</span>
-<span class=pub-meta-sep>·</span>
-<span>12 min read</span></div><p class=pub-scholar-abstract>Orkestra Project — March 2026
-Abstract Kubernetes operators encode domain knowledge as reconciliation logic. Every major operator framework to date requires this logic to be written in a programming …</p></li></ol></div></main><footer class=site-footer><div class=footer-inner><div class=footer-brand><a href=/ class=footer-logo aria-label="Orkestra home"><img src=/img/logo.png alt=Orkestra class=logo-img height=28>
-<span class=footer-logo-text>Orkestra</span></a><p class=footer-tagline>The declarative control plane<br>for Kubernetes operators.</p><div class=footer-social><a href=https://github.com/orkspace/orkestra target=_blank rel="noopener noreferrer" aria-label=GitHub class=footer-social-link><svg viewBox="0 0 24 24" width="20" height="20" fill="currentcolor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483.0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951.0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65.0.0.84-.27 2.75 1.026A9.564 9.564.0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688.0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855.0 1.338-.012 2.419-.012 2.747.0.268.18.58.688.482A10.019 10.019.0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
-</a><a href=https://twitter.com/orkspace target=_blank rel="noopener noreferrer" aria-label="Twitter / X" class=footer-social-link><svg viewBox="0 0 24 24" width="20" height="20" fill="currentcolor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a></div></div><div class=footer-links><div class=footer-col><h4 class=footer-col-title>Documentation</h4><ul role=list><li><a href=/docs/getting-started/>Getting Started</a></li><li><a href=/docs/getting-started/learning-to-orkestrate/>Basics</a></li><li><a href=/docs/orkestra-core/>Concepts</a></li><li><a href=/docs/orkestra-registry/>Guides</a></li><li><a href=/docs/reference/>Reference</a></li></ul></div><div class=footer-col><h4 class=footer-col-title>Community</h4><ul role=list><li><a href=https://github.com/orkspace/orkestra target=_blank rel="noopener noreferrer">GitHub</a></li><li><a href=https://github.com/orkspace/orkestra/issues target=_blank rel="noopener noreferrer">Issues</a></li><li><a href=https://github.com/orkspace/orkestra/discussions target=_blank rel="noopener noreferrer">Discussions</a></li><li><a href=https://twitter.com/orkspace target=_blank rel="noopener noreferrer">@orkspace</a></li></ul></div><div class=footer-col><h4 class=footer-col-title>Resources</h4><ul role=list><li><a href=https://github.com/orkspace/orkestra/releases target=_blank rel="noopener noreferrer">Releases</a></li><li><a href=https://github.com/orkspace/orkestra/blob/main/LICENSE target=_blank rel="noopener noreferrer">License</a></li><li><a href=https://github.com/orkspace/orkestra/blob/main/CONTRIBUTING.md target=_blank rel="noopener noreferrer">Contributing</a></li><li><a href=/docs/reference/>API Reference</a></li></ul></div></div></div><div class=footer-bottom><p>&copy; 2026 Orkestra. Released under the Apache 2.0 License.</p><p class=footer-built>Built with <a href=https://gohugo.io target=_blank rel="noopener noreferrer">Hugo</a></p></div></footer><script src=/js/main.min.88b9ce7a2b233118e952d50980bc043edc7dd529e488094656b20556f96f996d.js defer></script><style>.pub-page-inner{max-width:780px;margin:0 auto;padding:3.5rem 2rem 6rem}.pub-back-link{display:inline-flex;align-items:center;gap:.35rem;font-size:.8125rem;color:var(--color-text-muted);text-decoration:none;margin-bottom:2rem;transition:color var(--transition-fast)}.pub-back-link:hover{color:var(--color-primary)}.pub-page-header{margin-bottom:2.5rem;padding-bottom:1.75rem;border-bottom:1px solid var(--color-border)}.pub-page-title{font-size:clamp(1.5rem,3vw,2rem);font-weight:600;letter-spacing:-.02em;color:var(--color-text);margin:0 0 .5rem}.pub-page-desc{font-size:.9375rem;color:var(--color-text-muted);line-height:1.6;margin:0 0 .75rem}.pub-page-count{font-size:.8125rem;font-family:var(--font-mono);color:var(--color-text-faint);margin:0}.pub-scholar-list{list-style:none;margin:0;padding:0}.pub-scholar-item{padding:1.5rem 0;border-bottom:1px solid var(--color-border)}.pub-scholar-item:last-child{border-bottom:none}.pub-scholar-title{font-size:1.0625rem;font-weight:600;margin:0 0 .3rem;line-height:1.35}.pub-scholar-link{color:var(--color-text);text-decoration:none}.pub-scholar-link:hover{color:var(--color-primary);text-decoration:underline;text-underline-offset:2px}[data-theme=dark] .pub-scholar-link{color:var(--color-text)}[data-theme=dark] .pub-scholar-link:hover{color:#a78bfa}.pub-scholar-meta{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;font-size:.78125rem;font-family:var(--font-mono);color:var(--color-text-faint);margin-bottom:.5rem}.pub-meta-sep{opacity:.4}.pub-scholar-tag{font-size:.71875rem;font-family:var(--font-mono);color:var(--color-text-faint);background:rgba(255,255,255,4%);border:1px solid var(--color-border);padding:.1rem .4rem;border-radius:3px}.pub-scholar-abstract{font-size:.875rem;color:var(--color-text-muted);line-height:1.65;margin:0;max-width:68ch}.pub-scholar-abstract strong,.pub-scholar-abstract em{font-weight:inherit;font-style:inherit;color:inherit}</style></body></html>
+<!DOCTYPE html>
+<html lang="en-us" data-theme="">
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8090&amp;path=livereload" data-no-instant defer></script>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+<title>Publications — Orkestra</title>
+
+<meta name="description" content="Technical papers, whitepapers, and deep-dives from the Orkestra team">
+<meta name="author" content="Orkestra">
+
+
+<meta property="og:type" content="article">
+<meta property="og:title" content="Publications — Orkestra">
+<meta property="og:description" content="Technical papers, whitepapers, and deep-dives from the Orkestra team">
+<meta property="og:url" content="http://localhost:8090/publications/">
+<meta property="og:site_name" content="Orkestra">
+
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Publications — Orkestra">
+<meta name="twitter:description" content="Technical papers, whitepapers, and deep-dives from the Orkestra team">
+
+
+<link rel="icon" type="image/png" href="/img/fav.png">
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+
+
+
+<link rel="stylesheet" href="/css/main.min.482d2685c0c52aa91980a57370f29e8711b1d60438ac5bca43a09566525a6a8f.css">
+
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@docsearch/css@3" crossorigin>
+
+
+
+<script>
+  (function() {
+    var saved = localStorage.getItem('theme');
+    
+    var theme = saved ? saved : 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+
+</head>
+<body class="page-publications">
+
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="navbar-inner">
+      <a href="/" class="navbar-logo" aria-label="Orkestra home">
+        <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="36" width="36">
+        <span class="logo-text">Orkestra</span>
+      </a>
+      <ul class="navbar-links" role="list">
+        
+        <li>
+          <a href="/docs/getting-started/" class="navbar-link"
+            >
+            Docs
+          </a>
+        </li>
+        
+        <li>
+          <a href="/docs/reference/" class="navbar-link"
+            >
+            Reference
+          </a>
+        </li>
+        
+        <li>
+          <a href="/blog/" class="navbar-link"
+            >
+            Blog
+          </a>
+        </li>
+        
+        <li>
+          <a href="/publications/" class="navbar-link"
+            >
+            Publications
+          </a>
+        </li>
+        
+      </ul>
+      <div class="navbar-controls">
+        <a href="https://cc.orkestra.sh" class="btn-controlcenter" target="_blank" rel="noopener noreferrer" aria-label="Open Control Center">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+          </svg>
+          Control Center
+          <span class="cc-live-dot" title="Live instance"></span>
+        </a>
+        <a href="https://github.com/orkspace/orkestra" class="btn-github" target="_blank" rel="noopener noreferrer" aria-label="View on GitHub">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+          <span>GitHub</span>
+        </a>
+        <button class="btn-theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+          <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+          </svg>
+        </button>
+        <button class="btn-hamburger" id="mobile-menu-toggle" aria-label="Toggle menu" aria-expanded="false">
+          <span class="hamburger-bar"></span>
+          <span class="hamburger-bar"></span>
+          <span class="hamburger-bar"></span>
+        </button>
+      </div>
+    </div>
+    <div class="navbar-mobile" id="mobile-menu" aria-hidden="true">
+      <ul role="list">
+        
+        <li>
+          <a href="/docs/getting-started/" class="navbar-mobile-link"
+            >
+            Docs
+          </a>
+        </li>
+        
+        <li>
+          <a href="/docs/reference/" class="navbar-mobile-link"
+            >
+            Reference
+          </a>
+        </li>
+        
+        <li>
+          <a href="/blog/" class="navbar-mobile-link"
+            >
+            Blog
+          </a>
+        </li>
+        
+        <li>
+          <a href="/publications/" class="navbar-mobile-link"
+            >
+            Publications
+          </a>
+        </li>
+        
+      </ul>
+    </div>
+  </nav>
+
+  <main id="main-content" tabindex="-1">
+    <div class="pub-page-inner">
+
+      
+      <header class="pub-page-header">
+        <a href="/" class="pub-back-link">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Home
+        </a>
+        <h1 class="pub-page-title">Publications</h1>
+        
+        <p class="pub-page-desc">Technical papers, whitepapers, and deep-dives from the Orkestra team</p>
+        
+        <p class="pub-page-count">2 papers</p>
+      </header>
+
+      
+      <ol class="pub-scholar-list" reversed>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/trust-and-failure-model/" class="pub-scholar-link">Trust and Failure Model</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            <span>May 2026</span>
+            <span class="pub-meta-sep">·</span>
+            <span>6 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract">Trust in a distributed system is not a feature you add — it is a property that either emerges from the design or does not. Orkestra&rsquo;s approach is to make trustworthy behavior the default at …</p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/declarative-operators-whitepaper/" class="pub-scholar-link">Declarative Operators: A New Model for Kubernetes Extensibility</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            <span>May 2026</span>
+            <span class="pub-meta-sep">·</span>
+            <span>12 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract">Orkestra Project — March 2026
+Abstract Kubernetes operators encode domain knowledge as reconciliation logic. Every major operator framework to date requires this logic to be written in a programming …</p>
+          
+        </li>
+        
+      </ol>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <a href="/" class="footer-logo" aria-label="Orkestra home">
+        <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="28">
+        <span class="footer-logo-text">Orkestra</span>
+      </a>
+      <p class="footer-tagline">The declarative control plane<br>for Kubernetes operators.</p>
+      <div class="footer-social">
+        <a href="https://github.com/orkspace/orkestra" target="_blank" rel="noopener noreferrer" aria-label="GitHub" class="footer-social-link">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+        </a>
+        <a href="https://twitter.com/orkspace" target="_blank" rel="noopener noreferrer" aria-label="Twitter / X" class="footer-social-link">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="footer-links">
+      <div class="footer-col">
+        <h4 class="footer-col-title">Documentation</h4>
+        <ul role="list">
+          <li><a href="/docs/getting-started/">Getting Started</a></li>
+          <li><a href="/docs/getting-started/learning-to-orkestrate/">Basics</a></li>
+          <li><a href="/docs/orkestra-core/">Concepts</a></li>
+          <li><a href="/docs/orkestra-registry/">Guides</a></li>
+          <li><a href="/docs/reference/">Reference</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="footer-col-title">Community</h4>
+        <ul role="list">
+          <li><a href="https://github.com/orkspace/orkestra" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+          <li><a href="https://github.com/orkspace/orkestra/issues" target="_blank" rel="noopener noreferrer">Issues</a></li>
+          <li><a href="https://github.com/orkspace/orkestra/discussions" target="_blank" rel="noopener noreferrer">Discussions</a></li>
+          <li><a href="https://twitter.com/orkspace" target="_blank" rel="noopener noreferrer">@orkspace</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="footer-col-title">Resources</h4>
+        <ul role="list">
+          <li><a href="https://github.com/orkspace/orkestra/releases" target="_blank" rel="noopener noreferrer">Releases</a></li>
+          <li><a href="https://github.com/orkspace/orkestra/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License</a></li>
+          <li><a href="https://github.com/orkspace/orkestra/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a></li>
+          <li><a href="/docs/reference/">API Reference</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <p>&copy; 2026 Orkestra. Released under the Apache 2.0 License.</p>
+    <p class="footer-built">Built with <a href="https://gohugo.io" target="_blank" rel="noopener noreferrer">Hugo</a></p>
+  </div>
+</footer>
+
+
+  
+  <script src="/js/main.min.88b9ce7a2b233118e952d50980bc043edc7dd529e488094656b20556f96f996d.js" defer></script>
+
+  <style>
+    .pub-page-inner {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 3.5rem 2rem 6rem;
+    }
+    .pub-back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.8125rem;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      margin-bottom: 2rem;
+      transition: color var(--transition-fast);
+    }
+    .pub-back-link:hover { color: var(--color-primary); }
+    .pub-page-header {
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.75rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .pub-page-title {
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--color-text);
+      margin: 0 0 0.5rem;
+    }
+    .pub-page-desc {
+      font-size: 0.9375rem;
+      color: var(--color-text-muted);
+      line-height: 1.6;
+      margin: 0 0 0.75rem;
+    }
+    .pub-page-count {
+      font-size: 0.8125rem;
+      font-family: var(--font-mono);
+      color: var(--color-text-faint);
+      margin: 0;
+    }
+
+     
+    .pub-scholar-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .pub-scholar-item {
+      padding: 1.5rem 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .pub-scholar-item:last-child {
+      border-bottom: none;
+    }
+    .pub-scholar-title {
+      font-size: 1.0625rem;
+      font-weight: 600;
+      margin: 0 0 0.3rem;
+      line-height: 1.35;
+    }
+    .pub-scholar-link {
+      color: var(--color-text);
+      text-decoration: none;
+    }
+    .pub-scholar-link:hover {
+      color: var(--color-primary);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    [data-theme="dark"] .pub-scholar-link {
+      color: var(--color-text);
+    }
+    [data-theme="dark"] .pub-scholar-link:hover {
+      color: #A78BFA;
+    }
+    .pub-scholar-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.78125rem;
+      font-family: var(--font-mono);
+      color: var(--color-text-faint);
+      margin-bottom: 0.5rem;
+    }
+    .pub-meta-sep {
+      opacity: 0.4;
+    }
+    .pub-scholar-tag {
+      font-size: 0.71875rem;
+      font-family: var(--font-mono);
+      color: var(--color-text-faint);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--color-border);
+      padding: 0.1rem 0.4rem;
+      border-radius: 3px;
+    }
+    .pub-scholar-abstract {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      line-height: 1.65;
+      margin: 0;
+      max-width: 68ch;
+    }
+    .pub-scholar-abstract strong, .pub-scholar-abstract em {
+      font-weight: inherit;
+      font-style: inherit;
+      color: inherit;
+    }
+  </style>
+</body>
+</html>

@@ -10,7 +10,7 @@ Merges and validates before starting workers.
 
 Endpoints exposed:
 
-```
+```text
 /health
 /ready
 /metrics

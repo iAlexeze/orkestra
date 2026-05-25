@@ -28,7 +28,7 @@ examples/
 
 Each example directory must contain:
 
-```
+```text
 katalog.yaml        — the Katalog declaration
 crd.yaml            — CRD schema for the managed resource
 cr.yaml             — a sample CR to apply

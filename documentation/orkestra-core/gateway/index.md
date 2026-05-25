@@ -62,7 +62,7 @@ The binary knows two things: how to serve webhooks, and what version it is.
 
 It runs on a `distroless/static` base image — no shell, no package manager, no OS utilities. There is nothing for an attacker to move with after a successful exploit.
 
-**The Gateway also refuses to start outside a Kubernetes pod.** If you invoke `ork gateway` on your terminal, it exits immediately with a clear error. The gateway is not a tool. It is a workload. The binary enforces that distinction at startup.
+**The Gateway also refuses to start outside a Kubernetes pod.** If you invoke `ork gate` on your terminal, it exits immediately with a clear error. The gateway is not a tool. It is a workload. The binary enforces that distinction at startup.
 
 The combination — minimal binary, distroless base, pod-only constraint — means the attack surface is not just small. It is structurally bounded.
 
