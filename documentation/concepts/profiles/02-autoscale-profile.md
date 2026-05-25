@@ -74,7 +74,7 @@ autoscale:
 
 React instantly to spikes. Aggressive scaling, short interval, short cooldown.
 
-```
+```text
 trigger:  queueDepth > 60% of override queueDepth
 override: workers × 4, queueDepth × 10
 timing:   interval 5s, cooldown 30s
@@ -86,7 +86,7 @@ Use when your operator handles unpredictable bursts and you need it to scale out
 
 Smooth, predictable scaling. Requires both queue pressure and worker saturation before scaling.
 
-```
+```text
 trigger:  queueDepth > 40% of override queueDepth AND workersBusyPercent > 70
 override: workers × 2, queueDepth × 3
 timing:   interval 30s, cooldown 2m
@@ -98,7 +98,7 @@ Use for production operators with consistent load patterns.
 
 Scale for a nightly processing window. Time-triggered, not load-triggered.
 
-```
+```text
 trigger:  cron "0 23 * * *", duration 3h
 override: workers × 3, queueDepth × 8
 timing:   interval 60s, cooldown 5m
@@ -110,7 +110,7 @@ Use when you have a known batch window (nightly jobs, end-of-day processing).
 
 Keep reconcile latency low. Triggered by P95 latency, not queue depth.
 
-```
+```text
 trigger:  reconcileDurationP95Ms > 200
 override: workers × 2.5 (ceiling)
 timing:   interval 15s, cooldown 1m
@@ -122,7 +122,7 @@ Use when users are sensitive to reconcile delay and you want to scale out before
 
 Minimize resource usage during low activity. Scale down aggressively when idle.
 
-```
+```text
 trigger:  workersIdlePercent > 60 AND queueDepth > 80% of override queueDepth
 override: max(1, workers × 0.5), queueDepth × 0.5
 timing:   interval 30s, cooldown 10m

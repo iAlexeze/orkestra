@@ -91,3 +91,11 @@ The [Health Subsystem](health-subsystem/) is Orkestra's liveness, readiness, and
 [Conditionals](conditional/) are the logic layer — `when:` and `anyOf:` blocks that control when a resource is created, when a status field is written, and how multi-phase async workflows sequence themselves. Works in Katalogs and Motifs.
 
 → [Read: Conditionals](conditional/)
+
+---
+
+## ONCOP
+
+[ONCOP](oncop/) (Orkestra Native Cross-Operator Protocol) is the cross-binary observation layer. One operator reads another's typed state — health, metrics, or full CR — without hard-coded URLs, with built-in caching, and with the same template surface as same-binary cross: reads.
+
+→ [Read: ONCOP](oncop/)

@@ -47,7 +47,7 @@ The worker pool tracks:
 
 From this, Orkestra computes:
 
-```
+```text
 workersBusyPercent = (busy / total) * 100
 workersIdlePercent = (idle / total) * 100
 ```
@@ -60,7 +60,7 @@ These values update on every reconcile start/finish.
 
 The workqueue exposes its current length:
 
-```
+```text
 queueDepth = queue.Len()
 ```
 
@@ -73,7 +73,7 @@ This is read directly from the in‑memory queue structure.
 Each reconcile records its duration into a ring buffer.  
 Every autoscaler tick, Orkestra computes:
 
-```
+```text
 P95 = 95th percentile of durations in the last N seconds
 ```
 
@@ -90,7 +90,7 @@ The autoscaler maintains counters:
 
 Over the last window:
 
-```
+```text
 errorRatePercent = (failed / total) * 100
 ```
 
@@ -128,7 +128,7 @@ At Katalog load time, Orkestra validates:
 
 Invalid metric fields produce an error like:
 
-```
+```text
 unknown autoscale metric field "metrics.queueDpth" — valid fields:
 metrics.workersBusyPercent, metrics.workersIdlePercent,
 metrics.queueDepth, metrics.reconcileDurationP95Ms,
@@ -177,15 +177,13 @@ when:
 
 ---
 
-## Why metrics matter
+## Reading the signals
 
-These metrics represent the **actual pressure** on an operator:
+| Metric | What it measures |
+|---|---|
+| Queue depth | Backlog — how much work is waiting |
+| Worker utilization | Saturation — are all workers busy |
+| Reconcile duration | Latency — how long each reconcile takes |
+| Error rate | Instability — how often reconciles fail |
 
-- Queue depth → backlog  
-- Worker utilization → saturation  
-- Reconcile duration → latency  
-- Error rate → instability  
-
-Autoscaling based on these signals is far more accurate than CPU or memory‑based scaling of Pods.
-
-This is why autoscaling belongs inside Orkestra — the runtime has access to the signals that matter.
+These metrics describe operator load directly, without needing external Prometheus rules or Pod-level resource metrics.

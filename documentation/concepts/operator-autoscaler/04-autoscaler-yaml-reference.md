@@ -34,7 +34,7 @@ How often the autoscaler evaluates conditions.
 
 The autoscaler loop runs:
 
-```
+```text
 every interval:
     evaluate conditions
     apply overrides or restore baseline

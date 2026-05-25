@@ -35,3 +35,14 @@ Traditional operators don't handle this. You write code to check if dependencies
 
 - [Declaring Dependencies](declaring-dependencies/) — three formats and condition values
 - [Lifecycle](lifecycle/) — graph building, missing CRDs, shutdown, and CLI visualization
+
+---
+
+## Try it
+
+```bash
+ork init --pack advanced
+cd 13-dependencies/01-in-binary
+```
+
+Follow the README — it walks through `App` waiting for `Database` to be healthy, with live dependency-graph visualization.

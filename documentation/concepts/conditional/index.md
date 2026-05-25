@@ -75,3 +75,14 @@ The service is created when either condition is true.
 - [Resource Conditions](resource-conditions/) — conditional creation for `onCreate`, `onReconcile`, `onDelete`
 - [Async Reconciliation](async-reconciliation/) — multi-phase workflows using `when:` gates
 - [Status Conditions](status-conditions/) — state machines via `when:` on `status.fields`
+
+---
+
+## Try it
+
+```bash
+ork init --pack intermediate
+cd 05-when-conditions
+```
+
+Follow the README — one CRD, three tiers, different resources at each tier, zero Go code.

@@ -191,6 +191,10 @@ def rewrite_url(url):
         levels = -1  # bare link — no explicit prefix
         has_dot_slash = False
         rest = url
+        # Only treat as a path if it looks like one: ends with .md or contains /.
+        # Bare words like (IPC), (default), (metrics.*), (1) are prose, not links.
+        if not (rest.endswith('.md') or '/' in rest):
+            return rest + anchor
 
     # Normalise index.md → trailing slash, strip .md extension
     if rest == 'index.md':

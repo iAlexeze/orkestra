@@ -1,0 +1,31 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: pipeline-operator
+  author: orkspace
+  version: 0.1.0
+  description: >
+    Declarative state machine — built from reusable motifs.
+spec:
+  crds:
+    pipeline:
+      apiTypes:
+        group: demo.orkestra.io
+        version: v1alpha1
+        kind: Pipeline
+        plural: pipelines
+
+      workers: 4
+      resync: 10s
+      queue:
+        degradeThreshold: 0.5
+        maxQueueDepth: 1000
+
+      imports:
+        - motif: ./motif/admission.yaml
+        - motif: ./motif/resources.yaml
+        - motif: ./motif/status.yaml
+
+      # operatorBox:
+      #   default: true
+      # No inline code – everything comes from motifs

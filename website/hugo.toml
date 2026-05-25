@@ -20,11 +20,9 @@ enableGitInfo = true
   controlcenter = "https://cc.orkestra.sh"
   version = "v1"
 
-  # Algolia DocSearch — apply at https://docsearch.algolia.com/apply/
-  # Fill these in once approved (free for open source projects)
   [params.algolia]
-    appId = "1YJ1C111LH"
-    searchKey = "b4bbac9a499ecc51109f23abd327cf29"
+    appId = "A02GA3BY6Z"
+    searchKey = "0f161493898bb4fce74c16b56da29909"
     indexName = "orkestra"
 
 

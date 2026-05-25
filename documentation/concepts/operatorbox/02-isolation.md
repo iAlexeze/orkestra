@@ -37,7 +37,7 @@ operatorBox:
 
 The `cross:` declaration resolves through the `KatalogRegistry`, which holds a reference to every operatorBox's informer. Reading another operatorBox's state is an in-memory map lookup — the API server is not involved.
 
-For cross-binary or cross-cluster observation, declare `source.endpoint` in the `cross:` entry to fall back to an HTTP call.
+For cross-binary or cross-cluster observation, add a `source:` block with `host` and `type` — Orkestra constructs the URL automatically. For non-Orkestra APIs that expose the same JSON shape, use `source.endpoint` directly instead. See [ONCOP](../oncop/) for the full protocol.
 
 ---
 

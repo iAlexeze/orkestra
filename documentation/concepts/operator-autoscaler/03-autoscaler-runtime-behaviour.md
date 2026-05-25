@@ -170,13 +170,11 @@ Autoscaling is designed to be safe even under heavy load.
 
 ## 10. Summary
 
-Autoscaling in Orkestra is:
-
-- **declarative** — expressed entirely in YAML  
-- **runtime‑native** — no external controllers  
-- **instant** — overrides apply immediately  
-- **reversible** — baseline restored automatically  
-- **cross‑operator aware** — operators can scale based on each other  
-- **zero‑API‑call** — all metrics are in‑memory  
-
-This makes Orkestra the first operator runtime capable of **self‑optimizing behavior across multiple operators**.
+| Property | Behavior |
+|---|---|
+| Declarative | Expressed entirely in YAML |
+| In-process | No external controllers, no additional deployments |
+| Immediate | Overrides apply on the next tick |
+| Reversible | Baseline restored automatically after `cooldown:` |
+| Cross-operator | Operators can scale based on each other's metrics |
+| Zero API calls | All metrics are in-memory reads |

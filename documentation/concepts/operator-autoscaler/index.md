@@ -9,9 +9,9 @@ The autoscaler becomes the **source of truth** for operator performance, and Kor
 
 ---
 
-## Why autoscaling belongs in Orkestra
+## The autoscaler's inputs
 
-Operators are control loops, not Pods. Their performance depends on:
+Operators are control loops, not Pods. Their performance is measured in:
 
 - queue pressure  
 - worker utilization  
@@ -19,11 +19,7 @@ Operators are control loops, not Pods. Their performance depends on:
 - event throughput  
 - provider error rate  
 
-Orkestra already exposes these signals per CRD.  
-It already isolates each operator in its own operatorBox.  
-It already manages worker pools and queues dynamically.
-
-Autoscaling is a natural extension of the runtime.
+These signals are already tracked per CRD inside the operatorBox. The autoscaler reads them directly from memory — no additional instrumentation required.
 
 ---
 
@@ -79,14 +75,11 @@ This separation mirrors Kubernetes (Deployment → HPA → Kubelet), but applied
 
 ---
 
-## Status
+## Try it
 
-The Operator Autoscaler is a first‑class runtime feature.  
-It requires no additional deployments, no webhooks, and no external systems.  
-It is fully integrated with:
+```bash
+ork init --pack advanced
+cd 12-autoscale/01-without-autoscaler
+```
 
-- Kordinator  
-- operatorBox:  
-- the metrics subsystem  
-- the condition engine  
-- the Control Center (autoscaler UI coming soon)
+Follow the README — it starts with baseline behavior (no autoscaler) and adds progressively more complex autoscaling across five examples.

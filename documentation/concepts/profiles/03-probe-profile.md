@@ -104,7 +104,7 @@ liveness:
 
 Quick detection for services that start instantly. Fails after ~25 seconds.
 
-```
+```text
 initialDelaySeconds: 5
 periodSeconds:       10
 failureThreshold:    2
@@ -117,7 +117,7 @@ Use for stateless HTTP services where startup is fast and problems should be cau
 
 Balanced defaults for most services. Fails after ~75 seconds.
 
-```
+```text
 initialDelaySeconds: 15
 periodSeconds:       20
 failureThreshold:    3
@@ -130,7 +130,7 @@ The right default when you have no specific information about the workload.
 
 Tolerant of slower operations. Fails after ~180 seconds.
 
-```
+```text
 initialDelaySeconds: 30
 periodSeconds:       30
 failureThreshold:    5
@@ -143,7 +143,7 @@ Use for batch workers, services with non-trivial initialization, or services tha
 
 5-minute tolerance window for heavy startup. Designed for startup probes only.
 
-```
+```text
 initialDelaySeconds: 0
 periodSeconds:       10
 failureThreshold:    30

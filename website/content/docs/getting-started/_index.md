@@ -1,7 +1,7 @@
 ---
 title: "Getting Started"
 date: 2026-05-25
-weight: 68
+weight: 69
 ---
 
 Orkestra turns a YAML file into a working Kubernetes operator. This guide takes you from zero to a running operator — no Go, no code generation.

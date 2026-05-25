@@ -53,6 +53,9 @@
     <loc>http://localhost:8090/docs/concepts/</loc>
     <lastmod>2026-05-16T21:26:38+00:00</lastmod>
   </url><url>
+    <loc>http://localhost:8090/docs/concepts/oncop/</loc>
+    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>http://localhost:8090/docs/concepts/operator-autoscaler/autoscaler-metrics/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
@@ -216,37 +219,37 @@
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/getting-started/writing-your-first-katalog/</loc>
-    <lastmod>2026-05-25T02:47:12+00:00</lastmod>
+    <lastmod>2026-05-25T04:13:04+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/getting-started/writing-your-first-komposer/</loc>
-    <lastmod>2026-05-25T02:47:12+00:00</lastmod>
+    <lastmod>2026-05-25T04:13:04+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/getting-started/basic-reconciliation/</loc>
-    <lastmod>2026-05-25T02:47:12+00:00</lastmod>
+    <lastmod>2026-05-25T04:13:04+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/getting-started/</loc>
-    <lastmod>2026-05-25T02:47:12+00:00</lastmod>
+    <lastmod>2026-05-25T04:13:04+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/</loc>
-    <lastmod>2026-05-25T02:47:12+00:00</lastmod>
+    <lastmod>2026-05-25T04:13:04+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:8090/docs/orkestra-core/controlcenter/crd-detail/</loc>
-    <lastmod>2026-05-21T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/docs/orkestra-core/controlcenter/health-states/</loc>
-    <lastmod>2026-05-21T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/docs/orkestra-core/controlcenter/</loc>
+    <loc>http://localhost:8090/docs/orkestra-core/runtime/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/orkestra-core/gateway/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:8090/docs/orkestra-core/</loc>
+    <loc>http://localhost:8090/docs/orkestra-core/controlcenter/crd-detail/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:8090/docs/orkestra-core/runtime/</loc>
-    <lastmod>2026-05-23T00:00:00+00:00</lastmod>
+    <loc>http://localhost:8090/docs/orkestra-core/controlcenter/health-states/</loc>
+    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/orkestra-core/controlcenter/</loc>
+    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/orkestra-core/</loc>
+    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/orkestra-registry/motifs/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
@@ -264,16 +267,16 @@
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/init/</loc>
-    <lastmod>2026-05-25T02:47:12+00:00</lastmod>
+    <lastmod>2026-05-25T04:13:04+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/plan/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/validate/</loc>
-    <lastmod>2026-05-25T02:47:12+00:00</lastmod>
+    <lastmod>2026-05-25T04:13:04+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/template/</loc>
-    <lastmod>2026-05-25T02:47:12+00:00</lastmod>
+    <lastmod>2026-05-25T04:13:04+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/simulate/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
@@ -309,7 +312,7 @@
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/run/</loc>
-    <lastmod>2026-05-25T02:47:12+00:00</lastmod>
+    <lastmod>2026-05-25T04:13:04+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/e2e/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
@@ -330,10 +333,10 @@
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/cli/version/</loc>
-    <lastmod>2026-05-25T01:49:01+00:00</lastmod>
+    <lastmod>2026-05-25T04:13:04+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/</loc>
-    <lastmod>2026-05-25T02:47:12+00:00</lastmod>
+    <lastmod>2026-05-25T04:13:04+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/orkestra-notes/coercion/</loc>
     <lastmod>2026-05-19T00:00:00+00:00</lastmod>

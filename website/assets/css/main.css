@@ -1295,6 +1295,10 @@ code:not(pre > code) {
   opacity: 0;
   transition: max-height 220ms ease, opacity 180ms ease;
 }
+html.no-transition .sidebar-section-pages,
+html.no-transition .sidebar-subsection-pages {
+  transition: none !important;
+}
 .sidebar-section.open .sidebar-section-pages {
   max-height: 800px;
   opacity: 1;
@@ -1376,10 +1380,10 @@ code:not(pre > code) {
 .sidebar-subsection-pages {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 0 0.25rem 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0.125rem;
   overflow: hidden;
   max-height: 0;
   opacity: 0;

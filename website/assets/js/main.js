@@ -204,10 +204,6 @@
   function initSidebarSections() {
     var toggles = document.querySelectorAll('.sidebar-section-toggle');
 
-    // Clear any inline display styles — CSS max-height transition handles show/hide
-    document.querySelectorAll('.sidebar-section-pages, .sidebar-subsection-pages').forEach(function(el) {
-      el.style.display = '';
-    });
 
     toggles.forEach(function (toggle) {
       var section = toggle.closest('.sidebar-section');
@@ -416,6 +412,15 @@
 
   /* ── 11. Init all ─────────────────────────────────────────── */
   document.addEventListener('DOMContentLoaded', function () {
+    // DOMContentLoaded fires before the first paint, so removing immediately
+    // still lets transitions fire on the first render. Double rAF defers the
+    // removal until after the browser has committed the first frame.
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        document.documentElement.classList.remove('no-transition');
+      });
+    });
+
     addCopyButtons();
     addLangLabels();
     initSidebar();

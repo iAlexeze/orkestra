@@ -68,10 +68,7 @@ autoscale:
 **Behavior:**
 
 - The operator scales up only when the *database operator* is under pressure  
-- Enables upstream/downstream coordination  
-- Ideal for pipelines, ingestion → transform → storage flows, and multi‑operator ecosystems  
-
-This is the first example of **ecosystem‑level autoscaling**.
+- Enables upstream/downstream coordination without out-of-band signaling
 
 ---
 
