@@ -59,15 +59,25 @@ spec:
 
 ## Security-First Installation (Recommended)
 
-Orkestra generates **minimal RBAC** from your Katalog — no wildcards, no excess permissions. The entire flow from zero to running is four steps.
+Orkestra generates **minimal RBAC** from your Katalog — no wildcards, no excess permissions. The entire flow from zero to running is five steps, starting with an offline review before anything touches the cluster.
 
-### Step 1 — Generate a bundle
+### Step 1 — Preview permissions offline
+
+```bash
+ork validate --full
+```
+
+Shows every RBAC rule, named profile, and startup dependency your Katalog will request — per CRD, per component (runtime and gateway), with inline notes explaining why each permission exists. No cluster required.
+
+Review this output before generating. What you see here is exactly what the bundle will contain.
+
+### Step 2 — Generate a bundle
 
 ```bash
 ork generate bundle -f katalog.yaml -o bundle.yaml
 ```
 
-This produces a single YAML file containing:
+No cluster required. This produces a single YAML file containing:
 
 - A `Namespace` named `orkestra-system` (use `-n <my-namespace>` to override)
 - `ServiceAccounts` for Runtime (`orkestra`) and Control Center (`orkestra-cc`)
@@ -75,29 +85,29 @@ This produces a single YAML file containing:
 - A `ClusterRoleBinding`
 - A `ConfigMap` named `orkestra-katalog` with your Katalog data
 
-### Step 2 — Apply the bundle
+### Step 3 — Apply the bundle
 
 ```bash
 kubectl apply -f bundle.yaml
 ```
 
-### Step 3 — Deploy with Helm
+### Step 4 — Deploy with Helm
 
 ```bash
 helm repo add orkestra https://orkspace.github.io/orkestra
 helm upgrade --install orkestra orkestra/orkestra --namespace orkestra-system
 ```
 
-Replace `orkestra-system` if you used a different namespace in Step 1.
+Replace `orkestra-system` if you used a different namespace in Step 2.
 
-### Step 4 — Verify everything works
+### Step 5 — Verify everything works
 
 ```bash
 kubectl get pods -n orkestra-system
 kubectl get websites -A   # if your Katalog defines the Website CRD
 ```
 
-> **Why this matters**: Traditional operators are massively over-permissioned. Orkestra generates RBAC from your **declared intent**, giving you least-privilege security by default.
+> **Why this matters**: Traditional operators are massively over-permissioned. Orkestra generates RBAC from your **declared intent**, giving you least-privilege security by default. `ork validate --full` makes that intent visible before a single resource is applied.
 
 ---
 

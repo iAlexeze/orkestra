@@ -33,6 +33,10 @@ type ResolvedHPASpec struct {
 	// Orkestra always adds: managed-by=orkestra, orkestra-owner=<cr-name>
 	Labels map[string]string
 
+	// Behavior — fully resolved scaling behavior. nil means use Kubernetes defaults.
+	// When behavior.profile was declared, it is expanded here at resolve time.
+	Behavior *orktypes.HPABehavior
+
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).

@@ -200,6 +200,9 @@ func (r *Resolver) ResolvePodTemplate(src orktypes.PodTemplateSource) (orktypes.
 		return resolved, fmt.Errorf("pod.sleep: %w", err)
 	}
 
+	resolved.SecurityContext = src.SecurityContext
+	resolved.PodSecurity = src.PodSecurity
+
 	return resolved, nil
 }
 
@@ -304,6 +307,14 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 			resolved.EnvFrom.ConfigMapRef = append(resolved.EnvFrom.ConfigMapRef, rn)
 		}
 	}
+
+	if src.RollingUpdate != nil {
+		ru := *src.RollingUpdate
+		resolved.RollingUpdate = &ru
+	}
+
+	resolved.SecurityContext = src.SecurityContext
+	resolved.PodSecurity = src.PodSecurity
 
 	return resolved, nil
 }
@@ -425,6 +436,14 @@ func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSour
 			resolved.EnvFrom.ConfigMapRef = append(resolved.EnvFrom.ConfigMapRef, rn)
 		}
 	}
+
+	if src.RollingUpdate != nil {
+		ru := *src.RollingUpdate
+		resolved.RollingUpdate = &ru
+	}
+
+	resolved.SecurityContext = src.SecurityContext
+	resolved.PodSecurity = src.PodSecurity
 
 	return resolved, nil
 }
@@ -562,6 +581,9 @@ func (r *Resolver) ResolveJobTemplate(src orktypes.JobTemplateSource) (orktypes.
 	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
 		return resolved, fmt.Errorf("job.labels: %w", err)
 	}
+
+	resolved.SecurityContext = src.SecurityContext
+	resolved.PodSecurity = src.PodSecurity
 
 	return resolved, nil
 }
@@ -802,6 +824,9 @@ func (r *Resolver) ResolveCronJobTemplate(src orktypes.CronJobTemplateSource) (o
 	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
 		return resolved, fmt.Errorf("cronjob.labels: %w", err)
 	}
+
+	resolved.SecurityContext = src.SecurityContext
+	resolved.PodSecurity = src.PodSecurity
 
 	return resolved, nil
 }
@@ -1045,6 +1070,11 @@ func (r *Resolver) ResolveHPATemplate(src orktypes.HPATemplateSource) (orktypes.
 		return resolved, fmt.Errorf("hpa.labels: %w", err)
 	}
 
+	if src.Behavior != nil {
+		b := *src.Behavior
+		resolved.Behavior = &b
+	}
+
 	return resolved, nil
 }
 
@@ -1084,6 +1114,11 @@ func (r *Resolver) ResolvePDBTemplate(src orktypes.PDBTemplateSource) (orktypes.
 
 	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
 		return resolved, fmt.Errorf("pdb.sleep: %w", err)
+	}
+
+	if src.Behavior != nil {
+		b := *src.Behavior
+		resolved.Behavior = &b
 	}
 
 	return resolved, nil
@@ -1210,6 +1245,14 @@ func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSo
 			resolved.EnvFrom.ConfigMapRef = append(resolved.EnvFrom.ConfigMapRef, rn)
 		}
 	}
+
+	if src.RollingUpdate != nil {
+		ru := *src.RollingUpdate
+		resolved.RollingUpdate = &ru
+	}
+
+	resolved.SecurityContext = src.SecurityContext
+	resolved.PodSecurity = src.PodSecurity
 
 	return resolved, nil
 }

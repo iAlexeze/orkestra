@@ -12,6 +12,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
+	"github.com/orkspace/orkestra/pkg/profiles"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 	policyv1 "k8s.io/api/policy/v1"
@@ -181,6 +182,20 @@ func Resolve(src orktypes.PDBTemplateSource, ownerName string) ResolvedPDBSpec {
 
 	if spec.Name == "" {
 		spec.Name = ownerName + "-pdb"
+	}
+
+	if src.Behavior != nil && src.Behavior.Profile != "" {
+		expansion, err := profiles.ApplyPDBProfile(src.Behavior.Profile)
+		if err != nil {
+			logger.Warn().Str("profile", src.Behavior.Profile).Err(err).Msg("unknown pdb behavior profile — skipping")
+		} else {
+			if spec.MinAvailable == "" {
+				spec.MinAvailable = expansion.MinAvailable
+			}
+			if spec.MaxUnavailable == "" {
+				spec.MaxUnavailable = expansion.MaxUnavailable
+			}
+		}
 	}
 
 	for k, v := range src.Selector {

@@ -17,7 +17,6 @@ import (
 	"github.com/orkspace/orkestra/pkg/doctor"
 	"github.com/orkspace/orkestra/pkg/tunnel"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -164,14 +163,14 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				fmt.Print(buildOut.String())
 				return err
 			}
-			fmt.Printf("  %s Built (%ds)\n", utils.SuccessMark(), int(time.Since(start).Seconds()))
+			fmt.Printf("  %s Built (%ds)\n", successMark(), int(time.Since(start).Seconds()))
 
 			var pushOut bytes.Buffer
 			if err := buildx.PushImage(image, &pushOut); err != nil {
 				fmt.Print(pushOut.String())
 				return err
 			}
-			fmt.Printf("  %s Pushed", utils.SuccessMark())
+			fmt.Printf("  %s Pushed", successMark())
 		} else {
 			fmt.Println("  ~ dry-run: skipping docker build and push")
 		}
@@ -185,10 +184,10 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 		}
 
 		if len(info.Secrets) > 0 {
-			fmt.Printf("  %s %s-secrets  (%d variables from .env)\n", utils.SuccessMark(), appName, len(info.Secrets))
+			fmt.Printf("  %s %s-secrets  (%d variables from .env)\n", successMark(), appName, len(info.Secrets))
 		}
 		if len(info.Config) > 0 {
-			fmt.Printf("  %s %s-config   (%d variables from .env)\n", utils.SuccessMark(), appName, len(info.Config))
+			fmt.Printf("  %s %s-config   (%d variables from .env)\n", successMark(), appName, len(info.Config))
 		}
 
 		if err := deployDeveloperPath(devPathArgs{
@@ -238,7 +237,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			if err := applyBundle.Run(); err != nil {
 				return fmt.Errorf("applying bundle: %w", err)
 			}
-			fmt.Printf("  %s Bundle applied ", utils.SuccessMark())
+			fmt.Printf("  %s Bundle applied ", successMark())
 
 			for _, f := range []string{doctor.AppConfigFile, doctor.AppSecretFile} {
 				path := filepath.Join(bundleDir, f)
@@ -249,7 +248,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 					if err := apply.Run(); err != nil {
 						return fmt.Errorf("applying %s: %w", f, err)
 					}
-					fmt.Printf("  %s %s applied\n", utils.SuccessMark(), f)
+					fmt.Printf("  %s %s applied\n", successMark(), f)
 				}
 			}
 
@@ -261,7 +260,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				if err := applyApp.Run(); err != nil {
 					return fmt.Errorf("applying application file (%s): %w", doctor.ApplicationFile, err)
 				}
-				fmt.Printf("  %s %s applied\n", utils.SuccessMark(), doctor.ApplicationFile)
+				fmt.Printf("  %s %s applied\n", successMark(), doctor.ApplicationFile)
 			}
 
 			if info.HasSMTP || info.HasSlack {
@@ -278,7 +277,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 						if err := applySecret.Run(); err != nil {
 							fmt.Printf("  ~ Could not apply notification secret: %v\n", err)
 						} else {
-							fmt.Printf("  %s orkestra-notification Secret applied\n", utils.SuccessMark())
+							fmt.Printf("  %s orkestra-notification Secret applied\n", successMark())
 						}
 					}
 				}
@@ -316,9 +315,9 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				if err := doctor.InstallOrUpgradeOrkestra(orkestraVersion, helmValues, ""); err != nil {
 					return err
 				}
-				fmt.Printf("  %s Orkestra installed", utils.SuccessMark())
+				fmt.Printf("  %s Orkestra installed", successMark())
 			} else {
-				fmt.Printf("  %s Orkestra already installed", utils.SuccessMark())
+				fmt.Printf("  %s Orkestra already installed", successMark())
 			}
 
 			// Check runtime health
@@ -329,7 +328,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				if fetchErr == nil && tail != "" {
 					fmt.Printf("\n--- Runtime log (last 10 lines) ---\n%s\n---\n\n", tail)
 				}
-				fmt.Printf("  %s Orkestra runtime is not healthy: %s\n", utils.FailureMark(), health.Reason)
+				fmt.Printf("  %s Orkestra runtime is not healthy: %s\n", failureMark(), health.Reason)
 				fmt.Printf("    Full logs:           %s\n", "/tmp/orkestra/runtime.log")
 				fmt.Printf("    Control Center logs: %s\n", "/tmp/orkestra/controlcenter.log")
 				fmt.Println("    Fix the operator before deploying workloads.")
@@ -343,7 +342,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 					return fmt.Errorf("syncing Orkestra runtime: %w", err)
 				}
 			} else {
-				fmt.Printf("  %s Orkestra is up to date\n", utils.SuccessMark())
+				fmt.Printf("  %s Orkestra is up to date\n", successMark())
 			}
 
 			state.RecordDeploy(appName, ns, filepath.Join(deployDir, "katalog.yaml"), image)
@@ -366,7 +365,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			if err := patchCmd.Run(); err != nil {
 				return fmt.Errorf("patching image in CR: %w", err)
 			}
-			fmt.Printf("  %s Image: %s\n", utils.SuccessMark(), image)
+			fmt.Printf("  %s Image: %s\n", successMark(), image)
 
 			fmt.Println("\nWaiting for deployment...")
 			if err := watchUntilReady(crName, ns, appName, state); err != nil {
@@ -484,14 +483,14 @@ func deployMultiApp(dc deployContext) error {
 				fmt.Print(buildOut.String())
 				return fmt.Errorf("building %s: %w", app.appName, err)
 			}
-			fmt.Printf("  %s Built %s (%ds)\n", utils.SuccessMark(), app.appName, int(time.Since(start).Seconds()))
+			fmt.Printf("  %s Built %s (%ds)\n", successMark(), app.appName, int(time.Since(start).Seconds()))
 
 			var pushOut bytes.Buffer
 			if err := buildx.PushImage(app.image, &pushOut); err != nil {
 				fmt.Print(pushOut.String())
 				return fmt.Errorf("pushing %s: %w", app.appName, err)
 			}
-			fmt.Printf("  %s Pushed %s\n", utils.SuccessMark(), app.appName)
+			fmt.Printf("  %s Pushed %s\n", successMark(), app.appName)
 		}
 	} else {
 		for _, app := range apps {
@@ -508,10 +507,10 @@ func deployMultiApp(dc deployContext) error {
 				return fmt.Errorf("generating bundle for %s: %w", app.appName, err)
 			}
 			if len(app.appInfo.Secrets) > 0 {
-				fmt.Printf("  %s %s-secrets  (%d variables)\n", utils.SuccessMark(), app.appName, len(app.appInfo.Secrets))
+				fmt.Printf("  %s %s-secrets  (%d variables)\n", successMark(), app.appName, len(app.appInfo.Secrets))
 			}
 			if len(app.appInfo.Config) > 0 {
-				fmt.Printf("  %s %s-config   (%d variables)\n", utils.SuccessMark(), app.appName, len(app.appInfo.Config))
+				fmt.Printf("  %s %s-config   (%d variables)\n", successMark(), app.appName, len(app.appInfo.Config))
 			}
 
 			absKatalogPath, _ := filepath.Abs(app.katalogPath)
@@ -533,7 +532,7 @@ func deployMultiApp(dc deployContext) error {
 		if err := doctor.DeduplicateKatalogGVKs(mergedPath); err != nil {
 			return fmt.Errorf("deduplicating katalog GVKs: %w", err)
 		}
-		fmt.Printf("  %s Komposer merged (%d projects)\n", utils.SuccessMark(), len(dc.komposer.DeployedProjects()))
+		fmt.Printf("  %s Komposer merged (%d projects)\n", successMark(), len(dc.komposer.DeployedProjects()))
 
 		for _, app := range apps {
 			genArgs := []string{"generate", "bundle", "-f", mergedPath, "-w", app.ns, "-o", app.bundleDir}
@@ -544,7 +543,7 @@ func deployMultiApp(dc deployContext) error {
 				return fmt.Errorf("generating bundle for %s: %w", app.appName, err)
 			}
 		}
-		fmt.Printf("  %s RBAC + Katalog ConfigMap + namespaces", utils.SuccessMark())
+		fmt.Printf("  %s RBAC + Katalog ConfigMap + namespaces", successMark())
 	}
 
 	// ── Step 3: Apply bundles ─────────────────────────────────────────────────
@@ -589,7 +588,7 @@ func deployMultiApp(dc deployContext) error {
 				}
 			}
 		}
-		fmt.Printf("  %s All bundles applied", utils.SuccessMark())
+		fmt.Printf("  %s All bundles applied", successMark())
 
 		// Install Orkestra once
 		var helmValues []string
@@ -612,9 +611,9 @@ func deployMultiApp(dc deployContext) error {
 			if err := doctor.InstallOrUpgradeOrkestra(dc.orkestraVersion, helmValues, ""); err != nil {
 				return err
 			}
-			fmt.Printf("  %s Orkestra installed", utils.SuccessMark())
+			fmt.Printf("  %s Orkestra installed", successMark())
 		} else {
-			fmt.Printf("  %s Orkestra already installed", utils.SuccessMark())
+			fmt.Printf("  %s Orkestra already installed", successMark())
 		}
 
 		// Health check
@@ -625,10 +624,10 @@ func deployMultiApp(dc deployContext) error {
 			if tail, fetchErr := doctor.FetchRuntimeLogs(); fetchErr == nil && tail != "" {
 				fmt.Printf("\n--- Runtime log (last 10 lines) ---\n%s\n---\n\n", tail)
 			}
-			fmt.Printf("  %s Orkestra runtime is not healthy: %s\n", utils.FailureMark(), health.Reason)
+			fmt.Printf("  %s Orkestra runtime is not healthy: %s\n", failureMark(), health.Reason)
 			return fmt.Errorf("orkestra runtime is not healthy")
 		}
-		fmt.Printf(" %s", utils.SuccessMark())
+		fmt.Printf(" %s", successMark())
 
 		if doctor.KatalogChanged(dc.dir) {
 			fmt.Println("  Katalog updated — applying bundle to Orkestra...")
@@ -658,7 +657,7 @@ func deployMultiApp(dc deployContext) error {
 			if err := patchCmd.Run(); err != nil {
 				return fmt.Errorf("patching image for %s: %w", app.appName, err)
 			}
-			fmt.Printf("  %s %s → %s\n", utils.SuccessMark(), app.appName, app.image)
+			fmt.Printf("  %s %s → %s\n", successMark(), app.appName, app.image)
 		}
 		if err := dc.state.Save(); err != nil {
 			fmt.Printf("  ~ State save failed: %v\n", err)
@@ -802,7 +801,7 @@ No rebuild or push required — the image is stored in ~/.orkestra/deploy/state.
 		if err := patch.Run(); err != nil {
 			return fmt.Errorf("patching image: %w", err)
 		}
-		fmt.Printf("  %s Image set to %s\n", utils.SuccessMark(), targetImage)
+		fmt.Printf("  %s Image set to %s\n", successMark(), targetImage)
 
 		fmt.Println("\nWaiting for rollback...")
 		if err := watchUntilReady(crName, ns, appName, nil); err != nil {
@@ -1126,7 +1125,7 @@ func deployDeveloperPath(a devPathArgs) error {
 		if err := doctor.GenerateDeveloperKatalog(deployDir, string(motifContent), apps, a.opts); err != nil {
 			return fmt.Errorf("generating developer katalog: %w", err)
 		}
-		fmt.Printf("  %s Developer katalog updated\n", utils.SuccessMark())
+		fmt.Printf("  %s Developer katalog updated\n", successMark())
 
 		// Persist port/language to state for future re-deploys.
 		if state != nil {
@@ -1179,7 +1178,7 @@ func deployDeveloperPath(a devPathArgs) error {
 		if err := genCmd.Run(); err != nil {
 			return fmt.Errorf("generating bundle: %w", err)
 		}
-		fmt.Printf("  %s RBAC + Katalog ConfigMap\n", utils.SuccessMark())
+		fmt.Printf("  %s RBAC + Katalog ConfigMap\n", successMark())
 	} else {
 		fmt.Printf("  ~ dry-run: would generate %s/katalog.yaml and bundle\n", deployDir)
 	}
@@ -1204,7 +1203,7 @@ func exposeApp(ctx context.Context, appName, ns, provider, token string) {
 		fmt.Printf("  ~ tunnel: %v\n", err)
 		return
 	}
-	fmt.Printf("  %s App: %s\n", utils.SuccessMark(), url)
+	fmt.Printf("  %s App: %s\n", successMark(), url)
 }
 
 // exposeControlCenter starts a tunnel for the Orkestra Control Center.
@@ -1223,5 +1222,5 @@ func exposeControlCenter(ctx context.Context, provider, token string) {
 		fmt.Printf("  ~ tunnel (controlcenter): %v\n", err)
 		return
 	}
-	fmt.Printf("  %s Control Center: %s\n", utils.SuccessMark(), url)
+	fmt.Printf("  %s Control Center: %s\n", successMark(), url)
 }

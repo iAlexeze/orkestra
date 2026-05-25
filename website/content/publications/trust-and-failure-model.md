@@ -1,6 +1,6 @@
 ---
 title: "Trust and Failure Model"
-date: 2026-05-24
+date: 2026-05-25
 weight: 2
 ---
 
@@ -68,7 +68,7 @@ During that window, CRs are not modified or deleted. They wait in etcd, unchange
 
 None of these properties work in isolation — they build on each other.
 
-The level-triggered reconciler assumes it will be interrupted. The panic recovery assumes individual reconciles will fail. The isolated worker pools assume one CRD's failure will happen. The leader election assumes the entire process will crash. The production binary assumes someone might try to misuse whatever surface is exposed.
+The level-triggered reconciler assumes it will be interrupted. The panic recovery assumes individual reconciles will fail. The isolated worker pools assume one CRD's failure will happen. The isolated workqueue assumes one CRD's event rate will saturate its capacity. The leader election assumes the entire process will crash. The production binary assumes someone might try to misuse whatever surface is exposed.
 
 Each layer is designed for the one below it to fail, and to remain correct when it does. The result is a system where trustworthy behavior does not depend on everything going right — it depends on the guarantees holding even when things go wrong.
 

@@ -32,3 +32,6 @@ nav:
   - title: Contributing
     section: contributing
     url: /docs/contributing/
+  - title: Known Issues
+    section: known-issues
+    url: /docs/known-issues/

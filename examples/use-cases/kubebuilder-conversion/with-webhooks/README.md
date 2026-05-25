@@ -292,5 +292,4 @@ chmod +x cleanup.sh && ./cleanup.sh
 | `bundle.yaml` | Least-privilege RBAC and ConfigMap (regenerate: `ork generate bundle -k komposer.yaml`) |
 | `cr-v1.yaml` | Example v1 CR |
 | `cr-v2.yaml` | Example v2 CRs |
-| `pattern.yaml` | Registry metadata |
 | `README.md` | This file |

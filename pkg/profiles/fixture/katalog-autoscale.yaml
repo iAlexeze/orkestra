@@ -1,0 +1,193 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: profile-probe-autoscale
+  author: orkspace
+  version: 0.1.0
+  description: >
+    ProfileProbe — living integration test for autoscale profiles.
+    Each CRD uses a different autoscale profile. The profile expands at
+    katalog load time into a full autoscale block. Run the operator and
+    trigger load to observe autoscaler behavior per profile.
+
+spec:
+  crds:
+    profile-probe-burst:
+      crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
+      workers: 2
+      resync: 30s
+      queue:
+        maxQueueDepth: 50
+
+      autoscale:
+        profile: burst
+
+      operatorBox:
+        default: true
+
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}-burst"
+              image: "{{ .spec.image }}"
+              port: "{{ .spec.port }}"
+              reconcile: true
+
+        status:
+          fields:
+            - path: phase
+              value: "Pending"
+              when:
+                - field: status.phase
+                  operator: notExists
+
+            - path: phase
+              value: "Ready"
+              when:
+                - field: "{{ allReplicasReady .children.deployment }}"
+                  equals: "true"
+
+    profile-probe-steady:
+      crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
+      workers: 2
+      resync: 30s
+      queue:
+        maxQueueDepth: 50
+
+      autoscale:
+        profile: steady
+
+      operatorBox:
+        default: true
+
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}-steady"
+              image: "{{ .spec.image }}"
+              port: "{{ .spec.port }}"
+              reconcile: true
+
+        status:
+          fields:
+            - path: phase
+              value: "Pending"
+              when:
+                - field: status.phase
+                  operator: notExists
+
+            - path: phase
+              value: "Ready"
+              when:
+                - field: "{{ allReplicasReady .children.deployment }}"
+                  equals: "true"
+
+    profile-probe-batch:
+      crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
+      workers: 2
+      resync: 30s
+      queue:
+        maxQueueDepth: 50
+
+      autoscale:
+        profile: batch
+
+      operatorBox:
+        default: true
+
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}-batch"
+              image: "{{ .spec.image }}"
+              port: "{{ .spec.port }}"
+              reconcile: true
+
+        status:
+          fields:
+            - path: phase
+              value: "Pending"
+              when:
+                - field: status.phase
+                  operator: notExists
+
+            - path: phase
+              value: "Ready"
+              when:
+                - field: "{{ allReplicasReady .children.deployment }}"
+                  equals: "true"
+
+    profile-probe-latency-sensitive:
+      crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
+      workers: 4
+      resync: 30s
+      queue:
+        maxQueueDepth: 100
+
+      autoscale:
+        profile: latency-sensitive
+
+      operatorBox:
+        default: true
+
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}-latency"
+              image: "{{ .spec.image }}"
+              port: "{{ .spec.port }}"
+              reconcile: true
+
+        status:
+          fields:
+            - path: phase
+              value: "Pending"
+              when:
+                - field: status.phase
+                  operator: notExists
+
+            - path: phase
+              value: "Ready"
+              when:
+                - field: "{{ allReplicasReady .children.deployment }}"
+                  equals: "true"
+
+    profile-probe-cost-optimized:
+      crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
+      workers: 4
+      resync: 30s
+      queue:
+        maxQueueDepth: 100
+
+      autoscale:
+        profile: cost-optimized
+
+      operatorBox:
+        default: true
+
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}-cost"
+              image: "{{ .spec.image }}"
+              port: "{{ .spec.port }}"
+              reconcile: true
+
+        status:
+          fields:
+            - path: phase
+              value: "Pending"
+              when:
+                - field: status.phase
+                  operator: notExists
+
+            - path: phase
+              value: "Ready"
+              when:
+                - field: "{{ allReplicasReady .children.deployment }}"
+                  equals: "true"

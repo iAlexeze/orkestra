@@ -36,16 +36,16 @@ var Packs = map[string]Pack{
 		Description: "Full-stack, cross-CRD, external gates, once-secrets.",
 		Path:        "use-cases",
 	},
-	"rollback": {
-		Name:        "rollback",
-		Description: "Zero-config and configurable failure recovery",
-		Path:        "use-cases/rollback",
-	},
-	"developer": {
-		Name:        "developer",
-		Description: "Local to production in minutes — deploy your app without writing operator code.",
-		Path:        "developer",
-	},
+	// "rollback": {
+	// 	Name:        "rollback",
+	// 	Description: "Zero-config and configurable failure recovery",
+	// 	Path:        "use-cases/rollback",
+	// },
+	// "developer": {
+	// 	Name:        "developer",
+	// 	Description: "Local to production in minutes — deploy your app without writing operator code.",
+	// 	Path:        "developer",
+	// },
 }
 
 func GetPack(name string) (Pack, bool) {

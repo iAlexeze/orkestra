@@ -25,7 +25,8 @@ kind: Katalog
 metadata:
   name: upstream
 security:
-  serviceName: upstream-svc
+  serviceName:
+    runtime: upstream-svc
 notification:
   teams:
     ops:
@@ -115,7 +116,7 @@ func TestKomposer_OwnSecurityWinsOverUpstream(t *testing.T) {
 	dir := t.TempDir()
 	katalogPath := writeTempKatalog(t, dir, "upstream.yaml", upstreamKatalogYAML)
 
-	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: my-komposer\nsecurity:\n  serviceName: komposer-svc\nimports:\n  files:\n    - url: " + katalogPath + "\n"
+	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: my-komposer\nsecurity:\n  serviceName:\n    runtime: komposer-svc\nimports:\n  files:\n    - url: " + katalogPath + "\n"
 	komposerPath := writeTempKatalog(t, dir, "komposer.yaml", komposer)
 
 	m := New(komposerPath)

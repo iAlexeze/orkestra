@@ -251,7 +251,7 @@
 <hr>
 <h2 id="how-the-layers-compound">How the layers compound</h2>
 <p>None of these properties work in isolation — they build on each other.</p>
-<p>The level-triggered reconciler assumes it will be interrupted. The panic recovery assumes individual reconciles will fail. The isolated worker pools assume one CRD&rsquo;s failure will happen. The leader election assumes the entire process will crash. The production binary assumes someone might try to misuse whatever surface is exposed.</p>
+<p>The level-triggered reconciler assumes it will be interrupted. The panic recovery assumes individual reconciles will fail. The isolated worker pools assume one CRD&rsquo;s failure will happen. The isolated workqueue assumes one CRD&rsquo;s event rate will saturate its capacity. The leader election assumes the entire process will crash. The production binary assumes someone might try to misuse whatever surface is exposed.</p>
 <p>Each layer is designed for the one below it to fail, and to remain correct when it does. The result is a system where trustworthy behavior does not depend on everything going right — it depends on the guarantees holding even when things go wrong.</p>
 <hr>
 <h2 id="admission-and-the-gateway">Admission and the Gateway</h2>

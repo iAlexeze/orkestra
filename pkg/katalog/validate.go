@@ -184,5 +184,23 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// 26. Validate HPA Behavior Profiles
+	// -------------------------------------------------------------------------
+	if err := k.validateHPABehaviorProfiles(); err != nil {
+		return nil, err
+	}
+
+	// 27. Validate PDB Behavior Profiles
+	// -------------------------------------------------------------------------
+	if err := k.validatePDBBehaviorProfiles(); err != nil {
+		return nil, err
+	}
+
+	// 28. Validate Rolling Update Profiles
+	// -------------------------------------------------------------------------
+	if err := k.validateRollingUpdateProfiles(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }

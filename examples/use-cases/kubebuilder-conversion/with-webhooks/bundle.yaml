@@ -1,91 +1,37 @@
 ---
 apiVersion: v1
-kind: ServiceAccount
+kind: Namespace
 metadata:
-  name: orkestra
-  namespace: orkestra-system
+  labels:
+    app.kubernetes.io/name: orkestra
+    app.kubernetes.io/tag: orkestra-internal
+    orkestra.io/deletion-protection: "true"
+  name: orkestra-system
+spec: {}
+status: {}
+
 
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: orkestra-cc
+  labels:
+    app.kubernetes.io/name: orkestra
+    app.kubernetes.io/tag: orkestra-internal
+    orkestra.io/deletion-protection: "true"
+  name: orkestra-gateway
   namespace: orkestra-system
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: orkestra
+  labels:
+    app.kubernetes.io/name: orkestra
+    app.kubernetes.io/tag: orkestra-internal
+    orkestra.io/deletion-protection: "true"
+  name: orkestra-gateway
 rules:
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  verbs:
-  - get
-  - create
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - create
-  - patch
-- apiGroups:
-  - demo.orkestra.io
-  resources:
-  - cronjobs
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - demo.orkestra.io
-  resources:
-  - cronjobs/status
-  verbs:
-  - get
-  - update
-  - patch
-- apiGroups:
-  - demo.orkestra.io
-  resources:
-  - cronjobs
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - demo.orkestra.io
-  resources:
-  - cronjobs/status
-  verbs:
-  - get
-  - update
-  - patch
-- apiGroups:
-  - batch
-  resources:
-  - cronjobs
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-
 - apiGroups:
   - admissionregistration.k8s.io
   resources:
@@ -98,215 +44,185 @@ rules:
   - update
   - patch
   - delete
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - get
+  - patch
+- apiGroups:
+  - apiextensions.k8s.io
+  resourceNames:
+  - cronjobs.demo.orkestra.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - patch
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: orkestra
+  labels:
+    app.kubernetes.io/name: orkestra
+    app.kubernetes.io/tag: orkestra-internal
+    orkestra.io/deletion-protection: "true"
+  name: orkestra-gateway
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: orkestra
+  name: orkestra-gateway
 subjects:
 - kind: ServiceAccount
-  name: orkestra
+  name: orkestra-gateway
   namespace: orkestra-system
+
 
 ---
 apiVersion: v1
 data:
   katalog.yaml: |
-
-    # Runtime katalog
     apiVersion: orkestra.orkspace.io/v1
     kind: Katalog
     metadata:
-      name: cronjob-operator
-      description: >
-        Multi-version CronJob operator. v1 uses a cron string. v2 uses a
-        structured schedule object. Conversion is lossless and bidirectional,
-        declared entirely in YAML using cron notes. No Go. No hooks.
-        No separate conversion webhook. One process. One Katalog.
-
-    security:
-      deletionProtection:
-        enabled: true
-      rbac:
-        enabled: false
-      conversion:
-        enabled: true
-      webhooks:
-        admission:
-          enabled: true
-
+        name: cronjob-operator
+        description: |
+            Multi-version CronJob operator. v1 uses a cron string. v2 uses a structured schedule object. Conversion is lossless and bidirectional, declared entirely in YAML using cron notes. No Go. No hooks. No separate conversion webhook. One process. One Katalog.
     spec:
-      crds:
-        cronjob-v2:
-          apiTypes:
-            group: demo.orkestra.io
-            version: v2
-            kind: CronJob
-            plural: cronjobs
-
-          workers: 5
-          resync: 30s
-          conversion:
-            storageVersion: v2
-            updateCRD: true     # This will update the CRD with the correct CA Bundle
-            paths:
-              # v1 → v2: split the cron string into named fields
-              - from: v1
-                to: v2
-                spec:
-                  schedule: "{{ cronFromMap .spec.schedule }}"
-                  image:                      "{{ .spec.image }}"
-                  concurrencyPolicy:          "{{ default .spec.concurrencyPolicy \"Allow\" }}"
-                  startingDeadlineSeconds:    "{{ .spec.startingDeadlineSeconds }}"
-                  successfulJobsHistoryLimit: "{{ default .spec.successfulJobsHistoryLimit 3 }}"
-                  failedJobsHistoryLimit:     "{{ default .spec.failedJobsHistoryLimit 1 }}"
-                  suspend:                    "{{ default .spec.suspend false }}"
-
-              # v2 → v1: reconstruct the cron string from named fields
-              - from: v2
-                to: v1
-                spec:
-                  schedule: "{{ cronNormalize .spec.schedule }}"
-                  image:                      "{{ .spec.image }}"
-                  concurrencyPolicy:          "{{ default .spec.concurrencyPolicy \"Allow\" }}"
-                  startingDeadlineSeconds:    "{{ .spec.startingDeadlineSeconds }}"
-                  successfulJobsHistoryLimit: "{{ default .spec.successfulJobsHistoryLimit 3 }}"
-                  failedJobsHistoryLimit:     "{{ default .spec.failedJobsHistoryLimit 1 }}"
-                  suspend:                    "{{ default .spec.suspend false }}"
-
-          # ── Admission Validation and Mutation ─────────────────────────────────────────────────────────
-          # Defaults applied before validation, before reconcile
-          mutation:
-            mutateFirst: true
-            rules:
-              - field: spec.concurrencyPolicy
-                default: "Allow"
-              - field: spec.successfulJobsHistoryLimit
-                default: 3
-              - field: spec.failedJobsHistoryLimit
-                default: 1
-              - field: spec.suspend
-                default: false
-
-          # Validation — deny if image is empty
-          validation:
-            rules:
-              - field: spec.image
-                operator: exists
-                message: "spec.image is required"
-                action: deny
-
-          # ── Reconciler ─────────────────────────────────────────────────────────
-          operatorBox:
-            default: true
-
-            # Status — three layers
-            # Layer 1: Ready condition — automatic after every reconcile
-            # Layer 2: Declared fields — resolved from live CR
-            # Layer 3: children.* — populated from child CronJob
-            status:
-              fields:
-                - path: phase
-                  value: "{{ ternary .spec.suspend \"Suspended\" \"Active\" }}"
-
-                # Reconstruct the human-readable cron expression for display
-                # This is what kubectl get cj shows in the Schedule column
-                - path: scheduleExpression
-                  value: "{{ cronNormalize .spec.schedule }}"
-
-                - path: image
-                  value: "{{ .spec.image }}"
-
-                - path: concurrencyPolicy
-                  value: "{{ .spec.concurrencyPolicy }}"
-
-                # Last schedule time from the child CronJob
-                - path: lastScheduleTime
-                  value: "{{ get .children.cronjob "status" "lastScheduleTime" }}"
-
-                - path: nextScheduleTime
-                  value: "{{ get .children.cronjob "status" "nextScheduleTime" }}"
-
-            # Creates the Kubernetes CronJob resource
-            # The schedule field reconstructs the standard cron expression
-            # from the v2 structured fields — ready for Kubernetes to use
-            onCreate:
-              cronJobs:
-                - name: "{{ .metadata.name }}"
-                  image: "{{ .spec.image }}"
-                  schedule: "{{ cronNormalize .spec.schedule }}"
-                  reconcile: true
-
-            # When the CR is suspended, the child CronJob is suspended too
-            # When unsuspended, it is restored — no manual intervention needed
-            onReconcile:
-              cronJobs:
-                - name: "{{ .metadata.name }}"
-                  image: "{{ .spec.image }}"
-                  schedule: "{{ cronNormalize .spec.schedule }}"
-                  suspend: "{{ .spec.suspend }}"
-                  successfulJobsHistoryLimit: "{{ .spec.successfulJobsHistoryLimit }}"
-                  failedJobsHistoryLimit: "{{ .spec.failedJobsHistoryLimit }}"
-                  reconcile: true
-
-        # ── v1 ─────────────────────────────────────────────────────────────────
-        # The legacy API. Objects applied as v1 are converted to v2 before
-        # storage. Objects read as v1 are converted from v2 on the way out.
-        # This CRD entry is present so Orkestra watches v1 events correctly.
-        cronjob-v1:
-          apiTypes:
-            group: demo.orkestra.io
-            version: v1
-            kind: CronJob
-            plural: cronjobs
-
-          workers: 2
-          resync: 30s
-
-          mutation:
-            mutateFirst: true
-            rules:
-              - field: spec.concurrencyPolicy
-                default: "Allow"
-              - field: spec.suspend
-                default: false
-
-          validation:
-            rules:
-              - field: spec.image
-                operator: exists
-                message: "spec.image is required"
-                action: deny
-              - field: spec.schedule
-                operator: exists
-                message: "spec.schedule is required"
-                action: deny
-
-          operatorBox:
-            default: true
-            status:
-              fields:
-                - path: phase
-                  value: "{{ ternary .spec.suspend \"Suspended\" \"Active\" }}"
-                - path: scheduleExpression
-                  value: "{{ .spec.schedule }}"
-                - path: image
-                  value: "{{ .spec.image }}"
-
-            onCreate:
-              cronJobs:
-                - name: "{{ .metadata.name }}"
-                  image: "{{ .spec.image }}"
-                  schedule: "{{ .spec.schedule }}"
-                  reconcile: true
-
+        crds:
+            cronjob-v1:
+                description: 'CronJob CRD, GVK: /, Kind='
+                mode: dynamic
+                apiTypes:
+                    group: demo.orkestra.io
+                    version: v1
+                    kind: CronJob
+                    plural: cronjobs
+                    apiPath: /apis
+                workers: 2
+                resync: 30s
+                operatorBox:
+                    default: true
+                    onCreate:
+                        cronJobs:
+                            - name: '{{ .metadata.name }}'
+                              schedule: '{{ .spec.schedule }}'
+                              image: '{{ .spec.image }}'
+                              reconcile: true
+                    status:
+                        fields:
+                            - path: phase
+                              value: '{{ ternary .spec.suspend "Suspended" "Active" }}'
+                            - path: scheduleExpression
+                              value: '{{ .spec.schedule }}'
+                            - path: image
+                              value: '{{ .spec.image }}'
+                queue:
+                    maxQueueDepth: 100
+                    degradeThreshold: 100
+                ignoreStatusPatch: true
+                conversion:
+                    participant: true
+                warnings: []
+            cronjob-v2:
+                description: 'CronJob CRD, GVK: /, Kind='
+                mode: dynamic
+                apiTypes:
+                    group: demo.orkestra.io
+                    version: v2
+                    kind: CronJob
+                    plural: cronjobs
+                    apiPath: /apis
+                workers: 5
+                resync: 30s
+                operatorBox:
+                    default: true
+                    onCreate:
+                        cronJobs:
+                            - name: '{{ .metadata.name }}'
+                              schedule: '{{ cronFromAny .spec.schedule }}'
+                              image: '{{ .spec.image }}'
+                              reconcile: true
+                    onReconcile:
+                        cronJobs:
+                            - name: '{{ .metadata.name }}'
+                              schedule: '{{ cronFromAny .spec.schedule }}'
+                              image: '{{ .spec.image }}'
+                              reconcile: true
+                              suspend: '{{ .spec.suspend }}'
+                              successfulJobsHistoryLimit: '{{ .spec.successfulJobsHistoryLimit }}'
+                              failedJobsHistoryLimit: '{{ .spec.failedJobsHistoryLimit }}'
+                    status:
+                        fields:
+                            - path: phase
+                              value: '{{ boolTernary .spec.suspend "Suspended" "Active" }}'
+                            - path: scheduleExpression
+                              value: '{{ cronFromAny .spec.schedule }}'
+                            - path: scheduleDescription
+                              value: '{{ cronDescribe .spec.schedule }}'
+                            - path: image
+                              value: '{{ .spec.image }}'
+                            - path: concurrencyPolicy
+                              value: '{{ .spec.concurrencyPolicy }}'
+                            - path: lastScheduleTime
+                              value: '{{ default .children.cronjob.status.lastScheduleTime "" }}'
+                            - path: nextScheduleTime
+                              value: '{{ default .children.cronjob.status.nextScheduleTime "" }}'
+                queue:
+                    maxQueueDepth: 100
+                    degradeThreshold: 100
+                ignoreStatusPatch: true
+                conversion:
+                    storageVersion: v1
+                    paths:
+                        - from: v1
+                          to: v2
+                          spec:
+                            concurrencyPolicy: '{{ default .spec.concurrencyPolicy "Allow" }}'
+                            failedJobsHistoryLimit: '{{ default .spec.failedJobsHistoryLimit 1 }}'
+                            image: '{{ .spec.image }}'
+                            schedule: '{{ cronToMap .spec.schedule }}'
+                            startingDeadlineSeconds: '{{ .spec.startingDeadlineSeconds }}'
+                            successfulJobsHistoryLimit: '{{ default .spec.successfulJobsHistoryLimit 3 }}'
+                            suspend: '{{ default .spec.suspend false }}'
+                        - from: v2
+                          to: v1
+                          spec:
+                            concurrencyPolicy: '{{ default .spec.concurrencyPolicy "Allow" }}'
+                            failedJobsHistoryLimit: '{{ default .spec.failedJobsHistoryLimit 1 }}'
+                            image: '{{ .spec.image }}'
+                            schedule: '{{ cronFromAny .spec.schedule }}'
+                            startingDeadlineSeconds: '{{ .spec.startingDeadlineSeconds }}'
+                            successfulJobsHistoryLimit: '{{ default .spec.successfulJobsHistoryLimit 3 }}'
+                            suspend: '{{ default .spec.suspend false }}'
+                    updateCRD: true
+                warnings: []
+    security:
+        deletionProtection:
+            enabled: true
+        conversion:
+            enabled: true
+    gateway:
+        endpoint: http://orkestra-gateway:8080
 kind: ConfigMap
 metadata:
+  labels:
+    app.kubernetes.io/name: orkestra
+    app.kubernetes.io/tag: orkestra-internal
+    orkestra.io/deletion-protection: "true"
   name: orkestra-katalog
   namespace: orkestra-system
 

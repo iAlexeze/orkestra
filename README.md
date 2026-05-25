@@ -171,6 +171,7 @@ The memory reduction works because Orkestra pays the cost of client-go, leader e
 | | |
 |---|---|
 | [Why Orkestra](https://orkestra.sh/docs) | What Orkestra is, how it works, and why it’s different |
+| [Trust and Failure Model](https://orkestra.sh/publications/trust-and-failure-model) | What happens when things go wrong |
 | [Getting Started](https://orkestra.sh/docs/getting-started) | First operator in under an hour |
 | [Learning to Orkestrate](https://orkestra.sh/docs/getting-started/learning-to-orkestrate) | Every capability, as a runnable example |
 | [Katalog Reference](https://orkestra.sh/docs/reference/schema/katalog/) | Complete field reference |
