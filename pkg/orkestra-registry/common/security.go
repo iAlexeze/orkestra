@@ -2,14 +2,11 @@
 package common
 
 import (
-	"fmt"
-	"strings"
-
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/profiles"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 // ResolveContainerSecurityContext resolves a ContainerSecurityContext:
@@ -20,7 +17,7 @@ func ResolveContainerSecurityContext(sc *orktypes.ContainerSecurityContext) *ork
 		return nil
 	}
 	if sc.Profile != "" {
-		expanded, err := expandContainerSecurityProfile(sc.Profile)
+		expanded, err := profiles.ApplyContainerSecurityProfile(sc.Profile)
 		if err != nil {
 			logger.Warn().Str("profile", sc.Profile).Err(err).Msg("unknown securityContext.profile — skipping")
 			return nil
@@ -38,7 +35,7 @@ func ResolvePodSecurityContext(ps *orktypes.PodSecurityContext) *orktypes.PodSec
 		return nil
 	}
 	if ps.Profile != "" {
-		expanded, err := expandPodSecurityProfile(ps.Profile)
+		expanded, err := profiles.ApplyPodSecurityProfile(ps.Profile)
 		if err != nil {
 			logger.Warn().Str("profile", ps.Profile).Err(err).Msg("unknown podSecurity.profile — skipping")
 			return nil
@@ -95,57 +92,5 @@ func ApplySecurityContext(container *corev1.Container, pod *corev1.PodSpec, sc *
 	}
 	if ps != nil {
 		pod.SecurityContext = BuildPodSecurityContext(ps)
-	}
-}
-
-// ── Profile expansion ─────────────────────────────────────────────────────────
-// Mirrors pkg/katalog/security_profile.go — kept here so the registry package
-// does not import the katalog package (avoid circular dependency).
-
-func expandContainerSecurityProfile(profile string) (*orktypes.ContainerSecurityContext, error) {
-	switch strings.ToLower(profile) {
-	case "baseline":
-		return &orktypes.ContainerSecurityContext{
-			AllowPrivilegeEscalation: utils.BoolPtr(false),
-			Capabilities:             &orktypes.CapabilitiesConfig{Drop: []string{"NET_RAW"}},
-		}, nil
-	case "restricted":
-		return &orktypes.ContainerSecurityContext{
-			AllowPrivilegeEscalation: utils.BoolPtr(false),
-			RunAsNonRoot:             utils.BoolPtr(true),
-			Capabilities:             &orktypes.CapabilitiesConfig{Drop: []string{"ALL"}},
-		}, nil
-	case "hardened":
-		return &orktypes.ContainerSecurityContext{
-			AllowPrivilegeEscalation: utils.BoolPtr(false),
-			ReadOnlyRootFilesystem:   utils.BoolPtr(true),
-			RunAsNonRoot:             utils.BoolPtr(true),
-			Capabilities:             &orktypes.CapabilitiesConfig{Drop: []string{"ALL"}},
-		}, nil
-	default:
-		return nil, fmt.Errorf("unknown container security profile: %q", profile)
-	}
-}
-
-func expandPodSecurityProfile(profile string) (*orktypes.PodSecurityContext, error) {
-	switch strings.ToLower(profile) {
-	case "baseline":
-		return &orktypes.PodSecurityContext{
-			RunAsNonRoot: utils.BoolPtr(false),
-		}, nil
-	case "restricted":
-		return &orktypes.PodSecurityContext{
-			RunAsNonRoot: utils.BoolPtr(true),
-			RunAsUser:    utils.Int64Ptr(1000),
-		}, nil
-	case "hardened":
-		return &orktypes.PodSecurityContext{
-			RunAsNonRoot: utils.BoolPtr(true),
-			RunAsUser:    utils.Int64Ptr(65534),
-			RunAsGroup:   utils.Int64Ptr(65534),
-			FSGroup:      utils.Int64Ptr(65534),
-		}, nil
-	default:
-		return nil, fmt.Errorf("unknown pod security profile: %q", profile)
 	}
 }

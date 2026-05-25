@@ -22,6 +22,8 @@ package katalog
 import (
 	"fmt"
 	"strings"
+
+	"github.com/orkspace/orkestra/pkg/profiles"
 )
 
 // validateSecurityProfiles ensures that security profiles are used correctly
@@ -32,7 +34,7 @@ func (k *Katalog) validateSecurityProfiles() error {
 			if isTemplateExpr(e.Profile) {
 				continue
 			}
-			if !isValidSecurityProfile(e.Profile) {
+			if !profiles.IsValidSecurityProfile(e.Profile) {
 				return fmt.Errorf(
 					"crd %q: %s %q (phase %s) has unknown %s security profile %q — "+
 						"allowed: baseline, restricted, hardened",
@@ -49,16 +51,6 @@ func (k *Katalog) validateSecurityProfiles() error {
 		}
 	}
 	return nil
-}
-
-// isValidSecurityProfile returns true if the profile name is one of the supported presets.
-func isValidSecurityProfile(p string) bool {
-	switch SecurityProfile(strings.ToLower(p)) {
-	case SecurityBaseline, SecurityRestricted, SecurityHardened:
-		return true
-	default:
-		return false
-	}
 }
 
 // validateSecurityCapabilities checks that every capability name declared in

@@ -70,21 +70,17 @@ aggregated — container failures (ImagePullBackOff, OOMKilled) show up here.
 ## Running a probe
 
 ```bash
-# Apply CRD and install Orkestra (once per cluster):
-kubectl apply -f pkg/note/fixture/crd.yaml
-helm upgrade --install orkestra ./charts/orkestra --namespace default --wait
+cd pkg/note/fixture
 
-# Install the katalog for the probe family you want to test:
-ork bundle --file pkg/note/fixture/katalog.yaml | kubectl apply -f -
-
-# Apply the CR:
-kubectl apply -f pkg/note/fixture/cr.yaml
+# Run the katalog for the probe family you want to test.
+# crdFile and crFiles are embedded — Orkestra applies the CRD and CR automatically:
+ork run -f katalog-<resource_type>.yaml
 
 # Watch status populate:
 kubectl get noteprobe my-probe -o yaml -w
 
 # Clean up:
-cd pkg/note/fixture && bash cleanup.sh
+bash cleanup.sh
 ```
 
 ---
@@ -116,5 +112,5 @@ Routing rule by resource family:
 ## CI
 
 The `fixture-note` job in `.github/workflows/validate-pr.yml` runs the fixture on
-every PR touching `pkg/note/`. It spins up a kind cluster, installs Orkestra via
-Helm, applies the fixture, and asserts `status.phase` is set.
+every PR touching `pkg/note/`. It spins up a kind cluster, runs `ork run -f katalog.yaml`,
+and asserts `status.phase` is set.

@@ -27,6 +27,8 @@ package katalog
 import (
 	"fmt"
 	"strings"
+
+	"github.com/orkspace/orkestra/pkg/profiles"
 )
 
 // isTemplateExpr reports whether s contains a Go template expression.
@@ -35,16 +37,13 @@ func isTemplateExpr(s string) bool {
 	return strings.Contains(s, "{{")
 }
 
-// validateResourceProfile ensures that resources.profile is used correctly
-// across all template resources in every hook phase.
-// Uses the visitor pattern via CollectResourceProfileEntries.
 func (k *Katalog) validateResourceProfile() error {
 	for crdName, crd := range k.enabledCRDs {
 		for _, e := range crd.CollectResourceProfileEntries() {
 			if isTemplateExpr(e.Profile) {
-				continue // resolved at runtime, skip static check
+				continue
 			}
-			if !isValidResourceProfile(e.Profile) {
+			if !profiles.IsValidResourceProfile(e.Profile) {
 				return fmt.Errorf(
 					"crd %q: %s %q (phase %s) has unknown resources.profile %q — "+
 						"allowed: tiny, small, medium, large, burst, steady, compute-heavy, memory-heavy",
@@ -63,33 +62,13 @@ func (k *Katalog) validateResourceProfile() error {
 	return nil
 }
 
-// isValidResourceProfile returns true if the profile name is one of the supported presets.
-func isValidResourceProfile(p string) bool {
-	switch strings.ToLower(p) {
-	case string(ResourceTiny),
-		string(ResourceSmall),
-		string(ResourceMedium),
-		string(ResourceLarge),
-		string(ResourceBurst),
-		string(ResourceSteady),
-		string(ResourceComputeHeavy),
-		string(ResourceMemoryHeavy):
-		return true
-	default:
-		return false
-	}
-}
-
-// validateProbeProfiles checks that all probe profile names declared across all
-// CRD hooks are recognized values. Unknown profiles fail fast at load time before
-// any reconcile loop runs — same guarantee as resource profile validation.
 func (k *Katalog) validateProbeProfiles() error {
 	for crdName, crd := range k.enabledCRDs {
 		for _, e := range crd.CollectProbeProfileEntries() {
 			if isTemplateExpr(e.Profile) {
-				continue // resolved at runtime, skip static check
+				continue
 			}
-			if !isValidProbeProfile(e.Profile) {
+			if !profiles.IsValidProbeProfile(e.Profile) {
 				return fmt.Errorf(
 					"crd %q: %s probe in %s %q (phase %s) has unknown probe profile %q — "+
 						"allowed: fast, standard, patient, slow-start",
