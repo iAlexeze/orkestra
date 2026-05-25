@@ -1,7 +1,7 @@
 ---
 title: "Reference"
 date: 2026-05-25
-weight: 61
+weight: 104
 ---
 
 Technical reference for the Orkestra runtime, schemas, and CLI.
@@ -44,4 +44,4 @@ Complete field reference for every Orkestra document type.
 
 - **[Schema Reference](schema/katalog/)** — every field in every document type
 - **[CLI Reference](cli/run/)** — full flag reference for every command
-- **[Typed Operators](typed-operators/)** — hooks, constructors, and mixed patterns
+- **[Typed Operators](../concepts/typed-operators/)** — hooks, constructors, and mixed patterns
