@@ -62,7 +62,7 @@ Static names are validated at load time. Template expressions are validated when
 
 ---
 
-## The four profile families
+## The five profile families
 
 | Family | What it controls | Applied to |
 |--------|-----------------|------------|
@@ -70,6 +70,7 @@ Static names are validated at load time. Template expressions are validated when
 | [Probe](./03-probe-profile.md) | Health check timing | Deployment, StatefulSet, ReplicaSet, Pod |
 | [Autoscale](./02-autoscale-profile.md) | Operator worker scaling | `operatorBox.autoscale` |
 | [Security](./04-security-profile.md) | Container and pod security contexts | Deployment, StatefulSet, ReplicaSet, Pod, Job, CronJob |
+| [HPA Behavior](./05-hpa-behavior-profile.md) | Kubernetes HPA scale-up/down policies | `hpas[*].behavior` |
 
 ---
 

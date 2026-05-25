@@ -46,36 +46,45 @@ case ResourceTiny, ..., ResourceXLarge:
 
 ## Adding a new profile kind
 
-Example: adding an HPA profile kind (`hpa.profile`).
+For a complete reference implementation, see `pkg/profiles/hpa.go` (HPA behavior profiles). The steps below use a hypothetical PDB profile kind as the example.
 
-**1. Create `pkg/profiles/hpa.go`** following the same structure as the existing files:
+**1. Create `pkg/profiles/pdb.go`** following the same structure as the existing files:
 
 ```go
 package profiles
 
-type HPAProfile string
-
-const (
-    HPABurst          HPAProfile = "burst"
-    HPATrafficAware   HPAProfile = "traffic-aware"
-    HPACostOptimized  HPAProfile = "cost-optimized"
+import (
+    "fmt"
+    "strings"
+    orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-func ApplyHPAProfile(name string) (*orktypes.HPASpec, error) { ... }
-func IsValidHPAProfile(name string) bool { ... }
+type PDBProfile string
+
+const (
+    PDBStrict    PDBProfile = "strict"
+    PDBRelaxed   PDBProfile = "relaxed"
+)
+
+func ApplyPDBProfile(name string) (orktypes.PDBBehavior, error) { ... }
+func IsValidPDBProfile(name string) bool { ... }
 ```
 
 Export only `Apply*Profile` and `IsValid*Profile`. Keep internal config types unexported.
 
-**2. Wire validation** into `pkg/katalog` — add a `validateHPAProfile()` method on `*Katalog`, call it from `Katalog.Validate()`.
+**2. Add the type** to `pkg/types/` (e.g., `pdb_behavior.go`) and add a `Behavior *PDBBehavior` field to `PDBTemplateSource` in `types.go`.
 
-**3. Wire resolution** into `pkg/orkestra-registry/common` — add `ResolveHPA` (or inline in the HPA builder), following the pattern in `resource.go` and `security.go`.
+**3. Add a `hooks_pdb.go`** to `pkg/types/` following the pattern in `hooks_hpa.go` — define `PDBProfileEntry`, implement `GetPDBBehavior()` on `PDBTemplateSource`, and add `CollectPDBProfileEntries()` to `CRDEntry`.
 
-**4. Add tests** in `pkg/profiles/hpa_test.go`.
+**4. Wire validation** into `pkg/katalog` — add `validate_pdb_profile.go` with a `validatePDBBehaviorProfiles()` method on `*Katalog`, call it from `ValidateConfig()`.
 
-**5. Add to the fixture** in `pkg/profiles/fixture/katalog-hpa.yaml`.
+**5. Wire resolution** into `pkg/orkestra-registry/pdbs/` — expand the profile in `Resolve()`, convert to the Kubernetes type in the builder.
 
-**6. Document** in `docs/01-profiles.md`.
+**6. Add tests** in `pkg/profiles/pdb_test.go`.
+
+**7. Add to the fixture** in `pkg/profiles/fixture/katalog-pdb.yaml`.
+
+**8. Document** in `docs/01-profiles.md`.
 
 ---
 

@@ -66,4 +66,24 @@ Set via `autoscale.profile`. Expands into a complete `autoscale` block using the
 | `latency-sensitive` | P95 reconcile > 200ms | 2.5× workers | 15s | 1m | Real-time pipelines |
 | `cost-optimized` | idle > 60% AND queue > 80% max | 0.5× workers, 0.5× queue | 30s | 10m | Reduces capacity when underloaded |
 
+---
+
+## HPA behavior profiles
+
+Set via `behavior.profile` on any HPA resource. Expands into a complete `HorizontalPodAutoscalerBehavior` block (scaleUp + scaleDown policies and stabilization windows) and sets a suggested `targetCPUUtilizationPercentage` when none is declared explicitly.
+
+| Profile | CPU target | Scale-up window | Scale-up policy | Scale-down window | Scale-down policy | Use for |
+|---------|-----------|-----------------|-----------------|-------------------|-------------------|---------|
+| `web` | 70% | 0s | Max(100%/15s, 4 pods/15s) | 300s | 10%/60s | Frontend web services, moderate traffic |
+| `api` | 60% | 0s | Max(100%/15s, 4 pods/15s) | 600s | 5%/60s | Backend APIs requiring stable instance pools |
+| `latency-sensitive` | 50% | 0s | Max(200%/15s, 10 pods/15s) | 900s | 5%/120s | Real-time services where cold-start latency matters |
+| `batch` | 80% | 30s | 100%/60s | 120s | 50%/60s | Batch jobs that scale fast and release quickly |
+| `cost-optimized` | 80% | 180s | 25%/60s (Min) | 60s | 50%/60s | Workloads where over-provisioning cost is the priority |
+
+**Scale-up window (stabilization)**: 0s means the HPA acts on the very first signal — fastest possible reaction. Higher values debounce scale-up decisions.
+
+**Scale-down window**: How long the HPA waits after a sustained drop before removing pods. Longer windows protect against oscillation at the cost of slower scale-in.
+
+**SelectPolicy Max/Min**: `Max` picks the policy that adds the most pods; `Min` picks the one that adds the fewest. Scale-down uses `Min` to be conservative; `cost-optimized` scale-up uses `Min` to grow slowly.
+
 → Next: [02-internals.md](02-internals.md)

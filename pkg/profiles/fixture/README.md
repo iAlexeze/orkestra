@@ -20,6 +20,7 @@ All katalogs use the same `ProfileProbe` CRD. One CRD is enough to probe every p
 | `katalog-security.yaml` | baseline, restricted, hardened (container + pod security) |
 | `katalog-probes.yaml` | fast, standard, patient, slow-start |
 | `katalog-autoscale.yaml` | burst, steady, batch, latency-sensitive, cost-optimized |
+| `katalog-hpa.yaml` | web, api, latency-sensitive, batch, cost-optimized (HPA behavior) |
 
 ---
 
@@ -34,6 +35,7 @@ ork run -f katalog-resource.yaml    # resource profiles
 ork run -f katalog-security.yaml   # security profiles
 ork run -f katalog-probes.yaml     # probe profiles
 ork run -f katalog-autoscale.yaml  # autoscale profiles
+ork run -f katalog-hpa.yaml        # HPA behavior profiles
 
 # Inspect child Deployments:
 kubectl get deployments -o yaml | grep -A 10 "resources:"
@@ -77,6 +79,22 @@ kubectl get deployment my-probe-fast -o jsonpath='{.spec.template.spec.container
 Expected for `fast`:
 ```json
 {"initialDelaySeconds":5,"periodSeconds":10,"failureThreshold":2,"successThreshold":1,"timeoutSeconds":5}
+```
+
+### HPA behavior profiles
+
+```bash
+kubectl get hpa my-probe-web-hpa -o jsonpath='{.spec.behavior}'
+```
+
+Expected for `web` (70% CPU, fast scale-up, 5-min scale-down stabilization):
+```json
+{"scaleDown":{"policies":[{"periodSeconds":60,"type":"Percent","value":10}],"selectPolicy":"Min","stabilizationWindowSeconds":300},"scaleUp":{"policies":[{"periodSeconds":15,"type":"Percent","value":100},{"periodSeconds":15,"type":"Pods","value":4}],"selectPolicy":"Max","stabilizationWindowSeconds":0}}
+```
+
+```bash
+kubectl get hpa my-probe-cost-hpa -o jsonpath='{.spec.metrics[0].resource.target.averageUtilization}'
+# Expected: 80
 ```
 
 ---

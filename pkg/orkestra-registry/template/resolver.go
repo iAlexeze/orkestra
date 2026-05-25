@@ -1045,6 +1045,11 @@ func (r *Resolver) ResolveHPATemplate(src orktypes.HPATemplateSource) (orktypes.
 		return resolved, fmt.Errorf("hpa.labels: %w", err)
 	}
 
+	if src.Behavior != nil {
+		b := *src.Behavior
+		resolved.Behavior = &b
+	}
+
 	return resolved, nil
 }
 

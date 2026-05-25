@@ -1637,7 +1637,13 @@ type HPATemplateSource struct {
 	MaxReplicas string `yaml:"maxReplicas,omitempty" json:"maxReplicas,omitempty"`
 
 	// TargetCPUUtilizationPercentage — CPU utilization target (0-100). Supports templates.
+	// When behavior.profile is set and this field is empty, the profile provides the default.
 	TargetCPUUtilizationPercentage string `yaml:"targetCPUUtilizationPercentage,omitempty" json:"targetCPUUtilizationPercentage,omitempty"`
+
+	// Behavior — scale-up and scale-down behavior configuration.
+	// Set profile for a complete preset, or configure scaleUp/scaleDown explicitly.
+	// Profile and explicit fields are mutually exclusive.
+	Behavior *HPABehavior `yaml:"behavior,omitempty" json:"behavior,omitempty"`
 
 	// Labels applied to HPA metadata. Values support template expressions.
 	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty"`
