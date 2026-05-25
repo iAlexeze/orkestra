@@ -12,7 +12,6 @@ import (
 	"github.com/orkspace/orkestra/pkg/doctor"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/merger"
-	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 // applyPreRuntimeResources applies all pre-runtime resources declared in the
@@ -27,7 +26,7 @@ import (
 // starts. Relative paths are resolved against the katalog directory. This
 // function is a no-op when running inside the cluster.
 func applyPreRuntimeResources(ctx context.Context, katalogPath string, m *merger.Merger) {
-	if utils.IsRunningInCluster() {
+	if isRunningInCluster() {
 		return
 	}
 
@@ -97,7 +96,7 @@ func ensureClusterReady(dev bool) error {
 // applyCRFilesIfNeeded applies crFiles declarations via kubectl in order before
 // the runtime starts. Only runs outside the cluster (dev mode).
 func applyCRFilesIfNeeded(ctx context.Context, katalogPath string, m *merger.Merger) {
-	if utils.IsRunningInCluster() {
+	if isRunningInCluster() {
 		return
 	}
 
@@ -134,7 +133,7 @@ func applyCRFilesIfNeeded(ctx context.Context, katalogPath string, m *merger.Mer
 // waitForCRDsEstablished waits for any CRDs that have crFiles to be Established
 // in the cluster before CRs are applied. Only blocks for CRDs that need it.
 func waitForCRDsEstablished(ctx context.Context, m *merger.Merger) {
-	if utils.IsRunningInCluster() {
+	if isRunningInCluster() {
 		return
 	}
 
@@ -176,7 +175,7 @@ func waitForCRDsEstablished(ctx context.Context, m *merger.Merger) {
 // operator starts. Only runs outside the cluster (dev mode). In production,
 // CRDs must be pre-applied by the platform operator.
 func applyCRDFilesIfNeeded(ctx context.Context, katalogPath string, m *merger.Merger) {
-	if utils.IsRunningInCluster() {
+	if isRunningInCluster() {
 		return
 	}
 
@@ -212,7 +211,7 @@ func applyCRDFilesIfNeeded(ctx context.Context, katalogPath string, m *merger.Me
 // applySetupIfNeeded applies setup YAML files via kubectl in order before
 // Orkestra starts. Only runs outside the cluster (dev mode).
 func applySetupIfNeeded(ctx context.Context, katalogPath string, m *merger.Merger) {
-	if utils.IsRunningInCluster() {
+	if isRunningInCluster() {
 		return
 	}
 

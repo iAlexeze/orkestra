@@ -26,7 +26,6 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/katalog"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	"github.com/orkspace/orkestra/pkg/utils"
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
@@ -43,18 +42,18 @@ func printCRDValidationLine(entry orktypes.CRDEntry, katalogProtected, katalogSt
 
 // printCRDHeader prints the CRD name with appropriate icon.
 func printCRDHeader(entry orktypes.CRDEntry) {
-	icon := utils.HealthIconReady()
+	icon := healthIconReady()
 	if entry.Warnings.HasWarnings() {
-		icon = utils.HealthIconWarning()
+		icon = healthIconWarn()
 	}
-	fmt.Printf("%s %s\n", icon, utils.Bold(entry.Name))
+	fmt.Printf("%s %s\n", icon, bold(entry.Name))
 }
 
 // getStrictModeText returns a formatted string indicating strict mode status,
 // or an empty string if strict mode is not enforced for this CRD.
 func getStrictModeText(entry orktypes.CRDEntry, katalogStrictMode bool) string {
 	if katalogStrictMode && entry.IsStrictDeletionProtection(katalogStrictMode) {
-		return utils.InfoMark() + " (strict)"
+		return infoMark() + " (strict)"
 	}
 	return ""
 }
@@ -68,15 +67,15 @@ func printKindInfo(entry orktypes.CRDEntry) {
 	}
 
 	if entry.IsBuiltIn {
-		fmt.Printf("    %s\n", utils.Gray(fmt.Sprintf(
-			"kind: %s → enriched from built-in registry", utils.Bold(entry.APITypes.Kind),
+		fmt.Printf("    %s\n", gray(fmt.Sprintf(
+			"kind: %s → enriched from built-in registry", bold(entry.APITypes.Kind),
 		)))
-		fmt.Printf("    %s\n", utils.Gray(fmt.Sprintf(
+		fmt.Printf("    %s\n", gray(fmt.Sprintf(
 			"group: %s / version: %s / plural: %s / scope: %s",
 			entry.BuiltInGroup, entry.APITypes.Version, entry.APITypes.Plural, scope,
 		)))
 	} else {
-		fmt.Printf("    %s\n", utils.Gray(fmt.Sprintf(
+		fmt.Printf("    %s\n", gray(fmt.Sprintf(
 			"kind: %s / group: %s / version: %s / plural: %s / scope: %s",
 			entry.APITypes.Kind, entry.APITypes.Group, entry.APITypes.Version, entry.APITypes.Plural, scope,
 		)))
@@ -85,7 +84,7 @@ func printKindInfo(entry orktypes.CRDEntry) {
 
 // printModeResync prints the mode, workers, and resync period.
 func printModeResync(entry orktypes.CRDEntry) {
-	fmt.Printf("    %s\n", utils.Gray(fmt.Sprintf(
+	fmt.Printf("    %s\n", gray(fmt.Sprintf(
 		"mode: %s / workers: %v / resync: %v",
 		entry.Mode, entry.Workers, entry.Resync,
 	)))
@@ -98,7 +97,7 @@ func printModeResync(entry orktypes.CRDEntry) {
 // When strict mode is active, the label changes from "protection:" to "strict‑protection:".
 func printProtectionStatus(entry orktypes.CRDEntry, katalogProtected bool, strictModeText string) {
 	if entry.IsBuiltInType() {
-		fmt.Printf("    %s\n", utils.Gray("protection: label-based (built-in)"))
+		fmt.Printf("    %s\n", gray("protection: label-based (built-in)"))
 		return
 	}
 
@@ -114,16 +113,16 @@ func printProtectionStatus(entry orktypes.CRDEntry, katalogProtected bool, stric
 	var baseText string
 	switch {
 	case protectCRD && protectCRs:
-		icon = utils.SecureMark()
+		icon = secureMark()
 		baseText = " full (CRD + CRs)"
 	case protectCRD && !protectCRs:
-		icon = utils.SomeSecureMark()
+		icon = someSecureMark()
 		baseText = "CRD only (CRs not protected)"
 	case !protectCRD && protectCRs:
-		icon = utils.WarningMark()
+		icon = warningMark()
 		baseText = "CRs only (CRD not protected - see warning)"
 	default:
-		icon = utils.NoSecurityMark()
+		icon = noSecurityMark()
 		baseText = "none"
 	}
 
@@ -133,7 +132,7 @@ func printProtectionStatus(entry orktypes.CRDEntry, katalogProtected bool, stric
 		label = "strict-protection:"
 	}
 	fullText := fmt.Sprintf("%s %s %s", label, icon, baseText)
-	fmt.Printf("    %s\n", utils.Gray(fullText))
+	fmt.Printf("    %s\n", gray(fullText))
 }
 
 // printWarnings prints any warnings associated with the CRD, with proper indentation.
@@ -142,9 +141,9 @@ func printWarnings(entry orktypes.CRDEntry) {
 		lines := strings.Split(w, "\n")
 		for i, line := range lines {
 			if i == 0 {
-				fmt.Printf("    warning: %s\n", utils.Gray(line))
+				fmt.Printf("    warning: %s\n", gray(line))
 			} else {
-				fmt.Printf("             %s\n", utils.Gray(line)) // 13 spaces aligns with "warning: "
+				fmt.Printf("             %s\n", gray(line)) // 13 spaces aligns with "warning: "
 			}
 		}
 	}
@@ -167,9 +166,9 @@ func printCRDPermissions(rules []rbacv1.PolicyRule) {
 			maxRes = n
 		}
 	}
-	fmt.Printf("    %s\n", utils.Gray("permissions:"))
+	fmt.Printf("    %s\n", gray("permissions:"))
 	for _, r := range rules {
-		fmt.Printf("      %s\n", utils.Gray(fmt.Sprintf(
+		fmt.Printf("      %s\n", gray(fmt.Sprintf(
 			"%-*s  %-*s  %s",
 			maxGroup, rbacGroup(r.APIGroups),
 			maxRes, rbacRes(r),
@@ -182,7 +181,7 @@ func printCRDPermissions(rules []rbacv1.PolicyRule) {
 // Only called when there are dependencies (dd is never nil here).
 func printValidateDependencyGraph(dd *katalog.DependencyDisplay) {
 	fmt.Println()
-	fmt.Println(utils.Bold("startup order"))
+	fmt.Println(bold("startup order"))
 	maxName := 0
 	for _, name := range dd.StartupOrder {
 		if len(name) > maxName {
@@ -199,7 +198,7 @@ func printValidateDependencyGraph(dd *katalog.DependencyDisplay) {
 			}
 			suffix = "   ← " + strings.Join(parts, " · ")
 		}
-		fmt.Printf("  %s\n", utils.Gray(fmt.Sprintf("%d  %-*s%s", i+1, maxName, name, suffix)))
+		fmt.Printf("  %s\n", gray(fmt.Sprintf("%d  %-*s%s", i+1, maxName, name, suffix)))
 	}
 }
 
@@ -209,7 +208,7 @@ func printRuntimePermissionsSection(rules []rbacv1.PolicyRule) {
 		return
 	}
 	fmt.Println()
-	fmt.Println(utils.Bold("runtime"))
+	fmt.Println(bold("runtime"))
 	printRuleBlock(rules, nil)
 }
 
@@ -220,7 +219,7 @@ func printGatewayPermissionsSection(rules []rbacv1.PolicyRule) {
 		return
 	}
 	fmt.Println()
-	fmt.Println(utils.Bold("gateway"))
+	fmt.Println(bold("gateway"))
 	printRuleBlock(rules, map[string]string{
 		// set TLS_CERT / TLS_KEY in orkestra-deployment to bring your own
 		"secrets":    "Orkestra provisions and rotates certs",
@@ -250,7 +249,7 @@ func printRuleBlock(rules []rbacv1.PolicyRule, notes map[string]string) {
 				line += "   ← " + note
 			}
 		}
-		fmt.Println(utils.Gray(line))
+		fmt.Println(gray(line))
 	}
 }
 
@@ -300,13 +299,13 @@ func printCRDProfiles(entry orktypes.CRDEntry) {
 			maxProfile = n
 		}
 	}
-	fmt.Printf("    %s\n", utils.Gray("profiles:"))
+	fmt.Printf("    %s\n", gray("profiles:"))
 	for _, l := range lines {
 		suffix := ""
 		if l.mixed {
 			suffix = "   ← mixed with explicit fields"
 		}
-		fmt.Printf("      %s\n", utils.Gray(fmt.Sprintf(
+		fmt.Printf("      %s\n", gray(fmt.Sprintf(
 			"%-*s  %-*s  %s%s",
 			maxType, l.typLabel,
 			maxProfile, l.profile,

@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/orkspace/orkestra/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -61,7 +60,7 @@ var initCmd = &cobra.Command{
 func initCanonical(name string) error {
 	printBanner()
 	label := nameLabel(name)
-	fmt.Printf("Initialising %s...\n\n", utils.Bold(label))
+	fmt.Printf("Initialising %s...\n\n", bold(label))
 
 	steps := []initStep{}
 	if !isCurrentDirectory(name) {
@@ -73,7 +72,7 @@ func initCanonical(name string) error {
 		return err
 	}
 
-	fmt.Printf("\n%s\n\n", utils.Green("✓ Project ready: "+label))
+	fmt.Printf("\n%s\n\n", green("✓ Project ready: "+label))
 	if !isCurrentDirectory(name) {
 		fmt.Printf("  cd %s\n", name)
 	}
@@ -113,7 +112,7 @@ func initProject(name, pack string, refresh bool) error {
 	}
 
 	fmt.Printf("Initialising %s using '%s' example pack...\n\n",
-		utils.Bold(name), pack)
+		bold(name), pack)
 
 	steps := []initStep{}
 	if !isCurrentDirectory(name) {
@@ -135,7 +134,7 @@ func initProject(name, pack string, refresh bool) error {
 		return err
 	}
 
-	fmt.Printf("\n%s\n\n", utils.Green("✓ Project ready: "+label))
+	fmt.Printf("\n%s\n\n", green("✓ Project ready: "+label))
 
 	fmt.Println("To run the first example:")
 	if !isCurrentDirectory(name) {

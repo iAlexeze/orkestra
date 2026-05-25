@@ -12,6 +12,40 @@ import (
 	"github.com/orkspace/orkestra/pkg/utils"
 )
 
+// ── utils aliases ────────────────────────────────────────────────────────────
+// Import utils once here. All other files in this package use these names
+// directly — no per-file utils import needed.
+
+var (
+	// colors / styles
+	gray    = utils.Gray
+	bold    = utils.Bold
+	dim     = utils.Dim
+	cyan    = utils.Cyan
+	green   = utils.Green
+	yellow  = utils.Yellow
+	red     = utils.Red
+	magenta = utils.Magenta
+
+	// marks and icons
+	successMark     = utils.SuccessMark
+	failureMark     = utils.FailureMark
+	warningMark     = utils.WarningMark
+	infoMark        = utils.InfoMark
+	secureMark      = utils.SecureMark
+	someSecureMark  = utils.SomeSecureMark
+	noSecurityMark  = utils.NoSecurityMark
+	healthIcon      = utils.HealthIcon
+	healthIconReady = utils.HealthIconReady
+	healthIconWarn  = utils.HealthIconWarning
+
+	// other cli utilities
+	orkestraLogo       = utils.OrkestraLogoCLI
+	isRunningInCluster = utils.IsRunningInCluster
+	writeFileAndFormat = utils.WriteFileAndFormat
+	cliExit            = utils.Exit
+)
+
 // ── printTemplateSummary ──────────────────────────────────────────────────────
 
 // printTemplateSummary prints the human-readable default output of `ork template`.
@@ -19,21 +53,21 @@ import (
 func printTemplateSummary(k *katalog.Katalog, crds map[string]orktypes.CRDEntry, startupOrder []string) {
 	meta := k.Metadata()
 
-	fmt.Printf("\n%s", utils.Cyan(utils.Bold("Katalog")))
+	fmt.Printf("\n%s", cyan(bold("Katalog")))
 	if meta.Name != "" {
-		fmt.Printf(": %s", utils.Bold(meta.Name))
+		fmt.Printf(": %s", bold(meta.Name))
 	}
 	if meta.Version != "" {
-		fmt.Printf(" %s", utils.Dim("("+meta.Version+")"))
+		fmt.Printf(" %s", dim("("+meta.Version+")"))
 	}
 	if k.APIVersion != "" {
-		fmt.Printf("  %s", utils.Dim(k.APIVersion))
+		fmt.Printf("  %s", dim(k.APIVersion))
 	}
 	fmt.Println()
 
 	fmt.Printf("  %d CRD(s) — startup order: %s\n\n",
 		len(crds),
-		utils.Yellow(strings.Join(startupOrder, " → ")),
+		yellow(strings.Join(startupOrder, " → ")),
 	)
 
 	for i, name := range startupOrder {
@@ -50,8 +84,8 @@ func printTemplateSummary(k *katalog.Katalog, crds map[string]orktypes.CRDEntry,
 		gvk := fmt.Sprintf("%s/%s, Kind=%s", crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind)
 		fmt.Printf("  %s %s  %s\n",
 			connector,
-			utils.Bold(name),
-			utils.Dim(gvk),
+			bold(name),
+			dim(gvk),
 		)
 
 		indent := "  │   "
@@ -62,11 +96,11 @@ func printTemplateSummary(k *katalog.Katalog, crds map[string]orktypes.CRDEntry,
 		// Workers / resync
 		fmt.Printf("%sworkers:%s  resync:%s",
 			indent,
-			utils.Green(fmt.Sprintf("%d", crd.Workers)),
-			utils.Green(crd.Resync.String()),
+			green(fmt.Sprintf("%d", crd.Workers)),
+			green(crd.Resync.String()),
 		)
 		if crd.Queue.MaxQueueDepth > 0 {
-			fmt.Printf("  queue:%s", utils.Green(fmt.Sprintf("%d", crd.Queue.MaxQueueDepth)))
+			fmt.Printf("  queue:%s", green(fmt.Sprintf("%d", crd.Queue.MaxQueueDepth)))
 		}
 		fmt.Println()
 
@@ -82,7 +116,7 @@ func printTemplateSummary(k *katalog.Katalog, crds map[string]orktypes.CRDEntry,
 			}
 			fmt.Printf("%s%s %s\n",
 				indent,
-				utils.Yellow("dependsOn:"),
+				yellow("dependsOn:"),
 				strings.Join(deps, ", "),
 			)
 		}
@@ -103,13 +137,13 @@ func printTemplateSummary(k *katalog.Katalog, crds map[string]orktypes.CRDEntry,
 
 		// onCreate resources
 		if crd.OperatorBox.OnCreate != nil && !crd.OperatorBox.OnCreate.IsEmpty() {
-			fmt.Printf("%s%s  %s\n", indent, utils.Cyan("onCreate:"),
+			fmt.Printf("%s%s  %s\n", indent, cyan("onCreate:"),
 				summarizeHookTemplates(crd.OperatorBox.OnCreate))
 		}
 
 		// onReconcile resources
 		if crd.OperatorBox.OnReconcile != nil && !crd.OperatorBox.OnReconcile.IsEmpty() {
-			fmt.Printf("%s%s  %s\n", indent, utils.Cyan("onReconcile:"),
+			fmt.Printf("%s%s  %s\n", indent, cyan("onReconcile:"),
 				summarizeHookTemplates(crd.OperatorBox.OnReconcile))
 		}
 
@@ -119,7 +153,7 @@ func printTemplateSummary(k *katalog.Katalog, crds map[string]orktypes.CRDEntry,
 			for _, f := range crd.OperatorBox.Status.Fields {
 				fieldNames = append(fieldNames, f.Path)
 			}
-			fmt.Printf("%s%s  %s\n", indent, utils.Cyan("status:"),
+			fmt.Printf("%s%s  %s\n", indent, cyan("status:"),
 				strings.Join(fieldNames, ", "))
 		}
 
@@ -127,7 +161,7 @@ func printTemplateSummary(k *katalog.Katalog, crds map[string]orktypes.CRDEntry,
 		if crd.AutoscaleEnabled() && crd.OperatorBox.Autoscale != nil {
 			a := crd.OperatorBox.Autoscale
 			if a.Profile != "" {
-				fmt.Printf("%s%s  profile=%s\n", indent, utils.Magenta("autoscale:"), a.Profile)
+				fmt.Printf("%s%s  profile=%s\n", indent, magenta("autoscale:"), a.Profile)
 			} else {
 				parts := []string{}
 				if len(a.Conditions.When) > 0 {
@@ -144,7 +178,7 @@ func printTemplateSummary(k *katalog.Katalog, crds map[string]orktypes.CRDEntry,
 					parts = append(parts, fmt.Sprintf("resync→%s", a.Do.Resync.String()))
 				}
 				fmt.Printf("%s%s  %s  interval:%s  cooldown:%s\n",
-					indent, utils.Magenta("autoscale:"),
+					indent, magenta("autoscale:"),
 					strings.Join(parts, "  "),
 					a.EffectiveInterval(), a.EffectiveCooldown(),
 				)
@@ -154,7 +188,7 @@ func printTemplateSummary(k *katalog.Katalog, crds map[string]orktypes.CRDEntry,
 		fmt.Println()
 	}
 
-	fmt.Printf("  %s\n\n", utils.Green("✓ Katalog is valid"))
+	fmt.Printf("  %s\n\n", green("✓ Katalog is valid"))
 }
 
 // ── printDependencyGraph ──────────────────────────────────────────────────────
@@ -163,10 +197,10 @@ func printTemplateSummary(k *katalog.Katalog, crds map[string]orktypes.CRDEntry,
 // 1. Ordered startup list (flat)
 // 2. Tree view showing the dependency hierarchy
 func printDependencyGraph(crds map[string]orktypes.CRDEntry, g *katalog.DependencyGraph, startupOrder []string) {
-	fmt.Printf("\n%s\n\n", utils.Cyan(utils.Bold("Dependency Graph")))
+	fmt.Printf("\n%s\n\n", cyan(bold("Dependency Graph")))
 
 	// ── Part 1: startup order list ────────────────────────────────────────────
-	fmt.Printf("  %s\n", utils.Bold("Startup order:"))
+	fmt.Printf("  %s\n", bold("Startup order:"))
 	for i, name := range startupOrder {
 		crd, ok := crds[name]
 		if !ok {
@@ -179,19 +213,19 @@ func printDependencyGraph(crds map[string]orktypes.CRDEntry, g *katalog.Dependen
 			for depName, d := range crd.DependsOn {
 				if d.Condition != "" && d.Condition != "started" {
 					formatted = append(formatted, fmt.Sprintf("%s(%s)",
-						utils.Yellow(depName),
-						utils.Dim(d.Condition)))
+						yellow(depName),
+						dim(d.Condition)))
 				} else {
-					formatted = append(formatted, utils.Yellow(depName))
+					formatted = append(formatted, yellow(depName))
 				}
 			}
-			depStr = fmt.Sprintf("  %s %s", utils.Dim("←"), strings.Join(formatted, ", "))
+			depStr = fmt.Sprintf("  %s %s", dim("←"), strings.Join(formatted, ", "))
 		}
 		gvk := fmt.Sprintf("%s/%s, Kind=%s", crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind)
 		fmt.Printf("    %s %-20s %s%s\n",
-			utils.Bold(fmt.Sprintf("%d.", i+1)),
+			bold(fmt.Sprintf("%d.", i+1)),
 			name,
-			utils.Dim(gvk),
+			dim(gvk),
 			depStr,
 		)
 	}
@@ -199,7 +233,7 @@ func printDependencyGraph(crds map[string]orktypes.CRDEntry, g *katalog.Dependen
 	fmt.Println()
 
 	// ── Part 2: tree view ─────────────────────────────────────────────────────
-	fmt.Printf("  %s\n", utils.Bold("Tree view:"))
+	fmt.Printf("  %s\n", bold("Tree view:"))
 
 	// Find roots (CRDs with no dependencies)
 	roots := []string{}
@@ -230,8 +264,8 @@ func printGraphNode(crds map[string]orktypes.CRDEntry, g *katalog.DependencyGrap
 	gvk := fmt.Sprintf("%s/%s", crd.APITypes.Group, crd.APITypes.Version)
 	fmt.Printf("%s%s%s  %s\n",
 		indent, connector,
-		utils.Bold(name),
-		utils.Dim(gvk),
+		bold(name),
+		dim(gvk),
 	)
 
 	if printed[name] {
@@ -255,7 +289,7 @@ func printGraphNode(crds map[string]orktypes.CRDEntry, g *katalog.DependencyGrap
 		depCrd, ok := crds[dep]
 		if ok {
 			if d, exists := depCrd.DependsOn[name]; exists && d.Condition != "" && d.Condition != "started" {
-				childConnector += utils.Dim("("+d.Condition+")") + " "
+				childConnector += dim("("+d.Condition+")") + " "
 			}
 		}
 		printGraphNode(crds, g, dep, childIndent, childConnector, printed)
@@ -267,59 +301,59 @@ func printGraphNode(crds map[string]orktypes.CRDEntry, g *katalog.DependencyGrap
 // printCRDDetail prints the full expanded state of a single CRD as a
 // human-readable document — what the runtime will use for this CRD.
 func printCRDDetail(crd orktypes.CRDEntry, g *katalog.DependencyGraph) {
-	fmt.Printf("\n%s\n", utils.Bold(crd.Name))
-	fmt.Printf("  %s %s/%s\n", utils.Cyan("APIVersion:"), crd.APITypes.Group, crd.APITypes.Version)
-	fmt.Printf("  %s %s  (plural: %s)\n", utils.Cyan("Kind:     "), crd.APITypes.Kind, crd.APITypes.Plural)
-	fmt.Printf("  %s %v", utils.Cyan("Namespaced:"), crd.IsNamespaced())
+	fmt.Printf("\n%s\n", bold(crd.Name))
+	fmt.Printf("  %s %s/%s\n", cyan("APIVersion:"), crd.APITypes.Group, crd.APITypes.Version)
+	fmt.Printf("  %s %s  (plural: %s)\n", cyan("Kind:     "), crd.APITypes.Kind, crd.APITypes.Plural)
+	fmt.Printf("  %s %v", cyan("Namespaced:"), crd.IsNamespaced())
 	if crd.Namespace != "" {
 		fmt.Printf("  (namespace: %s)", crd.Namespace)
 	}
 	fmt.Println()
-	fmt.Printf("  %s %v\n", utils.Cyan("Enabled:  "), crd.IsEnabled())
-	fmt.Printf("  %s %s\n", utils.Cyan("Mode:     "), crdModeLabel(crd))
+	fmt.Printf("  %s %v\n", cyan("Enabled:  "), crd.IsEnabled())
+	fmt.Printf("  %s %s\n", cyan("Mode:     "), crdModeLabel(crd))
 	fmt.Println()
 
 	// ── Runtime config ───────────────────────────────────────────────────────
-	fmt.Printf("  %s\n", utils.Cyan(utils.Bold("Runtime")))
-	fmt.Printf("    Workers:       %s\n", utils.Green(fmt.Sprintf("%d", crd.Workers)))
-	fmt.Printf("    Resync:        %s\n", utils.Green(crd.Resync.String()))
+	fmt.Printf("  %s\n", cyan(bold("Runtime")))
+	fmt.Printf("    Workers:       %s\n", green(fmt.Sprintf("%d", crd.Workers)))
+	fmt.Printf("    Resync:        %s\n", green(crd.Resync.String()))
 	if crd.Queue.MaxQueueDepth > 0 {
-		fmt.Printf("    MaxQueueDepth: %s\n", utils.Green(fmt.Sprintf("%d", crd.Queue.MaxQueueDepth)))
+		fmt.Printf("    MaxQueueDepth: %s\n", green(fmt.Sprintf("%d", crd.Queue.MaxQueueDepth)))
 	}
 	fmt.Println()
 
 	// ── DependsOn ─────────────────────────────────────────────────────────────
 	if len(crd.DependsOn) > 0 {
-		fmt.Printf("  %s\n", utils.Yellow(utils.Bold("DependsOn")))
+		fmt.Printf("  %s\n", yellow(bold("DependsOn")))
 		for depName, dep := range crd.DependsOn {
 			cond := dep.Condition
 			if cond == "" {
 				cond = "started"
 			}
-			fmt.Printf("    - %s  condition: %s\n", utils.Yellow(depName), cond)
+			fmt.Printf("    - %s  condition: %s\n", yellow(depName), cond)
 		}
 		fmt.Println()
 	}
 
 	// ── OperatorBox.OnCreate ──────────────────────────────────────────────────
 	if crd.OperatorBox.OnCreate != nil && !crd.OperatorBox.OnCreate.IsEmpty() {
-		fmt.Printf("  %s\n", utils.Cyan(utils.Bold("onCreate")))
+		fmt.Printf("  %s\n", cyan(bold("onCreate")))
 		printHookTemplateDetail("    ", crd.OperatorBox.OnCreate)
 		fmt.Println()
 	}
 
 	// ── OperatorBox.OnReconcile ───────────────────────────────────────────────
 	if crd.OperatorBox.OnReconcile != nil && !crd.OperatorBox.OnReconcile.IsEmpty() {
-		fmt.Printf("  %s\n", utils.Cyan(utils.Bold("onReconcile")))
+		fmt.Printf("  %s\n", cyan(bold("onReconcile")))
 		printHookTemplateDetail("    ", crd.OperatorBox.OnReconcile)
 		fmt.Println()
 	}
 
 	// ── Status ────────────────────────────────────────────────────────────────
 	if crd.OperatorBox.Status != nil && len(crd.OperatorBox.Status.Fields) > 0 {
-		fmt.Printf("  %s\n", utils.Cyan(utils.Bold("Status Fields")))
+		fmt.Printf("  %s\n", cyan(bold("Status Fields")))
 		for _, f := range crd.OperatorBox.Status.Fields {
-			fmt.Printf("    - %s: %s\n", utils.Green(f.Path), utils.Dim(f.Value))
+			fmt.Printf("    - %s: %s\n", green(f.Path), dim(f.Value))
 		}
 		fmt.Println()
 	}
@@ -327,9 +361,9 @@ func printCRDDetail(crd orktypes.CRDEntry, g *katalog.DependencyGraph) {
 	// ── Autoscale ─────────────────────────────────────────────────────────────
 	if crd.AutoscaleEnabled() && crd.OperatorBox.Autoscale != nil {
 		a := crd.OperatorBox.Autoscale
-		fmt.Printf("  %s\n", utils.Magenta(utils.Bold("Autoscale")))
+		fmt.Printf("  %s\n", magenta(bold("Autoscale")))
 		if a.Profile != "" {
-			fmt.Printf("    Profile:  %s\n", utils.Magenta(a.Profile))
+			fmt.Printf("    Profile:  %s\n", magenta(a.Profile))
 		} else {
 			fmt.Printf("    Interval: %s\n", a.EffectiveInterval())
 			fmt.Printf("    Cooldown: %s\n", a.EffectiveCooldown())
@@ -346,13 +380,13 @@ func printCRDDetail(crd orktypes.CRDEntry, g *katalog.DependencyGraph) {
 				}
 			}
 			if a.Do.Workers != nil {
-				fmt.Printf("    Do.Workers:    %s\n", utils.Magenta(fmt.Sprintf("%d", *a.Do.Workers)))
+				fmt.Printf("    Do.Workers:    %s\n", magenta(fmt.Sprintf("%d", *a.Do.Workers)))
 			}
 			if a.Do.QueueDepth != nil {
-				fmt.Printf("    Do.QueueDepth: %s\n", utils.Magenta(fmt.Sprintf("%d", *a.Do.QueueDepth)))
+				fmt.Printf("    Do.QueueDepth: %s\n", magenta(fmt.Sprintf("%d", *a.Do.QueueDepth)))
 			}
 			if a.Do.Resync != nil {
-				fmt.Printf("    Do.Resync:     %s\n", utils.Magenta(a.Do.Resync.String()))
+				fmt.Printf("    Do.Resync:     %s\n", magenta(a.Do.Resync.String()))
 			}
 		}
 		fmt.Println()
@@ -360,7 +394,7 @@ func printCRDDetail(crd orktypes.CRDEntry, g *katalog.DependencyGraph) {
 
 	// ── Finalizers ────────────────────────────────────────────────────────────
 	if len(crd.OperatorBox.Finalizers) > 0 {
-		fmt.Printf("  %s\n", utils.Cyan(utils.Bold("Finalizers")))
+		fmt.Printf("  %s\n", cyan(bold("Finalizers")))
 		for _, f := range crd.OperatorBox.Finalizers {
 			fmt.Printf("    - %s\n", f)
 		}
@@ -371,9 +405,9 @@ func printCRDDetail(crd orktypes.CRDEntry, g *katalog.DependencyGraph) {
 	if g != nil {
 		dependents := g.GetDependents(crd.Name)
 		if len(dependents) > 0 {
-			fmt.Printf("  %s\n", utils.Yellow(utils.Bold("Required by")))
+			fmt.Printf("  %s\n", yellow(bold("Required by")))
 			for _, dep := range dependents {
-				fmt.Printf("    - %s\n", utils.Yellow(dep))
+				fmt.Printf("    - %s\n", yellow(dep))
 			}
 			fmt.Println()
 		}
@@ -390,9 +424,9 @@ func printHookTemplateDetail(indent string, ht *orktypes.HookTemplates) {
 		if len(names) == 0 {
 			return
 		}
-		fmt.Printf("%s%s\n", indent, utils.Green(fmt.Sprintf("%s(%d):", kind, len(names))))
+		fmt.Printf("%s%s\n", indent, green(fmt.Sprintf("%s(%d):", kind, len(names))))
 		for _, n := range names {
-			fmt.Printf("%s  %s\n", indent, utils.Dim("- "+n))
+			fmt.Printf("%s  %s\n", indent, dim("- "+n))
 		}
 	}
 
@@ -411,9 +445,9 @@ func printHookTemplateDetail(indent string, ht *orktypes.HookTemplates) {
 	printResources("clusterRoles", clusterRoleNameList(ht.ClusterRoles))
 
 	if len(ht.CustomResource) > 0 {
-		fmt.Printf("%s%s\n", indent, utils.Green(fmt.Sprintf("custom(%d):", len(ht.CustomResource))))
+		fmt.Printf("%s%s\n", indent, green(fmt.Sprintf("custom(%d):", len(ht.CustomResource))))
 		for _, cr := range ht.CustomResource {
-			fmt.Printf("%s  %s\n", indent, utils.Dim(fmt.Sprintf("- %s/%s  name: %s", cr.APIVersion, cr.Kind, cr.Metadata.Name)))
+			fmt.Printf("%s  %s\n", indent, dim(fmt.Sprintf("- %s/%s  name: %s", cr.APIVersion, cr.Kind, cr.Metadata.Name)))
 		}
 	}
 }
@@ -460,13 +494,13 @@ func printConditionLine(indent string, cond orktypes.Condition) {
 	if cond.Field != "" {
 		line := fmt.Sprintf("%s- %s", indent, cond.Field)
 		if cond.GreaterThan != "" {
-			line += fmt.Sprintf(" > %s", utils.Dim(cond.GreaterThan))
+			line += fmt.Sprintf(" > %s", dim(cond.GreaterThan))
 		}
 		if cond.LessThan != "" {
-			line += fmt.Sprintf(" < %s", utils.Dim(cond.LessThan))
+			line += fmt.Sprintf(" < %s", dim(cond.LessThan))
 		}
 		if cond.Equals != "" {
-			line += fmt.Sprintf(" == %s", utils.Dim(cond.Equals))
+			line += fmt.Sprintf(" == %s", dim(cond.Equals))
 		}
 		fmt.Println(line)
 	}

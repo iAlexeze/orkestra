@@ -8,7 +8,6 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/motif"
 	"github.com/orkspace/orkestra/pkg/registry"
-	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -50,7 +49,7 @@ var registryPullCmd = &cobra.Command{
 
 		if ref.IsCached() && !refresh {
 			cacheDir, _ := ref.CachePath()
-			fmt.Printf("  %s Already cached\n", utils.SuccessMark())
+			fmt.Printf("  %s Already cached\n", successMark())
 			fmt.Printf("  → %s\n", cacheDir)
 			printPullSuggestions(ref, cacheDir)
 			return nil
@@ -67,11 +66,11 @@ var registryPullCmd = &cobra.Command{
 			if err := copyDir(cacheDir, outDir); err != nil {
 				return fmt.Errorf("extracting to %s: %w", outDir, err)
 			}
-			fmt.Printf("  %s Extracted to %s\n", utils.SuccessMark(), outDir)
+			fmt.Printf("  %s Extracted to %s\n", successMark(), outDir)
 			return nil
 		}
 
-		fmt.Printf("  %s Cached at %s\n", utils.SuccessMark(), cacheDir)
+		fmt.Printf("  %s Cached at %s\n", successMark(), cacheDir)
 		printPullSuggestions(ref, cacheDir)
 		return nil
 	},
@@ -86,7 +85,7 @@ func pullFromFile(cmd *cobra.Command, filePath string, refresh bool) error {
 		return fmt.Errorf("reading imports from %s: %w", filePath, err)
 	}
 	if imports.Empty() {
-		fmt.Printf("  %s No OCI imports found in %s\n", utils.SuccessMark(), filePath)
+		fmt.Printf("  %s No OCI imports found in %s\n", successMark(), filePath)
 		return nil
 	}
 
@@ -101,10 +100,10 @@ func pullFromFile(cmd *cobra.Command, filePath string, refresh bool) error {
 	for _, imp := range imports.MotifImports {
 		fmt.Printf("Pulling motif %s...\n", imp.Motif)
 		if err := motif.PullImport(&imp); err != nil {
-			fmt.Printf("  %s %v\n", utils.FailureMark(), err)
+			fmt.Printf("  %s %v\n", failureMark(), err)
 			errs = append(errs, err.Error())
 		} else {
-			fmt.Printf("  %s %s\n", utils.SuccessMark(), imp.Motif)
+			fmt.Printf("  %s %s\n", successMark(), imp.Motif)
 		}
 	}
 
@@ -115,20 +114,20 @@ func pullFromFile(cmd *cobra.Command, filePath string, refresh bool) error {
 		cleanURL = strings.TrimPrefix(cleanURL, "oci://")
 		ref, err := registry.Resolve(cleanURL + ":" + version)
 		if err != nil {
-			fmt.Printf("  %s resolving %s: %v\n", utils.FailureMark(), src.URL, err)
+			fmt.Printf("  %s resolving %s: %v\n", failureMark(), src.URL, err)
 			errs = append(errs, err.Error())
 			continue
 		}
 		if ref.IsCached() && !refresh {
-			fmt.Printf("  %s Already cached: %s\n", utils.SuccessMark(), ref.ShortName())
+			fmt.Printf("  %s Already cached: %s\n", successMark(), ref.ShortName())
 			continue
 		}
 		fmt.Printf("Pulling %s...\n  → %s\n", ref.ShortName(), ref.String())
 		if _, err := client.Pull(cmd.Context(), ref, refresh); err != nil {
-			fmt.Printf("  %s %v\n", utils.FailureMark(), err)
+			fmt.Printf("  %s %v\n", failureMark(), err)
 			errs = append(errs, err.Error())
 		} else {
-			fmt.Printf("  %s %s\n", utils.SuccessMark(), ref.ShortName())
+			fmt.Printf("  %s %s\n", successMark(), ref.ShortName())
 		}
 	}
 

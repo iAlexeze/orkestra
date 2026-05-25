@@ -11,7 +11,6 @@ import (
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -115,7 +114,7 @@ Examples:
 		})
 
 		fmt.Println()
-		fmt.Println(utils.Bold("Validating " + kindLabel + "..."))
+		fmt.Println(bold("Validating " + kindLabel + "..."))
 		fmt.Println()
 
 		builtIn := 0
@@ -172,7 +171,7 @@ func detectKindFromFile(path string) (string, error) {
 // validateE2EFile validates an E2E spec file and prints a summary.
 func validateE2EFile(path string) error {
 	fmt.Println()
-	fmt.Println(utils.Bold("Validating E2E..."))
+	fmt.Println(bold("Validating E2E..."))
 	fmt.Println()
 
 	data, err := os.ReadFile(path)
@@ -216,23 +215,23 @@ func validateE2EFile(path string) error {
 
 	if len(errs) > 0 {
 		for _, e := range errs {
-			fmt.Printf("  %s %s\n", utils.FailureMark(), e)
+			fmt.Printf("  %s %s\n", failureMark(), e)
 		}
 		fmt.Println()
 		return fmt.Errorf("%d validation error(s) in %s", len(errs), path)
 	}
 
-	icon := utils.HealthIcon("ready")
-	fmt.Printf("%s %s\n", icon, utils.Bold(e2e.Metadata.Name))
+	icon := healthIcon("ready")
+	fmt.Printf("%s %s\n", icon, bold(e2e.Metadata.Name))
 	if e2e.Metadata.Description != "" {
-		fmt.Printf("    %s\n", utils.Gray(e2e.Metadata.Description))
+		fmt.Printf("    %s\n", gray(e2e.Metadata.Description))
 	}
 	fmt.Printf("    %s\n",
-		utils.Gray(fmt.Sprintf("katalog : %s\n    crd     : %s\n    cr      : %s",
+		gray(fmt.Sprintf("katalog : %s\n    crd     : %s\n    cr      : %s",
 			e2e.Spec.Katalog, e2e.Spec.CRD, e2e.Spec.CR)),
 	)
 	if len(e2e.Spec.Setup) > 0 {
-		fmt.Printf("    %s\n", utils.Gray("setup   : "+strings.Join(e2e.Spec.Setup, ", ")))
+		fmt.Printf("    %s\n", gray("setup   : "+strings.Join(e2e.Spec.Setup, ", ")))
 	}
 	fmt.Println()
 	for _, exp := range e2e.Spec.Expect {
@@ -241,7 +240,7 @@ func validateE2EFile(path string) error {
 			to = "60s"
 		}
 		fmt.Printf("    %s\n",
-			utils.Gray(fmt.Sprintf("%-40s after: %-12s timeout: %s", exp.Name, exp.After, to)))
+			gray(fmt.Sprintf("%-40s after: %-12s timeout: %s", exp.Name, exp.After, to)))
 	}
 	fmt.Println()
 	fmt.Println(strings.Repeat("─", 60))
@@ -253,19 +252,19 @@ func validateE2EFile(path string) error {
 // validateMotifFile runs Motif-specific validation and prints results.
 func validateMotifFile(path string) error {
 	fmt.Println()
-	fmt.Println(utils.Bold("Validating Motif..."))
+	fmt.Println(bold("Validating Motif..."))
 	fmt.Println()
 
 	errs := katalog.ValidateMotif(path)
 	if len(errs) == 0 {
-		icon := utils.HealthIcon("ready")
-		fmt.Printf("%s %s\n", icon, utils.Bold(path))
-		fmt.Printf("    %s\n", utils.Gray("valid"))
+		icon := healthIcon("ready")
+		fmt.Printf("%s %s\n", icon, bold(path))
+		fmt.Printf("    %s\n", gray("valid"))
 		return nil
 	}
 
 	for _, e := range errs {
-		fmt.Printf("  %s %s\n", utils.FailureMark(), e.Error())
+		fmt.Printf("  %s %s\n", failureMark(), e.Error())
 	}
 	fmt.Println()
 	return fmt.Errorf("%d validation error(s) in %s", len(errs), path)

@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -58,8 +57,8 @@ func unifiedDiff(nameA, nameB string, a, b []byte, verbose bool) string {
 	blines := strings.Split(string(b), "\n")
 
 	var out []string
-	out = append(out, utils.Gray("--- "+nameA))
-	out = append(out, utils.Gray("+++ "+nameB))
+	out = append(out, gray("--- "+nameA))
+	out = append(out, gray("+++ "+nameB))
 
 	max := len(alines)
 	if len(blines) > max {
@@ -81,12 +80,12 @@ func unifiedDiff(nameA, nameB string, a, b []byte, verbose bool) string {
 				out = append(out, " "+A)
 			}
 		case A == "":
-			out = append(out, utils.Green("+"+B))
+			out = append(out, green("+"+B))
 		case B == "":
-			out = append(out, utils.Red("-"+A))
+			out = append(out, red("-"+A))
 		default:
-			out = append(out, utils.Red("-"+A))
-			out = append(out, utils.Green("+"+B))
+			out = append(out, red("-"+A))
+			out = append(out, green("+"+B))
 		}
 	}
 

@@ -14,7 +14,7 @@ security:
     enabled: true
 
 gateway:
-  enabled: true
+  endpoint: http://orkestra-gateway:8080
 
 spec:
   crds:
