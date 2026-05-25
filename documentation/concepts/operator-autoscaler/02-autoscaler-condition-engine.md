@@ -22,7 +22,7 @@ conditions:
 
 The combined logic is:
 
-```
+```text
 (anyOf is empty OR anyOf evaluates to true)
 AND
 (when is empty OR when evaluates to true)
@@ -125,7 +125,7 @@ Supported keys:
 
 Valid day names:
 
-```
+```text
 Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
 ```
 
@@ -146,7 +146,7 @@ Without `duration:`, the window lasts for one autoscaler tick.
 
 Cron format:
 
-```
+```text
 minute hour dayOfMonth month dayOfWeek
 ```
 

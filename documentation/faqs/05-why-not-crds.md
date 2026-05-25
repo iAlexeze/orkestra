@@ -56,7 +56,7 @@ curl localhost:8080/katalog/website | jq
 curl localhost:8080/katalog/website/health
 ```
 
-`ork status` queries `/katalog`. `ork dashboard` will render it in the terminal.
+The control center queries `/katalog` and renders the dashboard.
 Monitoring systems can scrape it. Out-of-the-box dashboards are on the roadmap.
 All of this from a live API that reflects actual running state — not a Kubernetes
 object that reflects the declared spec.
@@ -106,9 +106,9 @@ A CRD-based Katalog would show you the spec. The `/katalog` endpoint shows you
 the operator. These are not equivalent. The live API is strictly more valuable
 than a Kubernetes object would be.
 
-!!! note "ork status is built on /katalog"
-    `ork status` is not a separate data source — it is the `/katalog` endpoint
-    rendered for the terminal. Anything that can reach the health server can
+!!! note "Control Center is built on /katalog"
+    The control center is not a separate data source — it is the `/katalog` endpoint
+    rendered on a UI. Anything that can reach the health server can
     consume the same data. This is how out-of-the-box dashboards become possible:
     the API is already there. The dashboard is just a renderer.
 

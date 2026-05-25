@@ -13,7 +13,7 @@ func BuildCRDHealthHandler(
 ) http.HandlerFunc
 ```
 
-Serves `GET /katalog/{crd}/health`. Returns the live health summary for a single CRD. Used by Kubernetes liveness probes, external health checks, and `ork status`.
+Serves `GET /katalog/{crd}/health`. Returns the live health summary for a single CRD. Used by Kubernetes liveness probes, external health checks, and the control center.
 
 The HTTP status code and the `state` string are derived from the CRD's atomic health fields:
 
@@ -143,7 +143,7 @@ func BuildKatalogHandler(
 ) http.HandlerFunc
 ```
 
-Serves `GET /katalog`. Aggregates all CRDs into one response — the source of truth for `ork status` and the Control Center dashboard.
+Serves `GET /katalog`. Aggregates all CRDs into one response — the source of truth for the Control Center dashboard.
 
 The response includes:
 

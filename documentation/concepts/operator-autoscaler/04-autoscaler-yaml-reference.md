@@ -161,7 +161,7 @@ Keys:
 
 Valid day names:
 
-```
+```text
 Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
 ```
 
@@ -183,7 +183,7 @@ Without `duration:`, the window lasts for one autoscaler tick.
 
 Cron format:
 
-```
+```text
 minute hour dayOfMonth month dayOfWeek
 ```
 

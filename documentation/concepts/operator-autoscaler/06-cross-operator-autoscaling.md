@@ -54,7 +54,7 @@ cross:
 
 The autoscaler automatically receives:
 
-```
+```text
 cross.db.metrics.queueDepth
 cross.db.metrics.workersBusyPercent
 cross.db.metrics.workersIdlePercent

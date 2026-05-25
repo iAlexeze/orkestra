@@ -36,7 +36,7 @@ providers:                             # optional → see katalog-providers.md
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | yes | Unique identifier. Written as the `managed-by` annotation on all CRs. |
-| `description` | no | Shown in `ork status` and the `/katalog` API response. |
+| `description` | no | Shown in the `/katalog` API response. |
 
 ## `spec.finalizers`
 

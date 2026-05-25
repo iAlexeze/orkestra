@@ -23,9 +23,10 @@ On every tick:
 3. Evaluate `anyOf` (OR)
 4. Evaluate `when` (AND)
 5. Combine results  
-   ```
-   final = anyOf_passes AND when_passes
-   ```
+
+```text
+final = anyOf_passes AND when_passes
+```
 
 This evaluation is O(1) and entirely in‑memory.
 
@@ -96,7 +97,7 @@ cross:
 
 …the autoscaler automatically receives:
 
-```yaml
+```text
 cross.db.metrics.queueDepth
 cross.db.metrics.workersBusyPercent
 cross.db.metrics.errorRatePercent

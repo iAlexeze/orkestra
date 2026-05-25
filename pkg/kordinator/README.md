@@ -12,7 +12,7 @@ Everything upstream of kordinator — informers, queues, the provider registry, 
 - **Dependency gating** — enforces `condition: started` and `condition: healthy` dependency requirements before activating a dependent CRD, without ever blocking the startup sequence
 - **Autoscaler wiring** — when `autoscale:` is declared on an operatorBox:, `startCRDWorkers` starts only `baseline.workers` goroutines, injects a `spawnWorker` callback so `ResizeWorkers` can add goroutines on scale-up, registers the CRD's `AutoMetrics` with `GlobalCrossMetricsRegistry`, and launches the autoscaler and resync goroutines in dedicated goroutines tied to the CRD's context
 - **Rollback wiring** — injects `onTrigger` / `onClear` callbacks into the reconciler so that rollback events update `CRDHealth` counters and are reflected in the `/katalog/{crd}` response and the Control Center
-- **Runtime introspection** — serves the `/katalog`, `/katalog/{crd}`, and `/katalog/{crd}/health` endpoints that power `ork status` and the Control Center
+- **Runtime introspection** — serves the `/katalog`, `/katalog/{crd}`, and `/katalog/{crd}/health` endpoints that power the Control Center
 
 ## Where kordinator fits
 

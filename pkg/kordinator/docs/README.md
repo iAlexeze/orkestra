@@ -11,4 +11,4 @@
 | [03-startup.md](03-startup.md) | `DependencyKordinator` startup sequence — topology, dependency channels, non-blocking activation |
 | [04-self-healing.md](04-self-healing.md) | The retry loop and its four phases — missing CRDs, runtime deletion, reappearance, deferred activation |
 | [05-workers.md](05-workers.md) | The worker loop, `processItemForGVK`, queue drain, and shutdown semantics |
-| [06-handlers.md](06-handlers.md) | The three runtime introspection HTTP handlers that power `ork status` and the Control Center |
+| [06-handlers.md](06-handlers.md) | The three runtime introspection HTTP handlers that power the Control Center |
