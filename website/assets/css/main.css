@@ -1289,7 +1289,16 @@ code:not(pre > code) {
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
-  padding: 0 0.5rem 0.75rem;
+  padding: 0 0.5rem;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 220ms ease, opacity 180ms ease;
+}
+.sidebar-section.open .sidebar-section-pages {
+  max-height: 800px;
+  opacity: 1;
+  padding-bottom: 0.75rem;
 }
 
 .sidebar-link {
@@ -1371,6 +1380,14 @@ code:not(pre > code) {
   display: flex;
   flex-direction: column;
   gap: 1px;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 180ms ease, opacity 150ms ease;
+}
+.sidebar-subsection.open .sidebar-subsection-pages {
+  max-height: 600px;
+  opacity: 1;
 }
 
 .sidebar-link--nested {

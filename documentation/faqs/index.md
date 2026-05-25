@@ -1,6 +1,6 @@
 # Frequently Asked Questions
 
-## [Concepts](./concepts.md)
+## [Concepts](./01-concepts.md)
 
 Core concepts — what Orkestra is, how it works, and how it compares.
 
@@ -14,7 +14,7 @@ Core concepts — what Orkestra is, how it works, and how it compares.
 
 ---
 
-## [Running](./running.md)
+## [Running](./02-running.md)
 
 Setup, configuration, operations, and RBAC.
 
@@ -29,7 +29,7 @@ Setup, configuration, operations, and RBAC.
 
 ---
 
-## [Patterns](./patterns.md)
+## [Patterns](./03-patterns.md)
 
 Common usage patterns — built-in kinds, validation, mutation, conditions.
 
@@ -41,7 +41,7 @@ Common usage patterns — built-in kinds, validation, mutation, conditions.
 
 ---
 
-## [Ecosystem](./ecosystem.md)
+## [Ecosystem](./04-ecosystem.md)
 
 Comparisons and the path forward.
 
@@ -53,7 +53,7 @@ Comparisons and the path forward.
 
 ## Why Katalog and Komposer are not CRDs
 
-See [Why Not CRDs](./why-not-crds.md) for the full reasoning behind keeping Katalog
+See [Why Not CRDs](./05-why-not-crds.md) for the full reasoning behind keeping Katalog
 and Komposer as plain YAML files rather than Kubernetes CRDs.
 
 ---

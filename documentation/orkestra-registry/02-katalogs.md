@@ -16,7 +16,7 @@ postgres/
 
 `katalog.yaml` is the only required file. `crd.yaml` is optional because the consumer may already have the CRD installed, or may want to bring their own version — Orkestra does not force a CRD on import. Including it is recommended for patterns intended as a complete drop-in, but omitting it lets the consumer control the CRD independently. `cr.yaml` gives consumers a working sample, and `e2e.yaml` means the pattern was verified before it was published.
 
-Including a `komposer.yaml` is optional but useful: it ships alongside the Katalog in the same artifact and shows consumers exactly how to compose this pattern. Consumers who want to load it instead of `katalog.yaml` set `useKomposer: true` in their import entry — see [Komposers](./komposers.md).
+Including a `komposer.yaml` is optional but useful: it ships alongside the Katalog in the same artifact and shows consumers exactly how to compose this pattern. Consumers who want to load it instead of `katalog.yaml` set `useKomposer: true` in their import entry — see [Komposers](./03-komposers.md).
 
 ## Publishing
 
@@ -24,7 +24,7 @@ Including a `komposer.yaml` is optional but useful: it ships alongside the Katal
 ork registry push postgres:v14 ./patterns/postgres/
 ```
 
-If `e2e.yaml` exists, the push runs it first. The pattern is only published if all expectations pass. See [E2E](e2e.md) for how this works.
+If `e2e.yaml` exists, the push runs it first. The pattern is only published if all expectations pass. See [E2E](04-e2e.md) for how this works.
 
 To skip the gate:
 

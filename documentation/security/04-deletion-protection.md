@@ -185,7 +185,7 @@ For drift correction (reconciling label state back to what the Katalog declares)
 
 ### "The operator was deleted and now nothing enforces protection"
 
-If deletion protection itself is deleted while protection is active, the webhook is gone and CRs can be deleted. This is why Orkestra self-heals its own webhook configurations — see the [self-healing section](admission.md#webhook-self-healing). And why the Helm chart protects the operator's own Deployment with the same label.
+If deletion protection itself is deleted while protection is active, the webhook is gone and CRs can be deleted. This is why Orkestra self-heals its own webhook configurations — see the [self-healing section](01-admission.md#webhook-self-healing). And why the Helm chart protects the operator's own Deployment with the same label.
 
 ### "I manually added the exemption label to a strictly protected resource"
 
@@ -214,4 +214,4 @@ ork run --dev       # run Orkestra locally (--dev creates a kind cluster if need
 ork e2e             # declarative end-to-end testing
 ```
 
----
+Follow the steps in the README

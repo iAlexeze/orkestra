@@ -147,18 +147,20 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient, owner domain
 // Resolve builds a ResolvedStatefulSetSpec from a StatefulSetTemplateSource.
 func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedStatefulSetSpec {
 	spec := ResolvedStatefulSetSpec{
-		Name:        src.Name,
-		Namespace:   src.Namespace,
-		Image:       src.Image,
-		ServiceName: src.ServiceName,
-		Replicas:    common.ParseReplicas(src.Replicas),
-		Labels:      make(map[string]string),
-		Annotations: make(map[string]string),
-		Env:         src.Env,
-		EnvFrom:     src.EnvFrom,
-		Resources:   common.ResolveResources(src.Resources),
-		Probes:      src.Probes,
-		Sleep:       src.Sleep,
+		Name:            src.Name,
+		Namespace:       src.Namespace,
+		Image:           src.Image,
+		ServiceName:     src.ServiceName,
+		Replicas:        common.ParseReplicas(src.Replicas),
+		Labels:          make(map[string]string),
+		Annotations:     make(map[string]string),
+		Env:             src.Env,
+		EnvFrom:         src.EnvFrom,
+		Resources:       common.ResolveResources(src.Resources),
+		Probes:          src.Probes,
+		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
+		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Sleep:           src.Sleep,
 	}
 
 	for _, vct := range src.VolumeClaimTemplates {
@@ -341,6 +343,9 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 			PodManagementPolicy: appsv1.ParallelPodManagement,
 		},
 	}
+
+	// Security
+	common.ApplySecurityContext(&sts.Spec.Template.Spec.Containers[0], &sts.Spec.Template.Spec, spec.SecurityContext, spec.PodSecurity)
 
 	for _, vct := range spec.VolumeClaimTemplates {
 		storageQty := resource.MustParse(vct.StorageSize)

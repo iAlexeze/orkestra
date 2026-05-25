@@ -1,39 +1,34 @@
 # ork plan
 
-Show what would change if you applied your local Katalog — without applying anything. `ork plan` computes the diff between your local definition and the currently deployed one, and prints it. Nothing is created, updated, or deleted.
+Show what would change if you applied your local Katalog — without applying anything. `ork plan` computes the diff between your local definition and a deployed reference, and prints it. Nothing is created, updated, or deleted.
 
-```bash
-ork plan
-```
-
-`--file` defaults to `katalog.yaml` — only required for non-standard filenames.
+A source for the deployed state must be provided explicitly — `ork plan` never silently reaches out to the cluster.
 
 ---
 
-## Three sources for the deployed state
+## Two sources for the deployed state
 
-`ork plan` compares your local Katalog against one of three sources:
+### Local bundle file (`--bundle`) — no cluster needed
 
-### Live cluster (default)
-
-Reads the deployed Katalog from the `orkestra-katalog` ConfigMap in `orkestra-system`. Requires a cluster connection.
-
-```bash
-ork plan
-ork plan -f katalog.yaml
-ork plan -f katalog.yaml --cm my-katalog --namespace my-ns
-```
-
-### Local bundle file (`--bundle`)
-
-Reads the ConfigMap from a local bundle YAML instead of the cluster. No cluster connection required. A bundle is the output of `ork generate bundle` — a multi-document YAML file that includes the Katalog ConfigMap alongside CRDs and other manifests.
+Reads the deployed Katalog from a local bundle YAML. A bundle is the output of `ork generate bundle` — a multi-document YAML that includes the Katalog ConfigMap alongside CRDs and other manifests. No cluster connection required.
 
 ```bash
 ork plan --bundle bundle.yaml
 ork plan -f katalog.yaml --bundle bundle.yaml
 ```
 
-This is the offline form: both the local Katalog and the deployed reference come from local files. CI pipelines can run `ork plan` without cluster credentials by storing a bundle artifact from the last deploy.
+This is the recommended form for CI: store the bundle artifact from the last deploy, then run `ork plan --bundle` without cluster credentials.
+
+### Cluster ConfigMap (`--cm`) — requires cluster access
+
+Reads the deployed Katalog from a ConfigMap in the cluster.
+
+```bash
+ork plan --cm orkestra-katalog
+ork plan -f katalog.yaml --cm orkestra-katalog --namespace orkestra-system
+```
+
+`--namespace` defaults to `orkestra-system` when `--cm` is used.
 
 ---
 
@@ -42,9 +37,11 @@ This is the offline form: both the local Katalog and the deployed reference come
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
 | `--file` | `-f` | `katalog.yaml` | Path to the local Katalog to compare |
-| `--bundle` | `-b` | | Path to a bundle YAML — reads deployed state from it instead of the cluster |
-| `--cm` | | `orkestra-katalog` | ConfigMap name holding the deployed Katalog |
+| `--bundle` | `-b` | | Path to a bundle YAML — reads deployed state from it (no cluster needed) |
+| `--cm` | | | ConfigMap name holding the deployed Katalog — requires cluster access |
 | `--namespace` | `-n` | `orkestra-system` | Namespace of the deployed Katalog ConfigMap |
+
+If neither `--bundle` nor `--cm` is given, `ork plan` exits with an error and prints usage guidance.
 
 ---
 
@@ -70,21 +67,24 @@ Changes to apply:
 
 ## Cluster access
 
-`ork plan` without `--bundle` reads from the cluster — it connects to Kubernetes to fetch the ConfigMap. With `--bundle`, it is fully offline and requires no cluster credentials.
+`ork plan --bundle` is fully offline — no cluster credentials needed. `ork plan --cm` reads a ConfigMap from the cluster but never writes anything.
 
-`ork run` and `ork gate` are the only commands that write to or actively manage a cluster. `ork plan` reads only.
+`ork run` and `ork gate` are the only commands that actively manage cluster state. `ork plan --cm` reads only.
 
 ---
 
 ## Examples
 
 ```bash
-# Compare local katalog.yaml against the deployed Katalog
-ork plan
-
-# Offline — compare against a bundle from the last deploy (no cluster needed)
+# Offline — compare against a bundle from the last deploy (recommended for CI)
 ork plan --bundle bundle.yaml
 
-# Compare against a Katalog in a non-default ConfigMap
+# Compare against a Katalog in a live cluster
+ork plan --cm orkestra-katalog
+
+# Compare against a Katalog in a non-default namespace
 ork plan --cm team-a-katalog --namespace platform-system
+
+# Use a non-standard local Katalog file
+ork plan -f my-katalog.yaml --bundle bundle.yaml
 ```

@@ -82,6 +82,6 @@ A document that passes `ork validate` and `ork simulate` is very unlikely to fai
 
 ## Next
 
-- **[Admission Control](./admission.md)** — deny and warn rules enforced by the webhook
-- **[Namespace Protection](./namespace-protection.md)** — two-point namespace enforcement
-- **[ork plan](../reference/cli/plan.md)** — diff a Katalog before applying it
+- **[Admission Control](./01-admission.md)** — deny and warn rules enforced by the webhook
+- **[Namespace Protection](./03-namespace-protection.md)** — two-point namespace enforcement
+- **[ork plan](../reference/cli/02-plan.md)** — diff a Katalog before applying it

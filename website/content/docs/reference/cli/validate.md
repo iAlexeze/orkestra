@@ -1,7 +1,7 @@
 ---
 title: "ork validate"
-date: 2026-05-20
-weight: 59
+date: 2026-05-25
+weight: 83
 ---
 
 Validate a Katalog or Komposer. Resolves sources, merges, and runs the full validation pipeline.
@@ -14,7 +14,7 @@ ork validate --file <path>
 
 | Flag | Description |
 |------|-------------|
-| `--file` | Path or URL to a Katalog or Komposer (repeatable) |
+| `--file` | Path or URL to a Katalog or Komposer (../repeatable) |
 
 ## Examples
 

@@ -15,12 +15,13 @@ Orkestra's security model has five interlocking layers, each described in its ow
 
 | Layer | What it protects | Document |
 |-------|-----------------|----------|
-| **Binary surface** | Production containers cannot run developer commands | [Binaries & build tags](binaries.md) |
-| **Permissions** | The operator only has the rights it needs, derived from your Katalog | [RBAC](rbac.md) |
-| **Admission control** | Bad CRs are rejected before they reach etcd | [Admission webhooks](admission.md) |
-| **Deletion protection** | CRs and the operator itself cannot be accidentally deleted | [Deletion protection](deletion-protection.md) |
-| **Namespace isolation** | CRs are confined to the namespaces you allow | [Namespace protection](namespace-protection.md) |
-| **Validation pipeline** | Strict parsing and multi-stage validation before anything runs | [Validation pipeline](validation-pipeline.md) |
+| **Binary surface** | Production containers cannot run developer commands | [Binaries & build tags](05-binaries.md) |
+| **Permissions** | The operator only has the rights it needs, derived from your Katalog | [RBAC](02-rbac.md) |
+| **Admission control** | Bad CRs are rejected before they reach etcd | [Admission webhooks](01-admission.md) |
+| **Deletion protection** | CRs and the operator itself cannot be accidentally deleted | [Deletion protection](04-deletion-protection.md) |
+| **Namespace isolation** | CRs are confined to the namespaces you allow | [Namespace protection](03-namespace-protection.md) |
+| **Validation pipeline** | Strict parsing and multi-stage validation before anything runs | [Validation pipeline](06-validation-pipeline.md) |
+| **Pod security** | Workload containers run with hardened security contexts | [Pod security](07-pod-security.md) |
 
 These layers are independent and can be enabled in any combination. You do not need all five to get value from any one of them.
 
@@ -56,7 +57,7 @@ In this mode the reconciler continuously enforces the label invariants declared 
 └────────────────────────────────────────────┘
 ```
 
-Only the Gateway is deployed. Admission webhooks, deletion protection, and namespace protection all work. But there is no reconciler, so label enforcement is not automatic: **you are responsible for applying the correct labels to your resources yourself**. See [Deletion protection — gateway-only mode](deletion-protection.md#gateway-only-mode) for what this means in practice.
+Only the Gateway is deployed. Admission webhooks, deletion protection, and namespace protection all work. But there is no reconciler, so label enforcement is not automatic: **you are responsible for applying the correct labels to your resources yourself**. See [Deletion protection — gateway-only mode](04-deletion-protection.md#gateway-only-mode) for what this means in practice.
 
 This mode is useful when you bring your own operator or a cluster with Kubernetes resources and only want Orkestra's admission and protection layer, or when you are testing locally (deploy gateway via Helm, run `ork run` in your terminal — the gateway continues to honour its contract, `ork run` becomes its companion runtime, no blockers).
 
@@ -73,7 +74,7 @@ Only two commands connect to and actively manage a real Kubernetes cluster:
 
 Every other command — `ork validate`, `ork simulate`, `ork template`, `ork notes`, `ork generate`, `ork init`, `ork plan --bundle` — runs entirely offline. No cluster credentials are read, no API server calls are made.
 
-This minimal surface is intentional. If a command does not need the cluster, it does not touch it. The [Validation pipeline](./validation-pipeline.md) covers the full offline path.
+This minimal surface is intentional. If a command does not need the cluster, it does not touch it. The [Validation pipeline](./06-validation-pipeline.md) covers the full offline path.
 
 ---
 
@@ -156,9 +157,10 @@ Report security issues privately with reproduction steps, relevant logs, and an 
 
 ## Where to go next
 
-- **[Admission Control](./admission.md)** — deny/warn rules at admission time
-- **[RBAC](./rbac.md)** — generating and scoping ClusterRoles
-- **[Namespace Protection](./namespace-protection.md)** — admission and runtime enforcement
-- **[Deletion Protection](./deletion-protection.md)** — preventing accidental CR and CRD deletion
-- **[Binaries](./binaries.md)** — verifying Orkestra release artifacts
-- **[Validation Pipeline](./validation-pipeline.md)** — strict parsing, offline validation, and minimal cluster access
+- **[Admission Control](./01-admission.md)** — deny/warn rules at admission time
+- **[RBAC](./02-rbac.md)** — generating and scoping ClusterRoles
+- **[Namespace Protection](./03-namespace-protection.md)** — admission and runtime enforcement
+- **[Deletion Protection](./04-deletion-protection.md)** — preventing accidental CR and CRD deletion
+- **[Binaries](./05-binaries.md)** — verifying Orkestra release artifacts
+- **[Validation Pipeline](./06-validation-pipeline.md)** — strict parsing, offline validation, and minimal cluster access
+- **[Pod Security](./07-pod-security.md)** — container and pod security context profiles

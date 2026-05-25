@@ -151,6 +151,6 @@ ork e2e
 
 ## Next
 
-- **[Admission Control](./admission.md)** — deny and warn rules at admission time
-- **[RBAC](./rbac.md)** — generating and scoping ClusterRoles
-- **[Deletion Protection](./deletion-protection.md)** — preventing accidental CR and CRD deletion
+- **[Admission Control](./01-admission.md)** — deny and warn rules at admission time
+- **[RBAC](./02-rbac.md)** — generating and scoping ClusterRoles
+- **[Deletion Protection](./04-deletion-protection.md)** — preventing accidental CR and CRD deletion

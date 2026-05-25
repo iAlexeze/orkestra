@@ -210,15 +210,17 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 // The resolver already evaluated template expressions — here we just merge.
 func Resolve(src orktypes.DeploymentTemplateSource, ownerName string) ResolvedDeploymentSpec {
 	spec := ResolvedDeploymentSpec{
-		Name:        src.Name,
-		Image:       src.Image,
-		Namespace:   src.Namespace,
-		Resources:   common.ResolveResources(src.Resources),
-		Labels:      make(map[string]string),
-		Annotations: make(map[string]string),
-		EnvFrom:     src.EnvFrom,
-		Probes:      src.Probes,
-		Sleep:       src.Sleep,
+		Name:            src.Name,
+		Image:           src.Image,
+		Namespace:       src.Namespace,
+		Resources:       common.ResolveResources(src.Resources),
+		Labels:          make(map[string]string),
+		Annotations:     make(map[string]string),
+		EnvFrom:         src.EnvFrom,
+		Probes:          src.Probes,
+		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
+		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Sleep:           src.Sleep,
 	}
 
 	if spec.Name == "" {
@@ -318,6 +320,9 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 
 	// Probes
 	common.ApplyProbes(&d.Spec.Template.Spec.Containers[0], spec.Probes, spec.Port)
+
+	// Security
+	common.ApplySecurityContext(&d.Spec.Template.Spec.Containers[0], &d.Spec.Template.Spec, spec.SecurityContext, spec.PodSecurity)
 
 	// Env
 	if len(spec.Env) > 0 {

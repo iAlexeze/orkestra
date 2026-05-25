@@ -30,7 +30,8 @@ func Sleep(n int) {
 	time.Sleep(time.Duration(n) * time.Second)
 }
 
-func BoolPtr(b bool) *bool { return &b }
+func BoolPtr(b bool) *bool    { return &b }
+func Int64Ptr(i int64) *int64 { return &i }
 
 type RetryOptions struct {
 	Attempts int

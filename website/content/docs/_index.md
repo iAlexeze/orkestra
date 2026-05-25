@@ -1,7 +1,7 @@
 ---
 title: "Why Orkestra"
-date: 2026-05-24
-weight: 26
+date: 2026-05-25
+weight: 69
 ---
 
 Building a Kubernetes operator means writing Go: controllers, informers, reconcilers, finalizers, events, metrics. Every team does this. Every team builds the same infrastructure. The only part that differs is the business logic — and it is usually just 10 lines of YAML describing what you want.
@@ -72,7 +72,7 @@ ork run
 # Orkestra reads katalog.yaml from the current directory and starts the runtime.
 ```
 
-→ [Getting Started](./getting-started/)
+→ [Getting Started](getting-started/)
 
 ---
 
@@ -80,4 +80,4 @@ ork run
 
 - [Your CRD Is Enough](/blog/your-crd-is-enough/) — the idea behind Orkestra
 - [Why Orkestra](/blog/why-orkestra/) — a deeper look at the problem
-- [FAQs](./faqs/) — common questions, including comparisons with Kubebuilder and Helm
+- [FAQs](faqs/) — common questions, including comparisons with Kubebuilder and Helm

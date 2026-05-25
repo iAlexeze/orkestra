@@ -40,4 +40,4 @@ Complete field reference for every Orkestra document type.
 
 - **[Schema Reference](./schema/katalog.md)** — every field in every document type
 - **[CLI Reference](./cli/run.md)** — full flag reference for every command
-- **[Typed Operators](./typed-operators/index.md)** — hooks, constructors, and mixed patterns
+- **[Typed Operators](../concepts/typed-operators/index.md)** — hooks, constructors, and mixed patterns

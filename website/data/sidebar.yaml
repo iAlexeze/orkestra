@@ -8,6 +8,9 @@ nav:
   - title: Orkestra Registry
     section: orkestra-registry
     url: /docs/orkestra-registry/
+  - title: Concepts
+    section: concepts
+    url: /docs/concepts/
   - title: Reference
     section: reference
     url: /docs/reference/

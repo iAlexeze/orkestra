@@ -89,7 +89,7 @@ spec:
 ## Validating Without Running
 
 ```bash
-ork validate
+ork validate -f komposer.yaml
 ```
 
 Resolves all sources, merges everything, and reports errors — without touching the cluster.
@@ -98,5 +98,5 @@ Resolves all sources, merges everything, and reports errors — without touching
 
 ## Next
 
-- **[Learning to Orkestrate](./learning-to-orkestrate.md)** — progression through the full example library
-- **[Komposers](../orkestra-registry/komposers.md)** — publishing and pulling Komposers from the registry
+- **[Learning to Orkestrate](./01-learning-to-orkestrate.md)** — progression through the full example library
+- **[Komposers](../orkestra-registry/03-komposers.md)** — publishing and pulling Komposers from the registry

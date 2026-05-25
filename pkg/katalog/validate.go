@@ -170,5 +170,19 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 24. Validate Security Profiles
+	// -------------------------------------------------------------------------
+	if err := k.validateSecurityProfiles(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 25. Validate Capability Names
+	// -------------------------------------------------------------------------
+	if err := k.validateSecurityCapabilities(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }
