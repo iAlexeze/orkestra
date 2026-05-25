@@ -68,6 +68,8 @@ ork generate bundle --file a.yaml --file b.yaml
 
 ## Notes
 
+- Neither this command nor `ork validate` requires a cluster — both run entirely offline.
+- Run `ork validate --full` before generating to preview the exact permissions the bundle will contain, broken down per CRD and per component.
 - This is the recommended way to deploy Orkestra in production.
 - The output is deterministic and GitOps‑friendly.
 - The bundle can be applied directly:

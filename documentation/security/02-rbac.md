@@ -6,7 +6,17 @@ Orkestra never auto-creates permissions. Every right your operator has is genera
 
 ## How it works
 
-Orkestra reads your Katalog and derives the minimal set of permissions required to do exactly what you declared. Running `ork generate bundle` produces a ready-to-apply Kubernetes YAML with all RBAC resources:
+Orkestra reads your Katalog and derives the minimal set of permissions required to do exactly what you declared. Both steps below run entirely offline — no cluster required.
+
+**Step 1: preview the permissions**
+
+```bash
+ork validate --full
+```
+
+Shows every RBAC rule that will be requested, broken down per CRD and per component (runtime and gateway). This is the review step — you see exactly what the bundle will contain before any YAML is written.
+
+**Step 2: generate the bundle**
 
 ```bash
 ork generate bundle
@@ -139,7 +149,15 @@ This is useful when deploying components to different clusters or namespaces, or
 
 ## Rerun after Katalog changes
 
-Run `ork generate bundle` whenever you add a new CRD or resource type. The output diffs cleanly in GitOps workflows — you see exactly which permissions are being added or removed before applying.
+Whenever you add a new CRD or resource type, run `ork validate --full` first to see exactly which permissions are being added or removed, then regenerate:
+
+```bash
+ork validate --full          # review the diff in permissions
+ork generate bundle -o bundle.yaml
+kubectl apply -f bundle.yaml
+```
+
+The bundle output is deterministic — it diffs cleanly in GitOps workflows and PRs.
 
 ---
 

@@ -54,6 +54,7 @@ spec:
       #
       conversion:
         storageVersion: v1
+        updateCRD: true
         paths:
           # v1 → v2: cronToMap splits the cron string into the structured map
           - from: v1
