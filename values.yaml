@@ -9,7 +9,7 @@ runtime:
   imagePullSecrets: []
   image:
     repository: ghcr.io/orkspace/orkestra
-    tag: "0.5.3"
+    tag: "0.5.4"
     pullPolicy: IfNotPresent
   replicaCount: 2
   service:
@@ -243,7 +243,7 @@ controlCenter:
   imagePullSecrets: []
   image:
     repository: ghcr.io/orkspace/orkestra-cc
-    tag: "0.5.3"
+    tag: "0.5.4"
     pullPolicy: IfNotPresent
   replicaCount: 1
   resources:
