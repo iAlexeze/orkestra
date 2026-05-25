@@ -194,15 +194,17 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 // Resolve builds a ResolvedReplicaSetSpec from a ReplicaSetTemplateSource.
 func Resolve(src orktypes.ReplicaSetTemplateSource, ownerName string) ResolvedReplicaSetSpec {
 	spec := ResolvedReplicaSetSpec{
-		Name:        src.Name,
-		Image:       src.Image,
-		Namespace:   src.Namespace,
-		Resources:   common.ResolveResources(src.Resources),
-		Labels:      make(map[string]string),
-		Annotations: make(map[string]string),
-		EnvFrom:     src.EnvFrom,
-		Probes:      src.Probes,
-		Sleep:       src.Sleep,
+		Name:            src.Name,
+		Image:           src.Image,
+		Namespace:       src.Namespace,
+		Resources:       common.ResolveResources(src.Resources),
+		Labels:          make(map[string]string),
+		Annotations:     make(map[string]string),
+		EnvFrom:         src.EnvFrom,
+		Probes:          src.Probes,
+		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
+		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Sleep:           src.Sleep,
 	}
 
 	if spec.Name == "" {
@@ -305,6 +307,9 @@ func buildReplicaSet(owner domain.Object, spec ResolvedReplicaSetSpec, namespace
 	}
 
 	common.ApplyProbes(&rs.Spec.Template.Spec.Containers[0], spec.Probes, spec.Port)
+
+	// Security
+	common.ApplySecurityContext(&rs.Spec.Template.Spec.Containers[0], &rs.Spec.Template.Spec, spec.SecurityContext, spec.PodSecurity)
 
 	if len(spec.Env) > 0 {
 		rs.Spec.Template.Spec.Containers[0].Env = make([]corev1.EnvVar, 0, len(spec.Env))

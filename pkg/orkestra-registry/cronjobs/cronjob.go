@@ -73,6 +73,12 @@ type ResolvedCronJobSpec struct {
 	// If specified, these secrets will be passed to individual puller implementations for them to use.
 	ImagePullSecrets []string
 
+	// SecurityContext — container-level security settings.
+	SecurityContext *orktypes.ContainerSecurityContext
+
+	// PodSecurity — pod-level security settings.
+	PodSecurity *orktypes.PodSecurityContext
+
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).
@@ -291,15 +297,17 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 // template.Resolver — Resolve only performs type conversion and defaults.
 func Resolve(src orktypes.CronJobTemplateSource, ownerName string) ResolvedCronJobSpec {
 	spec := ResolvedCronJobSpec{
-		Name:      src.Name,
-		Namespace: src.Namespace,
-		Schedule:  src.Schedule,
-		Image:     src.Image,
-		Command:   src.Command,
-		Args:      src.Args,
-		Labels:    make(map[string]string),
-		Resources: common.ResolveResources(src.Resources),
-		Sleep:     src.Sleep,
+		Name:            src.Name,
+		Namespace:       src.Namespace,
+		Schedule:        src.Schedule,
+		Image:           src.Image,
+		Command:         src.Command,
+		Args:            src.Args,
+		Labels:          make(map[string]string),
+		Resources:       common.ResolveResources(src.Resources),
+		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
+		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Sleep:           src.Sleep,
 	}
 
 	if spec.Name == "" {
@@ -408,6 +416,14 @@ func buildCronJob(owner domain.Object, spec ResolvedCronJobSpec, namespace strin
 			},
 		},
 	}
+
+	// Security
+	common.ApplySecurityContext(
+		&cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0],
+		&cj.Spec.JobTemplate.Spec.Template.Spec,
+		spec.SecurityContext,
+		spec.PodSecurity,
+	)
 
 	return cj
 }

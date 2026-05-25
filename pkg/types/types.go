@@ -503,6 +503,15 @@ type DeploymentTemplateSource struct {
 	// Probes — startup, liveness, and readiness probe configuration.
 	Probes *ProbesConfig `yaml:"probes,omitempty" json:"probes,omitempty"`
 
+	// SecurityContext — container-level security settings.
+	// Set securityContext.profile for a named preset (baseline, restricted, hardened)
+	// or declare individual fields. Profile and explicit fields are mutually exclusive.
+	SecurityContext *ContainerSecurityContext `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
+
+	// PodSecurity — pod-level security settings applied to the pod spec.
+	// Set podSecurity.profile for a named preset or declare individual fields.
+	PodSecurity *PodSecurityContext `yaml:"podSecurity,omitempty" json:"podSecurity,omitempty"`
+
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).
@@ -631,6 +640,15 @@ type ReplicaSetTemplateSource struct {
 
 	// Probes — startup, liveness, and readiness probe configuration.
 	Probes *ProbesConfig `yaml:"probes,omitempty" json:"probes,omitempty"`
+
+	// SecurityContext — container-level security settings.
+	// Set securityContext.profile for a named preset (baseline, restricted, hardened)
+	// or declare individual fields. Profile and explicit fields are mutually exclusive.
+	SecurityContext *ContainerSecurityContext `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
+
+	// PodSecurity — pod-level security settings applied to the pod spec.
+	// Set podSecurity.profile for a named preset or declare individual fields.
+	PodSecurity *PodSecurityContext `yaml:"podSecurity,omitempty" json:"podSecurity,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
@@ -843,6 +861,15 @@ type PodTemplateSource struct {
 	// onReconcile. When false (default), only runs on onCreate (idempotent create).
 	Reconcile bool `yaml:"reconcile,omitempty" json:"reconcile,omitempty" validate:"omitempty"`
 
+	// SecurityContext — container-level security settings.
+	// Set securityContext.profile for a named preset (baseline, restricted, hardened)
+	// or declare individual fields. Profile and explicit fields are mutually exclusive.
+	SecurityContext *ContainerSecurityContext `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
+
+	// PodSecurity — pod-level security settings applied to the pod spec.
+	// Set podSecurity.profile for a named preset or declare individual fields.
+	PodSecurity *PodSecurityContext `yaml:"podSecurity,omitempty" json:"podSecurity,omitempty"`
+
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).
@@ -965,6 +992,15 @@ type JobTemplateSource struct {
 	// explicit values. Profile and explicit values are mutually exclusive.
 	Resources *ResourceRequirements `yaml:"resources,omitempty" json:"resources,omitempty" validate:"omitempty"`
 
+	// SecurityContext — container-level security settings.
+	// Set securityContext.profile for a named preset (baseline, restricted, hardened)
+	// or declare individual fields. Profile and explicit fields are mutually exclusive.
+	SecurityContext *ContainerSecurityContext `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
+
+	// PodSecurity — pod-level security settings applied to the pod spec.
+	// Set podSecurity.profile for a named preset or declare individual fields.
+	PodSecurity *PodSecurityContext `yaml:"podSecurity,omitempty" json:"podSecurity,omitempty"`
+
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).
@@ -1081,6 +1117,15 @@ type CronJobTemplateSource struct {
 	// Useful for Git-backed pipelines where build/test commands must run inside
 	// a checked-out repository path.
 	WorkingDirectory string `yaml:"workingDirectory,omitempty" json:"workingDirectory,omitempty"`
+
+	// SecurityContext — container-level security settings.
+	// Set securityContext.profile for a named preset (baseline, restricted, hardened)
+	// or declare individual fields. Profile and explicit fields are mutually exclusive.
+	SecurityContext *ContainerSecurityContext `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
+
+	// PodSecurity — pod-level security settings applied to the pod spec.
+	// Set podSecurity.profile for a named preset or declare individual fields.
+	PodSecurity *PodSecurityContext `yaml:"podSecurity,omitempty" json:"podSecurity,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
@@ -1742,6 +1787,15 @@ type StatefulSetTemplateSource struct {
 
 	// Probes — startup, liveness, and readiness probe configuration.
 	Probes *ProbesConfig `yaml:"probes,omitempty" json:"probes,omitempty"`
+
+	// SecurityContext — container-level security settings.
+	// Set securityContext.profile for a named preset (baseline, restricted, hardened)
+	// or declare individual fields. Profile and explicit fields are mutually exclusive.
+	SecurityContext *ContainerSecurityContext `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
+
+	// PodSecurity — pod-level security settings applied to the pod spec.
+	// Set podSecurity.profile for a named preset or declare individual fields.
+	PodSecurity *PodSecurityContext `yaml:"podSecurity,omitempty" json:"podSecurity,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.

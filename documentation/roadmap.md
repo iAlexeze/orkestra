@@ -58,16 +58,18 @@ Orkestra is a complete declarative operator runtime for Kubernetes. The core is 
 
 ## Where we are going
 
-### Pod security profiles
+### Pod security profiles ✓ shipped
 
-Declarative pod security without per-Deployment configuration. Add a single field to your Katalog and every pod gets a consistent security posture:
+Declarative pod security per workload resource. Set a named profile in one line:
 
 ```yaml
+securityContext:
+  profile: hardened
 podSecurity:
-  profile: hardened   # or: restricted, baseline
+  profile: hardened
 ```
 
-`hardened` sets `runAsNonRoot: true`, `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true`, drops all capabilities. Individual fields can be overridden. Teams who want security without per-resource config get it in one line.
+`hardened` sets `runAsNonRoot: true`, `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true`, drops all capabilities. Profiles: `baseline`, `restricted`, `hardened`. Individual fields can be declared instead of a profile. → See [Pod security](./security/07-pod-security.md).
 
 ### Improved rollback — child resource tracking
 
