@@ -1,7 +1,7 @@
 ---
 title: "Why Orkestra?"
-date: 2026-05-24
-weight: 2
+date: 2026-05-25
+weight: 1
 ---
 
 Kubernetes has always promised declarative infrastructure. You describe what you want. The platform makes it so.
@@ -76,3 +76,7 @@ Kubernetes made infrastructure declarative.
 Orkestra makes the operators that extend Kubernetes declarative.
 The same principle, applied one level up.
 It was always possible. It just needed someone to build it.
+
+---
+
+If you want to see this in practice, the [Getting Started](/docs/getting-started/) guide walks through writing your first Katalog from scratch. If you want to go further, [Learning to Orkestrate](/docs/getting-started/learning-to-orkestrate/) is a progression through the example packs — from a simple declarative operator to composition, typed hooks, and multi-CRD platforms.

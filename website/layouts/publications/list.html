@@ -82,8 +82,8 @@
       </header>
 
       <!-- Paper list -->
-      <ol class="pub-scholar-list" reversed>
-        {{ range .Pages.ByDate.Reverse }}
+      <ol class="pub-scholar-list">
+        {{ range .Pages.ByWeight }}
         <li class="pub-scholar-item">
           <h2 class="pub-scholar-title">
             <a href="{{ .RelPermalink }}" class="pub-scholar-link">{{ .Title }}</a>

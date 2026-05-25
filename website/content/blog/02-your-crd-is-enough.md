@@ -1,7 +1,7 @@
 ---
 title: "Your CRD Is Enough"
-date: 2026-05-24
-weight: 3
+date: 2026-05-25
+weight: 2
 ---
 
 *The engineering argument for why the operator should have always been the CRD.*

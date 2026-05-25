@@ -9,7 +9,7 @@
 
 <div class="blog-layout">
   <div class="blog-posts">
-    {{ $posts := .Pages.ByDate.Reverse }}
+    {{ $posts := .Pages.ByWeight }}
     {{ if $posts }}
       {{ range $posts }}
       <article class="blog-card">

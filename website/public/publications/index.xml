@@ -17,9 +17,16 @@
     <item>
       <title>Trust and Failure Model</title>
       <link>http://localhost:8090/publications/trust-and-failure-model/</link>
-      <pubDate>Sun, 24 May 2026 00:00:00 +0000</pubDate>
+      <pubDate>Mon, 25 May 2026 00:00:00 +0000</pubDate>
       <guid>http://localhost:8090/publications/trust-and-failure-model/</guid>
       <description>&lt;p&gt;Trust in a distributed system is not a feature you add — it is a property that either emerges from the design or does not. Orkestra&amp;rsquo;s approach is to make trustworthy behavior the default at every layer, and to ensure those layers compound rather than exist independently. This is a description of how that works.&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;the-foundational-guarantee&#34;&gt;The foundational guarantee&lt;/h2&gt;&#xA;&lt;p&gt;Every Orkestra reconciler is level-triggered. It does not replay a log of events — it reads current desired state and drives toward it. This is the same model Kubernetes uses for its own controllers, and it carries the same property: any operation that is interrupted half-way through leaves the cluster in a partial state, not a corrupted one. The next reconcile corrects it.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Orkestra: The Universal Observer That Belongs in Kubernetes Core</title>
+      <link>http://localhost:8090/publications/universal-observer-whitepaper/</link>
+      <pubDate>Mon, 25 May 2026 00:00:00 +0000</pubDate>
+      <guid>http://localhost:8090/publications/universal-observer-whitepaper/</guid>
+      <description>&lt;p&gt;&lt;em&gt;Orkestra Project — March 2026&lt;/em&gt;&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;abstract&#34;&gt;Abstract&lt;/h2&gt;&#xA;&lt;p&gt;Kubernetes extensibility is built on a structural absence. The API server&#xA;stores and serves custom resources. It knows their schema. It emits watch&#xA;events when they change. What it does not do — and has never done — is&#xA;watch what happens after those events are emitted. The operator pattern&#xA;emerged to fill that gap: a controller that watches a resource and&#xA;reconciles the cluster toward the state declared in it. But every operator&#xA;is separate. Every operator is isolated. There is no shared layer that&#xA;sees across the managed surface — no permanent observer of the extension&#xA;ecosystem as a whole.&lt;/p&gt;</description>
     </item>
   </channel>
 </rss>

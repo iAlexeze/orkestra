@@ -200,6 +200,9 @@ func (r *Resolver) ResolvePodTemplate(src orktypes.PodTemplateSource) (orktypes.
 		return resolved, fmt.Errorf("pod.sleep: %w", err)
 	}
 
+	resolved.SecurityContext = src.SecurityContext
+	resolved.PodSecurity = src.PodSecurity
+
 	return resolved, nil
 }
 
@@ -309,6 +312,9 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 		ru := *src.RollingUpdate
 		resolved.RollingUpdate = &ru
 	}
+
+	resolved.SecurityContext = src.SecurityContext
+	resolved.PodSecurity = src.PodSecurity
 
 	return resolved, nil
 }
@@ -435,6 +441,9 @@ func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSour
 		ru := *src.RollingUpdate
 		resolved.RollingUpdate = &ru
 	}
+
+	resolved.SecurityContext = src.SecurityContext
+	resolved.PodSecurity = src.PodSecurity
 
 	return resolved, nil
 }
@@ -572,6 +581,9 @@ func (r *Resolver) ResolveJobTemplate(src orktypes.JobTemplateSource) (orktypes.
 	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
 		return resolved, fmt.Errorf("job.labels: %w", err)
 	}
+
+	resolved.SecurityContext = src.SecurityContext
+	resolved.PodSecurity = src.PodSecurity
 
 	return resolved, nil
 }
@@ -812,6 +824,9 @@ func (r *Resolver) ResolveCronJobTemplate(src orktypes.CronJobTemplateSource) (o
 	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
 		return resolved, fmt.Errorf("cronjob.labels: %w", err)
 	}
+
+	resolved.SecurityContext = src.SecurityContext
+	resolved.PodSecurity = src.PodSecurity
 
 	return resolved, nil
 }
@@ -1235,6 +1250,9 @@ func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSo
 		ru := *src.RollingUpdate
 		resolved.RollingUpdate = &ru
 	}
+
+	resolved.SecurityContext = src.SecurityContext
+	resolved.PodSecurity = src.PodSecurity
 
 	return resolved, nil
 }

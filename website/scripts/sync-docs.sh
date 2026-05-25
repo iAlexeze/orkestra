@@ -323,7 +323,7 @@ echo "Syncing publications: $SRC_DIR/publications → $PUB_DIR"
 
 weight=1
 find "$SRC_DIR/publications" -name '*.md' 2>/dev/null | sort | while read -r src_file; do
-  dst_file="$PUB_DIR/$(basename "$src_file")"
+  dst_file="$PUB_DIR/$(basename "$src_file" | sed 's/^[0-9][0-9]*-//')"
   sync_file "$src_file" "$dst_file" "$weight" "$src_file"
   ((weight++)) || true
   echo "  pub: $(basename "$src_file")"

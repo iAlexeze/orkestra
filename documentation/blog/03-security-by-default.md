@@ -41,3 +41,7 @@ The industry default today is: start permissive, tighten later — maybe. Orkest
 Operators were meant to encode domain knowledge. Somewhere along the way they also became the thing you trusted with your entire cluster. Fixing that is not about better RBAC templates. It is about aligning permissions with intent — and making that alignment automatic.
 
 Orkestra does not ask you to secure your operator. It makes your operator secure by construction.
+
+---
+
+For a complete description of the security mechanisms — deletion protection, namespace restrictions, admission webhook configuration, RBAC generation, and binary provenance — see the [Security](/docs/security/) documentation.

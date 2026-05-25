@@ -1,7 +1,7 @@
 ---
 title: "Why Operators Are Over-Permissioned — And How We Fixed It"
-date: 2026-05-24
-weight: 1
+date: 2026-05-25
+weight: 3
 ---
 
 Most Kubernetes operators are massively over-permissioned. Not slightly, not accidentally — structurally. Inspect the RBAC of a typical production operator and you will find something like this:
@@ -45,3 +45,7 @@ The industry default today is: start permissive, tighten later — maybe. Orkest
 Operators were meant to encode domain knowledge. Somewhere along the way they also became the thing you trusted with your entire cluster. Fixing that is not about better RBAC templates. It is about aligning permissions with intent — and making that alignment automatic.
 
 Orkestra does not ask you to secure your operator. It makes your operator secure by construction.
+
+---
+
+For a complete description of the security mechanisms — deletion protection, namespace restrictions, admission webhook configuration, RBAC generation, and binary provenance — see the [Security](/docs/security/) documentation.
