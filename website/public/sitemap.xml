@@ -204,7 +204,7 @@
     <lastmod>2026-05-24T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/deploying/</loc>
-    <lastmod>2026-05-19T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/faqs/concepts/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
@@ -241,6 +241,12 @@
   </url><url>
     <loc>http://localhost:8090/docs/</loc>
     <lastmod>2026-05-25T13:39:05+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/known-issues/</loc>
+    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/known-issues/ki-001-gateway-stats-multi-replica/</loc>
+    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/orkestra-core/runtime/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>

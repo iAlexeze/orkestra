@@ -2,6 +2,22 @@
 // as a domain.Komponent that can be registered and managed alongside other
 // runtime components.
 //
+// # Stats key design
+//
+// Per-CRD stats (admission, conversion, deletion-protection, namespace-protection)
+// are keyed by "group/version/resource" — the canonical GVR string. This is the
+// merge key used by the control center when combining the runtime and gateway
+// /katalog responses.
+//
+// Conversion stats require a secondary lookup map (gvkToGVRKey) because the
+// conversion webhook handler receives objects identified by apiVersion+kind, not
+// by their resource plural. Using the full GVK ("group/version/Kind") as the key
+// — rather than just "Kind" — avoids a collision when two CRD entries share the
+// same kind name but differ by version (e.g. cronjob-v1 and cronjob-v2 both have
+// kind: CronJob). Keying by kind alone would cause the second entry in the
+// initialization loop to overwrite the first, so all recorded conversions would
+// land on whichever version happened to be iterated last.
+//
 // # Responsibility
 //
 // The webhook package owns everything required to operate Kubernetes admission
@@ -127,7 +143,7 @@ type WebhookServer struct {
 	// Reverse-lookup tables built from the Katalog for handlers that identify
 	// the target CRD by name/kind rather than GVR.
 	crdNameToGVRKey map[string]string // "plural.group" → "group/version/resource"
-	kindToGVRKey    map[string]string // "Kind" → "group/version/resource"
+	gvkToGVRKey     map[string]string // "group/version/Kind" → "group/version/resource"
 
 	// Deletion protection — set of CRD full names (plural.group) that are protected.
 	protectedCRDNames map[string]struct{}
@@ -197,13 +213,14 @@ func NewWebhookServer(kubeClient kubernetes.Interface, kat *katalog.Katalog, kfg
 		webhookStats:       health.NewWebhookStats(),
 		strictModeStats:    health.NewDeletionProtectionStats(),
 		crdNameToGVRKey:    make(map[string]string),
-		kindToGVRKey:       make(map[string]string),
+		gvkToGVRKey:        make(map[string]string),
 	}
 
 	// Pre-populate per-CRD stat instances and reverse-lookup tables from the Katalog.
 	// Every CRD gets its own counters so the gateway /katalog can return accurate
 	// per-CRD breakdowns without mixing traffic across resources.
-	for _, crd := range kat.All() {
+	// Must use Enabled() — raw Spec.CRDs entries have GroupVersionResource unset.
+	for _, crd := range kat.Enabled() {
 		gvr := crd.GVR()
 		gvrKey := crdGVRKey(gvr.Group, gvr.Version, gvr.Resource)
 		ws.admissionStats[gvrKey] = health.NewAdmissionStats(convWindow)
@@ -212,7 +229,9 @@ func NewWebhookServer(kubeClient kubernetes.Interface, kat *katalog.Katalog, kfg
 		ws.namespaceStats[gvrKey] = health.NewNamespaceProtectionStats()
 		crdFullName := crd.APITypes.Plural + "." + crd.APITypes.Group
 		ws.crdNameToGVRKey[crdFullName] = gvrKey
-		ws.kindToGVRKey[crd.APITypes.Kind] = gvrKey
+		// GVK key includes group+version so multi-version CRDs with the same kind
+		// (e.g. cronjob-v1 and cronjob-v2) get distinct entries.
+		ws.gvkToGVRKey[crdGVKKey(crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind)] = gvrKey
 	}
 
 	// Precompute deletion-protection CRD name set.
@@ -251,6 +270,16 @@ func crdGVRKey(group, version, resource string) string {
 		return version + "/" + resource
 	}
 	return group + "/" + version + "/" + resource
+}
+
+// crdGVKKey formats a GVK triple into the lookup key for gvkToGVRKey.
+// Including version in the key prevents same-kind multi-version CRD entries
+// (e.g. cronjob-v1 and cronjob-v2) from colliding on the kind name alone.
+func crdGVKKey(group, version, kind string) string {
+	if group == "" {
+		return version + "/" + kind
+	}
+	return group + "/" + version + "/" + kind
 }
 
 // ── Per-CRD stat accessors ────────────────────────────────────────────────────

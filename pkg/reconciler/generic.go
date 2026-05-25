@@ -526,25 +526,26 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 	}
 
 	// ── Phase 6: Snapshot + rollback cleanup ─────────────────────────────────
-	if err == nil && !r.crd.HasRollbackRules() {
-		// If a prior rollback cycle resolved (user corrected spec, generation
-		// advanced), clear the stale RollbackGenerationAnnotation and notify
-		// CRDHealth. snapshotSpec re-writes PreviousSpecAnnotation immediately after.
-		annots := obj.GetAnnotations()
-		if annots[orktypes.RollbackGenerationAnnotation] != "" {
-			if clrErr := r.clearRollback(ctx, obj); clrErr != nil {
-				logger.FromContext(ctx).Warn().Err(clrErr).
-					Str("name", obj.GetName()).
-					Msg("rollback: failed to clear stale rollback annotation — continuing")
-			}
-		}
-		if snapErr := r.snapshotSpec(ctx, obj); snapErr != nil {
-			logger.FromContext(ctx).Warn().Err(snapErr).
-				Str("name", obj.GetName()).
-				Msg("rollback: failed to snapshot spec — continuing")
-		}
-		r.clearFailureHistory(obj.GetNamespace() + "/" + obj.GetName())
-	}
+	// TODO
+	// if err == nil && !r.crd.HasRollbackRules() {
+	// 	// If a prior rollback cycle resolved (user corrected spec, generation
+	// 	// advanced), clear the stale RollbackGenerationAnnotation and notify
+	// 	// CRDHealth. snapshotSpec re-writes PreviousSpecAnnotation immediately after.
+	// 	annots := obj.GetAnnotations()
+	// 	if annots[orktypes.RollbackGenerationAnnotation] != "" {
+	// 		if clrErr := r.clearRollback(ctx, obj); clrErr != nil {
+	// 			logger.FromContext(ctx).Warn().Err(clrErr).
+	// 				Str("name", obj.GetName()).
+	// 				Msg("rollback: failed to clear stale rollback annotation — continuing")
+	// 		}
+	// 	}
+	// 	if snapErr := r.snapshotSpec(ctx, obj); snapErr != nil {
+	// 		logger.FromContext(ctx).Warn().Err(snapErr).
+	// 			Str("name", obj.GetName()).
+	// 			Msg("rollback: failed to snapshot spec — continuing")
+	// 	}
+	// 	r.clearFailureHistory(obj.GetNamespace() + "/" + obj.GetName())
+	// }
 
 	// Inject live runtime metrics into the resolver so status.fields templates
 	// can reference .metrics.queueDepth, .metrics.workers, .metrics.autoscaleActive, etc.
