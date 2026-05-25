@@ -24,8 +24,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/orkspace/orkestra/pkg/katalog"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
+	rbacv1 "k8s.io/api/rbac/v1"
 )
 
 // printCRDValidationLine prints one CRD entry's validation result.
@@ -145,5 +147,249 @@ func printWarnings(entry orktypes.CRDEntry) {
 				fmt.Printf("             %s\n", utils.Gray(line)) // 13 spaces aligns with "warning: "
 			}
 		}
+	}
+}
+
+// ── Full mode (--full) ────────────────────────────────────────────────────────
+
+// printCRDPermissions prints RBAC rules attributed to a CRD under its header.
+// No-op when rules is empty.
+func printCRDPermissions(rules []rbacv1.PolicyRule) {
+	if len(rules) == 0 {
+		return
+	}
+	maxGroup, maxRes := 0, 0
+	for _, r := range rules {
+		if n := len(rbacGroup(r.APIGroups)); n > maxGroup {
+			maxGroup = n
+		}
+		if n := len(rbacRes(r)); n > maxRes {
+			maxRes = n
+		}
+	}
+	fmt.Printf("    %s\n", utils.Gray("permissions:"))
+	for _, r := range rules {
+		fmt.Printf("      %s\n", utils.Gray(fmt.Sprintf(
+			"%-*s  %-*s  %s",
+			maxGroup, rbacGroup(r.APIGroups),
+			maxRes, rbacRes(r),
+			strings.Join(r.Verbs, " "),
+		)))
+	}
+}
+
+// printValidateDependencyGraph prints the startup-order dependency section for validate --full.
+// Only called when there are dependencies (dd is never nil here).
+func printValidateDependencyGraph(dd *katalog.DependencyDisplay) {
+	fmt.Println()
+	fmt.Println(utils.Bold("startup order"))
+	maxName := 0
+	for _, name := range dd.StartupOrder {
+		if len(name) > maxName {
+			maxName = len(name)
+		}
+	}
+	for i, name := range dd.StartupOrder {
+		depNames := dd.SortedDeps(name)
+		suffix := ""
+		if len(depNames) > 0 {
+			parts := make([]string, 0, len(depNames))
+			for _, dep := range depNames {
+				parts = append(parts, fmt.Sprintf("%s [%s]", dep, dd.Conditions[name][dep]))
+			}
+			suffix = "   ← " + strings.Join(parts, " · ")
+		}
+		fmt.Printf("  %s\n", utils.Gray(fmt.Sprintf("%d  %-*s%s", i+1, maxName, name, suffix)))
+	}
+}
+
+// printRuntimePermissionsSection prints the runtime system RBAC rules.
+func printRuntimePermissionsSection(rules []rbacv1.PolicyRule) {
+	if len(rules) == 0 {
+		return
+	}
+	fmt.Println()
+	fmt.Println(utils.Bold("runtime"))
+	printRuleBlock(rules, nil)
+}
+
+// printGatewayPermissionsSection prints the gateway system RBAC rules with
+// contextual notes on secrets (TLS) and namespaces (deletion-protection).
+func printGatewayPermissionsSection(rules []rbacv1.PolicyRule) {
+	if len(rules) == 0 {
+		return
+	}
+	fmt.Println()
+	fmt.Println(utils.Bold("gateway"))
+	printRuleBlock(rules, map[string]string{
+		// set TLS_CERT / TLS_KEY in orkestra-deployment to bring your own
+		"secrets":    "Orkestra provisions and rotates certs",
+		"namespaces": "labels orkestra-system to activate the deletion-protection admission scope",
+	})
+}
+
+// printRuleBlock prints RBAC policy rules with aligned columns and optional per-resource notes.
+func printRuleBlock(rules []rbacv1.PolicyRule, notes map[string]string) {
+	maxGroup, maxRes := 0, 0
+	for _, r := range rules {
+		if n := len(rbacGroup(r.APIGroups)); n > maxGroup {
+			maxGroup = n
+		}
+		if n := len(rbacRes(r)); n > maxRes {
+			maxRes = n
+		}
+	}
+	for _, r := range rules {
+		line := fmt.Sprintf("  %-*s  %-*s  %s",
+			maxGroup, rbacGroup(r.APIGroups),
+			maxRes, rbacRes(r),
+			strings.Join(r.Verbs, " "),
+		)
+		if notes != nil && len(r.Resources) > 0 {
+			if note, ok := notes[r.Resources[0]]; ok {
+				line += "   ← " + note
+			}
+		}
+		fmt.Println(utils.Gray(line))
+	}
+}
+
+// rbacGroup returns a display-friendly API group; empty group → "core".
+func rbacGroup(groups []string) string {
+	if len(groups) == 0 || groups[0] == "" {
+		return "core"
+	}
+	return groups[0]
+}
+
+// rbacRes returns the resource display string, appending a bracketed resource name
+// for narrowly-scoped rules (e.g. CA-bundle patch).
+func rbacRes(r rbacv1.PolicyRule) string {
+	if len(r.Resources) == 0 {
+		return ""
+	}
+	res := r.Resources[0]
+	if len(r.ResourceNames) > 0 {
+		res += " [" + r.ResourceNames[0] + "]"
+	}
+	return res
+}
+
+// ── Profiles display ─────────────────────────────────────────────────────────
+
+type profileLine struct {
+	typLabel string
+	profile  string
+	location string
+	mixed    bool
+}
+
+// printCRDProfiles prints named profiles declared for a CRD under its header.
+// No-op when the CRD declares no profiles.
+func printCRDProfiles(entry orktypes.CRDEntry) {
+	lines := collectProfileLines(entry)
+	if len(lines) == 0 {
+		return
+	}
+	maxType, maxProfile := 0, 0
+	for _, l := range lines {
+		if n := len(l.typLabel); n > maxType {
+			maxType = n
+		}
+		if n := len(l.profile); n > maxProfile {
+			maxProfile = n
+		}
+	}
+	fmt.Printf("    %s\n", utils.Gray("profiles:"))
+	for _, l := range lines {
+		suffix := ""
+		if l.mixed {
+			suffix = "   ← mixed with explicit fields"
+		}
+		fmt.Printf("      %s\n", utils.Gray(fmt.Sprintf(
+			"%-*s  %-*s  %s%s",
+			maxType, l.typLabel,
+			maxProfile, l.profile,
+			l.location,
+			suffix,
+		)))
+	}
+}
+
+func collectProfileLines(entry orktypes.CRDEntry) []profileLine {
+	var lines []profileLine
+
+	for _, e := range entry.CollectSecurityProfileEntries() {
+		label := "security (container)"
+		if e.Kind == "pod" {
+			label = "security (pod)"
+		}
+		lines = append(lines, profileLine{
+			typLabel: label,
+			profile:  e.Profile,
+			location: profileLoc(e.Resource, e.ResourceName, e.Phase),
+			mixed:    e.Mixed,
+		})
+	}
+
+	for _, e := range entry.CollectResourceProfileEntries() {
+		lines = append(lines, profileLine{
+			typLabel: "resources",
+			profile:  e.Profile,
+			location: profileLoc(e.Resource, e.ResourceName, e.Phase),
+			mixed:    e.Mixed,
+		})
+	}
+
+	for _, e := range entry.CollectHPAProfileEntries() {
+		lines = append(lines, profileLine{
+			typLabel: "hpa",
+			profile:  e.Profile,
+			location: profileLoc("", e.ResourceName, e.Phase),
+			mixed:    e.Mixed,
+		})
+	}
+
+	for _, e := range entry.CollectPDBProfileEntries() {
+		lines = append(lines, profileLine{
+			typLabel: "pdb",
+			profile:  e.Profile,
+			location: profileLoc("", e.ResourceName, e.Phase),
+			mixed:    e.Mixed,
+		})
+	}
+
+	for _, e := range entry.CollectRollingUpdateProfileEntries() {
+		lines = append(lines, profileLine{
+			typLabel: "rolling",
+			profile:  e.Profile,
+			location: profileLoc("", e.ResourceName, e.Phase),
+			mixed:    e.Mixed,
+		})
+	}
+
+	for _, e := range entry.CollectProbeProfileEntries() {
+		lines = append(lines, profileLine{
+			typLabel: "probes (" + e.ProbeType + ")",
+			profile:  e.Profile,
+			location: profileLoc(e.Resource, e.ResourceName, e.Phase),
+			mixed:    e.Mixed,
+		})
+	}
+
+	return lines
+}
+
+// profileLoc builds a compact location string from resource kind, name, and phase.
+func profileLoc(resource, name, phase string) string {
+	switch {
+	case resource != "" && name != "":
+		return resource + "/" + name + " [" + phase + "]"
+	case resource != "":
+		return resource + " [" + phase + "]"
+	case name != "":
+		return name + " [" + phase + "]"
+	default:
+		return "[" + phase + "]"
 	}
 }

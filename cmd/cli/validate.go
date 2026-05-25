@@ -5,6 +5,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
@@ -13,6 +14,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
+	rbacv1 "k8s.io/api/rbac/v1"
 )
 
 var validateCmd = &cobra.Command{
@@ -96,6 +98,22 @@ Examples:
 			kindLabel = "Gateway Standalone"
 		}
 
+		full, _ := cmd.Flags().GetBool("full")
+
+		var perCRDPerms map[string][]rbacv1.PolicyRule
+		if full {
+			perCRDPerms = k.GeneratePerCRDRBACRules()
+		}
+
+		// Sort entries by name for stable output across runs.
+		sortedEntries := make([]orktypes.CRDEntry, 0, len(entries))
+		for _, e := range entries {
+			sortedEntries = append(sortedEntries, e)
+		}
+		sort.Slice(sortedEntries, func(i, j int) bool {
+			return sortedEntries[i].Name < sortedEntries[j].Name
+		})
+
 		fmt.Println()
 		fmt.Println(utils.Bold("Validating " + kindLabel + "..."))
 		fmt.Println()
@@ -104,8 +122,12 @@ Examples:
 		custom := 0
 
 		// Print each CRD entry with enrichment info
-		for _, entry := range entries {
+		for _, entry := range sortedEntries {
 			printCRDValidationLine(entry, k.IsDeletionProtectionEnabled(), k.IsStrictModeEnabled())
+			if full {
+				printCRDPermissions(perCRDPerms[entry.Name])
+				printCRDProfiles(entry)
+			}
 			fmt.Println()
 
 			if entry.IsBuiltIn {
@@ -118,6 +140,15 @@ Examples:
 		// Summary
 		fmt.Println(strings.Repeat("─", 60))
 		fmt.Printf("%d CRDs valid (%d built-in, %d custom)\n", len(entries), builtIn, custom)
+
+		if full {
+			if dd := k.DependencyDisplayData(); dd != nil {
+				printValidateDependencyGraph(dd)
+			}
+			printRuntimePermissionsSection(k.GenerateRuntimeRBACRules())
+			printGatewayPermissionsSection(k.GenerateGatewayRBACRules())
+			fmt.Println()
+		}
 
 		return nil
 	},
@@ -244,6 +275,7 @@ func init() {
 	rootCmd.AddCommand(validateCmd)
 
 	validateCmd.Flags().StringSliceP("file", "f", nil, "Path to an Orkestra document (repeatable or comma-separated)")
+	validateCmd.Flags().Bool("full", false, "Show per-CRD permissions, dependency graph, and system-level RBAC")
 
 	// Shadow global flags so they don't appear under `ork validate`
 	validateCmd.Flags().Bool("debug", false, "")

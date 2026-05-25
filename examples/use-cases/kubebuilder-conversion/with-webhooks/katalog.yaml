@@ -13,6 +13,9 @@ security:
   conversion:
     enabled: true
 
+gateway:
+  enabled: true
+
 spec:
   crds:
     # ── v2 ─────────────────────────────────────────────────────────────────

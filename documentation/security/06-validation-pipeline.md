@@ -35,6 +35,62 @@ What it checks:
 
 `ork validate` runs entirely offline. No `~/.kube/config` is read. No cluster is contacted.
 
+### `--full`: security posture and permissions
+
+```bash
+ork validate --full
+ork validate -f katalog.yaml --full
+```
+
+Adds three sections to the output — all computed offline from the Katalog declaration, no cluster required:
+
+**Per-CRD permissions** — printed under each CRD header, showing the exact RBAC rules the CRD will require: its own resource and status subresource, any typed-mode managed resources (hooks and constructor templates), and any built-in Kubernetes resources its templates reference.
+
+```text
+✓ website
+    kind: Website / group: demo.io/v1alpha1 / ...
+    permissions:
+      demo.io   websites         get list watch create update patch delete
+      demo.io   websites/status  get update patch
+      apps      deployments      get list watch create update patch delete
+```
+
+**Per-CRD profiles** — printed under each CRD header alongside permissions, showing every named profile declared in the CRD's templates: security context, pod security, resources, rolling update strategy, HPA behavior, PDB configuration, and probes.
+
+```text
+    profiles:
+      security (container)  restricted   Deployment/web [onReconcile]
+      security (pod)        hardened     Deployment/web [onReconcile]
+      resources             burst        Deployment/web [onReconcile]
+      rolling               safe         Deployment/web [onReconcile]
+```
+
+**System-level RBAC** — printed at the bottom, separated into `runtime` (always present) and `gateway` (only when the Katalog requires webhooks or deletion protection). The gateway section includes inline notes explaining why each permission is needed:
+
+```text
+runtime
+  coordination.k8s.io  leases  get create update
+  core                 events  create patch
+
+gateway
+  core  secrets     get list watch ...  ← Orkestra provisions and rotates certs —
+                                           set TLS_CERT / TLS_KEY in orkestra-deployment
+                                           to bring your own
+  core  namespaces  get patch            ← labels orkestra-system to activate the
+                                           deletion-protection admission scope
+```
+
+**Startup order** — if any CRD declares `dependsOn`, a startup order section shows the dependency graph in topological order with conditions:
+
+```text
+startup order
+  1  database
+  2  cache     ← database [healthy]
+  3  api       ← database [started] · cache [started]
+```
+
+`--full` is the recommended pre-deploy review step: it surfaces everything the Katalog will request from the cluster before a single resource is applied.
+
 ---
 
 ## Commands that run offline
