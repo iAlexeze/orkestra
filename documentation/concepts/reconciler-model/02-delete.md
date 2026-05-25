@@ -7,7 +7,7 @@ When a CR receives a deletion timestamp, Orkestra switches to the delete path.
 ## What happens
 
 1. **Deletion timestamp detected** — the CR is in the cache with `.metadata.deletionTimestamp` set
-2. **`onDelete:` runs** — hooks and templates in the `onDelete:` block execute. If `ordered: true`, groups run sequentially. See [Ordered Deletion](../../ordered-deletion/)
+2. **`onDelete:` runs** — hooks and templates in the `onDelete:` block execute. If `ordered: true`, groups run sequentially. See [Ordered Deletion](../ordered-deletion/)
 3. **Finalizer removed** — after `onDelete:` completes, Orkestra removes its finalizer from the CR
 4. **Kubernetes GC** — with the finalizer gone, Kubernetes proceeds with deletion. Child resources that have owner references pointing to the CR are garbage-collected automatically
 

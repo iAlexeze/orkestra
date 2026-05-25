@@ -67,7 +67,7 @@ conditions:
 
 The combined logic is:
 
-```
+```text
 (anyOf empty OR anyOf passes)
 AND
 (when empty OR when passes)
