@@ -1,7 +1,7 @@
 ---
 title: "ork init"
-date: 2026-05-21
-weight: 52
+date: 2026-05-25
+weight: 38
 ---
 
 Initialize a new Orkestra operator project.

@@ -26,16 +26,16 @@ export ORK_MOTIFS_REGISTRY=oci://myregistry.internal/motifs
 
 ## Pattern kinds
 
-- [Motifs](motifs.md) — reusable resource primitives imported into Katalogs
-- [Katalogs](katalogs.md) — complete operator declarations, one CRD or many
-- [Komposers](komposers.md) — platform declarations that compose multiple Katalogs
-- [E2E](e2e.md) — verification framework that gates publication
+- [Motifs](01-motifs.md) — reusable resource primitives imported into Katalogs
+- [Katalogs](02-katalogs.md) — complete operator declarations, one CRD or many
+- [Komposers](03-komposers.md) — platform declarations that compose multiple Katalogs
+- [E2E](04-e2e.md) — verification framework that gates publication
 
 ---
 
 ## Where to go next
 
-- **[Motifs](./motifs.md)** — reusable resource primitives
-- **[Katalogs](./katalogs.md)** — publishing and pulling complete operator patterns
-- **[Komposers](./komposers.md)** — platform-level composition across multiple Katalogs
-- **[E2E](./e2e.md)** — gating publication with declarative verification
+- **[Motifs](./01-motifs.md)** — reusable resource primitives
+- **[Katalogs](./02-katalogs.md)** — publishing and pulling complete operator patterns
+- **[Komposers](./03-komposers.md)** — platform-level composition across multiple Katalogs
+- **[E2E](./04-e2e.md)** — gating publication with declarative verification

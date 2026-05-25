@@ -90,6 +90,6 @@ Enables the `/convert` endpoint for multi-version CRD support.
 | `enabled` | `false` | Register the `/convert` endpoint. |
 | `conversionWindow` | `100` | Rolling window size for conversion stats. |
 
-Requires `conversion` to be declared on the CRD entry. → See [conversion.md](conversion.md).
+Requires `conversion` to be declared on the CRD entry. → See [conversion.md](09-conversion.md).
 
 ---

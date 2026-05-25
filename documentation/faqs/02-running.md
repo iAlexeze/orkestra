@@ -229,6 +229,6 @@ failure mode, what it means, and how Orkestra handles it.
 
 ## Next
 
-- **[Patterns](./patterns.md)** — validation, mutation, built-in kinds
-- **[Ecosystem](./ecosystem.md)** — comparisons and the Kubernetes roadmap
+- **[Patterns](./03-patterns.md)** — validation, mutation, built-in kinds
+- **[Ecosystem](./04-ecosystem.md)** — comparisons and the Kubernetes roadmap
 - **[Deploying](../deploying.md)** — full cluster setup

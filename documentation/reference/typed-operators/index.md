@@ -23,8 +23,8 @@ If your operator only creates Kubernetes resources and applies rules, stay decla
 
 ## The two patterns
 
-→ [Hooks](./hooks.md) — add Go logic alongside declarative templates. The hook runs, then Orkestra applies `onCreate`/`onReconcile` templates as normal.
+→ [Hooks](./01-hooks.md) — add Go logic alongside declarative templates. The hook runs, then Orkestra applies `onCreate`/`onReconcile` templates as normal.
 
-→ [Constructor](./constructor.md) — replace the reconciler entirely. Your Go code owns the full reconcile loop; declarative templates are not applied.
+→ [Constructor](./02-constructor.md) — replace the reconciler entirely. Your Go code owns the full reconcile loop; declarative templates are not applied.
 
-→ [Mixing all three](./mixed.md) — a declarative operator, a hooks operator, and a constructor operator composed into one runtime from a single Komposer.
+→ [Mixing all three](./03-mixed.md) — a declarative operator, a hooks operator, and a constructor operator composed into one runtime from a single Komposer.

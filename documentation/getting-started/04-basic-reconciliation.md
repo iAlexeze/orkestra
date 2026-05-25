@@ -150,4 +150,4 @@ ork control
 
 ## Next
 
-- **[Writing Your First Katalog](./writing-your-first-katalog.md)** — put the reconcile model into practice with a real operator
+- **[Writing Your First Katalog](./02-writing-your-first-katalog.md)** — put the reconcile model into practice with a real operator

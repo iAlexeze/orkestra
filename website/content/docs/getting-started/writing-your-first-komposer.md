@@ -1,7 +1,7 @@
 ---
 title: "Writing Your First Komposer"
-date: 2026-05-20
-weight: 25
+date: 2026-05-25
+weight: 23
 ---
 
 A **Komposer** defines where Orkestra loads Katalogs from. A Katalog defines what your operator does — a Komposer defines where those Katalogs come from.
@@ -93,7 +93,7 @@ spec:
 ## Validating Without Running
 
 ```bash
-ork validate
+ork validate -f komposer.yaml
 ```
 
 Resolves all sources, merges everything, and reports errors — without touching the cluster.

@@ -135,7 +135,7 @@ dependsOn:
 
 ## `enrich`
 
-→ [enrich.md](enrich.md)
+→ [enrich.md](15-enrich.md)
 
 ---
 
@@ -186,15 +186,15 @@ imports:
       port: "8080"
 ```
 
-→ Full Motif import schema: [motif.md](motif.md)
+→ Full Motif import schema: [motif.md](14-motif.md)
 
 ## Sub-schemas
 
 | Field | Reference |
 |-------|-----------|
-| `apiTypes` | [apitypes.md](apitypes.md) |
-| `enrich` | [enrich.md](enrich.md) |
-| `operatorBox` | [operatorbox.md](operatorbox.md) |
-| `conversion` | [conversion.md](conversion.md) |
-| `validation` | [validation.md](validation.md) |
-| `mutation` | [mutation.md](mutation.md) |
+| `apiTypes` | [apitypes.md](03-apitypes.md) |
+| `enrich` | [enrich.md](15-enrich.md) |
+| `operatorBox` | [operatorbox.md](04-operatorbox.md) |
+| `conversion` | [conversion.md](09-conversion.md) |
+| `validation` | [validation.md](07-validation.md) |
+| `mutation` | [mutation.md](08-mutation.md) |

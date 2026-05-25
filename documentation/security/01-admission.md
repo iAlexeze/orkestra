@@ -171,4 +171,5 @@ cd admission
 ork e2e
 ```
 
+Follow the steps in the README
 ---

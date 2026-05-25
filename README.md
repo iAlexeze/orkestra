@@ -31,7 +31,7 @@ The only missing piece is something that **watches** it and **acts** on it.
 
 Traditionally that means **Go**: informers, workqueues, reconcile loops, code generation, Dockerfiles, Helm charts — a software project per operator. Most engineers never start. Teams that do spend weeks before the first CR reconciles.
 
-Orkestra removes that entirely.
+**Orkestra removes that entirely.**
 
 ---
 

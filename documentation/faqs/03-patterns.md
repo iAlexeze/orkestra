@@ -91,7 +91,7 @@ Multiple conditions in the same `when:` block are ANDed. To express OR, create t
 separate resource entries with different `when:` conditions and the same name — only
 one will be created, whichever condition is met first.
 
-See [When Conditions](../reference/schema/when-conditions.md) for the full reference.
+See [When Conditions](../reference/schema/06-when-conditions.md) for the full reference.
 
 ---
 
@@ -128,11 +128,11 @@ dependsOn:
   - database
 ```
 
-See [CRD Entry Schema](../reference/schema/crd-entry.md) for the full reference.
+See [CRD Entry Schema](../reference/schema/02-crd-entry.md) for the full reference.
 
 ---
 
 ## Next
 
-- **[Running](./running.md)** — setup, configuration, and operations
-- **[Ecosystem](./ecosystem.md)** — comparisons and the Kubernetes roadmap
+- **[Running](./02-running.md)** — setup, configuration, and operations
+- **[Ecosystem](./04-ecosystem.md)** — comparisons and the Kubernetes roadmap

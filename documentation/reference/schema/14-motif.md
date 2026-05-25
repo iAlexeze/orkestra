@@ -133,7 +133,7 @@ A Motif does not know what CRD is importing it. The mapping from CR fields to in
 
 ## `status`
 
-Same schema as the Katalog [status](status.md) block. Fields declared here are contributed to the parent CRD's status.
+Same schema as the Katalog [status](05-status.md) block. Fields declared here are contributed to the parent CRD's status.
 
 ```yaml
 status:
@@ -258,7 +258,7 @@ postgres/
 
 ## See also
 
-- [katalog.md](katalog.md) — where `operatorBox.imports` is declared
-- [operatorbox.md](operatorbox.md) — full operatorBox schema
-- [komposer.md](komposer.md) — composing multiple Katalogs
+- [katalog.md](01-katalog.md) — where `operatorBox.imports` is declared
+- [operatorbox.md](04-operatorbox.md) — full operatorBox schema
+- [komposer.md](13-komposer.md) — composing multiple Katalogs
 - [index.md](index.md) — full schema reference index

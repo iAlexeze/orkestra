@@ -1,7 +1,7 @@
 ---
 title: "Writing Your First Katalog"
-date: 2026-05-21
-weight: 24
+date: 2026-05-25
+weight: 22
 ---
 
 A **Katalog** is a YAML file that tells Orkestra what to do when a Custom Resource is created, updated, or deleted. This guide builds one from scratch.

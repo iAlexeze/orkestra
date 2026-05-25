@@ -35,7 +35,7 @@
                   </svg>
                 </button>
               </div>
-              <ul class="sidebar-section-pages" role="list"{{ if not $isActiveSection }} style="display:none"{{ end }}>
+              <ul class="sidebar-section-pages" role="list">
                 {{ $children := $section.RegularPages }}
                 {{ range $section.Sections }}{{ $children = $children | append . }}{{ end }}
                 {{ range sort $children "Weight" "asc" }}
@@ -53,7 +53,7 @@
                         {{ end }}
                       </div>
                       {{ if $subChildren }}
-                      <ul class="sidebar-subsection-pages" role="list"{{ if not $childActive }} style="display:none"{{ end }}>
+                      <ul class="sidebar-subsection-pages" role="list">
                         {{ range sort $subChildren "Weight" "asc" }}
                         <li>
                           <a href="{{ .RelPermalink }}" class="sidebar-link sidebar-link--nested{{ if eq $currentPage . }} active{{ end }}">{{ .Title }}</a>

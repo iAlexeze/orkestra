@@ -131,56 +131,105 @@ PYEOF
 
 rewrite_links() {
   local file="$1"
-  # Rewrite markdown cross-references: foo.md) → foo/) and index.md) → )
-  # Hugo serves pages at /path/ not /path/index.md or /path.md
+  # Rewrite markdown cross-references to Hugo URL format.
   #
-  # Leaf pages (not _index.md) are rendered at /section/page/ — a bare relative
-  # link "sibling/" from that URL resolves to /section/page/sibling/ (wrong).
-  # For leaf pages, bare sibling .md links need "../" prepended so they resolve
-  # to /section/sibling/ correctly. Index pages don't need this adjustment.
+  # Hugo serves leaf pages at /section/page/ and index pages at /section/.
+  # Leaf pages have one extra URL path level vs the source file directory.
+  # The correct relative links therefore differ by page type:
   #
-  # Anchor links are handled first so the # isn't consumed by greedy patterns.
-  # The [a-zA-Z] anchor and : exclusion prevent matching absolute URLs.
+  #   Source link       Index page result   Leaf page result
+  #   ./sibling.md      sibling/            ../sibling/
+  #   ../parent/x.md    ../parent/x/        ../../parent/x/
+  #   bare-sibling.md   bare-sibling/       ../bare-sibling/
+  #
+  # Numeric prefixes (01-, 02-, ...) are stripped — they exist only for ordering.
+  # Absolute URLs and fragment-only links (#anchor) are left untouched.
 
   local base
   base="$(basename "$file")"
   local is_index=false
   [[ "$base" == "_index.md" || "$base" == "index.md" ]] && is_index=true
 
-  # ./ and ../ prefix links — safe, these prefixes never appear in plain prose
-  sed -i \
-    -e 's|\(\.\/[^)#]*\)\/index\.md\(#[^)]*\))|\1/\2)|g' \
-    -e 's|\(\.\.[^)#]*\)\/index\.md\(#[^)]*\))|\1/\2)|g' \
-    -e 's|\(\.\/[^)#]*\)\.md\(#[^)]*\))|\1/\2)|g' \
-    -e 's|\(\.\.[^)#]*\)\.md\(#[^)]*\))|\1/\2)|g' \
-    -e 's|\(\.\/[^)]*\)\/index\.md)|\1/)|g' \
-    -e 's|\(\.\.[^)]*\)\/index\.md)|\1/)|g' \
-    -e 's|\(\.\/[^)]*\)\.md)|\1/)|g' \
-    -e 's|\(\.\.[^)]*\)\.md)|\1/)|g' \
-    "$file"
+  python3 - "$file" "$is_index" <<'PYEOF'
+import re, sys
 
-  # Bare letter-prefixed links — anchor with ( to prevent matching plain prose.
-  # Without ( the greedy [^):^]* would match from any sentence-starting letter
-  # all the way to the .md) closing paren of an unrelated link.
-  sed -i \
-    -e 's|(\([a-zA-Z][^):#]*\)\/index\.md\(#[^)]*\))|(\1/\2)|g' \
-    -e 's|(\([a-zA-Z][^):#]*\)\.md\(#[^)]*\))|(\1/\2)|g' \
-    "$file"
+path = sys.argv[1]
+is_index_page = (sys.argv[2] == 'true')
+content = open(path).read()
 
-  # Bare sibling links (no ./ or ../ prefix):
-  # Index pages: sibling.md → sibling/ (correct — resolves from /section/)
-  # Leaf pages:  sibling.md → ../sibling/ (correct — resolves from /section/page/)
-  if $is_index; then
-    sed -i \
-      -e 's|(\([a-zA-Z][^):]*\)\/index\.md)|(\1/)|g' \
-      -e 's|(\([a-zA-Z][^):]*\)\.md)|(\1/)|g' \
-      "$file"
-  else
-    sed -i \
-      -e 's|(\([a-zA-Z][^):]*\)\/index\.md)|(../\1/)|g' \
-      -e 's|(\([a-zA-Z][^):]*\)\.md)|(../\1/)|g' \
-      "$file"
-  fi
+def rewrite_url(url):
+    if not url:
+        return url
+    # Leave absolute URLs, root-relative, and fragment-only links alone
+    if url.startswith('http') or url.startswith('/') or url.startswith('#'):
+        return url
+    # Skip prose in parentheses (contains spaces or newlines)
+    if ' ' in url or '\n' in url:
+        return url
+
+    # Split off fragment
+    anchor = ''
+    if '#' in url:
+        url, frag = url.split('#', 1)
+        anchor = '#' + frag
+        if not url:
+            return anchor  # pure #anchor
+
+    # Determine relative prefix and the path portion after it
+    if url.startswith('./'):
+        levels = 0   # 0 = same dir  (represented as ./)
+        has_dot_slash = True
+        rest = url[2:]
+    elif url.startswith('../'):
+        rest = url
+        levels = 0
+        has_dot_slash = False
+        while rest.startswith('../'):
+            levels += 1
+            rest = rest[3:]
+    else:
+        levels = -1  # bare link — no explicit prefix
+        has_dot_slash = False
+        rest = url
+
+    # Normalise index.md → trailing slash, strip .md extension
+    if rest == 'index.md':
+        rest = ''
+    elif rest.endswith('/index.md'):
+        rest = rest[:-len('index.md')]  # keep trailing slash from dir/
+    elif rest.endswith('.md'):
+        rest = rest[:-3] + '/'
+
+    # Strip numeric ordering prefix from every path segment
+    rest = re.sub(r'(?:^|(?<=[/]))\d+-(?=[a-zA-Z])', '', rest)
+
+    # Build the correct relative prefix for the target Hugo URL model.
+    # Index pages live at /section/ — same depth as the source directory.
+    # Leaf pages live at /section/page/ — one level deeper than source directory.
+    if is_index_page:
+        if levels == -1:          # bare → bare (index page resolves correctly)
+            prefix = ''
+        elif has_dot_slash:       # ./ → strip it (same dir in both models)
+            prefix = ''
+        else:                     # N×../ → same N×../
+            prefix = '../' * levels
+    else:
+        if levels == -1:          # bare sibling → ../
+            prefix = '../'
+        elif has_dot_slash:       # ./ → ../  (same-dir in FS = one up in URL)
+            prefix = '../'
+        else:                     # N×../ → (N+1)×../
+            prefix = '../' * (levels + 1)
+
+    return prefix + rest + anchor
+
+def process(m):
+    new_url = rewrite_url(m.group(1))
+    return '(' + new_url + ')'
+
+content = re.sub(r'\(([^)]+)\)', process, content)
+open(path, 'w').write(content)
+PYEOF
 }
 
 sync_file() {
@@ -226,7 +275,10 @@ find "$SRC_DIR" -name '*.md' | sort | while read -r src_file; do
     continue
   fi
 
-  dst_file="$DST_DIR/$rel_path"
+  # Strip numeric ordering prefix (NN-) from each path segment so Hugo generates
+  # clean URLs. The prefix is only for file-system ordering in the source tree.
+  dst_rel_path="$(echo "$rel_path" | sed 's|/[0-9][0-9]*-|/|g' | sed 's|^[0-9][0-9]*-||')"
+  dst_file="$DST_DIR/$dst_rel_path"
 
   # Hugo requires _index.md (not index.md) for section branch bundles.
   if [[ "$(basename "$dst_file")" == "index.md" ]]; then

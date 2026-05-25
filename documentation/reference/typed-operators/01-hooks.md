@@ -110,5 +110,6 @@ To try the full working example:
 ```bash
 ork init --pack advanced
 cd 09-hooks
-ork run
 ```
+
+Follow the steps in the README

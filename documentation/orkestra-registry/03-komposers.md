@@ -88,6 +88,6 @@ When you load an upstream `komposer.yaml` with `useKomposer: true`, its own regi
 
 ## Where to go next
 
-- **[Katalogs](./katalogs.md)** — publishing operator patterns
-- **[E2E](./e2e.md)** — gating publication with declarative tests
-- **[Schema: Komposer](../reference/schema/komposer.md)** — full field reference
+- **[Katalogs](./02-katalogs.md)** — publishing operator patterns
+- **[E2E](./04-e2e.md)** — gating publication with declarative tests
+- **[Schema: Komposer](../reference/schema/13-komposer.md)** — full field reference

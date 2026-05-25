@@ -75,10 +75,3 @@ require (
 ```
 
 Pin to a release tag for production. Pin to a commit SHA only for development or pre-release testing.
-
----
-
-## Next
-
-- **[Hooks](./typed-operators/hooks.md)** — add Go logic alongside declarative templates
-- **[Constructor](./typed-operators/constructor.md)** — replace the GenericReconciler entirely

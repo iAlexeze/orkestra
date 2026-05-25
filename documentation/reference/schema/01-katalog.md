@@ -41,7 +41,7 @@ providers:                             # optional → see katalog-providers.md
 ## `spec.finalizers`
 
 Katalog-level finalizers applied to every CRD in this Katalog.
-Override per-CRD via [`operatorBox.finalizers`](operatorbox.md).
+Override per-CRD via [`operatorBox.finalizers`](04-operatorbox.md).
 
 ## `spec.crds`
 
@@ -59,12 +59,12 @@ spec:
         plural: databases
 ```
 
-→ Full field reference: [crd-entry.md](crd-entry.md)
+→ Full field reference: [crd-entry.md](02-crd-entry.md)
 
 ## See also
 
-- [crd-entry.md](crd-entry.md)
-- [katalog-security.md](katalog-security.md)
-- [katalog-notification.md](katalog-notification.md)
-- [katalog-providers.md](katalog-providers.md)
-- [komposer.md](komposer.md) — compose multiple Katalogs
+- [crd-entry.md](02-crd-entry.md)
+- [katalog-security.md](10-katalog-security.md)
+- [katalog-notification.md](11-katalog-notification.md)
+- [katalog-providers.md](12-katalog-providers.md)
+- [komposer.md](13-komposer.md) — compose multiple Katalogs

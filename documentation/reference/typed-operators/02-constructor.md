@@ -102,5 +102,6 @@ To try the full working example:
 ```bash
 ork init --pack advanced
 cd 10-constructor
-ork run
 ```
+
+Follow the steps in the README

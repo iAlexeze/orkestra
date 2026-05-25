@@ -1,7 +1,7 @@
 ---
 title: "Getting Started"
-date: 2026-05-22
-weight: 22
+date: 2026-05-25
+weight: 25
 ---
 
 Orkestra turns a YAML file into a working Kubernetes operator. This guide takes you from zero to a running operator — no Go, no code generation.
@@ -179,6 +179,6 @@ Ctrl+C
 
 ## Next Steps
 
-- **[Writing Your First Katalog](./writing-your-first-katalog/)** — build your own operator from scratch
-- **[Basic Reconciliation](./basic-reconciliation/)** — understand the full reconcile lifecycle
-- **[Learning to Orkestrate](./learning-to-orkestrate/)** — progression through the example packs
+- **[Writing Your First Katalog](writing-your-first-katalog/)** — build your own operator from scratch
+- **[Basic Reconciliation](basic-reconciliation/)** — understand the full reconcile lifecycle
+- **[Learning to Orkestrate](learning-to-orkestrate/)** — progression through the example packs

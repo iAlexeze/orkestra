@@ -97,10 +97,10 @@ spec:
 
 !!! note "Why Katalog is not a CRD"
     Orkestra deliberately keeps Katalog and Komposer as plain YAML files, not
-    Kubernetes CRDs. See [Why Katalog and Komposer Are Not CRDs](../why-not-crds.md)
+    Kubernetes CRDs. See [Why Katalog and Komposer Are Not CRDs](./05-why-not-crds.md)
     for the full reasoning.
 
-See the [Katalog Schema](../reference/schema/katalog.md) for all available fields.
+See the [Katalog Schema](../reference/schema/01-katalog.md) for all available fields.
 
 ---
 
@@ -135,7 +135,7 @@ spec:
 The `spec.crds` inline block always wins on name conflict — it is the override
 mechanism. Platform teams publish Katalogs; application teams compose and override.
 
-See the [Komposer Schema](../reference/schema/komposer.md) for all options.
+See the [Komposer Schema](../reference/schema/13-komposer.md) for all options.
 
 ---
 
@@ -217,6 +217,6 @@ declared alongside reconcile templates:
 
 ## Next
 
-- **[Running](./running.md)** — setup, configuration, and operations
-- **[Patterns](./patterns.md)** — validation, mutation, built-in kinds
-- **[Ecosystem](./ecosystem.md)** — comparisons and the Kubernetes roadmap
+- **[Running](./02-running.md)** — setup, configuration, and operations
+- **[Patterns](./03-patterns.md)** — validation, mutation, built-in kinds
+- **[Ecosystem](./04-ecosystem.md)** — comparisons and the Kubernetes roadmap

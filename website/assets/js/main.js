@@ -204,9 +204,13 @@
   function initSidebarSections() {
     var toggles = document.querySelectorAll('.sidebar-section-toggle');
 
+    // Clear any inline display styles — CSS max-height transition handles show/hide
+    document.querySelectorAll('.sidebar-section-pages, .sidebar-subsection-pages').forEach(function(el) {
+      el.style.display = '';
+    });
+
     toggles.forEach(function (toggle) {
       var section = toggle.closest('.sidebar-section');
-      var pagesList = section ? section.querySelector('.sidebar-section-pages') : null;
 
       // Sync initial aria state
       var isOpen = section ? section.classList.contains('open') : false;
@@ -217,15 +221,9 @@
         e.stopPropagation();
         if (!section) return;
 
-        var nowOpen = section.classList.contains('open');
-        var willOpen = !nowOpen;
-
+        var willOpen = !section.classList.contains('open');
         section.classList.toggle('open', willOpen);
         toggle.setAttribute('aria-expanded', String(willOpen));
-
-        if (pagesList) {
-          pagesList.style.display = willOpen ? 'flex' : 'none';
-        }
       });
     });
 
@@ -236,10 +234,8 @@
         var section = link.closest('.sidebar-section');
         if (!section) return;
         var toggle = section.querySelector('.sidebar-section-toggle');
-        var pagesList = section.querySelector('.sidebar-section-pages');
         section.classList.add('open');
         if (toggle) toggle.setAttribute('aria-expanded', 'true');
-        if (pagesList) pagesList.style.display = 'flex';
       });
     });
 
@@ -247,7 +243,6 @@
     var subToggles = document.querySelectorAll('.sidebar-subsection-toggle');
     subToggles.forEach(function(toggle) {
       var subsection = toggle.closest('.sidebar-subsection');
-      var pagesList = subsection ? subsection.querySelector('.sidebar-subsection-pages') : null;
 
       toggle.addEventListener('click', function(e) {
         e.preventDefault();
@@ -256,7 +251,6 @@
         var willOpen = !subsection.classList.contains('open');
         subsection.classList.toggle('open', willOpen);
         toggle.setAttribute('aria-expanded', String(willOpen));
-        if (pagesList) pagesList.style.display = willOpen ? 'flex' : 'none';
       });
     });
   }

@@ -10,7 +10,7 @@
     <item>
       <title>Declarative Operators: A New Model for Kubernetes Extensibility</title>
       <link>http://localhost:8090/publications/declarative-operators-whitepaper/</link>
-      <pubDate>Sun, 24 May 2026 00:00:00 +0000</pubDate>
+      <pubDate>Mon, 25 May 2026 00:00:00 +0000</pubDate>
       <guid>http://localhost:8090/publications/declarative-operators-whitepaper/</guid>
       <description>&lt;p&gt;&lt;em&gt;Orkestra Project — March 2026&lt;/em&gt;&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;abstract&#34;&gt;Abstract&lt;/h2&gt;&#xA;&lt;p&gt;Kubernetes operators encode domain knowledge as reconciliation logic. Every&#xA;major operator framework to date requires this logic to be written in a&#xA;programming language, compiled into a binary, and deployed as a separate&#xA;long-running process — one per CRD. The result, at scale, is operator sprawl:&#xA;dozens of binaries each with independent lifecycle, observability, and&#xA;resource consumption.&lt;/p&gt;&#xA;&lt;p&gt;This paper presents a different model. We argue that the operator pattern&#xA;is fundamentally correct, but its implementation has been conflated with its&#xA;mechanism. The pattern requires one reconciler per CRD with proper isolation.&#xA;It does not require one binary per CRD. When a shared runtime provides the&#xA;isolation, each CRD becomes a complete, independent operator — with its own&#xA;informer, worker pool, workqueue, health endpoint, and metrics — while the&#xA;operational overhead of running them collapses to a single process.&lt;/p&gt;</description>
     </item>

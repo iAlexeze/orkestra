@@ -1,7 +1,7 @@
 ---
 title: "ork run"
-date: 2026-05-20
-weight: 55
+date: 2026-05-25
+weight: 53
 ---
 
 Start the Orkestra Runtime.

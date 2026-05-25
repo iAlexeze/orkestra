@@ -175,6 +175,6 @@ Ctrl+C
 
 ## Next Steps
 
-- **[Writing Your First Katalog](./writing-your-first-katalog.md)** — build your own operator from scratch
-- **[Basic Reconciliation](./basic-reconciliation.md)** — understand the full reconcile lifecycle
-- **[Learning to Orkestrate](./learning-to-orkestrate.md)** — progression through the example packs
+- **[Writing Your First Katalog](./02-writing-your-first-katalog.md)** — build your own operator from scratch
+- **[Basic Reconciliation](./04-basic-reconciliation.md)** — understand the full reconcile lifecycle
+- **[Learning to Orkestrate](./01-learning-to-orkestrate.md)** — progression through the example packs
