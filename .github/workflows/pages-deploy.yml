@@ -63,16 +63,16 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy website/public --project-name=${{ secrets.CLOUDFLARE_PAGES_PROJECT }} --commit-dirty=true
 
-      - name: Crawl Algolia search index
-        if: success()
-        env:
-          ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
-          ALGOLIA_WRITE_KEY: ${{ secrets.ALGOLIA_WRITE_KEY }}
-        run: |
-          CONFIG=$(cat website/docsearch-config.json)
-          docker run --rm \
-            -e APPLICATION_ID="${ALGOLIA_APP_ID}" \
-            -e API_KEY="${ALGOLIA_WRITE_KEY}" \
-            -e CONFIG="${CONFIG}" \
-            algolia/docsearch-scraper
-        continue-on-error: true
+      # - name: Crawl Algolia search index
+      #   if: success()
+      #   env:
+      #     ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
+      #     ALGOLIA_WRITE_KEY: ${{ secrets.ALGOLIA_WRITE_KEY }}
+      #   run: |
+      #     CONFIG=$(cat website/docsearch-config.json)
+      #     docker run --rm \
+      #       -e APPLICATION_ID="${ALGOLIA_APP_ID}" \
+      #       -e API_KEY="${ALGOLIA_WRITE_KEY}" \
+      #       -e CONFIG="${CONFIG}" \
+      #       algolia/docsearch-scraper
+      #   continue-on-error: true

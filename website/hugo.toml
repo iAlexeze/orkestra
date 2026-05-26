@@ -21,9 +21,9 @@ enableGitInfo = true
   version = "v1"
 
   [params.algolia]
-    appId = "5KPJ5C5Q0S"
-    searchKey = "84eeede21f5b52cd3424d8b8e03d9cf7"
-    indexName = "orkestra"
+    appId = "IDBZPZV9Q6"
+    searchKey = "6eadbb67e7c72aaaa5309e17c4e1e9ad"
+    indexName = "Orkestra Documentaion"
 
 
 [menu]
