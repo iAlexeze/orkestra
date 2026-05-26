@@ -51,21 +51,42 @@ jobs:
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
+      - name: Import GPG signing key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          echo "${GPG_PRIVATE_KEY}" | gpg --batch --import
+          FINGERPRINT=$(gpg --list-secret-keys --with-colons releases@${{ inputs.ork }}.io \
+            | grep '^fpr' | head -1 | cut -d: -f10)
+          echo "${FINGERPRINT}:6:" | gpg --import-ownertrust
+          echo "GPG_FINGERPRINT=${FINGERPRINT}" >> "$GITHUB_ENV"
+          # Export legacy keyring — required by helm package --sign
+          gpg --no-default-keyring --keyring /tmp/helm-keyring.gpg --import <(gpg --export releases@${{ inputs.ork }}.io)
+
       - name: Update Chart metadata and values
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           TAG="${{ github.ref_name }}"
           VERSION="${TAG#v}"
           yq eval ".version = \"${VERSION}\"" -i charts/${{ inputs.ork }}/Chart.yaml
           yq eval ".appVersion = \"${{ inputs.image_tag }}\"" -i charts/${{ inputs.ork }}/Chart.yaml
           yq eval ".runtime.image.tag = \"${{ inputs.image_tag }}\"" -i charts/${{ inputs.ork }}/values.yaml
-          yq eval ".controlCenter.image.tag = \"${{ inputs.image_tag }}\"" -i charts/${{ inputs.ork }}/values.yaml
-
           yq eval ".runtime.image.repository = \"ghcr.io/${{ inputs.repository }}\"" -i charts/${{ inputs.ork }}/values.yaml
+          yq eval ".gateway.image.tag = \"${{ inputs.image_tag }}\"" -i charts/${{ inputs.ork }}/values.yaml
+          yq eval ".gateway.image.repository = \"ghcr.io/${{ inputs.repository }}-gateway\"" -i charts/${{ inputs.ork }}/values.yaml
+          yq eval ".controlCenter.image.tag = \"${{ inputs.image_tag }}\"" -i charts/${{ inputs.ork }}/values.yaml
           yq eval ".controlCenter.image.repository = \"ghcr.io/${{ inputs.repository }}-cc\"" -i charts/${{ inputs.ork }}/values.yaml
 
-      - name: Package and push Helm chart to gh-pages
+          # Stamp the real GPG fingerprint into the signKey annotation
+          yq eval ".annotations[\"artifacthub.io/signKey\"] = \"fingerprint: ${GPG_FINGERPRINT}\nurl: https://orkspace.github.io/orkestra/orkestra-public-key.asc\"" \
+            -i charts/${{ inputs.ork }}/Chart.yaml
+
+      - name: Package and sign Helm chart, push to gh-pages
         env:
           GH_TOKEN: ${{ secrets.ORK_PUBLISH_PAT }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           set -eux
           ORK="${{ inputs.ork }}"
@@ -74,23 +95,34 @@ jobs:
           VERSION="${TAG#v}"
           IMAGE_TAG="${{ inputs.image_tag }}"
 
-          helm package "$CHART_DIR" --version "$VERSION" --app-version "$IMAGE_TAG" -d .cr-release-packages
+          # Sign the chart — produces orkestra-VERSION.tgz + orkestra-VERSION.tgz.prov
+          echo "${GPG_PASSPHRASE}" | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback true
+          helm package "$CHART_DIR" \
+            --sign --key "releases@${ORK}.io" --keyring /tmp/helm-keyring.gpg \
+            --passphrase-file <(echo "${GPG_PASSPHRASE}") \
+            --version "$VERSION" --app-version "$IMAGE_TAG" \
+            -d .cr-release-packages
 
           git clone --branch gh-pages "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" /tmp/gh-pages
 
           cp ".cr-release-packages/${ORK}-${VERSION}.tgz" /tmp/gh-pages/
+          cp ".cr-release-packages/${ORK}-${VERSION}.tgz.prov" /tmp/gh-pages/
 
-          # Sync README from chart source — single source of truth.
-          # Insert the version badge after the first heading line.
+          # Publish GPG public key alongside the chart for helm verify
+          gpg --armor --export releases@${ORK}.io > /tmp/gh-pages/orkestra-public-key.asc
+
+          # Sync README from chart source.
+          # Inject shields.io version badges after the first heading line.
           cp "${CHART_DIR}/README.md" /tmp/gh-pages/README.md
-          awk 'NR==1{print; print ""; print "> **Chart version:** '"${VERSION}"' | **App version:** '"${IMAGE_TAG}"'"; print ""; next}1' \
-          /tmp/gh-pages/README.md > /tmp/README.tmp && mv /tmp/README.tmp /tmp/gh-pages/README.md
+          VERSION_BADGE="${VERSION//-/--}"
+          IMAGE_TAG_BADGE="${IMAGE_TAG//-/--}"
+          awk 'NR==1{print; print ""; print "![Chart Version](https://img.shields.io/badge/chart%20version-'"${VERSION_BADGE}"'-blue?style=flat-square) ![App Version](https://img.shields.io/badge/app%20version-'"${IMAGE_TAG_BADGE}"'-blue?style=flat-square)"; print ""; next}1' \
+            /tmp/gh-pages/README.md > /tmp/README.tmp && mv /tmp/README.tmp /tmp/gh-pages/README.md
 
           # Copy values.yaml so users can inspect defaults from the gh-pages site
           cp "charts/${ORK}/values.yaml" /tmp/gh-pages/values.yaml
 
-          # Copy crdsExamples source — kept in the chart dir, not Chart.yaml (too large)
-          cp "charts/${ORK}/artifacthub-crds-examples.yaml" /tmp/gh-pages/crds-examples.yaml
+          # crdsExamples are now embedded directly in Chart.yaml — no separate file needed.
 
           cd /tmp/gh-pages
           if [[ -f index.yaml ]]; then
@@ -99,17 +131,9 @@ jobs:
             helm repo index . --url "https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
           fi
 
-          # Inject crdsExamples into the newly published version entry.
-          # strenv() reads the env var as a raw string — safe with newlines and Go templates.
-          export CRDS_EXAMPLES
-          CRDS_EXAMPLES=$(cat crds-examples.yaml)
-          yq eval \
-            '(.entries.'"${ORK}"'[] | select(.version == "'"${VERSION}"'")).annotations["artifacthub.io/crdsExamples"] = strenv(CRDS_EXAMPLES)' \
-            -i index.yaml
-
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "*.tgz" index.yaml README.md values.yaml crds-examples.yaml
+          git add "*.tgz" "*.tgz.prov" index.yaml README.md values.yaml orkestra-public-key.asc
           git commit -m "Release ${ORK}-${VERSION}"
           git push origin gh-pages
 

@@ -86,14 +86,80 @@ annotations:
       description: Declarative end-to-end testing for Kubernetes operators
   artifacthub.io/changes: |
     - kind: added
-      description: "Gateway: standalone admission webhooks, deletion protection, namespace protection, TLS cert lifecycle"
-    - kind: added
-      description: "Runtime/Gateway split — each deploys independently with its own build tag and image"
-    - kind: added
-      description: "Configurable cert rotation via security.certManager (autoRotate, rotationThreshold, validFor)"
-    - kind: added
-      description: "ork run discovers katalog.yaml automatically — no -f flag required"
+      description: "deployments/public/: six-cluster public demo — 6 runtimes, 75 CRDs, 1 Control Center"
+    - kind: fixed
+      description: "CRD health oscillation — LastReconcile() side effect and SetStarted() resync reset removed"
+    - kind: fixed
+      description: "crdExists() now distinguishes transient network errors from genuine CRD absence"
+    - kind: fixed
+      description: "PostStartRetryInterval restored from 3s (debug) to 90s with 5-minute capped backoff"
+    - kind: fixed
+      description: "ClusterRole/ClusterRoleBinding names scoped to orkestra-<namespace> — no more last-write-wins collision"
+    - kind: fixed
+      description: "Docker builds write to /tmp/ instead of ~/.orkestra/bin/ — dev CLI no longer overwritten"
     - kind: changed
-      description: "gateway.endpoint replaces security.gatewayEndpoint (top-level gateway: block)"
-    - kind: changed
-      description: "ORK_* env prefix replaces ORKESTRA_*"
+      description: "Memory baseline updated to 79 MB RSS — measured from a live 10-CRD runtime"
+  artifacthub.io/signKey: |
+    fingerprint: SET_AT_RELEASE_TIME
+    url: https://orkspace.github.io/orkestra/orkestra-public-key.asc
+  artifacthub.io/crdsExamples: |
+    - apiVersion: orkestra.orkspace.io/v1
+      kind: Katalog
+      metadata:
+        name: hello-website
+      spec:
+        crds:
+          website:
+            crdFile: ./crd.yaml
+            crFiles:
+              - ./cr.yaml
+            operatorBox:
+              default: true
+              onCreate:
+                deployments:
+                  - name: "{{ .metadata.name }}"
+                    image: "{{ .spec.image }}"
+                    replicas: "{{ .spec.replicas }}"
+                    reconcile: true
+                services:
+                  - name: "{{ .metadata.name }}-svc"
+                    port: "80"
+                    targetPort: "{{ .spec.port }}"
+                    reconcile: true
+    - apiVersion: orkestra.orkspace.io/v1
+      kind: Komposer
+      metadata:
+        name: platform
+      imports:
+        registry:
+          - url: ghcr.io/orkspace/patterns/postgres@v1.0.0
+            oci: true
+        files:
+          - ./website-katalog.yaml
+      spec:
+        crds:
+          postgres:
+            workers: 8
+            resync: 30s
+          website:
+            workers: 6
+            resync: 15s
+    - apiVersion: orkestra.orkspace.io/v1
+      kind: E2E
+      metadata:
+        name: hello-website-e2e
+      spec:
+        katalog: ./katalog.yaml
+        crd: ./crd.yaml
+        cr: ./cr.yaml
+        cluster:
+          provider: kind
+          name: ork-e2e
+        expect:
+          - name: Deployment created
+            after: cr-applied
+            timeout: 60s
+            resources:
+              - kind: Deployment
+                namespace: default
+                ready: true
