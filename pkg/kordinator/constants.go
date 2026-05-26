@@ -9,9 +9,9 @@ const (
 	DefaultDependencyInterval = 10 * time.Second
 
 	// PostStart Retry loop
-	// PostStartRetryInterval = 30 * time.Second
-	PostStartRetryInterval        = 3 * time.Second // DEBUG
+	PostStartRetryInterval        = 90 * time.Second
 	PostStartBackoff              = 5 * time.Second
+	PostStartBackoffMax           = 5 * time.Minute
 	DependencyHealthCheckInterval = 10 * time.Second
 
 	// Draining

@@ -95,7 +95,7 @@ Every CRD declared in a Katalog becomes a complete, isolated operator. Nothing t
 | **Health API** | `/katalog/{crd}/health`, `/katalog/{crd}/cr`, `/metrics` — per CRD. |
 | **Prometheus metrics** | Reconcile totals, queue depth, error rate — labeled by GVK. |
 | **Deletion protection** | Orkestra and everything it manages cannot be accidentally `kubectl delete`. |
-| **Control Center** | Realtime visibility per CRD, per Katalog, across instances. |
+| **Control Center** | Realtime visibility per CRD, per Katalog, across instances. Auto-generated operator docs — overview, reconcile mode, child resources, kubectl reference, access control. |
 
 ---
 
@@ -131,26 +131,30 @@ ork control
 ```
 > → localhost:8081 · username:password → orkestra
 
-![Control Center — multi-Katalog view](./documentation/assets/controlcenter/control-center-landing.png)
+![Control Center — multi-Runtime view](./documentation/assets/controlcenter/public/control-center.png)
 
-![Control Center — per-Katalog panel](./documentation/assets/controlcenter/control-panel-website.png)
+![Control Center — per-Runtime panel](./documentation/assets/controlcenter/public/control-panel.png)
 
-Three Katalogs. 15 CRDs. 94 workers. 2,761 live resources. One process.
+![Control Center — auto-generated operator docs](./documentation/assets/controlcenter/public/operator-docs.png)
+
+Six Runtimes. 75 CRDs. One Control Center.
+
+> Live deployment: [cc.orkestra.sh](https://cc.orkestra.sh)
 
 ---
 
 ## Numbers
 
-| | Traditional (15 operators) | Orkestra |
+| | Traditional (75 operators) | Orkestra |
 |---|---|---|
-| **Processes** | 15 | 1 |
-| **Memory** | 750 MB – 3 GB | ~47 MB |
-| **CRDs under management** | 15 | 15 |
+| **Processes** | 75 | 6 runtimes + 1 control center |
+| **Memory** | 3.75 GB – 15 GB | ~79 MB per runtime (measured) |
+| **CRDs under management** | 75 | 75 |
 | **First operator** | 3–6 weeks | Under 1 hour |
 | **Lines of Go** | 400+ per operator | 0 |
 | **Adding a new CRD** | Days to weeks | Minutes |
 
-The memory reduction works because Orkestra pays the cost of client-go, leader election, and health servers once. Per-CRD cost is a goroutine pool and an in-memory cache. Per-CRD isolation works the same way `kube-controller-manager` isolates Deployment, StatefulSet, and Job controllers — dedicated informer, queue, and worker pool per CRD. A panic in one is caught by `safeReconcile`; the others keep running.
+79 MB is a live measurement from a 10-CRD runtime (`process_resident_memory_bytes` from the `/metrics` endpoint — [raw scrape](./documentation/assets/controlcenter/public/metrics.txt)). The memory reduction works because Orkestra pays the cost of client-go, leader election, and health servers once per runtime. Per-CRD cost is a goroutine pool and an in-memory cache. Isolation works the same way `kube-controller-manager` isolates Deployment, StatefulSet, and Job controllers — dedicated informer, queue, and worker pool per CRD. A panic in one is caught by `safeReconcile`; the others keep running. The Control Center aggregates all runtimes into a single dashboard.
 
 ---
 

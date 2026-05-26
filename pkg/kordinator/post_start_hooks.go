@@ -82,7 +82,12 @@ func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 				stillMissingChild := make(map[string]schema.GroupVersionKind)
 				for gvkStr, gvk := range k.missingChildGVKs {
 					gvkCopy := gvk
-					ok, _ := k.crdExists(&gvkCopy)
+					ok, err := k.crdExists(&gvkCopy)
+					if err != nil {
+						logger.Warn().Str("gvk", gvkStr).Err(err).Msg("crdExists transient error — keeping child in missing list")
+						stillMissingChild[gvkStr] = gvk
+						continue
+					}
 					if ok {
 						logger.Info().Str("gvk", gvkStr).Msg("custom child CRD now available — refreshing RESTMapper")
 						k.kube.RefreshMapper()
@@ -102,7 +107,13 @@ func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 				if entry == nil || entry.Missing {
 					continue
 				}
-				ok, _ := k.crdExists(entry.GVK)
+				ok, err := k.crdExists(entry.GVK)
+				if err != nil {
+					// Transient API server error — cannot determine CRD state.
+					// Skip all health changes; we will re-check on the next tick.
+					logger.Warn().Str("gvk", gvkStr).Err(err).Msg("crdExists transient error — skipping health update")
+					continue
+				}
 				if !ok {
 					logger.Warn().Str("gvk", gvkStr).Msg("CRD disappeared at runtime — marking missing")
 					entry.Missing = true
@@ -152,7 +163,16 @@ func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 				stillMissing := make(map[string]*informer.InformerEntry)
 
 				for gvkStr, entry := range missing {
-					ok, _ := k.crdExists(entry.GVK)
+					ok, err := k.crdExists(entry.GVK)
+					if err != nil {
+						// Transient error — cannot determine whether CRD exists.
+						// Keep it in the missing list and retry next tick without
+						// touching health state (avoids "not started" flip on a
+						// pending CRD caused by an API server blip).
+						logger.Warn().Str("gvk", gvkStr).Err(err).Msg("crdExists transient error — keeping in missing list")
+						stillMissing[gvkStr] = entry
+						continue
+					}
 					if ok {
 						k.activateCRD(ctx, entry)
 						k.deactivated[gvkStr] = false
@@ -225,8 +245,11 @@ func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 			// Exponential backoff only when CRDs are still missing
 			if len(k.informerFactory.Missing()) > 0 {
 				time.Sleep(backoff)
-				if backoff < time.Minute {
+				if backoff < PostStartBackoffMax {
 					backoff *= 2
+					if backoff > PostStartBackoffMax {
+						backoff = PostStartBackoffMax
+					}
 				}
 			}
 		}
@@ -387,14 +410,29 @@ func (k *DependencyKordinator) deactivateCRD(gvk string) {
 }
 
 // crdExists checks if a CRD is present in the cluster by querying the API server.
-// Returns (true, nil) if the CRD exists, (false, nil) if not, (false, error) on failure.
+//
+// Return values:
+//   - (true,  nil) — CRD exists
+//   - (false, nil) — CRD definitively not registered ("not installed")
+//   - (false, err) — transient failure (network blip, timeout, dial error);
+//     callers must skip all health-state changes and retry next tick
 func (k *DependencyKordinator) crdExists(gvk *schema.GroupVersionKind) (bool, error) {
-	return utils.WaitForCRD(
+	err := utils.WaitForCRD(
 		k.kube.RestConfig(),
 		gvk.Group,
 		gvk.Kind,
 		gvk.Version,
-	) == nil, nil
+	)
+	if err == nil {
+		return true, nil
+	}
+	// WaitForCRD converts meta.IsNoMatchError into "not installed" — that is the
+	// only definitive "CRD absent" signal. Everything else (dial, timeout, TLS, …)
+	// is a transient error; don't degrade CRD health based on it.
+	if strings.Contains(err.Error(), "not installed") {
+		return false, nil
+	}
+	return false, err
 }
 
 // collectCustomChildGVKs scans all registered CRDs for custom resource entries declared
