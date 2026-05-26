@@ -306,7 +306,7 @@ controlCenter:
     # Set this to your runtime service URL(s)
     orkestraURLs: []
 
-    port: 8090
+    port: 8081
     refreshInterval: 10s
     logLevel: info
 

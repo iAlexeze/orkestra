@@ -151,5 +151,5 @@ Control Center port.
 Returns the port number, with environment variable fallback.
 */}}
 {{- define "orkestra.ccPort" -}}
-{{- .Values.controlCenter.config.port | default 8090 }}
+{{- .Values.controlCenter.config.port | default 8081 }}
 {{- end }}

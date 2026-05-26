@@ -94,17 +94,20 @@ func renderRBAC(runtimeRules, gatewayRules []rbacv1.PolicyRule, namespace string
 	}
 
 	// ── Runtime ClusterRole + ClusterRoleBinding ───────────────────────────────
+	// Names are namespaced (orkestra-<ns>) so multiple runtimes in different
+	// namespaces don't overwrite each other's cluster-scoped RBAC objects.
 	if opts.IncludeRuntime && len(runtimeRules) > 0 {
+		orkNS := ork + "-" + namespace
 		objs = append(objs,
 			rbacv1.ClusterRole{
 				TypeMeta:   metav1.TypeMeta{APIVersion: "rbac.authorization.k8s.io/v1", Kind: "ClusterRole"},
-				ObjectMeta: metav1.ObjectMeta{Name: ork, Labels: labels.OrkestraResourceLabels()},
+				ObjectMeta: metav1.ObjectMeta{Name: orkNS, Labels: labels.OrkestraResourceLabels()},
 				Rules:      runtimeRules,
 			},
 			rbacv1.ClusterRoleBinding{
 				TypeMeta:   metav1.TypeMeta{APIVersion: "rbac.authorization.k8s.io/v1", Kind: "ClusterRoleBinding"},
-				ObjectMeta: metav1.ObjectMeta{Name: ork, Labels: labels.OrkestraResourceLabels()},
-				RoleRef:    rbacv1.RoleRef{APIGroup: "rbac.authorization.k8s.io", Kind: "ClusterRole", Name: ork},
+				ObjectMeta: metav1.ObjectMeta{Name: orkNS, Labels: labels.OrkestraResourceLabels()},
+				RoleRef:    rbacv1.RoleRef{APIGroup: "rbac.authorization.k8s.io", Kind: "ClusterRole", Name: orkNS},
 				Subjects:   []rbacv1.Subject{{Kind: "ServiceAccount", Name: ork, Namespace: namespace}},
 			},
 		)
@@ -112,16 +115,17 @@ func renderRBAC(runtimeRules, gatewayRules []rbacv1.PolicyRule, namespace string
 
 	// ── Gateway ClusterRole + ClusterRoleBinding ───────────────────────────────
 	if opts.IncludeGateway && len(gatewayRules) > 0 {
+		orkGatewayNS := orkGateway + "-" + namespace
 		objs = append(objs,
 			rbacv1.ClusterRole{
 				TypeMeta:   metav1.TypeMeta{APIVersion: "rbac.authorization.k8s.io/v1", Kind: "ClusterRole"},
-				ObjectMeta: metav1.ObjectMeta{Name: orkGateway, Labels: labels.OrkestraResourceLabels()},
+				ObjectMeta: metav1.ObjectMeta{Name: orkGatewayNS, Labels: labels.OrkestraResourceLabels()},
 				Rules:      gatewayRules,
 			},
 			rbacv1.ClusterRoleBinding{
 				TypeMeta:   metav1.TypeMeta{APIVersion: "rbac.authorization.k8s.io/v1", Kind: "ClusterRoleBinding"},
-				ObjectMeta: metav1.ObjectMeta{Name: orkGateway, Labels: labels.OrkestraResourceLabels()},
-				RoleRef:    rbacv1.RoleRef{APIGroup: "rbac.authorization.k8s.io", Kind: "ClusterRole", Name: orkGateway},
+				ObjectMeta: metav1.ObjectMeta{Name: orkGatewayNS, Labels: labels.OrkestraResourceLabels()},
+				RoleRef:    rbacv1.RoleRef{APIGroup: "rbac.authorization.k8s.io", Kind: "ClusterRole", Name: orkGatewayNS},
 				Subjects:   []rbacv1.Subject{{Kind: "ServiceAccount", Name: orkGateway, Namespace: namespace}},
 			},
 		)

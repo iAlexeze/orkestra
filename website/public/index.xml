@@ -435,6 +435,13 @@
       <description>&lt;p&gt;&lt;strong&gt;Status:&lt;/strong&gt; Open — pre-v1&lt;br&gt;&#xA;&lt;strong&gt;Affects:&lt;/strong&gt; Gateway &lt;code&gt;/katalog&lt;/code&gt; endpoint — deletion protection, conversion, and admission stats&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;what-you-see&#34;&gt;What you see&lt;/h2&gt;&#xA;&lt;p&gt;You run &lt;code&gt;curl /katalog&lt;/code&gt; on the gateway and the counters are all zero — even though you can clearly see deletion protection is working (Helm refuses to uninstall, &lt;code&gt;kubectl delete&lt;/code&gt; is denied) and conversion is working (objects are being created and reconciled across API versions).&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;why-it-happens&#34;&gt;Why it happens&lt;/h2&gt;&#xA;&lt;p&gt;Orkestra&amp;rsquo;s gateway runs with two replicas by default. When the Kubernetes API server needs to call a webhook — whether to block a deletion or convert a CR between versions — it picks whichever gateway pod is available. The chosen pod records the event in its own memory.&lt;/p&gt;</description>
     </item>
     <item>
+      <title>KI-002 — Algolia site search returns no results</title>
+      <link>http://localhost:8090/docs/known-issues/ki-002-algolia-search/</link>
+      <pubDate>Tue, 26 May 2026 00:00:00 +0000</pubDate>
+      <guid>http://localhost:8090/docs/known-issues/ki-002-algolia-search/</guid>
+      <description>&lt;p&gt;&lt;strong&gt;Status:&lt;/strong&gt; Open — pre-v1&lt;br&gt;&#xA;&lt;strong&gt;Affects:&lt;/strong&gt; orkestra.sh — the search bar on all documentation pages&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;what-you-see&#34;&gt;What you see&lt;/h2&gt;&#xA;&lt;p&gt;Typing in the search box on orkestra.sh produces no results. The input is accepted but nothing comes back.&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;why-it-happens&#34;&gt;Why it happens&lt;/h2&gt;&#xA;&lt;p&gt;Orkestra&amp;rsquo;s documentation search is powered by Algolia DocSearch. The DocSearch crawler must index the site before results appear. For sites in early access, the index is either not yet populated or the crawler has not completed a full pass.&lt;/p&gt;</description>
+    </item>
+    <item>
       <title>CRD Detail View</title>
       <link>http://localhost:8090/docs/orkestra-core/controlcenter/crd-detail/</link>
       <pubDate>Mon, 25 May 2026 00:00:00 +0000</pubDate>

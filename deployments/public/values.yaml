@@ -1,0 +1,48 @@
+# Public deployment values.
+# Applied to cluster-01 (the instance that runs the Control Center).
+# cluster-02 and cluster-03 pass --set controlCenter.enabled=false.
+#
+# PUBLIC_DEPLOYMENT=true disables password login and runtime manager
+# in the control center — safe for public access.
+
+runtime:
+  image:
+    repository: ghcr.io/orkspace/orkestra
+    tag: "v0.6.0-alpha.1"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+gateway:
+  image:
+    repository: ghcr.io/orkspace/orkestra-gateway
+    tag: "v0.6.0-alpha.1"
+
+controlCenter:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/orkspace/orkestra-cc
+    tag: "v0.6.0-alpha.1"
+  config:
+    orkestraURLs:
+      - http://orkestra-runtime.orkestra-system-01.svc.cluster.local:8080
+      - http://orkestra-runtime.orkestra-system-02.svc.cluster.local:8080
+      - http://orkestra-runtime.orkestra-system-03.svc.cluster.local:8080
+      - http://orkestra-runtime.orkestra-system-04.svc.cluster.local:8080
+      - http://orkestra-runtime.orkestra-system-05.svc.cluster.local:8080
+      - http://orkestra-runtime.orkestra-system-06.svc.cluster.local:8080
+  extraEnv:
+    - name: PUBLIC_DEPLOYMENT
+      value: "true"
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: cc.orkestra.sh
+        paths:
+          - path: /
+            pathType: Prefix

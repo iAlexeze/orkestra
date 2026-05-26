@@ -278,7 +278,6 @@ func (h *CRDHealth) LastReconcile() string {
 	// Case 1: nothing stored yet
 	if v == nil {
 		if h.Started() {
-			h.pending.Store(true)
 			return "no reconciles yet"
 		}
 		return "not started"
@@ -288,7 +287,6 @@ func (h *CRDHealth) LastReconcile() string {
 	t, ok := v.(time.Time)
 	if !ok || t.IsZero() {
 		if h.Started() {
-			h.pending.Store(true)
 			return "no reconciles yet"
 		}
 		return "not started"
@@ -329,10 +327,14 @@ func (h *CRDHealth) StartedAt() string {
 
 // SetStarted marks the reconciler as started and records the start time.
 // CompareAndSwap ensures the timestamp is only set once.
+// pending is only set to true if the CRD has not yet had a successful reconcile —
+// avoids flipping healthy CRDs back to pending on resync-triggered worker restarts.
 func (h *CRDHealth) SetStarted() {
 	h.startTime.CompareAndSwap(nil, time.Now())
 	h.started.Store(true)
-	h.pending.Store(true)
+	if !h.healthy.Load() {
+		h.pending.Store(true)
+	}
 }
 
 // SetDegraded marks the reconciler as degraded
