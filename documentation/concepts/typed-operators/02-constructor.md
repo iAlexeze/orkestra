@@ -52,7 +52,7 @@ Use `fetch: true` when pulling the constructor from a remote module you have not
 
 `resources` declares what Kubernetes resources the constructor manages — required for RBAC generation.
 
-!!! note
+!!! note Constructor Ownership
     `onCreate`, `onReconcile`, `onDelete`, `hooks`, and `status.fields` are all ignored when `default: false`. The constructor owns status management directly.
 
 ---

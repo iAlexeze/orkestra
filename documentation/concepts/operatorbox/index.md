@@ -16,7 +16,7 @@ Every operatorBox owns exclusively:
 
 **Informer** — A `SharedIndexInformer` watching exactly the resources declared by this CRD entry. The in-memory cache holds all CR instances. Reads are zero-cost.
 
-**Event queue** — A bounded workqueue receiving events from the informer. Queue depth and rate limiting are configured per CRD via `workers:` and queue settings.
+**Event queue** — A bounded workqueue receiving events from the informer. Queue depth and rate limiting are configured per CRD via `workers:` and `queue:` settings.
 
 **Worker pool** — A fixed number of goroutines pulling from the queue. Configured via `workers:` in the Katalog.
 

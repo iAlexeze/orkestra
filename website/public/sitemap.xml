@@ -20,6 +20,9 @@
     <loc>http://localhost:8090/blog/02-your-crd-is-enough/</loc>
     <lastmod>2026-05-25T19:29:17+00:00</lastmod>
   </url><url>
+    <loc>http://localhost:8090/publications/the-function-that-waited/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>http://localhost:8090/docs/concepts/conditional/status-conditions/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
@@ -32,10 +35,10 @@
     <loc>http://localhost:8090/publications/</loc>
     <lastmod>2026-04-07T05:44:50+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:8090/docs/concepts/dependency-model/declaring-dependencies/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
-  </url><url>
     <loc>http://localhost:8090/docs/security/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/concepts/dependency-model/declaring-dependencies/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/dependency-model/lifecycle/</loc>
@@ -104,11 +107,11 @@
     <loc>http://localhost:8090/docs/concepts/ordered-deletion/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:8090/docs/concepts/profiles/resource-profile/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
-  </url><url>
     <loc>http://localhost:8090/docs/concepts/profiles/autoscale-profile/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/concepts/profiles/resource-profile/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/profiles/probe-profile/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
@@ -467,20 +470,20 @@
     <loc>http://localhost:8090/docs/roadmap/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:8090/docs/security/admission/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <loc>http://localhost:8090/docs/security/binaries/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/security/rbac/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:8090/docs/security/namespace-protection/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <loc>http://localhost:8090/docs/security/admission/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/security/deletion-protection/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:8090/docs/security/binaries/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <loc>http://localhost:8090/docs/security/namespace-protection/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/security/validation-pipeline/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>

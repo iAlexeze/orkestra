@@ -168,8 +168,7 @@ onCreate:
       image: "{{ .spec.image }}"
       when:
         - field: metadata.labels.env
-          operator: eq
-          value: production
+          equals: production
       securityContext:
         profile: hardened
       podSecurity:

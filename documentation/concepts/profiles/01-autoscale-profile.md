@@ -10,7 +10,7 @@ Profiles are **relative** — they use the CRD's declared `workers` and `queue.m
 
 | Profile | Trigger | Workers override | Queue override | Interval | Cooldown |
 |---------|---------|-----------------|----------------|----------|----------|
-| `burst` | queueDepth > 60% of override queueDepth | baseline × 4 | baseline × 10 | 5s | 30s |
+| `burst` | queueDepth > 60%  | baseline × 4 | baseline × 10 | 5s | 30s |
 | `steady` | queueDepth > 40% AND workersBusy > 70% | baseline × 2 | baseline × 3 | 30s | 2m |
 | `batch` | cron window 23:00 → 02:00 | baseline × 3 | baseline × 8 | 60s | 5m |
 | `latency-sensitive` | P95 reconcile > 200ms | ⌈baseline × 2.5⌉ | — | 15s | 1m |
@@ -75,7 +75,7 @@ autoscale:
 React instantly to spikes. Aggressive scaling, short interval, short cooldown.
 
 ```text
-trigger:  queueDepth > 60% of override queueDepth
+trigger:  queueDepth > 60% 
 override: workers × 4, queueDepth × 10
 timing:   interval 5s, cooldown 30s
 ```
@@ -87,7 +87,7 @@ Use when your operator handles unpredictable bursts and you need it to scale out
 Smooth, predictable scaling. Requires both queue pressure and worker saturation before scaling.
 
 ```text
-trigger:  queueDepth > 40% of override queueDepth AND workersBusyPercent > 70
+trigger:  queueDepth > 40%  AND workersBusyPercent > 70
 override: workers × 2, queueDepth × 3
 timing:   interval 30s, cooldown 2m
 ```
@@ -123,7 +123,7 @@ Use when users are sensitive to reconcile delay and you want to scale out before
 Minimize resource usage during low activity. Scale down aggressively when idle.
 
 ```text
-trigger:  workersIdlePercent > 60 AND queueDepth > 80% of override queueDepth
+trigger:  workersIdlePercent > 60 AND queueDepth > 80% 
 override: max(1, workers × 0.5), queueDepth × 0.5
 timing:   interval 30s, cooldown 10m
 ```

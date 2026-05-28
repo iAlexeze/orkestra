@@ -87,13 +87,13 @@ Gate child CR creation on parent spec values. The child is skipped when the cond
 custom:
   - apiVersion: platform.example.io/v1alpha1
     kind: CacheCluster
-    when:
-      - field: spec.cache.enabled
-        equals: "true"
     metadata:
       name: "{{ .metadata.name }}-cache"
     spec:
       size: "{{ .spec.cache.size }}"
+    when:
+      - field: spec.cache.enabled
+        equals: "true"
 ```
 
 ---
@@ -123,14 +123,14 @@ Create one child CR per element in a parent list field:
 custom:
   - apiVersion: storage.example.io/v1alpha1
     kind: Shard
-    forEach:
-      field: spec.shards
-      as: shard
     metadata:
       name: "{{ .metadata.name }}-{{ .shard.name }}"
     spec:
       shardName: "{{ .shard.name }}"
       region: "{{ .shard.region }}"
+    forEach:
+      field: spec.shards
+      as: shard
 ```
 
 This creates one `Shard` CR per entry in `spec.shards`. Each shard CR is managed by its own operator.

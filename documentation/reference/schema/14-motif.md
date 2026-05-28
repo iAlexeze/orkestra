@@ -59,7 +59,7 @@ admission:
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | yes | Motif identifier. Used as the registry artifact name. |
-| `version` | no | Semver or tag. Shown in `ork katalog list`. |
+| `version` | no | Semver or tag. Shown in `ork registry list`. |
 | `description` | no | Short description shown in the registry UI. |
 | `author` | no | Author or org name. |
 | `license` | no | SPDX license identifier (e.g. `Apache-2.0`). |

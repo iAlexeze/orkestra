@@ -19,9 +19,9 @@ the logic level. The shared infrastructure — API server connection, informer f
 health server, leader election — is paid once.
 
 !!! tip "The economics"
-    15 separate operator processes: ~750 MB–3 GB memory, 15 health endpoints,
-    15 metric schemas, 15 upgrade procedures.
-    Orkestra managing 15 CRDs: ~50 MB memory, 1 health server, 1 metric schema,
+    10 separate operator processes: ~750 MB–3 GB memory, 10 health endpoints,
+    10 metric schemas, 10 upgrade procedures.
+    Orkestra managing 10 CRDs: ~79 MB memory, 1 health server, 1 metric schema,
     1 upgrade procedure.
 
 ---
@@ -73,7 +73,7 @@ ork validate
     pipeline to catch Katalog errors before they reach the cluster:
     ```yaml
     - name: Validate Katalog
-      run: ork validate
+      run: ork validate --full
     ```
     It requires no cluster connection — safe to run in any CI environment.
 
@@ -129,37 +129,14 @@ certManager:
 
 ## What RBAC permissions does Orkestra need?
 
-Orkestra needs a ClusterRole with:
-
-```yaml
-rules:
-  # Watch and manage every CRD it is configured to handle
-  - apiGroups: ["*"]
-    resources: ["*"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-
-  # Leader election
-  - apiGroups: ["coordination.k8s.io"]
-    resources: ["leases"]
-    verbs: ["get", "create", "update"]
-
-  # Emit Kubernetes events
-  - apiGroups: [""]
-    resources: ["events"]
-    verbs: ["create", "patch"]
-
-  # Webhook configuration (when ENABLE_ADMISSION_WEBHOOK=true)
-  - apiGroups: ["admissionregistration.k8s.io"]
-    resources:
-      - validatingwebhookconfigurations
-      - mutatingwebhookconfigurations
-    verbs: ["get", "create", "update", "patch"]
-```
-
-The `["*"]` rule is broad and appropriate for development. For production, scope it to the specific API groups your CRDs use.
-
 **The Helm chart does not manage ClusterRoles.** It deploys the Orkestra runtime (Deployment + Service). To generate the correct RBAC for your specific Katalog, use:
 
+```bash
+ork generate bundle
+```
+
+---
+To generate for a specific Orkestra component:
 ```bash
 ork generate bundle --for runtime
 ```

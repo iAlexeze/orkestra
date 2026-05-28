@@ -172,29 +172,16 @@ spec:
   crds:
     database:
       crdFile: ./database-crd.yaml
-      crFiles:
-        - ./database-cr.yaml
-        - ./mongodb-cr.yaml
-      operatorBox:
-        default: true
     application:
       crdFile: ./application-crd.yaml
-      crFiles:
-        - ./application-cr.yaml
       dependsOn:
         database:
           condition: healthy   # wait until database workers are running and failure-free
-      operatorBox:
-        default: true
     analytics:
       crdFile: ./analytics-crd.yaml
-      crFiles:
-        - ./analytics-cr.yaml
       dependsOn:
         database:
           condition: started   # wait only until database workers are running
-      operatorBox:
-        default: true
 ```
 
 `condition: healthy` waits until the dependency's workers are running and its consecutive failure count is zero — use this when the downstream CRD needs the upstream to be stable before it starts. `condition: started` waits only until workers are running — useful when you want ordering without blocking on health (for example, when the dependency might legitimately fail during startup and you want the downstream to proceed anyway).

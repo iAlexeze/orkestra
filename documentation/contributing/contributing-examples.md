@@ -42,7 +42,6 @@ cleanup.sh          — (optional) removes cluster resources after the demo
 
 1. Create the example directory under the right pack.
 2. Add the required files.
-3. Optionally add an E2E workflow in `.github/workflows/` following the pattern of existing tests.
 
 No code changes are needed for examples within an existing pack.
 
@@ -60,7 +59,7 @@ See [Publishing a new pack](../publishing-a-new-pack.md) for the exact checklist
 
 The following Orkestra features have no dedicated example yet:
 
-- **Motifs** — reusable resource building blocks assembled via `include`
+- **Motifs** — reusable resource building blocks assembled via `imports`
 - **Rollback** — `operatorBox.rollback` triggering and recovery
 - **Providers** — operator that manages a cloud resource (S3 bucket, RDS, Redis ACL) alongside a Kubernetes resource
 - **Notification** — `operatorBox.conditions` with `notify.teams` firing a Slack or email alert

@@ -66,9 +66,9 @@ Static names are validated at load time. Template expressions are validated when
 
 | Family | What it controls | Applied to |
 |--------|-----------------|------------|
-| [Resource](./01-resource-profile.md) | CPU and memory requests/limits | Deployment, StatefulSet, ReplicaSet, Pod, Job, CronJob |
+| [Autoscale](./01-autoscale-profile.md) | Operator worker scaling | `operatorBox.autoscale` |
+| [Resource](./02-resource-profile.md) | CPU and memory requests/limits | Deployment, StatefulSet, ReplicaSet, Pod, Job, CronJob |
 | [Probe](./03-probe-profile.md) | Health check timing | Deployment, StatefulSet, ReplicaSet, Pod |
-| [Autoscale](./02-autoscale-profile.md) | Operator worker scaling | `operatorBox.autoscale` |
 | [Security](./04-security-profile.md) | Container and pod security contexts | Deployment, StatefulSet, ReplicaSet, Pod, Job, CronJob |
 | [HPA Behavior](./05-hpa-behavior-profile.md) | Kubernetes HPA scale-up/down policies | `hpa[*].behavior` |
 | [PDB Behavior](./06-pdb-profile.md) | PodDisruptionBudget disruption limits | `pdb[*].behavior` |

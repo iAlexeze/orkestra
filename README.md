@@ -20,7 +20,6 @@
     <a href="https://github.com/orkspace/orkestra/discussions">Discussions</a> ·
     <a href="https://orkspace-group.slack.com/archives/C0B5RT8JUEA">Early Access Slack</a>
   </p>
-  <p>⚠️ <em>Pre‑alpha — actively building. APIs may change. Feedback shapes what ships next.</em></p>
 </div>
 
 ---

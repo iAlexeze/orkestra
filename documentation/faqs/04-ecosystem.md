@@ -33,16 +33,17 @@ Yes — any CRD that Kubernetes accepts, Orkestra can watch and reconcile. No fo
 reverse engineering, no changes to the CRD definition needed.
 
 ```yaml
-- name: prometheus
-  apiTypes:
-    group: monitoring.coreos.com
-    version: v1
-    kind: Prometheus
-    plural: prometheuses
-  operatorBox:
-    default: true
-    onCreate:
-      # governance, companion resources, defaults
+spec:
+  crds:
+    prometheus:
+      apiTypes:
+        group: monitoring.coreos.com
+        version: v1
+        kind: Prometheus
+        plural: prometheuses
+      operatorBox:
+        onCreate:
+          # governance, companion resources, defaults
 ```
 
 This is how governance patterns work — you apply Orkestra's validation and mutation

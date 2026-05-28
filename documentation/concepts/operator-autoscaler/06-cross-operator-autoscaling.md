@@ -20,7 +20,7 @@ No API calls, no polling, no external systems.
 
 ## Why Cross‑Operator Autoscaling Matters
 
-Traditional autoscaling only considers **local** metrics:
+Default OperatorBox autoscaling in Orkestra only considers **local** metrics:
 
 - queue depth  
 - worker utilization  

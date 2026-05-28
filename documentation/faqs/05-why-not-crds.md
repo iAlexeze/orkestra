@@ -124,7 +124,7 @@ human artifact. You write it, review it, version it, share it.
 ork validate
 
 # In CI — exits non-zero on any configuration error
-ork validate
+ork validate --full
 ```
 
 A Katalog file lives in Git. It is diffable. A pull request that changes a
@@ -202,48 +202,4 @@ where you speak. The `/katalog` endpoint is where Orkestra reports back.
 
 ---
 
-## The model in full
-
-```text
-Katalog (file)          ← where you declare intent
-    │
-    ▼
-ork validate            ← where errors are caught before the cluster sees them
-    │
-    ▼
-Orkestra runtime        ← where intent becomes running operator
-    │
-    ▼
-/katalog endpoint       ← where you observe the live operational truth
-    │
-    ▼
-ork control / Control Center ← where operators see it, rendered
-```
-
-Each step has the right interface. The file has the interfaces of files — Git,
-diff, CI, pull requests. The running state has the interfaces of running state —
-HTTP, JSON, Prometheus, terminal UI, dashboards.
-
-A CRD would collapse these into one interface and do both worse.
-
----
-
-## The long view
-
-The current design does not preclude Katalog and Komposer becoming native
-Kubernetes kinds. In the long-term vision for Orkestra, they are registered by
-the cluster itself — not managed by a user-space operator, but managed by
-Kubernetes core the same way Deployments and Services are managed. At that point,
-`kubectl get katalogs` is correct because the Katalog is a first-class Kubernetes
-object understood by the platform, not an overlay managed by another operator.
-
-Until then, the file is the right model. It keeps the cluster surface clean,
-keeps configuration in version control, keeps the ecosystem open, and keeps
-operational truth in a live API that reflects what is actually running.
-
-The `/katalog` endpoint is not a workaround for the absence of a Katalog CRD.
-It is the better answer to a different and more important question.
-
-A CRD tells you what was applied. The live API tells you what is running.
-
-Both matter. Orkestra provides both. Through the right interface for each.
+#

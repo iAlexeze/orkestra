@@ -47,7 +47,7 @@ What happens:
 
 **Watch events.** When a child resource's status changes — pods becoming Ready, a Job completing, a LoadBalancer receiving an IP — the informer fires an event that requeues the owning CR automatically. Orkestra sets owner references and `orkestra-owner` labels on every child resource so the watch link is always established.
 
-**Resync.** Each operatorBox has a `resync:` interval (default 30–120s). At each tick, all known CRs are re-enqueued. This is the backstop — even if a watch event is delayed or missed, the CR reconciles within one resync cycle.
+**Resync.** Each operatorBox has a `resync:` interval (default 15s). At each tick, all known CRs are re-enqueued. This is the backstop — even if a watch event is delayed or missed, the CR reconciles within one resync cycle.
 
 You never need `ctrl.Result{RequeueAfter: N}`. The runtime handles it.
 

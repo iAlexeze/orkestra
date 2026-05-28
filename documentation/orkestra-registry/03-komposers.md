@@ -25,6 +25,11 @@ The `komposer.yaml` is not a separate publish step — it travels with the Katal
 
 ---
 
+## Writing a Komposer
+See full description in [Writing your first Komposer](../getting-started/03-writing-your-first-komposer.md).
+
+---
+
 ## Two kinds of registry import
 
 Every registry entry in your Komposer resolves either the `katalog.yaml` or the `komposer.yaml` from the upstream artifact. The `useKomposer` field controls which:
