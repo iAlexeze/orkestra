@@ -107,8 +107,10 @@ func initProject(name, pack string, refresh bool) error {
 	printBanner()
 	label := nameLabel(name)
 	ver := version.Version // ldflags
+
+	projectPrint := "✓ Project ready: " + label
 	if name == "." {
-		name = label
+		projectPrint = "✓ Project ready"
 	}
 
 	fmt.Printf("Initialising %s using '%s' example pack...\n\n",
@@ -134,7 +136,7 @@ func initProject(name, pack string, refresh bool) error {
 		return err
 	}
 
-	fmt.Printf("\n%s\n\n", green("✓ Project ready: "+label))
+	fmt.Printf("\n%s\n\n", green(projectPrint))
 
 	fmt.Println("To run the first example:")
 	if !isCurrentDirectory(name) {

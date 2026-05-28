@@ -179,109 +179,109 @@ func data(kv ...interface{}) map[string]interface{} {
 func TestEvaluateOneCond_Equals_Match(t *testing.T) {
 	d := data("phase", "Running")
 	c := orktypes.Condition{Field: "phase", Equals: "Running"}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_Equals_NoMatch(t *testing.T) {
 	d := data("phase", "Pending")
 	c := orktypes.Condition{Field: "phase", Equals: "Running"}
-	assert.False(t, orktypes.EvaluateOneCond(d, c))
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_NotEquals(t *testing.T) {
 	d := data("phase", "Pending")
 	c := orktypes.Condition{Field: "phase", NotEquals: "Running"}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_Contains(t *testing.T) {
 	d := data("message", "connection refused")
 	c := orktypes.Condition{Field: "message", Contains: "refused"}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_Contains_NoMatch(t *testing.T) {
 	d := data("message", "all good")
 	c := orktypes.Condition{Field: "message", Contains: "error"}
-	assert.False(t, orktypes.EvaluateOneCond(d, c))
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_Prefix(t *testing.T) {
 	d := data("name", "prod-app")
 	c := orktypes.Condition{Field: "name", Prefix: "prod-"}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_Prefix_NoMatch(t *testing.T) {
 	d := data("name", "dev-app")
 	c := orktypes.Condition{Field: "name", Prefix: "prod-"}
-	assert.False(t, orktypes.EvaluateOneCond(d, c))
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_Suffix(t *testing.T) {
 	d := data("name", "app-v2")
 	c := orktypes.Condition{Field: "name", Suffix: "-v2"}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_Exists_Present(t *testing.T) {
 	d := data("phase", "Running")
 	c := orktypes.Condition{Field: "phase", Operator: orktypes.ConditionExists}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_Exists_Missing(t *testing.T) {
 	d := map[string]interface{}{}
 	c := orktypes.Condition{Field: "phase", Operator: orktypes.ConditionExists}
-	assert.False(t, orktypes.EvaluateOneCond(d, c))
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_NotExists_Missing(t *testing.T) {
 	d := map[string]interface{}{}
 	c := orktypes.Condition{Field: "phase", Operator: orktypes.ConditionNotExists}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_NotExists_Present(t *testing.T) {
 	d := data("phase", "Running")
 	c := orktypes.Condition{Field: "phase", Operator: orktypes.ConditionNotExists}
-	assert.False(t, orktypes.EvaluateOneCond(d, c))
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_Gt_Pass(t *testing.T) {
 	d := data("replicas", "5")
 	c := orktypes.Condition{Field: "replicas", GreaterThan: "3"}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_Gt_Fail(t *testing.T) {
 	d := data("replicas", "2")
 	c := orktypes.Condition{Field: "replicas", GreaterThan: "3"}
-	assert.False(t, orktypes.EvaluateOneCond(d, c))
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_Gt_AbsentFieldTreatedAsZero(t *testing.T) {
 	d := map[string]interface{}{}
 	c := orktypes.Condition{Field: "count", GreaterThan: "0"}
-	assert.False(t, orktypes.EvaluateOneCond(d, c))
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_Lt_Pass(t *testing.T) {
 	d := data("cpu", "50")
 	c := orktypes.Condition{Field: "cpu", LessThan: "80"}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_In_Match(t *testing.T) {
 	d := data("env", "prod")
 	c := orktypes.Condition{Field: "env", Operator: orktypes.ConditionIn, Value: "dev,staging,prod"}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_In_NoMatch(t *testing.T) {
 	d := data("env", "test")
 	c := orktypes.Condition{Field: "env", Operator: orktypes.ConditionIn, Value: "dev,staging,prod"}
-	assert.False(t, orktypes.EvaluateOneCond(d, c))
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_TypeOf_Map(t *testing.T) {
@@ -289,7 +289,7 @@ func TestEvaluateOneCond_TypeOf_Map(t *testing.T) {
 		"spec": map[string]interface{}{"key": "val"},
 	}
 	c := orktypes.Condition{Field: "spec", Operator: orktypes.ConditionTypeMap}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_TypeOf_List(t *testing.T) {
@@ -297,49 +297,49 @@ func TestEvaluateOneCond_TypeOf_List(t *testing.T) {
 		"items": []interface{}{"a", "b"},
 	}
 	c := orktypes.Condition{Field: "items", Operator: orktypes.ConditionTypeList}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_TypeOf_String(t *testing.T) {
 	d := data("phase", "Running")
 	c := orktypes.Condition{Field: "phase", Operator: orktypes.ConditionTypeString}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_TypeOf_Bool(t *testing.T) {
 	d := map[string]interface{}{"enabled": true}
 	c := orktypes.Condition{Field: "enabled", Operator: orktypes.ConditionTypeBool}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_TypeOf_Number(t *testing.T) {
 	d := map[string]interface{}{"replicas": 3}
 	c := orktypes.Condition{Field: "replicas", Operator: orktypes.ConditionTypeNumber}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_TypeOf_Null(t *testing.T) {
 	d := map[string]interface{}{"field": nil}
 	c := orktypes.Condition{Field: "field", Operator: orktypes.ConditionTypeNull}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_TypeOf_Explicit(t *testing.T) {
 	d := data("phase", "Running")
 	c := orktypes.Condition{Field: "phase", Operator: orktypes.ConditionTypeOf, Value: "string"}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_Unique_AlwaysTrue(t *testing.T) {
 	d := data("name", "foo")
 	c := orktypes.Condition{Field: "name", Operator: orktypes.ConditionUnique}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 // ── EvaluateWhen — allOf / anyOf ──────────────────────────────────────────────
 
 func TestEvaluateWhen_EmptyBothPasses(t *testing.T) {
-	assert.True(t, orktypes.EvaluateWhen(nil, nil, nil))
+	assert.True(t, orktypes.EvaluateWhen(nil, nil, nil, nil))
 }
 
 func TestEvaluateWhen_AllOfAllPass(t *testing.T) {
@@ -348,7 +348,7 @@ func TestEvaluateWhen_AllOfAllPass(t *testing.T) {
 		{Field: "phase", Equals: "Running"},
 		{Field: "env", Equals: "prod"},
 	}
-	assert.True(t, orktypes.EvaluateWhen(d, allOf, nil))
+	assert.True(t, orktypes.EvaluateWhen(d, allOf, nil, nil))
 }
 
 func TestEvaluateWhen_AllOfOneFails(t *testing.T) {
@@ -357,7 +357,7 @@ func TestEvaluateWhen_AllOfOneFails(t *testing.T) {
 		{Field: "phase", Equals: "Running"},
 		{Field: "env", Equals: "prod"},
 	}
-	assert.False(t, orktypes.EvaluateWhen(d, allOf, nil))
+	assert.False(t, orktypes.EvaluateWhen(d, allOf, nil, nil))
 }
 
 func TestEvaluateWhen_AnyOfOneMatches(t *testing.T) {
@@ -366,7 +366,7 @@ func TestEvaluateWhen_AnyOfOneMatches(t *testing.T) {
 		{Field: "phase", Equals: "Failed"},
 		{Field: "phase", Equals: "Succeeded"},
 	}
-	assert.True(t, orktypes.EvaluateWhen(d, nil, anyOf))
+	assert.True(t, orktypes.EvaluateWhen(d, nil, anyOf, nil))
 }
 
 func TestEvaluateWhen_AnyOfNoneMatch(t *testing.T) {
@@ -375,7 +375,7 @@ func TestEvaluateWhen_AnyOfNoneMatch(t *testing.T) {
 		{Field: "phase", Equals: "Failed"},
 		{Field: "phase", Equals: "Succeeded"},
 	}
-	assert.False(t, orktypes.EvaluateWhen(d, nil, anyOf))
+	assert.False(t, orktypes.EvaluateWhen(d, nil, anyOf, nil))
 }
 
 func TestEvaluateWhen_BothMustPass(t *testing.T) {
@@ -385,7 +385,7 @@ func TestEvaluateWhen_BothMustPass(t *testing.T) {
 		{Field: "phase", Equals: "Failed"},
 		{Field: "phase", Equals: "Succeeded"},
 	}
-	assert.True(t, orktypes.EvaluateWhen(d, allOf, anyOf))
+	assert.True(t, orktypes.EvaluateWhen(d, allOf, anyOf, nil))
 }
 
 func TestEvaluateWhen_AllOfPassAnyOfFails(t *testing.T) {
@@ -395,7 +395,7 @@ func TestEvaluateWhen_AllOfPassAnyOfFails(t *testing.T) {
 		{Field: "phase", Equals: "Failed"},
 		{Field: "phase", Equals: "Succeeded"},
 	}
-	assert.False(t, orktypes.EvaluateWhen(d, allOf, anyOf))
+	assert.False(t, orktypes.EvaluateWhen(d, allOf, anyOf, nil))
 }
 
 // ── EvaluateOneCond — cron window injection via _cronWindows ─────────────────
@@ -407,7 +407,7 @@ func TestEvaluateOneCond_CronWindowInjected_True(t *testing.T) {
 		},
 	}
 	c := orktypes.Condition{Cron: "0 9 * * 1-5", Duration: orktypes.Duration{Duration: time.Hour}}
-	assert.True(t, orktypes.EvaluateOneCond(d, c))
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 func TestEvaluateOneCond_CronWindowInjected_False(t *testing.T) {
@@ -417,7 +417,7 @@ func TestEvaluateOneCond_CronWindowInjected_False(t *testing.T) {
 		},
 	}
 	c := orktypes.Condition{Cron: "0 9 * * 1-5", Duration: orktypes.Duration{Duration: time.Hour}}
-	assert.False(t, orktypes.EvaluateOneCond(d, c))
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 // ── EvaluateOneCond — time window (via Condition.Time) ───────────────────────
@@ -427,7 +427,7 @@ func TestEvaluateOneCond_TimeWindow_WithinRange(t *testing.T) {
 	c := orktypes.Condition{
 		Time: &orktypes.TimeWindow{After: "00:00", Before: "23:59"},
 	}
-	assert.True(t, orktypes.EvaluateOneCond(nil, c))
+	assert.True(t, orktypes.EvaluateOneCond(nil, c, nil))
 }
 
 func TestEvaluateOneCond_TimeWindow_OnlyAfter_Pass(t *testing.T) {
@@ -435,7 +435,7 @@ func TestEvaluateOneCond_TimeWindow_OnlyAfter_Pass(t *testing.T) {
 	c := orktypes.Condition{
 		Time: &orktypes.TimeWindow{After: "00:00"},
 	}
-	assert.True(t, orktypes.EvaluateOneCond(nil, c))
+	assert.True(t, orktypes.EvaluateOneCond(nil, c, nil))
 }
 
 func TestEvaluateOneCond_TimeWindow_OnlyBefore_Pass(t *testing.T) {
@@ -443,21 +443,21 @@ func TestEvaluateOneCond_TimeWindow_OnlyBefore_Pass(t *testing.T) {
 	c := orktypes.Condition{
 		Time: &orktypes.TimeWindow{Before: "23:59"},
 	}
-	assert.True(t, orktypes.EvaluateOneCond(nil, c))
+	assert.True(t, orktypes.EvaluateOneCond(nil, c, nil))
 }
 
 func TestEvaluateOneCond_TimeWindow_InvalidAfter(t *testing.T) {
 	c := orktypes.Condition{
 		Time: &orktypes.TimeWindow{After: "not-a-time"},
 	}
-	assert.False(t, orktypes.EvaluateOneCond(nil, c))
+	assert.False(t, orktypes.EvaluateOneCond(nil, c, nil))
 }
 
 func TestEvaluateOneCond_TimeWindow_InvalidBefore(t *testing.T) {
 	c := orktypes.Condition{
 		Time: &orktypes.TimeWindow{Before: "not-a-time"},
 	}
-	assert.False(t, orktypes.EvaluateOneCond(nil, c))
+	assert.False(t, orktypes.EvaluateOneCond(nil, c, nil))
 }
 
 // ── EvaluateOneCond — day of week (via Condition.DayOfWeek) ──────────────────
@@ -469,7 +469,7 @@ func TestEvaluateOneCond_DayOfWeek_InMatchesAllDays(t *testing.T) {
 			In: []string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"},
 		},
 	}
-	assert.True(t, orktypes.EvaluateOneCond(nil, c))
+	assert.True(t, orktypes.EvaluateOneCond(nil, c, nil))
 }
 
 func TestEvaluateOneCond_DayOfWeek_NotInEmpty_ReturnsFalse(t *testing.T) {
@@ -477,7 +477,7 @@ func TestEvaluateOneCond_DayOfWeek_NotInEmpty_ReturnsFalse(t *testing.T) {
 	c := orktypes.Condition{
 		DayOfWeek: &orktypes.DayOfWeekCondition{},
 	}
-	assert.False(t, orktypes.EvaluateOneCond(nil, c))
+	assert.False(t, orktypes.EvaluateOneCond(nil, c, nil))
 }
 
 func TestEvaluateOneCond_DayOfWeek_NotInAllDays_ReturnsFalse(t *testing.T) {
@@ -487,7 +487,7 @@ func TestEvaluateOneCond_DayOfWeek_NotInAllDays_ReturnsFalse(t *testing.T) {
 			NotIn: []string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"},
 		},
 	}
-	assert.False(t, orktypes.EvaluateOneCond(nil, c))
+	assert.False(t, orktypes.EvaluateOneCond(nil, c, nil))
 }
 
 func TestEvaluateOneCond_DayOfWeek_NotInNoMatch_ReturnsTrue(t *testing.T) {
@@ -497,7 +497,7 @@ func TestEvaluateOneCond_DayOfWeek_NotInNoMatch_ReturnsTrue(t *testing.T) {
 			NotIn: []string{"Funday"},
 		},
 	}
-	assert.True(t, orktypes.EvaluateOneCond(nil, c))
+	assert.True(t, orktypes.EvaluateOneCond(nil, c, nil))
 }
 
 // ── EvaluateOneCond — cron (stateless fallback) ───────────────────────────────
@@ -505,5 +505,5 @@ func TestEvaluateOneCond_DayOfWeek_NotInNoMatch_ReturnsTrue(t *testing.T) {
 func TestEvaluateOneCond_CronStateless_InvalidExpr(t *testing.T) {
 	// Invalid cron expression → false
 	c := orktypes.Condition{Cron: "not-a-cron", Duration: orktypes.Duration{Duration: time.Hour}}
-	assert.False(t, orktypes.EvaluateOneCond(nil, c))
+	assert.False(t, orktypes.EvaluateOneCond(nil, c, nil))
 }

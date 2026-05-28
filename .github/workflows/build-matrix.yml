@@ -30,10 +30,10 @@ jobs:
             arch: arm64
             goarch: arm64
             goos: darwin
-          # - os: windows
-          #   arch: amd64
-          #   goarch: amd64
-          #   goos: windows
+          - os: windows
+            arch: amd64
+            goarch: amd64
+            goos: windows
 
     steps:
       - name: Checkout

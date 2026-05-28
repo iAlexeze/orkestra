@@ -44,7 +44,7 @@ Deployment exists by default; the gateway Deployment is opt-in
 
 ```
 ork run      →  KonductRuntime →  konstructRuntime   →  reconcile loop
-ork gate  →  KonductGateway →  gateway wiring     →  TLS + webhooks
+ork gate     →  KonductGateway →  gateway wiring     →  TLS + webhooks
 ```
 
 → Next: [02-runtime.md](02-runtime.md)

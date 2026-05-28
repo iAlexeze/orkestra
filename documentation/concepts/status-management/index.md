@@ -49,14 +49,13 @@ This makes `kubectl get` immediately informative. External tools that watch for 
           subresources:
             status: {}
     ```
+    To opt out of automatic conditions for a specific CRD:
 
-To opt out of automatic conditions for a specific CRD:
-
-```yaml
-operatorBox:
-  status:
-    conditions: false
-```
+    ```yaml
+    operatorBox:
+      status:
+        conditions: false
+    ```
 
 ---
 

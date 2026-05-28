@@ -5,7 +5,7 @@ The Operator Autoscaler is a built‑in Orkestra subsystem that dynamically adju
 
 Autoscaling is fully declarative. You describe *when* an operator should scale and *how* it should scale. Orkestra evaluates these conditions at runtime and applies overrides instantly. When conditions are no longer met, Orkestra automatically restores the CRD’s declared baseline.
 
-The autoscaler becomes the **source of truth** for operator performance, and Kordinator trusts it to make these adjustments throughout the operator lifecycle.
+The autoscaler becomes the **source of truth** for operator performance, and the runtime trusts it to make these adjustments throughout the operator lifecycle.
 
 ---
 

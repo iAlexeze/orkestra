@@ -57,7 +57,6 @@ status:
 
 !!! tip "Document your status fields in the CRD schema"
     Declare the status fields in the CRD's OpenAPIV3Schema to enable `kubectl` validation. Use `x-kubernetes-preserve-unknown-fields: true` to accept any field without enumerating every one:
-
     ```yaml
     status:
       type: object

@@ -64,10 +64,9 @@ type CRDEntry struct {
 	// Same path resolution as CRDFile. Dev mode only.
 	CRFiles []string `yaml:"crFiles,omitempty" json:"crFiles,omitempty"`
 
-	// Setup lists YAML files to apply before Orkestra starts.
-	// Use this for external dependencies: namespaces, secrets, additional CRDs.
-	// Applied in order with kubectl apply -f, after spec.crd.
-	Setup []string `yaml:"setup,omitempty" json:"setup,omitempty"`
+	// Setup declares prerequisite resources to apply before Orkestra starts.
+	// Shorthand: a plain list of strings applies each file (backward compatible).
+	Setup *SetupConfig `yaml:"setup,omitempty" json:"setup,omitempty"`
 
 	// ── Runtime objects ───────────────────────────────────────────────────────
 	// Set by addRuntimeObjects() during Katalog validation. Never set from YAML.
@@ -134,12 +133,15 @@ type CRDEntry struct {
 	//
 	// Only one of EnrichAll or Enrich may be set — setting both is a validation error.
 	//
-	//	enrichAll: true    — enrich all supported resource types (currently: pods)
-	//	enrich: [pods]     — enrich only the listed targets
-	//
-	// Supported targets: "pods"
-	EnrichAll bool     `yaml:"enrichAll,omitempty" json:"enrichAll,omitempty"`
-	Enrich    []string `yaml:"enrich,omitempty"    json:"enrich,omitempty"`
+	//	enrichAll: true    — enrich all supported resource types
+	//	enrich: [pods]     — enrich only the listed targets (shorthand)
+	//	enrich:            — conditional enrichment (struct form)
+	//	  - events:
+	//	      when:
+	//	        - field: "{{ replicasReady .children.deployment }}"
+	//	          equals: "false"
+	EnrichAll bool           `yaml:"enrichAll,omitempty" json:"enrichAll,omitempty"`
+	Enrich    []EnrichTarget `yaml:"enrich,omitempty"    json:"enrich,omitempty"`
 
 	// ── OperatorBox ────────────────────────────────────────────────────
 	OperatorBox OperatorBoxConfig `yaml:"operatorBox,omitempty" json:"operatorBox,omitempty"`

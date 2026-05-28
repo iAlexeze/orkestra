@@ -228,6 +228,13 @@
                   
                   
                   <li>
+                    <a href="/docs/getting-started/writing-your-first-motif/" class="sidebar-link">Writing Your First Motif</a>
+                  </li>
+                  
+                
+                  
+                  
+                  <li>
                     <a href="/docs/getting-started/writing-your-first-katalog/" class="sidebar-link">Writing Your First Katalog</a>
                   </li>
                   
@@ -243,6 +250,13 @@
                   
                   <li>
                     <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link">Basic Reconciliation</a>
+                  </li>
+                  
+                
+                  
+                  
+                  <li>
+                    <a href="/docs/getting-started/writing-your-first-e2e/" class="sidebar-link">Writing Your First E2E Test</a>
                   </li>
                   
                 
@@ -515,11 +529,11 @@
                       <ul class="sidebar-subsection-pages" role="list">
                         
                         <li>
-                          <a href="/docs/concepts/operator-autoscaler/autoscaler-metrics/" class="sidebar-link sidebar-link--nested">Autoscaler Metrics</a>
+                          <a href="/docs/concepts/operator-autoscaler/autoscaler-condition-engine/" class="sidebar-link sidebar-link--nested">Autoscaler Condition Engine</a>
                         </li>
                         
                         <li>
-                          <a href="/docs/concepts/operator-autoscaler/autoscaler-condition-engine/" class="sidebar-link sidebar-link--nested">Autoscaler Condition Engine</a>
+                          <a href="/docs/concepts/operator-autoscaler/autoscaler-metrics/" class="sidebar-link sidebar-link--nested">Autoscaler Metrics</a>
                         </li>
                         
                         <li>
@@ -639,11 +653,11 @@
                       <ul class="sidebar-subsection-pages" role="list">
                         
                         <li>
-                          <a href="/docs/concepts/profiles/resource-profile/" class="sidebar-link sidebar-link--nested">Resource Profile</a>
+                          <a href="/docs/concepts/profiles/autoscale-profile/" class="sidebar-link sidebar-link--nested">Autoscale Profile</a>
                         </li>
                         
                         <li>
-                          <a href="/docs/concepts/profiles/autoscale-profile/" class="sidebar-link sidebar-link--nested">Autoscale Profile</a>
+                          <a href="/docs/concepts/profiles/resource-profile/" class="sidebar-link sidebar-link--nested">Resource Profile</a>
                         </li>
                         
                         <li>
@@ -984,47 +998,7 @@
                         </li>
                         
                         <li>
-                          <a href="/docs/reference/schema/crd-entry/" class="sidebar-link sidebar-link--nested">CRDEntry</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/apitypes/" class="sidebar-link sidebar-link--nested">apiTypes</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/operatorbox/" class="sidebar-link sidebar-link--nested">operatorBox</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/status/" class="sidebar-link sidebar-link--nested">status</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/when-conditions/" class="sidebar-link sidebar-link--nested">when / anyOf conditions</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/validation/" class="sidebar-link sidebar-link--nested">validation</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/mutation/" class="sidebar-link sidebar-link--nested">mutation</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/conversion/" class="sidebar-link sidebar-link--nested">conversion</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/katalog-security/" class="sidebar-link sidebar-link--nested">security</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/katalog-notification/" class="sidebar-link sidebar-link--nested">notification</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/katalog-providers/" class="sidebar-link sidebar-link--nested">providers</a>
+                          <a href="/docs/reference/schema/motif/" class="sidebar-link sidebar-link--nested">Motif</a>
                         </li>
                         
                         <li>
@@ -1032,11 +1006,7 @@
                         </li>
                         
                         <li>
-                          <a href="/docs/reference/schema/motif/" class="sidebar-link sidebar-link--nested">Motif</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/enrich/" class="sidebar-link sidebar-link--nested">enrich</a>
+                          <a href="/docs/reference/schema/e2e/" class="sidebar-link sidebar-link--nested">E2E</a>
                         </li>
                         
                       </ul>
@@ -1081,7 +1051,7 @@
                   
                   
                   <li>
-                    <a href="/docs/security/admission/" class="sidebar-link">Admission webhooks</a>
+                    <a href="/docs/security/binaries/" class="sidebar-link">Binaries &amp; build tags</a>
                   </li>
                   
                 
@@ -1095,7 +1065,7 @@
                   
                   
                   <li>
-                    <a href="/docs/security/namespace-protection/" class="sidebar-link">Namespace protection</a>
+                    <a href="/docs/security/admission/" class="sidebar-link">Admission webhooks</a>
                   </li>
                   
                 
@@ -1109,7 +1079,7 @@
                   
                   
                   <li>
-                    <a href="/docs/security/binaries/" class="sidebar-link">Binaries &amp; build tags</a>
+                    <a href="/docs/security/namespace-protection/" class="sidebar-link">Namespace protection</a>
                   </li>
                   
                 
@@ -1421,24 +1391,24 @@
 <hr>
 <h2 id="install">Install</h2>
 <p><strong>macOS (Homebrew)</strong></p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>brew install orkspace/tap/ork orkspace/tap/orkcc
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>brew install orkspace/tap/ork orkspace/tap/orkcc
 </span></span></code></pre></div><p>This installs two binaries: <code>ork</code> (the operator CLI) and <code>orkcc</code> (the Control Center).</p>
 <p><strong>Linux / macOS (curl)</strong></p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl -sSL https://get.orkestra.sh | bash
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl -sSL https://get.orkestra.sh | bash
 </span></span></code></pre></div><p><strong>Verify</strong></p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork version
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork version
 </span></span></code></pre></div><hr>
 <h2 id="your-first-operator">Your First Operator</h2>
 <p><strong>Step 1 — Scaffold a project</strong></p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork init
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork init
 </span></span></code></pre></div><p><code>ork init</code> creates a <code>katalog.yaml</code> in the current directory, ready to run.</p>
 <p><strong>Step 2 — Start the operator</strong></p>
 <p>If you have a running cluster:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run
 </span></span></code></pre></div><p>If you have no cluster yet, add <code>--dev</code> — Orkestra creates a kind cluster automatically:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run --dev
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run --dev
 </span></span></code></pre></div><p>You will see:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>INFO  CRD applied                crd=websites.demo.orkestra.io
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>INFO  CRD applied                crd=websites.demo.orkestra.io
 </span></span><span style="display:flex;"><span>INFO  CR applied                 name=hello-website namespace=default
 </span></span><span style="display:flex;"><span>INFO  Informer synced            crd=website
 </span></span><span style="display:flex;"><span>INFO  Workers started            crd=website  workers=3
@@ -1446,17 +1416,17 @@
 </span></span></code></pre></div><p><strong>Step 3 — Reconciliation</strong></p>
 <p>Watch Orkestra&rsquo;s output in the first terminal. You&rsquo;ll see the reconcile event arrive and the Deployment get created.</p>
 <p><strong>Step 4 — Verify</strong></p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl get deployments
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl get deployments
 </span></span><span style="display:flex;"><span>kubectl get pods
 </span></span></code></pre></div><p>A Deployment named <code>hello-website-deployment</code> appears. Orkestra set owner references — deleting the <code>Website</code> CR will cascade-delete it.</p>
 <p><strong>Step 5 — Open the Control Center</strong></p>
 <p>In a second terminal:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork control
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork control
 </span></span></code></pre></div><p>Open <a href="http://localhost:8081">http://localhost:8081</a> to see the live operator — CRD health, worker state, reconcile metrics, queue depth.</p>
 <hr>
 <h2 id="what-the-katalog-looks-like">What the Katalog Looks Like</h2>
 <p>The katalog at <code>katalog.yaml</code>:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Katalog
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: hello-website
@@ -1478,7 +1448,7 @@
 <hr>
 <h2 id="built-in-health-endpoints">Built-in Health Endpoints</h2>
 <p>While the operator is running:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#6272a4"># Health check for the website CRD</span>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#6272a4"># Health check for the website CRD</span>
 </span></span><span style="display:flex;"><span>curl localhost:8080/katalog/website/health | jq
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#6272a4"># Full detail — workers, queue, reconcile stats</span>
@@ -1491,7 +1461,7 @@
 </span></span><span style="display:flex;"><span>curl localhost:8080/metrics
 </span></span></code></pre></div><hr>
 <h2 id="cleanup">Cleanup</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#6272a4"># Delete the CR — cascades to the Deployment</span>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#6272a4"># Delete the CR — cascades to the Deployment</span>
 </span></span><span style="display:flex;"><span>kubectl delete -f examples/beginner/01-hello-website/cr.yaml
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#6272a4"># Stop the operator</span>
@@ -1539,8 +1509,11 @@
 <hr>
 <h2 id="next-steps">Next Steps</h2>
 <ul>
+<li><strong><a href="writing-your-first-motif/">Writing Your First Motif</a></strong> — reusable building blocks for your operators</li>
 <li><strong><a href="writing-your-first-katalog/">Writing Your First Katalog</a></strong> — build your own operator from scratch</li>
+<li><strong><a href="writing-your-first-komposer/">Writing Your First Komposer</a></strong> — compose multiple Katalogs</li>
 <li><strong><a href="basic-reconciliation/">Basic Reconciliation</a></strong> — understand the full reconcile lifecycle</li>
+<li><strong><a href="writing-your-first-e2e/">Writing Your First E2E Test</a></strong> — declarative end-to-end testing</li>
 <li><strong><a href="learning-to-orkestrate/">Learning to Orkestrate</a></strong> — progression through the example packs</li>
 </ul>
 

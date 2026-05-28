@@ -23,9 +23,9 @@ Orkestra enriches them automatically from its internal registry:
     This is how you apply governance to Kubernetes built-in resources without
     OPA, Kyverno, or a separate admission controller. Orkestra watches the resource,
     validates it at reconcile time, and optionally intercepts at admission time
-    when `ENABLE_ADMISSION_WEBHOOK=true`.
+    when `ENABLE_ADMISSION_WEBHOOK=true` or `security.webhooks.admission.enabled=true`.
 
-Run `ork validate` to see exactly what Orkestra resolves for a kind-only declaration.
+Run `ork validate --full` to see exactly what Orkestra resolves for a kind-only declaration.
 
 ---
 
@@ -91,7 +91,7 @@ Multiple conditions in the same `when:` block are ANDed. To express OR, create t
 separate resource entries with different `when:` conditions and the same name — only
 one will be created, whichever condition is met first.
 
-See [When Conditions](../reference/schema/06-when-conditions.md) for the full reference.
+See [When Conditions](../reference/schema/02-katalog/06-when-conditions.md) for the full reference.
 
 ---
 
@@ -103,20 +103,15 @@ See [When Conditions](../reference/schema/06-when-conditions.md) for the full re
 spec:
   crds:
     database:
-      operatorBox:
-        default: true
+      workers: 8
     application:
       dependsOn:
         database:
           condition: healthy   # wait until database workers are running and failure-free
-      operatorBox:
-        default: true
     analytics:
       dependsOn:
         database:
           condition: started   # wait only until database workers are running
-      operatorBox:
-        default: true
 ```
 
 `condition: healthy` waits until the dependency's workers are running and its consecutive failure count is zero. `condition: started` waits only until workers are running — useful when you want ordering without blocking on health.
@@ -128,7 +123,7 @@ dependsOn:
   - database
 ```
 
-See [CRD Entry Schema](../reference/schema/02-crd-entry.md) for the full reference.
+See [CRD Entry Schema](../reference/schema/02-katalog/02-crd-entry.md) for the full reference.
 
 ---
 

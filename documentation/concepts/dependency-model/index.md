@@ -24,7 +24,7 @@ Traditional operators don't handle this. You write code to check if dependencies
 |---|---|
 | Declare dependencies | `dependsOn` — list, key-value map, or full map |
 | Startup order | Automatic — dependencies first, via topological sort |
-| Condition granularity | `started`, `ready`, or `healthy` per dependency |
+| Condition granularity | `started`, or `healthy` per dependency |
 | Missing CRDs | Wait, retry in background, activate when they appear |
 | Shutdown order | Reverse of startup |
 | Circular dependencies | Detected at validate time and rejected at startup |

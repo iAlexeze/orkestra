@@ -1,6 +1,6 @@
 # Validation pipeline
 
-Every Orkestra document goes through a strict validation pipeline before anything runs. Most of this pipeline runs entirely offline — no cluster required.
+Every Orkestra document goes through a strict validation pipeline before anything runs. The whole pipeline runs entirely offline — no cluster required.
 
 ---
 
@@ -18,7 +18,7 @@ This applies to every document type: Katalog, Komposer, Motif, E2E spec.
 
 ## `ork validate`
 
-Validates a Katalog or Komposer fully without touching a cluster.
+Validates an Orkestra document fully without touching a cluster.
 
 ```bash
 ork validate

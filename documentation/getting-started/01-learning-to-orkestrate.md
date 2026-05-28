@@ -7,8 +7,7 @@ Every Orkestra capability is demonstrated in a runnable example. This page is th
 ## Two commands to your first operator
 
 ```bash
-ork init --pack beginner
-cd beginner/01-hello-website
+ork init
 ork run
 ```
 

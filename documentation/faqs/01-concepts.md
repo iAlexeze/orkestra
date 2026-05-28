@@ -36,13 +36,13 @@ Orkestra provides these capabilities declaratively, with no Go:
 - Multi-version CRD conversion
 - Admission-time validation and mutation
 
-Go hooks are available when you need them — external API calls, complex
-conditional logic, type-safe struct access. But hooks are additive. The
+Go hooks are available when you need them — complex external API calls not covered by the `external:` block, complex
+conditional logic not covered by the `when:` and `anyOf:` blocks. But hooks are additive. The
 declarative layer handles everything else.
 
 !!! note "When Go becomes necessary"
     The 20% of operator logic that genuinely requires code — creating a user
-    inside PostgreSQL, calling an external API, reading another cluster's state
+    inside PostgreSQL, reading another cluster's state
     — is handled by hooks. Hooks coexist with declarative templates. You do not
     choose one or the other.
 
@@ -100,7 +100,7 @@ spec:
     Kubernetes CRDs. See [Why Katalog and Komposer Are Not CRDs](./05-why-not-crds.md)
     for the full reasoning.
 
-See the [Katalog Schema](../reference/schema/01-katalog.md) for all available fields.
+See the [Katalog Schema](../reference/schema/02-katalog/01-katalog.md) for all available fields.
 
 ---
 
@@ -135,7 +135,7 @@ spec:
 The `spec.crds` inline block always wins on name conflict — it is the override
 mechanism. Platform teams publish Katalogs; application teams compose and override.
 
-See the [Komposer Schema](../reference/schema/13-komposer.md) for all options.
+See the [Komposer Schema](../reference/schema/03-komposer/index.md) for all options.
 
 ---
 
@@ -209,7 +209,7 @@ declared alongside reconcile templates:
 **Production results:** 62 conversions, 0 failures, sub-millisecond average latency.
 
 !!! note "No separate webhook deployment"
-    Conversion runs on Orkestra's own HTTPS server — the same server that serves
+    Conversion runs on Orkestra Gateway — the same server that serves
     `/validate` and `/mutate`. No separate conversion webhook binary. No separate
     TLS certificate. No separate deployment.
 

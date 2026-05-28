@@ -36,7 +36,7 @@ func main() {
 }
 ```
 
-Copy this as your `main.go`, add a `go.mod` import of `github.com/orkspace/orkestra` at your target version, and `go build` produces a binary with the full Orkestra CLI, runtime, gateway, and Control Center — exactly what `ork` is.
+Copy this as your `main.go`, add a `go.mod` import of `github.com/orkspace/orkestra` at your target version, and `go build` produces a binary with the full Orkestra CLI, runtime and gateway — exactly what `ork` is.
 
 ---
 

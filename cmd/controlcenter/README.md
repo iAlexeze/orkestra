@@ -67,7 +67,14 @@ brew tap orkspace/tap && brew install ork
 
 # Linux
 curl -sSL https://get.orkestra.sh | bash
+```
 
+> **Windows**
+> Download `ork_windows_amd64.zip` and `orkcc_windows_amd64.zip` from the
+> [latest release](https://github.com/orkspace/orkestra/releases).  
+> Extract the archives and add the folder containing `ork.exe` and `orkcc.exe` to your `PATH`.
+
+```bash
 # Verify installation
 ork version
 ```

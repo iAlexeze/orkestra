@@ -15,11 +15,11 @@ Orkestra's security model has five interlocking layers, each described in its ow
 
 | Layer | What it protects | Document |
 |-------|-----------------|----------|
-| **Binary surface** | Production containers cannot run developer commands | [Binaries & build tags](05-binaries.md) |
+| **Binary surface** | Production containers cannot run developer commands | [Binaries & build tags](01-binaries.md) |
 | **Permissions** | The operator only has the rights it needs, derived from your Katalog | [RBAC](02-rbac.md) |
-| **Admission control** | Bad CRs are rejected before they reach etcd | [Admission webhooks](01-admission.md) |
+| **Admission control** | Bad CRs are rejected before they reach etcd | [Admission webhooks](03-admission.md) |
 | **Deletion protection** | CRs and the operator itself cannot be accidentally deleted | [Deletion protection](04-deletion-protection.md) |
-| **Namespace isolation** | CRs are confined to the namespaces you allow | [Namespace protection](03-namespace-protection.md) |
+| **Namespace isolation** | CRs are confined to the namespaces you allow | [Namespace protection](05-namespace-protection.md) |
 | **Validation pipeline** | Strict parsing and multi-stage validation before anything runs | [Validation pipeline](06-validation-pipeline.md) |
 | **Pod security** | Workload containers run with hardened security contexts | [Pod security](07-pod-security.md) |
 

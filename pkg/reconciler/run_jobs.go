@@ -39,7 +39,7 @@ func runJobs(
 ) error {
 	for i, src := range srcs {
 		// 1. Evaluate conditions BEFORE resolving templates
-		conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf)
+		conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf, resolver.TemplateEvaluator())
 
 		// Early name/ns resolution — needed for guard check.
 		// Jobs are terminal (no DeleteIfOwned on condition fail), but guard

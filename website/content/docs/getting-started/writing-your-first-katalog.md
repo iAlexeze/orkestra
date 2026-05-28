@@ -1,7 +1,7 @@
 ---
 title: "Writing Your First Katalog"
-date: 2026-05-25
-weight: 69
+date: 2026-05-28
+weight: 70
 ---
 
 A **Katalog** is a YAML file that tells Orkestra what to do when a Custom Resource is created, updated, or deleted. This guide builds one from scratch.
@@ -172,29 +172,16 @@ spec:
   crds:
     database:
       crdFile: ./database-crd.yaml
-      crFiles:
-        - ./database-cr.yaml
-        - ./mongodb-cr.yaml
-      operatorBox:
-        default: true
     application:
       crdFile: ./application-crd.yaml
-      crFiles:
-        - ./application-cr.yaml
       dependsOn:
         database:
           condition: healthy   # wait until database workers are running and failure-free
-      operatorBox:
-        default: true
     analytics:
       crdFile: ./analytics-crd.yaml
-      crFiles:
-        - ./analytics-cr.yaml
       dependsOn:
         database:
           condition: started   # wait only until database workers are running
-      operatorBox:
-        default: true
 ```
 
 `condition: healthy` waits until the dependency's workers are running and its consecutive failure count is zero — use this when the downstream CRD needs the upstream to be stable before it starts. `condition: started` waits only until workers are running — useful when you want ordering without blocking on health (for example, when the dependency might legitimately fail during startup and you want the downstream to proceed anyway).

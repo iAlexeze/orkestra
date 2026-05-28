@@ -50,7 +50,7 @@ Orkestra is a complete declarative operator runtime for Kubernetes. The core is 
 **Distribution**
 
 - Homebrew tap — `brew install orkspace/tap/ork`
-- curl installer — `curl -sSL .../install.sh | bash` with GPG signing
+- curl installer — `curl -sSL get.orkestra.sh | bash` with GPG signing
 - Docker image — GHCR, distroless, two-stage build
 - Helm chart — production-ready deployment chart
 

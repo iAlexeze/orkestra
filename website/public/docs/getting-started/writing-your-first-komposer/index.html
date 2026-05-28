@@ -228,6 +228,13 @@
                   
                   
                   <li>
+                    <a href="/docs/getting-started/writing-your-first-motif/" class="sidebar-link">Writing Your First Motif</a>
+                  </li>
+                  
+                
+                  
+                  
+                  <li>
                     <a href="/docs/getting-started/writing-your-first-katalog/" class="sidebar-link">Writing Your First Katalog</a>
                   </li>
                   
@@ -243,6 +250,13 @@
                   
                   <li>
                     <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link">Basic Reconciliation</a>
+                  </li>
+                  
+                
+                  
+                  
+                  <li>
+                    <a href="/docs/getting-started/writing-your-first-e2e/" class="sidebar-link">Writing Your First E2E Test</a>
                   </li>
                   
                 
@@ -515,11 +529,11 @@
                       <ul class="sidebar-subsection-pages" role="list">
                         
                         <li>
-                          <a href="/docs/concepts/operator-autoscaler/autoscaler-metrics/" class="sidebar-link sidebar-link--nested">Autoscaler Metrics</a>
+                          <a href="/docs/concepts/operator-autoscaler/autoscaler-condition-engine/" class="sidebar-link sidebar-link--nested">Autoscaler Condition Engine</a>
                         </li>
                         
                         <li>
-                          <a href="/docs/concepts/operator-autoscaler/autoscaler-condition-engine/" class="sidebar-link sidebar-link--nested">Autoscaler Condition Engine</a>
+                          <a href="/docs/concepts/operator-autoscaler/autoscaler-metrics/" class="sidebar-link sidebar-link--nested">Autoscaler Metrics</a>
                         </li>
                         
                         <li>
@@ -639,11 +653,11 @@
                       <ul class="sidebar-subsection-pages" role="list">
                         
                         <li>
-                          <a href="/docs/concepts/profiles/resource-profile/" class="sidebar-link sidebar-link--nested">Resource Profile</a>
+                          <a href="/docs/concepts/profiles/autoscale-profile/" class="sidebar-link sidebar-link--nested">Autoscale Profile</a>
                         </li>
                         
                         <li>
-                          <a href="/docs/concepts/profiles/autoscale-profile/" class="sidebar-link sidebar-link--nested">Autoscale Profile</a>
+                          <a href="/docs/concepts/profiles/resource-profile/" class="sidebar-link sidebar-link--nested">Resource Profile</a>
                         </li>
                         
                         <li>
@@ -984,47 +998,7 @@
                         </li>
                         
                         <li>
-                          <a href="/docs/reference/schema/crd-entry/" class="sidebar-link sidebar-link--nested">CRDEntry</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/apitypes/" class="sidebar-link sidebar-link--nested">apiTypes</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/operatorbox/" class="sidebar-link sidebar-link--nested">operatorBox</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/status/" class="sidebar-link sidebar-link--nested">status</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/when-conditions/" class="sidebar-link sidebar-link--nested">when / anyOf conditions</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/validation/" class="sidebar-link sidebar-link--nested">validation</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/mutation/" class="sidebar-link sidebar-link--nested">mutation</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/conversion/" class="sidebar-link sidebar-link--nested">conversion</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/katalog-security/" class="sidebar-link sidebar-link--nested">security</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/katalog-notification/" class="sidebar-link sidebar-link--nested">notification</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/katalog-providers/" class="sidebar-link sidebar-link--nested">providers</a>
+                          <a href="/docs/reference/schema/motif/" class="sidebar-link sidebar-link--nested">Motif</a>
                         </li>
                         
                         <li>
@@ -1032,11 +1006,7 @@
                         </li>
                         
                         <li>
-                          <a href="/docs/reference/schema/motif/" class="sidebar-link sidebar-link--nested">Motif</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/enrich/" class="sidebar-link sidebar-link--nested">enrich</a>
+                          <a href="/docs/reference/schema/e2e/" class="sidebar-link sidebar-link--nested">E2E</a>
                         </li>
                         
                       </ul>
@@ -1081,7 +1051,7 @@
                   
                   
                   <li>
-                    <a href="/docs/security/admission/" class="sidebar-link">Admission webhooks</a>
+                    <a href="/docs/security/binaries/" class="sidebar-link">Binaries &amp; build tags</a>
                   </li>
                   
                 
@@ -1095,7 +1065,7 @@
                   
                   
                   <li>
-                    <a href="/docs/security/namespace-protection/" class="sidebar-link">Namespace protection</a>
+                    <a href="/docs/security/admission/" class="sidebar-link">Admission webhooks</a>
                   </li>
                   
                 
@@ -1109,7 +1079,7 @@
                   
                   
                   <li>
-                    <a href="/docs/security/binaries/" class="sidebar-link">Binaries &amp; build tags</a>
+                    <a href="/docs/security/namespace-protection/" class="sidebar-link">Namespace protection</a>
                   </li>
                   
                 
@@ -1420,7 +1390,7 @@
 <p>You do not need a Komposer to use Orkestra. <code>ork run</code> works without one. Komposers become useful when you want to compose Katalogs from multiple sources or apply overrides.</p>
 <hr>
 <h2 id="the-simplest-komposer">The Simplest Komposer</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: my-komposer
@@ -1429,11 +1399,11 @@
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
 </span></span><span style="display:flex;"><span>    - ./katalog.yaml
 </span></span></code></pre></div><p>Run it the same way:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run
 </span></span><span style="display:flex;"><span><span style="color:#6272a4"># Orkestra reads komposer.yaml from the current directory and starts the runtime.</span>
 </span></span></code></pre></div><hr>
 <h2 id="loading-multiple-katalogs">Loading Multiple Katalogs</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
 </span></span><span style="display:flex;"><span>    - ./katalogs/app.yaml
 </span></span><span style="display:flex;"><span>    - ./katalogs/database.yaml
@@ -1441,14 +1411,14 @@
 </span></span></code></pre></div><p>Orkestra merges them. If two Katalogs define the same CRD name, the later one wins — or you can use the <code>spec.crds</code> block in the Komposer itself to override specific fields.</p>
 <hr>
 <h2 id="loading-from-a-registry">Loading From a Registry</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">registry</span>:
 </span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: ghcr.io/orkspace/orkestra-registry/postgres@v14
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">oci</span>: <span style="color:#ff79c6">true</span>
 </span></span></code></pre></div><p>Pulls the Postgres operator pattern from the OCI registry and merges it with any other sources.</p>
 <hr>
 <h2 id="loading-from-a-helm-chart">Loading From a Helm Chart</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">helm</span>:
 </span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">repo</span>: https://charts.myorg.io
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">chart</span>: platform-crds
@@ -1456,7 +1426,7 @@
 </span></span></code></pre></div><hr>
 <h2 id="overriding-fields">Overriding Fields</h2>
 <p>The <code>spec.crds</code> block in a Komposer always wins over imported Katalogs. Use it to tune imported patterns:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">registry</span>:
 </span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: ghcr.io/orkspace/orkestra-registry/postgres@v14
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">oci</span>: <span style="color:#ff79c6">true</span>
@@ -1468,7 +1438,7 @@
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">resync</span>: 30s
 </span></span></code></pre></div><hr>
 <h2 id="validating-without-running">Validating Without Running</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork validate -f komposer.yaml
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork validate -f komposer.yaml
 </span></span></code></pre></div><p>Resolves all sources, merges everything, and reports errors — without touching the cluster.</p>
 <hr>
 

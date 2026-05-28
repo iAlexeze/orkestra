@@ -228,6 +228,13 @@
                   
                   
                   <li>
+                    <a href="/docs/getting-started/writing-your-first-motif/" class="sidebar-link">Writing Your First Motif</a>
+                  </li>
+                  
+                
+                  
+                  
+                  <li>
                     <a href="/docs/getting-started/writing-your-first-katalog/" class="sidebar-link">Writing Your First Katalog</a>
                   </li>
                   
@@ -243,6 +250,13 @@
                   
                   <li>
                     <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link">Basic Reconciliation</a>
+                  </li>
+                  
+                
+                  
+                  
+                  <li>
+                    <a href="/docs/getting-started/writing-your-first-e2e/" class="sidebar-link">Writing Your First E2E Test</a>
                   </li>
                   
                 
@@ -515,11 +529,11 @@
                       <ul class="sidebar-subsection-pages" role="list">
                         
                         <li>
-                          <a href="/docs/concepts/operator-autoscaler/autoscaler-metrics/" class="sidebar-link sidebar-link--nested">Autoscaler Metrics</a>
+                          <a href="/docs/concepts/operator-autoscaler/autoscaler-condition-engine/" class="sidebar-link sidebar-link--nested">Autoscaler Condition Engine</a>
                         </li>
                         
                         <li>
-                          <a href="/docs/concepts/operator-autoscaler/autoscaler-condition-engine/" class="sidebar-link sidebar-link--nested">Autoscaler Condition Engine</a>
+                          <a href="/docs/concepts/operator-autoscaler/autoscaler-metrics/" class="sidebar-link sidebar-link--nested">Autoscaler Metrics</a>
                         </li>
                         
                         <li>
@@ -639,11 +653,11 @@
                       <ul class="sidebar-subsection-pages" role="list">
                         
                         <li>
-                          <a href="/docs/concepts/profiles/resource-profile/" class="sidebar-link sidebar-link--nested">Resource Profile</a>
+                          <a href="/docs/concepts/profiles/autoscale-profile/" class="sidebar-link sidebar-link--nested">Autoscale Profile</a>
                         </li>
                         
                         <li>
-                          <a href="/docs/concepts/profiles/autoscale-profile/" class="sidebar-link sidebar-link--nested">Autoscale Profile</a>
+                          <a href="/docs/concepts/profiles/resource-profile/" class="sidebar-link sidebar-link--nested">Resource Profile</a>
                         </li>
                         
                         <li>
@@ -984,47 +998,7 @@
                         </li>
                         
                         <li>
-                          <a href="/docs/reference/schema/crd-entry/" class="sidebar-link sidebar-link--nested">CRDEntry</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/apitypes/" class="sidebar-link sidebar-link--nested">apiTypes</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/operatorbox/" class="sidebar-link sidebar-link--nested">operatorBox</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/status/" class="sidebar-link sidebar-link--nested">status</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/when-conditions/" class="sidebar-link sidebar-link--nested">when / anyOf conditions</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/validation/" class="sidebar-link sidebar-link--nested">validation</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/mutation/" class="sidebar-link sidebar-link--nested">mutation</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/conversion/" class="sidebar-link sidebar-link--nested">conversion</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/katalog-security/" class="sidebar-link sidebar-link--nested">security</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/katalog-notification/" class="sidebar-link sidebar-link--nested">notification</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/katalog-providers/" class="sidebar-link sidebar-link--nested">providers</a>
+                          <a href="/docs/reference/schema/motif/" class="sidebar-link sidebar-link--nested">Motif</a>
                         </li>
                         
                         <li>
@@ -1032,11 +1006,7 @@
                         </li>
                         
                         <li>
-                          <a href="/docs/reference/schema/motif/" class="sidebar-link sidebar-link--nested">Motif</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/enrich/" class="sidebar-link sidebar-link--nested">enrich</a>
+                          <a href="/docs/reference/schema/e2e/" class="sidebar-link sidebar-link--nested">E2E</a>
                         </li>
                         
                       </ul>
@@ -1081,7 +1051,7 @@
                   
                   
                   <li>
-                    <a href="/docs/security/admission/" class="sidebar-link">Admission webhooks</a>
+                    <a href="/docs/security/binaries/" class="sidebar-link">Binaries &amp; build tags</a>
                   </li>
                   
                 
@@ -1095,7 +1065,7 @@
                   
                   
                   <li>
-                    <a href="/docs/security/namespace-protection/" class="sidebar-link">Namespace protection</a>
+                    <a href="/docs/security/admission/" class="sidebar-link">Admission webhooks</a>
                   </li>
                   
                 
@@ -1109,7 +1079,7 @@
                   
                   
                   <li>
-                    <a href="/docs/security/binaries/" class="sidebar-link">Binaries &amp; build tags</a>
+                    <a href="/docs/security/namespace-protection/" class="sidebar-link">Namespace protection</a>
                   </li>
                   
                 
@@ -1408,7 +1378,7 @@
 <p><strong>No Go. No code generation. No controller boilerplate.</strong></p>
 <hr>
 <h2 id="what-you-write">What You Write</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Katalog
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: webapp-operator
@@ -1449,7 +1419,7 @@
 </ul>
 <hr>
 <h2 id="get-started">Get Started</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl -sSL https://get.orkestra.sh | bash
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl -sSL https://get.orkestra.sh | bash
 </span></span><span style="display:flex;"><span>ork init
 </span></span><span style="display:flex;"><span>ork run
 </span></span><span style="display:flex;"><span><span style="color:#6272a4"># Orkestra reads katalog.yaml from the current directory and starts the runtime.</span>

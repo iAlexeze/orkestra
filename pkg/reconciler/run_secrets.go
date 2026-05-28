@@ -43,7 +43,7 @@ func runSecrets(
 ) error {
 	activeNames := make(map[string]bool, len(srcs))
 	for _, s := range srcs {
-		if !orktypes.EvaluateWhen(resolver.Data(), s.Conditions, s.AnyOf) {
+		if !orktypes.EvaluateWhen(resolver.Data(), s.Conditions, s.AnyOf, resolver.TemplateEvaluator()) {
 			continue
 		}
 		n, _ := resolver.Resolve(s.Name)
@@ -63,7 +63,7 @@ func runSecrets(
 		// IMPORTANT: must use resolver.Data() not the owner object directly.
 		// resolver.Data() includes .children.*, .external.*, .cross.* — the owner
 		// object alone does not have these injected fields.
-		conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf)
+		conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf, resolver.TemplateEvaluator())
 
 		// Resolve name and namespace early — needed for guard check, once: checks,
 		// and DeleteIfOwned cleanup. ResolveSecretTemplate resolves these again

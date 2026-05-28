@@ -175,6 +175,9 @@ Ctrl+C
 
 ## Next Steps
 
-- **[Writing Your First Katalog](./02-writing-your-first-katalog.md)** — build your own operator from scratch
-- **[Basic Reconciliation](./04-basic-reconciliation.md)** — understand the full reconcile lifecycle
+- **[Writing Your First Motif](./02-writing-your-first-motif.md)** — reusable building blocks for your operators
+- **[Writing Your First Katalog](./03-writing-your-first-katalog.md)** — build your own operator from scratch
+- **[Writing Your First Komposer](./04-writing-your-first-komposer.md)** — compose multiple Katalogs
+- **[Basic Reconciliation](./05-basic-reconciliation.md)** — understand the full reconcile lifecycle
+- **[Writing Your First E2E Test](./06-writing-your-first-e2e.md)** — declarative end-to-end testing
 - **[Learning to Orkestrate](./01-learning-to-orkestrate.md)** — progression through the example packs

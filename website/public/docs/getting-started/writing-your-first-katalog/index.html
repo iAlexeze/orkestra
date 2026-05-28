@@ -228,6 +228,13 @@
                   
                   
                   <li>
+                    <a href="/docs/getting-started/writing-your-first-motif/" class="sidebar-link">Writing Your First Motif</a>
+                  </li>
+                  
+                
+                  
+                  
+                  <li>
                     <a href="/docs/getting-started/writing-your-first-katalog/" class="sidebar-link active">Writing Your First Katalog</a>
                   </li>
                   
@@ -243,6 +250,13 @@
                   
                   <li>
                     <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link">Basic Reconciliation</a>
+                  </li>
+                  
+                
+                  
+                  
+                  <li>
+                    <a href="/docs/getting-started/writing-your-first-e2e/" class="sidebar-link">Writing Your First E2E Test</a>
                   </li>
                   
                 
@@ -515,11 +529,11 @@
                       <ul class="sidebar-subsection-pages" role="list">
                         
                         <li>
-                          <a href="/docs/concepts/operator-autoscaler/autoscaler-metrics/" class="sidebar-link sidebar-link--nested">Autoscaler Metrics</a>
+                          <a href="/docs/concepts/operator-autoscaler/autoscaler-condition-engine/" class="sidebar-link sidebar-link--nested">Autoscaler Condition Engine</a>
                         </li>
                         
                         <li>
-                          <a href="/docs/concepts/operator-autoscaler/autoscaler-condition-engine/" class="sidebar-link sidebar-link--nested">Autoscaler Condition Engine</a>
+                          <a href="/docs/concepts/operator-autoscaler/autoscaler-metrics/" class="sidebar-link sidebar-link--nested">Autoscaler Metrics</a>
                         </li>
                         
                         <li>
@@ -639,11 +653,11 @@
                       <ul class="sidebar-subsection-pages" role="list">
                         
                         <li>
-                          <a href="/docs/concepts/profiles/resource-profile/" class="sidebar-link sidebar-link--nested">Resource Profile</a>
+                          <a href="/docs/concepts/profiles/autoscale-profile/" class="sidebar-link sidebar-link--nested">Autoscale Profile</a>
                         </li>
                         
                         <li>
-                          <a href="/docs/concepts/profiles/autoscale-profile/" class="sidebar-link sidebar-link--nested">Autoscale Profile</a>
+                          <a href="/docs/concepts/profiles/resource-profile/" class="sidebar-link sidebar-link--nested">Resource Profile</a>
                         </li>
                         
                         <li>
@@ -984,47 +998,7 @@
                         </li>
                         
                         <li>
-                          <a href="/docs/reference/schema/crd-entry/" class="sidebar-link sidebar-link--nested">CRDEntry</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/apitypes/" class="sidebar-link sidebar-link--nested">apiTypes</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/operatorbox/" class="sidebar-link sidebar-link--nested">operatorBox</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/status/" class="sidebar-link sidebar-link--nested">status</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/when-conditions/" class="sidebar-link sidebar-link--nested">when / anyOf conditions</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/validation/" class="sidebar-link sidebar-link--nested">validation</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/mutation/" class="sidebar-link sidebar-link--nested">mutation</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/conversion/" class="sidebar-link sidebar-link--nested">conversion</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/katalog-security/" class="sidebar-link sidebar-link--nested">security</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/katalog-notification/" class="sidebar-link sidebar-link--nested">notification</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/katalog-providers/" class="sidebar-link sidebar-link--nested">providers</a>
+                          <a href="/docs/reference/schema/motif/" class="sidebar-link sidebar-link--nested">Motif</a>
                         </li>
                         
                         <li>
@@ -1032,11 +1006,7 @@
                         </li>
                         
                         <li>
-                          <a href="/docs/reference/schema/motif/" class="sidebar-link sidebar-link--nested">Motif</a>
-                        </li>
-                        
-                        <li>
-                          <a href="/docs/reference/schema/enrich/" class="sidebar-link sidebar-link--nested">enrich</a>
+                          <a href="/docs/reference/schema/e2e/" class="sidebar-link sidebar-link--nested">E2E</a>
                         </li>
                         
                       </ul>
@@ -1081,7 +1051,7 @@
                   
                   
                   <li>
-                    <a href="/docs/security/admission/" class="sidebar-link">Admission webhooks</a>
+                    <a href="/docs/security/binaries/" class="sidebar-link">Binaries &amp; build tags</a>
                   </li>
                   
                 
@@ -1095,7 +1065,7 @@
                   
                   
                   <li>
-                    <a href="/docs/security/namespace-protection/" class="sidebar-link">Namespace protection</a>
+                    <a href="/docs/security/admission/" class="sidebar-link">Admission webhooks</a>
                   </li>
                   
                 
@@ -1109,7 +1079,7 @@
                   
                   
                   <li>
-                    <a href="/docs/security/binaries/" class="sidebar-link">Binaries &amp; build tags</a>
+                    <a href="/docs/security/namespace-protection/" class="sidebar-link">Namespace protection</a>
                   </li>
                   
                 
@@ -1404,8 +1374,8 @@
         
         <div class="docs-meta">
           
-          <time datetime="2026-05-25" class="docs-date">
-            Updated May 25, 2026
+          <time datetime="2026-05-28" class="docs-date">
+            Updated May 28, 2026
           </time>
           
 
@@ -1420,7 +1390,7 @@
 <hr>
 <h2 id="the-minimal-katalog">The Minimal Katalog</h2>
 <p>Create <code>katalog.yaml</code>:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Katalog
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: my-first-katalog
@@ -1439,7 +1409,7 @@
 <hr>
 <h2 id="the-crd">The CRD</h2>
 <p>Create <code>crd.yaml</code>:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: apiextensions.k8s.io/v1
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: apiextensions.k8s.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: CustomResourceDefinition
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: myapps.demo.myorg.io
@@ -1474,7 +1444,7 @@
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">kind</span>: MyApp
 </span></span></code></pre></div><hr>
 <h2 id="adding-a-deployment">Adding a Deployment</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">myapp</span>:
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">crdFile</span>: ./crd.yaml
@@ -1492,7 +1462,7 @@
 </span></span></code></pre></div><p>Values inside <code>{{ }}</code> are Go templates evaluated against the live CR. <code>reconcile: true</code> means the Deployment is drift-corrected on every reconcile — if someone edits it manually, Orkestra corrects it back.</p>
 <hr>
 <h2 id="adding-a-service">Adding a Service</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">onCreate</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">onCreate</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">deployments</span>:
 </span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}&#34;</span>
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">image</span>: <span style="color:#f1fa8c">&#34;{{ .spec.image }}&#34;</span>
@@ -1507,7 +1477,7 @@
 </span></span></code></pre></div><hr>
 <h2 id="conditional-resources">Conditional Resources</h2>
 <p>Use <code>when:</code> to create a resource only when a condition is met:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">services</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">services</span>:
 </span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}-public&#34;</span>
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">port</span>: <span style="color:#f1fa8c">&#34;80&#34;</span>
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">targetPort</span>: <span style="color:#f1fa8c">&#34;{{ .spec.port }}&#34;</span>
@@ -1517,7 +1487,7 @@
 </span></span></code></pre></div><hr>
 <h2 id="status-fields">Status Fields</h2>
 <p>Write values back to the CR after every reconcile:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">operatorBox</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">operatorBox</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">status</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">fields</span>:
@@ -1535,44 +1505,31 @@
 <hr>
 <h2 id="dependencies-between-crds">Dependencies Between CRDs</h2>
 <p>If your Katalog manages multiple CRDs and one must reconcile before the other:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">database</span>:
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">crdFile</span>: ./database-crd.yaml
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">crFiles</span>:
-</span></span><span style="display:flex;"><span>        - ./database-cr.yaml
-</span></span><span style="display:flex;"><span>        - ./mongodb-cr.yaml
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">operatorBox</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">application</span>:
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">crdFile</span>: ./application-crd.yaml
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">crFiles</span>:
-</span></span><span style="display:flex;"><span>        - ./application-cr.yaml
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">dependsOn</span>:
 </span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">database</span>:
 </span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">condition</span>: healthy   <span style="color:#6272a4"># wait until database workers are running and failure-free</span>
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">operatorBox</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">analytics</span>:
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">crdFile</span>: ./analytics-crd.yaml
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">crFiles</span>:
-</span></span><span style="display:flex;"><span>        - ./analytics-cr.yaml
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">dependsOn</span>:
 </span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">database</span>:
 </span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">condition</span>: started   <span style="color:#6272a4"># wait only until database workers are running</span>
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">operatorBox</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
 </span></span></code></pre></div><p><code>condition: healthy</code> waits until the dependency&rsquo;s workers are running and its consecutive failure count is zero — use this when the downstream CRD needs the upstream to be stable before it starts. <code>condition: started</code> waits only until workers are running — useful when you want ordering without blocking on health (for example, when the dependency might legitimately fail during startup and you want the downstream to proceed anyway).</p>
 <hr>
 <h2 id="running-it">Running It</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run
 </span></span><span style="display:flex;"><span><span style="color:#6272a4"># Orkestra reads katalog.yaml from the current directory and starts the runtime.</span>
 </span></span></code></pre></div><p>Verify it works:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl get deployments
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl get deployments
 </span></span><span style="display:flex;"><span>kubectl get services
 </span></span></code></pre></div><hr>
 <h2 id="validate-without-running">Validate Without Running</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork validate
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork validate
 </span></span><span style="display:flex;"><span><span style="color:#6272a4"># Orkestra reads katalog.yaml from the current directory and reports every error without touching the cluster.</span>
 </span></span></code></pre></div><hr>
 
@@ -1581,11 +1538,11 @@
       
       <nav class="docs-pagination" aria-label="Page navigation">
         
-        <a href="/docs/getting-started/learning-to-orkestrate/" class="pagination-link pagination-prev">
+        <a href="/docs/getting-started/writing-your-first-motif/" class="pagination-link pagination-prev">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           <div>
             <span class="pagination-label">Previous</span>
-            <span class="pagination-title">Learning to Orkestrate</span>
+            <span class="pagination-title">Writing Your First Motif</span>
           </div>
         </a>
         

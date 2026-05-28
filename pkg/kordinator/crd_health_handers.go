@@ -471,23 +471,23 @@ func BuildCRDInfoHandler(
 // ─────────────────────────────────────────────────────────────────────────────
 
 type KatalogResponse struct {
-	CRDs               []CRDSummaryResponse            `json:"crds"`
-	Total              int                             `json:"total"`
-	TotalEnabled       int                             `json:"totalEnabled"`
-	OrkReady           bool                            `json:"OrkReady"`
-	DeletionProtection bool                            `json:"deletionProtection"`
-	Healthy            bool                            `json:"healthy"`
-	Status             int                             `json:"status"`
-	DegradedReason     string                          `json:"degradedReason,omitempty"`
-	StatusCounts       StatusCounts                    `json:"statusCounts"`
-	Name               string                          `json:"name,omitempty"`
-	Version            string                          `json:"version,omitempty"`
-	CreatedBy          string                          `json:"createdBy,omitempty"`
-	Author             string                          `json:"author,omitempty"`
-	Description        string                          `json:"description,omitempty"`
-	License            string                          `json:"license,omitempty"`
-	RuntimeVersion     string                          `json:"runtimeVersion,omitempty"`
-	Projects           map[string]orktypes.ProjectInfo `json:"projects,omitempty"`
+	CRDs               []CRDSummaryResponse   `json:"crds"`
+	Total              int                    `json:"total"`
+	TotalEnabled       int                    `json:"totalEnabled"`
+	OrkReady           bool                   `json:"OrkReady"`
+	DeletionProtection bool                   `json:"deletionProtection"`
+	Healthy            bool                   `json:"healthy"`
+	Status             int                    `json:"status"`
+	DegradedReason     string                 `json:"degradedReason,omitempty"`
+	StatusCounts       StatusCounts           `json:"statusCounts"`
+	Name               string                 `json:"name,omitempty"`
+	Version            string                 `json:"version,omitempty"`
+	CreatedBy          string                 `json:"createdBy,omitempty"`
+	Author             string                 `json:"author,omitempty"`
+	Description        string                 `json:"description,omitempty"`
+	License            string                 `json:"license,omitempty"`
+	RuntimeVersion     string                 `json:"runtimeVersion,omitempty"`
+	Projects           map[string]interface{} `json:"projects,omitempty"`
 	// GatewayEndpoint is the HTTP base URL of the companion gateway process.
 	// Set via ORK_GATEWAY_ENDPOINT on the runtime. The control center reads
 	// this field and fetches gateway:/katalog to merge per-CRD webhook stats.

@@ -2,7 +2,12 @@ apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
   name: secret-distribution-e2e
-  description: Distribute a database secret from a platform namespace into team namespaces and verify removal on delete
+  description: >
+    Distribute a database secret from a platform namespace into team namespaces
+    and verify removal on delete.
+
+    Demonstrates setup.apply + setup.wait: the source secret must exist in the
+    platform namespace before the operator is allowed to start reconciling.
 
 spec:
   katalog: ./katalog.yaml
@@ -15,7 +20,13 @@ spec:
     reuse: false
 
   setup:
-    - ./setup.yaml   # creates platform/team-alpha/team-beta namespaces + source secret
+    apply:
+      - ./setup.yaml   # creates platform/team-alpha/team-beta namespaces + source secret
+    wait:
+      - kind: Secret
+        name: database-credentials
+        namespace: platform
+        timeout: 15s   # source secret must exist before the operator starts
 
   expect:
     - name: CR created

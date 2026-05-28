@@ -12,6 +12,12 @@ postgres/
     katalog.yaml  # optional — example Katalog importing this Motif
 ```
 
+`motif.yaml` is the only required file.
+
+## Writing a Motif
+See full description in [Writing your first Motif](../getting-started/03-writing-your-first-motif.md).
+
+
 ## Publishing
 
 Motifs publish to `ORK_MOTIFS_REGISTRY` (default: `ghcr.io/orkspace/orkestra-registry/patterns/motifs`):
