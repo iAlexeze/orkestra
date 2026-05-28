@@ -61,8 +61,6 @@ jobs:
             | grep '^fpr' | head -1 | cut -d: -f10)
           echo "${FINGERPRINT}:6:" | gpg --import-ownertrust
           echo "GPG_FINGERPRINT=${FINGERPRINT}" >> "$GITHUB_ENV"
-          # Export legacy keyring — required by helm package --sign
-          gpg --no-default-keyring --keyring /tmp/helm-keyring.gpg --import <(gpg --export releases@${{ inputs.ork }}.io)
 
       - name: Update Chart metadata and values
         env:
@@ -95,13 +93,17 @@ jobs:
           VERSION="${TAG#v}"
           IMAGE_TAG="${{ inputs.image_tag }}"
 
-          # Sign the chart — produces orkestra-VERSION.tgz + orkestra-VERSION.tgz.prov
-          echo "${GPG_PASSPHRASE}" | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback true
+          # Write passphrase to a temporary file
+          echo "${GPG_PASSPHRASE}" > /tmp/gpg-passphrase
+
+          # Sign the chart using the default GPG keyring (private key already imported)
           helm package "$CHART_DIR" \
-            --sign --key "releases@${ORK}.io" --keyring /tmp/helm-keyring.gpg \
-            --passphrase-file <(echo "${GPG_PASSPHRASE}") \
+            --sign --key "releases@${ORK}.io" \
+            --passphrase-file /tmp/gpg-passphrase \
             --version "$VERSION" --app-version "$IMAGE_TAG" \
             -d .cr-release-packages
+
+          rm -f /tmp/gpg-passphrase
 
           git clone --branch gh-pages "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" /tmp/gh-pages
 
@@ -121,8 +123,6 @@ jobs:
 
           # Copy values.yaml so users can inspect defaults from the gh-pages site
           cp "charts/${ORK}/values.yaml" /tmp/gh-pages/values.yaml
-
-          # crdsExamples are now embedded directly in Chart.yaml — no separate file needed.
 
           cd /tmp/gh-pages
           if [[ -f index.yaml ]]; then
