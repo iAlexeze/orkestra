@@ -47,10 +47,6 @@ jobs:
           tar -czf "dist/examples_security_${TAG}.tar.gz" \
             -C examples/security .
 
-          # Developer
-          # tar -czf "dist/examples_developer_${TAG}.tar.gz" \
-          #   -C examples/developer .
-
           echo "📦 Example packs packaged"
 
       - name: Upload example packs

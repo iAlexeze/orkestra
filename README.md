@@ -100,14 +100,22 @@ Every CRD declared in a Katalog becomes a complete, isolated operator. Nothing t
 
 ## Getting started
 
+### Install
 ```bash
 # Install (macOS)
 brew install orkspace/tap/ork orkspace/tap/orkcc
 
 # Install (Linux)
 curl -sSL https://get.orkestra.sh | bash
+```
 
-# Initialize and run
+> **Windows**
+> Download `ork_windows_amd64.zip` and `orkcc_windows_amd64.zip` from the
+> [latest release](https://github.com/orkspace/orkestra/releases).  
+> Extract the archives and add the folder containing `ork.exe` and `orkcc.exe` to your `PATH`.
+
+### Initialize and run
+```console
 ork init --pack beginner
 cd beginner/01-hello-website
 ork run
