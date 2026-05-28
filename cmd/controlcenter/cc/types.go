@@ -135,7 +135,7 @@ type GatewayCRDStats struct {
 }
 
 // ProjectInfoSummary is the CC-side view of one app in KatalogResponse.Projects.
-// Fields mirror orktypes.ProjectInfo — add here when the runtime starts sending more.
+// Fields mirror interface{} — add here when the runtime starts sending more.
 type ProjectInfoSummary struct {
 	Name          string `json:"name"`
 	Namespace     string `json:"namespace"`

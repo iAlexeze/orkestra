@@ -12,7 +12,7 @@
     <lastmod>2026-05-25T19:29:17+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/conditional/async-reconciliation/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/publications/trust-and-failure-model/</loc>
     <lastmod>2026-05-25T19:29:17+00:00</lastmod>
@@ -21,7 +21,7 @@
     <lastmod>2026-05-25T19:29:17+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/publications/the-function-that-waited/</loc>
-    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T18:25:44+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/conditional/status-conditions/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
@@ -45,10 +45,10 @@
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/dependency-model/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/health-subsystem/crd-health/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/health-subsystem/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
@@ -59,11 +59,11 @@
     <loc>http://localhost:8090/docs/concepts/oncop/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:8090/docs/concepts/operator-autoscaler/autoscaler-metrics/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
-  </url><url>
     <loc>http://localhost:8090/docs/concepts/operator-autoscaler/autoscaler-condition-engine/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/concepts/operator-autoscaler/autoscaler-metrics/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/operator-autoscaler/autoscaler-runtime-behaviour/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
@@ -75,13 +75,13 @@
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/operator-autoscaler/cross-operator-autoscaling/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/operator-autoscaler/cross-operator-autoscaling-scenarios/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/operator-autoscaler/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/operatorbox/reconcile-pipeline/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
@@ -93,10 +93,10 @@
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/operatorbox/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/operator-of-operators/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/ordered-deletion/hard-ordered/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
@@ -129,7 +129,7 @@
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/profiles/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/reconciler-model/create-update/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
@@ -141,7 +141,7 @@
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/status-management/declarative-fields/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/status-management/child-propagation/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
@@ -150,19 +150,19 @@
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/status-management/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/typed-operators/hooks/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/typed-operators/constructor/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/typed-operators/mixed/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/typed-operators/operator-as-library/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/typed-operators/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
@@ -174,7 +174,7 @@
     <lastmod>2026-05-26T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/contributing/contributing-examples/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/contributing/contributing-providers/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
@@ -210,28 +210,28 @@
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/faqs/concepts/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/faqs/running/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/faqs/patterns/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/faqs/ecosystem/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/faqs/why-not-crds/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/faqs/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/getting-started/learning-to-orkestrate/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/getting-started/writing-your-first-katalog/</loc>
-    <lastmod>2026-05-25T13:39:05+00:00</lastmod>
+    <lastmod>2026-05-28T18:25:44+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/getting-started/writing-your-first-komposer/</loc>
     <lastmod>2026-05-25T13:39:05+00:00</lastmod>
@@ -273,16 +273,16 @@
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/orkestra-registry/motifs/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/orkestra-registry/katalogs/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/orkestra-registry/komposers/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/orkestra-registry/e2e/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/orkestra-registry/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
@@ -459,7 +459,7 @@
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/schema/motif/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/schema/enrich/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
@@ -486,10 +486,10 @@
     <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/security/validation-pipeline/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/security/pod-security/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/support/</loc>
     <lastmod>2026-05-24T00:00:00+00:00</lastmod>

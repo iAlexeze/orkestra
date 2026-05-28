@@ -41,16 +41,39 @@ func (c *CRDEntry) SkipObservedGeneration() bool {
 
 // ShouldEnrich returns true when the given enrichment target is enabled —
 // either via EnrichAll: true or an explicit entry in Enrich.
+// Condition gates (when:/anyOf:) are not evaluated here — they are handled
+// higher up by ActiveEnrichTargets before the CRDEntry reaches each enricher.
 func (c *CRDEntry) ShouldEnrich(target string) bool {
 	if c.EnrichAll {
 		return true
 	}
 	for _, t := range c.Enrich {
-		if t == target {
+		if t.Key == target {
 			return true
 		}
 	}
 	return false
+}
+
+// ActiveEnrichTargets returns the subset of Enrich entries whose when:/anyOf:
+// conditions pass for the given data map and evaluator. Unconditional entries
+// (no when: or anyOf:) always pass. Called from ReadChildren to pre-filter
+// crd.Enrich before dispatching to individual enricher functions.
+func (c *CRDEntry) ActiveEnrichTargets(data map[string]interface{}, eval TemplateEvaluator) []EnrichTarget {
+	if c.EnrichAll {
+		return c.Enrich
+	}
+	result := make([]EnrichTarget, 0, len(c.Enrich))
+	for _, t := range c.Enrich {
+		if len(t.When) == 0 && len(t.AnyOf) == 0 {
+			result = append(result, t)
+			continue
+		}
+		if EvaluateWhen(data, t.When, t.AnyOf, eval) {
+			result = append(result, t)
+		}
+	}
+	return result
 }
 
 // IsStatusless reports whether this CRD has no meaningful readiness semantics.

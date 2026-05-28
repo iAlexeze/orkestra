@@ -47,3 +47,73 @@ status:
 ```
 
 The child key in `.children` is the CRD name as declared in `spec.crds` (e.g. `deployment`, `statefulset`, `mypod`). The underscore-prefixed enrichment keys (`_pods`, `_warnings`, etc.) are embedded directly on that object.
+
+## Conditional enrichment
+
+Enrichment targets support an optional `when:` gate. When the condition fails, Orkestra skips the API call for that target entirely — the enriched key simply does not appear on the child object that reconcile cycle.
+
+```yaml
+enrich:
+  - pods                    # always enriches pods
+  - events:                 # only fetch events when deployment is degraded
+      when:
+        - field: "{{ replicasReady .children.deployment }}"
+          equals: "false"
+  - replicasets:            # only visible during rollouts or debug mode
+      when:
+        - field: spec.debug
+          equals: "true"
+```
+
+`when:` accepts the same condition operators as any other `when:` block — including template expressions that call note functions. `anyOf:` is also supported for OR semantics.
+
+```yaml
+enrich:
+  - events:
+      anyOf:
+        - field: "{{ hasCrashingPod .children.deployment }}"
+          equals: "true"
+        - field: "{{ replicasReady .children.deployment }}"
+          equals: "false"
+```
+
+**When to use conditional enrichment:** each enrichment target is one or more Kubernetes API calls per reconcile cycle. For high-frequency operators or CRDs with many replicas, skipping enrichment you only need in degraded states (events, replicasets) measurably reduces load on the API server.
+
+**Evaluation order:** enrichment conditions are evaluated after the main reconcile runs and after children are read — so `.children.*` fields are available in the condition expressions.
+
+## Template expressions in `when:` fields
+
+`when:` conditions accept Go template expressions in the `field:` value. When the field contains `{{`, Orkestra evaluates it through the full note FuncMap (the same functions available in `status.fields`) and uses the string result for the operator comparison.
+
+This applies to all `when:` blocks — resource provisioning, status fields, and enrichment gates:
+
+```yaml
+# Resource only created when deployment is fully ready
+services:
+  - name: "{{ .metadata.name }}-lb"
+    port: "443"
+    when:
+      - field: "{{ replicasReady .children.deployment }}"
+        equals: "true"
+
+# Status field only written when a crashing pod exists
+status:
+  fields:
+    - path: crashReason
+      value: "{{ firstWarningMessage .children.deployment }}"
+      when:
+        - field: "{{ hasCrashingPod .children.deployment }}"
+          equals: "true"
+```
+
+A `field:` that is a plain dot-path (e.g. `spec.replicas`) continues to use `NavigateDotPath` as before — no change in behaviour.
+
+## enrichAll
+
+`enrichAll: true` enables all supported enrichment targets for this CRD. It is mutually exclusive with the `enrich` list.
+
+```yaml
+enrichAll: true   # enrich everything — development / debugging shorthand
+```
+
+`enrichAll` does not support conditional gates. Use the `enrich` list with `when:` when you need per-target control.

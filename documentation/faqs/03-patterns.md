@@ -91,7 +91,7 @@ Multiple conditions in the same `when:` block are ANDed. To express OR, create t
 separate resource entries with different `when:` conditions and the same name — only
 one will be created, whichever condition is met first.
 
-See [When Conditions](../reference/schema/06-when-conditions.md) for the full reference.
+See [When Conditions](../reference/schema/02-katalog/06-when-conditions.md) for the full reference.
 
 ---
 
@@ -123,7 +123,7 @@ dependsOn:
   - database
 ```
 
-See [CRD Entry Schema](../reference/schema/02-crd-entry.md) for the full reference.
+See [CRD Entry Schema](../reference/schema/02-katalog/02-crd-entry.md) for the full reference.
 
 ---
 

@@ -134,12 +134,15 @@ type CRDEntry struct {
 	//
 	// Only one of EnrichAll or Enrich may be set — setting both is a validation error.
 	//
-	//	enrichAll: true    — enrich all supported resource types (currently: pods)
-	//	enrich: [pods]     — enrich only the listed targets
-	//
-	// Supported targets: "pods"
-	EnrichAll bool     `yaml:"enrichAll,omitempty" json:"enrichAll,omitempty"`
-	Enrich    []string `yaml:"enrich,omitempty"    json:"enrich,omitempty"`
+	//	enrichAll: true    — enrich all supported resource types
+	//	enrich: [pods]     — enrich only the listed targets (shorthand)
+	//	enrich:            — conditional enrichment (struct form)
+	//	  - events:
+	//	      when:
+	//	        - field: "{{ replicasReady .children.deployment }}"
+	//	          equals: "false"
+	EnrichAll bool           `yaml:"enrichAll,omitempty" json:"enrichAll,omitempty"`
+	Enrich    []EnrichTarget `yaml:"enrich,omitempty"    json:"enrich,omitempty"`
 
 	// ── OperatorBox ────────────────────────────────────────────────────
 	OperatorBox OperatorBoxConfig `yaml:"operatorBox,omitempty" json:"operatorBox,omitempty"`

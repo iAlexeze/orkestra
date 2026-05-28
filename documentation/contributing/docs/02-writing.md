@@ -61,7 +61,7 @@ Use relative `.md` paths when linking to other docs pages. The sync rewrites the
 
 ```markdown
 [Learning to Orkestrate](../getting-started/learning-to-orkestrate.md)
-[Katalog schema](../reference/schema/katalog.md)
+[Katalog schema](../reference/schema/02-katalog/01-katalog.md)
 ```
 
 Do not use absolute `/docs/...` paths inside documentation source files — they bypass the rewriter and break in local preview.

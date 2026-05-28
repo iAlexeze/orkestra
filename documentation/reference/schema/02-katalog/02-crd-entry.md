@@ -186,7 +186,7 @@ imports:
       port: "8080"
 ```
 
-→ Full Motif import schema: [motif.md](14-motif.md)
+→ Full Motif import schema: [motif.md](../01-motif/index.md)
 
 ## Sub-schemas
 

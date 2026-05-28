@@ -6,10 +6,12 @@ import (
 
 // evaluateConditions evaluates a when: block against the resolver's data map.
 // All conditions AND together. Returns false on first failure.
-// Called by ResolveStatusFields (same package) and exported for the reconciler.
-func evaluateConditions(data map[string]interface{}, conditions []orktypes.Condition) bool {
+// Called by ResolveStatusFields (same package).
+// The resolver is passed so template expressions in when: fields are evaluated
+// through the full note FuncMap (e.g. replicasReady, hasCrashingPod).
+func evaluateConditions(r *Resolver, conditions []orktypes.Condition) bool {
 	for _, cond := range conditions {
-		if !orktypes.EvaluateOneCond(data, cond) {
+		if !orktypes.EvaluateOneCond(r.data, cond, r.TemplateEvaluator()) {
 			return false
 		}
 	}

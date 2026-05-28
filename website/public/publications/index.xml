@@ -22,7 +22,7 @@
       <description>&lt;p&gt;Trust in a distributed system is not a feature you add — it is a property that either emerges from the design or does not. Orkestra&amp;rsquo;s approach is to make trustworthy behavior the default at every layer, and to ensure those layers compound rather than exist independently. This is a description of how that works.&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;the-foundational-guarantee&#34;&gt;The foundational guarantee&lt;/h2&gt;&#xA;&lt;p&gt;Every Orkestra reconciler is level-triggered. It does not replay a log of events — it reads current desired state and drives toward it. This is the same model Kubernetes uses for its own controllers, and it carries the same property: any operation that is interrupted half-way through leaves the cluster in a partial state, not a corrupted one. The next reconcile corrects it.&lt;/p&gt;</description>
     </item>
     <item>
-      <title>The Konductor: How the CLI Became the Orchestrator</title>
+      <title>The Konductor: How the CLI Became the Orkestrator</title>
       <link>http://localhost:8090/publications/the-function-that-waited/</link>
       <pubDate>Thu, 28 May 2026 00:00:00 +0000</pubDate>
       <guid>http://localhost:8090/publications/the-function-that-waited/</guid>

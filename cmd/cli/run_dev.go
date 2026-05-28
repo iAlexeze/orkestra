@@ -21,11 +21,9 @@ var runCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dev, _ := cmd.Flags().GetBool("dev")
 
-		// Dev mode cluster creation
-		if dev {
-			if err := ensureClusterReady(dev); err != nil {
-				return err
-			}
+		// Handle dev mode cluster creation
+		if err := ensureClusterReady(dev); err != nil {
+			return err
 		}
 
 		// Resolve katalog paths

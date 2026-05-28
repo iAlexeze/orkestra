@@ -43,6 +43,7 @@ spec:
                 image:
                   type: string
                   description: Container image for the probe deployment
+                
                 replicas:
                   type: integer
                   default: 1
@@ -62,6 +63,11 @@ spec:
                   type: string
                   default: notes.orkestra.io
                   description: Hostname for the service
+                
+                debug:
+                  type: boolean
+                  default: false
+                  description: Enable debug mode
 
                 storageClassName:
                   type: string

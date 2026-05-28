@@ -1,5 +1,5 @@
 ---
-title: "The Konductor: How the CLI Became the Orchestrator"
+title: "The Konductor: How the CLI Became the Orkestrator"
 date: 2026-05-28
 weight: 3
 ---

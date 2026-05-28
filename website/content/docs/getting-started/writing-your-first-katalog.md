@@ -1,6 +1,6 @@
 ---
 title: "Writing Your First Katalog"
-date: 2026-05-25
+date: 2026-05-28
 weight: 69
 ---
 

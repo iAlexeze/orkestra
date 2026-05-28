@@ -29,9 +29,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/orkspace/orkestra/pkg/doctor"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/motif"
+	"github.com/orkspace/orkestra/pkg/ork"
 	"github.com/orkspace/orkestra/pkg/registry"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"gopkg.in/yaml.v3"
@@ -168,7 +168,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 
 	// ── 2. Dependencies ──────────────────────────────────────────────────
 	fmt.Println("→ Ensuring dependencies...")
-	if err := doctor.EnsureDependencies(); err != nil {
+	if err := ork.EnsureDependencies(); err != nil {
 		return nil, fmt.Errorf("dependencies: %w", err)
 	}
 
@@ -223,19 +223,19 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 		text = " with gateway..."
 	}
 
-	if !doctor.OrkestraInstalled() {
+	if !ork.OrkestraInstalled() {
 		fmt.Printf("→ Installing Orkestra%s\n", text)
-		if err := doctor.InstallOrUpgradeOrkestra("", nil, args...); err != nil {
+		if err := ork.InstallOrUpgradeOrkestra("", nil, args...); err != nil {
 			return nil, fmt.Errorf("helm install: %w", err)
 		}
 		installedOrkestra = true
 		fmt.Printf("  ✓ Orkestra installed\n")
-	} else if doctor.RuntimeDeployed() {
+	} else if ork.RuntimeDeployed() {
 		// Orkestra is installed and the runtime deployment exists — the bundle
 		// applied above updated the orkestra-katalog ConfigMap, so the runtime
 		// must reload to pick up the new Katalog.
 		fmt.Printf("→ Updating Orkestra with current bundle...\n")
-		if err := doctor.SyncRuntime(); err != nil {
+		if err := ork.SyncRuntime(); err != nil {
 			return nil, fmt.Errorf("syncing Orkestra runtime: %w", err)
 		}
 		fmt.Printf("  ✓ Orkestra updated\n")
@@ -245,7 +245,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 
 	// ── 7. Wait for Orkestra ready ───────────────────────────────────────
 	fmt.Printf("→ Waiting for Orkestra to be ready...\n")
-	status := doctor.CheckRuntimeHealth()
+	status := ork.CheckRuntimeHealth()
 	if !status.Running {
 		return nil, fmt.Errorf("Orkestra not ready: %s", status.Reason)
 	}
@@ -394,7 +394,7 @@ func (r *Runner) ensureCluster(ctx context.Context) error {
 	}
 
 	fmt.Printf("→ Ensuring cluster '%s'...\n", name)
-	return doctor.EnsureKindCluster(name)
+	return ork.EnsureKindCluster(name)
 }
 
 // applyCRD applies the operator's CRD to the cluster and returns the paths applied.
@@ -596,8 +596,8 @@ func (r *Runner) teardown(ctx context.Context, crdPaths []string, bundlePath str
 	// runtime is stopped before its RBAC and ConfigMap are removed.
 	if uninstallOrkestra {
 		fmt.Printf("  → Uninstalling Orkestra...\n")
-		cmd := exec.CommandContext(ctx, "helm", "uninstall", doctor.Orkestra,
-			"--namespace", doctor.OrkestraNamespace, "--ignore-not-found")
+		cmd := exec.CommandContext(ctx, "helm", "uninstall", ork.Orkestra,
+			"--namespace", ork.OrkestraNamespace, "--ignore-not-found")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {

@@ -67,4 +67,4 @@ spec:
 - [katalog-security.md](10-katalog-security.md)
 - [katalog-notification.md](11-katalog-notification.md)
 - [katalog-providers.md](12-katalog-providers.md)
-- [komposer.md](13-komposer.md) — compose multiple Katalogs
+- [komposer.md](../03-komposer/index.md) — compose multiple Katalogs

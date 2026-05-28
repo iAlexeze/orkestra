@@ -137,7 +137,7 @@ func (a *Autoscaler) evaluate(ctx context.Context) {
 // data map so NavigateDotPath resolves them as normal dot-paths.
 func (a *Autoscaler) conditionsMet(_ context.Context) bool {
 	data := a.buildConditionData()
-	return orktypes.EvaluateWhen(data, a.spec.Conditions.When, a.spec.Conditions.AnyOf)
+	return orktypes.EvaluateWhen(data, a.spec.Conditions.When, a.spec.Conditions.AnyOf, nil)
 }
 
 // buildConditionData returns the data map passed to EvaluateWhen.

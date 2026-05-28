@@ -78,19 +78,18 @@ func (k *Katalog) Meta() orktypes.KatalogMeta {
 	return k.metadata
 }
 
-// ProjectInfo returns the project information for use by control center
-// This is mostly helpful in actions performed by 'ork doctor'
-func (k *Katalog) ProjectInfo() orktypes.ProjectInfo {
+// ProjectInfo returns the project information for use by control center.
+// Populated by ork-doctor at generation time; empty in operator-authored Katalogs.
+func (k *Katalog) ProjectInfo() interface{} {
 	if k.projectInfo == nil {
-		return orktypes.ProjectInfo{}
-	} else {
-		return *k.projectInfo
+		return nil
 	}
+	return k.projectInfo
 }
 
 // Projects returns the map of all project infos from the katalog metadata.
 // Populated by the developer path (createdBy: orkdoctor) via ork doctor deploy.
-func (k *Katalog) Projects() map[string]orktypes.ProjectInfo {
+func (k *Katalog) Projects() map[string]interface{} {
 	return k.metadata.Projects
 }
 

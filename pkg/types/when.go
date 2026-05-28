@@ -37,21 +37,32 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
+// TemplateEvaluator evaluates a Go template expression against the current
+// reconcile data map, including all note functions and enriched children.
+// Returns (result, true) on success; ("", false) on any error.
+// Implemented by the resolver package and injected at call sites.
+// nil disables template evaluation — all existing callers are backward-compatible.
+type TemplateEvaluator func(tmpl string) (string, bool)
+
+// isTemplate returns true when s contains a Go template expression.
+func isTemplate(s string) bool { return strings.Contains(s, "{{") }
+
 // EvaluateWhen evaluates when: (allOf, AND) and anyOf: (OR) conditions.
 // data is resolver.Data() — full CR map including children, external, cross.
+// eval is optional — pass nil to disable template evaluation (backward compatible).
 //
 // Both blocks must pass when both are declared.
 // Empty blocks always pass.
-func EvaluateWhen(data map[string]interface{}, allOf []Condition, anyOf []Condition) bool {
+func EvaluateWhen(data map[string]interface{}, allOf []Condition, anyOf []Condition, eval TemplateEvaluator) bool {
 	for _, cond := range allOf {
-		if !EvaluateOneCond(data, cond) {
+		if !EvaluateOneCond(data, cond, eval) {
 			return false
 		}
 	}
 	if len(anyOf) > 0 {
 		passed := false
 		for _, cond := range anyOf {
-			if EvaluateOneCond(data, cond) {
+			if EvaluateOneCond(data, cond, eval) {
 				passed = true
 				break
 			}
@@ -67,11 +78,11 @@ func EvaluateWhen(data map[string]interface{}, allOf []Condition, anyOf []Condit
 // Exported so the template package and reconciler package can both call it.
 // Defined here in pkg/types to avoid import cycles.
 //
+// When cond.Field is a template expression AND eval is non-nil, the expression
+// is evaluated and the string result is used for operator comparison.
 // Time-based conditions (time:, dayOfWeek:, cron:) are evaluated against the
 // current wall clock — they do not reference the data map.
-// Metric conditions (metrics.*, cross.<crd>.metrics.*) are navigated as
-// dot-paths through data, so callers must pre-populate the relevant keys.
-func EvaluateOneCond(data map[string]interface{}, cond Condition) bool {
+func EvaluateOneCond(data map[string]interface{}, cond Condition, eval TemplateEvaluator) bool {
 	// ── Time-based conditions ─────────────────────────────────────────────────
 
 	if cond.Time != nil {
@@ -95,14 +106,27 @@ func EvaluateOneCond(data map[string]interface{}, cond Condition) bool {
 		return evalCronWindow(cond.Cron, cond.Duration.Duration, time.Now())
 	}
 
-	// ── Field-based conditions ────────────────────────────────────────────────
-
-	fieldVal := NavigateDotPath(data, cond.Field)
-
-	// Numeric absent-field fix: Kubernetes omits zero-value integers.
-	// An absent count field is semantically 0.
 	op, expected := ResolveConditionOp(cond)
 
+	// ── Template field resolution ──────────────────────────────────────────
+	// If the field is a template expression, evaluate it through the resolver.
+	// The string result is used for operator comparison — same logic as dot path.
+	if isTemplate(cond.Field) && eval != nil {
+		result, ok := eval(cond.Field)
+		if !ok {
+			return false // fail silently — same behaviour as missing dot path
+		}
+		return applyOperator(op, result, expected, data, cond)
+	}
+
+	// ── Standard dot path resolution ──────────────────────────────────────
+	fieldVal := NavigateDotPath(data, cond.Field)
+	return applyOperator(op, fieldVal, expected, data, cond)
+}
+
+// applyOperator applies the resolved operator to fieldVal and expected.
+// Shared by both template-expression and dot-path resolution paths.
+func applyOperator(op ConditionOperator, fieldVal, expected string, data map[string]interface{}, cond Condition) bool {
 	switch op {
 	case ConditionExists:
 		return fieldVal != "" && fieldVal != "<no value>"
@@ -144,32 +168,26 @@ func EvaluateOneCond(data map[string]interface{}, cond Condition) bool {
 		// (needs informer access). In when: blocks it always passes.
 		return true
 	case ConditionTypeOf:
-		raw := NavigateRawPath(data, cond.Field) // returns interface{}, not string
+		raw := NavigateRawPath(data, cond.Field)
 		return note.TypeOf(raw) == expected
 	case ConditionTypeMap:
 		raw := NavigateRawPath(data, cond.Field)
 		return note.TypeOf(raw) == "map"
-
 	case ConditionTypeList:
 		raw := NavigateRawPath(data, cond.Field)
 		return note.TypeOf(raw) == "slice"
-
 	case ConditionTypeString:
 		raw := NavigateRawPath(data, cond.Field)
 		return note.TypeOf(raw) == "string"
-
 	case ConditionTypeNumber:
 		raw := NavigateRawPath(data, cond.Field)
 		return note.TypeOf(raw) == "number"
-
 	case ConditionTypeBool:
 		raw := NavigateRawPath(data, cond.Field)
 		return note.TypeOf(raw) == "bool"
-
 	case ConditionTypeNull:
 		raw := NavigateRawPath(data, cond.Field)
 		return note.TypeOf(raw) == "null"
-
 	}
 	return false
 }

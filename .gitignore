@@ -3,7 +3,6 @@ extensions/
 unknown/
 _runtime_*/
 example-crds/
-ork
 ork-amd64
 orkcc-amd64
 orkcc
@@ -45,3 +44,6 @@ ork-action/
 
 ork-docs/
 ork-marketplace
+
+# ork-doctor — developer tooling extracted from the main repo
+ork-doctor/

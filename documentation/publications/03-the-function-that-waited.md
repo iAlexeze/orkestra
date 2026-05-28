@@ -1,4 +1,4 @@
-# The Konductor: How the CLI Became the Orchestrator
+# The Konductor: How the CLI Became the Orkestrator
 
 *Orkestra Project — May 2026*
 

@@ -100,7 +100,7 @@ spec:
     Kubernetes CRDs. See [Why Katalog and Komposer Are Not CRDs](./05-why-not-crds.md)
     for the full reasoning.
 
-See the [Katalog Schema](../reference/schema/01-katalog.md) for all available fields.
+See the [Katalog Schema](../reference/schema/02-katalog/01-katalog.md) for all available fields.
 
 ---
 
@@ -135,7 +135,7 @@ spec:
 The `spec.crds` inline block always wins on name conflict — it is the override
 mechanism. Platform teams publish Katalogs; application teams compose and override.
 
-See the [Komposer Schema](../reference/schema/13-komposer.md) for all options.
+See the [Komposer Schema](../reference/schema/03-komposer/index.md) for all options.
 
 ---
 

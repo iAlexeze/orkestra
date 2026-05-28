@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/orkspace/orkestra/pkg/doctor"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/merger"
+	orkpkg "github.com/orkspace/orkestra/pkg/ork"
 )
 
 // applyPreRuntimeResources applies all pre-runtime resources declared in the
@@ -42,15 +42,15 @@ func applyPreRuntimeResources(ctx context.Context, katalogPath string, m *merger
 // missing dependencies and unreachable cluster state to the user.
 func ensureClusterReady(dev bool) error {
 	if dev {
-		if err := doctor.EnsureDependencies(); err != nil {
+		if err := orkpkg.EnsureDependencies(); err != nil {
 			return fmt.Errorf("installing dependencies: %w", err)
 		}
 
-		if !doctor.ClusterReachable() {
+		if !orkpkg.ClusterReachable() {
 			fmt.Println("\n  Cannot reach Kubernetes cluster.")
-			fmt.Printf("  Creating local Kind cluster '%s'...\n", doctor.KindClusterName)
+			fmt.Printf("  Creating local Kind cluster '%s'...\n", orkpkg.KindClusterName)
 
-			if err := doctor.EnsureKindCluster(doctor.KindClusterName); err != nil {
+			if err := orkpkg.EnsureKindCluster(orkpkg.KindClusterName); err != nil {
 				return fmt.Errorf("setting up kind cluster: %w", err)
 			}
 		}
@@ -59,7 +59,7 @@ func ensureClusterReady(dev bool) error {
 	}
 
 	// non-dev mode
-	if doctor.ClusterReachable() {
+	if orkpkg.ClusterReachable() {
 		return nil
 	}
 
@@ -67,8 +67,8 @@ func ensureClusterReady(dev bool) error {
 	fmt.Println("  Check your kubeconfig, or run with --dev to deploy to a local kind cluster.")
 
 	var missing []string
-	helm := doctor.HelmAvailable()
-	kubectl := doctor.KubectlAvailable()
+	helm := orkpkg.HelmAvailable()
+	kubectl := orkpkg.KubectlAvailable()
 
 	if !kubectl {
 		missing = append(missing, "kubectl")

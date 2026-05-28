@@ -75,7 +75,7 @@ func runExternal(
 	for i, call := range calls {
 		// Evaluate when: conditions before making the call.
 		// A skipped call produces a "called": "false" result — not an error.
-		if !orktypes.EvaluateWhen(resolver.Data(), call.Conditions, call.AnyOf) {
+		if !orktypes.EvaluateWhen(resolver.Data(), call.Conditions, call.AnyOf, resolver.TemplateEvaluator()) {
 			results[call.Name] = map[string]interface{}{
 				"status": "",
 				"body":   "",

@@ -22,11 +22,11 @@ func (k *Katalog) validateEnrich() error {
 		supportedGroups := children.SupportedEnrichmentGroups()
 
 		for _, target := range crd.Enrich {
-			if !children.IsValidEnrichmentTarget(target) {
+			if !children.IsValidEnrichmentTarget(target.Key) {
 				return fmt.Errorf(
 					"crd %q: unknown enrich target %q — supported targets:%s",
 					name,
-					target,
+					target.Key,
 					formatEnrichmentGroups(supportedGroups),
 				)
 			}
