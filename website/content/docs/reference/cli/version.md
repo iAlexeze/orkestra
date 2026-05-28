@@ -1,7 +1,7 @@
 ---
 title: "ork version"
 date: 2026-05-17
-weight: 110
+weight: 112
 ---
 
 Print version, commit, and build date.

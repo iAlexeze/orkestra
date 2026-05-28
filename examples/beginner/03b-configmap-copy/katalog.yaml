@@ -16,7 +16,13 @@ spec:
       crFiles:
         - ./cr.yaml
       setup:
-        - ./setup.yaml
+        apply:
+          - ./setup.yaml
+        wait:
+          - kind: ConfigMap
+            name: app-config
+            namespace: platform
+            timeout: 15s
       namespaced: false             # Default: (true)
 
       operatorBox:

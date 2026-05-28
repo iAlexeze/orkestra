@@ -32,9 +32,6 @@ bundle.yaml
 configmap.yaml
 DEPLOY.md
 node_modules/
-# Added by ork doctor init
-.orkestra/bundle/
-.orkestra/
 
 # Local ork-registry (published as OCI artifacts)
 ork-registry/

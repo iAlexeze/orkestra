@@ -2,6 +2,9 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
+    <loc>http://localhost:8090/docs/reference/schema/katalog/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>http://localhost:8090/publications/declarative-operators-whitepaper/</loc>
     <lastmod>2026-05-25T02:47:12+00:00</lastmod>
   </url><url>
@@ -21,7 +24,7 @@
     <lastmod>2026-05-25T19:29:17+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/publications/the-function-that-waited/</loc>
-    <lastmod>2026-05-28T18:25:44+00:00</lastmod>
+    <lastmod>2026-05-28T21:57:52+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/concepts/conditional/status-conditions/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
@@ -189,7 +192,7 @@
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/contributing/docs/writing/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/contributing/docs/new-page/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>
@@ -230,14 +233,20 @@
     <loc>http://localhost:8090/docs/getting-started/learning-to-orkestrate/</loc>
     <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
+    <loc>http://localhost:8090/docs/getting-started/writing-your-first-motif/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>http://localhost:8090/docs/getting-started/writing-your-first-katalog/</loc>
-    <lastmod>2026-05-28T18:25:44+00:00</lastmod>
+    <lastmod>2026-05-28T21:57:52+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/getting-started/writing-your-first-komposer/</loc>
     <lastmod>2026-05-25T13:39:05+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/getting-started/basic-reconciliation/</loc>
     <lastmod>2026-05-25T13:39:05+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/getting-started/writing-your-first-e2e/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/getting-started/</loc>
     <lastmod>2026-05-25T13:39:05+00:00</lastmod>
@@ -419,53 +428,65 @@
     <loc>http://localhost:8090/docs/reference/orkestra-notes/type/</loc>
     <lastmod>2026-05-19T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:8090/docs/reference/schema/katalog/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/docs/reference/schema/crd-entry/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/docs/reference/schema/apitypes/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/docs/reference/schema/operatorbox/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/docs/reference/schema/status/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/docs/reference/schema/when-conditions/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/docs/reference/schema/validation/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/docs/reference/schema/mutation/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/docs/reference/schema/conversion/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/docs/reference/schema/katalog-security/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/docs/reference/schema/katalog-notification/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/docs/reference/schema/katalog-providers/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:8090/docs/reference/schema/komposer/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
-  </url><url>
     <loc>http://localhost:8090/docs/reference/schema/motif/</loc>
     <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:8090/docs/reference/schema/enrich/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <loc>http://localhost:8090/docs/reference/schema/katalog/katalog/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/katalog/crd-entry/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/katalog/apitypes/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/katalog/operatorbox/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/katalog/status/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/katalog/when-conditions/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/katalog/validation/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/katalog/mutation/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/katalog/conversion/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/katalog/katalog-security/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/katalog/katalog-notification/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/katalog/katalog-providers/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/katalog/enrich/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/komposer/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/e2e/spec/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/e2e/setup/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/e2e/expect/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8090/docs/reference/schema/e2e/</loc>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/reference/schema/</loc>
-    <lastmod>2026-05-25T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8090/docs/roadmap/</loc>
     <lastmod>2026-05-25T00:00:00+00:00</lastmod>

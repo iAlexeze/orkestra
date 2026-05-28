@@ -7,7 +7,7 @@ The schema is organised by kind. Each kind has its own subfolder.
 | [Motif](01-motif/) | `01-motif/` | Reusable resource primitive. Parameterised inputs, no standalone runtime. |
 | [Katalog](02-katalog/) | `02-katalog/` | Operator declaration. Defines CRDs, resources, status, and admission rules. |
 | [Komposer](03-komposer/) | `03-komposer/` | Compose multiple Katalogs from files, Helm, or OCI registries. |
-| [E2E](04-e2e/) | `04-e2e/` | Declarative end-to-end test for a Katalog. |
+| [E2E](04-e2e/) | `04-e2e/` | Declarative end-to-end test for a Katalog. [spec](04-e2e/01-spec.md) · [setup](04-e2e/02-setup.md) · [expect](04-e2e/03-expect.md) |
 
 ---
 

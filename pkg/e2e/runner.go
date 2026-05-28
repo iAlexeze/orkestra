@@ -524,16 +524,46 @@ func (r *Runner) pullOCIImports(_ context.Context) error {
 }
 
 func (r *Runner) applySetup(ctx context.Context) ([]string, error) {
+	s := r.e2e.Spec.Setup
+	if s == nil {
+		return nil, nil
+	}
+
 	var applied []string
-	for _, path := range r.e2e.Spec.Setup {
+
+	// ── Phase 1: apply ────────────────────────────────────────────────────────
+	for _, path := range s.Apply {
 		abs := r.abs(path)
-		fmt.Printf("→ Applying setup file %s...\n", path)
+		fmt.Printf("→ Applying setup %s...\n", path)
 		if out, err := kubectl(ctx, "apply", "-f", abs); err != nil {
-			return applied, fmt.Errorf("applying setup %s: %w\n%s", path, err, out)
+			return applied, fmt.Errorf("setup apply %s: %w\n%s", path, err, out)
 		}
 		fmt.Printf("  ✓ Applied\n")
 		applied = append(applied, abs)
 	}
+
+	// ── Phase 2: helm ─────────────────────────────────────────────────────────
+	for _, h := range s.Helm {
+		fmt.Printf("→ Installing %s/%s...\n", h.Repo, h.Chart)
+		if err := ork.HelmInstall(ctx, h); err != nil {
+			return applied, fmt.Errorf("setup helm %s/%s: %w", h.Repo, h.Chart, err)
+		}
+		fmt.Printf("  ✓ Installed %s\n", h.ReleaseName())
+	}
+
+	// ── Phase 3: wait ─────────────────────────────────────────────────────────
+	for _, w := range s.Wait {
+		loc := w.Kind + " " + w.Name
+		if w.Namespace != "" {
+			loc += " (" + w.Namespace + ")"
+		}
+		fmt.Printf("→ Waiting for %s...\n", loc)
+		if err := ork.WaitForResource(ctx, w); err != nil {
+			return applied, fmt.Errorf("setup wait: %w", err)
+		}
+		fmt.Printf("  ✓ Ready\n")
+	}
+
 	return applied, nil
 }
 

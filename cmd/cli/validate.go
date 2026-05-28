@@ -230,8 +230,16 @@ func validateE2EFile(path string) error {
 		gray(fmt.Sprintf("katalog : %s\n    crd     : %s\n    cr      : %s",
 			e2e.Spec.Katalog, e2e.Spec.CRD, e2e.Spec.CR)),
 	)
-	if len(e2e.Spec.Setup) > 0 {
-		fmt.Printf("    %s\n", gray("setup   : "+strings.Join(e2e.Spec.Setup, ", ")))
+	if s := e2e.Spec.Setup; s != nil {
+		if len(s.Apply) > 0 {
+			fmt.Printf("    %s\n", gray("setup.apply : "+strings.Join(s.Apply, ", ")))
+		}
+		if len(s.Helm) > 0 {
+			fmt.Printf("    %s\n", gray(fmt.Sprintf("setup.helm  : %d chart(s)", len(s.Helm))))
+		}
+		if len(s.Wait) > 0 {
+			fmt.Printf("    %s\n", gray(fmt.Sprintf("setup.wait  : %d resource(s)", len(s.Wait))))
+		}
 	}
 	fmt.Println()
 	for _, exp := range e2e.Spec.Expect {

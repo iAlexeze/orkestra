@@ -20,7 +20,13 @@ spec:
       crFiles:
         - ./cr.yaml
       setup:
-        - ./setup.yaml
+        apply:
+          - ./setup.yaml
+        wait:
+          - kind: Secret
+            name: database-credentials
+            namespace: platform
+            timeout: 15s
       namespaced: false             # Default: (true)
 
       operatorBox:

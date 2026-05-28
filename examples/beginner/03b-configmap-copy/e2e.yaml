@@ -2,7 +2,12 @@ apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
   name: configmap-distribution-e2e
-  description: Distribute a shared ConfigMap from a platform namespace into team namespaces and verify removal on delete
+  description: >
+    Distribute a shared ConfigMap from a platform namespace into team namespaces
+    and verify removal on delete.
+
+    Demonstrates setup.apply + setup.wait: the source ConfigMap must exist in
+    the platform namespace before the operator is allowed to start reconciling.
 
 spec:
   katalog: ./katalog.yaml
@@ -15,7 +20,13 @@ spec:
     reuse: false
 
   setup:
-    - ./setup.yaml   # creates platform/team-alpha/team-beta namespaces + source configmap
+    apply:
+      - ./setup.yaml   # creates platform/team-alpha/team-beta namespaces + source ConfigMap
+    wait:
+      - kind: ConfigMap
+        name: app-config
+        namespace: platform
+        timeout: 15s   # source ConfigMap must exist before the operator starts
 
   expect:
     - name: CR created
