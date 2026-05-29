@@ -428,6 +428,8 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 	//	 /katalog/raw				 		→ the user's katalog config
 	//	 /katalog/enriched				 	→ the runtime katalog config
 	//   /katalog                    		→ all CRDs, dependency graph, health summary
+	orkHealth := kordinator.NewOrkestraHealth()
+
 	deletionProtectedCRDs := kat.DeletionProtectedCRDNames()
 	for _, crd := range kat.Enabled() {
 		gvk := crd.GVKString()
@@ -447,7 +449,7 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 		if crd.IsHealthEnabled() {
 			hs.Register(
 				"/katalog/"+crdName+"/health",
-				kordinator.BuildCRDHealthHandler(crd, kfg, inf, crdHealth),
+				kordinator.BuildCRDHealthHandler(crd, kfg, inf, crdHealth, orkHealth),
 			)
 		}
 
@@ -456,6 +458,7 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 				"/katalog/"+crdName,
 				kordinator.BuildCRDInfoHandler(
 					crd, kfg, inf, crdHealth,
+					orkHealth,
 					nil, // conversion stats — live in gateway process
 					nil, // admission stats — live in gateway process
 					nil, // protection stats — live in gateway process
@@ -496,7 +499,6 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 			Msg("registered CRD routes")
 	}
 
-	orkHealth := kordinator.NewOrkestraHealth()
 	hs.Register("/katalog/raw", kordinator.BuildRawKatalogHandler(m))
 	hs.Register("/katalog/enriched", kordinator.BuildEnrichedKatalogHandler(kat))
 	hs.Register("/katalog", kordinator.BuildKatalogHandler(kat, kfg, ktrlRegistry, crdHealthMap, orkHealth))

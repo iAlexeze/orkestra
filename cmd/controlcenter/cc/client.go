@@ -22,6 +22,14 @@ func NewClient(baseURL string, _ time.Duration, _ string) *Client {
 		baseURL: baseURL,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
+			// Disable keep-alives so each background fetch opens a new TCP
+			// connection. Without this, the Service load-balancer routes the
+			// first connection to a pod and all subsequent requests reuse it —
+			// pinning the CC permanently to whichever pod (leader or follower)
+			// it happened to reach first.
+			Transport: &http.Transport{
+				DisableKeepAlives: true,
+			},
 		},
 	}
 }
@@ -40,15 +48,50 @@ func (c *Client) FetchKatalog() (*KatalogResponse, error) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // FetchCRDDetail fetches health + info for a single CRD and merges them.
+// The health call is retried up to 3 times until it comes from the leader pod
+// (isKonductor: true). Without this, a multi-replica runtime Service can
+// route the request to a follower whose CRD health is always "pending".
 func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
-	health, err := getJSON[CRDHealth](c, "/katalog/"+name+"/health")
-	if err != nil {
-		return nil, fmt.Errorf("fetching health: %w", err)
+	var health *CRDHealth
+	for i := 0; i < 3; i++ {
+		h, err := getJSON[CRDHealth](c, "/katalog/"+name+"/health")
+		if err != nil {
+			return nil, fmt.Errorf("fetching health: %w", err)
+		}
+		if h.IsKonductor {
+			health = h
+			break
+		}
+	}
+	if health == nil {
+		// All attempts hit a follower — use the last response rather than
+		// returning an error. The data may be stale but is better than nothing.
+		h, err := getJSON[CRDHealth](c, "/katalog/"+name+"/health")
+		if err != nil {
+			return nil, fmt.Errorf("fetching health: %w", err)
+		}
+		health = h
 	}
 
-	info, err := getJSON[CRDInfo](c, "/katalog/"+name)
-	if err != nil {
-		return nil, fmt.Errorf("fetching info: %w", err)
+	// Same retry pattern for info — worker counts (workersActive, workerDetails)
+	// are zero on follower pods since they never start reconcilers.
+	var info *CRDInfo
+	for i := 0; i < 3; i++ {
+		inf, err := getJSON[CRDInfo](c, "/katalog/"+name)
+		if err != nil {
+			return nil, fmt.Errorf("fetching info: %w", err)
+		}
+		if inf.IsKonductor {
+			info = inf
+			break
+		}
+	}
+	if info == nil {
+		inf, err := getJSON[CRDInfo](c, "/katalog/"+name)
+		if err != nil {
+			return nil, fmt.Errorf("fetching info: %w", err)
+		}
+		info = inf
 	}
 
 	nsProtection := info.NamespaceProtection

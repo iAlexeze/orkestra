@@ -149,19 +149,23 @@ func (cc *ControlCenter) fetchAllKatalogs() {
 			} else {
 				inst.GatewayEndpoint = kat.GatewayEndpoint
 				if kat.IsKonductor {
-					// This pod holds the leader lease — its CRD data is authoritative.
+					// Leader pod — data is authoritative, always update.
 					inst.Katalog = kat
 					inst.Status = "online"
 					inst.Healthy = true
 					inst.LastError = ""
-				} else {
-					// Standby pod responded. Keep the last known-good snapshot so the
-					// display does not flip between healthy and pending on each tick.
-					if inst.Katalog == nil {
-						inst.Status = "starting"
-						inst.Healthy = false
-					}
+				} else if inst.Katalog == nil {
+					// Follower pod but we have nothing yet — accept it so the
+					// katalog appears immediately rather than waiting for a lucky
+					// tick that hits the leader. It may show CRDs as pending until
+					// the next leader response overwrites it.
+					inst.Katalog = kat
+					inst.Status = "starting"
+					inst.Healthy = false
+					inst.LastError = ""
 				}
+				// Follower + already have good data → keep last known-good snapshot,
+				// discard this response so the display does not flip.
 				log.Printf("INFO: fetched katalog %q from %s (%d CRDs, gateway=%q)",
 					kat.Name, u, len(kat.CRDs), kat.GatewayEndpoint)
 			}
