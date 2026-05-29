@@ -108,7 +108,7 @@ jobs:
           # not the public keyring. This produces both .tgz and .tgz.prov.
           helm package "$CHART_DIR" \
             --version "$VERSION" --app-version "$IMAGE_TAG" \
-            --sign --key "releases@${ORK}.io" \
+            --sign --key "${GPG_FINGERPRINT}" \
             --keyring /tmp/secring.gpg \
             --passphrase-file /tmp/helm-passphrase \
             -d .cr-release-packages
