@@ -179,11 +179,12 @@ type DependencyStatus struct {
 }
 
 type OrkestraHealth struct {
-	name      string
-	orkReady  atomic.Bool
-	katReady  atomic.Bool
-	allOnline atomic.Bool // For this katalog
-	mu        sync.RWMutex
+	name        string
+	orkReady    atomic.Bool
+	katReady    atomic.Bool
+	allOnline   atomic.Bool // For this katalog
+	isKonductor atomic.Bool // true only on the pod that won the leader election
+	mu          sync.RWMutex
 }
 
 // NewOrkestraHEalth initializes a CRDHealth tracker for Orkestra
@@ -351,6 +352,18 @@ func (h *CRDHealth) SignaledHealthy() bool {
 
 func (h *CRDHealth) MarkHealthySignaled() {
 	h.healthySignaled.Store(true)
+}
+
+// SetIsKonductor marks whether this pod holds the leader election lease.
+// Set to true at the start of Kordinate(), false when leadership is lost.
+func (h *OrkestraHealth) SetIsKonductor(v bool) {
+	h.isKonductor.Store(v)
+}
+
+// IsKonductor reports whether this pod is the current konductor (leader).
+// The control center uses this to decide whether to trust this pod's CRD data.
+func (h *OrkestraHealth) IsKonductor() bool {
+	return h.isKonductor.Load()
 }
 
 // SetOrkReady marks orkestra engine as ready

@@ -31,17 +31,24 @@ The gateway URL is stored on `Instance.GatewayEndpoint` when the runtime katalog
 
 ## Periodic fetch
 
-`FetchKatalog` is called for every instance on every tick. The result is stored directly on `inst.Katalog` (`*KatalogResponse`) and `inst.GatewayEndpoint` under the write lock.
+`FetchKatalog` is called for every instance on every tick. The result is conditionally stored on `inst.Katalog` — see the cache-update rule below.
 
 ```
 KatalogResponse
   .Name, .Description, .Version, .Author, .License
   .Healthy, .OrkReady, .DegradedReason
+  .IsKonductor                    ← true only on the pod holding the leader election lease
   .CRDs            []CRDSummary   ← high-level health per CRD
   .StatusCounts                   ← healthy/started/pending/degraded counts
   .RuntimeVersion                 ← version string from the runtime
   .GatewayEndpoint                ← base URL of companion gateway, empty if none
 ```
+
+### Cache-update rule
+
+`inst.Katalog` is only replaced when `KatalogResponse.IsKonductor == true`. When it is `false` (the response came from a standby pod), the last known-good snapshot is kept and the tick is a no-op for display state.
+
+This matters when `replicaCount > 1`: the Kubernetes Service can round-robin to any pod. Only the leader pod sets `IsKonductor: true` (via `DependencyKordinator.Kordinate()`); follower pods never run the reconcilers so their CRD health stays "pending". Without this guard, the display would flip between healthy and pending on every other fetch tick.
 
 The `CRDSummary` slice is what drives the Katalog panel and the index. It does not include deep detail — for that, the user navigates to a CRD page, which triggers a fresh `FetchCRDDetail` call at request time.
 

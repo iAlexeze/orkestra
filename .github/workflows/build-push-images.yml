@@ -131,8 +131,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ork-gateway-amd64
-            ork-gateway-arm64
+            ork-amd64
+            ork-arm64
           key: linux-binaries-gateway-${{ hashFiles('go.sum', '**/*.go', 'cmd/**/*.go') }}
 
       - name: Build Linux binaries (if cache miss)

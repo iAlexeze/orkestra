@@ -6,7 +6,7 @@
     <description>Recent content in Why Orkestra on Orkestra</description>
     <generator>Hugo</generator>
     <language>en-us</language>
-    <lastBuildDate>Mon, 25 May 2026 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Thu, 28 May 2026 00:00:00 +0000</lastBuildDate>
     <atom:link href="http://localhost:8090/docs/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Deploying Orkestra</title>
@@ -18,7 +18,7 @@
     <item>
       <title>Roadmap</title>
       <link>http://localhost:8090/docs/roadmap/</link>
-      <pubDate>Mon, 25 May 2026 00:00:00 +0000</pubDate>
+      <pubDate>Thu, 28 May 2026 00:00:00 +0000</pubDate>
       <guid>http://localhost:8090/docs/roadmap/</guid>
       <description>&lt;p&gt;&lt;em&gt;Last updated: May 2026&lt;/em&gt;&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;where-we-are&#34;&gt;Where we are&lt;/h2&gt;&#xA;&lt;p&gt;Orkestra is a complete declarative operator runtime for Kubernetes. The core is shipped and running in production. Here is what exists today:&lt;/p&gt;&#xA;&lt;p&gt;&lt;strong&gt;Runtime&lt;/strong&gt;&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;Dynamic mode — zero-code operators, no generated types, no compilation step&lt;/li&gt;&#xA;&lt;li&gt;Typed mode — Go types, Go hooks, custom constructors when you need them&lt;/li&gt;&#xA;&lt;li&gt;GenericReconciler with three-path dispatch: templates, hooks, constructor&lt;/li&gt;&#xA;&lt;li&gt;Per-CRD isolation — dedicated informer, workqueue, and worker pool per CRD&lt;/li&gt;&#xA;&lt;li&gt;Dependency graph — topological startup order (&lt;code&gt;dependsOn&lt;/code&gt;), cycle detection&lt;/li&gt;&#xA;&lt;li&gt;safeReconcile — panic recovery per CRD, other CRDs unaffected&lt;/li&gt;&#xA;&lt;li&gt;Konductor election — leader election with warm-cache follower failover&lt;/li&gt;&#xA;&lt;li&gt;Autoscale — dynamic worker and resync scaling based on metrics&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;p&gt;&lt;strong&gt;Declarations&lt;/strong&gt;&lt;/p&gt;</description>
     </item>

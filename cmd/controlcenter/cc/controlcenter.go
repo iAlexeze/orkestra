@@ -147,16 +147,20 @@ func (cc *ControlCenter) fetchAllKatalogs() {
 				inst.LastError = err.Error()
 				log.Printf("WARN: fetch katalog from %s: %v", u, err)
 			} else {
-				inst.Katalog = kat
 				inst.GatewayEndpoint = kat.GatewayEndpoint
-				if kat.OrkReady {
+				if kat.IsKonductor {
+					// This pod holds the leader lease — its CRD data is authoritative.
+					inst.Katalog = kat
 					inst.Status = "online"
 					inst.Healthy = true
 					inst.LastError = ""
 				} else {
-					inst.Status = "starting"
-					inst.Healthy = false
-					inst.LastError = ""
+					// Standby pod responded. Keep the last known-good snapshot so the
+					// display does not flip between healthy and pending on each tick.
+					if inst.Katalog == nil {
+						inst.Status = "starting"
+						inst.Healthy = false
+					}
 				}
 				log.Printf("INFO: fetched katalog %q from %s (%d CRDs, gateway=%q)",
 					kat.Name, u, len(kat.CRDs), kat.GatewayEndpoint)

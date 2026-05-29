@@ -92,6 +92,7 @@ type KatalogResponse struct {
 	Healthy            bool                          `json:"healthy"`
 	Status             int                           `json:"status"`
 	OrkReady           bool                          `json:"OrkReady"`
+	IsKonductor        bool                          `json:"isKonductor"`
 	DeletionProtection bool                          `json:"deletionProtection"`
 	CRDs               []CRDSummary                  `json:"crds"`
 	Name               string                        `json:"name,omitempty"`

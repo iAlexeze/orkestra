@@ -8,7 +8,7 @@
 runtime:
   image:
     repository: ghcr.io/orkspace/orkestra
-    tag: "0.6.0-alpha.1"
+    tag: "dev-1780044525"
   resources:
     requests:
       cpu: 50m
@@ -20,13 +20,13 @@ runtime:
 gateway:
   image:
     repository: ghcr.io/orkspace/orkestra-gateway
-    tag: "0.6.0-alpha.1"
+    tag: "dev-1780044525"
 
 controlCenter:
   replicaCount: 2
   image:
     repository: ghcr.io/orkspace/orkestra-cc
-    tag: "0.6.0-alpha.1"
+    tag: "dev-1780044525"
   config:
     orkestraURLs:
       - http://orkestra-runtime.orkestra-system-01.svc.cluster.local:8080

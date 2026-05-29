@@ -145,6 +145,48 @@ annotations:
             workers: 6
             resync: 15s
     - apiVersion: orkestra.orkspace.io/v1
+      kind: Motif
+      metadata:
+        name: postgres
+        version: v0.1.0
+        description: PostgreSQL StatefulSet with persistent storage and pgAdmin UI.
+        author: orkspace
+        license: Apache-2.0
+        tags:
+          - database
+          - statefulset
+      inputs:
+        - name: image
+          default: "postgres:latest"
+        - name: replicas
+          default: "1"
+        - name: volumeSize
+          default: "10Gi"
+      resources:
+        onCreate:
+          secrets:
+            - name: "{{ .metadata.name }}-creds"
+              once: true
+              data:
+                password: "{{ randomAlphanumeric 16 }}"
+        statefulSets:
+          - name: "{{ .metadata.name }}-postgres"
+            image: "{{ .inputs.image }}"
+            replicas: "{{ .inputs.replicas }}"
+            volumeClaimTemplates:
+              - name: data
+                storageSize: "{{ .inputs.volumeSize }}"
+                mountPath: /var/lib/postgresql/data
+        services:
+          - name: "{{ .metadata.name }}-postgres"
+            port: 5432
+      status:
+        fields:
+          - path: postgresReady
+            value: "{{ allReplicasReady .children.statefulset }}"
+          - path: connectionString
+            value: "postgresql://{{ .metadata.name }}-postgres.{{ .metadata.namespace }}.svc.cluster.local:5432"
+    - apiVersion: orkestra.orkspace.io/v1
       kind: E2E
       metadata:
         name: hello-website-e2e
