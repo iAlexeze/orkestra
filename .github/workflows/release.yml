@@ -48,8 +48,7 @@ jobs:
     name: Release Helm Chart
     uses: ./.github/workflows/release-helm.yml
     needs: [prepare, build, image]
-    # Pre-release tags (e.g. v0.6.0-alpha.1) are allowed to publish a Helm chart.
-    # if: ${{ !contains(github.ref_name, '-') }}
+    if: ${{ !contains(github.ref_name, '-') }}
     secrets: inherit
     with:
       image_tag: ${{ needs.prepare.outputs.image_tag }}

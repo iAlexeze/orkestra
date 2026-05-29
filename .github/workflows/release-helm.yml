@@ -63,14 +63,14 @@ jobs:
           echo "GPG_FINGERPRINT=${FINGERPRINT}" >> "$GITHUB_ENV"
           echo "✅ GPG key imported: ${FINGERPRINT}"
 
-          # Export the secret key to the legacy binary keyring format Helm requires.
-          # Helm's signer reads --keyring as an OpenPGP secret keyring file, not the
-          # modern GnuPG keybox. gpg --export-secret-keys produces the right format.
+          # Export by fingerprint — not email — so we get exactly the key whose
+          # fingerprint was captured above, even if multiple keys share the email.
+          # Helm's signer reads --keyring as a legacy OpenPGP secret keyring file.
           gpg --batch --pinentry-mode loopback --passphrase "${GPG_PASSPHRASE}" \
-            --export-secret-keys releases@${{ inputs.ork }}.io > /tmp/secring.gpg
+            --export-secret-keys "${FINGERPRINT}" > /tmp/secring.gpg
 
           # Also export public key in binary format for helm verify
-          gpg --export releases@${{ inputs.ork }}.io > /tmp/pubring.gpg
+          gpg --export "${FINGERPRINT}" > /tmp/pubring.gpg
 
       - name: Update Chart metadata and values
         run: |
