@@ -56,16 +56,23 @@ jobs:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
+          # Remove any existing keys for this email to prevent duplicates
+          EXISTING=$(gpg --list-secret-keys --with-colons releases@${{ inputs.ork }}.io 2>/dev/null | grep '^fpr' | cut -d: -f10 || true)
+          for FPR in $EXISTING; do
+            gpg --batch --yes --delete-secret-keys "$FPR" 2>/dev/null || true
+            gpg --batch --yes --delete-keys "$FPR" 2>/dev/null || true
+          done
+
           echo "${GPG_PRIVATE_KEY}" | gpg --batch --import
           FINGERPRINT=$(gpg --list-secret-keys --with-colons releases@${{ inputs.ork }}.io \
             | grep '^fpr' | head -1 | cut -d: -f10)
           echo "${FINGERPRINT}:6:" | gpg --import-ownertrust
           echo "GPG_FINGERPRINT=${FINGERPRINT}" >> "$GITHUB_ENV"
-          
+
           # Ensure legacy pubring.gpg exists for Helm's signer
           mkdir -p ~/.gnupg
           gpg --export > ~/.gnupg/pubring.gpg
-
+      
       - name: Update Chart metadata and values
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
@@ -102,8 +109,8 @@ jobs:
 
           # Sign the chart using the default GPG keyring (private key already imported)
           helm package "$CHART_DIR" \
-            --sign --key "releases@${ORK}.io" \
-            --passphrase-file /tmp/gpg-passphrase \
+          --sign --key "${GPG_FINGERPRINT}" \
+          --passphrase-file /tmp/gpg-passphrase \
             --version "$VERSION" --app-version "$IMAGE_TAG" \
             -d .cr-release-packages
 
