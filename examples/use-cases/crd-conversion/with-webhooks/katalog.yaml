@@ -14,7 +14,8 @@ security:
     enabled: true
 
 gateway:
-  endpoint: http://orkestra-gateway:8080
+  # endpoint: http://orkestra-gateway:8080
+  endpoint: http://localhost:8080
 
 spec:
   crds:
@@ -68,7 +69,7 @@ spec:
               failedJobsHistoryLimit:     "{{ default .spec.failedJobsHistoryLimit 1 }}"
               suspend:                    "{{ default .spec.suspend false }}"
 
-          # v2 → v1: cronFromAny handles both structured maps and legacy flat strings.
+          # v2 → v1: cronFromMap converts structured maps to legacy flat strings.
           - from: v2
             to: v1
             spec:
@@ -91,8 +92,9 @@ spec:
         status:
           fields:
             - path: phase
-              value: "{{ boolTernary .spec.suspend \"Suspended\" \"Active\" }}"
+              value: '{{ ternary .spec.suspend "Suspended" "Active" }}'
 
+            # cronFromAny handles both structured maps and legacy flat strings.
             - path: scheduleExpression
               value: "{{ cronFromAny .spec.schedule }}"
 
@@ -107,19 +109,12 @@ spec:
 
             # Last schedule time from the child CronJob
             - path: lastScheduleTime
-              value: "{{ default .children.cronjob.status.lastScheduleTime \"\" }}"
+              value: '{{ default .children.cronjob.status.lastScheduleTime "" }}'
 
             - path: nextScheduleTime
-              value: "{{ default .children.cronjob.status.nextScheduleTime \"\" }}"
+              value: '{{ default .children.cronjob.status.nextScheduleTime "" }}'
 
         onCreate:
-          cronJobs:
-            - name: "{{ .metadata.name }}"
-              image: "{{ .spec.image }}"
-              schedule: "{{ cronFromAny .spec.schedule }}"
-              reconcile: true
-
-        onReconcile:
           cronJobs:
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
@@ -151,7 +146,7 @@ spec:
         status:
           fields:
             - path: phase
-              value: "{{ ternary .spec.suspend \"Suspended\" \"Active\" }}"
+              value: '{{ ternary .spec.suspend "Suspended" "Active" }}'
             - path: scheduleExpression
               value: "{{ .spec.schedule }}"
             - path: image

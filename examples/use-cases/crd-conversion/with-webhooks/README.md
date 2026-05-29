@@ -9,8 +9,8 @@ finalizers, multi-version CRDs, conversion webhooks. Over ten pages of Go,
 scaffolded code generation, and a separate webhook deployment.
 
 This pattern solves the same problem. The Katalog is 120 lines of YAML.
-There is no Go. There is no generated code. The conversion webhook is Orkestra's
-`/convert` endpoint — already running, no extra deployment needed.
+There is no Go. There is no generated code. The conversion webhook is Orkestra
+Gateway's `/convert` endpoint — already running, no extra deployment needed.
 
 **Verified in production:**
 
@@ -22,7 +22,7 @@ There is no Go. There is no generated code. The conversion webhook is Orkestra's
 | v1 → v2 p95 latency | 0.69 ms |
 | v2 → v1 p95 latency | 0.49 ms |
 | Reconcile total | 4,903 |
-| Reconcile errors | 1 (transient) |
+| Reconcile errors | 0 |
 
 ---
 
@@ -76,7 +76,7 @@ Both notes accept either schedule shape — if an object was stored before the s
 | DeepCopy generation | `zz_generated_deepcopy.go` ~150 lines | Not needed |
 | Conversion logic | `conversion.go` ~60 lines | Template expressions in `katalog.yaml` |
 | Conversion tests | `conversion_test.go` ~80 lines | Live metrics from `/convert` endpoint |
-| Controller | `cronjob_controller.go` ~200 lines | `reconciler` block in `katalog.yaml` |
+| Controller | `cronjob_controller.go` ~200 lines | `operatorBox` block in `katalog.yaml` |
 | Webhook deployment | Separate pod + TLS setup | Orkestra's own `/convert` endpoint |
 | Certificate management | `cert-manager` or manual | Same cert Orkestra already uses |
 | Build tooling | `Makefile` ~50 lines | `ork generate bundle` |
@@ -104,58 +104,50 @@ When you apply a CronJob CR, Orkestra:
 
 ## Steps
 
-### 1. Generate TLS certificates for the conversion webhook
-
-Orkestra's `/convert` endpoint requires TLS. For development, generate self-signed certificates:
+### 1. Install the ork CLI
 
 ```bash
-chmod +x ../installation/generate-certs.sh
-../installation/generate-certs.sh
+curl get.orkestra.sh | bash
+ork version
 ```
 
-This creates the `orkestra-tls` secret in `orkestra-system`.
+---
 
-Copy the CA bundle from `/tmp/tls/caBundle.txt` into `crd.yaml` under the conversion webhook:
+### 2. Apply the CRD
 
-```yaml
-conversion:
-  strategy: Webhook
-  webhook:
-    clientConfig:
-      caBundle: <paste caBundle.txt content here>
+If you do not have a cluster yet, run:
+
+```bash
+ork create cluster            # creates a kind cluster
 ```
-
-### 2. Install the CRD
 
 ```bash
 kubectl apply -f crd.yaml
 ```
 
-### 3. Create the `orkestra-system` namespace
+### 3. Generate and apply the operator bundle
+
+The bundle contains the ConfigMap with the runtime `katalog.yaml` generated from the `komposer` and least-privilege RBAC:
 
 ```bash
-kubectl create namespace orkestra-system --dry-run=client -o yaml | kubectl apply -f -
-```
-
-### 4. Generate and apply the runtime bundle
-
-The bundle contains the ConfigMap (Komposer YAML) and least-privilege RBAC:
-
-```bash
-ork generate bundle -k komposer.yaml -o bundle.yaml
+ork generate bundle -f komposer.yaml -o bundle.yaml
 kubectl apply -f bundle.yaml
 ```
 
-### 5. Deploy Orkestra with webhook support
+### 4. Install Orkestra
+
+`gateway.enabled=true` starts the `/convert` endpoint and manages TLS automatically — no manual certificate generation or `caBundle` patching required:
 
 ```bash
-kubectl apply -f ../installation/install-webhook-support.yaml
-
-kubectl wait --for=condition=available deployment/orkestra \
-  -n orkestra-system --timeout=60s
+helm repo add orkestra https://orkspace.github.io/orkestra
+helm upgrade --install orkestra orkestra/orkestra \
+  --namespace orkestra-system \
+  --create-namespace \
+  --set gateway.enabled=true \
+  --wait --timeout 120s
 ```
 
-### 6. Apply the CRs
+### 5. Apply the CRs
 
 ```bash
 # v2 CR — stored directly, no conversion needed

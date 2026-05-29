@@ -11,13 +11,17 @@
 ## Boot sequence
 
 ```
-runtime_konstructor.go
+gateway.go
   → webhook.NewWebhookServer(kubeClient, katalog, konfig)
       • resolves enablement flags from Katalog
       • initializes registries (admission, conversion)
       • initializes stats instances
       • precomputes protection data (CRD names, namespace rules)
-  → ws.SetCertManager(certMgr)       ← if auto-generated certs
+  → ws.SetCertManager(certMgr)                   ← if auto-generated certs
+  → ws.SetCertBundle(cert, key, ca, name, ns)     ← if auto-generated certs
+  → WireWebhookHousekeeperInfra(ws, kube, kat, kfg)
+      • registers ConversionCRDPatchFn — housekeeper calls this to re-apply caBundle
+      • registers CRDWatcher — housekeeper watches conversion CRDs for MODIFIED events
   → ws.Start(ctx)
       • sets deletionProtection / namespaceProtection / strictMode atomic flags
       • (skips if !IsRunningInCluster())
@@ -40,15 +44,17 @@ runtime_konstructor.go
 Each webhook type is self-contained:
 
 ```
-webhook.go             — WebhookServer struct + Start/Shutdown/Name/Started
-registration.go        — webhook configuration CRUD (ValidatingWebhookConfiguration etc.)
-controller.go          — periodic reconciliation loop
-admission_review.go    — AdmissionReview / AdmissionRequest / AdmissionResponse types
+webhook.go              — WebhookServer struct + Start/Shutdown/Name/Started
+registration.go         — webhook configuration CRUD (ValidatingWebhookConfiguration etc.)
+housekeeper.go          — continuous reconciliation loop for all webhook-owned resources
+infrastructure.go       — reconcilers for namespace labels and CRD conversion caBundle;
+                          CRDWatcher interface; ConversionCRDPatchFn type
+admission_review.go     — AdmissionReview / AdmissionRequest / AdmissionResponse types
 admission_evaluation.go — validation and mutation rule evaluation logic
-admission.go           — /validate and /mutate HTTP handlers
-conversion_logic.go    — applyConversion + field resolution helpers
-conversion.go          — /convert HTTP handler
-deletion_protection.go — /deletion-protection HTTP handler
+admission.go            — /validate and /mutate HTTP handlers
+conversion_logic.go     — applyConversion + field resolution helpers
+conversion.go           — /convert HTTP handler
+deletion_protection.go  — /deletion-protection HTTP handler
 namespace_protection.go — /namespace-protection HTTP handler + NamespaceRules type
 strict_mode_protection.go — /strict-mode-protection HTTP handler (strict mode only)
 ```

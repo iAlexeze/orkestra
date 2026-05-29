@@ -134,7 +134,7 @@ ork e2e --keep-cluster
 
 ## See also
 
-- [Katalog schema](../02-katalog/01-katalog.md) — the Katalog under test
+- [Katalog schema](../02-katalog/01-top-level.md) — the Katalog under test
 - [E2E in the Orkestra Registry](../../../orkestra-registry/04-e2e.md) — how E2E gates pattern publication
 - [ork e2e CLI reference](../../cli/08-e2e.md)
 - [Writing your first E2E](../../../getting-started/06-writing-your-first-e2e.md)

@@ -151,6 +151,15 @@ type WebhookServer struct {
 	// Namespace protection — map of CRD key (plural.group) → NamespaceRules.
 	namespaceRuleMap map[string]*NamespaceRules
 
+	// patchConversionCRD re-applies the caBundle on a conversion CRD.
+	// Set by the caller via SetConversionCRDPatcher when conversion is enabled.
+	patchConversionCRD ConversionCRDPatchFn
+
+	// crdWatcher provides CRD watch capability for the conversion caBundle watcher.
+	// Set by the caller via SetCRDWatcher. Nil when conversion is not enabled or
+	// the caller does not provide one (safety ticker still covers the slow path).
+	crdWatcher CRDWatcher
+
 	// certMgr handles TLS secret cleanup on graceful shutdown.
 	// Nil when the user provided explicit TLS_CERT/TLS_KEY env vars.
 	certMgr certManagerIface

@@ -95,12 +95,12 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 			Verbs:     []string{"get", "update", "patch"},
 		})
 
-		// CRD patching with CA bundle
+		// CRD patching with CA bundle and watching for MODIFIED event by housekeeper
 		if crd.Conversion != nil && crd.UpdateCRDCaBundle() {
 			rules = append(rules, rbacv1.PolicyRule{
 				APIGroups:     []string{"apiextensions.k8s.io"},
 				Resources:     []string{"customresourcedefinitions"},
-				Verbs:         []string{"patch"},
+				Verbs:         []string{"patch", "watch"},
 				ResourceNames: []string{crd.APITypes.Plural + "." + crd.APITypes.Group},
 			})
 		}

@@ -136,6 +136,6 @@ This starts a Komposer that pulls a versioned Katalog from the Orkestra OCI regi
 
 ## See also
 
-- [Katalog schema](../02-katalog/01-katalog.md) — the unit a Komposer imports
+- [Katalog schema](../02-katalog/01-top-level.md) — the unit a Komposer imports
 - [Motif schema](../01-motif/index.md) — reusable resource blocks imported by Katalogs
 - [security](../02-katalog/10-katalog-security.md), [notification](../02-katalog/11-katalog-notification.md), [providers](../02-katalog/12-katalog-providers.md) — inherited from Katalog schema

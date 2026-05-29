@@ -130,10 +130,12 @@ func (ws *WebhookServer) reconcileAll() {
     ws.reconcileDeletionProtectionWebhook()   // 3. reads caBundle from cert file
     ws.reconcileNamespaceProtectionWebhook()  // 4. reads caBundle from cert file
     ws.reconcileStrictModeWebhook()           // 5. reads caBundle from cert file
+    ws.reconcileNamespaceLabels()             // 6. ensures deletion-protection labels on namespace
+    ws.reconcileCRDConversionWebhooks()       // 7. re-patches caBundle on conversion CRDs
 }
 ```
 
-If the Secret is missing, all four webhook reconciliations would read a stale cert file and inject a caBundle that no longer matches any living Secret. Restoring the Secret first ensures the next startup finds consistent state.
+If the Secret is missing, all webhook reconciliations and the CRD conversion patch would read a stale cert file and inject a caBundle that no longer matches any living Secret. Restoring the Secret first ensures consistent state.
 
 ---
 

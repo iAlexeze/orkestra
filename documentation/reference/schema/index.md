@@ -17,7 +17,7 @@ All fields that live inside a Katalog `spec.crds.<name>` entry:
 
 | Document | Covers |
 |----------|--------|
-| [01-katalog.md](02-katalog/01-katalog.md) | Top-level Katalog structure |
+| [01-top-level.md](02-katalog/01-top-level.md) | Top-level Katalog structure |
 | [02-crd-entry.md](02-katalog/02-crd-entry.md) | Fields inside `spec.crds.<name>` |
 | [03-apitypes.md](02-katalog/03-apitypes.md) | `apiTypes` — group, kind, version, typed mode |
 | [04-operatorbox.md](02-katalog/04-operatorbox.md) | `operatorBox` — reconciliation strategy |

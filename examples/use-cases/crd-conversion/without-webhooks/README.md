@@ -360,31 +360,6 @@ migration required at any point.
 
 ---
 
-## The ConfigMap variant (zero CRD, zero versioning)
-
-If you use a ConfigMap as your input surface instead of a custom CRD, the
-versioning problem disappears entirely. ConfigMap `data` is `map[string]string`
-— schema-free. Adding a new field is adding a new key. Old ConfigMaps continue
-to work because absent keys evaluate as `notExists`.
-
-```yaml
-apiTypes:
-  kind: ConfigMap
-labelSelector:
-  orkestra.io/katalog: cronjob-manager
-
-onReconcile:
-  cronJobs:
-    - name: "{{ .metadata.name }}"
-      schedule: "{{ .data.schedule }}"   # always a string in ConfigMap.data
-      image: "{{ .data.image }}"
-```
-
-ConfigMap CRDs never suffer deletion cascades. Users never see `kubectl delete crd`
-take down all their CronJob CRs. The ConfigMap is permanent infrastructure.
-
----
-
 ## Notes used in this solution
 
 | Note | What it does | Used for |

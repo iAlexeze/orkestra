@@ -88,9 +88,10 @@ func (ws *WebhookServer) housekeeper(ctx context.Context) error {
 	hasDeletionProtection := kat.IsDeletionProtectionEnabled() && kat.DeletionProtectionGVRs() != nil
 	hasNamespaceProtection := kat.IsNamespaceProtectionEnabled() && len(kat.NamespaceProtectionGVRs()) > 0
 	hasStrictMode := kat.IsStrictModeEnabled()
+	hasConversion := ws.convEnabled
 
-	if !hasAdmission && !hasDeletionProtection && !hasNamespaceProtection && !hasStrictMode {
-		logger.Debug().Msg("housekeeper disabled: no admission or protection declared")
+	if !hasAdmission && !hasDeletionProtection && !hasNamespaceProtection && !hasStrictMode && !hasConversion {
+		logger.Debug().Msg("housekeeper disabled: no admission, protection, or conversion declared")
 		return nil
 	}
 
@@ -113,6 +114,13 @@ func (ws *WebhookServer) housekeeper(ctx context.Context) error {
 
 	if kat.HasMutationRules() {
 		go ws.watchMutatingWebhooks(ctx, trigger)
+	}
+
+	// CRD conversion caBundle watcher — one goroutine per conversion CRD.
+	// Triggers immediate reconcile on any MODIFIED event so a stripped caBundle
+	// is restored within one API round-trip, not at the next safety-ticker interval.
+	if hasConversion {
+		ws.watchConversionCRDs(ctx, trigger)
 	}
 
 	go func() {
@@ -141,7 +149,8 @@ func (ws *WebhookServer) housekeeper(ctx context.Context) error {
 }
 
 // reconcileAll records metrics and drives all reconcile functions.
-// The TLS Secret is reconciled first — all webhook registrations depend on it.
+// Order matters: TLS Secret first (all webhook registrations depend on it),
+// then webhook configurations, then infrastructure state.
 func (ws *WebhookServer) reconcileAll() {
 	if ws.webhookStats != nil {
 		ws.webhookStats.RecordReconciled()
@@ -153,6 +162,11 @@ func (ws *WebhookServer) reconcileAll() {
 	ws.reconcileDeletionProtectionWebhook()
 	ws.reconcileNamespaceProtectionWebhook()
 	ws.reconcileStrictModeWebhook()
+
+	// Infrastructure state — applied once at startup by ensureSecurity,
+	// kept correct here throughout the deployment lifecycle.
+	ws.reconcileNamespaceLabels()
+	ws.reconcileCRDConversionWebhooks()
 }
 
 // reconcileCertSecret ensures the TLS Secret exists in the cluster and,

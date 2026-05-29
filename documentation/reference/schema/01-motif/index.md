@@ -171,7 +171,7 @@ ork registry list --kind Motif
 
 ## See also
 
-- [Katalog schema](../02-katalog/01-katalog.md) — where `imports:` lives on the CRD entry
+- [Katalog schema](../02-katalog/01-top-level.md) — where `imports:` lives on the CRD entry
 - [operatorBox](../02-katalog/04-operatorbox.md) — the Katalog's own resources, merged alongside Motif resources
 - [Komposer schema](../03-komposer/index.md) — composing multiple Katalogs
 - [Orkestra Registry](../../../orkestra-registry.md) — publishing and consuming Motifs
