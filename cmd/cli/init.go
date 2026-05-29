@@ -72,7 +72,12 @@ func initCanonical(name string) error {
 		return err
 	}
 
-	fmt.Printf("\n%s\n\n", green("✓ Project ready: "+label))
+	projectPrint := "✓ Project ready: " + label
+	if name == "." {
+		projectPrint = "✓ Project ready"
+	}
+
+	fmt.Printf("\n%s\n\n", green(projectPrint))
 	if !isCurrentDirectory(name) {
 		fmt.Printf("  cd %s\n", name)
 	}

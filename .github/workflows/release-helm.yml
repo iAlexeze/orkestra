@@ -61,6 +61,10 @@ jobs:
             | grep '^fpr' | head -1 | cut -d: -f10)
           echo "${FINGERPRINT}:6:" | gpg --import-ownertrust
           echo "GPG_FINGERPRINT=${FINGERPRINT}" >> "$GITHUB_ENV"
+          
+          # Ensure legacy pubring.gpg exists for Helm's signer
+          mkdir -p ~/.gnupg
+          gpg --export > ~/.gnupg/pubring.gpg
 
       - name: Update Chart metadata and values
         env:
