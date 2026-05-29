@@ -33,6 +33,9 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/watch"
+
+	"github.com/orkspace/orkestra/pkg/webhook"
 )
 
 // ensureSecurity applies TLS certificates when security features
@@ -138,9 +141,7 @@ func patchConversionCRDs(
 	caCertPEM []byte,
 	serviceName, serviceNamespace string,
 ) error {
-	caBundle := base64.StdEncoding.EncodeToString(caCertPEM)
-	port := int32(8443)
-	path := "/convert"
+	caBundle64 := base64.StdEncoding.EncodeToString(caCertPEM)
 
 	var errs []error
 	for _, crd := range kat.EnabledCRDs() {
@@ -151,40 +152,11 @@ func patchConversionCRDs(
 		crdName := crd.APITypes.Plural + "." + crd.APITypes.Group
 		storageVersion := crd.Conversion.StorageVersion
 
-		logger.Info().Msgf("storage version: %s", storageVersion)
+		logger.Info().Str("crd", crdName).Str("storageVersion", storageVersion).
+			Msg("security: patching CRD conversion caBundle")
 
-		patch := map[string]interface{}{
-			"spec": map[string]interface{}{
-				"conversion": map[string]interface{}{
-					"strategy": "Webhook",
-					"webhook": map[string]interface{}{
-						"clientConfig": map[string]interface{}{
-							"caBundle": caBundle,
-							"service": map[string]interface{}{
-								"name":      serviceName,
-								"namespace": serviceNamespace,
-								"path":      path,
-								"port":      port,
-							},
-						},
-						"conversionReviewVersions": []string{storageVersion},
-					},
-				},
-			},
-		}
-
-		patchBytes, err := json.Marshal(patch)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("marshalling patch for %s: %w", crdName, err))
-			continue
-		}
-
-		_, err = kube.ApiextensionsClient().
-			ApiextensionsV1().
-			CustomResourceDefinitions().
-			Patch(ctx, crdName, types.MergePatchType, patchBytes, metav1.PatchOptions{})
-		if err != nil && !k8serrors.IsNotFound(err) {
-			errs = append(errs, fmt.Errorf("patching CRD %s: %w", crdName, err))
+		if err := applyCRDConversionPatch(ctx, kube, crdName, caBundle64, storageVersion, serviceName, serviceNamespace); err != nil {
+			errs = append(errs, err)
 			continue
 		}
 
@@ -196,6 +168,52 @@ func patchConversionCRDs(
 
 	if len(errs) > 0 {
 		return fmt.Errorf("crd patch errors: %v", errs)
+	}
+	return nil
+}
+
+// applyCRDConversionPatch applies the conversion webhook caBundle patch to a
+// single CRD. Shared by the startup apply (patchConversionCRDs) and the
+// housekeeper patcher registered in WireWebhookHousekeeperInfra.
+func applyCRDConversionPatch(
+	ctx context.Context,
+	kube *kubeclient.Kubeclient,
+	crdName, caBundle64, storageVersion, serviceName, serviceNamespace string,
+) error {
+	port := int32(8443)
+	path := "/convert"
+
+	patch := map[string]interface{}{
+		"spec": map[string]interface{}{
+			"conversion": map[string]interface{}{
+				"strategy": "Webhook",
+				"webhook": map[string]interface{}{
+					"clientConfig": map[string]interface{}{
+						"caBundle": caBundle64,
+						"service": map[string]interface{}{
+							"name":      serviceName,
+							"namespace": serviceNamespace,
+							"path":      path,
+							"port":      port,
+						},
+					},
+					"conversionReviewVersions": []string{storageVersion},
+				},
+			},
+		},
+	}
+
+	patchBytes, err := json.Marshal(patch)
+	if err != nil {
+		return fmt.Errorf("marshalling caBundle patch for %s: %w", crdName, err)
+	}
+
+	_, err = kube.ApiextensionsClient().
+		ApiextensionsV1().
+		CustomResourceDefinitions().
+		Patch(ctx, crdName, types.MergePatchType, patchBytes, metav1.PatchOptions{})
+	if err != nil && !k8serrors.IsNotFound(err) {
+		return fmt.Errorf("patching CRD %s: %w", crdName, err)
 	}
 	return nil
 }
@@ -246,4 +264,44 @@ func ensureNamespaceLabeled(ctx context.Context, kube *kubeclient.Kubeclient, na
 		return fmt.Errorf("patching namespace %s: %w", namespace, err)
 	}
 	return nil
+}
+
+// WireWebhookHousekeeperInfra provides the WebhookServer with the callbacks it
+// needs to keep CRD conversion webhooks correct throughout the deployment
+// lifecycle. Called after ensureSecurity and before webhook.Start().
+//
+// Two hooks are set:
+//   - ConversionCRDPatcher — re-patches the caBundle on any CRD with
+//     conversion.updateCRD: true when the housekeeper detects drift.
+//   - CRDWatcher — watches each conversion CRD for MODIFIED events so the
+//     housekeeper restores a stripped caBundle within a single API round-trip
+//     rather than waiting for the safety ticker.
+func WireWebhookHousekeeperInfra(
+	ws *webhook.WebhookServer,
+	kube *kubeclient.Kubeclient,
+	kat *katalog.Katalog,
+	kfg *konfig.Konfig,
+) {
+	serviceName := kat.GatewayServiceName()
+	namespace := kfg.Cluster().Namespace()
+
+	ws.SetConversionCRDPatcher(func(ctx context.Context, crdName, caBundle64, storageVersion string) error {
+		return applyCRDConversionPatch(ctx, kube, crdName, caBundle64, storageVersion, serviceName, namespace)
+	})
+
+	ws.SetCRDWatcher(&crdWatcher{kube: kube})
+}
+
+// crdWatcher implements webhook.CRDWatcher using the apiextensions client.
+type crdWatcher struct {
+	kube *kubeclient.Kubeclient
+}
+
+func (c *crdWatcher) Watch(ctx context.Context, crdName string) (watch.Interface, error) {
+	return c.kube.ApiextensionsClient().
+		ApiextensionsV1().
+		CustomResourceDefinitions().
+		Watch(ctx, metav1.ListOptions{
+			FieldSelector: "metadata.name=" + crdName,
+		})
 }

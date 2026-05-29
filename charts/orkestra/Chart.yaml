@@ -87,6 +87,12 @@ annotations:
   artifacthub.io/changes: |
     - kind: added
       description: "deployments/public/: six-cluster public demo — 6 runtimes, 75 CRDs, 1 Control Center"
+    - kind: added
+      description: "webhook housekeeper: namespace labels and CRD conversion caBundle now reconciled continuously — previously applied once at startup, now watched and restored on drift"
+    - kind: added
+      description: "schema docs: Katalog index.md landing page; 01-katalog.md renamed to 01-top-level.md; admonitions on all four kind pages (Motif, Katalog, Komposer, E2E)"
+    - kind: added
+      description: "blog: 04-why-i-built-this.md — origin story and naming etymology"
     - kind: fixed
       description: "CRD health oscillation — LastReconcile() side effect and SetStarted() resync reset removed"
     - kind: fixed
@@ -97,8 +103,12 @@ annotations:
       description: "ClusterRole/ClusterRoleBinding names scoped to orkestra-<namespace> — no more last-write-wins collision"
     - kind: fixed
       description: "Docker builds write to /tmp/ instead of ~/.orkestra/bin/ — dev CLI no longer overwritten"
+    - kind: fixed
+      description: "once: true documentation corrected — check-before-generate semantics, not drift suppression"
     - kind: changed
       description: "Memory baseline updated to 79 MB RSS — measured from a live 10-CRD runtime"
+    - kind: changed
+      description: "publication 03 (the-function-that-waited) moved to private docs — two publications ship for v1"
   artifacthub.io/crdsExamples: |
     - apiVersion: orkestra.orkspace.io/v1
       kind: Katalog

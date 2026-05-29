@@ -1,5 +1,8 @@
 # Motif
 
+!!! note "Motif is not a Kubernetes CRD"
+    `kubectl apply` will not work. Orkestra kinds are consumed by the `ork` CLI and runtime — not by the Kubernetes API server. [Your CRD is enough](../../../blog/02-your-crd-is-enough.md).
+
 A Motif is the smallest reusable unit in Orkestra's composition model. It declares named inputs and contributes resource blocks to a Katalog CRD entry. It cannot run alone — it must be imported by a Katalog.
 
 ```text
@@ -168,7 +171,7 @@ ork registry list --kind Motif
 
 ## See also
 
-- [Katalog schema](../02-katalog/01-katalog.md) — where `imports:` lives on the CRD entry
+- [Katalog schema](../02-katalog/01-top-level.md) — where `imports:` lives on the CRD entry
 - [operatorBox](../02-katalog/04-operatorbox.md) — the Katalog's own resources, merged alongside Motif resources
 - [Komposer schema](../03-komposer/index.md) — composing multiple Katalogs
 - [Orkestra Registry](../../../orkestra-registry.md) — publishing and consuming Motifs

@@ -1,5 +1,8 @@
 # E2E
 
+!!! note "E2E is not a Kubernetes CRD"
+    `kubectl apply` will not work. Orkestra kinds are consumed by the `ork` CLI and runtime — not by the Kubernetes API server. [Your CRD is enough](../../../blog/02-your-crd-is-enough.md).
+
 An `E2E` is a declarative end-to-end test for a Katalog. It tells Orkestra exactly what to apply, which cluster to use, and what the expected state is after each step.
 
 ```text
@@ -131,7 +134,7 @@ ork e2e --keep-cluster
 
 ## See also
 
-- [Katalog schema](../02-katalog/01-katalog.md) — the Katalog under test
+- [Katalog schema](../02-katalog/01-top-level.md) — the Katalog under test
 - [E2E in the Orkestra Registry](../../../orkestra-registry/04-e2e.md) — how E2E gates pattern publication
 - [ork e2e CLI reference](../../cli/08-e2e.md)
 - [Writing your first E2E](../../../getting-started/06-writing-your-first-e2e.md)

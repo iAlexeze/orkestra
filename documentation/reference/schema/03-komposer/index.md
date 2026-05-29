@@ -1,5 +1,8 @@
 # Komposer
 
+!!! note "Komposer is not a Kubernetes CRD"
+    `kubectl apply` will not work. Orkestra kinds are consumed by the `ork` CLI and runtime — not by the Kubernetes API server. [Your CRD is enough](../../../blog/02-your-crd-is-enough.md).
+
 A Komposer is a Katalog with an `imports` block. It composes multiple Katalogs from different sources — OCI registry patterns, local files, or Helm charts — into a single running operator set. The `spec.crds` block provides per-environment overrides on top of the imported definitions.
 
 ```text
@@ -133,6 +136,6 @@ This starts a Komposer that pulls a versioned Katalog from the Orkestra OCI regi
 
 ## See also
 
-- [Katalog schema](../02-katalog/01-katalog.md) — the unit a Komposer imports
+- [Katalog schema](../02-katalog/01-top-level.md) — the unit a Komposer imports
 - [Motif schema](../01-motif/index.md) — reusable resource blocks imported by Katalogs
 - [security](../02-katalog/10-katalog-security.md), [notification](../02-katalog/11-katalog-notification.md), [providers](../02-katalog/12-katalog-providers.md) — inherited from Katalog schema

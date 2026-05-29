@@ -120,7 +120,7 @@ Real-world patterns combining multiple Orkestra features.
 | Example | What you learn |
 |---------|----------------|
 | [Full-Stack App](./use-cases/full-stack-app/) | Frontend + backend + database composed as one CR. |
-| [Kubebuilder Conversion](./use-cases/kubebuilder-conversion/) | Migrate an existing Kubebuilder operator to Orkestra. |
+| [CRD Conversion](./use-cases/crd-conversion/) | Multi-version CRDs with or without a conversion webhook. Two approaches, same result. |
 | [Multi-Region Map](./use-cases/multi-region-map/) | Deploy the same workload across multiple regions using `forEach`. |
 | [Rollback](./use-cases/rollback/) | Zero-config and configurable failure recovery. |
 

@@ -100,7 +100,7 @@ spec:
     Kubernetes CRDs. See [Why Katalog and Komposer Are Not CRDs](./05-why-not-crds.md)
     for the full reasoning.
 
-See the [Katalog Schema](../reference/schema/02-katalog/01-katalog.md) for all available fields.
+See the [Katalog Schema](../reference/schema/02-katalog/01-top-level.md) for all available fields.
 
 ---
 

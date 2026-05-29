@@ -94,6 +94,9 @@ func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 		ws.SetCertBundle(tlsBundle.CertPEM, tlsBundle.KeyPEM, tlsBundle.CACertPEM,
 			certmanager.DefaultTLSSecretName, kfg.Cluster().Namespace())
 	}
+	// Wire housekeeper infrastructure reconcilers — keeps namespace labels and
+	// CRD conversion caBundles correct throughout the deployment lifecycle.
+	WireWebhookHousekeeperInfra(ws, kube, kat, kfg)
 
 	// ── 7. /katalog routes — gateway serves its own stats surface ────────────
 	// The control center discovers this endpoint via the "gatewayEndpoint" field
