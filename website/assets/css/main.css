@@ -1399,6 +1399,77 @@ html.no-transition .sidebar-subsection-pages {
   font-size: 0.8rem;
 }
 
+/* Depth-4: sub-subsections (e.g. schema → katalog → pages) */
+.sidebar-subsubsection {
+  list-style: none;
+}
+
+.sidebar-subsubsection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-subsubsection-header .sidebar-link {
+  flex: 1;
+}
+
+.sidebar-subsubsection-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  border-radius: 3px;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.sidebar-subsubsection-toggle:hover {
+  color: var(--color-text);
+  background: var(--color-hover);
+}
+
+.sidebar-subsubsection-toggle .chevron {
+  transition: transform 0.2s ease;
+}
+
+.sidebar-subsubsection.open .sidebar-subsubsection-toggle .chevron {
+  transform: rotate(180deg);
+}
+
+.sidebar-subsubsection-pages {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0.25rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 180ms ease, opacity 150ms ease;
+}
+
+.sidebar-subsubsection.open .sidebar-subsubsection-pages {
+  max-height: 800px;
+  opacity: 1;
+}
+
+.sidebar-link--deep {
+  padding-left: 2.25rem;
+  font-size: 0.775rem;
+}
+
+html.no-transition .sidebar-subsubsection-pages {
+  transition: none !important;
+}
+
 /* Overlay for mobile */
 .sidebar-overlay {
   display: none;

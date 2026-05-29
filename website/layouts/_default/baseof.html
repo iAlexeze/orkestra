@@ -26,9 +26,9 @@
       var el = document.getElementById('docsearch');
       if (!el) return;
       docsearch({
-        appId: {{ .Site.Params.algolia.appId | jsonify }},
-        apiKey: {{ .Site.Params.algolia.searchKey | jsonify }},
-        indexName: {{ .Site.Params.algolia.indexName | jsonify }},
+        appId: {{ .Site.Params.algolia.appId | jsonify | safeJS }},
+        apiKey: {{ .Site.Params.algolia.searchKey | jsonify | safeJS }},
+        indexName: {{ .Site.Params.algolia.indexName | jsonify | safeJS }},
         container: '#docsearch',
         debug: false,
       });

@@ -7,7 +7,6 @@ Pre-v1 issues tracked here. Each entry is a real limitation — not a bug in the
 | # | Title | Affects | Status |
 |---|-------|---------|--------|
 | [KI-001](./ki-001-gateway-stats-multi-replica.md) | Gateway webhook stats show zeros with multiple replicas | Gateway `/katalog` endpoint | Open — pre-v1 |
-| [KI-002](./ki-002-algolia-search.md) | Algolia site search returns no results | orkestra.sh search | Open — pre-v1 |
 
 ---
 
