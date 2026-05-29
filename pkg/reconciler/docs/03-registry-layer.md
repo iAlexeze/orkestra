@@ -104,7 +104,7 @@ func Resolve(src orktypes.XxxTemplateSource, ownerName string) ResolvedXxxSpec
 Always injects the two mandatory Orkestra system labels:
 
 ```go
-spec.Labels[labels.Managed]      = labels.ManagedValue
+spec.Labels[labels.ManagedKey]      = labels.ManagedValue
 spec.Labels[labels.OrkestraOwner] = ownerName
 ```
 

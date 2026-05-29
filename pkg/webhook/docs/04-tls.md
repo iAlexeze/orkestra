@@ -79,7 +79,11 @@ Two places consume the CA certificate:
 
 **CRD conversion** — `patchConversionCRDs` base64-encodes `bundle.CACertPEM` and patches `spec.conversion.webhook.clientConfig.caBundle` on every CRD that declares `conversion.updateCRD: true`. Required for the Kubernetes API server to verify the conversion endpoint's TLS certificate.
 
-Both injections use the same cert material. If the cert is regenerated, both must be updated — the housekeeper handles the webhook configurations; CRD patching re-runs on the next startup.
+Both injections use the same cert material. If the cert is regenerated, both must be updated — the housekeeper handles all of it:
+
+- Webhook configurations (`reconcileAdmissionWebhooks`, `reconcileDeletionProtectionWebhook`, etc.) — re-registered on every reconcile cycle using the current cert file.
+- CRD conversion caBundle (`reconcileCRDConversionWebhooks`) — re-patched on every reconcile cycle via the `ConversionCRDPatchFn` registered by `WireWebhookHousekeeperInfra`. A dedicated watcher per conversion CRD (`watchSingleConversionCRD`) triggers an immediate reconcile on any MODIFIED event so a stripped caBundle is restored within one API round-trip.
+- Namespace labels (`reconcileNamespaceLabels`) — re-applied on every reconcile cycle to ensure the deletion-protection webhook's ObjectSelector continues to match the operator namespace.
 
 ---
 

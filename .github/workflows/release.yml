@@ -65,6 +65,7 @@ jobs:
     name: Publish Homebrew Formulas
     needs: [prepare, release]
     uses: ./.github/workflows/publish-homebrew.yml
+    # Skip Homebrew for pre-release tags — formula consumers expect stable releases.
     if: ${{ !contains(github.ref_name, '-') }}
     secrets: inherit
     with:
@@ -87,7 +88,8 @@ jobs:
 
   cleanup:
     name: Clean up old GitHub Actions caches
-    needs: [summary]
+    needs: [build, summary]
+    if: needs.build.outputs.cache-miss == 'true'
     uses: ./.github/workflows/cleanup-caches.yml
     secrets: inherit
     with:

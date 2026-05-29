@@ -204,9 +204,9 @@
   function initSidebarSections() {
     var toggles = document.querySelectorAll('.sidebar-section-toggle');
 
+
     toggles.forEach(function (toggle) {
       var section = toggle.closest('.sidebar-section');
-      var pagesList = section ? section.querySelector('.sidebar-section-pages') : null;
 
       // Sync initial aria state
       var isOpen = section ? section.classList.contains('open') : false;
@@ -217,15 +217,9 @@
         e.stopPropagation();
         if (!section) return;
 
-        var nowOpen = section.classList.contains('open');
-        var willOpen = !nowOpen;
-
+        var willOpen = !section.classList.contains('open');
         section.classList.toggle('open', willOpen);
         toggle.setAttribute('aria-expanded', String(willOpen));
-
-        if (pagesList) {
-          pagesList.style.display = willOpen ? 'flex' : 'none';
-        }
       });
     });
 
@@ -236,10 +230,38 @@
         var section = link.closest('.sidebar-section');
         if (!section) return;
         var toggle = section.querySelector('.sidebar-section-toggle');
-        var pagesList = section.querySelector('.sidebar-section-pages');
         section.classList.add('open');
         if (toggle) toggle.setAttribute('aria-expanded', 'true');
-        if (pagesList) pagesList.style.display = 'flex';
+      });
+    });
+
+    // Second-level subsection toggles
+    var subToggles = document.querySelectorAll('.sidebar-subsection-toggle');
+    subToggles.forEach(function(toggle) {
+      var subsection = toggle.closest('.sidebar-subsection');
+
+      toggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!subsection) return;
+        var willOpen = !subsection.classList.contains('open');
+        subsection.classList.toggle('open', willOpen);
+        toggle.setAttribute('aria-expanded', String(willOpen));
+      });
+    });
+
+    // Third-level sub-subsection toggles
+    var subSubToggles = document.querySelectorAll('.sidebar-subsubsection-toggle');
+    subSubToggles.forEach(function(toggle) {
+      var subsubsection = toggle.closest('.sidebar-subsubsection');
+
+      toggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!subsubsection) return;
+        var willOpen = !subsubsection.classList.contains('open');
+        subsubsection.classList.toggle('open', willOpen);
+        toggle.setAttribute('aria-expanded', String(willOpen));
       });
     });
   }
@@ -391,12 +413,34 @@
     });
   }
 
-  /* ── 10. Init all ─────────────────────────────────────────── */
+  /* ── 10. Scroll sidebar to active item ─────────────────────── */
+  function scrollSidebarToActive() {
+    var sidebar = document.getElementById('docs-sidebar');
+    if (!sidebar) return;
+    var active = sidebar.querySelector('.sidebar-link.active, .sidebar-standalone-link.active');
+    if (!active) return;
+    var sidebarRect = sidebar.getBoundingClientRect();
+    var activeRect = active.getBoundingClientRect();
+    var targetScrollTop = sidebar.scrollTop + (activeRect.top - sidebarRect.top) - (sidebarRect.height / 2) + (activeRect.height / 2);
+    sidebar.scrollTop = Math.max(0, targetScrollTop);
+  }
+
+  /* ── 11. Init all ─────────────────────────────────────────── */
   document.addEventListener('DOMContentLoaded', function () {
+    // DOMContentLoaded fires before the first paint, so removing immediately
+    // still lets transitions fire on the first render. Double rAF defers the
+    // removal until after the browser has committed the first frame.
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        document.documentElement.classList.remove('no-transition');
+      });
+    });
+
     addCopyButtons();
     addLangLabels();
     initSidebar();
     initSidebarSections();
+    scrollSidebarToActive();
     initTOC();
     initMobileMenu();
     initHeroTabs();

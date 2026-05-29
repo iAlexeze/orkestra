@@ -74,6 +74,14 @@ func ReadChildren(
 ) map[string]interface{} {
 	children := map[string]interface{}{}
 
+	// Apply conditional enrichment gates — filter crd.Enrich to only the targets
+	// whose when:/anyOf: conditions pass for the current CR state.
+	// Unconditional targets (no conditions) always pass.
+	// enrichmentEnabled() called deep inside each enrich_*.go sees the filtered list.
+	if !crd.EnrichAll {
+		crd.Enrich = crd.ActiveEnrichTargets(resolver.Data(), resolver.TemplateEvaluator())
+	}
+
 	// Collect all template sources across onCreate and onReconcile.
 	// We only read resources that are declared — not all resources in the namespace.
 	templates := mergeTemplates(crd.OperatorBox)

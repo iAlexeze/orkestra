@@ -13,7 +13,7 @@ import (
 )
 
 var gatewayCmd = &cobra.Command{
-	Use:   "gateway",
+	Use:   "gate",
 	Short: "Start the Orkestra gateway (TLS + admission webhooks, cluster-only)",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		paths, _ := cmd.Flags().GetStringSlice("file")
@@ -21,7 +21,7 @@ var gatewayCmd = &cobra.Command{
 			paths = defaultFilePaths()
 		}
 		if len(paths) == 0 {
-			paths = kfg.Katalog().Paths
+			paths = kfg.Katalog().Paths()
 		}
 		if len(paths) == 0 {
 			return fmt.Errorf(errNoKatalog)

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="{{ .Site.LanguageCode }}" data-theme="">
 <head>
+  <script>document.documentElement.classList.add('no-transition');</script>
   {{ partial "head.html" . }}
 </head>
 <body class="{{ if .IsHome }}page-home{{ else if .IsSection }}page-section{{ else }}page-content{{ end }}{{ if (eq .Section "docs") }} docs-body{{ end }}">
@@ -25,9 +26,9 @@
       var el = document.getElementById('docsearch');
       if (!el) return;
       docsearch({
-        appId: {{ .Site.Params.algolia.appId | jsonify }},
-        apiKey: {{ .Site.Params.algolia.searchKey | jsonify }},
-        indexName: {{ .Site.Params.algolia.indexName | jsonify }},
+        appId: {{ .Site.Params.algolia.appId | jsonify | safeJS }},
+        apiKey: {{ .Site.Params.algolia.searchKey | jsonify | safeJS }},
+        indexName: {{ .Site.Params.algolia.indexName | jsonify | safeJS }},
         container: '#docsearch',
         debug: false,
       });

@@ -63,10 +63,10 @@ The control center is a separate Go module at the root of `cmd/controlcenter/`.
 
 ```bash
 # Run against a live runtime
-ORK_RUNTIME_URLS=http://localhost:8090 go run ./cmd/controlcenter
+ORK_RUNTIME_URLS=http://localhost:8080 go run ./cmd/controlcenter
 
 # Run in NO_LOGIN mode (no auth, useful during local dev)
-NO_LOGIN=true ORK_RUNTIME_URLS=http://localhost:8090 go run ./cmd/controlcenter
+NO_LOGIN=true ORK_RUNTIME_URLS=http://localhost:8080 go run ./cmd/controlcenter
 ```
 
 Templates live in `cmd/controlcenter/cc/assets/templates/`. They use Go `html/template` with a shared `_partials.html` for nav, header, and footer.

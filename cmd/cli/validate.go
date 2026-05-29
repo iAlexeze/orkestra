@@ -5,14 +5,15 @@ package cli
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
+	rbacv1 "k8s.io/api/rbac/v1"
 )
 
 var validateCmd = &cobra.Command{
@@ -96,16 +97,36 @@ Examples:
 			kindLabel = "Gateway Standalone"
 		}
 
+		full, _ := cmd.Flags().GetBool("full")
+
+		var perCRDPerms map[string][]rbacv1.PolicyRule
+		if full {
+			perCRDPerms = k.GeneratePerCRDRBACRules()
+		}
+
+		// Sort entries by name for stable output across runs.
+		sortedEntries := make([]orktypes.CRDEntry, 0, len(entries))
+		for _, e := range entries {
+			sortedEntries = append(sortedEntries, e)
+		}
+		sort.Slice(sortedEntries, func(i, j int) bool {
+			return sortedEntries[i].Name < sortedEntries[j].Name
+		})
+
 		fmt.Println()
-		fmt.Println(utils.Bold("Validating " + kindLabel + "..."))
+		fmt.Println(bold("Validating " + kindLabel + "..."))
 		fmt.Println()
 
 		builtIn := 0
 		custom := 0
 
 		// Print each CRD entry with enrichment info
-		for _, entry := range entries {
-			printCRDValidationLine(entry)
+		for _, entry := range sortedEntries {
+			printCRDValidationLine(entry, k.IsDeletionProtectionEnabled(), k.IsStrictModeEnabled())
+			if full {
+				printCRDPermissions(perCRDPerms[entry.Name])
+				printCRDProfiles(entry)
+			}
 			fmt.Println()
 
 			if entry.IsBuiltIn {
@@ -118,6 +139,15 @@ Examples:
 		// Summary
 		fmt.Println(strings.Repeat("─", 60))
 		fmt.Printf("%d CRDs valid (%d built-in, %d custom)\n", len(entries), builtIn, custom)
+
+		if full {
+			if dd := k.DependencyDisplayData(); dd != nil {
+				printValidateDependencyGraph(dd)
+			}
+			printRuntimePermissionsSection(k.GenerateRuntimeRBACRules())
+			printGatewayPermissionsSection(k.GenerateGatewayRBACRules())
+			fmt.Println()
+		}
 
 		return nil
 	},
@@ -141,7 +171,7 @@ func detectKindFromFile(path string) (string, error) {
 // validateE2EFile validates an E2E spec file and prints a summary.
 func validateE2EFile(path string) error {
 	fmt.Println()
-	fmt.Println(utils.Bold("Validating E2E..."))
+	fmt.Println(bold("Validating E2E..."))
 	fmt.Println()
 
 	data, err := os.ReadFile(path)
@@ -185,23 +215,31 @@ func validateE2EFile(path string) error {
 
 	if len(errs) > 0 {
 		for _, e := range errs {
-			fmt.Printf("  %s %s\n", utils.FailureMark(), e)
+			fmt.Printf("  %s %s\n", failureMark(), e)
 		}
 		fmt.Println()
 		return fmt.Errorf("%d validation error(s) in %s", len(errs), path)
 	}
 
-	icon := utils.HealthIcon("ready")
-	fmt.Printf("%s %s\n", icon, utils.Bold(e2e.Metadata.Name))
+	icon := healthIcon("ready")
+	fmt.Printf("%s %s\n", icon, bold(e2e.Metadata.Name))
 	if e2e.Metadata.Description != "" {
-		fmt.Printf("    %s\n", utils.Gray(e2e.Metadata.Description))
+		fmt.Printf("    %s\n", gray(e2e.Metadata.Description))
 	}
 	fmt.Printf("    %s\n",
-		utils.Gray(fmt.Sprintf("katalog : %s\n    crd     : %s\n    cr      : %s",
+		gray(fmt.Sprintf("katalog : %s\n    crd     : %s\n    cr      : %s",
 			e2e.Spec.Katalog, e2e.Spec.CRD, e2e.Spec.CR)),
 	)
-	if len(e2e.Spec.Setup) > 0 {
-		fmt.Printf("    %s\n", utils.Gray("setup   : "+strings.Join(e2e.Spec.Setup, ", ")))
+	if s := e2e.Spec.Setup; s != nil {
+		if len(s.Apply) > 0 {
+			fmt.Printf("    %s\n", gray("setup.apply : "+strings.Join(s.Apply, ", ")))
+		}
+		if len(s.Helm) > 0 {
+			fmt.Printf("    %s\n", gray(fmt.Sprintf("setup.helm  : %d chart(s)", len(s.Helm))))
+		}
+		if len(s.Wait) > 0 {
+			fmt.Printf("    %s\n", gray(fmt.Sprintf("setup.wait  : %d resource(s)", len(s.Wait))))
+		}
 	}
 	fmt.Println()
 	for _, exp := range e2e.Spec.Expect {
@@ -210,7 +248,7 @@ func validateE2EFile(path string) error {
 			to = "60s"
 		}
 		fmt.Printf("    %s\n",
-			utils.Gray(fmt.Sprintf("%-40s after: %-12s timeout: %s", exp.Name, exp.After, to)))
+			gray(fmt.Sprintf("%-40s after: %-12s timeout: %s", exp.Name, exp.After, to)))
 	}
 	fmt.Println()
 	fmt.Println(strings.Repeat("─", 60))
@@ -222,19 +260,19 @@ func validateE2EFile(path string) error {
 // validateMotifFile runs Motif-specific validation and prints results.
 func validateMotifFile(path string) error {
 	fmt.Println()
-	fmt.Println(utils.Bold("Validating Motif..."))
+	fmt.Println(bold("Validating Motif..."))
 	fmt.Println()
 
 	errs := katalog.ValidateMotif(path)
 	if len(errs) == 0 {
-		icon := utils.HealthIcon("ready")
-		fmt.Printf("%s %s\n", icon, utils.Bold(path))
-		fmt.Printf("    %s\n", utils.Gray("valid"))
+		icon := healthIcon("ready")
+		fmt.Printf("%s %s\n", icon, bold(path))
+		fmt.Printf("    %s\n", gray("valid"))
 		return nil
 	}
 
 	for _, e := range errs {
-		fmt.Printf("  %s %s\n", utils.FailureMark(), e.Error())
+		fmt.Printf("  %s %s\n", failureMark(), e.Error())
 	}
 	fmt.Println()
 	return fmt.Errorf("%d validation error(s) in %s", len(errs), path)
@@ -244,6 +282,7 @@ func init() {
 	rootCmd.AddCommand(validateCmd)
 
 	validateCmd.Flags().StringSliceP("file", "f", nil, "Path to an Orkestra document (repeatable or comma-separated)")
+	validateCmd.Flags().Bool("full", false, "Show per-CRD permissions, dependency graph, and system-level RBAC")
 
 	// Shadow global flags so they don't appear under `ork validate`
 	validateCmd.Flags().Bool("debug", false, "")

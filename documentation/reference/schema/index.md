@@ -1,18 +1,32 @@
 # Schema Reference
 
+The schema is organised by kind. Each kind has its own subfolder.
+
+| Kind | Folder | Description |
+|------|--------|-------------|
+| [Motif](01-motif/) | `01-motif/` | Reusable resource primitive. Parameterised inputs, no standalone runtime. |
+| [Katalog](02-katalog/) | `02-katalog/` | Operator declaration. Defines CRDs, resources, status, and admission rules. |
+| [Komposer](03-komposer/) | `03-komposer/` | Compose multiple Katalogs from files, Helm, or OCI registries. |
+| [E2E](04-e2e/) | `04-e2e/` | Declarative end-to-end test for a Katalog. [spec](04-e2e/01-spec.md) · [setup](04-e2e/02-setup.md) · [expect](04-e2e/03-expect.md) |
+
+---
+
+## Katalog field reference
+
+All fields that live inside a Katalog `spec.crds.<name>` entry:
+
 | Document | Covers |
 |----------|--------|
-| [katalog.md](katalog.md) | Top-level Katalog structure |
-| [crd-entry.md](crd-entry.md) | Fields inside `spec.crds.<name>` |
-| [apitypes.md](apitypes.md) | `apiTypes` — group, kind, version, typed mode |
-| [operatorbox.md](operatorbox.md) | `operatorBox` — reconciliation strategy |
-| [status.md](status.md) | `status` — fields written after reconcile |
-| [when-conditions.md](when-conditions.md) | `when` / `anyOf` conditions |
-| [validation.md](validation.md) | `validation` — admission rules |
-| [mutation.md](mutation.md) | `mutation` — admission defaults and overrides |
-| [conversion.md](conversion.md) | `conversion` — multi-version CRD support |
-| [katalog-security.md](katalog-security.md) | `security` block |
-| [katalog-notification.md](katalog-notification.md) | `notification` block |
-| [katalog-providers.md](katalog-providers.md) | `providers` block |
-| [komposer.md](komposer.md) | Komposer — compose multiple Katalogs |
-| [motif.md](motif.md) | Motif — reusable resource primitive |
+| [01-top-level.md](02-katalog/01-top-level.md) | Top-level Katalog structure |
+| [02-crd-entry.md](02-katalog/02-crd-entry.md) | Fields inside `spec.crds.<name>` |
+| [03-apitypes.md](02-katalog/03-apitypes.md) | `apiTypes` — group, kind, version, typed mode |
+| [04-operatorbox.md](02-katalog/04-operatorbox.md) | `operatorBox` — reconciliation strategy |
+| [05-status.md](02-katalog/05-status.md) | `status` — fields written after reconcile |
+| [06-when-conditions.md](02-katalog/06-when-conditions.md) | `when` / `anyOf` conditions |
+| [07-validation.md](02-katalog/07-validation.md) | `validation` — admission rules |
+| [08-mutation.md](02-katalog/08-mutation.md) | `mutation` — admission defaults and overrides |
+| [09-conversion.md](02-katalog/09-conversion.md) | `conversion` — multi-version CRD support |
+| [10-katalog-security.md](02-katalog/10-katalog-security.md) | `security` block |
+| [11-katalog-notification.md](02-katalog/11-katalog-notification.md) | `notification` block |
+| [12-katalog-providers.md](02-katalog/12-katalog-providers.md) | `providers` block |
+| [15-enrich.md](02-katalog/15-enrich.md) | `enrich` — post-reconcile enrichment |

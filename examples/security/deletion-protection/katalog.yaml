@@ -11,6 +11,9 @@ metadata:
     left out of this Katalog — it can be deleted freely.
     cleanupOnShutdown: true removes the webhook when the operator stops gracefully.
 
+gateway:
+  endpoint: http://orkestra-gateway:8080
+
 security:
   deletionProtection:
     enabled: true

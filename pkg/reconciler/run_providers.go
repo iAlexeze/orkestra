@@ -90,7 +90,7 @@ func runProviders(
 
 		// Evaluate when: conditions — drop declarations that do not pass.
 		// resolver.Data() includes .spec.*, .status.*, .children.*
-		active := filterProviderDeclarations(resolver.Data(), resolved)
+		active := filterProviderDeclarations(resolver.Data(), resolved, resolver.TemplateEvaluator())
 		if len(active) == 0 {
 			log.Debug().
 				Str("provider", block.Name).
@@ -246,10 +246,11 @@ func resolveProviderBlock(
 func filterProviderDeclarations(
 	data map[string]interface{},
 	declarations []resolvedDeclaration,
+	eval orktypes.TemplateEvaluator,
 ) []orktypes.ProviderDeclaration {
 	result := make([]orktypes.ProviderDeclaration, 0, len(declarations))
 	for _, decl := range declarations {
-		if !orktypes.EvaluateWhen(data, decl.Conditions, decl.AnyOf) {
+		if !orktypes.EvaluateWhen(data, decl.Conditions, decl.AnyOf, eval) {
 			continue
 		}
 		result = append(result, orktypes.ProviderDeclaration{

@@ -21,7 +21,7 @@ ork notes domains
 
 List all 115 built-in notes as a paginated table.
 
-```
+```text
 DOMAIN        NAME              DESCRIPTION
 ──────        ────              ───────────
 collections   asList            Convert input to []interface{}.
@@ -64,7 +64,7 @@ ork notes show resourceExists
 
 Output:
 
-```
+```text
 ────────────────────────────────────────────────────────────────
   replicasReady
 ────────────────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ Output:
 
 List all available domains with note counts.
 
-```
+```text
 Available domains:
 
   collections       9 notes

@@ -27,7 +27,7 @@ func (ws *WebhookServer) namespaceProtectionHandler(w http.ResponseWriter, r *ht
 
 	var review AdmissionReview
 	if err := json.NewDecoder(r.Body).Decode(&review); err != nil {
-		logger.Error().Err(err).Msg("namespace-protection: failed to decode AdmissionReview")
+		logger.Error().Err(err).Msgf("%s: failed to decode AdmissionReview", namespaceProtection)
 		http.Error(w, "invalid AdmissionReview", http.StatusBadRequest)
 		return
 	}
@@ -61,7 +61,7 @@ func (ws *WebhookServer) namespaceProtectionHandler(w http.ResponseWriter, r *ht
 			Str("crd", req.Resource.Resource+"."+req.Resource.Group).
 			Str("namespace", ns).
 			Str("uid", req.UID).
-			Msg("namespace-protection: blocking CR creation/update in forbidden namespace")
+			Msgf("%s: blocking CR creation/update in forbidden namespace", namespaceProtection)
 
 		metrics.RecordNamespaceProtectionBlocked(req.Resource.Resource)
 		ws.namespaceStatsFor(gvrToKey(req.Resource)).RecordBlocked()

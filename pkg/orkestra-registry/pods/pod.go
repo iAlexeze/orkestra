@@ -191,6 +191,8 @@ func Resolve(src orktypes.PodTemplateSource, ownerName string) ResolvedPodSpec {
 	spec.Namespace = src.Namespace
 	spec.Resources = src.Resources
 	spec.Probes = src.Probes
+	spec.SecurityContext = common.ResolveContainerSecurityContext(src.SecurityContext)
+	spec.PodSecurity = common.ResolvePodSecurityContext(src.PodSecurity)
 	spec.Sleep = src.Sleep
 
 	if src.Port != "" {
@@ -205,7 +207,7 @@ func Resolve(src orktypes.PodTemplateSource, ownerName string) ResolvedPodSpec {
 	}
 
 	// System labels — always present
-	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.ManagedKey] = labels.ManagedValue
 	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
@@ -255,6 +257,9 @@ func buildPod(owner domain.Object, spec ResolvedPodSpec, namespace string) *core
 	}
 
 	common.ApplyProbes(&pod.Spec.Containers[0], spec.Probes, int32(spec.Port))
+
+	// Security
+	common.ApplySecurityContext(&pod.Spec.Containers[0], &pod.Spec, spec.SecurityContext, spec.PodSecurity)
 
 	return pod
 }

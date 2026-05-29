@@ -179,11 +179,12 @@ type DependencyStatus struct {
 }
 
 type OrkestraHealth struct {
-	name      string
-	orkReady  atomic.Bool
-	katReady  atomic.Bool
-	allOnline atomic.Bool // For this katalog
-	mu        sync.RWMutex
+	name        string
+	orkReady    atomic.Bool
+	katReady    atomic.Bool
+	allOnline   atomic.Bool // For this katalog
+	isKonductor atomic.Bool // true only on the pod that won the leader election
+	mu          sync.RWMutex
 }
 
 // NewOrkestraHEalth initializes a CRDHealth tracker for Orkestra
@@ -278,7 +279,6 @@ func (h *CRDHealth) LastReconcile() string {
 	// Case 1: nothing stored yet
 	if v == nil {
 		if h.Started() {
-			h.pending.Store(true)
 			return "no reconciles yet"
 		}
 		return "not started"
@@ -288,7 +288,6 @@ func (h *CRDHealth) LastReconcile() string {
 	t, ok := v.(time.Time)
 	if !ok || t.IsZero() {
 		if h.Started() {
-			h.pending.Store(true)
 			return "no reconciles yet"
 		}
 		return "not started"
@@ -329,10 +328,14 @@ func (h *CRDHealth) StartedAt() string {
 
 // SetStarted marks the reconciler as started and records the start time.
 // CompareAndSwap ensures the timestamp is only set once.
+// pending is only set to true if the CRD has not yet had a successful reconcile —
+// avoids flipping healthy CRDs back to pending on resync-triggered worker restarts.
 func (h *CRDHealth) SetStarted() {
 	h.startTime.CompareAndSwap(nil, time.Now())
 	h.started.Store(true)
-	h.pending.Store(true)
+	if !h.healthy.Load() {
+		h.pending.Store(true)
+	}
 }
 
 // SetDegraded marks the reconciler as degraded
@@ -349,6 +352,18 @@ func (h *CRDHealth) SignaledHealthy() bool {
 
 func (h *CRDHealth) MarkHealthySignaled() {
 	h.healthySignaled.Store(true)
+}
+
+// SetIsKonductor marks whether this pod holds the leader election lease.
+// Set to true at the start of Kordinate(), false when leadership is lost.
+func (h *OrkestraHealth) SetIsKonductor(v bool) {
+	h.isKonductor.Store(v)
+}
+
+// IsKonductor reports whether this pod is the current konductor (leader).
+// The control center uses this to decide whether to trust this pod's CRD data.
+func (h *OrkestraHealth) IsKonductor() bool {
+	return h.isKonductor.Load()
 }
 
 // SetOrkReady marks orkestra engine as ready

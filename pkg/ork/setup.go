@@ -1,0 +1,104 @@
+package ork
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+	"time"
+
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+)
+
+// HelmInstall installs or upgrades a Helm chart as declared in SetupHelmInstall.
+// Uses helm upgrade --install so the call is idempotent.
+func HelmInstall(ctx context.Context, h orktypes.SetupHelmInstall) error {
+	if err := h.Validate(); err != nil {
+		return err
+	}
+
+	release := h.ReleaseName()
+	namespace := h.EffectiveNamespace()
+
+	// Add and update the repo (idempotent).
+	repoName := release
+	_ = exec.CommandContext(ctx, "helm", "repo", "add", repoName, h.Repo).Run()
+	_ = exec.CommandContext(ctx, "helm", "repo", "update", repoName).Run()
+
+	args := []string{
+		"upgrade", "--install",
+		release,
+		fmt.Sprintf("%s/%s", repoName, h.Chart),
+		"--namespace", namespace,
+	}
+	if h.CreateNamespace {
+		args = append(args, "--create-namespace")
+	}
+	if h.Version != "" {
+		args = append(args, "--version", h.Version)
+	}
+	for _, f := range h.ValueFiles {
+		if f != "" {
+			args = append(args, "-f", f)
+		}
+	}
+	for k, v := range h.Values {
+		args = append(args, "--set", fmt.Sprintf("%s=%v", k, v))
+	}
+
+	cmd := exec.CommandContext(ctx, "helm", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("helm install %s/%s: %w", h.Repo, h.Chart, err)
+	}
+	return nil
+}
+
+// WaitForResource polls until the described resource exists (and is ready when
+// w.Ready is true). Times out after w.Timeout (default 30s).
+func WaitForResource(ctx context.Context, w orktypes.SetupWait) error {
+	timeout := 30 * time.Second
+	if w.Timeout != "" {
+		if d, err := time.ParseDuration(w.Timeout); err == nil {
+			timeout = d
+		}
+	}
+
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if w.Ready {
+			// Use kubectl wait for ready condition
+			args := []string{
+				"wait",
+				fmt.Sprintf("%s/%s", strings.ToLower(w.Kind), w.Name),
+				"--for=condition=Ready",
+				"--timeout=5s",
+			}
+			if w.Namespace != "" {
+				args = append(args, "-n", w.Namespace)
+			}
+			if err := exec.CommandContext(ctx, "kubectl", args...).Run(); err == nil {
+				return nil
+			}
+		} else {
+			// Just existence check: kubectl get
+			args := []string{"get", w.Kind, w.Name, "--ignore-not-found", "-o", "name"}
+			if w.Namespace != "" {
+				args = append(args, "-n", w.Namespace)
+			}
+			out, err := exec.CommandContext(ctx, "kubectl", args...).Output()
+			if err == nil && strings.TrimSpace(string(out)) != "" {
+				return nil
+			}
+		}
+		time.Sleep(2 * time.Second)
+	}
+
+	loc := w.Name
+	if w.Namespace != "" {
+		loc = w.Namespace + "/" + w.Name
+	}
+	return fmt.Errorf("timed out after %s waiting for %s %s", timeout, w.Kind, loc)
+}

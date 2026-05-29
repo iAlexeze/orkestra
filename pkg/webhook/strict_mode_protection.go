@@ -52,7 +52,7 @@ func (ws *WebhookServer) strictModeProtectionHandler(w http.ResponseWriter, r *h
 
 	var review AdmissionReview
 	if err := json.NewDecoder(r.Body).Decode(&review); err != nil {
-		logger.Error().Err(err).Msg("strict-mode-protection: failed to decode AdmissionReview")
+		logger.Error().Err(err).Msgf("%s: failed to decode AdmissionReview", strictModeProtection)
 		http.Error(w, "invalid AdmissionReview", http.StatusBadRequest)
 		return
 	}
@@ -77,6 +77,15 @@ func (ws *WebhookServer) strictModeProtectionHandler(w http.ResponseWriter, r *h
 	hadLabel := oldLabels[labels.DeletionProtectionLabel] == "true"
 	hasLabel := newLabels[labels.DeletionProtectionLabel] == "true"
 
+	// --- EXEMPTION CHECK ---
+	if newLabels[labels.StrictModeExemptKey] == "true" {
+		// Exempt from strict mode – allow label removal
+		ws.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
+			UID: req.UID, Allowed: true,
+		})
+		return
+	}
+
 	if hadLabel && !hasLabel {
 		kind := req.Kind.Kind
 		name := req.Name
@@ -87,7 +96,7 @@ func (ws *WebhookServer) strictModeProtectionHandler(w http.ResponseWriter, r *h
 			Str("name", name).
 			Str("namespace", ns).
 			Str("uid", req.UID).
-			Msg("strict-mode-protection: blocking deletion-protection label removal")
+			Msgf("%s: blocking deletion-protection label removal", strictModeProtection)
 
 		metrics.RecordDeletionProtectionBlocked("strict-mode:" + kind)
 		ws.strictModeStats.RecordBlocked()
@@ -107,8 +116,11 @@ func (ws *WebhookServer) strictModeProtectionHandler(w http.ResponseWriter, r *h
 					"\n\n[Orkestra Security] %s\n\n"+
 						"Removing this label is blocked because strictMode is enabled.\n\n"+
 						"To unprotect this resource:\n"+
+						"- Opt out in the katalog using: '<crd>.deletionProtection.strictMode: false'\n\n"+
+
+						"To disable strict mode globally:\n"+
 						"- Set security.deletionProtection.strictMode: false in the Katalog\n"+
-						"- Update the Orkestra ConfigMap and restart Orkestra\n\n",
+						"- Regenerate and apply the bundle, and restart the Gateway\n\n",
 					header,
 				),
 				Code: 403,

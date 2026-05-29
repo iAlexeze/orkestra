@@ -5,32 +5,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"github.com/orkspace/orkestra/pkg/profiles"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
-
-// probeTimings holds timing parameters for a probe profile.
-type probeTimings struct {
-	InitialDelaySeconds int32
-	PeriodSeconds       int32
-	FailureThreshold    int32
-	SuccessThreshold    int32
-	TimeoutSeconds      int32
-}
-
-// probeProfiles maps profile names to their timing configuration.
-//
-//   - fast:       quick detection, low tolerance — good for responsive HTTP APIs
-//   - standard:   balanced defaults — suitable for most web services
-//   - patient:    tolerant of slow operations — good for batch workers
-//   - slow-start: 5-minute startup window — designed for startup probes on heavy apps
-var probeProfiles = map[string]probeTimings{
-	"fast":       {InitialDelaySeconds: 5, PeriodSeconds: 10, FailureThreshold: 2, SuccessThreshold: 1, TimeoutSeconds: 5},
-	"standard":   {InitialDelaySeconds: 15, PeriodSeconds: 20, FailureThreshold: 3, SuccessThreshold: 1, TimeoutSeconds: 10},
-	"patient":    {InitialDelaySeconds: 30, PeriodSeconds: 30, FailureThreshold: 5, SuccessThreshold: 1, TimeoutSeconds: 10},
-	"slow-start": {InitialDelaySeconds: 0, PeriodSeconds: 10, FailureThreshold: 30, SuccessThreshold: 1, TimeoutSeconds: 10},
-}
-
-var defaultTimings = probeTimings{InitialDelaySeconds: 15, PeriodSeconds: 20, FailureThreshold: 3, SuccessThreshold: 1, TimeoutSeconds: 10}
 
 // BuildProbe constructs a Kubernetes Probe from a ProbeConfig.
 // containerPort is used as the probe target when cfg.Port is 0.
@@ -47,8 +24,8 @@ func BuildProbe(cfg *orktypes.ProbeConfig, containerPort int32) *corev1.Probe {
 		return nil
 	}
 
-	t := defaultTimings
-	if pt, ok := probeProfiles[cfg.Profile]; ok {
+	t := profiles.DefaultProbeTimings
+	if pt, ok := profiles.ApplyProbeProfile(cfg.Profile); ok {
 		t = pt
 	}
 

@@ -42,7 +42,7 @@ func (r *Resolver) ResolveStatusFields(fields []orktypes.StatusFieldSpec) (map[s
 		// ── Evaluate when: conditions ──────────────────────────────────────
 		// evaluateConditions lives in this package (resolver_conditions.go).
 		// r.data already includes .children.* if WithChildren was called.
-		if len(f.When) > 0 && !evaluateConditions(r.data, f.When) {
+		if len(f.When) > 0 && !evaluateConditions(r, f.When) {
 			continue
 		}
 

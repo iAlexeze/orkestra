@@ -11,6 +11,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
+	"github.com/orkspace/orkestra/pkg/profiles"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -99,6 +100,16 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		updated.Spec.MaxReplicas = spec.MaxReplicas
 		drifted = true
 		logger.Info().Str("hpa", spec.Name).Int32("desired", spec.MaxReplicas).Msg("hpa maxReplicas drifted")
+	}
+
+	var desiredBehavior *autoscalingv2.HorizontalPodAutoscalerBehavior
+	if spec.Behavior != nil {
+		desiredBehavior = buildK8sBehavior(spec.Behavior)
+	}
+	if !behaviorEqual(existing.Spec.Behavior, desiredBehavior) {
+		updated.Spec.Behavior = desiredBehavior
+		drifted = true
+		logger.Info().Str("hpa", spec.Name).Msg("hpa behavior drifted")
 	}
 
 	if !drifted {
@@ -202,12 +213,27 @@ func Resolve(src orktypes.HPATemplateSource, ownerName string) ResolvedHPASpec {
 		}
 	}
 
+	if src.Behavior != nil && src.Behavior.Profile != "" {
+		expansion, err := profiles.ApplyHPAProfile(src.Behavior.Profile)
+		if err != nil {
+			logger.Warn().Str("profile", src.Behavior.Profile).Err(err).Msg("unknown hpa behavior profile — skipping")
+		} else {
+			spec.Behavior = &expansion.Behavior
+			if spec.TargetCPUUtilizationPercentage == 0 {
+				spec.TargetCPUUtilizationPercentage = expansion.CPUTarget
+			}
+		}
+	} else if src.Behavior != nil {
+		b := *src.Behavior
+		spec.Behavior = &b
+	}
+
 	for _, l := range src.Labels {
 		spec.Labels[l.Key] = l.Value
 	}
 
 	// System labels
-	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.ManagedKey] = labels.ManagedValue
 	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
@@ -272,7 +298,94 @@ func buildHPA(owner domain.Object, spec ResolvedHPASpec, namespace string) *auto
 		}
 	}
 
+	if spec.Behavior != nil {
+		hpa.Spec.Behavior = buildK8sBehavior(spec.Behavior)
+	}
+
 	return hpa
+}
+
+func buildK8sBehavior(b *orktypes.HPABehavior) *autoscalingv2.HorizontalPodAutoscalerBehavior {
+	k8s := &autoscalingv2.HorizontalPodAutoscalerBehavior{}
+
+	if b.ScaleUp != nil {
+		k8s.ScaleUp = buildK8sScalingRules(b.ScaleUp)
+	}
+	if b.ScaleDown != nil {
+		k8s.ScaleDown = buildK8sScalingRules(b.ScaleDown)
+	}
+	return k8s
+}
+
+func buildK8sScalingRules(r *orktypes.HPAScalingRules) *autoscalingv2.HPAScalingRules {
+	k8s := &autoscalingv2.HPAScalingRules{}
+
+	sw := r.StabilizationWindowSeconds
+	k8s.StabilizationWindowSeconds = &sw
+
+	if r.SelectPolicy != "" {
+		sp := autoscalingv2.ScalingPolicySelect(r.SelectPolicy)
+		k8s.SelectPolicy = &sp
+	}
+
+	for _, p := range r.Policies {
+		k8s.Policies = append(k8s.Policies, autoscalingv2.HPAScalingPolicy{
+			Type:          autoscalingv2.HPAScalingPolicyType(p.Type),
+			Value:         p.Value,
+			PeriodSeconds: p.PeriodSeconds,
+		})
+	}
+	return k8s
+}
+
+func behaviorEqual(a, b *autoscalingv2.HorizontalPodAutoscalerBehavior) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return scalingRulesEqual(a.ScaleUp, b.ScaleUp) && scalingRulesEqual(a.ScaleDown, b.ScaleDown)
+}
+
+func scalingRulesEqual(a, b *autoscalingv2.HPAScalingRules) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	swA := int32(0)
+	if a.StabilizationWindowSeconds != nil {
+		swA = *a.StabilizationWindowSeconds
+	}
+	swB := int32(0)
+	if b.StabilizationWindowSeconds != nil {
+		swB = *b.StabilizationWindowSeconds
+	}
+	if swA != swB {
+		return false
+	}
+	spA := autoscalingv2.ScalingPolicySelect("")
+	if a.SelectPolicy != nil {
+		spA = *a.SelectPolicy
+	}
+	spB := autoscalingv2.ScalingPolicySelect("")
+	if b.SelectPolicy != nil {
+		spB = *b.SelectPolicy
+	}
+	if spA != spB {
+		return false
+	}
+	if len(a.Policies) != len(b.Policies) {
+		return false
+	}
+	for i := range a.Policies {
+		if a.Policies[i] != b.Policies[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func validateSpec(spec ResolvedHPASpec) error {

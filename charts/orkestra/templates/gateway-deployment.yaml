@@ -44,13 +44,13 @@ spec:
 
       containers:
         - name: gateway
-          image: {{ include "orkestra.runtimeImage" . }}
+          image: {{ include "orkestra.gatewayImage" . }}
           imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.gateway.securityContext | nindent 12 }}
 
           args:
-            - gateway
+            - gate
             - --file
             - {{ .Values.gateway.katalog.mountPath }}/{{ .Values.gateway.katalog.configMapKey }}
 

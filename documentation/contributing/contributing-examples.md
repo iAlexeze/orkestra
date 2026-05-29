@@ -8,7 +8,7 @@ Examples are the fastest way for new users to understand what Orkestra can do. E
 
 Examples are grouped into packs by difficulty and topic:
 
-```
+```text
 examples/
   beginner/
     01-hello-world/
@@ -28,7 +28,7 @@ examples/
 
 Each example directory must contain:
 
-```
+```text
 katalog.yaml        — the Katalog declaration
 crd.yaml            — CRD schema for the managed resource
 cr.yaml             — a sample CR to apply
@@ -42,7 +42,6 @@ cleanup.sh          — (optional) removes cluster resources after the demo
 
 1. Create the example directory under the right pack.
 2. Add the required files.
-3. Optionally add an E2E workflow in `.github/workflows/` following the pattern of existing tests.
 
 No code changes are needed for examples within an existing pack.
 
@@ -52,7 +51,7 @@ No code changes are needed for examples within an existing pack.
 
 Adding a new pack (a new top-level directory under `examples/`) requires changes in four places. Miss any of them and CI fails.
 
-See [publishing-a-new-pack.md](publishing-a-new-pack.md) for the exact checklist.
+See [Publishing a new pack](../publishing-a-new-pack.md) for the exact checklist.
 
 ---
 
@@ -60,7 +59,7 @@ See [publishing-a-new-pack.md](publishing-a-new-pack.md) for the exact checklist
 
 The following Orkestra features have no dedicated example yet:
 
-- **Motifs** — reusable resource building blocks assembled via `include`
+- **Motifs** — reusable resource building blocks assembled via `imports`
 - **Rollback** — `operatorBox.rollback` triggering and recovery
 - **Providers** — operator that manages a cloud resource (S3 bucket, RDS, Redis ACL) alongside a Kubernetes resource
 - **Notification** — `operatorBox.conditions` with `notify.teams` firing a Slack or email alert

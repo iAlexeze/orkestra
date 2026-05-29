@@ -62,7 +62,7 @@ before the validating webhook. This means:
 
 - Generate the bundle  
   ```bash
-  ork generate bundle -f katalog.yaml -o bundle.yaml
+  ork generate bundle -o bundle.yaml
   ```
 
 - Apply the bundle  
@@ -77,14 +77,20 @@ before the validating webhook. This means:
 
 - Install Orkestra  
   ```bash
-  helm upgrade --install orkestra orkestra/orkestra --namespace orkestra-system --create-namespace
+  helm upgrade --install orkestra orkestra/orkestra \
+    --namespace orkestra-system \
+    --create-namespace \
+    --set gateway.enabled=true \
+    --wait --timeout 120s
   ```
 
-- Wait for Orkestra to be ready  
-  ```bash
-  kubectl wait --for=condition=available deployment/orkestra \
-    -n orkestra-system --timeout=120s
-  ```
+> Note: Gateway is needed for webhook related operations. Deliberately decoupled from the runtime
+
+```yaml
+gateway:
+  enabled: true
+  endpoint: http://orkestra-gateway:8080          # The runtime advertises this endpoint for the control center to get gateway metrics
+```
 
 Webhook certificates are generated and rotated automatically by Orkestra.
 
@@ -126,7 +132,7 @@ defaults before reconcile creates resources.
 
 ```bash
 # Mutation applied the defaults — spec now has replicas and port
-kubectl get website my-site -o jsonpath='{.spec}'
+kubectl get website my-site -o jsonpath='{.spec}' | jq
 # {"environment":"production","image":"myorg/nginx:1.25","port":"8080","replicas":"2"}
 ```
 
@@ -206,7 +212,7 @@ website.demo.orkestra.io/warn-site created
 ## Step 5 — Check the metrics
 
 ```bash
-kubectl port-forward svc/orkestra 8080:8080 -n orkestra-system &
+kubectl port-forward svc/orkestra-runtime 8080:8080 -n orkestra-system &
 
 curl localhost:8080/katalog/website | jq '{
   "reconcileTotal": .reconcileTotal,

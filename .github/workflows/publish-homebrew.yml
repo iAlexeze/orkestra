@@ -23,14 +23,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout tap
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v6
         with:
           repository: ${{ inputs.tap_repository }}
           token: ${{ secrets.ORK_PUBLISH_PAT }}
           path: homebrew-tap
 
       - name: Download checksums artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: checksums
           path: ./

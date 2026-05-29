@@ -27,22 +27,18 @@ import (
 // If -f is not provided, Orkestra reads katalog.yaml (or komposer.yaml) from
 // the current directory — the same convention as Docker and Compose.
 // Pass -f explicitly only when using a non-standard filename or multiple files.
-
 var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Start the Orkestra Runtime",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Resolve katalog paths
 		paths, _ := cmd.Flags().GetStringSlice("file")
-		if len(paths) == 0 {
-			paths = defaultFilePaths()
-		}
-		if len(paths) == 0 {
-			paths = kfg.Katalog().Paths
-		}
-		if len(paths) == 0 {
-			return fmt.Errorf(errNoKatalog)
+		paths, err := resolveKatalogPaths(paths)
+		if err != nil {
+			return err
 		}
 
+		// Merge katalogs
 		m := merger.New(paths...)
 		if err := m.Merge(); err != nil {
 			return fmt.Errorf("merging katalogs: %w", err)
@@ -56,6 +52,8 @@ var runCmd = &cobra.Command{
 
 		// This is where the actual operator starts.
 		// The --dev logic will be injected via a wrapper in run_dev.go.
+
+		// Run the runtime
 		internal.KonductRuntime(kfg, m, ctx)
 		return nil
 	},

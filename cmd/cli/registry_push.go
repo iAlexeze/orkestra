@@ -12,7 +12,6 @@ import (
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/registry"
-	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -92,7 +91,7 @@ var registryPushCmd = &cobra.Command{
 				msg := fmt.Errorf("%s: metadata.version %q does not match provided tag %q; use '--force' to override", spec.PrimaryFile, meta.Version, providedTag)
 
 				if registryPushForce {
-					fmt.Fprintf(cmd.ErrOrStderr(), "%s: %v (continuing due to --force)\n", utils.Yellow("Warning"), msg)
+					fmt.Fprintf(cmd.ErrOrStderr(), "%s: %v (continuing due to --force)\n", yellow("Warning"), msg)
 
 					// persist if requested
 					if registryPushUpdateMeta {
@@ -131,12 +130,12 @@ var registryPushCmd = &cobra.Command{
 			if _, err := katalog.BuildExpanded(kfg, m); err != nil {
 				return fmt.Errorf("  ✗ %s: %w", registry.FileKatalog, err)
 			}
-			fmt.Printf("  %s %-20s valid\n", utils.SuccessMark(), registry.FileKatalog)
+			fmt.Printf("  %s %-20s valid\n", successMark(), registry.FileKatalog)
 
 			if err := validateCRDFile(filepath.Join(dir, registry.FileCRD)); err != nil {
 				return fmt.Errorf("  ✗ %s: %w", registry.FileCRD, err)
 			}
-			fmt.Printf("  %s %-20s valid\n", utils.SuccessMark(), registry.FileCRD)
+			fmt.Printf("  %s %-20s valid\n", successMark(), registry.FileCRD)
 		}
 
 		for _, f := range files {
@@ -144,7 +143,7 @@ var registryPushCmd = &cobra.Command{
 				continue // already printed above
 			}
 			info, _ := os.Stat(filepath.Join(dir, f))
-			fmt.Printf("  %s %-20s (%s)\n", utils.SuccessMark(), f, formatSize(info.Size()))
+			fmt.Printf("  %s %-20s (%s)\n", successMark(), f, formatSize(info.Size()))
 		}
 
 		// E2E gate: run e2e.yaml before pushing if it exists (Katalog only).
@@ -175,7 +174,7 @@ var registryPushCmd = &cobra.Command{
 					if err != nil {
 						return fmt.Errorf("e2e gate failed: %w\n\nFix the test or use --force to push anyway", err)
 					}
-					fmt.Printf("  %s E2E passed (%s)\n", utils.SuccessMark(), result.Duration())
+					fmt.Printf("  %s E2E passed (%s)\n", successMark(), result.Duration())
 					e2eMeta = &registry.PatternE2E{
 						Status:   "passed",
 						Duration: result.Duration(),
@@ -200,7 +199,7 @@ var registryPushCmd = &cobra.Command{
 			return fmt.Errorf("push failed: %w", err)
 		}
 
-		fmt.Printf("\n%s Pushed: %s\n", utils.SuccessMark(), ref.String())
+		fmt.Printf("\n%s Pushed: %s\n", successMark(), ref.String())
 		fmt.Printf("  Digest: %s\n", digest[:19]+"...")
 
 		// If a pattern directory also contains motif.yaml, push it separately
@@ -214,7 +213,7 @@ var registryPushCmd = &cobra.Command{
 					if mDigest, err := client.Push(cmd.Context(), motifRef, dir, nil, progress); err != nil {
 						fmt.Fprintf(os.Stderr, "warning: motif push failed: %v\n", err)
 					} else {
-						fmt.Printf("%s Pushed motif: %s\n", utils.SuccessMark(), motifRef.String())
+						fmt.Printf("%s Pushed motif: %s\n", successMark(), motifRef.String())
 						fmt.Printf("  Digest: %s\n", mDigest[:19]+"...")
 					}
 				}

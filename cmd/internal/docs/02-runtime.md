@@ -1,7 +1,7 @@
 # 02 — Runtime
 
 The runtime is the full Orkestra reconcile loop. It is assembled in
-`konstructRuntime` in `runtime_konstructor.go` and started by `Konduct` in `main.go`.
+`konstructRuntime` in `runtime_konstructor.go` and started by `KonductRuntime` in `runtime.go`.
 
 ## Wiring diagram
 
@@ -48,7 +48,7 @@ reverse on shutdown. The runtime registers:
 3. `Event` — the Kubernetes event recorder. Requires a live kubeclient.
 4. `QueueRegistry` — per-CRD bounded work queues.
 5. `DefaultWorkqueue` — the shared unbounded queue for CRDs that opt into
-   `sharedQueue: true`.
+   `shared.queue: true`.
 6. `SharedInformerFactory` — opens watches against the API server and populates
    in-memory caches. Closes the ready channel when all informers are synced.
 7. `DependencyKordinator` — waits for informer sync, then starts CRD workers in

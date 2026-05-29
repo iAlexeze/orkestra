@@ -95,12 +95,12 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 			Verbs:     []string{"get", "update", "patch"},
 		})
 
-		// CRD patching with CA bundle
+		// CRD patching with CA bundle and watching for MODIFIED event by housekeeper
 		if crd.Conversion != nil && crd.UpdateCRDCaBundle() {
 			rules = append(rules, rbacv1.PolicyRule{
 				APIGroups:     []string{"apiextensions.k8s.io"},
 				Resources:     []string{"customresourcedefinitions"},
-				Verbs:         []string{"patch"},
+				Verbs:         []string{"patch", "watch"},
 				ResourceNames: []string{crd.APITypes.Plural + "." + crd.APITypes.Group},
 			})
 		}
@@ -446,4 +446,79 @@ func (k *Katalog) ResolveGVR(r orktypes.ManagedResource) (schema.GroupVersionRes
 	// 6. Could not resolve
 	// ───────────────────────────────────────────────
 	return schema.GroupVersionResource{}, false
+}
+
+// GeneratePerCRDRBACRules returns the RBAC rules attributed to each enabled CRD.
+// The map key is the CRD name. Excludes system-level rules (leases, events,
+// secrets, namespaces, webhook configurations) — use GenerateRuntimeRBACRules /
+// GenerateGatewayRBACRules for those.
+func (k *Katalog) GeneratePerCRDRBACRules() map[string][]rbacv1.PolicyRule {
+	result := make(map[string][]rbacv1.PolicyRule, len(k.enabledCRDs))
+
+	for name, crd := range k.Enabled() {
+		var rules []rbacv1.PolicyRule
+
+		if crd.APITypes.Group != "" || crd.IsBuiltInType() {
+			if crd.APITypes.Plural != "" {
+				rules = append(rules,
+					rbacv1.PolicyRule{
+						APIGroups: []string{crd.APITypes.Group},
+						Resources: []string{crd.APITypes.Plural},
+						Verbs:     defaultVerbs,
+					},
+					rbacv1.PolicyRule{
+						APIGroups: []string{crd.APITypes.Group},
+						Resources: []string{crd.APITypes.Plural + "/status"},
+						Verbs:     []string{"get", "update", "patch"},
+					},
+				)
+			}
+			if crd.Conversion != nil && crd.UpdateCRDCaBundle() {
+				rules = append(rules, rbacv1.PolicyRule{
+					APIGroups:     []string{"apiextensions.k8s.io"},
+					Resources:     []string{"customresourcedefinitions"},
+					Verbs:         []string{"patch"},
+					ResourceNames: []string{crd.APITypes.Plural + "." + crd.APITypes.Group},
+				})
+			}
+		}
+
+		if crd.WithHookManagedResources() {
+			for _, r := range crd.HookManagedResources() {
+				if gvr, ok := k.ResolveGVR(r); ok {
+					rules = append(rules, rbacv1.PolicyRule{
+						APIGroups: []string{gvr.Group},
+						Resources: []string{gvr.Resource},
+						Verbs:     defaultVerbs,
+					})
+				}
+			}
+		}
+
+		if crd.WithConstructorManagedResources() {
+			for _, r := range crd.ConstructorManagedResources() {
+				if gvr, ok := k.ResolveGVR(r); ok {
+					rules = append(rules, rbacv1.PolicyRule{
+						APIGroups: []string{gvr.Group},
+						Resources: []string{gvr.Resource},
+						Verbs:     defaultVerbs,
+					})
+				}
+			}
+		}
+
+		for _, b := range children.AllBuiltInKindDefs() {
+			if b.Detect != nil && b.Detect(crd) {
+				rules = append(rules, rbacv1.PolicyRule{
+					APIGroups: []string{b.Group},
+					Resources: []string{b.Plural},
+					Verbs:     defaultVerbs,
+				})
+			}
+		}
+
+		result[name] = rules
+	}
+
+	return result
 }

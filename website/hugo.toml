@@ -20,18 +20,16 @@ enableGitInfo = true
   controlcenter = "https://cc.orkestra.sh"
   version = "v1"
 
-  # Algolia DocSearch — apply at https://docsearch.algolia.com/apply/
-  # Fill these in once approved (free for open source projects)
   [params.algolia]
-    appId = "1YJ1C111LH"
-    searchKey = "b4bbac9a499ecc51109f23abd327cf29"
-    indexName = "orkestra"
+    appId = "IDBZPZV9Q6"
+    searchKey = "6eadbb67e7c72aaaa5309e17c4e1e9ad"
+    indexName = "Orkestra Documentaion"
 
 
 [menu]
   [[menu.main]]
     name = "Docs"
-    url = "/docs/getting-started/"
+    url = "/docs/"
     weight = 1
   [[menu.main]]
     name = "Reference"

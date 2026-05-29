@@ -22,7 +22,7 @@ kubectl apply -f 06-full-stack/crd.yaml
 ```
 
 ### Orkestra
-Follow the steps in [here](../kubebuilder-conversion/README.md#steps) to deploy Orkestra with webhook support for admission control.
+Follow the steps in [here](../crd-conversion/README.md#steps) to deploy Orkestra with webhook support for admission control.
 
 ```bash
 kubectl port-forward svc/orkestra -n orkestra-system 9090:8081 &  # port-forward to view control center

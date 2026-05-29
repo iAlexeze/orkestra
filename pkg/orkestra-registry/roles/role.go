@@ -166,7 +166,7 @@ func Resolve(src orktypes.RoleTemplateSource, ownerName string) ResolvedRoleSpec
 		spec.Labels[l.Key] = l.Value
 	}
 
-	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.ManagedKey] = labels.ManagedValue
 	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	for _, r := range src.Rules {

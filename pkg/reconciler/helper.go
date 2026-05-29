@@ -4,63 +4,73 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"time"
 
 	"github.com/orkspace/orkestra/domain"
-	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-// ── Label management ──────────────────────────────────────────────────────
-func (r *GenericReconciler[PTR]) ensureManagedLabel(ctx context.Context, obj PTR) error {
-	labels := obj.GetLabels()
-	if labels == nil {
-		labels = map[string]string{}
+// getLatestObject fetches the current state of the object directly from the
+// Kubernetes API server, bypassing any local informer cache.
+//
+// It is used when label or annotation decisions depend on the latest cluster
+// state and cannot tolerate cache staleness (e.g., after a Katalog reload or
+// when reconciler configuration changes). The fresh object is returned as the
+// same concrete type PTR (e.g., *unstructured.Unstructured or a typed client).
+//
+// Parameters:
+//   - ctx:        context for the API call
+//   - namespace:  namespace of the object (empty for cluster-scoped resources)
+//   - name:       name of the object
+//
+// Returns:
+//   - The freshly fetched object, already converted to PTR
+//   - An error if the API Get fails (e.g., resource not found, network issue)
+func (r *GenericReconciler[PTR]) getLatestObject(ctx context.Context, namespace, name string) (PTR, error) {
+	gvr := r.crd.GVR()
+	var unstructuredObj *unstructured.Unstructured
+	var err error
+
+	if namespace == "" {
+		unstructuredObj, err = r.kube.DynamicClient().Resource(gvr).Get(ctx, name, metav1.GetOptions{})
+	} else {
+		unstructuredObj, err = r.kube.DynamicClient().Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 	}
-
-	// Already present?
-	if v, ok := labels[orklabels.Managed]; ok && v == orklabels.ManagedValue {
-		return nil
+	if err != nil {
+		return any(unstructuredObj).(PTR), err
 	}
-
-	// Add/overwrite the managed label
-	labels[orklabels.Managed] = orklabels.ManagedValue
-
-	return r.kube.PatchLabels(ctx, obj, r.crd.GVR(), labels)
-}
-
-// ── Annotation management ──────────────────────────────────────────────────────
-func (r *GenericReconciler[PTR]) ensureManagedAnnotations(ctx context.Context, obj PTR, operator string) error {
-	ann := obj.GetAnnotations()
-	if ann == nil {
-		ann = map[string]string{}
-	}
-
-	changed := false
-
-	// Ensure managed-by annotation
-	if v, ok := ann[orklabels.AnnotationManagedBy]; !ok || v == "" {
-		ann[orklabels.AnnotationManagedBy] = operator
-		changed = true
-	}
-
-	// Ensure managed-since annotation
-	if v, ok := ann[orklabels.AnnotationManagedSince]; !ok || v == "" {
-		ann[orklabels.AnnotationManagedSince] = time.Now().UTC().Format(time.RFC3339)
-		changed = true
-	}
-
-	// Nothing to patch
-	if !changed {
-		return nil
-	}
-
-	return r.kube.PatchAnnotations(ctx, obj, r.crd.GVR(), ann)
+	// Convert back to PTR
+	return any(unstructuredObj).(PTR), nil
 }
 
 // ── Finalizer management ──────────────────────────────────────────────────────
 
+// ensureFinalizers adds the finalizers declared in the CRD's OperatorBox to the
+// given object if they are not already present.
+//
+// Finalizers block deletion of a resource until the controller has performed
+// necessary cleanup (e.g., deleting child resources, releasing external resources).
+// The list of finalizers is defined per CRD in the Katalog under spec.crds[].operatorBox.finalizers.
+//
+// This function is idempotent: it checks which finalizers from the configured
+// list are missing and appends them. It never removes finalizers; removal is
+// handled separately in the finalizer reconciliation logic (typically after
+// successful cleanup).
+//
+// An event is emitted when finalizers are added, providing an audit trail.
+//
+// Edge cases:
+//   - If the CRD has no finalizers configured, this function does nothing.
+//   - If `crd.RemoveFinalizers` is true (a development flag), the function
+//     currently only checks for existence but still adds missing finalizers.
+//     This behaviour is marked for future review.
+//
+// Example:
+//
+//	Configured finalizers: ["protection.orkestra.io/finalizer"]
+//	After calling ensureFinalizers, the resource's metadata.finalizers will include it.
 func (r *GenericReconciler[PTR]) ensureFinalizers(ctx context.Context, obj PTR) error {
 	if len(r.crd.OperatorBox.Finalizers) == 0 {
 		return nil
@@ -149,4 +159,12 @@ func RemoveFinalizer(o domain.Object, finalizer string) (updated bool) {
 
 func ContainsFinalizer(o domain.Object, finalizer string) bool {
 	return slices.Contains(o.GetFinalizers(), finalizer)
+}
+
+func copyStringMap(m map[string]string) map[string]string {
+	out := make(map[string]string, len(m))
+	for k, v := range m {
+		out[k] = v
+	}
+	return out
 }

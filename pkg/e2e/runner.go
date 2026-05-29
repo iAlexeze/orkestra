@@ -29,9 +29,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/orkspace/orkestra/pkg/doctor"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/motif"
+	"github.com/orkspace/orkestra/pkg/ork"
 	"github.com/orkspace/orkestra/pkg/registry"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"gopkg.in/yaml.v3"
@@ -168,7 +168,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 
 	// ── 2. Dependencies ──────────────────────────────────────────────────
 	fmt.Println("→ Ensuring dependencies...")
-	if err := doctor.EnsureDependencies(); err != nil {
+	if err := ork.EnsureDependencies(); err != nil {
 		return nil, fmt.Errorf("dependencies: %w", err)
 	}
 
@@ -211,19 +211,31 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 	appliedSetupPaths = setupPaths
 
 	// ── 6. Install Orkestra ──────────────────────────────────────────────
-	if !doctor.OrkestraInstalled() {
-		fmt.Printf("→ Installing Orkestra...\n")
-		if err := doctor.InstallOrUpgradeOrkestra("", nil, false); err != nil {
+	args := []string{}
+	text := "..."
+
+	gatewayEnabled, err := resolveGatewayEnabled(r.katalogFile)
+	if err != nil {
+		return nil, err
+	}
+	if gatewayEnabled {
+		args = append(args, "--set", "gateway.enabled=true")
+		text = " with gateway..."
+	}
+
+	if !ork.OrkestraInstalled() {
+		fmt.Printf("→ Installing Orkestra%s\n", text)
+		if err := ork.InstallOrUpgradeOrkestra("", nil, args...); err != nil {
 			return nil, fmt.Errorf("helm install: %w", err)
 		}
 		installedOrkestra = true
 		fmt.Printf("  ✓ Orkestra installed\n")
-	} else if doctor.RuntimeDeployed() {
+	} else if ork.RuntimeDeployed() {
 		// Orkestra is installed and the runtime deployment exists — the bundle
 		// applied above updated the orkestra-katalog ConfigMap, so the runtime
 		// must reload to pick up the new Katalog.
 		fmt.Printf("→ Updating Orkestra with current bundle...\n")
-		if err := doctor.SyncRuntime(); err != nil {
+		if err := ork.SyncRuntime(); err != nil {
 			return nil, fmt.Errorf("syncing Orkestra runtime: %w", err)
 		}
 		fmt.Printf("  ✓ Orkestra updated\n")
@@ -233,7 +245,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 
 	// ── 7. Wait for Orkestra ready ───────────────────────────────────────
 	fmt.Printf("→ Waiting for Orkestra to be ready...\n")
-	status := doctor.CheckRuntimeHealth()
+	status := ork.CheckRuntimeHealth()
 	if !status.Running {
 		return nil, fmt.Errorf("Orkestra not ready: %s", status.Reason)
 	}
@@ -329,6 +341,24 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 	return result, nil
 }
 
+// resolveGatewayEnabled inspects the katalog file and returns true if the
+// gateway block is present. This allows Helm installation to automatically
+// enable the gateway chart when required by the katalog.
+func resolveGatewayEnabled(katalogFile string) (bool, error) {
+	var raw struct {
+		Gateway *orktypes.GatewayConfig `yaml:"gateway,omitempty"`
+	}
+
+	data, err := os.ReadFile(katalogFile)
+	if err != nil {
+		return false, err
+	}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return false, err
+	}
+	return raw.Gateway != nil, nil
+}
+
 // ensureCluster sets up the cluster according to the spec.
 func (r *Runner) ensureCluster(ctx context.Context) error {
 	if r.useCurrentCtx {
@@ -364,7 +394,7 @@ func (r *Runner) ensureCluster(ctx context.Context) error {
 	}
 
 	fmt.Printf("→ Ensuring cluster '%s'...\n", name)
-	return doctor.EnsureKindCluster(name)
+	return ork.EnsureKindCluster(name)
 }
 
 // applyCRD applies the operator's CRD to the cluster and returns the paths applied.
@@ -494,16 +524,46 @@ func (r *Runner) pullOCIImports(_ context.Context) error {
 }
 
 func (r *Runner) applySetup(ctx context.Context) ([]string, error) {
+	s := r.e2e.Spec.Setup
+	if s == nil {
+		return nil, nil
+	}
+
 	var applied []string
-	for _, path := range r.e2e.Spec.Setup {
+
+	// ── Phase 1: apply ────────────────────────────────────────────────────────
+	for _, path := range s.Apply {
 		abs := r.abs(path)
-		fmt.Printf("→ Applying setup file %s...\n", path)
+		fmt.Printf("→ Applying setup %s...\n", path)
 		if out, err := kubectl(ctx, "apply", "-f", abs); err != nil {
-			return applied, fmt.Errorf("applying setup %s: %w\n%s", path, err, out)
+			return applied, fmt.Errorf("setup apply %s: %w\n%s", path, err, out)
 		}
 		fmt.Printf("  ✓ Applied\n")
 		applied = append(applied, abs)
 	}
+
+	// ── Phase 2: helm ─────────────────────────────────────────────────────────
+	for _, h := range s.Helm {
+		fmt.Printf("→ Installing %s/%s...\n", h.Repo, h.Chart)
+		if err := ork.HelmInstall(ctx, h); err != nil {
+			return applied, fmt.Errorf("setup helm %s/%s: %w", h.Repo, h.Chart, err)
+		}
+		fmt.Printf("  ✓ Installed %s\n", h.ReleaseName())
+	}
+
+	// ── Phase 3: wait ─────────────────────────────────────────────────────────
+	for _, w := range s.Wait {
+		loc := w.Kind + " " + w.Name
+		if w.Namespace != "" {
+			loc += " (" + w.Namespace + ")"
+		}
+		fmt.Printf("→ Waiting for %s...\n", loc)
+		if err := ork.WaitForResource(ctx, w); err != nil {
+			return applied, fmt.Errorf("setup wait: %w", err)
+		}
+		fmt.Printf("  ✓ Ready\n")
+	}
+
 	return applied, nil
 }
 
@@ -566,8 +626,8 @@ func (r *Runner) teardown(ctx context.Context, crdPaths []string, bundlePath str
 	// runtime is stopped before its RBAC and ConfigMap are removed.
 	if uninstallOrkestra {
 		fmt.Printf("  → Uninstalling Orkestra...\n")
-		cmd := exec.CommandContext(ctx, "helm", "uninstall", doctor.Orkestra,
-			"--namespace", doctor.OrkestraNamespace, "--ignore-not-found")
+		cmd := exec.CommandContext(ctx, "helm", "uninstall", ork.Orkestra,
+			"--namespace", ork.OrkestraNamespace, "--ignore-not-found")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {

@@ -2,11 +2,67 @@ package katalog
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/orkspace/orkestra/pkg/konfig"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
+
+// DependencyDisplay holds pre-computed dependency graph data for ork validate --full.
+type DependencyDisplay struct {
+	StartupOrder []string                     // CRD names in deterministic startup order
+	Conditions   map[string]map[string]string // CRD name → dep name → condition string
+}
+
+// DependencyDisplayData builds dependency display data for ork validate --full.
+// Returns nil when no enabled CRD declares any dependsOn — callers should skip
+// the section entirely in that case.
+func (k *Katalog) DependencyDisplayData() *DependencyDisplay {
+	hasDeps := false
+	for _, crd := range k.enabledCRDs {
+		if len(crd.DependsOn) > 0 {
+			hasDeps = true
+			break
+		}
+	}
+	if !hasDeps {
+		return nil
+	}
+
+	dg := NewDependencyGraph(k)
+	conditions := make(map[string]map[string]string)
+	for name, crd := range k.enabledCRDs {
+		if len(crd.DependsOn) == 0 {
+			continue
+		}
+		m := make(map[string]string, len(crd.DependsOn))
+		for dep, c := range crd.DependsOn {
+			m[dep] = c.Condition
+		}
+		conditions[name] = m
+	}
+
+	return &DependencyDisplay{
+		StartupOrder: dg.StartupOrder(),
+		Conditions:   conditions,
+	}
+}
+
+// SortedDependencyNames returns the dependency names for a CRD in sorted order,
+// along with their conditions. Used for deterministic display.
+func (dd *DependencyDisplay) SortedDeps(crdName string) []string {
+	deps := dd.Conditions[crdName]
+	if len(deps) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(deps))
+	for dep := range deps {
+		names = append(names, dep)
+	}
+	sort.Strings(names)
+	return names
+}
 
 func (k *Katalog) List() map[string]orktypes.CRDEntry {
 	return k.Spec.CRDs
@@ -22,19 +78,18 @@ func (k *Katalog) Meta() orktypes.KatalogMeta {
 	return k.metadata
 }
 
-// ProjectInfo returns the project information for use by control center
-// This is mostly helpful in actions performed by 'ork doctor'
-func (k *Katalog) ProjectInfo() orktypes.ProjectInfo {
+// ProjectInfo returns the project information for use by control center.
+// Populated by ork-doctor at generation time; empty in operator-authored Katalogs.
+func (k *Katalog) ProjectInfo() interface{} {
 	if k.projectInfo == nil {
-		return orktypes.ProjectInfo{}
-	} else {
-		return *k.projectInfo
+		return nil
 	}
+	return k.projectInfo
 }
 
 // Projects returns the map of all project infos from the katalog metadata.
 // Populated by the developer path (createdBy: orkdoctor) via ork doctor deploy.
-func (k *Katalog) Projects() map[string]orktypes.ProjectInfo {
+func (k *Katalog) Projects() map[string]interface{} {
 	return k.metadata.Projects
 }
 

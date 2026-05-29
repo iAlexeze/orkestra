@@ -33,3 +33,11 @@ Complete field reference for every Orkestra document type.
 | [ork template](./cli/template.md) | Render the merged, resolved Katalog |
 | [ork simulate](./cli/simulate.md) | Simulate reconciliation in memory |
 | [ork init](./cli/init.md) | Scaffold a new operator project |
+
+---
+
+## Where to go next
+
+- **[Schema Reference](./schema/katalog.md)** — every field in every document type
+- **[CLI Reference](./cli/run.md)** — full flag reference for every command
+- **[Typed Operators](../concepts/typed-operators/index.md)** — hooks, constructors, and mixed patterns

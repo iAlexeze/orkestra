@@ -306,7 +306,7 @@ controlCenter:
     # Set this to your runtime service URL(s)
     orkestraURLs: []
 
-    port: 8090
+    port: 8081
     refreshInterval: 10s
     logLevel: info
 
@@ -318,7 +318,14 @@ controlCenter:
   ingress:
     enabled: false                  # Disabled by default – enable and set hosts
     className: ""
-    annotations: {}
+    annotations:
+      # Sticky sessions ensure each browser is consistently routed to the same
+      # CC pod. The CC cache is in-memory per-pod, so without affinity a user
+      # may see different state on each request when replicaCount > 1.
+      nginx.ingress.kubernetes.io/affinity: "cookie"
+      nginx.ingress.kubernetes.io/session-cookie-name: "cc-session"
+      nginx.ingress.kubernetes.io/session-cookie-max-age: "86400"
+      nginx.ingress.kubernetes.io/session-cookie-samesite: "Strict"
     hosts: []
     # hosts:
     #   - host: control-center.mycompany.com

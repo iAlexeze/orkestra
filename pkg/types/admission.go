@@ -232,7 +232,7 @@ type MutationConfig struct {
 	Rules []MutationRule `yaml:"rules,omitempty" json:"rules,omitempty"`
 
 	// MutateFirst — when true, mutation runs before validation at reconcile
-	// time. Default false (validate first, then mutate valid objects).
+	// time. Default true (mutate first, then validate valid objects).
 	//
 	// At admission time, mutation always runs first — this mirrors the
 	// Kubernetes webhook ordering (MutatingWebhookConfiguration fires before

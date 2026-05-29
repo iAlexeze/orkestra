@@ -32,7 +32,60 @@ func BuildExpanded(kfg *konfig.Konfig, m *merger.Merger) (*Katalog, error) {
 	return &k, nil
 }
 
-func (k *Katalog) KomposeRuntimeKatalog(kfg *konfig.Konfig, m *merger.Merger, paths ...string) (map[string]orktypes.CRDEntry, error) {
+// KomposeRuntimeKatalog composes the runtime Katalog for Orkestra from merged configuration sources.
+//
+// This function is the central entry point for transforming the declarative Katalog
+// (YAML files + overrides) into a fully resolved, validated, and defaulted runtime
+// representation (map of CRDEntry). It is called once at Orkestra startup.
+//
+// The runtime Katalog is used for:
+//   - Reconciliation (controller loops, worker counts, resync periods)
+//   - Admission webhooks (validation, mutation, deletion protection)
+//   - Child resource materialisation (operatorBox onCreate/onReconcile)
+//   - Status field resolution (Layer 2 status)
+//   - Enrichment (owner, replicasets, pods, HPA)
+//
+// Processing steps (in order):
+//
+//  1. Extract merged spec, security, gateway, providers, and metadata from the merger.
+//
+//  2. Retrieve the list of enabled CRDs (the union of all declarations).
+//
+//  3. For each CRD entry:
+//
+//     - If a CRD file path is provided, populate APITypes from the actual CRD
+//     (group, version, plural, scope) – this overrides any inline apiTypes.
+//
+//     - Run enrichment (EnrichCRDEntry) to resolve kind-only built-in declarations
+//     (e.g., "Namespace" → group: "", version: "v1", plural: "namespaces").
+//
+//  4. Expand motif imports declared in operatorBox blocks (motif re-use across CRDs).
+//
+//  5. Initialize conversion and admission registries (for webhook generation).
+//
+//  6. Register validation, mutation, and conversion rules from each CRD entry.
+//
+//  7. Apply defaults (workers, max queue depth, resync, etc.) from the global config.
+//
+// Returns the final map of CRDEntry keyed by CRD name, ready for the reconciler and
+// webhook servers.
+//
+// Errors are returned for:
+//   - Missing or invalid CRD files
+//   - Unknown built-in kinds during enrichment
+//   - Partially specified apiTypes (e.g., kind+group but no version)
+//   - Motif import resolution failures
+//   - Default assignment errors
+//
+// Example:
+//
+//	runtimeCRDs, err := katalog.KomposeRuntimeKatalog(kfg, merger, "path/to/katalog")
+func (k *Katalog) KomposeRuntimeKatalog(
+	kfg *konfig.Konfig,
+	m *merger.Merger,
+	paths ...string,
+) (map[string]orktypes.CRDEntry, error) {
+
 	k.Spec = m.ToSpec()
 	k.Security = m.ToSecurity()
 	k.Gateway = m.ToGateway()

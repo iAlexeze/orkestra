@@ -91,6 +91,22 @@ Returns the name of the ConfigMap containing the Katalog definition.
 
 {{/*
 ─────────────────────────────────────────────────────────────────────────────
+GATEWAY HELPER FUNCTION
+─────────────────────────────────────────────────────────────────────────────
+{{/*
+Gateway image — respects tag override, falls back to appVersion.
+Returns the full container image URL for the Orkestra gateway.
+*/}}
+{{- define "orkestra.gatewayImage" -}}
+{{- if .Values.gateway.image.tag }}
+{{- printf "%s:%s" .Values.gateway.image.repository .Values.gateway.image.tag }}
+{{- else }}
+{{- printf "%s:%s" .Values.gateway.image.repository .Chart.AppVersion }}
+{{- end }}
+{{- end }}
+
+{{/*
+─────────────────────────────────────────────────────────────────────────────
 CONTROL CENTER HELPER FUNCTIONS
 ─────────────────────────────────────────────────────────────────────────────
 */}}
@@ -135,5 +151,5 @@ Control Center port.
 Returns the port number, with environment variable fallback.
 */}}
 {{- define "orkestra.ccPort" -}}
-{{- .Values.controlCenter.config.port | default 8090 }}
+{{- .Values.controlCenter.config.port | default 8081 }}
 {{- end }}

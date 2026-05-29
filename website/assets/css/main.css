@@ -97,7 +97,7 @@ html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
@@ -111,7 +111,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 main {
@@ -360,6 +360,8 @@ p:last-child { margin-bottom: 0; }
   align-items: center;
   gap: 0.5rem;
   margin-left: auto;
+  flex-shrink: 0;
+  min-width: 0;
 }
 
 .btn-github {
@@ -451,6 +453,12 @@ p:last-child { margin-bottom: 0; }
 
 .navbar-mobile-link:last-of-type {
   border-bottom: none;
+}
+
+.navbar-mobile-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 0.25rem 0;
 }
 
 .navbar-mobile-link:hover {
@@ -927,9 +935,10 @@ p:last-child { margin-bottom: 0; }
 .code-block-wrapper {
   background: var(--color-code-bg);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow: clip; /* clips visual overflow for border-radius without killing child scroll */
   box-shadow: var(--shadow-xl);
   border: 1px solid rgba(255,255,255,0.06);
+  min-width: 0; /* prevent grid blowout */
 }
 
 .code-block-header {
@@ -1280,7 +1289,20 @@ code:not(pre > code) {
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
-  padding: 0 0.5rem 0.75rem;
+  padding: 0 0.5rem;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 220ms ease, opacity 180ms ease;
+}
+html.no-transition .sidebar-section-pages,
+html.no-transition .sidebar-subsection-pages {
+  transition: none !important;
+}
+.sidebar-section.open .sidebar-section-pages {
+  max-height: 800px;
+  opacity: 1;
+  padding-bottom: 0.75rem;
 }
 
 .sidebar-link {
@@ -1309,6 +1331,143 @@ code:not(pre > code) {
 [data-theme="dark"] .sidebar-link.active {
   color: #A78BFA;
   background: rgba(167, 139, 250, 0.1);
+}
+
+/* ── Sidebar subsections (second-level collapsible) ── */
+.sidebar-subsection {
+  list-style: none;
+}
+
+.sidebar-subsection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-subsection-header .sidebar-link {
+  flex: 1;
+}
+
+.sidebar-subsection-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  border-radius: 3px;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.sidebar-subsection-toggle:hover {
+  color: var(--color-text);
+  background: var(--color-hover);
+}
+
+.sidebar-subsection-toggle .chevron {
+  transition: transform 0.2s ease;
+}
+
+.sidebar-subsection.open .sidebar-subsection-toggle .chevron {
+  transform: rotate(180deg);
+}
+
+.sidebar-subsection-pages {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0.25rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 180ms ease, opacity 150ms ease;
+}
+.sidebar-subsection.open .sidebar-subsection-pages {
+  max-height: 600px;
+  opacity: 1;
+}
+
+.sidebar-link--nested {
+  padding-left: 1.25rem;
+  font-size: 0.8rem;
+}
+
+/* Depth-4: sub-subsections (e.g. schema → katalog → pages) */
+.sidebar-subsubsection {
+  list-style: none;
+}
+
+.sidebar-subsubsection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-subsubsection-header .sidebar-link {
+  flex: 1;
+}
+
+.sidebar-subsubsection-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  border-radius: 3px;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.sidebar-subsubsection-toggle:hover {
+  color: var(--color-text);
+  background: var(--color-hover);
+}
+
+.sidebar-subsubsection-toggle .chevron {
+  transition: transform 0.2s ease;
+}
+
+.sidebar-subsubsection.open .sidebar-subsubsection-toggle .chevron {
+  transform: rotate(180deg);
+}
+
+.sidebar-subsubsection-pages {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0.25rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 180ms ease, opacity 150ms ease;
+}
+
+.sidebar-subsubsection.open .sidebar-subsubsection-pages {
+  max-height: 800px;
+  opacity: 1;
+}
+
+.sidebar-link--deep {
+  padding-left: 2.25rem;
+  font-size: 0.775rem;
+}
+
+html.no-transition .sidebar-subsubsection-pages {
+  transition: none !important;
 }
 
 /* Overlay for mobile */
@@ -2326,6 +2485,12 @@ code:not(pre > code) {
     height: var(--navbar-height);
   }
 
+  /* Hide Control Center and GitHub from navbar on mobile — in mobile menu instead */
+  .btn-controlcenter,
+  .btn-github {
+    display: none;
+  }
+
   /* Docs layout: sidebar becomes drawer */
   .docs-layout {
     grid-template-columns: 1fr;
@@ -3252,6 +3417,7 @@ code:not(pre > code) {
   padding: 1rem 1rem 0.25rem;
 }
 
+
 /* ── YAML collapsible show-more ───────────────────────────── */
 .yaml-expand-section {
   margin-top: 0;
@@ -3577,7 +3743,10 @@ code:not(pre > code) {
   .multi-crd-inner {
     grid-template-columns: 1fr;
   }
-  .multi-crd-code { display: none; }
+  .multi-crd-code {
+    width: 100%;
+    min-width: 0;
+  }
   .cc-content {
     grid-template-columns: 1fr;
   }
@@ -3595,5 +3764,70 @@ code:not(pre > code) {
   }
   .blog-single-footer {
     flex-direction: column;
+  }
+}
+
+/* ── Section padding reduction on mobile ─────────────────── */
+@media (max-width: 768px) {
+  .features,
+  .how-it-works,
+  .controlcenter-section,
+  .multi-crd-section {
+    padding: 3rem 0;
+  }
+
+  .cta-banner {
+    padding: 3rem 0;
+  }
+
+  .section-header {
+    margin-bottom: 2rem;
+  }
+
+  .cc-header {
+    margin-bottom: 2rem;
+  }
+
+  .cc-features {
+    gap: 1.25rem;
+  }
+
+  .check-list {
+    gap: 0.75rem;
+  }
+
+  .multi-crd-code .code-block {
+    font-size: 0.8125rem;
+    padding: 1rem;
+    margin: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .features,
+  .how-it-works,
+  .controlcenter-section,
+  .multi-crd-section {
+    padding: 2.5rem 0;
+  }
+
+  .cta-banner {
+    padding: 2.5rem 0;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+  }
+
+  .section-inner {
+    padding: 0 1rem;
+  }
+
+  .feature-card {
+    padding: 1.25rem;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
   }
 }

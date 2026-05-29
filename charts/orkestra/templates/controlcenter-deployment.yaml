@@ -59,7 +59,7 @@ spec:
             - -u
             - {{ $urlString | quote }}
             - -p
-            - {{ .Values.controlCenter.config.port | default 8090 | quote }}
+            - {{ .Values.controlCenter.config.port | default 8081 | quote }}
             - --log-level
             - {{ .Values.controlCenter.config.logLevel | default "info" | quote }}
             - --refresh
@@ -79,12 +79,12 @@ spec:
 
           ports:
             - name: http
-              containerPort: {{ .Values.controlCenter.config.port | default 8090 }}
+              containerPort: {{ .Values.controlCenter.config.port | default 8081 }}
               protocol: TCP
 
           livenessProbe:
             httpGet:
-              path: /controlcenter/health
+              path: /health
               port: http
             initialDelaySeconds: {{ .Values.controlCenter.livenessProbe.initialDelaySeconds | default 10 }}
             periodSeconds: {{ .Values.controlCenter.livenessProbe.periodSeconds | default 10 }}
@@ -93,7 +93,7 @@ spec:
 
           readinessProbe:
             httpGet:
-              path: /controlcenter/ready
+              path: /ready
               port: http
             initialDelaySeconds: {{ .Values.controlCenter.readinessProbe.initialDelaySeconds | default 5 }}
             periodSeconds: {{ .Values.controlCenter.readinessProbe.periodSeconds | default 5 }}

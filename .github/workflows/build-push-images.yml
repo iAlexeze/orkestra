@@ -19,19 +19,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v6
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.0.0
+        uses: docker/setup-buildx-action@v4.1.0
         with:
           driver-opts: |
             image=moby/buildkit:buildx-stable-1
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -39,7 +39,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ inputs.repository }}
           tags: |
@@ -50,7 +50,7 @@ jobs:
 
       - name: Cache compiled Linux binaries
         id: cache-binaries
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ork-amd64
@@ -72,7 +72,7 @@ jobs:
           done
 
       - name: Build and push runtime image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
@@ -97,19 +97,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v6
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.0.0
+        uses: docker/setup-buildx-action@v4.1.0
         with:
           driver-opts: |
             image=moby/buildkit:buildx-stable-1
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -117,7 +117,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ inputs.repository }}-gateway
           tags: |
@@ -128,11 +128,11 @@ jobs:
 
       - name: Cache compiled Linux binaries
         id: cache-binaries
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
-            ork-gateway-amd64
-            ork-gateway-arm64
+            ork-amd64
+            ork-arm64
           key: linux-binaries-gateway-${{ hashFiles('go.sum', '**/*.go', 'cmd/**/*.go') }}
 
       - name: Build Linux binaries (if cache miss)
@@ -150,7 +150,7 @@ jobs:
           done
 
       - name: Build and push gateway image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
@@ -175,19 +175,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v6
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.0.0
+        uses: docker/setup-buildx-action@v4.1.0
         with:
           driver-opts: |
             image=moby/buildkit:buildx-stable-1
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -195,7 +195,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ inputs.repository }}-cc
           tags: |
@@ -206,7 +206,7 @@ jobs:
 
       - name: Cache compiled Linux binaries
         id: cache-binaries
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             cmd/controlcenter/orkcc-amd64
@@ -228,7 +228,7 @@ jobs:
           done
 
       - name: Build and push control center image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: cmd/controlcenter
           file: cmd/controlcenter/Dockerfile

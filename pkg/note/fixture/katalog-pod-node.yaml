@@ -14,11 +14,10 @@ metadata:
 spec:
   crds:
     pod-node-probe:
-      apiTypes:
-        group: note.orkestra.io
-        version: v1alpha1
-        kind: NoteProbe
-        plural: noteprobes
+      crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
+
       workers: 1
       resync: 30s
 

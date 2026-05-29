@@ -11,6 +11,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
+	"github.com/orkspace/orkestra/pkg/profiles"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
@@ -147,18 +148,20 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient, owner domain
 // Resolve builds a ResolvedStatefulSetSpec from a StatefulSetTemplateSource.
 func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedStatefulSetSpec {
 	spec := ResolvedStatefulSetSpec{
-		Name:        src.Name,
-		Namespace:   src.Namespace,
-		Image:       src.Image,
-		ServiceName: src.ServiceName,
-		Replicas:    common.ParseReplicas(src.Replicas),
-		Labels:      make(map[string]string),
-		Annotations: make(map[string]string),
-		Env:         src.Env,
-		EnvFrom:     src.EnvFrom,
-		Resources:   common.ResolveResources(src.Resources),
-		Probes:      src.Probes,
-		Sleep:       src.Sleep,
+		Name:            src.Name,
+		Namespace:       src.Namespace,
+		Image:           src.Image,
+		ServiceName:     src.ServiceName,
+		Replicas:        common.ParseReplicas(src.Replicas),
+		Labels:          make(map[string]string),
+		Annotations:     make(map[string]string),
+		Env:             src.Env,
+		EnvFrom:         src.EnvFrom,
+		Resources:       common.ResolveResources(src.Resources),
+		Probes:          src.Probes,
+		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
+		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Sleep:           src.Sleep,
 	}
 
 	for _, vct := range src.VolumeClaimTemplates {
@@ -199,8 +202,23 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedS
 		spec.Annotations[a.Key] = a.Value
 	}
 
-	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.ManagedKey] = labels.ManagedValue
 	spec.Labels[labels.OrkestraOwner] = ownerName
+
+	if src.RollingUpdate != nil && src.RollingUpdate.Profile != "" {
+		expansion, err := profiles.ApplyRollingUpdateProfile(src.RollingUpdate.Profile)
+		if err != nil {
+			logger.Warn().Str("profile", src.RollingUpdate.Profile).Err(err).Msg("unknown rolling update profile — skipping")
+		} else {
+			spec.RollingUpdate = &orktypes.RollingUpdateBehavior{
+				MaxSurge:       expansion.MaxSurge,
+				MaxUnavailable: expansion.MaxUnavailable,
+			}
+		}
+	} else if src.RollingUpdate != nil {
+		r := *src.RollingUpdate
+		spec.RollingUpdate = &r
+	}
 
 	return spec
 }
@@ -335,12 +353,18 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 				WhenDeleted: appsv1.PersistentVolumeClaimRetentionPolicyType(spec.VolumeClaimRetentionPolicy.WhenDeleted),
 				WhenScaled:  appsv1.PersistentVolumeClaimRetentionPolicyType(spec.VolumeClaimRetentionPolicy.WhenScaled),
 			},
-			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
-				Type: appsv1.OnDeleteStatefulSetStrategyType,
-			},
+			UpdateStrategy: func() appsv1.StatefulSetUpdateStrategy {
+				if spec.RollingUpdate != nil {
+					return common.BuildStatefulSetUpdateStrategy(spec.RollingUpdate)
+				}
+				return appsv1.StatefulSetUpdateStrategy{Type: appsv1.OnDeleteStatefulSetStrategyType}
+			}(),
 			PodManagementPolicy: appsv1.ParallelPodManagement,
 		},
 	}
+
+	// Security
+	common.ApplySecurityContext(&sts.Spec.Template.Spec.Containers[0], &sts.Spec.Template.Spec, spec.SecurityContext, spec.PodSecurity)
 
 	for _, vct := range spec.VolumeClaimTemplates {
 		storageQty := resource.MustParse(vct.StorageSize)

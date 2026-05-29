@@ -1,7 +1,7 @@
 ---
 title: "Declarative Operators: A New Model for Kubernetes Extensibility"
-weight: 50
-description: "*Orkestra Project — March 2026*"
+date: 2026-05-25
+weight: 1
 ---
 
 *Orkestra Project — March 2026*
@@ -104,7 +104,8 @@ receives its own isolated operator stack:
 - **Worker pool** — dedicated goroutines; no other CRD can consume them
 - **Reconciler** — interprets this CRD's templates and hooks only
 - **Health endpoint** — `/katalog/{crd}/health` per CRD
-- **Metrics** — five Prometheus metrics, all labeled by GVK
+- **Metrics** — robust Prometheus metrics, all labeled by GVK
+- **Control Center** — Real-time visibility dashboard by default
 - **Failure domain** — a panic in one reconciler is recovered; others continue
 
 These components are hosted by a shared runtime that provides the
@@ -132,14 +133,12 @@ metadata:
   name: website-operator
 spec:
   crds:
-    - name: website
+    website:
       workers: 3
       resync: 30s
-      apiTypes:
-        group: demo.orkestra.io
-        version: v1alpha1
-        kind: Website
-        plural: websites
+      crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
       operatorBox:
         default: true
         onCreate:
@@ -153,7 +152,7 @@ spec:
               reconcile: true
 ```
 
-This is a complete operator declaration. `ork run --file katalog.yaml`
+This is a complete operator declaration. `ork run`
 starts the runtime. Every `Website` CR triggers a reconcile that creates
 and drift-corrects a Deployment and Service. Deletion cascades via owner
 references. Finalizers ensure cleanup completes before CR removal.
@@ -166,9 +165,10 @@ without additional configuration.
 
 Orkestra operates on unstructured CRDs by default — the same
 `*unstructured.Unstructured` representation Kubernetes uses internally.
-The API types (`apiTypes.location`) field is optional, needed only when
-Go hooks require concrete type assertions. This distinction matters for
-three reasons.
+`crdFile` points to the CRD you maintain; Orkestra reads the group, version,
+kind, and plural directly from it at startup. Typed Go hooks that require
+concrete type assertions can declare `apiTypes` explicitly, but the common
+case needs none. This distinction matters for three reasons.
 
 First, it eliminates the code generation step for the common case. The
 cluster already holds the CRD schema. Orkestra reads it at startup via the
@@ -206,22 +206,41 @@ file addition.
 
 ### 3.4 Dependency Ordering
 
-CRDs can declare dependencies:
+CRDs can declare dependencies with an explicit condition:
 
 ```yaml
 crds:
-  - name: project
-    dependsOn: []
-  - name: namespace
-    dependsOn: [project]
-  - name: application
-    dependsOn: [project, namespace]
+  project:
+    workers: 3
+
+  namespace:
+    dependsOn:
+      project:
+        condition: started
+
+  application:
+    dependsOn:
+      project:
+        condition: healthy
+      namespace:
+        condition: healthy
 ```
 
+Two conditions are available. `started` gates startup — the upstream CRD's
+workers have started and it is processing events, but it may not yet have
+reconciled any CRs successfully. `healthy` is stricter: the upstream must
+have completed at least one successful reconcile. Until that threshold is
+crossed, the Control Center shows a dependency issue and the dependent CRD's
+workers do not start.
+
+`started` is the right choice when the downstream operator can tolerate
+upstream CRs being in an initial state. `healthy` is the right choice when
+the downstream operator reads from the upstream's status — if the upstream
+has not reconciled, there is nothing to read.
+
 Orkestra computes the topological order from the dependency graph and starts
-CRDs in that order. Each CRD waits for its dependencies to signal readiness
-before its workers start. Missing CRDs — declared but not yet installed in
-the cluster — are retried in the background without blocking healthy CRDs.
+CRDs in that order. Missing CRDs — declared but not yet installed in the
+cluster — are retried in the background without blocking healthy CRDs.
 
 This capability is structurally impossible with separate operators. Separate
 processes have no coordination mechanism. Orkestra provides it as a declared
@@ -252,13 +271,12 @@ imports:
       chart: platform-crds
       version: 2.1.0
   registry:
-    - katalog:
-        application:
-          version: v1.4.0
+    - url: oci://ghcr.io/orkspace/registry/application:v1.4.0
+      oci: true
 spec:
   crds:
     # Inline override — wins on name conflict with any source
-    - name: application
+    application:
       workers: 8
 ```
 
@@ -275,7 +293,7 @@ compose and selectively override.
 
 Every CRD managed by Orkestra automatically exposes:
 
-```
+```text
 GET /katalog                   All CRDs — health, dependency graph, stats
 GET /katalog/{crd}             Single CRD — config, reconcile stats
 GET /katalog/{crd}/health      200 healthy / 503 degraded
@@ -284,7 +302,7 @@ GET /metrics                   Prometheus metrics for all CRDs
 
 Five metrics, all per-CRD, all labeled by full GVK:
 
-```
+```text
 controller_reconcile_total{crd, result}
 controller_reconcile_duration_seconds{crd}
 controller_queue_depth{crd}
@@ -371,7 +389,7 @@ Website CRD:
 }
 ```
 
-```
+```text
 orkestra_conversion_requests_total{kind="Website",from="v1alpha1",to="v1",result="success"} 14
 orkestra_conversion_requests_total{kind="Website",from="v1",to="v1alpha1",result="success"} 17
 orkestra_conversion_duration_seconds_sum{from="v1alpha1",to="v1"} 0.007

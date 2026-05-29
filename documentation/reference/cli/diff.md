@@ -2,7 +2,7 @@
 
 Show a unified diff between two files.
 
-```
+```bash
 ork diff <file1> <file2>
 ```
 
@@ -31,13 +31,13 @@ This is useful for reviewing changes in:
 
 Compare two files:
 
-```
+```bash
 ork diff old.yaml new.yaml
 ```
 
 Verbose mode (includes matching lines):
 
-```
+```bash
 ork diff old.yaml new.yaml --verbose
 ```
 

@@ -21,14 +21,17 @@ import (
 var planCmd = &cobra.Command{
 	Use:   "plan",
 	Short: "Show what would change if this Katalog were applied",
-	Long: `Compares a local katalog.yaml against the currently deployed Katalog.
+	Long: `Compares a local katalog.yaml against a deployed Katalog.
 
-By default, reads the deployed Katalog from its ConfigMap in the cluster.
-With --bundle, reads the ConfigMap from a local bundle file instead — no cluster needed.
+A source for the deployed Katalog must be given explicitly:
 
-  ork plan -f katalog.yaml
+  --bundle  read the deployed Katalog from a local bundle YAML (no cluster needed)
+  --cm      read the deployed Katalog from a cluster ConfigMap (requires cluster access)
+
+Examples:
+  ork plan --bundle bundle.yaml
   ork plan -f katalog.yaml --bundle bundle.yaml
-  ork plan -f katalog.yaml --cm my-katalog --namespace my-ns`,
+  ork plan -f katalog.yaml --cm orkestra-katalog --namespace orkestra-system`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		file, _ := cmd.Flags().GetString("file")
 		if file == "" {
@@ -45,14 +48,19 @@ With --bundle, reads the ConfigMap from a local bundle file instead — no clust
 		if bundle != "" {
 			return runPlanFromBundle(file, bundle)
 		}
+		if cm == "" {
+			return fmt.Errorf(
+				"a source is required: use --bundle <file> to compare against a local bundle " +
+					"(no cluster needed), or --cm <name> to read from a cluster ConfigMap\n\n" +
+					"  ork plan --bundle bundle.yaml\n" +
+					"  ork plan --cm orkestra-katalog --namespace orkestra-system",
+			)
+		}
 		return runPlan(cmd.Context(), file, cm, ns)
 	},
 }
 
 func runPlan(ctx context.Context, localPath, cmName, namespace string) error {
-	if cmName == "" {
-		cmName = "orkestra-katalog"
-	}
 	if namespace == "" {
 		namespace = "orkestra-system"
 	}
@@ -238,7 +246,7 @@ func init() {
 
 	planCmd.Flags().StringP("file", "f", "", "Path to local katalog.yaml")
 	planCmd.Flags().StringP("bundle", "b", "", "Path to a bundle YAML file — reads the ConfigMap from it instead of the cluster")
-	planCmd.Flags().String("cm", "orkestra-katalog", "ConfigMap name or path to a local ConfigMap YAML file holding the deployed Katalog")
+	planCmd.Flags().String("cm", "", "ConfigMap name (or path to a local ConfigMap YAML) holding the deployed Katalog — requires cluster access")
 	planCmd.Flags().StringP("namespace", "n", "orkestra-system", "Namespace of the deployed Katalog ConfigMap")
 
 	// Shadow global flags

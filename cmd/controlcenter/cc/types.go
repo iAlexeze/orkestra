@@ -92,6 +92,7 @@ type KatalogResponse struct {
 	Healthy            bool                          `json:"healthy"`
 	Status             int                           `json:"status"`
 	OrkReady           bool                          `json:"OrkReady"`
+	IsKonductor        bool                          `json:"isKonductor"`
 	DeletionProtection bool                          `json:"deletionProtection"`
 	CRDs               []CRDSummary                  `json:"crds"`
 	Name               string                        `json:"name,omitempty"`
@@ -135,7 +136,7 @@ type GatewayCRDStats struct {
 }
 
 // ProjectInfoSummary is the CC-side view of one app in KatalogResponse.Projects.
-// Fields mirror orktypes.ProjectInfo — add here when the runtime starts sending more.
+// Fields mirror interface{} — add here when the runtime starts sending more.
 type ProjectInfoSummary struct {
 	Name          string `json:"name"`
 	Namespace     string `json:"namespace"`
@@ -214,6 +215,7 @@ type CRDSummary struct {
 type CRDHealth struct {
 	Name                     string                      `json:"name"`
 	State                    string                      `json:"state"`
+	IsKonductor              bool                        `json:"isKonductor"`
 	Healthy                  bool                        `json:"healthy"`
 	Started                  bool                        `json:"started"`
 	Pending                  bool                        `json:"pending"`
@@ -275,6 +277,7 @@ type CRDInfo struct {
 	Namespaced               bool                      `json:"namespaced"`
 	Namespace                string                    `json:"namespace"`
 	DependsOn                []string                  `json:"dependsOn"`
+	IsKonductor              bool                      `json:"isKonductor"`
 	Workers                  int                       `json:"workers"`
 	WorkersActive            int32                     `json:"workersActive"`
 	WorkersIdle              int32                     `json:"workersIdle"`

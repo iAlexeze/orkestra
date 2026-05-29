@@ -85,5 +85,3 @@ schedule: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.
 | `@weekly` | `0 0 * * 0` | Once a week, Sunday at midnight |
 | `@daily` / `@midnight` | `0 0 * * *` | Once a day at midnight |
 | `@hourly` | `0 * * * *` | Once an hour at minute 0 |
-
-See also: [pkg/note/docs/05-cron.md](../../pkg/note/docs/05-cron.md), [conversion sentinel](../../pkg/webhook/docs/05-conversion-notes.md).

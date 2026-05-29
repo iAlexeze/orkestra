@@ -175,6 +175,12 @@ func (k *Katalog) setGroupVersionKind() error {
 			return fmt.Errorf("CRD '%s': missing required fields: apiTypes.plural", name)
 		}
 
+		// Handle description
+		// Here, GroupVersionKind is not empty
+		if crd.Description == "" {
+			crd.Description = fmt.Sprintf("%s CRD, GVK: %s", crd.APITypes.Kind, crd.GroupVersionKind.String())
+		}
+
 		k.enabledCRDs[name] = crd
 	}
 	return nil
@@ -216,11 +222,6 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		if crd.APITypes.Plural == "" {
 			logger.Debug().Msgf("Plural name for %s is empty. Setting to '%ss'", crd.APITypes.Kind, crd.Name)
 			crd.APITypes.Plural = fmt.Sprintf("%ss", strings.ToLower(crd.Name))
-		}
-
-		// Handle description
-		if crd.Description == "" {
-			crd.Description = fmt.Sprintf("%s CRD, GVK: %s", crd.APITypes.Kind, crd.GroupVersionKind.String())
 		}
 
 		// Handle finalizers

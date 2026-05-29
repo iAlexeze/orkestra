@@ -35,6 +35,7 @@ spec:
         rules:
           - field: spec.defaultReplicas
             default: 1
+            valueType: int
 
       operatorBox:
         onReconcile:
@@ -411,6 +412,7 @@ spec:
         rules:
           - field: spec.defaultReplicas
             default: 1
+            valueType: int
           - field: spec.notify
             default: "false"
 

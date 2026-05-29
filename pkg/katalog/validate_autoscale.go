@@ -35,6 +35,7 @@ package katalog
 import (
 	"fmt"
 
+	"github.com/orkspace/orkestra/pkg/profiles"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
@@ -67,7 +68,7 @@ func (k *Katalog) validateAutoscaleProfile() error {
 		}
 
 		// Rule 2: profile must be recognized
-		if !isValidAutoscaleProfile(profile) {
+		if !profiles.IsValidAutoscaleProfile(profile) {
 			return fmt.Errorf("unknown autoscale profile: %q", profile)
 		}
 
@@ -78,7 +79,7 @@ func (k *Katalog) validateAutoscaleProfile() error {
 			MaxQueueDepth: crd.Queue.MaxQueueDepth,
 			Resync:        crd.Resync,
 		}
-		expanded, err := ApplyAutoscalerProfile(profile, baseline)
+		expanded, err := profiles.ApplyAutoscalerProfile(profile, baseline)
 		if err != nil {
 			return fmt.Errorf("autoscale.profile %q expansion failed: %w", profile, err)
 		}
@@ -105,18 +106,4 @@ func autoscaleIsProfileOnly(spec *orktypes.AutoscaleSpec) bool {
 	}
 
 	return true
-}
-
-// isValidAutoscaleProfile returns true if the profile name is one of the supported presets.
-func isValidAutoscaleProfile(p string) bool {
-	switch p {
-	case string(AutoscaleBurst),
-		string(AutoscaleSteady),
-		string(AutoscaleBatch),
-		string(AutoscaleLatencySensitive),
-		string(AutoscaleCostOptimized):
-		return true
-	default:
-		return false
-	}
 }

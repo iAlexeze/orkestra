@@ -54,10 +54,10 @@ type Merger struct {
 	gateway *orktypes.GatewayConfig
 
 	// projects holds the merged projectInfo configuration of the final katalog
-	projects map[string]orktypes.ProjectInfo
+	projects map[string]interface{}
 
 	// projectInfo holds the merged projectInfo configuration of the final katalog
-	projectInfo *orktypes.ProjectInfo
+	projectInfo interface{}
 
 	// merged tracks whether Merge() has been called
 	merged bool
@@ -165,6 +165,19 @@ func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
 	}
 	if override.Queue.DegradeThreshold > 0 {
 		result.Queue.DegradeThreshold = override.Queue.DegradeThreshold
+	}
+
+	// ── Deletion Protection ───────────────────────────────────────────────
+	if override.DeletionProtection != nil {
+		if override.DeletionProtection.ProtectCRD != nil {
+			result.DeletionProtection.ProtectCRD = override.DeletionProtection.ProtectCRD
+		}
+		if override.DeletionProtection.ProtectCRs != nil {
+			result.DeletionProtection.ProtectCRs = override.DeletionProtection.ProtectCRs
+		}
+		if override.DeletionProtection.StrictMode != nil {
+			result.DeletionProtection.StrictMode = override.DeletionProtection.StrictMode
+		}
 	}
 
 	// ── Namespace ─────────────────────────────────────────────────────────
@@ -347,7 +360,7 @@ func (m *Merger) ToGateway() *orktypes.GatewayConfig {
 
 // ToProjectInfo returns merged project information of the merged result
 // This is used by KomposeRuntimeKatalog to populate Katalog.ProjectInfo.
-func (m *Merger) ToProjectInfo() *orktypes.ProjectInfo {
+func (m *Merger) ToProjectInfo() interface{} {
 	m.mustBeMerged()
 	return m.projectInfo
 }

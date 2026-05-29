@@ -48,7 +48,7 @@ Expected output:
 ## Step 2 — Start the operator
 
 ```bash
-ork run
+ork run       # add --dev if you don't have a cluster; Orkestra will create a kind cluster
 ```
 
 Orkestra reads `crdFile: ./crd.yaml`, applies the CRD and `cr.yaml` to the cluster, and starts the operator. You will see the health server start and the informer sync:
@@ -72,11 +72,10 @@ Deployment and Service being created.
 
 ## Step 4 — Open the Control Center
 
-In a third terminal:
+In a second terminal:
 
 ```bash
 ork control
-# username:password → orkestra
 # username:password → orkestra
 ```
 
@@ -165,7 +164,7 @@ kubectl get deployment hello-website
 Run the full lifecycle in one command — spins up a kind cluster, applies the CRD, starts the operator, applies the CR, asserts every expectation, then tears down:
 
 ```bash
-ork e2e -f e2e.yaml
+ork e2e
 ```
 
 This runs everything defined in [e2e.yaml](./e2e.yaml):

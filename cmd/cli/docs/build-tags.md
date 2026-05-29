@@ -8,7 +8,7 @@ Orkestra uses Go build tags to control which sub-commands are compiled into a bi
 |-----|-----------------|-------------|
 | *(none)* | `!runtime` files — all CLI commands, dev mode | `make ork` — local development |
 | `runtime` | `run.go` — the `ork run` sub-command | Runtime container image |
-| `gateway` | `gateway.go` — the `ork gateway` sub-command | Gateway container image |
+| `gateway` | `gateway.go` — the `ork gate` sub-command | Gateway container image |
 | `runtime,gateway` | both sub-commands | Combined image (v1 default) |
 
 ## File naming convention
@@ -20,7 +20,7 @@ Each build-tag variant of a file follows this pattern:
 <command>_dev.go    //go:build !runtime     local development
 ```
 
-`ork gateway` has no `_dev.go` counterpart. The gateway only runs inside a Kubernetes pod — it exits immediately if invoked outside one. There is nothing useful to dev-test locally.
+`ork gate` has no `_dev.go` counterpart. The gateway only runs inside a Kubernetes pod — it exits immediately if invoked outside one. There is nothing useful to dev-test locally.
 
 ## Building
 
@@ -31,10 +31,10 @@ go build ./cmd/ork
 # Runtime image only — ork run
 go build -tags runtime ./cmd/ork
 
-# Gateway image only — ork gateway
+# Gateway image only — ork gate
 go build -tags gateway ./cmd/ork
 
-# Combined image — ork run + ork gateway (v1 production)
+# Combined image — ork run + ork gate (v1 production)
 go build -tags "runtime gateway" ./cmd/ork
 ```
 
@@ -62,7 +62,7 @@ All CLI commands that are useful locally (validate, generate, deploy, doctor, si
 
 The production binary (`-tags "runtime gateway"`) contains only:
 - `ork run` — the reconcile loop
-- `ork gateway` — TLS + webhooks
+- `ork gate` — TLS + webhooks
 
 Everything else (`ork generate`, `ork doctor`, `ork validate`, etc.) is for the developer and is not shipped in the container image.
 

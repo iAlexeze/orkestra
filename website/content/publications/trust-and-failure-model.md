@@ -1,121 +1,99 @@
 ---
 title: "Trust and Failure Model"
-weight: 50
-description: "This document describes exactly what happens when Orkestra fails, degrades, or is deliberately stopped. It covers every ..."
+date: 2026-05-25
+weight: 2
 ---
 
-This document describes exactly what happens when Orkestra fails, degrades, or is deliberately stopped. It covers every failure mode — process crash, panic, leader loss, API server disconnect, node failure, graceful shutdown — and what each means for the CRs Orkestra manages.
-
-The answer is strong. The failure model is designed to never corrupt CR state, never orphan child resources, and never block cluster operations.
+Trust in a distributed system is not a feature you add — it is a property that either emerges from the design or does not. Orkestra's approach is to make trustworthy behavior the default at every layer, and to ensure those layers compound rather than exist independently. This is a description of how that works.
 
 ---
 
 ## The foundational guarantee
 
-Orkestra's failure model rests on a single foundational guarantee:
+Every Orkestra reconciler is level-triggered. It does not replay a log of events — it reads current desired state and drives toward it. This is the same model Kubernetes uses for its own controllers, and it carries the same property: any operation that is interrupted half-way through leaves the cluster in a partial state, not a corrupted one. The next reconcile corrects it.
 
-**Any operation that Orkestra does not complete will be completed on the next reconcile.**
-
-Kubernetes provides the infrastructure for this guarantee: CRs are stored in etcd, watch events are delivered reliably, and the informer pattern ensures no events are missed across restarts.
+This guarantee is not contingent on clean shutdowns or graceful restarts. A process crash, a node failure, a SIGKILL — they all produce the same outcome. The next reconciler that runs will see current state and close the gap.
 
 ---
 
-## Leader election (konductor election)
+## Two processes, two trust domains
 
-Orkestra uses Kubernetes leader election — the same mechanism used by `kube-controller-manager` — to ensure that only one Orkestra instance actively reconciles at any time.
+Orkestra deploys as two binaries: the Runtime and the Gateway. They have separate Kubernetes ServiceAccounts, separate ClusterRoles, and separate deployments. Neither process carries the permissions of the other.
 
-### What followers do while not leading
+The Runtime reconciles custom resources. It reads CRs, applies templates, manages the resources declared in `onCreate` and `onReconcile` blocks, and emits events. It has no permissions to manage webhook configurations or TLS certificates.
 
-Every Orkestra instance — leader and followers — runs its informers and
-populates its local caches continuously. When a follower wins the lease,
-it has a warm cache and starts reconciling in seconds, not minutes.
+The Gateway serves admission webhooks — validation, mutation, and version conversion — and manages TLS automatically. It has no permissions to reconcile CRs or manage the resources your operator controls.
 
-### Failover timeline
+This split is structural, not policy. The RBAC that `ork generate bundle` produces is derived directly from what your Katalog declares. If your operator creates Deployments and Services, the Runtime gets exactly those permissions. The Gateway gets permissions for webhook configurations and certificate secrets, and nothing else. No wildcards. No cluster-wide write access unless the Katalog explicitly declares resources that require it.
 
-```
-t=0:  Leader pod crashes (OOM, node failure, SIGKILL)
-t=0:  Lease stops being renewed
-t=15: Lease expires (leaseDuration)
-t=15: Follower acquires lease immediately (it was waiting)
-t=15: Follower workers start dequeuing
-t=16: First reconcile completes in the new leader
-```
-
-Worst-case failover time: **leaseDuration** (default 15 seconds).
+The result is that a compromise of either process has a bounded blast radius. The Runtime cannot touch webhook infrastructure. The Gateway cannot touch your CRs or their child resources.
 
 ---
 
-## Panic recovery (safeReconcile)
+## The production binary is not the development binary
 
-Every reconcile call is wrapped in `safeReconcile`:
+`ork` in development includes every command: `init`, `generate`, `validate`, `template`, `diff`, `upgrade`, `controlcenter`, and `run`. The production runtime is compiled with a build tag that removes everything except `run` and `version`. This is a compile-time exclusion — no configuration can re-enable it.
 
-```go
-func safeReconcile(ctx context.Context, fn func(ctx context.Context, key string) error, key string) (err error) {
-    defer func() {
-        if r := recover(); r != nil {
-            err = fmt.Errorf("reconciler panic recovered: %v\n%s", r, debug.Stack())
-        }
-    }()
-    return fn(ctx, key)
-}
-```
+An attacker who reaches the container cannot use `ork generate` to modify cluster state, cannot use `ork init` to write arbitrary files, and cannot trigger any code path that exists only for local development. The runtime binary is a smaller, narrower artifact than the full CLI: fewer dependencies, fewer entry points, fewer things that can go wrong.
 
-### What happens when a reconciler panics
-
-1. The panic is caught by the deferred recover
-2. The stack trace is logged at ERROR level with the full goroutine stack
-3. A Warning Kubernetes event is emitted on the CR that caused the panic
-4. The error is returned to the workqueue
-5. The workqueue requeues the item with exponential backoff
-6. **Other CRDs are completely unaffected** — each CRD has its own worker pool
+This is a narrow surface by construction, not by configuration.
 
 ---
 
-## Graceful shutdown
+## Isolation within the runtime
 
-When Orkestra receives SIGTERM (standard Kubernetes pod termination):
+Each CRD in a Katalog runs inside its own **OperatorBox** — an isolated runtime cell that owns everything needed to reconcile that CRD independently. Its own informer. Its own event queue. Its own worker pool. Its own health state. Its own reconciler instance. Nothing is shared with any other CRD.
 
-```
-SIGTERM received
-  │
-  ▼
-Context cancelled — propagates to all components
-  │
-  ▼
-Workers stop accepting new queue items (queue.ShutDown())
-  │  In-flight reconciles are allowed to complete
-  │
-  ▼
-Workers exit when current reconcile completes
-  │
-  ▼
-Informers stop watching
-  │
-  ▼
-HTTPS server drains open connections (30s timeout)
-  │
-  ▼
-Process exits 0
-```
+This is the same idea as containerization, applied inside a single binary. A CRD goes into an OperatorBox and comes out as an operator: self-contained, with its own resource scope and its own lifecycle. Thirteen operatorBoxes can run simultaneously in one process. They do not know each other exists.
+
+The consequences are structural, not just operational. Queue pressure in one operatorBox does not affect reconcile latency in another. A panic in one reconciler — a nil pointer, an index out of range, any unrecovered Go panic — is caught, logged with the full stack trace, and requeued with backoff. The affected operatorBox retries. Every other operatorBox continues uninterrupted.
+
+CRDs that need to observe each other's state do so through an explicit declaration — `cross:` in the operatorBox configuration — that names the source CRD, the CR selector, and the field to read. The read is in-memory, zero API calls for same-binary operatorBoxes. Startup sequencing works the same way: a `dependsOn` declaration tells Orkestra to hold this operatorBox's workers until another has reconciled successfully at least once.
+
+Communication is always opt-in and always visible in the Katalog. What is not declared does not happen.
 
 ---
 
-## Summary: what can go wrong and what Orkestra does
+## Leader election and failover
 
-| Failure | Effect | Recovery |
-|---|---|---|
-| Reconciler panic | CR left in partial state | Requeued with backoff, corrected on next reconcile |
-| Process crash | Reconciliation paused for up to 15s | Follower acquires lease, resumes immediately |
-| Node failure | Reconciliation paused for up to 15s | Follower on healthy node acquires lease |
-| API server disconnect | Reconcile writes fail, queued for retry | Automatic reconnection, retry on restore |
-| Graceful shutdown | In-flight reconcile completes, then stops | New instance picks up pending events |
-| Admission webhook unreachable | Objects stored without synchronous validation | Reconcile-time validation corrects violations |
-| Mutation error | Object stored without defaults | Reconcile-time mutation applies defaults |
-| Leader lease expired (no follower) | Reconciliation paused until a leader is elected | New instance or connectivity restore |
-| CRD degraded | Reconciliation continues, health API shows degraded | Recovers when a reconcile succeeds |
+Exactly one Orkestra instance actively reconciles at any time. Leadership is held via a Kubernetes Lease object — the same mechanism `kube-controller-manager` uses. While one instance leads, all other instances run their informers and maintain warm caches. They are not idle.
 
+When the leader crashes or its node fails, the Lease expires after the configured lease duration. A follower acquires the lease immediately — it already has a warm cache and a queue populated with pending events. Reconciliation resumes within seconds, not minutes.
+
+During that window, CRs are not modified or deleted. They wait in etcd, unchanged, until the new leader processes them.
 
 ---
 
-## Related Documentation
-- [Orkestra Shutdown](../reference/shutdown.md)
+## How the layers compound
+
+None of these properties work in isolation — they build on each other.
+
+The level-triggered reconciler assumes it will be interrupted. The panic recovery assumes individual reconciles will fail. The isolated worker pools assume one CRD's failure will happen. The isolated workqueue assumes one CRD's event rate will saturate its capacity. The leader election assumes the entire process will crash. The production binary assumes someone might try to misuse whatever surface is exposed.
+
+Each layer is designed for the one below it to fail, and to remain correct when it does. The result is a system where trustworthy behavior does not depend on everything going right — it depends on the guarantees holding even when things go wrong.
+
+---
+
+## Admission and the Gateway
+
+The Gateway adds a second enforcement point on top of the runtime guarantees. Every CR creation and update passes through the Gateway's admission webhooks before it reaches etcd. Validation rules catch schema violations at admission time. Mutation rules apply defaults synchronously. Conversion webhooks handle schema evolution across CRD versions.
+
+If the Gateway is unavailable during admission, the configured `failurePolicy` determines behavior. The default is `Ignore` — CRs are admitted and the Runtime validates them at reconcile time. This keeps the system non-blocking during a brief outage. If synchronous enforcement is required, `failurePolicy: Fail` ensures no CR reaches etcd without Gateway approval.
+
+Deletion protection is enforced by the Gateway. A CR with the protection label cannot be deleted without either removing the label first or using the explicit override mechanism. In strict mode, deletion attempts are rejected outright at admission — they never reach the Runtime.
+
+These admission-layer guarantees exist independently of the reconcile loop. They are enforced before the Runtime sees the resource.
+
+---
+
+## What this looks like in practice
+
+The Katalog is the source of truth for what permissions the runtime needs. `ork generate bundle` reads the Katalog and produces a YAML bundle — Namespace, ServiceAccounts, ClusterRoles, ClusterRoleBindings — containing exactly those permissions and nothing more. The bundle diffs cleanly in GitOps workflows. You see what is being added or removed before it reaches the cluster.
+
+`ork validate` reads the Katalog and shows you the security posture of each CRD before deployment: which permissions will be requested, which admission rules are active, and whether any configuration conflicts with the security model.
+
+The flow from Katalog to running operator is auditable at every step. No step requires cluster-admin access. No step produces broader permissions than the Katalog declares.
+
+---
+
+For a complete description of the security mechanisms — deletion protection, namespace restrictions, admission webhook configuration, RBAC generation, and binary provenance — see the [Security](/docs/security/) documentation.

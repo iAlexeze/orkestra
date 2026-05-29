@@ -1,12 +1,12 @@
 {{ define "main" }}
 
-<!-- ===== V1 LAUNCH BANNER ===== -->
+<!-- ===== EARLY ACCESS BANNER ===== -->
 <div class="dev-banner" role="alert">
   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-    <polyline points="20 6 9 17 4 12"/>
+    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
   </svg>
-  <span>Orkestra v1.0 is live — zero-code Kubernetes operators, production-ready.</span>
-  <a href="{{ .Site.Params.github }}/releases" target="_blank" rel="noopener noreferrer">See what's new →</a>
+  <span>Actively building. APIs may change. Feedback shapes what ships next.</span>
+  <a href="https://orkspace-group.slack.com/archives/C0B5RT8JUEA" target="_blank" rel="noopener noreferrer">Join Early Access Slack →</a>
 </div>
 
 <!-- ===== HERO ===== -->
@@ -47,7 +47,7 @@
           </button>
           <button class="code-tab" data-target="panel-go">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M1.811 10.231c-.047 0-.058-.023-.035-.059l.246-.315c.023-.035.081-.058.127-.058h4.172c.046 0 .058.035.035.07l-.199.303c-.023.036-.082.07-.117.07zM.047 11.306c-.047 0-.059-.023-.035-.058l.245-.316c.023-.035.082-.058.128-.058h5.328c.047 0 .07.035.058.07l-.093.28c-.012.047-.058.07-.105.07zm2.828 1.075c-.047 0-.059-.035-.035-.07l.163-.292c.023-.035.07-.07.117-.07h2.337c.047 0 .07.035.07.082l-.023.28c0 .047-.047.082-.082.082z"/></svg>
-            Kubebuilder (Go)
+            The Go
           </button>
           <div class="code-tab-badge badge-green">10 lines vs 400+</div>
         </div>
@@ -139,8 +139,8 @@
     </div>
     <div class="stat-divider" aria-hidden="true"></div>
     <div class="stat">
-      <span class="stat-value">~47 MB</span>
-      <span class="stat-label">15 CRDs, one process</span>
+      <span class="stat-value">~79 MB</span>
+      <span class="stat-label">10 CRDs, one runtime</span>
     </div>
     <div class="stat-divider" aria-hidden="true"></div>
     <div class="stat">
@@ -267,7 +267,7 @@
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
             Live Control Center
           </a>
-          <a href="/docs/concepts/" class="btn btn-secondary">
+          <a href="/docs/" class="btn btn-secondary">
             Read the docs
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </a>
@@ -303,8 +303,8 @@
             <strong>Resync interval</strong> — periodic reconciliation out of the box
           </li>
         </ul>
-        <a href="/docs/concepts/" class="btn btn-secondary">
-          Explore concepts
+        <a href="/docs/getting-started/learning-to-orkestrate/" class="btn btn-secondary">
+          Learning to Orkestrate
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </a>
       </div>
@@ -315,56 +315,25 @@
             <span class="code-block-dot red"></span>
             <span class="code-block-dot yellow"></span>
             <span class="code-block-dot green"></span>
-            <span class="code-block-filename">platform-operator/katalog.yaml</span>
+            <span class="code-block-filename">katalog.yaml</span>
           </div>
-          <pre class="code-block" id="multi-crd-pre"><code class="language-yaml"><span class="token-key">apiVersion:</span> <span class="token-string">orkestra.orkspace.io/v1</span>
-<span class="token-key">kind:</span> <span class="token-string">Katalog</span>
-<span class="token-key">metadata:</span>
-  <span class="token-key">name:</span> <span class="token-string">platform-operator</span>
-  <span class="token-key">version:</span> <span class="token-string">1.0.0</span>
-<span class="token-key">spec:</span>
+          <pre class="code-block"><code class="language-yaml"><span class="token-key">spec:</span>
   <span class="token-key">crds:</span>
-    <span class="token-comment"># ── CRD 1: no dependencies, starts first ──</span>
+
+    <span class="token-key">network:</span>
+      <span class="token-key">workers:</span> <span class="token-number">2</span>
+
     <span class="token-key">database:</span>
-      <span class="token-key">crdFile: my-database.yaml</span>
-      <span class="token-key">resync:</span> <span class="token-string">30s</span>
-      <span class="token-key">operatorBox:</span>
-        <span class="token-key">onCreate:</span>
-          <span class="token-key">deployments:</span>
-            <span class="token-key">- image:</span> <span class="token-string">"postgres:{{ "{{" }} .spec.version {{ "}}" }}"</span>
-              <span class="token-key">reconcile:</span> <span class="token-bool">true</span></code></pre>
-
-          <!-- Collapsible second CRD -->
-          <div class="yaml-expand-section" id="yaml-expand" hidden>
-            <pre class="code-block code-block-expand"><code class="language-yaml">
-    <span class="token-comment"># ── CRD 2: waits for database ─────────────</span>
-    <span class="token-key">application:</span>
-      <span class="token-key">crdFile: my-app.yaml</span>
+      <span class="token-key">workers:</span> <span class="token-number">5</span>
       <span class="token-key">dependsOn:</span>
-        <span class="token-key">- database</span>
-      <span class="token-key">operatorBox:</span>
-        <span class="token-key">status:</span>
-          <span class="token-key">fields:</span>
-            <span class="token-key">- path:</span> <span class="token-string">phase</span>
-              <span class="token-key">value:</span> <span class="token-string">"Running"</span>
-            <span class="token-key">- path:</span> <span class="token-string">endpoint</span>
-              <span class="token-key">value:</span> <span class="token-string">"{{ "{{" }} .metadata.name {{ "}}" }}-svc"</span>
-        <span class="token-key">onCreate:</span>
-          <span class="token-key">deployments:</span>
-            <span class="token-key">- image:</span> <span class="token-string">"{{ "{{" }} .spec.image {{ "}}" }}"</span>
-              <span class="token-key">replicas:</span> <span class="token-string">"{{ "{{" }} .spec.replicas {{ "}}" }}"</span>
-              <span class="token-key">reconcile:</span> <span class="token-bool">true</span>
-          <span class="token-key">services:</span>
-            <span class="token-key">- name:</span> <span class="token-string">"{{ "{{" }} .metadata.name {{ "}}" }}-svc"</span>
-              <span class="token-key">port:</span> <span class="token-string">"80"</span>
-              <span class="token-key">targetPort:</span> <span class="token-string">"{{ "{{" }} .spec.port {{ "}}" }}"</span>
-              <span class="token-key">reconcile:</span> <span class="token-bool">true</span></code></pre>
-          </div>
+        <span class="token-key">network:</span>
+          <span class="token-key">condition:</span> <span class="token-string">healthy</span>
 
-          <button class="yaml-show-more" id="yaml-toggle" aria-expanded="false" aria-controls="yaml-expand">
-            <svg class="yaml-toggle-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
-            <span>Show more — CRD 2: application with dependsOn</span>
-          </button>
+    <span class="token-key">application:</span>
+      <span class="token-key">workers:</span> <span class="token-number">3</span>
+      <span class="token-key">dependsOn:</span>
+        <span class="token-key">database:</span>
+          <span class="token-key">condition:</span> <span class="token-string">healthy</span></code></pre>
         </div>
       </div>
     </div>
@@ -387,7 +356,7 @@
         </div>
         <h3 class="feature-title">Declarative CRDs</h3>
         <p class="feature-desc">Define your API schema in YAML. Orkestra auto-generates the CRD, registers it with the API server, and starts reconciling immediately.</p>
-        <a href="/docs/concepts/" class="feature-link">Learn more <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+        <a href="/docs/reference/schema/katalog/" class="feature-link">Katalog schema <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
       </div>
 
       <div class="feature-card">
@@ -401,20 +370,20 @@
 
       <div class="feature-card">
         <div class="feature-icon">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
         </div>
-        <h3 class="feature-title">Drift Correction</h3>
-        <p class="feature-desc">Mark any managed resource with <code>reconcile: true</code> — Orkestra detects and corrects configuration drift on every reconcile cycle.</p>
-        <a href="/docs/concepts/" class="feature-link">Learn more <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+        <h3 class="feature-title">Security Built-in</h3>
+        <p class="feature-desc">Deletion protection, namespace restrictions, admission webhooks, and minimal RBAC derived directly from your Katalog — no separate security layer to configure.</p>
+        <a href="/docs/security/" class="feature-link">Security docs <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
       </div>
 
       <div class="feature-card">
         <div class="feature-icon">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 012 2v7M11 18H8a2 2 0 01-2-2V9"/></svg>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
-        <h3 class="feature-title">Dependency Ordering</h3>
-        <p class="feature-desc">Declare <code>dependsOn</code> between CRDs. Orkestra builds the dependency graph and starts each controller only when its dependencies are ready.</p>
-        <a href="/docs/concepts/" class="feature-link">Learn more <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+        <h3 class="feature-title">Drift Correction</h3>
+        <p class="feature-desc">Mark any managed resource with <code>reconcile: true</code> — Orkestra detects and corrects configuration drift on every reconcile cycle.</p>
+        <a href="/docs/reference/schema/operatorbox/" class="feature-link">OperatorBox schema <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
       </div>
 
       <div class="feature-card">
@@ -423,16 +392,16 @@
         </div>
         <h3 class="feature-title">Status Propagation</h3>
         <p class="feature-desc">Declare status fields as template expressions. Orkestra evaluates and writes them after every successful reconcile — no custom code needed.</p>
-        <a href="/docs/concepts/" class="feature-link">Learn more <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+        <a href="/docs/reference/schema/status/" class="feature-link">Status schema <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
       </div>
 
       <div class="feature-card">
         <div class="feature-icon">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><path d="M12 8v3M12 11l-6 5M12 11l6 5"/></svg>
         </div>
-        <h3 class="feature-title">Composition at Scale</h3>
-        <p class="feature-desc">Combine patterns from Git, OCI registries, and Helm charts using Komposer. Build multi-team platforms from reusable building blocks.</p>
-        <a href="/docs/guides/" class="feature-link">See guides <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+        <h3 class="feature-title">Motif &amp; Komposer</h3>
+        <p class="feature-desc">Compose reusable Motifs into Katalogs. Assemble full platform control planes from building blocks via the Orkestra Registry.</p>
+        <a href="/docs/orkestra-registry/" class="feature-link">Orkestra Registry <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
       </div>
     </div>
   </div>
@@ -458,7 +427,7 @@
         <div class="step-number">02</div>
         <div class="step-content">
           <h3 class="step-title">Run the Orkestra CLI</h3>
-          <p class="step-desc"><code class="inline-code">ork run --file ./katalog.yaml</code><br>Orkestra registers the CRD, starts the controller, and launches Control Center automatically.</p>
+          <p class="step-desc"><code class="inline-code">ork run</code><br>Orkestra registers the CRD, starts the controller, and launches Control Center automatically.</p>
         </div>
       </div>
       <div class="step">
@@ -477,9 +446,9 @@
   <div class="section-inner">
     <div class="cta-inner">
       <h2 class="cta-title">Ready to build your first operator?</h2>
-      <p class="cta-subtitle">Platform teams are shipping production Kubernetes operators with Orkestra today.</p>
+      <p class="cta-subtitle">We're in early access and iterating fast. Start with the getting-started guide — and tell us what doesn't work.</p>
       <div class="cta-actions">
-        <a href="/docs/getting-started/" class="btn btn-white btn-lg">
+        <a href="/docs/" class="btn btn-white btn-lg">
           Read the Docs
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </a>

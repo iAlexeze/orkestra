@@ -2,7 +2,7 @@
 
 Upgrade the Orkestra CLI to the latest release or to a specific version.
 
-```
+```bash
 ork upgrade [flags]
 ```
 
@@ -24,25 +24,25 @@ This command downloads the appropriate release artifacts for your OS/architectur
 
 Upgrade to the latest version:
 
-```
+```bash
 ork upgrade
 ```
 
 Upgrade to a specific version:
 
-```
+```bash
 ork upgrade --version v1.4.0
 ```
 
 Upgrade only the runtime binary:
 
-```
+```bash
 ork upgrade --runtime-only
 ```
 
 Check for updates without installing:
 
-```
+```bash
 ork upgrade --check
 ```
 
@@ -58,19 +58,14 @@ ork upgrade --check
   - `ork`
   - `orkcc` (unless `--runtime-only` is used)
 - Extracts the binary from the archive.
-- Installs it to:
-
-```
-/usr/local/bin/
-```
-
+- Installs it to the same directory where `ork` was originally installed.
 - Prints the installed version after completion.
 
 ---
 
 ## Upgrade Check
 
-```
+```bash
 ork upgrade --check
 ```
 
@@ -86,4 +81,4 @@ Displays:
 
 - If a binary is not available for the current platform, it is skipped.
 - Installation may require elevated permissions depending on the system.
-- The upgrade process replaces the existing binaries in `/usr/local/bin`.
+- The upgrade process replaces the existing binaries in place.

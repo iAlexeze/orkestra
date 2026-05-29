@@ -1,0 +1,71 @@
+# mutation
+
+Declarative mutation rules applied at admission time (before creation/update) and optionally at reconcile time.
+Declared on a CRDEntry or inside a Motif's `admission` block.
+
+```yaml
+mutation:
+  mutateFirst: false     # run mutation before validation at reconcile (default: false)
+  rules:
+    - field: spec.replicas
+      default: 1
+      valueType: int
+
+    - field: spec.engine
+      override: postgres
+
+    - field: spec.image
+      default: "{{ .Spec.Registry }}/myapp:latest"
+```
+
+## `mutation.rules`
+
+Each rule sets one field. Rules are applied in order.
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `field` | yes | Dot-notation path in the CR (e.g. `spec.replicas`) |
+| `default` | one of | Set only if the field is **absent or empty**. Supports Go templates. |
+| `override` | one of | **Always** set, regardless of current value. Supports Go templates. |
+| `valueType` | no | `string` (default), `int`, `float`, `bool` |
+
+Declare either `default` or `override` on each rule, not both.
+
+## `mutateFirst`
+
+When `true`, mutation rules run before validation rules during each reconcile cycle.
+Useful when a mutation sets a default that a validation rule then checks.
+
+```yaml
+mutation:
+  mutateFirst: true
+  rules:
+    - field: spec.engine
+      default: postgres
+
+validation:
+  rules:
+    - field: spec.engine
+      equals: postgres
+      message: engine must be postgres
+```
+
+## Template values
+
+Both `default` and `override` support Go templates evaluated against the CR:
+
+```yaml
+rules:
+  - field: spec.endpoint
+    override: "{{ .Name }}.{{ .Namespace }}.svc.cluster.local"
+
+  - field: spec.image
+    default: "{{ .Spec.Registry }}/app:{{ .Spec.Version }}"
+```
+
+## When mutation runs
+
+- **At admission**: if `security.webhooks.admission.enabled: true` and the CRD's `webhooks.mutation: true`.
+- **At reconcile**: always — even without a webhook, mutation rules are applied each cycle before the operator writes resources.
+
+---

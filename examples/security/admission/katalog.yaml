@@ -10,6 +10,10 @@ metadata:
     by a ValidatingWebhookConfiguration and MutatingWebhookConfiguration, and
     again at every reconcile cycle by the reconciler itself.
 
+gateway:
+  enabled: true     # optional if endpoint is set
+  endpoint: http://orkestra-gateway:8080
+
 security:
   webhooks:
     admission:
@@ -71,15 +75,15 @@ spec:
         mutateFirst: true     # at reconcile time: mutate before validate
         rules:
           - field: spec.replicas
-            default: "2"      # applied when spec.replicas is absent
-            valueType: "int"  # Because the CRD expects an integer
+            default: 2        # applied when spec.replicas is absent
+            valueType: int    # Because the CRD expects an integer
 
           - field: spec.environment
             default: "development"   # applied when spec.environment is absent
 
           - field: spec.rateLimit
-            default: "100"    # applied when spec.rateLimit is absent
-            valueType: "int"  # Because the CRD expects an integer
+            default: 100    # applied when spec.rateLimit is absent
+            valueType: int  # Because the CRD expects an integer
 
       operatorBox:
         # Status fields reflect the object AFTER mutation — so you can see

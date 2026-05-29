@@ -1,4 +1,4 @@
-name: Deploy Docs (docs.orkestra.sh)
+name: Deploy (orkestra.sh)
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -45,11 +45,11 @@ jobs:
           hugo --source ./website \
                --gc \
                --minify \
-               --baseURL "https://docs.orkestra.sh/" \
+               --baseURL "https://orkestra.sh/" \
                --cacheDir "${{ runner.temp }}/hugo_cache"
 
       - name: Create Pages project (no-op if already exists)
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -57,8 +57,22 @@ jobs:
         continue-on-error: true
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy website/public --project-name=${{ secrets.CLOUDFLARE_PAGES_PROJECT }} --commit-dirty=true
+
+      # - name: Crawl Algolia search index
+      #   if: success()
+      #   env:
+      #     ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
+      #     ALGOLIA_WRITE_KEY: ${{ secrets.ALGOLIA_WRITE_KEY }}
+      #   run: |
+      #     CONFIG=$(cat website/docsearch-config.json)
+      #     docker run --rm \
+      #       -e APPLICATION_ID="${ALGOLIA_APP_ID}" \
+      #       -e API_KEY="${ALGOLIA_WRITE_KEY}" \
+      #       -e CONFIG="${CONFIG}" \
+      #       algolia/docsearch-scraper
+      #   continue-on-error: true

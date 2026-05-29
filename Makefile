@@ -87,7 +87,9 @@ ORK_CC_AMD64_TARGET="orkcc-amd64"
 ORK_CC_ARM64_TARGET="orkcc-arm64"
 ORK_GATEWAY_AMD64_TARGET="ork-amd64"
 
-
+# Intermediate directory for docker builds — isolated from $(OUTPUT_DIR) so
+# docker builds never overwrite the developer's local ork CLI binary.
+DOCKER_TMP := /tmp/ork-docker-build
 
 # Path where the built binary lives
 BIN := $(OUTPUT_DIR)/ork
@@ -119,27 +121,45 @@ ork-gateway-linux: generate-notes
 	@echo "✅ Linux Gateway binary built: $(OUTPUT_DIR)/ork-gateway"
 
 # ── Docker Build ──────────────────────────────────────────────────────────────
+# These targets build Linux binaries to DOCKER_TMP (not OUTPUT_DIR) so they
+# never overwrite the developer's local ork CLI binary in ~/.orkestra/bin.
 
-docker:
-	$(MAKE) ork-linux BUILD_TAGS=runtime
+docker: generate-notes
+	@mkdir -p $(DOCKER_TMP)
+	@echo "Building Orkestra runtime (Linux amd64) → $(DOCKER_TMP)/ork..."
+	gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
+		-tags "runtime" \
+		-ldflags "$(ORK_LDFLAGS)" \
+		-o $(DOCKER_TMP)/ork ./cmd/orkestra
 	@echo "Building Docker image: $(ORK_IMAGE)"
-	@cp $(OUTPUT_DIR)/ork ./$(ORK_AMD64_TARGET)
-	
+	@cp $(DOCKER_TMP)/ork ./$(ORK_AMD64_TARGET)
 	docker build -t $(ORK_IMAGE) .
-	@rm -f ./$(ORK_AMD64_TARGET)
+	@rm -f ./$(ORK_AMD64_TARGET) $(DOCKER_TMP)/ork
 	@echo "✔ Docker image built: $(ORK_IMAGE)"
 
-docker-cc: orkcc-linux
+docker-cc:
+	@mkdir -p $(DOCKER_TMP)
+	@echo "Building Control Center (Linux amd64) → $(DOCKER_TMP)/orkcc..."
+	cd $(CONTROL_CENTER_DIR) && gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
+		-ldflags "$(CC_LDFLAGS)" \
+		-o $(DOCKER_TMP)/orkcc .
 	@echo "Building Docker image: $(ORK_CC_IMAGE)"
-	cd $(CONTROL_CENTER_DIR) && cp $(OUTPUT_DIR)/orkcc ./$(ORK_CC_AMD64_TARGET)
-	cd $(CONTROL_CENTER_DIR) && docker build -t $(ORK_CC_IMAGE) . && rm -rf ./$(ORK_CC_AMD64_TARGET)
+	cp $(DOCKER_TMP)/orkcc $(CONTROL_CENTER_DIR)/$(ORK_CC_AMD64_TARGET)
+	cd $(CONTROL_CENTER_DIR) && docker build -t $(ORK_CC_IMAGE) . && rm -f ./$(ORK_CC_AMD64_TARGET)
+	@rm -f $(DOCKER_TMP)/orkcc
 	@echo "✔ Docker image built: $(ORK_CC_IMAGE)"
 
-docker-gateway: ork-gateway-linux
+docker-gateway: generate-notes
+	@mkdir -p $(DOCKER_TMP)
+	@echo "Building Orkestra gateway (Linux amd64) → $(DOCKER_TMP)/ork-gateway..."
+	gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
+		-tags "gateway" \
+		-ldflags "$(ORK_LDFLAGS)" \
+		-o $(DOCKER_TMP)/ork-gateway ./cmd/orkestra
 	@echo "Building Docker image: $(ORK_GATEWAY_IMAGE)"
-	@cp $(OUTPUT_DIR)/ork-gateway ./$(ORK_GATEWAY_AMD64_TARGET)
+	@cp $(DOCKER_TMP)/ork-gateway ./$(ORK_GATEWAY_AMD64_TARGET)
 	docker build -t $(ORK_GATEWAY_IMAGE) .
-	@rm -f ./$(ORK_GATEWAY_AMD64_TARGET)
+	@rm -f ./$(ORK_GATEWAY_AMD64_TARGET) $(DOCKER_TMP)/ork-gateway
 	@echo "✔ Docker image built: $(ORK_GATEWAY_IMAGE)"
 
 # ── Docker Push ───────────────────────────────────────────────────────────────
@@ -298,7 +318,7 @@ test-fixture-note:
 	@bash scripts/setup-kind.sh $(FIXTURE_NOTE_CLUSTER)
 	@kubectl apply -f pkg/note/fixture/crd.yaml
 	@ork generate bundle --file pkg/note/fixture/katalog.yaml | kubectl apply -f -
-	@helm install orkestra $(HELM_CHART) --namespace default --wait --timeout 120s
+	@helm install orkestra $(HELM_CHART) --namespace orkestra-system --wait --timeout 120s
 	@kubectl apply -f pkg/note/fixture/cr.yaml
 	@kubectl wait reconcilerprobe/my-probe --for=jsonpath='{.status.phase}'=Ready \
 	    --timeout=120s 2>/dev/null || kubectl wait noteprobe/my-probe \
@@ -312,7 +332,7 @@ test-fixture-reconciler:
 	@bash scripts/setup-kind.sh $(FIXTURE_RECONCILER_CLUSTER)
 	@kubectl apply -f pkg/reconciler/fixture/crd.yaml
 	@ork generate bundle --file pkg/reconciler/fixture/katalog.yaml | kubectl apply -f -
-	@helm install orkestra $(HELM_CHART) --namespace default --wait --timeout 120s
+	@helm install orkestra $(HELM_CHART) --namespace orkestra-system --wait --timeout 120s
 	@kubectl apply -f pkg/reconciler/fixture/cr.yaml
 	@kubectl wait reconcilerprobe/probe --for=jsonpath='{.status.tier}'=premium \
 	    --timeout=120s || kubectl get reconcilerprobe probe -o yaml

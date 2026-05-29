@@ -39,20 +39,20 @@ func EnrichCRDEntry(entry *orktypes.CRDEntry) (orktypes.EnrichmentOutcome, error
 
 	// Partially specified — user declared some but not all required fields.
 	// This is a misconfiguration, not a kind-only declaration.
-	if isPartiallySpecified(apiTypes) {
-		return orktypes.EnrichmentFailed, fmt.Errorf(
-			"CRD %q: apiTypes is partially specified — either declare kind only "+
-				"(for Kubernetes built-ins) or declare all fields "+
-				"(kind, group, version).\n"+
-				"  Have: kind=%q group=%q version=%q\n"+
-				"  Hint: for built-ins, only kind is needed:\n"+
-				"    apiTypes:\n"+
-				"      kind: %s",
-			entry.Name,
-			apiTypes.Kind, apiTypes.Group, apiTypes.Version,
-			apiTypes.Kind,
-		)
-	}
+	// if isPartiallySpecified(apiTypes) {
+	// 	return orktypes.EnrichmentFailed, fmt.Errorf(
+	// 		"CRD %q: apiTypes is partially specified — either declare kind only "+
+	// 			"(for Kubernetes built-ins) or declare all fields "+
+	// 			"(kind, group, version).\n"+
+	// 			"  Have: kind=%q group=%q version=%q\n"+
+	// 			"  Hint: for built-ins, only kind is needed:\n"+
+	// 			"    apiTypes:\n"+
+	// 			"      kind: %s",
+	// 		entry.Name,
+	// 		apiTypes.Kind, apiTypes.Group, apiTypes.Version,
+	// 		apiTypes.Kind,
+	// 	)
+	// }
 
 	// Kind-only declaration — attempt built-in lookup
 	if apiTypes.Kind == "" {

@@ -24,6 +24,7 @@ type CRDHealthResponse struct {
 	Name                     string                      `json:"name"`
 	State                    string                      `json:"state"` // "not started", "pending", "started", "healthy", "degraded"
 	Status                   int                         `json:"status"`
+	IsKonductor              bool                        `json:"isKonductor"`
 	Healthy                  bool                        `json:"healthy"`
 	Started                  bool                        `json:"started"`
 	Pending                  bool                        `json:"pending"`
@@ -64,6 +65,7 @@ func BuildCRDHealthHandler(
 	kfg *konfig.Konfig,
 	inf cache.SharedIndexInformer,
 	h *CRDHealth,
+	o *OrkestraHealth,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		state, status := h.StateAndStatus()
@@ -73,6 +75,7 @@ func BuildCRDHealthHandler(
 			Name:                     crd.Name,
 			State:                    state,
 			Status:                   status,
+			IsKonductor:              o.IsKonductor(),
 			Healthy:                  h.IsHealthy(),
 			Started:                  h.Started(),
 			Pending:                  h.Pending(),
@@ -114,6 +117,7 @@ type CRDInfoResponse struct {
 	Namespaced             bool                             `json:"namespaced"`
 	Namespace              string                           `json:"namespace"`
 	DependsOn              []string                         `json:"dependsOn,omitempty"`
+	IsKonductor            bool                             `json:"isKonductor"`
 	Workers                int                              `json:"workers"`
 	WorkersActive          int32                            `json:"workersActive"`
 	WorkersIdle            int32                            `json:"workersIdle"`
@@ -259,6 +263,7 @@ func BuildCRDInfoHandler(
 	kfg *konfig.Konfig,
 	inf cache.SharedIndexInformer,
 	h *CRDHealth,
+	o *OrkestraHealth,
 	convStats *health.ConversionStats,
 	admStats *health.AdmissionStats,
 	protStats *health.DeletionProtectionStats,
@@ -328,6 +333,7 @@ func BuildCRDInfoHandler(
 			Namespaced:          crd.IsNamespaced(),
 			Namespace:           crd.Namespace,
 			DependsOn:           crd.DependsOn.Names(),
+			IsKonductor:         o.IsKonductor(),
 			Workers:             workers,
 			WorkersActive:       workersActive,
 			WorkersIdle:         workersIdle,
@@ -471,23 +477,24 @@ func BuildCRDInfoHandler(
 // ─────────────────────────────────────────────────────────────────────────────
 
 type KatalogResponse struct {
-	CRDs               []CRDSummaryResponse            `json:"crds"`
-	Total              int                             `json:"total"`
-	TotalEnabled       int                             `json:"totalEnabled"`
-	OrkReady           bool                            `json:"OrkReady"`
-	DeletionProtection bool                            `json:"deletionProtection"`
-	Healthy            bool                            `json:"healthy"`
-	Status             int                             `json:"status"`
-	DegradedReason     string                          `json:"degradedReason,omitempty"`
-	StatusCounts       StatusCounts                    `json:"statusCounts"`
-	Name               string                          `json:"name,omitempty"`
-	Version            string                          `json:"version,omitempty"`
-	CreatedBy          string                          `json:"createdBy,omitempty"`
-	Author             string                          `json:"author,omitempty"`
-	Description        string                          `json:"description,omitempty"`
-	License            string                          `json:"license,omitempty"`
-	RuntimeVersion     string                          `json:"runtimeVersion,omitempty"`
-	Projects           map[string]orktypes.ProjectInfo `json:"projects,omitempty"`
+	CRDs               []CRDSummaryResponse   `json:"crds"`
+	Total              int                    `json:"total"`
+	TotalEnabled       int                    `json:"totalEnabled"`
+	OrkReady           bool                   `json:"OrkReady"`
+	IsKonductor        bool                   `json:"isKonductor"`
+	DeletionProtection bool                   `json:"deletionProtection"`
+	Healthy            bool                   `json:"healthy"`
+	Status             int                    `json:"status"`
+	DegradedReason     string                 `json:"degradedReason,omitempty"`
+	StatusCounts       StatusCounts           `json:"statusCounts"`
+	Name               string                 `json:"name,omitempty"`
+	Version            string                 `json:"version,omitempty"`
+	CreatedBy          string                 `json:"createdBy,omitempty"`
+	Author             string                 `json:"author,omitempty"`
+	Description        string                 `json:"description,omitempty"`
+	License            string                 `json:"license,omitempty"`
+	RuntimeVersion     string                 `json:"runtimeVersion,omitempty"`
+	Projects           map[string]interface{} `json:"projects,omitempty"`
 	// GatewayEndpoint is the HTTP base URL of the companion gateway process.
 	// Set via ORK_GATEWAY_ENDPOINT on the runtime. The control center reads
 	// this field and fetches gateway:/katalog to merge per-CRD webhook stats.
@@ -677,6 +684,7 @@ func BuildKatalogHandler(
 			Total:              len(kat.All()),
 			TotalEnabled:       len(kat.Enabled()),
 			OrkReady:           o.IsOrkReady(),
+			IsKonductor:        o.IsKonductor(),
 			DeletionProtection: deletionProtection,
 			Healthy:            status == http.StatusOK, // workaround. TODO: standard from crd_health
 			Status:             status,
@@ -801,6 +809,15 @@ func templateSummary(t *orktypes.HookTemplates) map[string]interface{} {
 	if len(t.Deployments) > 0 {
 		summary["deployments"] = len(t.Deployments)
 	}
+	if len(t.StatefulSets) > 0 {
+		summary["statefulSets"] = len(t.StatefulSets)
+	}
+	if len(t.DaemonSets) > 0 {
+		summary["daemonSets"] = len(t.DaemonSets)
+	}
+	if len(t.ReplicaSets) > 0 {
+		summary["replicaSets"] = len(t.ReplicaSets)
+	}
 	if len(t.Services) > 0 {
 		summary["services"] = len(t.Services)
 	}
@@ -818,6 +835,51 @@ func templateSummary(t *orktypes.HookTemplates) map[string]interface{} {
 	}
 	if len(t.ServiceAccounts) > 0 {
 		summary["serviceAccounts"] = len(t.ServiceAccounts)
+	}
+	if len(t.Secrets) > 0 {
+		summary["secrets"] = len(t.Secrets)
+	}
+	if len(t.PersistentVolumes) > 0 {
+		summary["persistentVolumes"] = len(t.PersistentVolumes)
+	}
+	if len(t.PersistentVolumeClaims) > 0 {
+		summary["persistentVolumeClaims"] = len(t.PersistentVolumeClaims)
+	}
+	if len(t.Roles) > 0 {
+		summary["roles"] = len(t.Roles)
+	}
+	if len(t.RoleBindings) > 0 {
+		summary["roleBindings"] = len(t.RoleBindings)
+	}
+	if len(t.ClusterRoles) > 0 {
+		summary["clusterRoles"] = len(t.ClusterRoles)
+	}
+	if len(t.ClusterRoleBindings) > 0 {
+		summary["clusterRoleBindings"] = len(t.ClusterRoleBindings)
+	}
+	if len(t.Ingresses) > 0 {
+		summary["ingresses"] = len(t.Ingresses)
+	}
+	if len(t.NetworkPolicies) > 0 {
+		summary["networkPolicies"] = len(t.NetworkPolicies)
+	}
+	if len(t.PodDisruptionBudgets) > 0 {
+		summary["podDisruptionBudgets"] = len(t.PodDisruptionBudgets)
+	}
+	if len(t.LimitRanges) > 0 {
+		summary["limitRanges"] = len(t.LimitRanges)
+	}
+	if len(t.ResourceQuotas) > 0 {
+		summary["resourceQuotas"] = len(t.ResourceQuotas)
+	}
+	if len(t.PriorityClasses) > 0 {
+		summary["priorityClasses"] = len(t.PriorityClasses)
+	}
+	if len(t.CustomResource) > 0 {
+		summary["customResource"] = len(t.CustomResource)
+	}
+	if len(t.HorizontalPodAutoscalers) > 0 {
+		summary["horizontalPodAutoscalers"] = len(t.HorizontalPodAutoscalers)
 	}
 
 	return summary

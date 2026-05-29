@@ -53,6 +53,15 @@ type ResolvedStatefulSetSpec struct {
 	// Probes — startup, liveness, and readiness probe configuration.
 	Probes *orktypes.ProbesConfig
 
+	// SecurityContext — container-level security settings.
+	SecurityContext *orktypes.ContainerSecurityContext
+
+	// PodSecurity — pod-level security settings.
+	PodSecurity *orktypes.PodSecurityContext
+
+	// RollingUpdate — resolved rolling update strategy. nil uses OnDelete (Orkestra default).
+	RollingUpdate *orktypes.RollingUpdateBehavior
+
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).

@@ -11,6 +11,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
+	"github.com/orkspace/orkestra/pkg/profiles"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
@@ -127,6 +128,12 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		}
 	}
 
+	// labels
+	if !common.LabelsEqual(existing.Labels, spec.Labels) {
+		updated.Labels = spec.Labels
+		drifted = true
+	}
+
 	if !drifted {
 		logger.Debug().
 			Str("deployment", spec.Name).
@@ -204,15 +211,17 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 // The resolver already evaluated template expressions — here we just merge.
 func Resolve(src orktypes.DeploymentTemplateSource, ownerName string) ResolvedDeploymentSpec {
 	spec := ResolvedDeploymentSpec{
-		Name:        src.Name,
-		Image:       src.Image,
-		Namespace:   src.Namespace,
-		Resources:   common.ResolveResources(src.Resources),
-		Labels:      make(map[string]string),
-		Annotations: make(map[string]string),
-		EnvFrom:     src.EnvFrom,
-		Probes:      src.Probes,
-		Sleep:       src.Sleep,
+		Name:            src.Name,
+		Image:           src.Image,
+		Namespace:       src.Namespace,
+		Resources:       common.ResolveResources(src.Resources),
+		Labels:          make(map[string]string),
+		Annotations:     make(map[string]string),
+		EnvFrom:         src.EnvFrom,
+		Probes:          src.Probes,
+		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
+		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Sleep:           src.Sleep,
 	}
 
 	if spec.Name == "" {
@@ -237,8 +246,23 @@ func Resolve(src orktypes.DeploymentTemplateSource, ownerName string) ResolvedDe
 
 	spec.Env = []orktypes.EnvVar(src.Env)
 
+	if src.RollingUpdate != nil && src.RollingUpdate.Profile != "" {
+		expansion, err := profiles.ApplyRollingUpdateProfile(src.RollingUpdate.Profile)
+		if err != nil {
+			logger.Warn().Str("profile", src.RollingUpdate.Profile).Err(err).Msg("unknown rolling update profile — skipping")
+		} else {
+			spec.RollingUpdate = &orktypes.RollingUpdateBehavior{
+				MaxSurge:       expansion.MaxSurge,
+				MaxUnavailable: expansion.MaxUnavailable,
+			}
+		}
+	} else if src.RollingUpdate != nil {
+		r := *src.RollingUpdate
+		spec.RollingUpdate = &r
+	}
+
 	// Orkestra system labels — always added
-	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.ManagedKey] = labels.ManagedValue
 	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
@@ -312,6 +336,14 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 
 	// Probes
 	common.ApplyProbes(&d.Spec.Template.Spec.Containers[0], spec.Probes, spec.Port)
+
+	// Rolling update strategy
+	if spec.RollingUpdate != nil {
+		d.Spec.Strategy = common.BuildDeploymentRollingUpdateStrategy(spec.RollingUpdate)
+	}
+
+	// Security
+	common.ApplySecurityContext(&d.Spec.Template.Spec.Containers[0], &d.Spec.Template.Spec, spec.SecurityContext, spec.PodSecurity)
 
 	// Env
 	if len(spec.Env) > 0 {

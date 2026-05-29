@@ -193,7 +193,7 @@ kubectl apply -f cr.yaml
 Run the full typed operator lifecycle in one command — spins up a kind cluster, builds and deploys the operator, applies the CR, asserts the state machine ran to completion, then tears down:
 
 ```bash
-ork e2e -f e2e.yaml
+ork e2e
 ```
 
 This runs everything defined in [e2e.yaml](./e2e.yaml):

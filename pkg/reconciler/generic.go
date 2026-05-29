@@ -14,6 +14,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/kordinator"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/notification"
 	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
@@ -329,7 +330,10 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 		}
 	}
 
-	// Ensure finalizers
+	// ── Finalizer management ─────────────────────────────────────────────────────
+	// Finalizers block deletion until cleanup is complete.
+	// If RemoveFinalizers is false (normal operation), ensure required finalizers exist.
+	// If RemoveFinalizers is true (e.g., for testing or forced cleanup), remove them.
 	if !r.crd.RemoveFinalizers {
 		if err := r.ensureFinalizers(ctx, obj); err != nil {
 			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"FinalizerError",
@@ -346,16 +350,63 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 		logger.FromContext(ctx).Debug().Msgf("finalizers removed for %s", obj.GetName())
 	}
 
-	// Ensure managed label and annotations — idempotent, like finalizer patching.
-	// This is how ork reconcile knows what this operator instance manages.
-	// Labels
-	if err := r.ensureManagedLabel(ctx, obj); err != nil {
+	// ── Label & annotation management ────────────────────────────────────────────
+	// The label manager applies three label invariants derived from the Katalog:
+	//   1. managed=true           — ownership marker, always present
+	//   2. deletion-protection    — present iff global protection + CRD protectCRs
+	//   3. strict-mode-exempt     — present iff the CRD has opted out of strictMode
+	//
+	// All three are computed in memory first and sent as a single JSON Merge Patch
+	// (the controller-runtime MergeFrom pattern). Absent keys in a Merge Patch are
+	// left unchanged by the server; to delete a key the patch must set it to null.
+	// PatchLabels handles this by diffing serverLabels (snapshot) against the
+	// post-mutation desired state.
+	//
+	// Two-phase protection removal: when transitioning from protected→unprotected,
+	// both the deletion-protection label and the exempt label would normally be
+	// removed. But the strict-mode webhook intercepts the UPDATE and only allows
+	// removal when strict-mode-exempt=true appears in the new object. Removing both
+	// in the same patch fails that check. The reconciler therefore forces the exempt
+	// label ON for the first cycle; on the next cycle deletion-protection is already
+	// gone, the webhook objectSelector no longer matches, and the exempt label can
+	// be cleaned up without any webhook interception.
+	labelMgr := labels.NewManager(labels.Config{
+		Standalone:                r.kat.IsStandaloneGateway(),
+		DeletionProtectionEnabled: r.kat.IsDeletionProtectionEnabled(),
+	})
+
+	serverLabels := copyStringMap(obj.GetLabels()) // snapshot before any mutation
+
+	labelMgr.EnsureManagedLabel(obj)
+
+	shouldHaveProtection := r.kat.IsDeletionProtectionEnabled() && r.crd.ShouldProtectCRs()
+	labelMgr.EnsureDeletionProtectionLabel(obj, shouldHaveProtection)
+
+	effectiveStrict := r.crd.IsStrictDeletionProtection(r.kat.IsStrictModeEnabled())
+	currentlyProtected := serverLabels[labels.DeletionProtectionLabel] == labels.DeletionProtectionValue
+	if !shouldHaveProtection && currentlyProtected {
+		effectiveStrict = false // keep exempt label present so the webhook allows the removal
+	}
+
+	logger.Debug().
+		Str("crd", r.crd.Name).
+		Str("resource", obj.GetName()).
+		Bool("effectiveStrict", effectiveStrict).
+		Bool("currentlyProtected", currentlyProtected).
+		Msg("label: evaluating strict mode")
+	labelMgr.EnsureStrictModeExemptLabel(obj, effectiveStrict)
+
+	// One atomic patch: diff serverLabels → desired. No-op if nothing changed.
+	if err := r.kube.PatchLabels(ctx, obj, r.crd.GVR(), serverLabels, obj.GetLabels()); err != nil {
 		return err
 	}
 
-	// Annotations
-	if err := r.ensureManagedAnnotations(ctx, obj, r.crd.KatalogName); err != nil {
-		return err
+	// Annotations only ever add keys (managed-by, managed-since are write-once),
+	// so a plain Merge Patch with the desired map is correct here.
+	if labelMgr.EnsureManagedAnnotations(obj, r.crd.KatalogName) {
+		if err := r.kube.PatchAnnotations(ctx, obj, r.crd.GVR(), obj.GetAnnotations()); err != nil {
+			return err
+		}
 	}
 
 	// ── Step 5: Reconcile implementation ──────────────────────────────────────
@@ -376,29 +427,32 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 	var err error
 
 	// ── Phase 1: Rollback gate ────────────────────────────────────────────────
-	if isRollbackActive(obj) {
-		logger.FromContext(ctx).Info().
-			Str("name", obj.GetName()).
-			Msg("rollback: active — blocking normal reconcile")
-		if rbErr := r.runRollback(ctx, resolver, obj); rbErr != nil {
-			logger.FromContext(ctx).Error().Err(rbErr).
-				Str("name", obj.GetName()).
-				Msg("rollback: failed to re-apply previous state")
-		}
-		r.patchStatusWithChildren(ctx, obj, resolver, fmt.Errorf("rollback active"))
-		return nil // do not propagate — stays in rollback loop
-	}
+	//
+	// 	In Development
+	//
+	// if isRollbackActive(obj) {
+	// 	logger.FromContext(ctx).Info().
+	// 		Str("name", obj.GetName()).
+	// 		Msg("rollback: active — blocking normal reconcile")
+	// 	if rbErr := r.runRollback(ctx, resolver, obj); rbErr != nil {
+	// 		logger.FromContext(ctx).Error().Err(rbErr).
+	// 			Str("name", obj.GetName()).
+	// 			Msg("rollback: failed to re-apply previous state")
+	// 	}
+	// 	r.patchStatusWithChildren(ctx, obj, resolver, fmt.Errorf("rollback active"))
+	// 	return nil // do not propagate — stays in rollback loop
+	// }
 
 	// ── Reconcile-time mutation and validation ────────────────────────────────
 	// Ordering respects MutationConfig.MutateFirst:
-	//   false (default) — validate → mutate valid objects → reconcile
-	//   true            — mutate first (apply defaults) → validate → reconcile
+	//   true (default)           — mutate first (apply defaults) → validate → reconcile
+	//   false 					  — validate → mutate valid objects → reconcile
 	//
 	// Mutation failures are non-fatal: logged, reconcile continues.
 	// Validation deny failures halt reconcile and return an error.
 
 	// ── Reconcile-time mutation and validation ────────────────────────────────
-	if r.crd.HasMutationRules() && r.crd.Mutation.MutateFirst {
+	if r.crd.HasMutationRules() && r.crd.ShouldMutateFirst() {
 		if mutErr := r.applyReconcileTimeMutation(ctx, resolver, obj); mutErr != nil {
 			logger.FromContext(ctx).Warn().Err(mutErr).
 				Str("name", obj.GetName()).
@@ -428,7 +482,7 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 		}
 	}
 
-	if r.crd.HasMutationRules() && !r.crd.Mutation.MutateFirst {
+	if r.crd.HasMutationRules() && !r.crd.ShouldMutateFirst() {
 		if mutErr := r.applyReconcileTimeMutation(ctx, resolver, obj); mutErr != nil {
 			logger.FromContext(ctx).Warn().Err(mutErr).
 				Str("name", obj.GetName()).
@@ -472,25 +526,26 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 	}
 
 	// ── Phase 6: Snapshot + rollback cleanup ─────────────────────────────────
-	if err == nil && !r.crd.HasRollbackRules() {
-		// If a prior rollback cycle resolved (user corrected spec, generation
-		// advanced), clear the stale RollbackGenerationAnnotation and notify
-		// CRDHealth. snapshotSpec re-writes PreviousSpecAnnotation immediately after.
-		annots := obj.GetAnnotations()
-		if annots[orktypes.RollbackGenerationAnnotation] != "" {
-			if clrErr := r.clearRollback(ctx, obj); clrErr != nil {
-				logger.FromContext(ctx).Warn().Err(clrErr).
-					Str("name", obj.GetName()).
-					Msg("rollback: failed to clear stale rollback annotation — continuing")
-			}
-		}
-		if snapErr := r.snapshotSpec(ctx, obj); snapErr != nil {
-			logger.FromContext(ctx).Warn().Err(snapErr).
-				Str("name", obj.GetName()).
-				Msg("rollback: failed to snapshot spec — continuing")
-		}
-		r.clearFailureHistory(obj.GetNamespace() + "/" + obj.GetName())
-	}
+	// TODO
+	// if err == nil && !r.crd.HasRollbackRules() {
+	// 	// If a prior rollback cycle resolved (user corrected spec, generation
+	// 	// advanced), clear the stale RollbackGenerationAnnotation and notify
+	// 	// CRDHealth. snapshotSpec re-writes PreviousSpecAnnotation immediately after.
+	// 	annots := obj.GetAnnotations()
+	// 	if annots[orktypes.RollbackGenerationAnnotation] != "" {
+	// 		if clrErr := r.clearRollback(ctx, obj); clrErr != nil {
+	// 			logger.FromContext(ctx).Warn().Err(clrErr).
+	// 				Str("name", obj.GetName()).
+	// 				Msg("rollback: failed to clear stale rollback annotation — continuing")
+	// 		}
+	// 	}
+	// 	if snapErr := r.snapshotSpec(ctx, obj); snapErr != nil {
+	// 		logger.FromContext(ctx).Warn().Err(snapErr).
+	// 			Str("name", obj.GetName()).
+	// 			Msg("rollback: failed to snapshot spec — continuing")
+	// 	}
+	// 	r.clearFailureHistory(obj.GetNamespace() + "/" + obj.GetName())
+	// }
 
 	// Inject live runtime metrics into the resolver so status.fields templates
 	// can reference .metrics.queueDepth, .metrics.workers, .metrics.autoscaleActive, etc.

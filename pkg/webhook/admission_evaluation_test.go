@@ -761,7 +761,7 @@ func TestDeepCopyMap_PreservesAllFields(t *testing.T) {
 
 func TestBuildJSONPatch_AddForAbsentField(t *testing.T) {
 	changes := []fieldChange{
-		{Field: "spec.replicas", OldValue: "", NewValue: "2", ChangeType: "default"},
+		{Field: "spec.replicas", OldValue: "", NewValue: "2", TypedValue: "2", ChangeType: "default"},
 	}
 
 	raw, err := buildJSONPatch(changes)

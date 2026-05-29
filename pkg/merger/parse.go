@@ -33,7 +33,7 @@ func parseKatalogDoc(doc []byte, source string) (*orktypes.KatalogFile, error) {
 	if looksLikeCRDList(doc) {
 		return nil, fmt.Errorf(
 			"%q: spec.crds must be a map (name: {}) not a list (- name:).\n"+
-				"  See: https://docs.orkestra.sh/reference/katalog#spec-crds",
+				"  See: https://orkestra.sh/reference/katalog#spec-crds",
 			source,
 		)
 	}

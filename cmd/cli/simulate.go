@@ -12,7 +12,6 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/simulate"
-	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	sigsyaml "sigs.k8s.io/yaml"
@@ -39,6 +38,15 @@ Shows resource creation and state transitions across reconcile cycles.
 		crFile, _ := cmd.Flags().GetString("cr")
 		crdName, _ := cmd.Flags().GetString("crd")
 		maxCycles, _ := cmd.Flags().GetInt("cycles")
+
+		// resolve default paths
+		if crFile == "" {
+			crFile = fileCr
+		}
+		if crFile == "" {
+			return fmt.Errorf("--cr is required")
+		}
+
 		return runSimulate(cmd.Context(), katalogFile, crFile, crdName, maxCycles)
 	},
 }
@@ -98,7 +106,7 @@ func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *
 	var repeatStart int
 	flush := func(upTo int) {
 		if repeatStart > 0 && upTo > repeatStart {
-			fmt.Printf("  %s\n", utils.Gray(fmt.Sprintf("(cycles %d–%d: identical)", repeatStart, upTo)))
+			fmt.Printf("  %s\n", gray(fmt.Sprintf("(cycles %d–%d: identical)", repeatStart, upTo)))
 			repeatStart = 0
 		}
 	}
@@ -122,13 +130,13 @@ func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *
 		fmt.Printf("  Cycle %d:\n", cycle.Cycle)
 		printCycleOps(meaningful)
 		if cycle.Error != nil {
-			fmt.Printf("    %s %v\n", utils.FailureMark(), cycle.Error)
+			fmt.Printf("    %s %v\n", failureMark(), cycle.Error)
 		}
 	}
 	flush(result.Cycles[len(result.Cycles)-1].Cycle)
 
 	if result.Steady {
-		fmt.Printf("\n  %s Steady state at cycle %d in %s\n\n", utils.SuccessMark(), result.SteadyAt, elapsed.Round(time.Millisecond))
+		fmt.Printf("\n  %s Steady state at cycle %d in %s\n\n", successMark(), result.SteadyAt, elapsed.Round(time.Millisecond))
 	} else {
 		fmt.Printf("\n  ~ Max cycles reached (%d) in %s\n\n", maxCycles, elapsed.Round(time.Millisecond))
 	}

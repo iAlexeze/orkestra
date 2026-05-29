@@ -46,7 +46,7 @@ Expected output:
 ## Step 2 — Start the operator
 
 ```bash
-ork run
+ork run       # add --dev if you don't have a cluster; Orkestra will create a kind cluster
 ```
 
 Orkestra applies the CRD, waits for it to be established, applies `cr.yaml`,
@@ -158,7 +158,7 @@ Run the full lifecycle in one command — spins up a kind cluster, applies the C
 starts the operator, applies the CR, asserts every expectation, then tears down:
 
 ```bash
-ork e2e -f e2e.yaml
+ork e2e
 ```
 
 This runs everything defined in [e2e.yaml](./e2e.yaml):

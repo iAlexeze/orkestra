@@ -10,7 +10,6 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/katalog"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -137,7 +136,7 @@ Examples:
 
 		if outFile != "" {
 			if yamlOut {
-				if err := utils.WriteFileAndFormat(outFile, out, 0644); err != nil {
+				if err := writeFileAndFormat(outFile, out, 0644); err != nil {
 					return fmt.Errorf("writing %s: %w", outFile, err)
 				}
 			} else {
@@ -145,7 +144,7 @@ Examples:
 					return fmt.Errorf("writing %s: %w", outFile, err)
 				}
 			}
-			fmt.Printf("%s\n", utils.Green("written to "+outFile))
+			fmt.Printf("%s\n", green("written to "+outFile))
 			return nil
 		}
 		fmt.Println(string(out))

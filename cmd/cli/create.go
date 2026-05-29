@@ -5,7 +5,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/orkspace/orkestra/pkg/doctor"
+	"github.com/orkspace/orkestra/pkg/ork"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +32,7 @@ Downloads kind automatically if not found in PATH.
 		}
 
 		fmt.Printf("→ Creating cluster '%s'...\n", name)
-		if err := doctor.EnsureKindCluster(name); err != nil {
+		if err := ork.EnsureKindCluster(name); err != nil {
 			return err
 		}
 		fmt.Printf("\nCluster '%s' is ready.\n", name)

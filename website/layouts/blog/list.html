@@ -9,7 +9,7 @@
 
 <div class="blog-layout">
   <div class="blog-posts">
-    {{ $posts := .Pages.ByDate.Reverse }}
+    {{ $posts := .Pages.ByWeight }}
     {{ if $posts }}
       {{ range $posts }}
       <article class="blog-card">
@@ -30,7 +30,7 @@
         {{ with .Description }}
         <p class="blog-card-desc">{{ . }}</p>
         {{ else }}
-        <p class="blog-card-desc">{{ .Summary | truncate 180 }}</p>
+        <p class="blog-card-desc">{{ .Summary | plainify | truncate 180 }}</p>
         {{ end }}
         <a href="{{ .RelPermalink }}" class="blog-card-link">
           Read more

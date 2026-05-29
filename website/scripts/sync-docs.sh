@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
 # sync-docs.sh — Copy ../documentation/ into content/docs/, injecting Hugo front matter
 # and converting MkDocs admonitions (!!!  note/warning/etc.) to callout shortcodes.
+# Performs a clean sync: destination directories are wiped before each run so stale
+# files from deleted source pages never survive.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_DIR="$(realpath "$SCRIPT_DIR/../../documentation")"
 DST_DIR="$SCRIPT_DIR/../content/docs"
+BLOG_DIR="$SCRIPT_DIR/../content/blog"
+PUB_DIR="$SCRIPT_DIR/../content/publications"
 
 if [[ ! -d "$SRC_DIR" ]]; then
   echo "ERROR: docs source not found at $SRC_DIR" >&2
   exit 1
 fi
-
-echo "Syncing docs: $SRC_DIR → $DST_DIR"
-mkdir -p "$DST_DIR"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -21,6 +22,7 @@ inject_frontmatter() {
   local file="$1"
   local title="$2"
   local weight="$3"
+  local src_file="${4:-}"
 
   # Skip if front matter already present
   if head -1 "$file" | grep -q '^---'; then
@@ -40,9 +42,16 @@ inject_frontmatter() {
     sed -i '/./,$!d' "$file"
   fi
 
+  # Get date from the source file's git history; fall back to today
+  local date_str=""
+  if [[ -n "$src_file" ]]; then
+    date_str="$(git log --follow -1 --pretty=format:"%as" -- "$src_file" 2>/dev/null || true)"
+  fi
+  date_str="${date_str:-$(date +%Y-%m-%d)}"
+
   local tmp
   tmp="$(mktemp)"
-  printf -- '---\ntitle: "%s"\nweight: %s\n---\n\n' "$title" "$weight" > "$tmp"
+  printf -- '---\ntitle: "%s"\ndate: %s\nweight: %s\n---\n\n' "$title" "$date_str" "$weight" > "$tmp"
   cat "$file" >> "$tmp"
   mv "$tmp" "$file"
 }
@@ -89,64 +98,235 @@ with open(path, 'w') as f:
 PYEOF
 }
 
-# ── Main sync ─────────────────────────────────────────────────────────────────
+clean_navigation() {
+  local file="$1"
+  python3 - "$file" <<'PYEOF'
+import sys, re
+
+path = sys.argv[1]
+with open(path, 'r') as f:
+    text = f.read()
+
+# Remove lines that start with "→ Next:" or "→ Previous:"
+text = re.sub(r'^→ Next:.*\n?', '', text, flags=re.MULTILINE)
+text = re.sub(r'^→ Previous:.*\n?', '', text, flags=re.MULTILINE)
+
+# Remove lines where the entire line is "→ See [something](something)"
+# (starts with "→ See [") — avoids removing inline mid-paragraph cross-refs
+text = re.sub(r'^→ See \[.*\n?', '', text, flags=re.MULTILINE)
+
+# Remove bare "## Next" sections (heading alone, not "## Next Steps" etc.)
+text = re.sub(r'^## Next[ \t]*\n.*?(?=^##|\Z)', '', text, flags=re.MULTILINE | re.DOTALL)
+
+# Remove entire "## See also" sections (heading + all lines until next ## or EOF)
+text = re.sub(r'^## See also\b.*?(?=^##|\Z)', '', text, flags=re.MULTILINE | re.DOTALL)
+
+# Strip .md from markdown link display text: [something.md](url) → [something](url)
+text = re.sub(r'\[([^\]]+?)\.md\](\([^)]*\))', r'[\1]\2', text)
+
+with open(path, 'w') as f:
+    f.write(text)
+PYEOF
+}
+
+rewrite_links() {
+  local file="$1"
+  # Rewrite markdown cross-references to Hugo URL format.
+  #
+  # Hugo serves leaf pages at /section/page/ and index pages at /section/.
+  # Leaf pages have one extra URL path level vs the source file directory.
+  # The correct relative links therefore differ by page type:
+  #
+  #   Source link       Index page result   Leaf page result
+  #   ./sibling.md      sibling/            ../sibling/
+  #   ../parent/x.md    ../parent/x/        ../../parent/x/
+  #   bare-sibling.md   bare-sibling/       ../bare-sibling/
+  #
+  # Numeric prefixes (01-, 02-, ...) are stripped — they exist only for ordering.
+  # Absolute URLs and fragment-only links (#anchor) are left untouched.
+
+  local base
+  base="$(basename "$file")"
+  local is_index=false
+  [[ "$base" == "_index.md" || "$base" == "index.md" ]] && is_index=true
+
+  python3 - "$file" "$is_index" <<'PYEOF'
+import re, sys
+
+path = sys.argv[1]
+is_index_page = (sys.argv[2] == 'true')
+content = open(path).read()
+
+def rewrite_url(url):
+    if not url:
+        return url
+    # Leave absolute URLs, root-relative, and fragment-only links alone
+    if url.startswith('http') or url.startswith('/') or url.startswith('#'):
+        return url
+    # Skip prose in parentheses (contains spaces or newlines)
+    if ' ' in url or '\n' in url:
+        return url
+
+    # Split off fragment
+    anchor = ''
+    if '#' in url:
+        url, frag = url.split('#', 1)
+        anchor = '#' + frag
+        if not url:
+            return anchor  # pure #anchor
+
+    # Determine relative prefix and the path portion after it
+    if url.startswith('./'):
+        levels = 0   # 0 = same dir  (represented as ./)
+        has_dot_slash = True
+        rest = url[2:]
+    elif url.startswith('../'):
+        rest = url
+        levels = 0
+        has_dot_slash = False
+        while rest.startswith('../'):
+            levels += 1
+            rest = rest[3:]
+    else:
+        levels = -1  # bare link — no explicit prefix
+        has_dot_slash = False
+        rest = url
+        # Only treat as a path if it looks like one: ends with .md or contains /.
+        # Bare words like (IPC), (default), (metrics.*), (1) are prose, not links.
+        if not (rest.endswith('.md') or '/' in rest):
+            return rest + anchor
+
+    # Normalise index.md → trailing slash, strip .md extension
+    if rest == 'index.md':
+        rest = ''
+    elif rest.endswith('/index.md'):
+        rest = rest[:-len('index.md')]  # keep trailing slash from dir/
+    elif rest.endswith('.md'):
+        rest = rest[:-3] + '/'
+
+    # Strip numeric ordering prefix from every path segment
+    rest = re.sub(r'(?:^|(?<=[/]))\d+-(?=[a-zA-Z])', '', rest)
+
+    # Build the correct relative prefix for the target Hugo URL model.
+    # Index pages live at /section/ — same depth as the source directory.
+    # Leaf pages live at /section/page/ — one level deeper than source directory.
+    if is_index_page:
+        if levels == -1:          # bare → bare (index page resolves correctly)
+            prefix = ''
+        elif has_dot_slash:       # ./ → strip it (same dir in both models)
+            prefix = ''
+        else:                     # N×../ → same N×../
+            prefix = '../' * levels
+    else:
+        if levels == -1:          # bare sibling → ../
+            prefix = '../'
+        elif has_dot_slash:       # ./ → ../  (same-dir in FS = one up in URL)
+            prefix = '../'
+        else:                     # N×../ → (N+1)×../
+            prefix = '../' * (levels + 1)
+
+    return prefix + rest + anchor
+
+def process(m):
+    new_url = rewrite_url(m.group(1))
+    return '(' + new_url + ')'
+
+content = re.sub(r'\(([^)]+)\)', process, content)
+open(path, 'w').write(content)
+PYEOF
+}
+
+sync_file() {
+  local src_file="$1"
+  local dst_file="$2"
+  local weight="$3"
+  local src_for_date="${4:-$src_file}"
+
+  mkdir -p "$(dirname "$dst_file")"
+  cp "$src_file" "$dst_file"
+  rewrite_links "$dst_file"
+  clean_navigation "$dst_file"
+  convert_admonitions "$dst_file"
+  local title
+  title="$(slugify_title "$src_file")"
+  inject_frontmatter "$dst_file" "$title" "$weight" "$src_for_date"
+}
+
+# ── Clean destinations ────────────────────────────────────────────────────────
+# Wipe and recreate docs so stale files from deleted pages are removed.
+# For blog and publications, preserve the manually maintained _index.md.
+
+echo "Cleaning content/docs ..."
+rm -rf "${DST_DIR:?}"
+mkdir -p "$DST_DIR"
+
+echo "Cleaning content/blog (preserving _index.md) ..."
+find "${BLOG_DIR:?}" -name '*.md' ! -name '_index.md' -delete 2>/dev/null || true
+
+echo "Cleaning content/publications (preserving _index.md) ..."
+find "${PUB_DIR:?}" -name '*.md' ! -name '_index.md' -delete 2>/dev/null || true
+
+# ── Sync docs ─────────────────────────────────────────────────────────────────
+
+echo "Syncing docs: $SRC_DIR → $DST_DIR"
 
 weight=1
-
-# Walk all .md files under docs/
 find "$SRC_DIR" -name '*.md' | sort | while read -r src_file; do
   rel_path="${src_file#$SRC_DIR/}"
 
-  # Skip blog/ and publications/ — they have their own top-level content directories
+  # Blog and publications are synced separately below
   if [[ "$rel_path" == blog/* ]] || [[ "$rel_path" == publications/* ]]; then
     continue
   fi
 
-  dst_file="$DST_DIR/$rel_path"
+  # Strip numeric ordering prefix (NN-) from each path segment so Hugo generates
+  # clean URLs. The prefix is only for file-system ordering in the source tree.
+  dst_rel_path="$(echo "$rel_path" | sed 's|/[0-9][0-9]*-|/|g' | sed 's|^[0-9][0-9]*-||')"
+  dst_file="$DST_DIR/$dst_rel_path"
 
   # Hugo requires _index.md (not index.md) for section branch bundles.
-  # Any source index.md becomes _index.md so sub-pages render correctly.
   if [[ "$(basename "$dst_file")" == "index.md" ]]; then
     dst_file="${dst_file%index.md}_index.md"
   fi
 
-  # If destination _index.md already exists with a custom weight, preserve it.
-  existing_weight=""
-  if [[ -f "$dst_file" ]] && head -1 "$dst_file" | grep -q '^---'; then
-    existing_weight="$(grep '^weight:' "$dst_file" | head -1 | awk '{print $2}')"
-  fi
-
-  mkdir -p "$(dirname "$dst_file")"
-  cp "$src_file" "$dst_file"
-
-  # Rewrite markdown cross-references: foo.md) → foo/) and index.md) → )
-  # Hugo serves pages at /path/ not /path/index.md or /path.md
-  sed -i \
-    -e 's|\(\.\/[^)]*\)\/index\.md)|\1/)|g' \
-    -e 's|\(\.\.[^)]*\)\/index\.md)|\1/)|g' \
-    -e 's|\(\.\/[^)]*\)\.md)|\1/)|g' \
-    -e 's|\(\.\.[^)]*\)\.md)|\1/)|g' \
-    "$dst_file"
-
-  convert_admonitions "$dst_file"
-
-  title="$(slugify_title "$src_file")"
-  effective_weight="${existing_weight:-$weight}"
-  inject_frontmatter "$dst_file" "$title" "$effective_weight"
-
+  sync_file "$src_file" "$dst_file" "$weight" "$src_file"
   ((weight++)) || true
-  echo "  synced: $rel_path"
+  echo "  docs: $rel_path"
 done
 
-# ── Section _index.md files ───────────────────────────────────────────────────
+# ── Auto-create missing section _index.md files ───────────────────────────────
 
-find "$DST_DIR" -mindepth 1 -maxdepth 3 -type d | while read -r dir; do
+find "$DST_DIR" -mindepth 1 -maxdepth 4 -type d | while read -r dir; do
   index="$dir/_index.md"
   if [[ ! -f "$index" ]]; then
     section_title="$(basename "$dir" | sed 's/[-_]/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2); print}')"
     printf -- '---\ntitle: "%s"\nweight: 1\n---\n' "$section_title" > "$index"
     echo "  created index: ${index#$DST_DIR/}"
   fi
+done
+
+# ── Sync blog ─────────────────────────────────────────────────────────────────
+
+echo "Syncing blog: $SRC_DIR/blog → $BLOG_DIR"
+
+weight=1
+find "$SRC_DIR/blog" -name '*.md' 2>/dev/null | sort | while read -r src_file; do
+  dst_file="$BLOG_DIR/$(basename "$src_file")"
+  sync_file "$src_file" "$dst_file" "$weight" "$src_file"
+  ((weight++)) || true
+  echo "  blog: $(basename "$src_file")"
+done
+
+# ── Sync publications ─────────────────────────────────────────────────────────
+
+echo "Syncing publications: $SRC_DIR/publications → $PUB_DIR"
+
+weight=1
+find "$SRC_DIR/publications" -name '*.md' 2>/dev/null | sort | while read -r src_file; do
+  dst_file="$PUB_DIR/$(basename "$src_file" | sed 's/^[0-9][0-9]*-//')"
+  sync_file "$src_file" "$dst_file" "$weight" "$src_file"
+  ((weight++)) || true
+  echo "  pub: $(basename "$src_file")"
 done
 
 echo "Done."

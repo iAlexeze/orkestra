@@ -200,6 +200,8 @@ func buildSingleGatewayCRDStats(name, gvk, gvrStr, gvrKey string, ws GatewayStat
 				AvgLatencyMs: snap.AvgLatency.Milliseconds(),
 				P95LatencyMs: snap.P95Latency.Milliseconds(),
 			}
+		} else {
+			resp.Conversion = &ConversionStatsResponse{Enabled: true}
 		}
 	}
 

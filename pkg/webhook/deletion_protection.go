@@ -28,7 +28,7 @@ func (ws *WebhookServer) deletionProtectionHandler(w http.ResponseWriter, r *htt
 
 	var review AdmissionReview
 	if err := json.NewDecoder(r.Body).Decode(&review); err != nil {
-		logger.Error().Err(err).Msg("deletion-protection: failed to decode AdmissionReview")
+		logger.Error().Err(err).Msgf("%s: failed to decode AdmissionReview", deletionProtection)
 		http.Error(w, "invalid AdmissionReview", http.StatusBadRequest)
 		return
 	}
@@ -54,7 +54,7 @@ func (ws *WebhookServer) deletionProtectionHandler(w http.ResponseWriter, r *htt
 		logger.Info().
 			Str("webhook", req.Name).
 			Str("uid", req.UID).
-			Msg("deletion-protection: blocking deletion of the deletion-protection webhook")
+			Msgf("%s: blocking deletion of the deletion-protection webhook", deletionProtection)
 
 		metrics.RecordDeletionProtectionBlocked(deletionProtectionWebhookConfigName)
 		ws.infraProtStats.RecordBlocked() // infra event — not attributable to a specific CRD
@@ -87,7 +87,7 @@ func (ws *WebhookServer) deletionProtectionHandler(w http.ResponseWriter, r *htt
 			logger.Info().
 				Str("crd", req.Name).
 				Str("uid", req.UID).
-				Msg("deletion-protection: blocking CRD deletion")
+				Msgf("%s: blocking CRD deletion", deletionProtection)
 
 			metrics.RecordDeletionProtectionBlocked(req.Name)
 			crdStats.RecordBlocked()
@@ -123,7 +123,7 @@ func (ws *WebhookServer) deletionProtectionHandler(w http.ResponseWriter, r *htt
 		Str("name", req.Name).
 		Str("namespace", req.Namespace).
 		Str("uid", req.UID).
-		Msg("deletion-protection: blocking Orkestra resource deletion")
+		Msgf("%s: blocking Orkestra resource deletion", deletionProtection)
 
 	metrics.RecordDeletionProtectionBlocked("orkestra-" + req.Resource.Resource)
 	ws.infraProtStats.RecordBlocked()

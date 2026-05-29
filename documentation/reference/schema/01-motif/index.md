@@ -1,0 +1,177 @@
+# Motif
+
+!!! note "Motif is not a Kubernetes CRD"
+    `kubectl apply` will not work. Orkestra kinds are consumed by the `ork` CLI and runtime — not by the Kubernetes API server. [Your CRD is enough](../../../blog/02-your-crd-is-enough.md).
+
+A Motif is the smallest reusable unit in Orkestra's composition model. It declares named inputs and contributes resource blocks to a Katalog CRD entry. It cannot run alone — it must be imported by a Katalog.
+
+```text
+Motif     — named inputs + resource blocks. One concern.
+    ↓
+Katalog   — operator declaration. Imports Motifs via imports:.
+    ↓
+Komposer  — platform declaration. Composes Katalogs.
+    ↓
+E2E       — declarative end-to-end test for a Katalog.
+```
+
+---
+
+## Wire format
+
+```yaml
+apiVersion: orkestra.orkspace.io/v1
+kind: Motif
+
+metadata:
+  name: postgres
+  version: v0.1.0
+  description: >
+    PostgreSQL StatefulSet with persistent storage, headless Service, and pgAdmin.
+  author: orkspace
+  license: Apache-2.0
+  tags:
+    - database
+    - statefulset
+
+inputs:
+  - name: image
+    description: PostgreSQL image
+    default: "postgres:latest"
+
+  - name: replicas
+    description: Number of replicas
+    default: "1"
+
+  - name: volumeSize
+    description: PVC storage size
+    default: "10Gi"
+
+resources:
+  onCreate:
+    secrets:
+      - name: "{{ .metadata.name }}-creds"
+        once: true
+        data:
+          password: "{{ randomAlphanumeric 16 }}"
+
+  statefulSets:
+    - name: "{{ .metadata.name }}-postgres"
+      image: "{{ .inputs.image }}"
+      replicas: "{{ .inputs.replicas }}"
+      volumeClaimTemplates:
+        - name: data
+          storageSize: "{{ .inputs.volumeSize }}"
+          mountPath: /var/lib/postgresql/data
+
+  services:
+    - name: "{{ .metadata.name }}-postgres"
+      port: 5432
+
+status:
+  fields:
+    - path: postgresReady
+      value: "{{ allReplicasReady .children.statefulset }}"
+    - path: connectionString
+      value: "postgresql://{{ .metadata.name }}-postgres.{{ .metadata.namespace }}.svc.cluster.local:5432"
+```
+
+---
+
+## How a Motif is used
+
+A Katalog imports a Motif at the CRD entry level via `imports:`. The Katalog binds CR field values to Motif inputs using `with:`.
+
+```yaml
+# In a Katalog
+spec:
+  crds:
+    database:
+      apiTypes:
+        group: apps.example.io
+        version: v1
+        kind: Database
+      imports:
+        - motif: oci://ghcr.io/orkspace/patterns/motifs/postgres:v0.1.0
+          with:
+            image: "{{ .spec.image }}"
+            volumeSize: "{{ .spec.storage | default \"10Gi\" }}"
+```
+
+At reconcile time, Orkestra:
+1. Resolves and fetches the Motif from the declared source.
+2. Evaluates each `with:` value as a Go template against the CR being reconciled.
+3. Merges the Motif's resources into the CRD entry alongside the Katalog's own `operatorBox`.
+4. Runs `onCreate` resources exactly once (on CR creation). All other blocks run on every reconcile.
+
+---
+
+## `metadata`
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | yes | Motif identifier. Used as the registry artifact name. |
+| `version` | no | Semver tag shown in `ork registry list`. |
+| `description` | no | Short description shown in the registry UI. |
+| `author` | no | Author or org name. |
+| `license` | no | SPDX identifier (e.g. `Apache-2.0`). |
+| `tags` | no | Free-form tags for registry discoverability. |
+
+---
+
+## Pattern directory structure
+
+```text
+postgres/
+  motif.yaml      ← required — the Motif spec
+  README.md       ← optional — shown in registry UI
+  example/
+    katalog.yaml  ← optional — example Katalog importing this Motif
+```
+
+`motif.yaml` is the only required file. The registry identifies the artifact kind from `kind: Motif` in the file.
+
+---
+
+## Try it
+
+Example 16/06 is the capstone Motif example: a `Platform` CRD imports a Motif that provisions a `MessageQueue`, `ObjectStore`, and `SearchCluster` as child CRs — all from a single CR apply.
+
+```bash
+ork init --pack advanced
+cd advanced/16-custom-resources/06-full-platform-composition
+ork run -f katalog.yaml
+```
+
+Apply a small Platform CR:
+
+```bash
+kubectl apply -f cr-small.yaml
+```
+
+Orkestra resolves `platform-motif.yaml`, evaluates the `with:` bindings, and creates all three child CRs. Delete the Platform CR and all children are garbage-collected.
+
+To browse the production-ready Motifs in the Orkestra Registry:
+
+```bash
+ork registry list --kind Motif
+```
+
+---
+
+## Where to go
+
+| Page | Covers |
+|------|--------|
+| [01-inputs.md](01-inputs.md) | `inputs` — declaration, required/optional, defaults, type hints |
+| [02-resources.md](02-resources.md) | `resources` — blocks, template context, `onCreate`, `status`, `admission` |
+| [03-importing.md](03-importing.md) | Importing into a Katalog — `imports:`, `with:` bindings, multiple Motifs |
+
+---
+
+## See also
+
+- [Katalog schema](../02-katalog/01-top-level.md) — where `imports:` lives on the CRD entry
+- [operatorBox](../02-katalog/04-operatorbox.md) — the Katalog's own resources, merged alongside Motif resources
+- [Komposer schema](../03-komposer/index.md) — composing multiple Katalogs
+- [Orkestra Registry](../../../orkestra-registry.md) — publishing and consuming Motifs

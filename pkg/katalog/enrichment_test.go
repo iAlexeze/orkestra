@@ -148,8 +148,8 @@ func TestEnrichCRDEntry_PartiallySpecified_Error(t *testing.T) {
 	if outcome != orktypes.EnrichmentFailed {
 		t.Errorf("expected EnrichmentFailed")
 	}
-	if !strings.Contains(err.Error(), "partially specified") {
-		t.Errorf("error should mention partial specification: %q", err.Error())
+	if !strings.Contains(err.Error(), "incomplete") {
+		t.Errorf("error should mention incomplete apiTypes: %q", err.Error())
 	}
 }
 

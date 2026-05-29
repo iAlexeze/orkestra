@@ -68,23 +68,33 @@ kubectl apply -f website-crd.yaml
 
 ## Security-First Installation (Recommended)
 
-Orkestra generates **minimal RBAC** from your Katalog — no wildcards, no excess permissions. The full flow is four steps.
+Orkestra generates **minimal RBAC** from your Katalog — no wildcards, no excess permissions. The full flow is five steps, starting with an offline review before anything touches the cluster.
 
-### Step 1 — Generate a bundle
+### Step 1 — Preview permissions offline
+
+```bash
+ork validate --full
+```
+
+Shows every RBAC rule, named profile, and startup dependency your Katalog will request — per CRD, per component (runtime and gateway), with inline notes explaining why each permission exists. No cluster required.
+
+Review this output before generating. What you see here is exactly what the bundle will contain.
+
+### Step 2 — Generate a bundle
 
 ```bash
 ork generate bundle -f katalog.yaml -o bundle.yaml
 ```
 
-This produces a single YAML containing: a `Namespace`, `ServiceAccounts` for Runtime, Gateway, and Control Center, a `ClusterRole` with only the permissions your Katalog needs, a `ClusterRoleBinding`, and a `ConfigMap` with your Katalog data.
+No cluster required. This produces a single YAML containing: a `Namespace`, `ServiceAccounts` for Runtime, Gateway, and Control Center, a `ClusterRole` with only the permissions your Katalog needs, a `ClusterRoleBinding`, and a `ConfigMap` with your Katalog data.
 
-### Step 2 — Apply the bundle
+### Step 3 — Apply the bundle
 
 ```bash
 kubectl apply -f bundle.yaml
 ```
 
-### Step 3 — Deploy with Helm
+### Step 4 — Deploy with Helm
 
 ```bash
 helm upgrade --install orkestra orkestra/orkestra \
@@ -94,14 +104,14 @@ helm upgrade --install orkestra orkestra/orkestra \
 
 The chart automatically uses the `ServiceAccount` and `ConfigMap` you just applied.
 
-### Step 4 — Verify
+### Step 5 — Verify
 
 ```bash
 kubectl get pods -n orkestra-system
 kubectl get websites -A
 ```
 
-> **Why this matters:** Traditional operators are massively over-permissioned. Orkestra generates RBAC from your declared intent — least-privilege security by default. Every permission is visible in source control before it reaches the cluster.
+> **Why this matters:** Traditional operators are massively over-permissioned. Orkestra generates RBAC from your declared intent — least-privilege security by default. `ork validate --full` makes that intent visible before a single resource is applied.
 
 ---
 
@@ -178,10 +188,10 @@ Label any resource `orkestra.io/deletion-protection: "true"` — the gateway int
 
 ## GitOps Workflow (Recommended)
 
-In CI:
+In CI — all three steps run entirely offline, no cluster required:
 
 ```bash
-ork validate -f katalog.yaml
+ork validate --full -f katalog.yaml       # review permissions before generating
 ork generate bundle -f katalog.yaml -n orkestra-system -o orkestra-bundle.yaml
 # Commit orkestra-bundle.yaml to your GitOps repo
 ```
@@ -487,7 +497,7 @@ Two binaries, two build tags, two attack surfaces:
 | Command | Developer CLI | Runtime binary | Gateway binary |
 |---------|:---:|:---:|:---:|
 | `ork run` | ✓ | ✓ | — |
-| `ork gateway` | — | — | ✓ |
+| `ork gate` | — | — | ✓ |
 | `ork version` | ✓ | ✓ | ✓ |
 | `ork generate` | ✓ | — | — |
 | `ork validate` | ✓ | — | — |

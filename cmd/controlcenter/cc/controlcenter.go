@@ -147,17 +147,25 @@ func (cc *ControlCenter) fetchAllKatalogs() {
 				inst.LastError = err.Error()
 				log.Printf("WARN: fetch katalog from %s: %v", u, err)
 			} else {
-				inst.Katalog = kat
 				inst.GatewayEndpoint = kat.GatewayEndpoint
-				if kat.OrkReady {
+				if kat.IsKonductor {
+					// Leader pod — data is authoritative, always update.
+					inst.Katalog = kat
 					inst.Status = "online"
 					inst.Healthy = true
 					inst.LastError = ""
-				} else {
+				} else if inst.Katalog == nil {
+					// Follower pod but we have nothing yet — accept it so the
+					// katalog appears immediately rather than waiting for a lucky
+					// tick that hits the leader. It may show CRDs as pending until
+					// the next leader response overwrites it.
+					inst.Katalog = kat
 					inst.Status = "starting"
 					inst.Healthy = false
 					inst.LastError = ""
 				}
+				// Follower + already have good data → keep last known-good snapshot,
+				// discard this response so the display does not flip.
 				log.Printf("INFO: fetched katalog %q from %s (%d CRDs, gateway=%q)",
 					kat.Name, u, len(kat.CRDs), kat.GatewayEndpoint)
 			}

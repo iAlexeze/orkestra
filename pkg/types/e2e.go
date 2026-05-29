@@ -1,5 +1,128 @@
 package types
 
+import (
+	"fmt"
+
+	"gopkg.in/yaml.v3"
+)
+
+// SetupConfig declares prerequisite resources to apply before Orkestra starts.
+//
+// Shorthand — a plain list of strings is equivalent to setup.apply:
+//
+//	setup:
+//	  - ./prereqs/secret.yaml
+//
+// Struct form:
+//
+//	setup:
+//	  apply:
+//	    - ./prereqs/secret.yaml
+//	  helm:
+//	    - repo: https://charts.cert-manager.io
+//	      chart: cert-manager
+//	      version: v1.14.0
+//	  wait:
+//	    - kind: Deployment
+//	      name: cert-manager
+//	      namespace: cert-manager
+//	      ready: true
+//	      timeout: 120s
+type SetupConfig struct {
+	// Apply is an ordered list of YAML file paths to kubectl-apply.
+	// Applied first, before helm installs, after the CRD is installed.
+	Apply []string `yaml:"apply,omitempty"`
+
+	// Helm is an ordered list of Helm charts to install before Orkestra starts.
+	// Executed as helm upgrade --install — not rendered for Katalog extraction.
+	Helm []SetupHelmInstall `yaml:"helm,omitempty"`
+
+	// Wait blocks until all listed resources exist and satisfy conditions.
+	// Runs last. If any wait times out, setup fails and the operator does not start.
+	Wait []SetupWait `yaml:"wait,omitempty"`
+}
+
+// UnmarshalYAML allows setup: to be written as either a plain list of strings
+// (backward-compatible shorthand for setup.apply) or a full struct.
+func (s *SetupConfig) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.SequenceNode {
+		for _, item := range value.Content {
+			if item.Kind != yaml.ScalarNode {
+				break
+			}
+			s.Apply = append(s.Apply, item.Value)
+		}
+		if len(s.Apply) > 0 {
+			return nil
+		}
+	}
+	type plain SetupConfig
+	return value.Decode((*plain)(s))
+}
+
+// SetupHelmInstall installs a Helm chart as a real release into the cluster.
+// Unlike HelmSource (which renders charts to extract Katalog documents),
+// this runs helm upgrade --install for a prerequisite chart.
+type SetupHelmInstall struct {
+	// Repo is the Helm repository URL.
+	Repo string `yaml:"repo"`
+	// Chart is the chart name within the repository.
+	Chart string `yaml:"chart"`
+	// Release is the Helm release name. Defaults to the chart name when empty.
+	Release string `yaml:"release,omitempty"`
+	// Namespace for the release. Defaults to "default".
+	Namespace string `yaml:"namespace,omitempty"`
+	// Version pins the chart version. Leave empty for latest.
+	Version string `yaml:"version,omitempty"`
+	// ValueFiles is an ordered list of values files (local paths or URLs).
+	ValueFiles []string `yaml:"valueFiles,omitempty"`
+	// Values are inline key-value overrides, equivalent to helm --set.
+	Values map[string]interface{} `yaml:"values,omitempty"`
+	// CreateNamespace passes --create-namespace to helm.
+	CreateNamespace bool `yaml:"createNamespace,omitempty"`
+}
+
+// ReleaseName returns the effective Helm release name.
+func (h SetupHelmInstall) ReleaseName() string {
+	if h.Release != "" {
+		return h.Release
+	}
+	return h.Chart
+}
+
+// EffectiveNamespace returns the effective namespace, defaulting to "default".
+func (h SetupHelmInstall) EffectiveNamespace() string {
+	if h.Namespace != "" {
+		return h.Namespace
+	}
+	return "default"
+}
+
+// Validate returns an error when required fields are missing.
+func (h SetupHelmInstall) Validate() error {
+	if h.Repo == "" {
+		return fmt.Errorf("setup.helm: repo is required")
+	}
+	if h.Chart == "" {
+		return fmt.Errorf("setup.helm: chart is required")
+	}
+	return nil
+}
+
+// SetupWait describes a single resource to wait for before the operator starts.
+type SetupWait struct {
+	// Kind is the Kubernetes resource kind (e.g. Deployment, Secret, Namespace).
+	Kind string `yaml:"kind"`
+	// Name is the exact resource name.
+	Name string `yaml:"name"`
+	// Namespace to look in. Omit for cluster-scoped resources.
+	Namespace string `yaml:"namespace,omitempty"`
+	// Ready waits for an available/ready condition, not just existence.
+	Ready bool `yaml:"ready,omitempty"`
+	// Timeout is a Go duration string. Default: "30s".
+	Timeout string `yaml:"timeout,omitempty"`
+}
+
 // E2E is the top-level document type for declarative end-to-end tests.
 // Committed alongside the katalog, it drives `ork e2e` — the same command
 // that runs locally, in CI, and inside the GitHub Action.
@@ -32,10 +155,10 @@ type E2ESpec struct {
 	// Cluster controls which cluster to use.
 	Cluster E2ECluster `yaml:"cluster"`
 
-	// Setup lists YAML files to apply before Orkestra starts.
-	// Use this for external dependencies: namespaces, secrets, additional CRDs.
-	// Applied in order with kubectl apply -f, after spec.crd.
-	Setup []string `yaml:"setup,omitempty"`
+	// Setup declares prerequisite resources to apply before Orkestra starts.
+	// Shorthand: a plain list of strings applies each file (backward compatible).
+	// Struct form adds helm installs and resource waiting.
+	Setup *SetupConfig `yaml:"setup,omitempty"`
 
 	// Expect is the list of expectations to check after each lifecycle event.
 	Expect []E2EExpectation `yaml:"expect"`

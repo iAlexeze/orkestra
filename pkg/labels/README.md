@@ -1,38 +1,52 @@
 # pkg/labels
 
-`labels` defines all label, annotation, and finalizer constants used by the Orkestra control plane. It is intentionally dependency-free and safe to import from any layer of the system — runtime, CLI, generators, komposers, motifs.
+`labels` owns two things:
 
-Nothing in this package performs logic. It only provides stable string identifiers and a few helpers for constructing label sets and selectors.
+1. **All label, annotation, and finalizer constants** used by the Orkestra control plane — stable string identifiers shared across the runtime, CLI, generators, komposers, Gateway, and admission webhooks.
+
+2. **The `Manager`** — a stateless helper that applies the standard label invariants to any Kubernetes object based on Katalog configuration. Previously part of the reconciler, it lives here so the admission layer and any future consumer can use it without importing reconciler internals.
+
+The package is dependency-free except for `domain.Object` and `k8s.io/apimachinery`. Safe to import from any layer.
+
+## What lives here
+
+| File | Role |
+|------|------|
+| `labels.go` | All label keys, annotation keys, finalizer keys, selector helpers, and label set constructors |
+| `manager.go` | `Manager` — applies managed, deletion-protection, and strict-mode-exempt labels to a domain.Object in memory |
 
 ## Key constants
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
-| `DeletionProtectionLabel` | `orkestra.io/deletion-protection` | Marks resources the deletion-protection webhook protects |
-| `Managed` | `orkestra.orkspace.io/managed` | Resources actively managed by Orkestra |
-| `OrkestraOwner` | `orkestra-owner` | Label value identifying the owning CR name |
-| `AnnotationManagedBy` | `orkestra.orkspace.io/managed-by` | Which operator instance manages the CR |
-| `AnnotationManagedSince` | `orkestra.orkspace.io/managed-since` | When Orkestra first took ownership |
+| `DeletionProtectionLabel` | `orkestra.io/deletion-protection` | Marks resources the deletion-protection webhook blocks from being deleted |
+| `StrictModeExemptKey` | `orkestra.io/strict-mode-exempt` | Signals that a CRD has opted out of strict-mode; the strict-mode webhook allows label removal when present |
+| `ManagedKey` | `orkestra.orkspace.io/managed` | Identifies resources actively managed by Orkestra |
+| `OrkestraOwner` | `orkestra-owner` | Identifies the owning CR name |
+| `AnnotationManagedBy` | `orkestra.orkspace.io/managed-by` | Records which operator instance manages the resource |
+| `AnnotationManagedSince` | `orkestra.orkspace.io/managed-since` | Records when Orkestra first took ownership (write-once) |
 | `FinalizerOrkestra` | `orkestra.orkspace.io/finalizer` | Finalizer applied to CRs for cleanup hooks |
 
-## Label set helpers
+## Quick usage
 
 ```go
-// Standard labels applied to every Orkestra control-plane resource.
-// Includes deletion-protection so the webhook protects Orkestra's own resources.
-labels.OrkestraBaseLabels() map[string]string
+// Construct a Manager once per reconcile cycle
+mgr := labels.NewManager(labels.Config{
+    DeletionProtectionEnabled: kat.IsDeletionProtectionEnabled(),
+})
 
-// Add deletion-protection to an existing label map (non-destructive copy).
-labels.WithDeletionProtection(m) map[string]string
+// Apply all label invariants in memory
+mgr.EnsureManagedLabel(obj)
+mgr.EnsureDeletionProtectionLabel(obj, shouldProtect)
+mgr.EnsureStrictModeExemptLabel(obj, effectiveStrict)
+
+// Caller persists to the API server
+kube.PatchLabels(ctx, obj, gvr, serverLabels, obj.GetLabels())
 ```
 
-## Selector helpers
+## Developer documentation
 
-```go
-// LabelSelector matching orkestra.io/deletion-protection=true
-// Used when building webhook NamespaceSelector or ObjectSelector.
-labels.DeletionProtectionSelector() *metav1.LabelSelector
-
-// LabelSelector matching all Orkestra control-plane resources.
-labels.OrkestraResourceSelector() *metav1.LabelSelector
-```
+| I want to… | Go to |
+|-----------|-------|
+| Understand every label and annotation constant and who uses them | [01 — Label reference](docs/01-label-reference.md) |
+| Understand how the Manager works and the two-phase protection removal | [02 — Manager](docs/02-manager.md) |

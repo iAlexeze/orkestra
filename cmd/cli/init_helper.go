@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 
 	"github.com/orkspace/orkestra/examples"
-	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 //
@@ -24,7 +23,7 @@ import (
 func extractEmbeddedPack(root, pack string) error {
 	p, ok := Packs[pack]
 	if !ok {
-		return fmt.Errorf("unknown pack %q — run `ork init --list-packs` to see available packs", pack)
+		return fmt.Errorf("unknown pack %q — run `ork init --list` to see available packs", pack)
 	}
 	srcPath := p.Path
 
@@ -315,15 +314,20 @@ func runSteps(steps []initStep) error {
 	for _, step := range steps {
 		fmt.Printf("  %-50s", step.name+"...")
 		if err := step.fn(); err != nil {
-			fmt.Printf("%s\n", utils.FailureMark())
+			fmt.Printf("%s\n", failureMark())
 			return fmt.Errorf("%s: %w", step.name, err)
 		}
-		fmt.Printf("%s\n", utils.SuccessMark())
+		fmt.Printf("%s\n", successMark())
 	}
 	return nil
 }
 
 // printBanner prints the Orkestra CLI logo.
 func printBanner() {
-	fmt.Printf("\n%s\n\n", utils.Green(utils.OrkestraLogoCLI))
+	fmt.Printf("\n%s\n\n", green(orkestraLogo))
+}
+
+// isCurrentDirectory reports whether the project name is "."
+func isCurrentDirectory(name string) bool {
+	return name == "."
 }

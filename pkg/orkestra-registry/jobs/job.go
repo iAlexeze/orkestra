@@ -50,6 +50,12 @@ type ResolvedJobSpec struct {
 	// Resources — CPU and memory requests/limits. nil means no limits set.
 	Resources *orktypes.ResourceRequirements
 
+	// SecurityContext — container-level security settings.
+	SecurityContext *orktypes.ContainerSecurityContext
+
+	// PodSecurity — pod-level security settings.
+	PodSecurity *orktypes.PodSecurityContext
+
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).
@@ -137,15 +143,17 @@ func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 // Template expressions must already be evaluated by template.Resolver before calling.
 func Resolve(src orktypes.JobTemplateSource, backoffLimit int, ownerName string) ResolvedJobSpec {
 	spec := ResolvedJobSpec{
-		Name:         src.Name,
-		Namespace:    src.Namespace,
-		Image:        src.Image,
-		Command:      src.Command,
-		Args:         src.Args,
-		BackoffLimit: backoffLimit,
-		Labels:       make(map[string]string),
-		Resources:    common.ResolveResources(src.Resources),
-		Sleep:        src.Sleep,
+		Name:            src.Name,
+		Namespace:       src.Namespace,
+		Image:           src.Image,
+		Command:         src.Command,
+		Args:            src.Args,
+		BackoffLimit:    backoffLimit,
+		Labels:          make(map[string]string),
+		Resources:       common.ResolveResources(src.Resources),
+		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
+		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Sleep:           src.Sleep,
 	}
 
 	if spec.Name == "" {
@@ -160,7 +168,7 @@ func Resolve(src orktypes.JobTemplateSource, backoffLimit int, ownerName string)
 	}
 
 	// System labels
-	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.ManagedKey] = labels.ManagedValue
 	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
@@ -216,6 +224,9 @@ func buildJob(owner domain.Object, spec ResolvedJobSpec, namespace string) *batc
 			},
 		},
 	}
+
+	// Security
+	common.ApplySecurityContext(&job.Spec.Template.Spec.Containers[0], &job.Spec.Template.Spec, spec.SecurityContext, spec.PodSecurity)
 
 	return job
 }

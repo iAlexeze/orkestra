@@ -11,6 +11,17 @@
         {{ with .Description }}
         <p class="docs-description">{{ . }}</p>
         {{ end }}
+        <div class="docs-meta">
+          {{ with .Lastmod }}
+          <time datetime="{{ .Format "2006-01-02" }}" class="docs-date">
+            Updated {{ .Format "Jan 2, 2006" }}
+          </time>
+          {{ end }}
+
+          {{ with .ReadingTime }}
+          <span class="docs-reading-time">{{ . }} min read</span>
+          {{ end }}
+        </div>
       </header>
 
       {{ with .Content }}
@@ -20,7 +31,7 @@
       {{ end }}
 
       {{ $hasChildren := or .Pages .Sections }}
-      {{ if $hasChildren }}
+      {{ if and $hasChildren (not .Content) }}
       <nav class="docs-index-nav" aria-label="Section pages">
         {{/* Render sections (subdirectories) and pages together, ordered by the sidebar data if available */}}
         {{ range .Sections.ByWeight }}

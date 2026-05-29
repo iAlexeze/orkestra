@@ -2,7 +2,7 @@
 
 Notes are pure transformation functions available in every `{{ }}` expression across a Katalog — status fields, `when:` conditions, resource names, `onCreate`, `onReconcile`, mutation rules, conversion paths. They are the vocabulary of declarative operator behavior.
 
-**Contract:** pure (same input → same output), safe (nil/empty input never panics), stateless (no I/O, no side effects). Use katalog `external` block or [hooks](../typed-operators/hooks.md) for anything requiring external calls.
+**Contract:** pure (same input → same output), safe (nil/empty input never panics), stateless (no I/O, no side effects). Use katalog `external` block or [hooks](../typed-operators/01-hooks.md) for anything requiring external calls.
 
 ---
 

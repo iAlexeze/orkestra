@@ -4,7 +4,6 @@
     <a href="/" class="navbar-logo" aria-label="Orkestra home">
       <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="36" width="36">
       <span class="logo-text">Orkestra</span>
-      <span class="version-badge">{{ .Site.Params.version }}</span>
     </a>
 
     <!-- Desktop nav links -->
@@ -74,6 +73,17 @@
         </a>
       </li>
       {{ end }}
+      <li class="navbar-mobile-divider"></li>
+      <li>
+        <a href="{{ .Site.Params.github }}" class="navbar-mobile-link" target="_blank" rel="noopener noreferrer">
+          GitHub
+        </a>
+      </li>
+      <li>
+        <a href="{{ .Site.Params.controlcenter }}" class="navbar-mobile-link" target="_blank" rel="noopener noreferrer">
+          Control Center
+        </a>
+      </li>
     </ul>
   </div>
 </nav>

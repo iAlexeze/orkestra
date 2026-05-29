@@ -29,24 +29,51 @@ func (c *CRDEntry) SkipStatusSubresource() bool {
 	return c.IgnoreStatusPatch
 }
 
+// SkipObservedGeneration reports whether this CRD should ignore the
+// status.observedGeneration field during readiness checks.
+//
+// This is applied mainly to built‑in Kubernetes resources or CRDs that do not
+// implement observedGeneration semantics. When true, Orkestra will NOT use
+// generation-based readiness logic for this CRD.
+func (c *CRDEntry) SkipObservedGeneration() bool {
+	return c.IgnoreObservedGeneration
+}
+
 // ShouldEnrich returns true when the given enrichment target is enabled —
 // either via EnrichAll: true or an explicit entry in Enrich.
+// Condition gates (when:/anyOf:) are not evaluated here — they are handled
+// higher up by ActiveEnrichTargets before the CRDEntry reaches each enricher.
 func (c *CRDEntry) ShouldEnrich(target string) bool {
 	if c.EnrichAll {
 		return true
 	}
 	for _, t := range c.Enrich {
-		if t == target {
+		if t.Key == target {
 			return true
 		}
 	}
 	return false
 }
 
-// SkipObservedGeneration reports whether this CRD belongs to a list to be ignored during status patches.
-// This is applied mainly to builtins or if specifically required by the crd through crd.IgnoreStatusPatch
-func (c *CRDEntry) SkipObservedGeneration() bool {
-	return c.IgnoreObservedGeneration
+// ActiveEnrichTargets returns the subset of Enrich entries whose when:/anyOf:
+// conditions pass for the given data map and evaluator. Unconditional entries
+// (no when: or anyOf:) always pass. Called from ReadChildren to pre-filter
+// crd.Enrich before dispatching to individual enricher functions.
+func (c *CRDEntry) ActiveEnrichTargets(data map[string]interface{}, eval TemplateEvaluator) []EnrichTarget {
+	if c.EnrichAll {
+		return c.Enrich
+	}
+	result := make([]EnrichTarget, 0, len(c.Enrich))
+	for _, t := range c.Enrich {
+		if len(t.When) == 0 && len(t.AnyOf) == 0 {
+			result = append(result, t)
+			continue
+		}
+		if EvaluateWhen(data, t.When, t.AnyOf, eval) {
+			result = append(result, t)
+		}
+	}
+	return result
 }
 
 // IsStatusless reports whether this CRD has no meaningful readiness semantics.
@@ -281,6 +308,17 @@ func (c *CRDEntry) HasMutationRules() bool {
 	return len(c.Mutation.Rules) > 0
 }
 
+// ShouldMutateFirst reports whether this CRD prefers mutation first or not
+//
+// Default is true
+func (c *CRDEntry) ShouldMutateFirst() bool {
+	if c.Mutation == nil {
+		return true
+	}
+	return c.Mutation.MutateFirst
+}
+
+// HasValidationRules reports whether this CRD has any validation behavior configured
 func (c *CRDEntry) HasValidationRules() bool {
 	if c.Validation == nil {
 		return false
@@ -308,6 +346,21 @@ func (c *CRDEntry) HasRollbackRules() bool {
 // to be auto-applied before the operator starts.
 func (c *CRDEntry) HasCRDFile() bool {
 	return c != nil && c.CRDFile != ""
+}
+
+// HasCRFiles reports whether this CRDEntry declares CR YAML files
+// to be applied before the runtime starts.
+func (c *CRDEntry) HasCRFiles() bool {
+	return c != nil && len(c.CRFiles) > 0
+}
+
+// HasSetup reports whether this CRDEntry declares any setup work
+// to be done before Orkestra starts.
+func (c *CRDEntry) HasSetup() bool {
+	if c == nil || c.Setup == nil {
+		return false
+	}
+	return len(c.Setup.Apply) > 0 || len(c.Setup.Helm) > 0 || len(c.Setup.Wait) > 0
 }
 
 // NotificationEnabled reports whether this CRD declares the notification block

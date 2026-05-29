@@ -19,11 +19,17 @@ spec:
       crdFile: ./crd.yaml
       crFiles:
         - ./cr.yaml
+      setup:
+        apply:
+          - ./setup.yaml
+        wait:
+          - kind: Secret
+            name: database-credentials
+            namespace: platform
+            timeout: 15s
       namespaced: false             # Default: (true)
 
       operatorBox:
-        default: true
-
         status:
           fields:
             - path: phase

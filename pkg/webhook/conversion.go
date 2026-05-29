@@ -99,7 +99,9 @@ func (ws *WebhookServer) conversionHandler(w http.ResponseWriter, r *http.Reques
 			resp.Result = &Status{Status: "Failure", Message: "invalid object payload"}
 			metrics.RecordConversionError(kind, "invalid_payload")
 			metrics.RecordConversion(kind, sourceVersion, targetVersion, "failure")
-			ws.conversionStatsFor(ws.kindToGVRKey[kind]).RecordFailure()
+			// Object is undecodable — no GVK to derive a stats key from.
+			// Record under "" so failures are visible without fabricating CRD attribution.
+			ws.conversionStatsFor("").RecordFailure()
 			break
 		}
 
@@ -108,16 +110,29 @@ func (ws *WebhookServer) conversionHandler(w http.ResponseWriter, r *http.Reques
 			resp.Result = &Status{Status: "Failure", Message: "object missing kind"}
 			metrics.RecordConversionError(kind, "missing_kind")
 			metrics.RecordConversion(kind, sourceVersion, targetVersion, "failure")
-			ws.conversionStatsFor(ws.kindToGVRKey[kind]).RecordFailure()
+			// Object decoded but carries no kind field — same unattributable case.
+			ws.conversionStatsFor("").RecordFailure()
 			break
 		}
+
+		// Build the GVK key from the object's own apiVersion+kind so that
+		// multi-version CRDs sharing the same kind (e.g. v1/CronJob and
+		// v2/CronJob) each get their own stats bucket rather than colliding.
+		objAPIVersion, _ := obj["apiVersion"].(string)
+		var objGroup, objVersion string
+		if parts := strings.SplitN(objAPIVersion, "/", 2); len(parts) == 2 {
+			objGroup, objVersion = parts[0], parts[1]
+		} else {
+			objVersion = objAPIVersion // core group: no slash
+		}
+		gvkKey := crdGVKKey(objGroup, objVersion, kind)
 
 		rules := ws.conversionRegistry.GetConversionRules(kind)
 		if rules == nil {
 			resp.Result = &Status{Status: "Failure", Message: "no conversion rules for kind"}
 			metrics.RecordConversionError(kind, "no_rules")
 			metrics.RecordConversion(kind, sourceVersion, targetVersion, "failure")
-			ws.conversionStatsFor(ws.kindToGVRKey[kind]).RecordFailure()
+			ws.conversionStatsFor(ws.gvkToGVRKey[gvkKey]).RecordFailure()
 			break
 		}
 
@@ -126,14 +141,14 @@ func (ws *WebhookServer) conversionHandler(w http.ResponseWriter, r *http.Reques
 			resp.Result = &Status{Status: "Failure", Message: err.Error()}
 			metrics.RecordConversionError(kind, "apply_failed")
 			metrics.RecordConversion(kind, sourceVersion, targetVersion, "failure")
-			ws.conversionStatsFor(ws.kindToGVRKey[kind]).RecordFailure()
+			ws.conversionStatsFor(ws.gvkToGVRKey[gvkKey]).RecordFailure()
 			break
 		}
 
 		objDuration := time.Since(objStart).Seconds()
 		metrics.ObserveConversionDuration(kind, sourceVersion, targetVersion, objDuration)
 		metrics.RecordConversion(kind, sourceVersion, targetVersion, "success")
-		ws.conversionStatsFor(ws.kindToGVRKey[kind]).RecordSuccess(time.Duration(objDuration * float64(time.Second)))
+		ws.conversionStatsFor(ws.gvkToGVRKey[gvkKey]).RecordSuccess(time.Duration(objDuration * float64(time.Second)))
 
 		out, _ := json.Marshal(converted)
 		resp.ConvertedObjects[i] = out

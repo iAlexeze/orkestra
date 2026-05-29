@@ -19,7 +19,8 @@ The HTTPS server starts only when the Katalog declares at least one webhook capa
 |---------|-------|
 | HTTPS server lifecycle | `webhook.go` |
 | Webhook configuration registration | `registration.go` |
-| Continuous reconciliation controller | `controller.go` |
+| Continuous reconciliation controller | `housekeeper.go` |
+| Infrastructure security reconciliation | `infrastructure.go` |
 | AdmissionReview types | `admission_review.go` |
 | Validation and mutation rule evaluation | `admission_evaluation.go` |
 | `/validate` and `/mutate` handlers | `admission.go` |
@@ -40,8 +41,12 @@ This separation allows the health server to start first — making `/ready` avai
 ```
 NewWebhookServer(kubeClient, katalog, konfig)
     ↓
-ws.SetCertManager(certMgr)   ← optional, only when certs were auto-generated
+ws.SetCertManager(certMgr)           ← optional, only when certs were auto-generated
     ↓
+ws.SetCertBundle(cert, key, ca, ...)  ← optional, only when certs were auto-generated
+    ↓
+WireWebhookHousekeeperInfra(ws, kube, kat, kfg)
+    ↓                                 ← registers ConversionCRDPatcher + CRDWatcher
 ws.Start(ctx)
     • resolves deletion/namespace/strict-mode protection state from Katalog
     • registers HTTPS endpoints based on declared capabilities
