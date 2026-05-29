@@ -1,4 +1,0 @@
----
-title: "Orkestra"
-layout: "home"
----
