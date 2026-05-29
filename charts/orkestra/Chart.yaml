@@ -99,9 +99,6 @@ annotations:
       description: "Docker builds write to /tmp/ instead of ~/.orkestra/bin/ — dev CLI no longer overwritten"
     - kind: changed
       description: "Memory baseline updated to 79 MB RSS — measured from a live 10-CRD runtime"
-  artifacthub.io/signKey: |
-    fingerprint: SET_AT_RELEASE_TIME
-    url: https://orkspace.github.io/orkestra/orkestra-public-key.asc
   artifacthub.io/crdsExamples: |
     - apiVersion: orkestra.orkspace.io/v1
       kind: Katalog
