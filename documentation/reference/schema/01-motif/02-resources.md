@@ -63,7 +63,28 @@ resources:
           password: "{{ randomAlphanumeric 16 }}"
 ```
 
-The `once: true` field is redundant when the secret is under `onCreate` — both prevent overwrite. Use it as documentation.
+`onCreate` and `once: true` are distinct guards:
+
+- `onCreate` — run this block only on CR creation; skip it on all subsequent reconciles.
+- `once: true` — check-before-generate idempotency guard. Before evaluating any template, Orkestra checks whether the secret already exists. If it does, skip template evaluation entirely (no-op). If it does not exist, evaluate templates and create.
+
+`once: true` is required when using Orkestra's [random notes](../../orkestra-notes/random.md) — `randomAlphanumeric`, `randomHex`, `randomBase64` — because these are pure non-idempotent functions: they produce a new value on every call. Without `once: true`, the reconcile loop (which runs on every resync) would call the random note on every cycle, generating a new password every 30 seconds and breaking every application using it.
+
+```yaml
+resources:
+  onCreate:
+    secrets:
+      - name: "{{ .metadata.name }}-creds"
+        once: true
+        data:
+          password: "{{ randomAlphanumeric 32 }}"
+          apiKey:   "{{ randomHex 16 }}"
+```
+
+| Condition | Behaviour |
+|-----------|-----------|
+| Secret does not exist | Evaluate templates → create with generated values |
+| Secret already exists | Skip entirely — no template evaluation, no update |
 
 ---
 
