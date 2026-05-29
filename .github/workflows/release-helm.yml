@@ -50,10 +50,29 @@ jobs:
         run: |
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
-      
-      - name: Update Chart metadata and values
+
+      - name: Import GPG signing key
         env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          echo "${GPG_PRIVATE_KEY}" | gpg --batch --import
+          FINGERPRINT=$(gpg --list-secret-keys --with-colons releases@${{ inputs.ork }}.io \
+            | grep '^fpr' | head -1 | cut -d: -f10)
+          echo "${FINGERPRINT}:6:" | gpg --import-ownertrust
+          echo "GPG_FINGERPRINT=${FINGERPRINT}" >> "$GITHUB_ENV"
+          echo "✅ GPG key imported: ${FINGERPRINT}"
+
+          # Export the secret key to the legacy binary keyring format Helm requires.
+          # Helm's signer reads --keyring as an OpenPGP secret keyring file, not the
+          # modern GnuPG keybox. gpg --export-secret-keys produces the right format.
+          gpg --batch --pinentry-mode loopback --passphrase "${GPG_PASSPHRASE}" \
+            --export-secret-keys releases@${{ inputs.ork }}.io > /tmp/secring.gpg
+
+          # Also export public key in binary format for helm verify
+          gpg --export releases@${{ inputs.ork }}.io > /tmp/pubring.gpg
+
+      - name: Update Chart metadata and values
         run: |
           TAG="${{ github.ref_name }}"
           VERSION="${TAG#v}"
@@ -66,13 +85,14 @@ jobs:
           yq eval ".controlCenter.image.tag = \"${{ inputs.image_tag }}\"" -i charts/${{ inputs.ork }}/values.yaml
           yq eval ".controlCenter.image.repository = \"ghcr.io/${{ inputs.repository }}-cc\"" -i charts/${{ inputs.ork }}/values.yaml
 
-          # Stamp the real GPG fingerprint into the signKey annotation
+          # GPG_FINGERPRINT is now in the environment (exported from the import step above)
           yq eval ".annotations[\"artifacthub.io/signKey\"] = \"fingerprint: ${GPG_FINGERPRINT}\nurl: https://orkspace.github.io/orkestra/orkestra-public-key.asc\"" \
             -i charts/${{ inputs.ork }}/Chart.yaml
 
       - name: Package and sign Helm chart, push to gh-pages
         env:
           GH_TOKEN: ${{ secrets.ORK_PUBLISH_PAT }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           set -eux
           ORK="${{ inputs.ork }}"
@@ -81,17 +101,31 @@ jobs:
           VERSION="${TAG#v}"
           IMAGE_TAG="${{ inputs.image_tag }}"
 
-          # Package the chart without signing
+          # Write passphrase to a temp file — helm --passphrase-file expects a path
+          echo "${GPG_PASSPHRASE}" > /tmp/helm-passphrase
+
+          # Package and sign. --keyring must point to the secret keyring (secring.gpg),
+          # not the public keyring. This produces both .tgz and .tgz.prov.
           helm package "$CHART_DIR" \
             --version "$VERSION" --app-version "$IMAGE_TAG" \
+            --sign --key "releases@${ORK}.io" \
+            --keyring /tmp/secring.gpg \
+            --passphrase-file /tmp/helm-passphrase \
             -d .cr-release-packages
+
+          rm -f /tmp/helm-passphrase /tmp/secring.gpg
+
+          # Verify locally before pushing
+          helm verify ".cr-release-packages/${ORK}-${VERSION}.tgz" --keyring /tmp/pubring.gpg
+          echo "✅ Signature verified"
 
           git clone --branch gh-pages "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" /tmp/gh-pages
 
           cp ".cr-release-packages/${ORK}-${VERSION}.tgz" /tmp/gh-pages/
+          cp ".cr-release-packages/${ORK}-${VERSION}.tgz.prov" /tmp/gh-pages/
 
-          # Publish GPG public key alongside the chart (still useful for future verification)
-          gpg --armor --export releases@${ORK}.io > /tmp/gh-pages/orkestra-public-key.asc || true
+          # Publish public key so users can run helm verify
+          gpg --armor --export releases@${ORK}.io > /tmp/gh-pages/orkestra-public-key.asc
 
           # Sync README from chart source.
           # Inject shields.io version badges after the first heading line.
@@ -113,8 +147,8 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "*.tgz" index.yaml README.md values.yaml orkestra-public-key.asc
-          git commit -m "Release ${ORK}-${VERSION} (unsigned)"
+          git add "*.tgz" "*.prov" index.yaml README.md values.yaml orkestra-public-key.asc
+          git commit -m "Release ${ORK}-${VERSION}"
           git push origin gh-pages
 
       - name: Write summary

@@ -1,7 +1,5 @@
 # Orkestra Helm Chart
 
-![Type](https://img.shields.io/badge/type-application-informational?style=flat-square&color=0080FF&logo=kubernetes&logoColor=white)
-
 Declarative Kubernetes Operator Runtime • Security-First • GitOps-Native
 
 Orkestra is a **declarative operator runtime**: a platform for building Kubernetes operators using pure YAML. This Helm chart deploys:
