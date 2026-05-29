@@ -5,21 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
-<title> — Orkestra</title>
+<title>Trust and Failure Model — Orkestra</title>
 
 <meta name="description" content="The declarative control plane for Kubernetes operators">
 <meta name="author" content="Orkestra">
 
 
 <meta property="og:type" content="article">
-<meta property="og:title" content=" — Orkestra">
+<meta property="og:title" content="Trust and Failure Model — Orkestra">
 <meta property="og:description" content="The declarative control plane for Kubernetes operators">
 <meta property="og:url" content="http://localhost:8090/publications/trust-and-failure-model/">
 <meta property="og:site_name" content="Orkestra">
 
 
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content=" — Orkestra">
+<meta name="twitter:title" content="Trust and Failure Model — Orkestra">
 <meta name="twitter:description" content="The declarative control plane for Kubernetes operators">
 
 
@@ -194,11 +194,16 @@
           Publications
         </a>
 
-        <h1 class="paper-title"></h1>
+        <h1 class="paper-title">Trust and Failure Model</h1>
 
         
 
         <div class="paper-meta">
+          
+          <span class="paper-meta-item">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            May 2026
+          </span>
           
           <span class="paper-meta-item">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -214,11 +219,7 @@
     
     <div class="paper-layout">
       <article class="paper-body prose">
-        <hr>
-<h2 id="weight-2">title: &ldquo;Trust and Failure Model&rdquo;
-date: 2026-05-25
-weight: 2</h2>
-<p>Trust in a distributed system is not a feature you add — it is a property that either emerges from the design or does not. Orkestra&rsquo;s approach is to make trustworthy behavior the default at every layer, and to ensure those layers compound rather than exist independently. This is a description of how that works.</p>
+        <p>Trust in a distributed system is not a feature you add — it is a property that either emerges from the design or does not. Orkestra&rsquo;s approach is to make trustworthy behavior the default at every layer, and to ensure those layers compound rather than exist independently. This is a description of how that works.</p>
 <hr>
 <h2 id="the-foundational-guarantee">The foundational guarantee</h2>
 <p>Every Orkestra reconciler is level-triggered. It does not replay a log of events — it reads current desired state and drives toward it. This is the same model Kubernetes uses for its own controllers, and it carries the same property: any operation that is interrupted half-way through leaves the cluster in a partial state, not a corrupted one. The next reconcile corrects it.</p>
@@ -264,7 +265,7 @@ weight: 2</h2>
 <p><code>ork validate</code> reads the Katalog and shows you the security posture of each CRD before deployment: which permissions will be requested, which admission rules are active, and whether any configuration conflicts with the security model.</p>
 <p>The flow from Katalog to running operator is auditable at every step. No step requires cluster-admin access. No step produces broader permissions than the Katalog declares.</p>
 <hr>
-<p>For a complete description of the security mechanisms — deletion protection, namespace restrictions, admission webhook configuration, RBAC generation, and binary provenance — see the [</p>
+<p>For a complete description of the security mechanisms — deletion protection, namespace restrictions, admission webhook configuration, RBAC generation, and binary provenance — see the <a href="/docs/security/">Security</a> documentation.</p>
 
       </article>
 

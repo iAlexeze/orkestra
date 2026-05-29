@@ -1,264 +1,174 @@
 # Motif
 
-A Motif is the smallest reusable unit in Orkestra's composition model. It declares named inputs and resource blocks. It cannot run alone — it must be imported by a Katalog that provides its inputs via `with:`.
+A Motif is the smallest reusable unit in Orkestra's composition model. It declares named inputs and contributes resource blocks to a Katalog CRD entry. It cannot run alone — it must be imported by a Katalog.
 
 ```text
-Motif     — smallest reusable unit. Declared inputs. One concern.
+Motif     — named inputs + resource blocks. One concern.
     ↓
-Katalog   — operator declaration. Imports Motifs.
+Katalog   — operator declaration. Imports Motifs via imports:.
     ↓
 Komposer  — platform declaration. Composes Katalogs.
+    ↓
+E2E       — declarative end-to-end test for a Katalog.
 ```
+
+---
 
 ## Wire format
 
 ```yaml
-apiVersion: orkestra.orkspace.io/v1   # required
-kind: Motif                            # required
+apiVersion: orkestra.orkspace.io/v1
+kind: Motif
 
 metadata:
-  name: postgres                       # required
-  version: v16
-  description: PostgreSQL StatefulSet with PVC, headless Service, and pgAdmin.
+  name: postgres
+  version: v0.1.0
+  description: >
+    PostgreSQL StatefulSet with persistent storage, headless Service, and pgAdmin.
   author: orkspace
   license: Apache-2.0
   tags:
     - database
+    - statefulset
 
 inputs:
   - name: image
-    description: PostgreSQL image (e.g. postgres:16)
-    required: true
+    description: PostgreSQL image
+    default: "postgres:latest"
+
+  - name: replicas
+    description: Number of replicas
+    default: "1"
 
   - name: volumeSize
     description: PVC storage size
     default: "10Gi"
 
-resources:
-  onCreate:
-    ...
-  statefulsets:
-    ...
-  custom:
-    ...
-  services:
-    ...
-
-status:
-  ...
-
-admission:
-  validation:
-    ...
-  mutation:
-    ...
-```
-
-## `metadata`
-
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | yes | Motif identifier. Used as the registry artifact name. |
-| `version` | no | Semver or tag. Shown in `ork registry list`. |
-| `description` | no | Short description shown in the registry UI. |
-| `author` | no | Author or org name. |
-| `license` | no | SPDX license identifier (e.g. `Apache-2.0`). |
-| `tags` | no | List of tags for discoverability. |
-
-## `inputs`
-
-Named parameters the Motif exposes to consumers. Referenced inside resources as `inputs.<name>`.
-
-```yaml
-inputs:
-  - name: image
-    description: PostgreSQL image (e.g. postgres:16)
-    required: true
-
-  - name: volumeSize
-    description: PVC storage size
-    default: "10Gi"
-
-  - name: user
-    default: "postgres"
-```
-
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | yes | Input identifier. Referenced as `inputs.<name>` in templates. |
-| `description` | no | What this input controls. |
-| `required` | no | When `true`, the importer must provide this input in `with:`. Missing required inputs are caught by `ork validate` and at startup — not at reconcile time. |
-| `type` | no | Type hint (`string`, `int`, `bool`). Reserved for future enforcement. |
-| `default` | no | Value used when the input is not provided in `with:`. Only valid when `required` is `false`. |
-
-## `resources`
-
-Resource blocks the Motif contributes to the CRD entry. Follows the same schema as `operatorBox` resources.
-
-```yaml
 resources:
   onCreate:
     secrets:
       - name: "{{ .metadata.name }}-creds"
         once: true
         data:
-          password: "{{ randAlphaNum 20 }}"
+          password: "{{ randomAlphanumeric 16 }}"
 
-  statefulsets:
+  statefulSets:
     - name: "{{ .metadata.name }}-postgres"
-      image: "{{ inputs.image }}"
-      replicas: 1
-      volumeClaims:
-        - name: pgdata
-          size: "{{ inputs.volumeSize }}"
+      image: "{{ .inputs.image }}"
+      replicas: "{{ .inputs.replicas }}"
+      volumeClaimTemplates:
+        - name: data
+          storageSize: "{{ .inputs.volumeSize }}"
           mountPath: /var/lib/postgresql/data
-      reconcile: true
 
   services:
     - name: "{{ .metadata.name }}-postgres"
       port: 5432
-      reconcile: true
-```
 
-| Block | Merged into | Description |
-|-------|-------------|-------------|
-| `resources.onCreate` | CRD `onCreate` | Resources that run only on CR creation. Never updated on subsequent reconciles. Secrets with `once: true` belong here. |
-| All other resource blocks (`statefulsets`, `services`, etc.) | CRD `onReconcile` | Merged into the normal reconcile phase. |
-
-Template context inside a Motif:
-- `.metadata.name`, `.metadata.namespace` — the CR being reconciled (not the Motif itself)
-- `inputs.<name>` — the Motif's own input values, bound by the consumer's `with:`
-
-A Motif does not know what CRD is importing it. The mapping from CR fields to inputs is the consumer's responsibility, expressed in `with:`.
-
-## `status`
-
-Same schema as the Katalog [status](../02-katalog/05-status.md) block. Fields declared here are contributed to the parent CRD's status.
-
-```yaml
 status:
   fields:
     - path: postgresReady
-      value: "{{ replicasReady .children.statefulset }}"
+      value: "{{ allReplicasReady .children.statefulset }}"
     - path: connectionString
-      value: "postgres://{{ inputs.user }}@{{ .metadata.name }}-postgres.{{ .metadata.namespace }}.svc.cluster.local:5432"
+      value: "postgresql://{{ .metadata.name }}-postgres.{{ .metadata.namespace }}.svc.cluster.local:5432"
 ```
 
+---
 
-## `admission`
+## How a Motif is used
 
-Validation and mutation rules scoped to this Motif. Merged with the parent CRD's admission rules.
-
-```yaml
-admission:
-  validation:
-    rules:
-      - field: spec.image
-        prefix: "myregistry.com/"
-        action: deny
-
-  mutation:
-    rules:
-      - field: spec.replicas
-        default: "2"
-```
-
-
-## Importing a Motif
-
-Motifs are imported at the CRD entry level via `imports:`, alongside `operatorBox`.
+A Katalog imports a Motif at the CRD entry level via `imports:`. The Katalog binds CR field values to Motif inputs using `with:`.
 
 ```yaml
+# In a Katalog
 spec:
   crds:
     database:
       apiTypes:
-        ...
+        group: apps.example.io
+        version: v1
+        kind: Database
       imports:
-        # Local file (development)
-        - motif: ./motifs/postgres/motif.yaml
+        - motif: oci://ghcr.io/orkspace/patterns/motifs/postgres:v0.1.0
           with:
-            image: "postgres:16"
-            passwordSecretName: "{{ .metadata.name }}-secrets"
-
-        # OCI registry
-        - motif: oci://ghcr.io/orkspace/orkestra-services/postgres:v16
-          oci: true
-          with:
-            image: "{{ .spec.postgresImage }}"
-            passwordSecretName: "{{ .metadata.name }}-secrets"
+            image: "{{ .spec.image }}"
             volumeSize: "{{ .spec.storage | default \"10Gi\" }}"
-
-        # Git URL
-        - motif: https://github.com/myorg/postgres-motif@main
-          with:
-            image: "{{ .spec.postgresImage }}"
 ```
 
-### `imports` fields
+At reconcile time, Orkestra:
+1. Resolves and fetches the Motif from the declared source.
+2. Evaluates each `with:` value as a Go template against the CR being reconciled.
+3. Merges the Motif's resources into the CRD entry alongside the Katalog's own `operatorBox`.
+4. Runs `onCreate` resources exactly once (on CR creation). All other blocks run on every reconcile.
+
+---
+
+## `metadata`
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `motif` | yes | File path, OCI reference (`oci://...`), or Git URL. Use `@version` shorthand to pin: `postgres-motif@v16`. |
-| `version` | no | Explicit version (tag, branch, SHA). Ignored when `@` shorthand is used in `motif`. Defaults to `latest` (OCI) or `main` (Git). |
-| `oci` | no | `true` to pull via OCI/ORAS protocol. |
-| `auth` | no | Credentials for the registry. Same auth model as `imports.files` in a Komposer. |
-| `with` | no | Input bindings. Values are Go templates evaluated in the CR's reconcile context. |
+| `name` | yes | Motif identifier. Used as the registry artifact name. |
+| `version` | no | Semver tag shown in `ork registry list`. |
+| `description` | no | Short description shown in the registry UI. |
+| `author` | no | Author or org name. |
+| `license` | no | SPDX identifier (e.g. `Apache-2.0`). |
+| `tags` | no | Free-form tags for registry discoverability. |
 
-### `with:` binding rules
-
-- Required inputs not in `with:` → validation error (caught at startup, not at reconcile time)
-- Optional inputs not in `with:` → Motif default is used
-- `with:` values are Go templates: `"{{ .spec.postgresImage }}"`, `"{{ .metadata.name }}-secrets"`
-
-### Composing multiple Motifs
-
-A Katalog can import any number of Motifs. Each import is independent — resources do not conflict because each uses `.metadata.name` as a prefix.
-
-```yaml
-spec:
-  crds:
-    myapp:
-      imports:
-        - motif: oci://ghcr.io/orkspace/orkestra-services/postgres:v16
-          oci: true
-          with:
-            image: "{{ .spec.database.image }}"
-            passwordSecretName: "{{ .metadata.name }}-db-secrets"
-
-        - motif: oci://ghcr.io/orkspace/orkestra-services/redis:v7
-          oci: true
-          with:
-            image: "{{ .spec.cache.image }}"
-            volumeSize: "{{ .spec.cache.volumeSize }}"
-
-      # The operator's own resources alongside the imported Motifs
-      operatorBox:
-        deployments:
-          - name: "{{ .metadata.name }}"
-            image: "{{ .spec.image }}"
-            reconcile: true
-```
-
-A Motif can itself import other Motifs — a `postgres-with-backup` Motif could import the base `postgres` Motif and add a backup CronJob.
+---
 
 ## Pattern directory structure
 
 ```text
 postgres/
-  motif.yaml      # required — the Motif spec
-  README.md       # optional — shown in registry UI
+  motif.yaml      ← required — the Motif spec
+  README.md       ← optional — shown in registry UI
   example/
-    katalog.yaml  # optional — example Katalog importing this Motif
+    katalog.yaml  ← optional — example Katalog importing this Motif
 ```
 
-`motif.yaml` is the only required file. The registry identifies this pattern as `kind: Motif` from the file content.
+`motif.yaml` is the only required file. The registry identifies the artifact kind from `kind: Motif` in the file.
+
+---
+
+## Try it
+
+Example 16/06 is the capstone Motif example: a `Platform` CRD imports a Motif that provisions a `MessageQueue`, `ObjectStore`, and `SearchCluster` as child CRs — all from a single CR apply.
+
+```bash
+ork init --pack advanced
+cd advanced/16-custom-resources/06-full-platform-composition
+ork run -f katalog.yaml
+```
+
+Apply a small Platform CR:
+
+```bash
+kubectl apply -f cr-small.yaml
+```
+
+Orkestra resolves `platform-motif.yaml`, evaluates the `with:` bindings, and creates all three child CRs. Delete the Platform CR and all children are garbage-collected.
+
+To browse the production-ready Motifs in the Orkestra Registry:
+
+```bash
+ork registry list --kind Motif
+```
+
+---
+
+## Where to go
+
+| Page | Covers |
+|------|--------|
+| [01-inputs.md](01-inputs.md) | `inputs` — declaration, required/optional, defaults, type hints |
+| [02-resources.md](02-resources.md) | `resources` — blocks, template context, `onCreate`, `status`, `admission` |
+| [03-importing.md](03-importing.md) | Importing into a Katalog — `imports:`, `with:` bindings, multiple Motifs |
 
 ---
 
 ## See also
 
-- [katalog.md](../02-katalog/01-katalog.md) — where `operatorBox.imports` is declared
-- [operatorbox.md](../02-katalog/04-operatorbox.md) — full operatorBox schema
-- [komposer.md](../03-komposer/index.md) — composing multiple Katalogs
-- [index.md](../index.md) — full schema reference index
+- [Katalog schema](../02-katalog/01-katalog.md) — where `imports:` lives on the CRD entry
+- [operatorBox](../02-katalog/04-operatorbox.md) — the Katalog's own resources, merged alongside Motif resources
+- [Komposer schema](../03-komposer/index.md) — composing multiple Katalogs
+- [Orkestra Registry](../../../orkestra-registry.md) — publishing and consuming Motifs
