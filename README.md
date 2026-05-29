@@ -1,7 +1,9 @@
 # Orkestra Helm Chart
 
-> **Chart version:** 0.6.0 | **App version:** 0.6.0
+![Chart Version](https://img.shields.io/badge/chart%20version-0.6.1--alpha.1-blue?style=flat-square) ![App Version](https://img.shields.io/badge/app%20version-0.6.1--alpha.1-blue?style=flat-square)
 
+
+![Type](https://img.shields.io/badge/type-application-informational?style=flat-square&color=0080FF&logo=kubernetes&logoColor=white)
 
 Declarative Kubernetes Operator Runtime • Security-First • GitOps-Native
 

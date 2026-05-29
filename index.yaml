@@ -1,1128 +1,999 @@
 apiVersion: v1
 entries:
   orkestra:
-    - annotations:
-        artifacthub.io/changes: |
-          - kind: added
-            description: "Gateway: standalone admission webhooks, deletion protection, namespace protection, TLS cert lifecycle"
-          - kind: added
-            description: "Runtime/Gateway split — each deploys independently with its own build tag and image"
-          - kind: added
-            description: "Configurable cert rotation via security.certManager (autoRotate, rotationThreshold, validFor)"
-          - kind: added
-            description: "ork run discovers katalog.yaml automatically — no -f flag required"
-          - kind: changed
-            description: "gateway.endpoint replaces security.gatewayEndpoint (top-level gateway: block)"
-          - kind: changed
-            description: "ORK_* env prefix replaces ORKESTRA_*"
-        artifacthub.io/crds: |
-          - kind: Katalog
-            version: v1
-            name: katalogs.orkestra.orkspace.io
-            displayName: Katalog
-            description: Declarative operator definition for one or more CRDs
-          - kind: Komposer
-            version: v1
-            name: komposers.orkestra.orkspace.io
-            displayName: Komposer
-            description: Compose multiple Katalogs from different sources
-          - kind: Motif
-            version: v1
-            name: motifs.orkestra.orkspace.io
-            displayName: Motif
-            description: A parameterized set of resource declarations. Write once, import from any Katalog.
-          - kind: E2E
-            version: v1
-            name: e2es.orkestra.orkspace.io
-            displayName: E2E
-            description: Declarative end-to-end testing for Kubernetes operators
-        artifacthub.io/images: |
-          - name: runtime
-            image: ghcr.io/orkspace/orkestra
-          - name: gateway
-            image: ghcr.io/orkspace/orkestra-gateway
-          - name: control-center
-            image: ghcr.io/orkspace/orkestra-cc
-        artifacthub.io/license: Apache-2.0
-        artifacthub.io/links: |
-          - name: Documentation
-            url: https://orkestra.sh
-          - name: Why Orkestra?
-            url: https://orkestra.sh/blog/why-orkestra
-          - name: Control Center Dashboard
-            url: https://cc.orkestra.sh
-          - name: Orkestra Registry
-            url: https://orkestra.sh/docs/reference/orkestra-registry
-        artifacthub.io/operator: "true"
-        artifacthub.io/operatorCapabilities: Deep Insights
-        artifacthub.io/screenshots: |
-          - title: Orkestra Control Center
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-center-landing.png
-          - title: CRD Health View
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-panel-website.png
-          - title: Metrics Overview
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
-        artifacthub.io/crdsExamples: |-
-          - apiVersion: orkestra.orkspace.io/v1
-            kind: Katalog
-            metadata:
-              name: hello-website
-              author: orkspace
-              version: 0.1.0
-              description: The canonical Orkestra operator. One CRD, one Deployment, one Service.
-              tags:
-                - hello
-                - beginner
-                - web
-
-            spec:
-              crds:
-                website:
-                  crdFile: ./crd.yaml
-                  crFiles:
-                    - ./cr.yaml
-                  allowedNamespaces:
-                    - default
-
-                  operatorBox:
-                    default: true
-
-                    status:
-                      fields:
-                        - path: phase
-                          value: "Running"
-                        - path: endpoint
-                          value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
-
-                    onCreate:
-                      deployments:
-                        - name: "{{ .metadata.name }}"
-                          image: "{{ .spec.image }}"
-                          replicas: "{{ .spec.replicas }}"
-                          port: "{{ .spec.port }}"
-                          reconcile: true
-
-                      services:
-                        - name: "{{ .metadata.name }}-svc"
-                          port: "80"
-                          targetPort: "{{ .spec.port }}"
-                          reconcile: true
-
-          - apiVersion: orkestra.orkspace.io/v1
-            kind: Katalog
-            metadata:
-              name: kafka
-              version: v1.0.0
-              description: >-
-                A declarative Apache Kafka deployment pattern that provisions a single-broker
-                Kafka cluster in KRaft mode (no Zookeeper dependency) using any CR image version.
-                The pattern accepts any valid Apache Kafka image tag through spec.version and
-                exposes port 9092 via a stable Service. Includes an optional Kafka UI management
-                console. Suitable for event streaming, log aggregation, and real-time data pipelines.
-              author: orkspace
-              license: Apache-2.0
-              tags:
-                - kafka
-                - messaging
-                - streaming
-                - stateful
-                - persistent-storage
-                - kraft
-                - distributed
-                - production-ready
-
-            spec:
-              crds:
-                kafka:
-                  apiTypes:
-                    group: kafka.orkestra.io
-                    version: v1
-                    kind: Kafka
-                    plural: kafkas
-                  workers: 2
-                  resync: 1m
-                  imports:
-                    - motif: oci://ghcr.io/orkspace/orkestra-registry/patterns/motifs/kafka:v0.1.0
-                      with:
-                        image: 'apache/kafka:{{ .spec.version | default "latest" }}'
-                        replicas: '{{ .spec.replicas | default "1" }}'
-                        resourceProfile: '{{ .spec.resourceProfile | default "compute-heavy" }}'
-                        volumeSize: '{{ .spec.storageSize | default "20Gi" }}'
-                        storageClass: '{{ .spec.storageClass | default "standard" }}'
-                        enableUI: '{{ .spec.enableUI | default "true" }}'
-
-          - apiVersion: orkestra.orkspace.io/v1
-            kind: Komposer
-            metadata:
-              name: platform-full
-              author: orkspace
-              version: 0.1.0
-              description: >
-                Multi-source Komposer: OCI registry pattern + local Katalog + Helm chart.
-                Shows the full composition model for a platform team.
-
-            imports:
-              registry:
-                - url: ghcr.io/orkspace/patterns/postgres@v1.0.0
-                  oci: true
-              files:
-                - ./website-katalog.yaml
-              helm:
-                - repo: https://github.com/orkspace/charts.git
-                  chart: orkestra-katalog-example
-                  path: katalog-example
-                  version: v0.1.0
-
-            spec:
-              crds:
-                postgres:
-                  workers: 8
-                  resync: 30s
-                website:
-                  workers: 6
-                  resync: 15s
-                database:
-                  enabled: false
-
-          - apiVersion: orkestra.orkspace.io/v1
-            kind: E2E
-            metadata:
-              name: hello-website-e2e
-              description: Deploy a single nginx website and verify the deployment and service comes up and are cleaned up on delete
-
-            spec:
-              katalog: ./katalog.yaml
-              crd: ./crd.yaml
-              cr: ./cr.yaml
-
-              cluster:
-                provider: kind
-                name: ork-e2e
-                reuse: false
-
-              expect:
-                - name: CR created
-                  after: cr-applied
-                  timeout: 60s
-                  resources:
-                    - kind: Website
-                      name: hello-website
-                      namespace: default
-
-                - name: Deployment created
-                  after: cr-applied
-                  timeout: 60s
-                  resources:
-                    - kind: Deployment
-                      namespace: default
-                      ready: true
-                    - kind: Service
-                      namespace: default
-
-                - name: Cleanup verified
-                  after: cr-deleted
-                  timeout: 30s
-                  resources:
-                    - kind: Deployment
-                      name: hello-website
-                      namespace: default
-                      count: 0
-                    - kind: Service
-                      name: hello-website-svc
-                      namespace: default
-                      count: 0
-                    - kind: Website
-                      name: hello-website
-                      namespace: default
-                      count: 0
-
-          - apiVersion: orkestra.orkspace.io/v1
-            kind: Motif
-            metadata:
-              name: kafka
-              version: v0.1.0
-              description: >
-                Apache Kafka StatefulSet in KRaft mode (no Zookeeper), persistent storage,
-                headless Service for broker DNS, external Service, and Kafka UI management console.
-              author: orkspace
-              license: Apache-2.0
-              tags:
-                - kafka
-                - messaging
-                - streaming
-                - statefulset
-                - storage
-                - kraft
-                - distributed
-                - ui
-
-            inputs:
-              - name: image
-                description: Apache Kafka image (KRaft-capable)
-                default: "apache/kafka:latest"
-              - name: replicas
-                description: Number of broker/controller replicas
-                default: "1"
-              - name: resourceProfile
-                description: CPU/memory profile (small, burst, standard, compute-heavy)
-                default: "compute-heavy"
-              - name: volumeSize
-                description: PVC storage size for the log directory
-                default: "20Gi"
-              - name: storageClass
-                description: StorageClass for dynamic PVC provisioning
-                default: "standard"
-              - name: kafkaUiImage
-                description: Kafka UI management console image
-                default: "provectuslabs/kafka-ui:latest"
-              - name: enableUI
-                description: Deploy the Kafka UI management console (true/false)
-                default: "true"
-
-            resources:
-              statefulSets:
-                - name: "{{ .metadata.name }}-kafka"
-                  image: "{{ .inputs.image }}"
-                  replicas: "{{ .inputs.replicas }}"
-                  serviceName: "{{ .metadata.name }}-kafka-headless"
-                  port: 9092
-                  resources:
-                    profile: "{{ .inputs.resourceProfile }}"
-                  reconcile: true
-                  probes:
-                    startup:
-                      type: tcp
-                      profile: slow-start
-                    liveness:
-                      type: tcp
-                      profile: standard
-                    readiness:
-                      type: tcp
-                      profile: standard
-                  volumeClaimTemplates:
-                    - name: data
-                      storageClass: "{{ .inputs.storageClass }}"
-                      storageSize: "{{ .inputs.volumeSize }}"
-                      mountPath: /var/lib/kafka/data
-                  env:
-                    - name: KAFKA_NODE_ID
-                      value: "1"
-                    - name: KAFKA_PROCESS_ROLES
-                      value: "broker,controller"
-                    - name: KAFKA_LISTENERS
-                      value: "PLAINTEXT://:9092,CONTROLLER://:9093"
-                    - name: KAFKA_ADVERTISED_LISTENERS
-                      value: "PLAINTEXT://{{ .metadata.name }}-kafka-0.{{ .metadata.name }}-kafka-headless.{{ .metadata.namespace }}.svc.cluster.local:9092"
-                    - name: KAFKA_CONTROLLER_QUORUM_VOTERS
-                      value: "1@{{ .metadata.name }}-kafka-0.{{ .metadata.name }}-kafka-headless.{{ .metadata.namespace }}.svc.cluster.local:9093"
-                    - name: KAFKA_CONTROLLER_LISTENER_NAMES
-                      value: "CONTROLLER"
-                    - name: KAFKA_INTER_BROKER_LISTENER_NAME
-                      value: "PLAINTEXT"
-                    - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
-                      value: "1"
-                    - name: KAFKA_LOG_DIRS
-                      value: "/var/lib/kafka/data"
-
-              services:
-                - name: "{{ .metadata.name }}-kafka-headless"
-                  headless: true
-                  port: 9092
-                  targetPort: 9092
-                  reconcile: true
-                - name: "{{ .metadata.name }}-kafka"
-                  port: 9092
-                  targetPort: 9092
-                  reconcile: true
-                - name: "{{ .metadata.name }}-kafka-ui-svc"
-                  port: 8080
-                  targetPort: 8080
-                  type: LoadBalancer
-                  reconcile: true
-                  when:
-                    - field: inputs.enableUI
-                      equals: "true"
-
-              deployments:
-                - name: "{{ .metadata.name }}-kafka-ui"
-                  image: "{{ .inputs.kafkaUiImage }}"
-                  env:
-                    - name: KAFKA_CLUSTERS_0_NAME
-                      value: "{{ .metadata.name }}"
-                    - name: KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS
-                      value: "{{ .metadata.name }}-kafka.{{ .metadata.namespace }}.svc.cluster.local:9092"
-                  port: 8080
-                  resources:
-                    profile: "{{ .inputs.resourceProfile }}"
-                  reconcile: true
-                  probes:
-                    liveness:
-                      type: http
-                      path: /actuator/health
-                      profile: standard
-                    readiness:
-                      type: http
-                      path: /actuator/health
-                      profile: standard
-                  when:
-                    - field: inputs.enableUI
-                      equals: "true"
-
-            status:
-              fields:
-                - path: kafkaReady
-                  value: "{{ allReplicasReady .children.statefulset }}"
-                - path: bootstrapServers
-                  value: "{{ .metadata.name }}-kafka.{{ .metadata.namespace }}.svc.cluster.local:9092"
-                - path: kafkaUiUrl
-                  value: "http://{{ .metadata.name }}-kafka-ui-svc.{{ .metadata.namespace }}.svc.cluster.local:8080"
-      apiVersion: v2
-      appVersion: 0.6.0
-      created: "2026-05-26T07:24:59.394021541Z"
-      description: Declarative Operator Runtime with a built-in Security Gateway. Define operators in YAML, generate minimal RBAC, enforce deletion protection and namespace protection with admission webhooks, and observe everything in the Control Center. Runtime and Gateway deploy independently.
-      digest: d46985fc011a51a86d9d22081d1dd92b99d5dbe2437418db8758fab0c5a5dfb0
-      home: https://github.com/orkspace/orkestra
-      icon: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/logo.png
-      keywords:
-        - orkestra
-        - operator
-        - kubernetes
-        - crd
-        - declarative
-        - controller
-        - gateway
-        - webhook
-        - admission
-        - security
-        - deletion-protection
-        - controlcenter
-        - dashboard
-        - observability
-      maintainers:
-        - email: releases@orkspace.io
-          name: Orkspace
-          url: https://github.com/orkspace/orkestra
-      name: orkestra
-      sources:
-        - https://github.com/orkspace/orkestra
-      type: application
-      urls:
-        - https://orkspace.github.io/orkestra/orkestra-0.6.0.tgz
-      version: 0.6.0
-    - annotations:
-        artifacthub.io/changes: |
-          - kind: added
-            description: "Gateway: standalone admission webhooks, deletion protection, namespace protection, TLS cert lifecycle"
-          - kind: added
-            description: "Runtime/Gateway split — each deploys independently with its own build tag and image"
-          - kind: added
-            description: "Configurable cert rotation via security.certManager (autoRotate, rotationThreshold, validFor)"
-          - kind: added
-            description: "ork run discovers katalog.yaml automatically — no -f flag required"
-          - kind: changed
-            description: "gateway.endpoint replaces security.gatewayEndpoint (top-level gateway: block)"
-          - kind: changed
-            description: "ORK_* env prefix replaces ORKESTRA_*"
-        artifacthub.io/crds: |
-          - kind: Katalog
-            version: v1
-            name: katalogs.orkestra.orkspace.io
-            displayName: Katalog
-            description: Declarative operator definition for one or more CRDs
-          - kind: Komposer
-            version: v1
-            name: komposers.orkestra.orkspace.io
-            displayName: Komposer
-            description: Compose multiple Katalogs from different sources
-          - kind: Motif
-            version: v1
-            name: motifs.orkestra.orkspace.io
-            displayName: Motif
-            description: A parameterized set of resource declarations. Write once, import from any Katalog.
-          - kind: E2E
-            version: v1
-            name: e2es.orkestra.orkspace.io
-            displayName: E2E
-            description: Declarative end-to-end testing for Kubernetes operators
-        artifacthub.io/images: |
-          - name: runtime
-            image: ghcr.io/orkspace/orkestra
-          - name: gateway
-            image: ghcr.io/orkspace/orkestra-gateway
-          - name: control-center
-            image: ghcr.io/orkspace/orkestra-cc
-        artifacthub.io/license: Apache-2.0
-        artifacthub.io/links: |
-          - name: Documentation
-            url: https://orkestra.sh
-          - name: Why Orkestra?
-            url: https://orkestra.sh/blog/why-orkestra
-          - name: Control Center Dashboard
-            url: https://cc.orkestra.sh
-          - name: Orkestra Registry
-            url: https://orkestra.sh/docs/reference/orkestra-registry
-        artifacthub.io/operator: "true"
-        artifacthub.io/operatorCapabilities: Deep Insights
-        artifacthub.io/screenshots: |
-          - title: Orkestra Control Center
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-center-landing.png
-          - title: CRD Health View
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-panel-website.png
-          - title: Metrics Overview
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
-      apiVersion: v2
-      appVersion: 0.5.4
-      created: "2026-05-26T07:24:59.392807515Z"
-      description: Declarative Operator Runtime with a built-in Security Gateway. Define operators in YAML, generate minimal RBAC, enforce deletion protection and namespace protection with admission webhooks, and observe everything in the Control Center. Runtime and Gateway deploy independently.
-      digest: 960ca51433eea11dd37d045672e5287ee0c115058aec83d3c6c19a4b8c32f20f
-      home: https://github.com/orkspace/orkestra
-      icon: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/logo.png
-      keywords:
-        - orkestra
-        - operator
-        - kubernetes
-        - crd
-        - declarative
-        - controller
-        - gateway
-        - webhook
-        - admission
-        - security
-        - deletion-protection
-        - controlcenter
-        - dashboard
-        - observability
-      maintainers:
-        - email: releases@orkspace.io
-          name: Orkspace
-          url: https://github.com/orkspace/orkestra
-      name: orkestra
-      sources:
-        - https://github.com/orkspace/orkestra
-      type: application
-      urls:
-        - https://orkspace.github.io/orkestra/orkestra-0.5.4.tgz
-      version: 0.5.4
-    - annotations:
-        artifacthub.io/changes: |
-          - kind: added
-            description: "Gateway: standalone admission webhooks, deletion protection, namespace protection, TLS cert lifecycle"
-          - kind: added
-            description: "Runtime/Gateway split — each deploys independently with its own build tag and image"
-          - kind: added
-            description: "Configurable cert rotation via security.certManager (autoRotate, rotationThreshold, validFor)"
-          - kind: added
-            description: "ork run discovers katalog.yaml automatically — no -f flag required"
-          - kind: changed
-            description: "gateway.endpoint replaces security.gatewayEndpoint (top-level gateway: block)"
-          - kind: changed
-            description: "ORK_* env prefix replaces ORKESTRA_*"
-        artifacthub.io/crds: |
-          - kind: Katalog
-            version: v1
-            name: katalogs.orkestra.orkspace.io
-            displayName: Katalog
-            description: Declarative operator definition for one or more CRDs
-          - kind: Komposer
-            version: v1
-            name: komposers.orkestra.orkspace.io
-            displayName: Komposer
-            description: Compose multiple Katalogs from different sources
-          - kind: Motif
-            version: v1
-            name: motifs.orkestra.orkspace.io
-            displayName: Motif
-            description: A parameterized set of resource declarations. Write once, import from any Katalog.
-          - kind: E2E
-            version: v1
-            name: e2es.orkestra.orkspace.io
-            displayName: E2E
-            description: Declarative end-to-end testing for Kubernetes operators
-        artifacthub.io/images: |
-          - name: runtime
-            image: ghcr.io/orkspace/orkestra
-          - name: gateway
-            image: ghcr.io/orkspace/orkestra-gateway
-          - name: control-center
-            image: ghcr.io/orkspace/orkestra-cc
-        artifacthub.io/license: Apache-2.0
-        artifacthub.io/links: |
-          - name: Documentation
-            url: https://docs.orkestra.sh
-          - name: Why Orkestra?
-            url: https://docs.orkestra.sh/blog/why-orkestra
-          - name: Control Center Dashboard
-            url: https://cc.orkestra.sh
-          - name: Orkestra Registry
-            url: https://docs.orkestra.sh/docs/reference/orkestra-registry
-        artifacthub.io/operator: "true"
-        artifacthub.io/operatorCapabilities: Deep Insights
-        artifacthub.io/screenshots: |
-          - title: Orkestra Control Center
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-center-landing.png
-          - title: CRD Health View
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-panel-website.png
-          - title: Metrics Overview
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
-      apiVersion: v2
-      appVersion: 0.5.3
-      created: "2026-05-26T07:24:59.391613719Z"
-      description: Declarative Operator Runtime with a built-in Security Gateway. Define operators in YAML, generate minimal RBAC, enforce deletion protection and namespace protection with admission webhooks, and observe everything in the Control Center. Runtime and Gateway deploy independently.
-      digest: 6a9be70cadd185e2b4c55050774576668507af69fa764d3529fedfa7fae7d8e2
-      home: https://github.com/orkspace/orkestra
-      icon: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/logo.png
-      keywords:
-        - orkestra
-        - operator
-        - kubernetes
-        - crd
-        - declarative
-        - controller
-        - gateway
-        - webhook
-        - admission
-        - security
-        - deletion-protection
-        - controlcenter
-        - dashboard
-        - observability
-      maintainers:
-        - email: releases@orkspace.io
-          name: Orkspace
-          url: https://github.com/orkspace/orkestra
-      name: orkestra
-      sources:
-        - https://github.com/orkspace/orkestra
-      type: application
-      urls:
-        - https://orkspace.github.io/orkestra/orkestra-0.5.3.tgz
-      version: 0.5.3
-    - annotations:
-        artifacthub.io/changes: |
-          - kind: added
-            description: "Gateway: standalone admission webhooks, deletion protection, namespace protection, TLS cert lifecycle"
-          - kind: added
-            description: "Runtime/Gateway split — each deploys independently with its own build tag and image"
-          - kind: added
-            description: "Configurable cert rotation via security.certManager (autoRotate, rotationThreshold, validFor)"
-          - kind: added
-            description: "ork run discovers katalog.yaml automatically — no -f flag required"
-          - kind: changed
-            description: "gateway.endpoint replaces security.gatewayEndpoint (top-level gateway: block)"
-          - kind: changed
-            description: "ORK_* env prefix replaces ORKESTRA_*"
-        artifacthub.io/crds: |
-          - kind: Katalog
-            version: v1
-            name: katalogs.orkestra.orkspace.io
-            displayName: Katalog
-            description: Declarative operator definition for one or more CRDs
-          - kind: Komposer
-            version: v1
-            name: komposers.orkestra.orkspace.io
-            displayName: Komposer
-            description: Compose multiple Katalogs from different sources
-          - kind: Motif
-            version: v1
-            name: motifs.orkestra.orkspace.io
-            displayName: Motif
-            description: A parameterized set of resource declarations. Write once, import from any Katalog.
-          - kind: E2E
-            version: v1
-            name: e2es.orkestra.orkspace.io
-            displayName: E2E
-            description: Declarative end-to-end testing for Kubernetes operators
-        artifacthub.io/images: |
-          - name: runtime
-            image: ghcr.io/orkspace/orkestra
-          - name: gateway
-            image: ghcr.io/orkspace/orkestra-gateway
-          - name: control-center
-            image: ghcr.io/orkspace/orkestra-cc
-        artifacthub.io/license: Apache-2.0
-        artifacthub.io/links: |
-          - name: Documentation
-            url: https://docs.orkestra.sh
-          - name: Why Orkestra?
-            url: https://docs.orkestra.sh/blog/why-orkestra
-          - name: Control Center Dashboard
-            url: https://cc.orkestra.sh
-          - name: Orkestra Registry
-            url: https://docs.orkestra.sh/docs/reference/orkestra-registry
-        artifacthub.io/operator: "true"
-        artifacthub.io/operatorCapabilities: Deep Insights
-        artifacthub.io/screenshots: |
-          - title: Orkestra Control Center
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-center-landing.png
-          - title: CRD Health View
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-panel-website.png
-          - title: Metrics Overview
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
-      apiVersion: v2
-      appVersion: 0.5.2
-      created: "2026-05-26T07:24:59.390373123Z"
-      description: Declarative Operator Runtime with a built-in Security Gateway. Define operators in YAML, generate minimal RBAC, enforce deletion protection and namespace protection with admission webhooks, and observe everything in the Control Center. Runtime and Gateway deploy independently.
-      digest: dd79f9a6d768ed17055fcc39b99f3a90ce8f62208d8ba226fcfb64a002b2e69b
-      home: https://github.com/orkspace/orkestra
-      icon: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/logo.png
-      keywords:
-        - orkestra
-        - operator
-        - kubernetes
-        - crd
-        - declarative
-        - controller
-        - gateway
-        - webhook
-        - admission
-        - security
-        - deletion-protection
-        - controlcenter
-        - dashboard
-        - observability
-      maintainers:
-        - email: releases@orkspace.io
-          name: Orkspace
-          url: https://github.com/orkspace/orkestra
-      name: orkestra
-      sources:
-        - https://github.com/orkspace/orkestra
-      type: application
-      urls:
-        - https://orkspace.github.io/orkestra/orkestra-0.5.2.tgz
-      version: 0.5.2
-    - annotations:
-        artifacthub.io/changes: |
-          - kind: added
-            description: "Gateway: standalone admission webhooks, deletion protection, namespace protection, TLS cert lifecycle"
-          - kind: added
-            description: "Runtime/Gateway split — each deploys independently with its own build tag and image"
-          - kind: added
-            description: "Configurable cert rotation via security.certManager (autoRotate, rotationThreshold, validFor)"
-          - kind: added
-            description: "ork run discovers katalog.yaml automatically — no -f flag required"
-          - kind: changed
-            description: "gateway.endpoint replaces security.gatewayEndpoint (top-level gateway: block)"
-          - kind: changed
-            description: "ORK_* env prefix replaces ORKESTRA_*"
-        artifacthub.io/crds: |
-          - kind: Katalog
-            version: v1
-            name: katalogs.orkestra.orkspace.io
-            displayName: Katalog
-            description: Declarative operator definition for one or more CRDs
-          - kind: Komposer
-            version: v1
-            name: komposers.orkestra.orkspace.io
-            displayName: Komposer
-            description: Compose multiple Katalogs from different sources
-          - kind: Motif
-            version: v1
-            name: motifs.orkestra.orkspace.io
-            displayName: Motif
-            description: A parameterized set of resource declarations. Write once, import from any Katalog.
-          - kind: E2E
-            version: v1
-            name: e2es.orkestra.orkspace.io
-            displayName: E2E
-            description: Declarative end-to-end testing for Kubernetes operators
-        artifacthub.io/images: |
-          - name: runtime
-            image: ghcr.io/orkspace/orkestra
-          - name: gateway
-            image: ghcr.io/orkspace/orkestra-gateway
-          - name: control-center
-            image: ghcr.io/orkspace/orkestra-cc
-        artifacthub.io/license: Apache-2.0
-        artifacthub.io/links: |
-          - name: Documentation
-            url: https://docs.orkestra.sh
-          - name: Why Orkestra?
-            url: https://docs.orkestra.sh/blog/why-orkestra
-          - name: Control Center Dashboard
-            url: https://cc.orkestra.sh
-          - name: Orkestra Registry
-            url: https://docs.orkestra.sh/docs/reference/orkestra-registry
-        artifacthub.io/operator: "true"
-        artifacthub.io/operatorCapabilities: Deep Insights
-        artifacthub.io/screenshots: |
-          - title: Orkestra Control Center
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-center-landing.png
-          - title: CRD Health View
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-panel-website.png
-          - title: Metrics Overview
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
-      apiVersion: v2
-      appVersion: 0.5.1
-      created: "2026-05-26T07:24:59.388259281Z"
-      description: Declarative Kubernetes Operator Runtime with a built-in Security Gateway. Define operators in YAML, generate minimal RBAC, enforce deletion protection and namespace protection with admission webhooks, and observe everything in the Control Center. Runtime and Gateway deploy independently.
-      digest: b1557719c4c13039720abcae6ebea4421ddf3947b021dea7b87078c39493eef7
-      home: https://github.com/orkspace/orkestra
-      icon: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/logo.png
-      keywords:
-        - orkestra
-        - operator
-        - kubernetes
-        - crd
-        - declarative
-        - controller
-        - gateway
-        - webhook
-        - admission
-        - security
-        - deletion-protection
-        - controlcenter
-        - dashboard
-        - observability
-      maintainers:
-        - email: releases@orkspace.io
-          name: Orkspace
-          url: https://github.com/orkspace/orkestra
-      name: orkestra
-      sources:
-        - https://github.com/orkspace/orkestra
-      type: application
-      urls:
-        - https://orkspace.github.io/orkestra/orkestra-0.5.1.tgz
-      version: 0.5.1
-    - annotations:
-        artifacthub.io/changes: |
-          - kind: added
-            description: "Gateway: standalone admission webhooks, deletion protection, namespace protection, TLS cert lifecycle"
-          - kind: added
-            description: "Runtime/Gateway split — each deploys independently with its own build tag and image"
-          - kind: added
-            description: "Configurable cert rotation via security.certManager (autoRotate, rotationThreshold, validFor)"
-          - kind: added
-            description: "ork run discovers katalog.yaml automatically — no -f flag required"
-          - kind: changed
-            description: "gateway.endpoint replaces security.gatewayEndpoint (top-level gateway: block)"
-          - kind: changed
-            description: "ORK_* env prefix replaces ORKESTRA_*"
-        artifacthub.io/crds: |
-          - kind: Katalog
-            version: v1
-            name: katalogs.orkestra.orkspace.io
-            displayName: Katalog
-            description: Declarative operator definition for one or more CRDs
-          - kind: Komposer
-            version: v1
-            name: komposers.orkestra.orkspace.io
-            displayName: Komposer
-            description: Compose multiple Katalogs from different sources
-          - kind: Motif
-            version: v1
-            name: motifs.orkestra.orkspace.io
-            displayName: Motif
-            description: A parameterized set of resource declarations. Write once, import from any Katalog.
-          - kind: E2E
-            version: v1
-            name: e2es.orkestra.orkspace.io
-            displayName: E2E
-            description: Declarative end-to-end testing for Kubernetes operators
-        artifacthub.io/images: |
-          - name: runtime
-            image: ghcr.io/orkspace/orkestra
-          - name: gateway
-            image: ghcr.io/orkspace/orkestra-gateway
-          - name: control-center
-            image: ghcr.io/orkspace/orkestra-cc
-        artifacthub.io/license: Apache-2.0
-        artifacthub.io/links: |
-          - name: Documentation
-            url: https://docs.orkestra.sh
-          - name: Why Orkestra?
-            url: https://docs.orkestra.sh/blog/why-orkestra
-          - name: Control Center Dashboard
-            url: https://cc.orkestra.sh
-          - name: Orkestra Registry
-            url: https://docs.orkestra.sh/docs/reference/orkestra-registry
-        artifacthub.io/operator: "true"
-        artifacthub.io/operatorCapabilities: Deep Insights
-        artifacthub.io/screenshots: |
-          - title: Orkestra Control Center
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-center-landing.png
-          - title: CRD Health View
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-panel-website.png
-          - title: Metrics Overview
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
-      apiVersion: v2
-      appVersion: 0.5.0
-      created: "2026-05-26T07:24:59.387009081Z"
-      description: Declarative Kubernetes Operator Runtime with a built-in Security Gateway. Define operators in YAML, generate minimal RBAC, enforce deletion protection and namespace protection with admission webhooks, and observe everything in the Control Center. Runtime and Gateway deploy independently.
-      digest: 4557bcbf98fb419c3513d796e48196cdb5327c8e3569154b7d9bd5b7efa8a77b
-      home: https://github.com/orkspace/orkestra
-      icon: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/logo.png
-      keywords:
-        - orkestra
-        - operator
-        - kubernetes
-        - crd
-        - declarative
-        - controller
-        - gateway
-        - webhook
-        - admission
-        - security
-        - deletion-protection
-        - controlcenter
-        - dashboard
-        - observability
-      maintainers:
-        - email: releases@orkspace.io
-          name: Orkspace
-          url: https://github.com/orkspace/orkestra
-      name: orkestra
-      sources:
-        - https://github.com/orkspace/orkestra
-      type: application
-      urls:
-        - https://orkspace.github.io/orkestra/orkestra-0.5.0.tgz
-      version: 0.5.0
-    - annotations:
-        artifacthub.io/alternativeNames: |
-          - operator-sdk
-          - kubebuilder
-          - kudo
-          - crossplane
-        artifacthub.io/changes: |-
-          - kind: added
-            description: "Initial release of Orkestra v1.0.0"
-            links:
-              - name: GitHub Release
-                url: https://github.com/orkspace/orkestra/releases/tag/v1.0.0
-          - kind: added
-            description: "Control Center dashboard for real-time CRD observability"
-          - kind: added
-            description: "Declarative version conversion between API versions"
-          - kind: added
-            description: "Built-in validation and mutation rules for any CRD"
-          - kind: added
-            description: "OCI registry pattern distribution"
-        artifacthub.io/crds: |
-          - kind: Katalog
-            version: v1Alpha
-            name: katalogs.orkestra.konductor.io
-            displayName: Katalog
-            description: Declarative operator definition for one or more CRDs
-          - kind: Komposer
-            version: v1Alpha
-            name: komposers.orkestra.konductor.io
-            displayName: Komposer
-            description: Compose multiple Katalogs from different sources
-        artifacthub.io/license: MIT
-        artifacthub.io/links: |
-          - name: Documentation
-            url: https://github.com/orkspace/orkestra/tree/main/docs
-          - name: Whitepaper
-            url: https://github.com/orkspace/orkestra/blob/main/publish/declarative-operators-whitepaper.md
-          - name: Why Orkestra?
-            url: https://github.com/orkspace/orkestra/blob/main/publish/why-orkestra.md
-          - name: Control Center Dashboard
-            url: https://github.com/orkspace/orkestra/blob/main/docs/controlcenter.md
-        artifacthub.io/operator: "true"
-        artifacthub.io/operatorCapabilities: Basic Install
-        artifacthub.io/recommendations: |
-          - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
-          - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
-          - url: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
-        artifacthub.io/screenshots: |
-          - title: Orkestra Dashboard
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/dashboard.png
-          - title: CRD Health View
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/crd-health.png
-          - title: Metrics Overview
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
-      apiVersion: v2
-      appVersion: 0.4.9
-      created: "2026-05-26T07:24:59.385753072Z"
-      description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and manage your CRDs declaratively with Katalog YAML files. Includes the Control Center for real-time observability of all managed CRDs.
-      digest: 99a3b2a05e74079ccb84a1d0d1862d51b137c5af736ad396f19530451984fc4c
-      home: https://github.com/orkspace/orkestra
-      icon: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/logo.png
-      keywords:
-        - orkestra
-        - operator
-        - kubernetes
-        - crd
-        - declarative
-        - controller
-        - controlcenter
-        - dashboard
-        - observability
-      maintainers:
-        - email: orkestra-releases@orkspace.io
-          name: Orkspace
-          url: https://github.com/orkspace/orkestra
-      name: orkestra
-      sources:
-        - https://github.com/orkspace/orkestra
-      type: application
-      urls:
-        - https://orkspace.github.io/orkestra/orkestra-0.4.9.tgz
-      version: 0.4.9
-    - annotations:
-        artifacthub.io/alternativeNames: |
-          - operator-sdk
-          - kubebuilder
-          - kudo
-          - crossplane
-        artifacthub.io/changes: |-
-          - kind: added
-            description: "Initial release of Orkestra v1.0.0"
-            links:
-              - name: GitHub Release
-                url: https://github.com/orkspace/orkestra/releases/tag/v1.0.0
-          - kind: added
-            description: "Control Center dashboard for real-time CRD observability"
-          - kind: added
-            description: "Declarative version conversion between API versions"
-          - kind: added
-            description: "Built-in validation and mutation rules for any CRD"
-          - kind: added
-            description: "OCI registry pattern distribution"
-        artifacthub.io/crds: |
-          - kind: Katalog
-            version: v1Alpha
-            name: katalogs.orkestra.konductor.io
-            displayName: Katalog
-            description: Declarative operator definition for one or more CRDs
-          - kind: Komposer
-            version: v1Alpha
-            name: komposers.orkestra.konductor.io
-            displayName: Komposer
-            description: Compose multiple Katalogs from different sources
-        artifacthub.io/license: MIT
-        artifacthub.io/links: |
-          - name: Documentation
-            url: https://github.com/orkspace/orkestra/tree/main/docs
-          - name: Whitepaper
-            url: https://github.com/orkspace/orkestra/blob/main/publish/declarative-operators-whitepaper.md
-          - name: Why Orkestra?
-            url: https://github.com/orkspace/orkestra/blob/main/publish/why-orkestra.md
-          - name: Control Center Dashboard
-            url: https://github.com/orkspace/orkestra/blob/main/docs/controlcenter.md
-        artifacthub.io/operator: "true"
-        artifacthub.io/operatorCapabilities: Basic Install
-        artifacthub.io/recommendations: |
-          - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
-          - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
-          - url: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
-        artifacthub.io/screenshots: |
-          - title: Orkestra Dashboard
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/dashboard.png
-          - title: CRD Health View
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/crd-health.png
-          - title: Metrics Overview
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
-      apiVersion: v2
-      appVersion: 0.4.8
-      created: "2026-05-26T07:24:59.384586326Z"
-      description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and manage your CRDs declaratively with Katalog YAML files. Includes the Control Center for real-time observability of all managed CRDs.
-      digest: 0422949df025baa3e9298685618b6021422615a06462bf6943a748c74856b5f3
-      home: https://github.com/orkspace/orkestra
-      icon: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/logo.png
-      keywords:
-        - orkestra
-        - operator
-        - kubernetes
-        - crd
-        - declarative
-        - controller
-        - controlcenter
-        - dashboard
-        - observability
-      maintainers:
-        - email: orkestra-releases@orkspace.io
-          name: Orkspace
-          url: https://github.com/orkspace/orkestra
-      name: orkestra
-      sources:
-        - https://github.com/orkspace/orkestra
-      type: application
-      urls:
-        - https://orkspace.github.io/orkestra/orkestra-0.4.8.tgz
-      version: 0.4.8
-    - annotations:
-        artifacthub.io/alternativeNames: |
-          - operator-sdk
-          - kubebuilder
-          - kudo
-          - crossplane
-        artifacthub.io/changes: |-
-          - kind: added
-            description: "Initial release of Orkestra v1.0.0"
-            links:
-              - name: GitHub Release
-                url: https://github.com/orkspace/orkestra/releases/tag/v1.0.0
-          - kind: added
-            description: "Control Center dashboard for real-time CRD observability"
-          - kind: added
-            description: "Declarative version conversion between API versions"
-          - kind: added
-            description: "Built-in validation and mutation rules for any CRD"
-          - kind: added
-            description: "OCI registry pattern distribution"
-        artifacthub.io/crds: |
-          - kind: Katalog
-            version: v1Alpha
-            name: katalogs.orkestra.konductor.io
-            displayName: Katalog
-            description: Declarative operator definition for one or more CRDs
-          - kind: Komposer
-            version: v1Alpha
-            name: komposers.orkestra.konductor.io
-            displayName: Komposer
-            description: Compose multiple Katalogs from different sources
-        artifacthub.io/license: MIT
-        artifacthub.io/links: |
-          - name: Documentation
-            url: https://github.com/orkspace/orkestra/tree/main/docs
-          - name: Whitepaper
-            url: https://github.com/orkspace/orkestra/blob/main/publish/declarative-operators-whitepaper.md
-          - name: Why Orkestra?
-            url: https://github.com/orkspace/orkestra/blob/main/publish/why-orkestra.md
-          - name: Control Center Dashboard
-            url: https://github.com/orkspace/orkestra/blob/main/docs/controlcenter.md
-        artifacthub.io/operator: "true"
-        artifacthub.io/operatorCapabilities: Basic Install
-        artifacthub.io/recommendations: |
-          - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
-          - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
-          - url: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
-        artifacthub.io/screenshots: |
-          - title: Orkestra Dashboard
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/dashboard.png
-          - title: CRD Health View
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/crd-health.png
-          - title: Metrics Overview
-            url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
-      apiVersion: v2
-      appVersion: 0.4.7
-      created: "2026-05-26T07:24:59.383694246Z"
-      description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and manage your CRDs declaratively with Katalog YAML files. Includes the Control Center for real-time observability of all managed CRDs.
-      digest: 459a3e6c730e5cf7f917f64d702dc10159b6d8255fcf27c72d4a2a8654754fa1
-      home: https://github.com/orkspace/orkestra
-      icon: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/logo.png
-      keywords:
-        - orkestra
-        - operator
-        - kubernetes
-        - crd
-        - declarative
-        - controller
-        - controlcenter
-        - dashboard
-        - observability
-      maintainers:
-        - email: orkestra-releases@orkspace.io
-          name: Orkspace
-          url: https://github.com/orkspace/orkestra
-      name: orkestra
-      sources:
-        - https://github.com/orkspace/orkestra
-      type: application
-      urls:
-        - https://orkspace.github.io/orkestra/orkestra-0.4.7.tgz
-      version: 0.4.7
-generated: "2026-05-26T07:24:59.38258839Z"
+  - annotations:
+      artifacthub.io/changes: |
+        - kind: added
+          description: "deployments/public/: six-cluster public demo — 6 runtimes, 75 CRDs, 1 Control Center"
+        - kind: fixed
+          description: "CRD health oscillation — LastReconcile() side effect and SetStarted() resync reset removed"
+        - kind: fixed
+          description: "crdExists() now distinguishes transient network errors from genuine CRD absence"
+        - kind: fixed
+          description: "PostStartRetryInterval restored from 3s (debug) to 90s with 5-minute capped backoff"
+        - kind: fixed
+          description: "ClusterRole/ClusterRoleBinding names scoped to orkestra-<namespace> — no more last-write-wins collision"
+        - kind: fixed
+          description: "Docker builds write to /tmp/ instead of ~/.orkestra/bin/ — dev CLI no longer overwritten"
+        - kind: changed
+          description: "Memory baseline updated to 79 MB RSS — measured from a live 10-CRD runtime"
+      artifacthub.io/crds: |
+        - kind: Katalog
+          version: v1
+          name: katalogs.orkestra.orkspace.io
+          displayName: Katalog
+          description: Declarative operator definition for one or more CRDs
+        - kind: Komposer
+          version: v1
+          name: komposers.orkestra.orkspace.io
+          displayName: Komposer
+          description: Compose multiple Katalogs from different sources
+        - kind: Motif
+          version: v1
+          name: motifs.orkestra.orkspace.io
+          displayName: Motif
+          description: A parameterized set of resource declarations. Write once, import from any Katalog.
+        - kind: E2E
+          version: v1
+          name: e2es.orkestra.orkspace.io
+          displayName: E2E
+          description: Declarative end-to-end testing for Kubernetes operators
+      artifacthub.io/crdsExamples: |
+        - apiVersion: orkestra.orkspace.io/v1
+          kind: Katalog
+          metadata:
+            name: hello-website
+          spec:
+            crds:
+              website:
+                crdFile: ./crd.yaml
+                crFiles:
+                  - ./cr.yaml
+                operatorBox:
+                  default: true
+                  onCreate:
+                    deployments:
+                      - name: "{{ .metadata.name }}"
+                        image: "{{ .spec.image }}"
+                        replicas: "{{ .spec.replicas }}"
+                        reconcile: true
+                    services:
+                      - name: "{{ .metadata.name }}-svc"
+                        port: "80"
+                        targetPort: "{{ .spec.port }}"
+                        reconcile: true
+        - apiVersion: orkestra.orkspace.io/v1
+          kind: Komposer
+          metadata:
+            name: platform
+          imports:
+            registry:
+              - url: ghcr.io/orkspace/patterns/postgres@v1.0.0
+                oci: true
+            files:
+              - ./website-katalog.yaml
+          spec:
+            crds:
+              postgres:
+                workers: 8
+                resync: 30s
+              website:
+                workers: 6
+                resync: 15s
+        - apiVersion: orkestra.orkspace.io/v1
+          kind: E2E
+          metadata:
+            name: hello-website-e2e
+          spec:
+            katalog: ./katalog.yaml
+            crd: ./crd.yaml
+            cr: ./cr.yaml
+            cluster:
+              provider: kind
+              name: ork-e2e
+            expect:
+              - name: Deployment created
+                after: cr-applied
+                timeout: 60s
+                resources:
+                  - kind: Deployment
+                    namespace: default
+                    ready: true
+      artifacthub.io/images: |
+        - name: runtime
+          image: ghcr.io/orkspace/orkestra
+        - name: gateway
+          image: ghcr.io/orkspace/orkestra-gateway
+        - name: control-center
+          image: ghcr.io/orkspace/orkestra-cc
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://orkestra.sh
+        - name: Why Orkestra?
+          url: https://orkestra.sh/blog/why-orkestra
+        - name: Control Center Dashboard
+          url: https://cc.orkestra.sh
+        - name: Orkestra Registry
+          url: https://orkestra.sh/docs/reference/orkestra-registry
+      artifacthub.io/operator: "true"
+      artifacthub.io/operatorCapabilities: Deep Insights
+      artifacthub.io/screenshots: |
+        - title: Orkestra Control Center
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-center-landing.png
+        - title: CRD Health View
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-panel-website.png
+        - title: Metrics Overview
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
+      artifacthub.io/signKey: "fingerprint: \nurl: https://orkspace.github.io/orkestra/orkestra-public-key.asc"
+    apiVersion: v2
+    appVersion: 0.6.1-alpha.1
+    created: "2026-05-29T00:35:54.725225951Z"
+    description: Declarative Operator Runtime with a built-in Security Gateway. Define
+      operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
+      protection with admission webhooks, and observe everything in the Control Center.
+      Runtime and Gateway deploy independently.
+    digest: c43dfda73d684a949b30327a7c77ef129bd0e27d9fd8ff4d77adbf66fc777b76
+    home: https://github.com/orkspace/orkestra
+    icon: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/logo.png
+    keywords:
+    - orkestra
+    - operator
+    - kubernetes
+    - crd
+    - declarative
+    - controller
+    - gateway
+    - webhook
+    - admission
+    - security
+    - deletion-protection
+    - controlcenter
+    - dashboard
+    - observability
+    maintainers:
+    - email: releases@orkspace.io
+      name: Orkspace
+      url: https://github.com/orkspace/orkestra
+    name: orkestra
+    sources:
+    - https://github.com/orkspace/orkestra
+    type: application
+    urls:
+    - https://orkspace.github.io/orkestra/orkestra-0.6.1-alpha.1.tgz
+    version: 0.6.1-alpha.1
+  - annotations:
+      artifacthub.io/changes: |
+        - kind: added
+          description: "Gateway: standalone admission webhooks, deletion protection, namespace protection, TLS cert lifecycle"
+        - kind: added
+          description: "Runtime/Gateway split — each deploys independently with its own build tag and image"
+        - kind: added
+          description: "Configurable cert rotation via security.certManager (autoRotate, rotationThreshold, validFor)"
+        - kind: added
+          description: "ork run discovers katalog.yaml automatically — no -f flag required"
+        - kind: changed
+          description: "gateway.endpoint replaces security.gatewayEndpoint (top-level gateway: block)"
+        - kind: changed
+          description: "ORK_* env prefix replaces ORKESTRA_*"
+      artifacthub.io/crds: |
+        - kind: Katalog
+          version: v1
+          name: katalogs.orkestra.orkspace.io
+          displayName: Katalog
+          description: Declarative operator definition for one or more CRDs
+        - kind: Komposer
+          version: v1
+          name: komposers.orkestra.orkspace.io
+          displayName: Komposer
+          description: Compose multiple Katalogs from different sources
+        - kind: Motif
+          version: v1
+          name: motifs.orkestra.orkspace.io
+          displayName: Motif
+          description: A parameterized set of resource declarations. Write once, import from any Katalog.
+        - kind: E2E
+          version: v1
+          name: e2es.orkestra.orkspace.io
+          displayName: E2E
+          description: Declarative end-to-end testing for Kubernetes operators
+      artifacthub.io/images: |
+        - name: runtime
+          image: ghcr.io/orkspace/orkestra
+        - name: gateway
+          image: ghcr.io/orkspace/orkestra-gateway
+        - name: control-center
+          image: ghcr.io/orkspace/orkestra-cc
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://orkestra.sh
+        - name: Why Orkestra?
+          url: https://orkestra.sh/blog/why-orkestra
+        - name: Control Center Dashboard
+          url: https://cc.orkestra.sh
+        - name: Orkestra Registry
+          url: https://orkestra.sh/docs/reference/orkestra-registry
+      artifacthub.io/operator: "true"
+      artifacthub.io/operatorCapabilities: Deep Insights
+      artifacthub.io/screenshots: |
+        - title: Orkestra Control Center
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-center-landing.png
+        - title: CRD Health View
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-panel-website.png
+        - title: Metrics Overview
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
+    apiVersion: v2
+    appVersion: 0.6.0
+    created: "2026-05-29T00:35:54.723955239Z"
+    description: Declarative Operator Runtime with a built-in Security Gateway. Define
+      operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
+      protection with admission webhooks, and observe everything in the Control Center.
+      Runtime and Gateway deploy independently.
+    digest: d46985fc011a51a86d9d22081d1dd92b99d5dbe2437418db8758fab0c5a5dfb0
+    home: https://github.com/orkspace/orkestra
+    icon: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/logo.png
+    keywords:
+    - orkestra
+    - operator
+    - kubernetes
+    - crd
+    - declarative
+    - controller
+    - gateway
+    - webhook
+    - admission
+    - security
+    - deletion-protection
+    - controlcenter
+    - dashboard
+    - observability
+    maintainers:
+    - email: releases@orkspace.io
+      name: Orkspace
+      url: https://github.com/orkspace/orkestra
+    name: orkestra
+    sources:
+    - https://github.com/orkspace/orkestra
+    type: application
+    urls:
+    - https://orkspace.github.io/orkestra/orkestra-0.6.0.tgz
+    version: 0.6.0
+  - annotations:
+      artifacthub.io/changes: |
+        - kind: added
+          description: "Gateway: standalone admission webhooks, deletion protection, namespace protection, TLS cert lifecycle"
+        - kind: added
+          description: "Runtime/Gateway split — each deploys independently with its own build tag and image"
+        - kind: added
+          description: "Configurable cert rotation via security.certManager (autoRotate, rotationThreshold, validFor)"
+        - kind: added
+          description: "ork run discovers katalog.yaml automatically — no -f flag required"
+        - kind: changed
+          description: "gateway.endpoint replaces security.gatewayEndpoint (top-level gateway: block)"
+        - kind: changed
+          description: "ORK_* env prefix replaces ORKESTRA_*"
+      artifacthub.io/crds: |
+        - kind: Katalog
+          version: v1
+          name: katalogs.orkestra.orkspace.io
+          displayName: Katalog
+          description: Declarative operator definition for one or more CRDs
+        - kind: Komposer
+          version: v1
+          name: komposers.orkestra.orkspace.io
+          displayName: Komposer
+          description: Compose multiple Katalogs from different sources
+        - kind: Motif
+          version: v1
+          name: motifs.orkestra.orkspace.io
+          displayName: Motif
+          description: A parameterized set of resource declarations. Write once, import from any Katalog.
+        - kind: E2E
+          version: v1
+          name: e2es.orkestra.orkspace.io
+          displayName: E2E
+          description: Declarative end-to-end testing for Kubernetes operators
+      artifacthub.io/images: |
+        - name: runtime
+          image: ghcr.io/orkspace/orkestra
+        - name: gateway
+          image: ghcr.io/orkspace/orkestra-gateway
+        - name: control-center
+          image: ghcr.io/orkspace/orkestra-cc
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://orkestra.sh
+        - name: Why Orkestra?
+          url: https://orkestra.sh/blog/why-orkestra
+        - name: Control Center Dashboard
+          url: https://cc.orkestra.sh
+        - name: Orkestra Registry
+          url: https://orkestra.sh/docs/reference/orkestra-registry
+      artifacthub.io/operator: "true"
+      artifacthub.io/operatorCapabilities: Deep Insights
+      artifacthub.io/screenshots: |
+        - title: Orkestra Control Center
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-center-landing.png
+        - title: CRD Health View
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-panel-website.png
+        - title: Metrics Overview
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
+    apiVersion: v2
+    appVersion: 0.5.4
+    created: "2026-05-29T00:35:54.722741122Z"
+    description: Declarative Operator Runtime with a built-in Security Gateway. Define
+      operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
+      protection with admission webhooks, and observe everything in the Control Center.
+      Runtime and Gateway deploy independently.
+    digest: 960ca51433eea11dd37d045672e5287ee0c115058aec83d3c6c19a4b8c32f20f
+    home: https://github.com/orkspace/orkestra
+    icon: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/logo.png
+    keywords:
+    - orkestra
+    - operator
+    - kubernetes
+    - crd
+    - declarative
+    - controller
+    - gateway
+    - webhook
+    - admission
+    - security
+    - deletion-protection
+    - controlcenter
+    - dashboard
+    - observability
+    maintainers:
+    - email: releases@orkspace.io
+      name: Orkspace
+      url: https://github.com/orkspace/orkestra
+    name: orkestra
+    sources:
+    - https://github.com/orkspace/orkestra
+    type: application
+    urls:
+    - https://orkspace.github.io/orkestra/orkestra-0.5.4.tgz
+    version: 0.5.4
+  - annotations:
+      artifacthub.io/changes: |
+        - kind: added
+          description: "Gateway: standalone admission webhooks, deletion protection, namespace protection, TLS cert lifecycle"
+        - kind: added
+          description: "Runtime/Gateway split — each deploys independently with its own build tag and image"
+        - kind: added
+          description: "Configurable cert rotation via security.certManager (autoRotate, rotationThreshold, validFor)"
+        - kind: added
+          description: "ork run discovers katalog.yaml automatically — no -f flag required"
+        - kind: changed
+          description: "gateway.endpoint replaces security.gatewayEndpoint (top-level gateway: block)"
+        - kind: changed
+          description: "ORK_* env prefix replaces ORKESTRA_*"
+      artifacthub.io/crds: |
+        - kind: Katalog
+          version: v1
+          name: katalogs.orkestra.orkspace.io
+          displayName: Katalog
+          description: Declarative operator definition for one or more CRDs
+        - kind: Komposer
+          version: v1
+          name: komposers.orkestra.orkspace.io
+          displayName: Komposer
+          description: Compose multiple Katalogs from different sources
+        - kind: Motif
+          version: v1
+          name: motifs.orkestra.orkspace.io
+          displayName: Motif
+          description: A parameterized set of resource declarations. Write once, import from any Katalog.
+        - kind: E2E
+          version: v1
+          name: e2es.orkestra.orkspace.io
+          displayName: E2E
+          description: Declarative end-to-end testing for Kubernetes operators
+      artifacthub.io/images: |
+        - name: runtime
+          image: ghcr.io/orkspace/orkestra
+        - name: gateway
+          image: ghcr.io/orkspace/orkestra-gateway
+        - name: control-center
+          image: ghcr.io/orkspace/orkestra-cc
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://docs.orkestra.sh
+        - name: Why Orkestra?
+          url: https://docs.orkestra.sh/blog/why-orkestra
+        - name: Control Center Dashboard
+          url: https://cc.orkestra.sh
+        - name: Orkestra Registry
+          url: https://docs.orkestra.sh/docs/reference/orkestra-registry
+      artifacthub.io/operator: "true"
+      artifacthub.io/operatorCapabilities: Deep Insights
+      artifacthub.io/screenshots: |
+        - title: Orkestra Control Center
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-center-landing.png
+        - title: CRD Health View
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-panel-website.png
+        - title: Metrics Overview
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
+    apiVersion: v2
+    appVersion: 0.5.3
+    created: "2026-05-29T00:35:54.720847537Z"
+    description: Declarative Operator Runtime with a built-in Security Gateway. Define
+      operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
+      protection with admission webhooks, and observe everything in the Control Center.
+      Runtime and Gateway deploy independently.
+    digest: 6a9be70cadd185e2b4c55050774576668507af69fa764d3529fedfa7fae7d8e2
+    home: https://github.com/orkspace/orkestra
+    icon: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/logo.png
+    keywords:
+    - orkestra
+    - operator
+    - kubernetes
+    - crd
+    - declarative
+    - controller
+    - gateway
+    - webhook
+    - admission
+    - security
+    - deletion-protection
+    - controlcenter
+    - dashboard
+    - observability
+    maintainers:
+    - email: releases@orkspace.io
+      name: Orkspace
+      url: https://github.com/orkspace/orkestra
+    name: orkestra
+    sources:
+    - https://github.com/orkspace/orkestra
+    type: application
+    urls:
+    - https://orkspace.github.io/orkestra/orkestra-0.5.3.tgz
+    version: 0.5.3
+  - annotations:
+      artifacthub.io/changes: |
+        - kind: added
+          description: "Gateway: standalone admission webhooks, deletion protection, namespace protection, TLS cert lifecycle"
+        - kind: added
+          description: "Runtime/Gateway split — each deploys independently with its own build tag and image"
+        - kind: added
+          description: "Configurable cert rotation via security.certManager (autoRotate, rotationThreshold, validFor)"
+        - kind: added
+          description: "ork run discovers katalog.yaml automatically — no -f flag required"
+        - kind: changed
+          description: "gateway.endpoint replaces security.gatewayEndpoint (top-level gateway: block)"
+        - kind: changed
+          description: "ORK_* env prefix replaces ORKESTRA_*"
+      artifacthub.io/crds: |
+        - kind: Katalog
+          version: v1
+          name: katalogs.orkestra.orkspace.io
+          displayName: Katalog
+          description: Declarative operator definition for one or more CRDs
+        - kind: Komposer
+          version: v1
+          name: komposers.orkestra.orkspace.io
+          displayName: Komposer
+          description: Compose multiple Katalogs from different sources
+        - kind: Motif
+          version: v1
+          name: motifs.orkestra.orkspace.io
+          displayName: Motif
+          description: A parameterized set of resource declarations. Write once, import from any Katalog.
+        - kind: E2E
+          version: v1
+          name: e2es.orkestra.orkspace.io
+          displayName: E2E
+          description: Declarative end-to-end testing for Kubernetes operators
+      artifacthub.io/images: |
+        - name: runtime
+          image: ghcr.io/orkspace/orkestra
+        - name: gateway
+          image: ghcr.io/orkspace/orkestra-gateway
+        - name: control-center
+          image: ghcr.io/orkspace/orkestra-cc
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://docs.orkestra.sh
+        - name: Why Orkestra?
+          url: https://docs.orkestra.sh/blog/why-orkestra
+        - name: Control Center Dashboard
+          url: https://cc.orkestra.sh
+        - name: Orkestra Registry
+          url: https://docs.orkestra.sh/docs/reference/orkestra-registry
+      artifacthub.io/operator: "true"
+      artifacthub.io/operatorCapabilities: Deep Insights
+      artifacthub.io/screenshots: |
+        - title: Orkestra Control Center
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-center-landing.png
+        - title: CRD Health View
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-panel-website.png
+        - title: Metrics Overview
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
+    apiVersion: v2
+    appVersion: 0.5.2
+    created: "2026-05-29T00:35:54.719503389Z"
+    description: Declarative Operator Runtime with a built-in Security Gateway. Define
+      operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
+      protection with admission webhooks, and observe everything in the Control Center.
+      Runtime and Gateway deploy independently.
+    digest: dd79f9a6d768ed17055fcc39b99f3a90ce8f62208d8ba226fcfb64a002b2e69b
+    home: https://github.com/orkspace/orkestra
+    icon: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/logo.png
+    keywords:
+    - orkestra
+    - operator
+    - kubernetes
+    - crd
+    - declarative
+    - controller
+    - gateway
+    - webhook
+    - admission
+    - security
+    - deletion-protection
+    - controlcenter
+    - dashboard
+    - observability
+    maintainers:
+    - email: releases@orkspace.io
+      name: Orkspace
+      url: https://github.com/orkspace/orkestra
+    name: orkestra
+    sources:
+    - https://github.com/orkspace/orkestra
+    type: application
+    urls:
+    - https://orkspace.github.io/orkestra/orkestra-0.5.2.tgz
+    version: 0.5.2
+  - annotations:
+      artifacthub.io/changes: |
+        - kind: added
+          description: "Gateway: standalone admission webhooks, deletion protection, namespace protection, TLS cert lifecycle"
+        - kind: added
+          description: "Runtime/Gateway split — each deploys independently with its own build tag and image"
+        - kind: added
+          description: "Configurable cert rotation via security.certManager (autoRotate, rotationThreshold, validFor)"
+        - kind: added
+          description: "ork run discovers katalog.yaml automatically — no -f flag required"
+        - kind: changed
+          description: "gateway.endpoint replaces security.gatewayEndpoint (top-level gateway: block)"
+        - kind: changed
+          description: "ORK_* env prefix replaces ORKESTRA_*"
+      artifacthub.io/crds: |
+        - kind: Katalog
+          version: v1
+          name: katalogs.orkestra.orkspace.io
+          displayName: Katalog
+          description: Declarative operator definition for one or more CRDs
+        - kind: Komposer
+          version: v1
+          name: komposers.orkestra.orkspace.io
+          displayName: Komposer
+          description: Compose multiple Katalogs from different sources
+        - kind: Motif
+          version: v1
+          name: motifs.orkestra.orkspace.io
+          displayName: Motif
+          description: A parameterized set of resource declarations. Write once, import from any Katalog.
+        - kind: E2E
+          version: v1
+          name: e2es.orkestra.orkspace.io
+          displayName: E2E
+          description: Declarative end-to-end testing for Kubernetes operators
+      artifacthub.io/images: |
+        - name: runtime
+          image: ghcr.io/orkspace/orkestra
+        - name: gateway
+          image: ghcr.io/orkspace/orkestra-gateway
+        - name: control-center
+          image: ghcr.io/orkspace/orkestra-cc
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://docs.orkestra.sh
+        - name: Why Orkestra?
+          url: https://docs.orkestra.sh/blog/why-orkestra
+        - name: Control Center Dashboard
+          url: https://cc.orkestra.sh
+        - name: Orkestra Registry
+          url: https://docs.orkestra.sh/docs/reference/orkestra-registry
+      artifacthub.io/operator: "true"
+      artifacthub.io/operatorCapabilities: Deep Insights
+      artifacthub.io/screenshots: |
+        - title: Orkestra Control Center
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-center-landing.png
+        - title: CRD Health View
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-panel-website.png
+        - title: Metrics Overview
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
+    apiVersion: v2
+    appVersion: 0.5.1
+    created: "2026-05-29T00:35:54.71827749Z"
+    description: Declarative Kubernetes Operator Runtime with a built-in Security
+      Gateway. Define operators in YAML, generate minimal RBAC, enforce deletion protection
+      and namespace protection with admission webhooks, and observe everything in
+      the Control Center. Runtime and Gateway deploy independently.
+    digest: b1557719c4c13039720abcae6ebea4421ddf3947b021dea7b87078c39493eef7
+    home: https://github.com/orkspace/orkestra
+    icon: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/logo.png
+    keywords:
+    - orkestra
+    - operator
+    - kubernetes
+    - crd
+    - declarative
+    - controller
+    - gateway
+    - webhook
+    - admission
+    - security
+    - deletion-protection
+    - controlcenter
+    - dashboard
+    - observability
+    maintainers:
+    - email: releases@orkspace.io
+      name: Orkspace
+      url: https://github.com/orkspace/orkestra
+    name: orkestra
+    sources:
+    - https://github.com/orkspace/orkestra
+    type: application
+    urls:
+    - https://orkspace.github.io/orkestra/orkestra-0.5.1.tgz
+    version: 0.5.1
+  - annotations:
+      artifacthub.io/changes: |
+        - kind: added
+          description: "Gateway: standalone admission webhooks, deletion protection, namespace protection, TLS cert lifecycle"
+        - kind: added
+          description: "Runtime/Gateway split — each deploys independently with its own build tag and image"
+        - kind: added
+          description: "Configurable cert rotation via security.certManager (autoRotate, rotationThreshold, validFor)"
+        - kind: added
+          description: "ork run discovers katalog.yaml automatically — no -f flag required"
+        - kind: changed
+          description: "gateway.endpoint replaces security.gatewayEndpoint (top-level gateway: block)"
+        - kind: changed
+          description: "ORK_* env prefix replaces ORKESTRA_*"
+      artifacthub.io/crds: |
+        - kind: Katalog
+          version: v1
+          name: katalogs.orkestra.orkspace.io
+          displayName: Katalog
+          description: Declarative operator definition for one or more CRDs
+        - kind: Komposer
+          version: v1
+          name: komposers.orkestra.orkspace.io
+          displayName: Komposer
+          description: Compose multiple Katalogs from different sources
+        - kind: Motif
+          version: v1
+          name: motifs.orkestra.orkspace.io
+          displayName: Motif
+          description: A parameterized set of resource declarations. Write once, import from any Katalog.
+        - kind: E2E
+          version: v1
+          name: e2es.orkestra.orkspace.io
+          displayName: E2E
+          description: Declarative end-to-end testing for Kubernetes operators
+      artifacthub.io/images: |
+        - name: runtime
+          image: ghcr.io/orkspace/orkestra
+        - name: gateway
+          image: ghcr.io/orkspace/orkestra-gateway
+        - name: control-center
+          image: ghcr.io/orkspace/orkestra-cc
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://docs.orkestra.sh
+        - name: Why Orkestra?
+          url: https://docs.orkestra.sh/blog/why-orkestra
+        - name: Control Center Dashboard
+          url: https://cc.orkestra.sh
+        - name: Orkestra Registry
+          url: https://docs.orkestra.sh/docs/reference/orkestra-registry
+      artifacthub.io/operator: "true"
+      artifacthub.io/operatorCapabilities: Deep Insights
+      artifacthub.io/screenshots: |
+        - title: Orkestra Control Center
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-center-landing.png
+        - title: CRD Health View
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-panel-website.png
+        - title: Metrics Overview
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
+    apiVersion: v2
+    appVersion: 0.5.0
+    created: "2026-05-29T00:35:54.717015404Z"
+    description: Declarative Kubernetes Operator Runtime with a built-in Security
+      Gateway. Define operators in YAML, generate minimal RBAC, enforce deletion protection
+      and namespace protection with admission webhooks, and observe everything in
+      the Control Center. Runtime and Gateway deploy independently.
+    digest: 4557bcbf98fb419c3513d796e48196cdb5327c8e3569154b7d9bd5b7efa8a77b
+    home: https://github.com/orkspace/orkestra
+    icon: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/logo.png
+    keywords:
+    - orkestra
+    - operator
+    - kubernetes
+    - crd
+    - declarative
+    - controller
+    - gateway
+    - webhook
+    - admission
+    - security
+    - deletion-protection
+    - controlcenter
+    - dashboard
+    - observability
+    maintainers:
+    - email: releases@orkspace.io
+      name: Orkspace
+      url: https://github.com/orkspace/orkestra
+    name: orkestra
+    sources:
+    - https://github.com/orkspace/orkestra
+    type: application
+    urls:
+    - https://orkspace.github.io/orkestra/orkestra-0.5.0.tgz
+    version: 0.5.0
+  - annotations:
+      artifacthub.io/alternativeNames: |
+        - operator-sdk
+        - kubebuilder
+        - kudo
+        - crossplane
+      artifacthub.io/changes: |-
+        - kind: added
+          description: "Initial release of Orkestra v1.0.0"
+          links:
+            - name: GitHub Release
+              url: https://github.com/orkspace/orkestra/releases/tag/v1.0.0
+        - kind: added
+          description: "Control Center dashboard for real-time CRD observability"
+        - kind: added
+          description: "Declarative version conversion between API versions"
+        - kind: added
+          description: "Built-in validation and mutation rules for any CRD"
+        - kind: added
+          description: "OCI registry pattern distribution"
+      artifacthub.io/crds: |
+        - kind: Katalog
+          version: v1Alpha
+          name: katalogs.orkestra.konductor.io
+          displayName: Katalog
+          description: Declarative operator definition for one or more CRDs
+        - kind: Komposer
+          version: v1Alpha
+          name: komposers.orkestra.konductor.io
+          displayName: Komposer
+          description: Compose multiple Katalogs from different sources
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://github.com/orkspace/orkestra/tree/main/docs
+        - name: Whitepaper
+          url: https://github.com/orkspace/orkestra/blob/main/publish/declarative-operators-whitepaper.md
+        - name: Why Orkestra?
+          url: https://github.com/orkspace/orkestra/blob/main/publish/why-orkestra.md
+        - name: Control Center Dashboard
+          url: https://github.com/orkspace/orkestra/blob/main/docs/controlcenter.md
+      artifacthub.io/operator: "true"
+      artifacthub.io/operatorCapabilities: Basic Install
+      artifacthub.io/recommendations: |
+        - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
+        - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
+        - url: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
+      artifacthub.io/screenshots: |
+        - title: Orkestra Dashboard
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/dashboard.png
+        - title: CRD Health View
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/crd-health.png
+        - title: Metrics Overview
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
+    apiVersion: v2
+    appVersion: 0.4.9
+    created: "2026-05-29T00:35:54.715785618Z"
+    description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
+      manage your CRDs declaratively with Katalog YAML files. Includes the Control
+      Center for real-time observability of all managed CRDs.
+    digest: 99a3b2a05e74079ccb84a1d0d1862d51b137c5af736ad396f19530451984fc4c
+    home: https://github.com/orkspace/orkestra
+    icon: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/logo.png
+    keywords:
+    - orkestra
+    - operator
+    - kubernetes
+    - crd
+    - declarative
+    - controller
+    - controlcenter
+    - dashboard
+    - observability
+    maintainers:
+    - email: orkestra-releases@orkspace.io
+      name: Orkspace
+      url: https://github.com/orkspace/orkestra
+    name: orkestra
+    sources:
+    - https://github.com/orkspace/orkestra
+    type: application
+    urls:
+    - https://orkspace.github.io/orkestra/orkestra-0.4.9.tgz
+    version: 0.4.9
+  - annotations:
+      artifacthub.io/alternativeNames: |
+        - operator-sdk
+        - kubebuilder
+        - kudo
+        - crossplane
+      artifacthub.io/changes: |-
+        - kind: added
+          description: "Initial release of Orkestra v1.0.0"
+          links:
+            - name: GitHub Release
+              url: https://github.com/orkspace/orkestra/releases/tag/v1.0.0
+        - kind: added
+          description: "Control Center dashboard for real-time CRD observability"
+        - kind: added
+          description: "Declarative version conversion between API versions"
+        - kind: added
+          description: "Built-in validation and mutation rules for any CRD"
+        - kind: added
+          description: "OCI registry pattern distribution"
+      artifacthub.io/crds: |
+        - kind: Katalog
+          version: v1Alpha
+          name: katalogs.orkestra.konductor.io
+          displayName: Katalog
+          description: Declarative operator definition for one or more CRDs
+        - kind: Komposer
+          version: v1Alpha
+          name: komposers.orkestra.konductor.io
+          displayName: Komposer
+          description: Compose multiple Katalogs from different sources
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://github.com/orkspace/orkestra/tree/main/docs
+        - name: Whitepaper
+          url: https://github.com/orkspace/orkestra/blob/main/publish/declarative-operators-whitepaper.md
+        - name: Why Orkestra?
+          url: https://github.com/orkspace/orkestra/blob/main/publish/why-orkestra.md
+        - name: Control Center Dashboard
+          url: https://github.com/orkspace/orkestra/blob/main/docs/controlcenter.md
+      artifacthub.io/operator: "true"
+      artifacthub.io/operatorCapabilities: Basic Install
+      artifacthub.io/recommendations: |
+        - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
+        - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
+        - url: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
+      artifacthub.io/screenshots: |
+        - title: Orkestra Dashboard
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/dashboard.png
+        - title: CRD Health View
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/crd-health.png
+        - title: Metrics Overview
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
+    apiVersion: v2
+    appVersion: 0.4.8
+    created: "2026-05-29T00:35:54.713485679Z"
+    description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
+      manage your CRDs declaratively with Katalog YAML files. Includes the Control
+      Center for real-time observability of all managed CRDs.
+    digest: 0422949df025baa3e9298685618b6021422615a06462bf6943a748c74856b5f3
+    home: https://github.com/orkspace/orkestra
+    icon: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/logo.png
+    keywords:
+    - orkestra
+    - operator
+    - kubernetes
+    - crd
+    - declarative
+    - controller
+    - controlcenter
+    - dashboard
+    - observability
+    maintainers:
+    - email: orkestra-releases@orkspace.io
+      name: Orkspace
+      url: https://github.com/orkspace/orkestra
+    name: orkestra
+    sources:
+    - https://github.com/orkspace/orkestra
+    type: application
+    urls:
+    - https://orkspace.github.io/orkestra/orkestra-0.4.8.tgz
+    version: 0.4.8
+  - annotations:
+      artifacthub.io/alternativeNames: |
+        - operator-sdk
+        - kubebuilder
+        - kudo
+        - crossplane
+      artifacthub.io/changes: |-
+        - kind: added
+          description: "Initial release of Orkestra v1.0.0"
+          links:
+            - name: GitHub Release
+              url: https://github.com/orkspace/orkestra/releases/tag/v1.0.0
+        - kind: added
+          description: "Control Center dashboard for real-time CRD observability"
+        - kind: added
+          description: "Declarative version conversion between API versions"
+        - kind: added
+          description: "Built-in validation and mutation rules for any CRD"
+        - kind: added
+          description: "OCI registry pattern distribution"
+      artifacthub.io/crds: |
+        - kind: Katalog
+          version: v1Alpha
+          name: katalogs.orkestra.konductor.io
+          displayName: Katalog
+          description: Declarative operator definition for one or more CRDs
+        - kind: Komposer
+          version: v1Alpha
+          name: komposers.orkestra.konductor.io
+          displayName: Komposer
+          description: Compose multiple Katalogs from different sources
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://github.com/orkspace/orkestra/tree/main/docs
+        - name: Whitepaper
+          url: https://github.com/orkspace/orkestra/blob/main/publish/declarative-operators-whitepaper.md
+        - name: Why Orkestra?
+          url: https://github.com/orkspace/orkestra/blob/main/publish/why-orkestra.md
+        - name: Control Center Dashboard
+          url: https://github.com/orkspace/orkestra/blob/main/docs/controlcenter.md
+      artifacthub.io/operator: "true"
+      artifacthub.io/operatorCapabilities: Basic Install
+      artifacthub.io/recommendations: |
+        - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
+        - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
+        - url: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
+      artifacthub.io/screenshots: |
+        - title: Orkestra Dashboard
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/dashboard.png
+        - title: CRD Health View
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/crd-health.png
+        - title: Metrics Overview
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
+    apiVersion: v2
+    appVersion: 0.4.7
+    created: "2026-05-29T00:35:54.712453531Z"
+    description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
+      manage your CRDs declaratively with Katalog YAML files. Includes the Control
+      Center for real-time observability of all managed CRDs.
+    digest: 459a3e6c730e5cf7f917f64d702dc10159b6d8255fcf27c72d4a2a8654754fa1
+    home: https://github.com/orkspace/orkestra
+    icon: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/logo.png
+    keywords:
+    - orkestra
+    - operator
+    - kubernetes
+    - crd
+    - declarative
+    - controller
+    - controlcenter
+    - dashboard
+    - observability
+    maintainers:
+    - email: orkestra-releases@orkspace.io
+      name: Orkspace
+      url: https://github.com/orkspace/orkestra
+    name: orkestra
+    sources:
+    - https://github.com/orkspace/orkestra
+    type: application
+    urls:
+    - https://orkspace.github.io/orkestra/orkestra-0.4.7.tgz
+    version: 0.4.7
+generated: "2026-05-29T00:35:54.711381929Z"
