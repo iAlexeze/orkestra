@@ -801,6 +801,15 @@ func templateSummary(t *orktypes.HookTemplates) map[string]interface{} {
 	if len(t.Deployments) > 0 {
 		summary["deployments"] = len(t.Deployments)
 	}
+	if len(t.StatefulSets) > 0 {
+		summary["statefulSets"] = len(t.StatefulSets)
+	}
+	if len(t.DaemonSets) > 0 {
+		summary["daemonSets"] = len(t.DaemonSets)
+	}
+	if len(t.ReplicaSets) > 0 {
+		summary["replicaSets"] = len(t.ReplicaSets)
+	}
 	if len(t.Services) > 0 {
 		summary["services"] = len(t.Services)
 	}
@@ -818,6 +827,51 @@ func templateSummary(t *orktypes.HookTemplates) map[string]interface{} {
 	}
 	if len(t.ServiceAccounts) > 0 {
 		summary["serviceAccounts"] = len(t.ServiceAccounts)
+	}
+	if len(t.Secrets) > 0 {
+		summary["secrets"] = len(t.Secrets)
+	}
+	if len(t.PersistentVolumes) > 0 {
+		summary["persistentVolumes"] = len(t.PersistentVolumes)
+	}
+	if len(t.PersistentVolumeClaims) > 0 {
+		summary["persistentVolumeClaims"] = len(t.PersistentVolumeClaims)
+	}
+	if len(t.Roles) > 0 {
+		summary["roles"] = len(t.Roles)
+	}
+	if len(t.RoleBindings) > 0 {
+		summary["roleBindings"] = len(t.RoleBindings)
+	}
+	if len(t.ClusterRoles) > 0 {
+		summary["clusterRoles"] = len(t.ClusterRoles)
+	}
+	if len(t.ClusterRoleBindings) > 0 {
+		summary["clusterRoleBindings"] = len(t.ClusterRoleBindings)
+	}
+	if len(t.Ingresses) > 0 {
+		summary["ingresses"] = len(t.Ingresses)
+	}
+	if len(t.NetworkPolicies) > 0 {
+		summary["networkPolicies"] = len(t.NetworkPolicies)
+	}
+	if len(t.PodDisruptionBudgets) > 0 {
+		summary["podDisruptionBudgets"] = len(t.PodDisruptionBudgets)
+	}
+	if len(t.LimitRanges) > 0 {
+		summary["limitRanges"] = len(t.LimitRanges)
+	}
+	if len(t.ResourceQuotas) > 0 {
+		summary["resourceQuotas"] = len(t.ResourceQuotas)
+	}
+	if len(t.PriorityClasses) > 0 {
+		summary["priorityClasses"] = len(t.PriorityClasses)
+	}
+	if len(t.CustomResource) > 0 {
+		summary["customResource"] = len(t.CustomResource)
+	}
+	if len(t.HorizontalPodAutoscalers) > 0 {
+		summary["horizontalPodAutoscalers"] = len(t.HorizontalPodAutoscalers)
 	}
 
 	return summary
