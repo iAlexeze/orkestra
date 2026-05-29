@@ -52,9 +52,19 @@ backgroundFetchLoop()
     fetchAllKatalogs()         ← runs every N seconds
 ```
 
-`fetchAllKatalogs` holds `cc.mu` (write lock) for the entire duration. It calls `inst.Client.FetchKatalog()` per instance, updates `inst.Katalog`, sets `inst.Status`, then releases the lock and calls `notifySubscribers()`.
+`fetchAllKatalogs` snapshots the instance URLs under `RLock`, then fetches each runtime outside any lock (network I/O must not block concurrent reads). Each result is applied under a brief `Lock` covering only that one instance update.
 
-The write lock during fetch is intentional: it ensures the UI never reads a partially updated state. Fetch is fast (one HTTP call per instance) and the refresh interval is 15 s by default, so contention is negligible.
+`inst.Katalog` is only replaced when the response carries `isKonductor: true` — meaning the pod that answered holds the leader election lease and its CRD health data is authoritative. Responses from standby pods (`isKonductor: false`) are discarded; the last known-good snapshot is preserved. This prevents the control center display from flipping between healthy and pending when a runtime runs with more than one replica.
+
+After all instances are processed, `notifySubscribers()` sends an SSE signal to every connected browser tab.
+
+## Multi-replica runtimes
+
+Orkestra runtimes support `replicaCount > 1` with leader election (`LEADER_ELECTION=true`). Only the leader pod runs the reconcilers; follower pods hold the Kubernetes lease but never process CRs, so their in-memory CRD health state stays "pending" indefinitely.
+
+The runtime's `/katalog` response includes `"isKonductor": true` only on the leader pod. This field is set by `DependencyKordinator.Kordinate()` — which is only called on the pod that wins the election — and cleared when leadership is lost.
+
+The control center uses this field as the cache-update gate: standby pod responses leave `inst.Katalog` untouched, so the UI always shows the leader's last known-good state regardless of which pod the Kubernetes Service load-balanced to on any given tick.
 
 ## SSE live updates
 

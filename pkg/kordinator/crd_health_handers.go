@@ -475,6 +475,7 @@ type KatalogResponse struct {
 	Total              int                    `json:"total"`
 	TotalEnabled       int                    `json:"totalEnabled"`
 	OrkReady           bool                   `json:"OrkReady"`
+	IsKonductor        bool                   `json:"isKonductor"`
 	DeletionProtection bool                   `json:"deletionProtection"`
 	Healthy            bool                   `json:"healthy"`
 	Status             int                    `json:"status"`
@@ -677,6 +678,7 @@ func BuildKatalogHandler(
 			Total:              len(kat.All()),
 			TotalEnabled:       len(kat.Enabled()),
 			OrkReady:           o.IsOrkReady(),
+			IsKonductor:        o.IsKonductor(),
 			DeletionProtection: deletionProtection,
 			Healthy:            status == http.StatusOK, // workaround. TODO: standard from crd_health
 			Status:             status,
