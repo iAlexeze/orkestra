@@ -46,9 +46,15 @@ KatalogResponse
 
 ### Cache-update rule
 
-`inst.Katalog` is only replaced when `KatalogResponse.IsKonductor == true`. When it is `false` (the response came from a standby pod), the last known-good snapshot is kept and the tick is a no-op for display state.
+Three cases on each fetch:
 
-This matters when `replicaCount > 1`: the Kubernetes Service can round-robin to any pod. Only the leader pod sets `IsKonductor: true` (via `DependencyKordinator.Kordinate()`); follower pods never run the reconcilers so their CRD health stays "pending". Without this guard, the display would flip between healthy and pending on every other fetch tick.
+| Response | `inst.Katalog` state | Action |
+|----------|----------------------|--------|
+| `isKonductor: true` | any | Replace — leader data is authoritative |
+| `isKonductor: false` | nil | Accept — no data yet, something beats nothing; CRDs may show as pending until a leader response arrives |
+| `isKonductor: false` | non-nil | Discard — keep last known-good snapshot; prevents flipping between healthy and pending |
+
+This matters when `replicaCount > 1`: the Kubernetes Service round-robins to any pod. Only the leader sets `isKonductor: true` (via `DependencyKordinator.Kordinate()`); follower pods never run reconcilers so their CRD health stays "pending". The second case ensures all katalogs appear immediately on startup; the third case ensures the display does not flip once stable.
 
 The `CRDSummary` slice is what drives the Katalog panel and the index. It does not include deep detail — for that, the user navigates to a CRD page, which triggers a fresh `FetchCRDDetail` call at request time.
 

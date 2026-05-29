@@ -24,6 +24,7 @@ type CRDHealthResponse struct {
 	Name                     string                      `json:"name"`
 	State                    string                      `json:"state"` // "not started", "pending", "started", "healthy", "degraded"
 	Status                   int                         `json:"status"`
+	IsKonductor              bool                        `json:"isKonductor"`
 	Healthy                  bool                        `json:"healthy"`
 	Started                  bool                        `json:"started"`
 	Pending                  bool                        `json:"pending"`
@@ -64,6 +65,7 @@ func BuildCRDHealthHandler(
 	kfg *konfig.Konfig,
 	inf cache.SharedIndexInformer,
 	h *CRDHealth,
+	o *OrkestraHealth,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		state, status := h.StateAndStatus()
@@ -73,6 +75,7 @@ func BuildCRDHealthHandler(
 			Name:                     crd.Name,
 			State:                    state,
 			Status:                   status,
+			IsKonductor:              o.IsKonductor(),
 			Healthy:                  h.IsHealthy(),
 			Started:                  h.Started(),
 			Pending:                  h.Pending(),
@@ -114,6 +117,7 @@ type CRDInfoResponse struct {
 	Namespaced             bool                             `json:"namespaced"`
 	Namespace              string                           `json:"namespace"`
 	DependsOn              []string                         `json:"dependsOn,omitempty"`
+	IsKonductor            bool                             `json:"isKonductor"`
 	Workers                int                              `json:"workers"`
 	WorkersActive          int32                            `json:"workersActive"`
 	WorkersIdle            int32                            `json:"workersIdle"`
@@ -259,6 +263,7 @@ func BuildCRDInfoHandler(
 	kfg *konfig.Konfig,
 	inf cache.SharedIndexInformer,
 	h *CRDHealth,
+	o *OrkestraHealth,
 	convStats *health.ConversionStats,
 	admStats *health.AdmissionStats,
 	protStats *health.DeletionProtectionStats,
@@ -328,6 +333,7 @@ func BuildCRDInfoHandler(
 			Namespaced:          crd.IsNamespaced(),
 			Namespace:           crd.Namespace,
 			DependsOn:           crd.DependsOn.Names(),
+			IsKonductor:         o.IsKonductor(),
 			Workers:             workers,
 			WorkersActive:       workersActive,
 			WorkersIdle:         workersIdle,
