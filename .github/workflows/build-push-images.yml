@@ -72,7 +72,7 @@ jobs:
           done
 
       - name: Build and push runtime image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
@@ -150,7 +150,7 @@ jobs:
           done
 
       - name: Build and push gateway image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
@@ -228,7 +228,7 @@ jobs:
           done
 
       - name: Build and push control center image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: cmd/controlcenter
           file: cmd/controlcenter/Dockerfile
