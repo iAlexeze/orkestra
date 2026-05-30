@@ -37,12 +37,12 @@ Understanding Orkestra's deployment modes is essential before reading any securi
 ┌────────────────────────────────────────────┐
 │  Kubernetes cluster                        │
 │                                            │
-│  ork run  ←── watches CRDs, reconciles     │
-│  Gateway  ←── webhooks, TLS, admission     │
+│  ork run   ←── watches CRDs, reconciles    │
+│  ork gate  ←── webhooks, TLS, admission    │
 └────────────────────────────────────────────┘
 ```
 
-The Orkestra runtime (`ork run`) reconciles your CRDs. The Gateway handles all webhook traffic. Both run in the cluster; they communicate through the Kubernetes API server.
+The Orkestra runtime (`ork run`) reconciles your CRDs. The Gateway (`ork gate`) handles all webhook traffic. Both run in the cluster; they communicate through the Kubernetes API server.
 
 In this mode the reconciler continuously enforces the label invariants declared in your Katalog: it adds the deletion-protection label when protection is enabled, removes it when a CRD opts out, and corrects any manual drift. The system is self-healing.
 
@@ -52,14 +52,16 @@ In this mode the reconciler continuously enforces the label invariants declared 
 ┌────────────────────────────────────────────┐
 │  Kubernetes cluster                        │
 │                                            │
-│  Gateway  ←── webhooks, TLS, admission     │
+│  ork gate  ←── webhooks, TLS, admission    │
 │  (no runtime reconciler)                   │
 └────────────────────────────────────────────┘
 ```
 
 Only the Gateway is deployed. Admission webhooks, deletion protection, and namespace protection all work. But there is no reconciler, so label enforcement is not automatic: **you are responsible for applying the correct labels to your resources yourself**. See [Deletion protection — gateway-only mode](04-deletion-protection.md#gateway-only-mode) for what this means in practice.
 
-This mode is useful when you bring your own operator or a cluster with Kubernetes resources and only want Orkestra's admission and protection layer, or when you are testing locally (deploy gateway via Helm, run `ork run` in your terminal — the gateway continues to honour its contract, `ork run` becomes its companion runtime, no blockers).
+This mode is useful when you bring your own operator or a cluster with Kubernetes resources and only want Orkestra's admission and protection layer.
+
+You might also need this mode when you are testing locally (deploy gateway via Helm, run `ork run` in your terminal — the gateway continues to honour its contract, `ork run` becomes its companion runtime, no blockers).
 
 ---
 
@@ -130,6 +132,12 @@ The output shows each CRD's protection level at a glance:
 
 Warnings surface misconfigurations before you ship — not after. `ork validate` is the fastest way to audit what your Katalog actually enforces.
 
+To review all permissions that will be requested for your CRDs and enabled features in the katalog, run:
+
+```bash
+ork validate --full
+```
+
 ---
 
 ## Testing security end-to-end
@@ -157,10 +165,10 @@ Report security issues privately with reproduction steps, relevant logs, and an 
 
 ## Where to go next
 
-- **[Admission Control](./01-admission.md)** — deny/warn rules at admission time
-- **[RBAC](./02-rbac.md)** — generating and scoping ClusterRoles
-- **[Namespace Protection](./03-namespace-protection.md)** — admission and runtime enforcement
-- **[Deletion Protection](./04-deletion-protection.md)** — preventing accidental CR and CRD deletion
 - **[Binaries](./05-binaries.md)** — verifying Orkestra release artifacts
+- **[RBAC](./02-rbac.md)** — generating and scoping ClusterRoles
+- **[Admission Control](./01-admission.md)** — deny/warn rules at admission time
+- **[Deletion Protection](./04-deletion-protection.md)** — preventing accidental CR and CRD deletion
+- **[Namespace Protection](./03-namespace-protection.md)** — admission and runtime enforcement
 - **[Validation Pipeline](./06-validation-pipeline.md)** — strict parsing, offline validation, and minimal cluster access
 - **[Pod Security](./07-pod-security.md)** — container and pod security context profiles

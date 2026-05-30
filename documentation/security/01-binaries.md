@@ -51,8 +51,8 @@ The gateway binary is compiled separately (`cmd/gateway/`). It receives only the
 | Command | Developer CLI | Runtime binary | Gateway binary |
 |---------|:---:|:---:|:---:|
 | `ork run` | ✓ | ✓ | — |
-| `ork gate` | ✓ | — | ✓ |
-| `ork version` | ✓ | ✓ | ✓ |
+| `ork gate` | — | — | ✓ |
+| `ork version` | ✓ | — | — |
 | `ork generate bundle` | ✓ | — | — |
 | `ork generate rbac` | ✓ | — | — |
 | `ork generate crd` | ✓ | — | — |

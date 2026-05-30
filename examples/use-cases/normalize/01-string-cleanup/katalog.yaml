@@ -32,8 +32,7 @@ spec:
           # "https://my-app.example.com/" → "my-app.example.com"
           # "http://my-app.example.com"   → "my-app.example.com"
           # "my-app.example.com"          → "my-app.example.com" (unchanged)
-          domain: >-
-            {{- trimSuffix (trimPrefix (trimPrefix (trimSpace .spec.domain) "https://") "http://") "/" -}}
+          domain: '{{ domainHost .spec.domain }}'
 
           # Tenant name — lowercase and trimmed.
           # "Acme Corp ", "ACME-CORP" → "acme corp", "acme-corp"

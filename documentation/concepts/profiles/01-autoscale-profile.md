@@ -2,7 +2,7 @@
 
 An autoscale profile is a named preset that expands into a complete `operatorBox.autoscale` block at Katalog load time.
 
-Profiles are **relative** — they use the CRD's declared `workers` and `queue.maxQueueDepth` as a baseline, then compute worker overrides, queue overrides, trigger thresholds, and timing from that baseline.
+Profiles are **relative** — they use the CRD's declared `workers` and `queue.maxDepth` as a baseline, then compute worker overrides, queue overrides, trigger thresholds, and timing from that baseline.
 
 ---
 
@@ -24,7 +24,7 @@ Profiles are **relative** — they use the CRD's declared `workers` and `queue.m
 operatorBox:
   workers: 4
   queue:
-    maxQueueDepth: 100
+    maxDepth: 100
   autoscale:
     profile: steady
 ```

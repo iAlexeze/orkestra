@@ -240,13 +240,13 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		}
 
 		// Handle QueueDepth
-		if crd.Queue.MaxQueueDepth == 0 {
-			crd.Queue.MaxQueueDepth = crd.SetMaxQueueDepth(kfg.Katalog().DefaultMaxQueueDepth())
+		if crd.Queue.MaxDepth == 0 {
+			crd.Queue.MaxDepth = crd.SetQueueDepth(kfg.Katalog().DefaultQueueDepth())
 		}
 
-		// Handle QueueDegradeThreshold
-		if crd.Queue.DegradeThreshold == 0 {
-			crd.Queue.DegradeThreshold = crd.SetMaxQueueDepth(kfg.Katalog().DefaultDegradeThreshold())
+		// Handle QueueFailureThreshold
+		if crd.Queue.FailureThreshold == 0 {
+			crd.Queue.FailureThreshold = crd.SetQueueDepth(kfg.Katalog().DefaultFailureThreshold())
 		}
 
 		// Handle Notifications

@@ -141,3 +141,10 @@ spec:
 
             - path: endpointsReady
               value: "{{ endpointsReady .children.endpointslice }}"
+
+            # ── domain notes ────────────────────────────────────────────────
+            - path: domainHost
+              value: '{{ domainHost "https://acme.example.com/" }}'
+
+            - path: domainBare
+              value: '{{ domainBare "https://www.acme.com/" }}'

@@ -119,7 +119,7 @@ certManager:
 | `ORK_REGISTRY` | — | Default registry URL for `imports.registry` entries without explicit URL |
 | `DEFAULT_WORKERS` | `3` | Worker count per CRD when not set in Katalog |
 | `DEFAULT_RESYNC` | `15s` | Resync interval when not set in Katalog |
-| `MAX_QUEUE_DEPTH` | `100` | Max queue depth when not set in Katalog |
+| `QUEUE_DEPTH` | `100` | Max queue depth when not set in Katalog |
 | `LOG_LEVEL` | `info` | Log verbosity: `debug`, `info`, `warn`, `error` |
 | `NAMESPACE` | — | Namespace where Orkestra runs — used in webhook configurations |
 | `ORK_SERVICE_NAME` | `orkestra` | Service name for webhook clientConfig |

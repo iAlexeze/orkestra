@@ -35,13 +35,13 @@ RecordSuccess()
 ## On failure
 
 ```go
-RecordFailure(err, degradeThreshold)
+RecordFailure(err, failureThreshold)
 ```
 
 - increments total and failed reconcile counts
 - increments consecutive failures
 - stores `lastError`
-- marks unhealthy if `consecutiveFails >= degradeThreshold`
+- marks unhealthy if `consecutiveFails >= failureThreshold`
 
 ---
 
@@ -50,10 +50,10 @@ RecordFailure(err, degradeThreshold)
 A CRD becomes **unhealthy** when:
 
 ```text
-consecutiveFails >= degradeThreshold
+consecutiveFails >= failureThreshold
 ```
 
-The threshold is configurable per CRD in the Katalog - `queue.degradeThreshold`. Unhealthy CRDs are visible in the Control Center and can trigger rollback if configured.
+The threshold is configurable per CRD in the Katalog - `queue.failureThreshold`. Unhealthy CRDs are visible in the Control Center and can trigger rollback if configured.
 
 ---
 

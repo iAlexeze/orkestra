@@ -127,8 +127,8 @@ type CRDInfoResponse struct {
 	Resync                 string                           `json:"resync"`
 	ResyncSource           string                           `json:"resyncSource"`
 	QueueDepth             int                              `json:"queueDepth"`
-	MaxQueueDepth          int                              `json:"maxQueueDepth"`
-	MaxQueueDepthSource    string                           `json:"maxQueueDepthSource"`
+	MaxDepth               int                              `json:"maxDepth"`
+	MaxDepthSource         string                           `json:"maxDepthSource"`
 	ResourceCount          int                              `json:"resourceCount"`
 	TotalReconciles        int64                            `json:"totalReconciles"`
 	OperatorBox            OperatorBoxInfo                  `json:"operatorBox"`
@@ -296,8 +296,8 @@ func BuildCRDInfoHandler(
 		workersProcessing := h.GetProcessingWorkers()
 		workersSource := v.workersSource
 		queueDepth := h.QueueDepth(crd.GVKString())
-		maxQueueDepth := v.maxQueueDepth
-		maxQueueDepthSource := v.maxQueueDepthSource
+		maxDepth := v.maxDepth
+		maxDepthSource := v.maxDepthSource
 		resync := v.resync
 		resyncSource := v.resyncSource
 
@@ -315,47 +315,47 @@ func BuildCRDInfoHandler(
 			// applying an override. Baseline values come from resolveCRDDisplayValues
 			// which includes the konfig default fallback (e.g. 100 queue depth).
 			if wi.OverrideActive {
-				maxQueueDepth = int(wi.QueueDepthEffective)
+				maxDepth = int(wi.QueueDepthEffective)
 				resync = wi.ResyncEffective
 
-				maxQueueDepthSource = autoscalerSource
+				maxDepthSource = autoscalerSource
 				resyncSource = autoscalerSource
 				workersSource = autoscalerSource
 			}
 		}
 
 		response := CRDInfoResponse{
-			Name:                crd.Name,
-			Description:         crd.Description,
-			Mode:                crd.Mode.String(),
-			GVK:                 crd.GVKString(),
-			GVR:                 crd.GroupVersionResource.String(),
-			Namespaced:          crd.IsNamespaced(),
-			Namespace:           crd.Namespace,
-			DependsOn:           crd.DependsOn.Names(),
-			IsKonductor:         o.IsKonductor(),
-			Workers:             workers,
-			WorkersActive:       workersActive,
-			WorkersIdle:         workersIdle,
-			WorkersProcessing:   workersProcessing,
-			WorkerDetails:       h.GetWorkerStates(),
-			WorkersSource:       workersSource,
-			Resync:              resync,
-			ResyncSource:        resyncSource,
-			QueueDepth:          queueDepth,
-			MaxQueueDepth:       maxQueueDepth,
-			MaxQueueDepthSource: maxQueueDepthSource,
-			ResourceCount:       v.resourceCount,
-			TotalReconciles:     h.TotalReconciles(),
-			OperatorBox:         operatorBoxInfoStruct(crd),
-			Healthy:             h.IsHealthy(),
-			Started:             h.Started(),
-			Pending:             h.Pending(),
-			ErrorRate:           h.ErrorRatePercent(),
-			RBAC:                rbacInfo,
-			AutoscalerEnabled:   crd.AutoscaleEnabled(),
-			AutoscalerWorkers:   wi,
-			Metrics:             autoMetrics,
+			Name:              crd.Name,
+			Description:       crd.Description,
+			Mode:              crd.Mode.String(),
+			GVK:               crd.GVKString(),
+			GVR:               crd.GroupVersionResource.String(),
+			Namespaced:        crd.IsNamespaced(),
+			Namespace:         crd.Namespace,
+			DependsOn:         crd.DependsOn.Names(),
+			IsKonductor:       o.IsKonductor(),
+			Workers:           workers,
+			WorkersActive:     workersActive,
+			WorkersIdle:       workersIdle,
+			WorkersProcessing: workersProcessing,
+			WorkerDetails:     h.GetWorkerStates(),
+			WorkersSource:     workersSource,
+			Resync:            resync,
+			ResyncSource:      resyncSource,
+			QueueDepth:        queueDepth,
+			MaxDepth:          maxDepth,
+			MaxDepthSource:    maxDepthSource,
+			ResourceCount:     v.resourceCount,
+			TotalReconciles:   h.TotalReconciles(),
+			OperatorBox:       operatorBoxInfoStruct(crd),
+			Healthy:           h.IsHealthy(),
+			Started:           h.Started(),
+			Pending:           h.Pending(),
+			ErrorRate:         h.ErrorRatePercent(),
+			RBAC:              rbacInfo,
+			AutoscalerEnabled: crd.AutoscaleEnabled(),
+			AutoscalerWorkers: wi,
+			Metrics:           autoMetrics,
 		}
 
 		if crd.HasRollbackRules() {
@@ -518,8 +518,8 @@ type CRDSummaryResponse struct {
 	Resync                   string             `json:"resync"`
 	ResyncSource             string             `json:"resyncSource"`
 	QueueDepth               int                `json:"queueDepth"`
-	MaxQueueDepth            int                `json:"maxQueueDepth"`
-	MaxQueueDepthSource      string             `json:"maxQueueDepthSource"`
+	MaxDepth                 int                `json:"maxDepth"`
+	MaxDepthSource           string             `json:"maxDepthSource"`
 	ResourceCount            int                `json:"resourceCount"`
 	OperatorBox              OperatorBoxSummary `json:"operatorBox"`
 	Healthy                  bool               `json:"healthy"`
@@ -630,8 +630,8 @@ func BuildKatalogHandler(
 				Resync:                   v.resync,
 				ResyncSource:             v.resyncSource,
 				QueueDepth:               h.QueueDepth(gvk),
-				MaxQueueDepth:            v.maxQueueDepth,
-				MaxQueueDepthSource:      v.maxQueueDepthSource,
+				MaxDepth:                 v.maxDepth,
+				MaxDepthSource:           v.maxDepthSource,
 				RBACCount:                generateRBACInfo(crd, v).TotalRules,
 				ResourceCount:            v.resourceCount,
 				DeletionProtection:       isCRDProtected(deletionProtectedCRDs, crd.APITypes.Plural, crd.APITypes.Group),
@@ -897,13 +897,13 @@ func templateSummary(t *orktypes.HookTemplates) map[string]interface{} {
 // ─────────────────────────────────────────────────────────────────────────────
 
 type crdDisplayValues struct {
-	resync              string
-	resyncSource        string
-	workers             int
-	workersSource       string
-	maxQueueDepth       int
-	maxQueueDepthSource string
-	resourceCount       int
+	resync         string
+	resyncSource   string
+	workers        int
+	workersSource  string
+	maxDepth       int
+	maxDepthSource string
+	resourceCount  int
 }
 
 func resolveCRDDisplayValues(
@@ -913,11 +913,11 @@ func resolveCRDDisplayValues(
 ) crdDisplayValues {
 
 	// Queue depth
-	maxQueueDepth := crd.Queue.MaxQueueDepth
-	maxQueueDepthSource := "configured"
-	if maxQueueDepth == 0 {
-		maxQueueDepth = kfg.Katalog().DefaultMaxQueueDepth()
-		maxQueueDepthSource = "default"
+	maxDepth := crd.Queue.MaxDepth
+	maxDepthSource := "configured"
+	if maxDepth == 0 {
+		maxDepth = kfg.Katalog().DefaultQueueDepth()
+		maxDepthSource = "default"
 	}
 
 	// Resync
@@ -943,13 +943,13 @@ func resolveCRDDisplayValues(
 	}
 
 	return crdDisplayValues{
-		resync:              resync,
-		resyncSource:        resyncSource,
-		workers:             workers,
-		workersSource:       workersSource,
-		maxQueueDepth:       maxQueueDepth,
-		maxQueueDepthSource: maxQueueDepthSource,
-		resourceCount:       resourceCount,
+		resync:         resync,
+		resyncSource:   resyncSource,
+		workers:        workers,
+		workersSource:  workersSource,
+		maxDepth:       maxDepth,
+		maxDepthSource: maxDepthSource,
+		resourceCount:  resourceCount,
 	}
 }
 

@@ -41,8 +41,8 @@ runtime:
     logLevel: info
     defaultWorkers: 2
     defaultResync: 30s
-    maxQueueDepth: 500
-    degradeThreshold: 10
+    maxDepth: 500
+    failureThreshold: 10
     environment: production
 
   # Probes for runtime

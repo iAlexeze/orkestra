@@ -54,7 +54,7 @@ Watch the Control Center as resources are created:
 - Queue limit shows **100** (default) when you click the CRD
 
 > Note:
-> You can override the default queue limit by setting `queue.maxQueueDepth`. 
+> You can override the default queue limit by setting `queue.maxDepth`. 
 
 ---
 

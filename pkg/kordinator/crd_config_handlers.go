@@ -111,7 +111,7 @@ func BuildRawKatalogHandler(m *merger.Merger) http.HandlerFunc {
 //   - Fully resolved API types (group, version, plural enriched from discovery API)
 //   - Default workers applied when not specified (from DEFAULT_WORKERS env var)
 //   - Default resync applied when not specified (from DEFAULT_RESYNC env var)
-//   - Default queue depth applied when not specified (from MAX_QUEUE_DEPTH env var)
+//   - Default queue depth applied when not specified (from QUEUE_DEPTH env var)
 //   - All validation and mutation rules merged from sources
 //   - Complete operatorBox: configuration after inheritance
 //
@@ -129,7 +129,7 @@ func BuildRawKatalogHandler(m *merger.Merger) http.HandlerFunc {
 //	  },
 //	  "workers": 3,
 //	  "resync": "30s",
-//	  "maxQueueDepth": 2000,
+//	  "maxDepth": 2000,
 //	  "dependsOn": {
 //	    "pod-manager": {
 //	      "condition": "started"
@@ -197,8 +197,8 @@ func BuildCRDEnrichedHandler(kat *katalog.Katalog, crdName string) http.HandlerF
 //	        },
 //	        "workers": 3,
 //	        "resync": "30s",
-//	        "maxQueueDepth": 2000,
-//	        "degradeThreshold": 10,
+//	        "maxDepth": 2000,
+//	        "failureThreshold": 10,
 //	        "namespaced": true,
 //	        "operatorBox:": {
 //	          "default": true

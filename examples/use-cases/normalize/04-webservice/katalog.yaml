@@ -34,8 +34,7 @@ spec:
           environment: '{{ default "production" .spec.environment | toLower | trimSpace }}'
 
           # Domain — strip protocol and trailing slash.
-          domain: >-
-            {{- trimSuffix (trimPrefix (trimPrefix (trimSpace .spec.domain) "https://") "http://") "/" -}}
+          domain: '{{ domainHost .spec.domain }}'
 
           # Resource request defaults.
           resources.requests.cpu:    '{{ resourceCPU . | default "100m" }}'

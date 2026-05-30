@@ -1,0 +1,11 @@
+apiVersion: demo.orkestra.io/v1
+kind: WebApp
+metadata:
+  name: my-app
+spec:
+  image: nginx:1.25
+  # Replace with your API service base URL.
+  # Call 1: POST {{ serviceUrl }}/auth/token  → returns bearer token
+  # Call 2: GET  {{ serviceUrl }}/resources/my-app  (authenticated)
+  serviceUrl: "https://api.internal"
+  replicas: 1

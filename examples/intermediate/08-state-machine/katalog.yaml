@@ -22,8 +22,8 @@ spec:
       workers: 4
       resync: 10s   # short resync to check Job completion quickly
       queue:
-        degradeThreshold: 0.5
-        maxQueueDepth: 1000
+        maxDepth: 1000
+        failureThreshold: 0.5
 
       # ── Validation ───────────────────────────────────────────────────
       validation:

@@ -56,6 +56,10 @@ type ResolvedJobSpec struct {
 	// PodSecurity — pod-level security settings.
 	PodSecurity *orktypes.PodSecurityContext
 
+	// Volumes / VolumeMounts — pod volumes and container mounts.
+	Volumes      []orktypes.VolumeSource
+	VolumeMounts []orktypes.VolumeMount
+
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).
@@ -153,6 +157,8 @@ func Resolve(src orktypes.JobTemplateSource, backoffLimit int, ownerName string)
 		Resources:       common.ResolveResources(src.Resources),
 		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
 		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Volumes:         src.Volumes,
+		VolumeMounts:    src.VolumeMounts,
 		Sleep:           src.Sleep,
 	}
 
@@ -227,6 +233,14 @@ func buildJob(owner domain.Object, spec ResolvedJobSpec, namespace string) *batc
 
 	// Security
 	common.ApplySecurityContext(&job.Spec.Template.Spec.Containers[0], &job.Spec.Template.Spec, spec.SecurityContext, spec.PodSecurity)
+
+	// Volumes / VolumeMounts
+	if vols := common.BuildVolumes(spec.Volumes); len(vols) > 0 {
+		job.Spec.Template.Spec.Volumes = vols
+	}
+	if mounts := common.BuildVolumeMounts(spec.VolumeMounts); len(mounts) > 0 {
+		job.Spec.Template.Spec.Containers[0].VolumeMounts = mounts
+	}
 
 	return job
 }

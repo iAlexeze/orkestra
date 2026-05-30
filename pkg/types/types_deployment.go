@@ -169,6 +169,15 @@ type DeploymentTemplateSource struct {
 	// Profile and explicit fields are mutually exclusive.
 	RollingUpdate *RollingUpdateBehavior `yaml:"rollingUpdate,omitempty" json:"rollingUpdate,omitempty"`
 
+	// Volumes — pod volumes available for mounting into the container.
+	// Supports configMap, secret, emptyDir, persistentVolumeClaim, and hostPath sources.
+	// Volume names support template expressions.
+	Volumes []VolumeSource `yaml:"volumes,omitempty" json:"volumes,omitempty"`
+
+	// VolumeMounts — mounts for the primary container. Each entry references a
+	// volume declared in volumes: by name.
+	VolumeMounts []VolumeMount `yaml:"volumeMounts,omitempty" json:"volumeMounts,omitempty"`
+
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).

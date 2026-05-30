@@ -201,7 +201,7 @@ type CRDSummary struct {
 	DependsOn                []string `json:"dependsOn"`
 	WorkersSource            string   `json:"workersSource"`
 	QueueDepth               int      `json:"queueDepth"`
-	MaxQueueDepth            int      `json:"maxQueueDepth"`
+	MaxDepth                 int      `json:"maxDepth"`
 	ResourceCount            int      `json:"resourceCount"`
 	ErrorRate                float64  `json:"errorRate"`
 	Uptime                   string   `json:"uptime"`
@@ -287,8 +287,8 @@ type CRDInfo struct {
 	Resync                   string                    `json:"resync"`
 	ResyncSource             string                    `json:"resyncSource"`
 	QueueDepth               int                       `json:"queueDepth"`
-	MaxQueueDepth            int                       `json:"maxQueueDepth"`
-	MaxQueueDepthSource      string                    `json:"maxQueueDepthSource"`
+	MaxDepth                 int                       `json:"maxDepth"`
+	MaxDepthSource           string                    `json:"maxDepthSource"`
 	ResourceCount            int                       `json:"resourceCount"`
 	TotalReconciles          int                       `json:"totalReconciles"`
 	OperatorBox              map[string]interface{}    `json:"operatorBox"`
@@ -393,8 +393,8 @@ type CRDDetail struct {
 	Resync                   string                      `json:"resync"`
 	ResyncSource             string                      `json:"resyncSource"`
 	QueueDepth               int                         `json:"queueDepth"`
-	MaxQueueDepth            int                         `json:"maxQueueDepth"`
-	MaxQueueDepthSource      string                      `json:"maxQueueDepthSource"`
+	MaxDepth                 int                         `json:"maxDepth"`
+	MaxDepthSource           string                      `json:"maxDepthSource"`
 	ResourceCount            int                         `json:"resourceCount"`
 	TotalReconciles          int                         `json:"totalReconciles"`
 	OperatorBox              map[string]interface{}      `json:"operatorBox"`

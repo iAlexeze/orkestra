@@ -86,33 +86,24 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		return fmt.Errorf("deployment.Update: getting deployment %q: %w", spec.Name, err)
 	}
 
-	// Check for drift — replicas and image are the reconcilable fields
+	desired := buildDeployment(owner, spec, namespace)
 	drifted := false
 	updated := existing.DeepCopy()
 
 	// Replicas
 	if existing.Spec.Replicas == nil || *existing.Spec.Replicas != spec.Replicas {
-		replicas := spec.Replicas
-		updated.Spec.Replicas = &replicas
+		updated.Spec.Replicas = desired.Spec.Replicas
 		drifted = true
-		logger.Info().
-			Str("deployment", spec.Name).
-			Int32("desired", spec.Replicas).
-			Msg("deployment replicas drifted")
+		logger.Info().Str("deployment", spec.Name).Int32("desired", spec.Replicas).Msg("deployment replicas drifted")
 	}
 
-	// Image
-	if len(existing.Spec.Template.Spec.Containers) > 0 &&
-		existing.Spec.Template.Spec.Containers[0].Image != spec.Image {
-		updated.Spec.Template.Spec.Containers[0].Image = spec.Image
+	// Labels
+	if !common.LabelsEqual(existing.Labels, desired.Labels) {
+		updated.Labels = desired.Labels
 		drifted = true
-		logger.Info().
-			Str("deployment", spec.Name).
-			Str("desired", spec.Image).
-			Msg("deployment image drifted")
 	}
 
-	// Resources
+	// Resources (uses custom equality to handle Kubernetes-defaulted values)
 	if spec.Resources != nil {
 		desiredRes := common.BuildResourceRequirements(spec.Resources)
 		var existingRes corev1.ResourceRequirements
@@ -122,22 +113,22 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		if !common.ResourceRequirementsEqual(existingRes, desiredRes) {
 			updated.Spec.Template.Spec.Containers[0].Resources = desiredRes
 			drifted = true
-			logger.Info().
-				Str("deployment", spec.Name).
-				Msg("deployment resources drifted")
+			logger.Info().Str("deployment", spec.Name).Msg("deployment resources drifted")
 		}
 	}
 
-	// labels
-	if !common.LabelsEqual(existing.Labels, spec.Labels) {
-		updated.Labels = spec.Labels
+	// All other container and pod-spec fields from the template
+	if len(updated.Spec.Template.Spec.Containers) > 0 && len(desired.Spec.Template.Spec.Containers) > 0 {
+		if common.SyncContainerSpec(&updated.Spec.Template.Spec.Containers[0], desired.Spec.Template.Spec.Containers[0]) {
+			drifted = true
+		}
+	}
+	if common.SyncPodSpec(&updated.Spec.Template.Spec, desired.Spec.Template.Spec) {
 		drifted = true
 	}
 
 	if !drifted {
-		logger.Debug().
-			Str("deployment", spec.Name).
-			Msg("deployment in sync — no update needed")
+		logger.Debug().Str("deployment", spec.Name).Msg("deployment in sync — no update needed")
 		return nil
 	}
 
@@ -221,6 +212,8 @@ func Resolve(src orktypes.DeploymentTemplateSource, ownerName string) ResolvedDe
 		Probes:          src.Probes,
 		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
 		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Volumes:         src.Volumes,
+		VolumeMounts:    src.VolumeMounts,
 		Sleep:           src.Sleep,
 	}
 
@@ -391,6 +384,14 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 					},
 				})
 		}
+	}
+
+	// Volumes / VolumeMounts
+	if vols := common.BuildVolumes(spec.Volumes); len(vols) > 0 {
+		d.Spec.Template.Spec.Volumes = vols
+	}
+	if mounts := common.BuildVolumeMounts(spec.VolumeMounts); len(mounts) > 0 {
+		d.Spec.Template.Spec.Containers[0].VolumeMounts = mounts
 	}
 
 	return d

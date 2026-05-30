@@ -126,6 +126,12 @@ type JobTemplateSource struct {
 	// Set podSecurity.profile for a named preset or declare individual fields.
 	PodSecurity *PodSecurityContext `yaml:"podSecurity,omitempty" json:"podSecurity,omitempty"`
 
+	// Volumes — pod volumes available for mounting into the container.
+	Volumes []VolumeSource `yaml:"volumes,omitempty" json:"volumes,omitempty"`
+
+	// VolumeMounts — mounts for the primary container.
+	VolumeMounts []VolumeMount `yaml:"volumeMounts,omitempty" json:"volumeMounts,omitempty"`
+
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).

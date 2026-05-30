@@ -217,8 +217,8 @@ ArgoCD or Flux syncs the bundle (RBAC + ConfigMap) and the Helm release. This is
 | `runtime.config.logLevel` | Log level: debug, info, warn, error | `info` |
 | `runtime.config.defaultWorkers` | Reconcile workers per CRD | `2` |
 | `runtime.config.defaultResync` | Resync interval | `30s` |
-| `runtime.config.maxQueueDepth` | Max workqueue depth per CRD | `500` |
-| `runtime.config.degradeThreshold` | Failures before degraded state | `10` |
+| `runtime.config.maxDepth` | Max workqueue depth per CRD | `500` |
+| `runtime.config.failureThreshold` | Failures before degraded state | `10` |
 | `runtime.config.environment` | Deployment environment | `production` |
 | `runtime.leaderElection.enabled` | HA leader election | `true` |
 | `runtime.leaderElection.leaseDuration` | Lease duration (seconds) | `15` |

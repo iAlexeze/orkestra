@@ -8,7 +8,7 @@ All examples assume the CRD declares a baseline:
 ```yaml
 workers: 4
 queue:
-  maxQueueDepth: 100
+  maxDepth: 100
 resync: 120s
 ```
 
