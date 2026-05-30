@@ -100,6 +100,13 @@ type StatusFieldSpec struct {
 	// AnyOf — optional OR-conditions. If any condition passes, the field is written.
 	// Useful for multi-branch declarative state machines.
 	AnyOf []Condition `yaml:"anyOf,omitempty"`
+
+	// ClearOnFalse — when true and the when:/anyOf: condition evaluates to false,
+	// the field is explicitly written as "" rather than left untouched.
+	// Use this for transient fields (e.g. crashReason) that should disappear
+	// once the condition that produced them is no longer true.
+	// Has no effect when no when:/anyOf: conditions are declared.
+	ClearOnFalse bool `yaml:"clearOnFalse,omitempty" json:"clearOnFalse,omitempty"`
 }
 
 // MORE NOTES ON StatusFieldSpec

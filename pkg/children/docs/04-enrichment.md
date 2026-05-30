@@ -13,6 +13,31 @@ crds:
 
 Each layer is a no-op when its key is absent from `enrich`.
 
+## Conditional enrichment targets
+
+Enrichment targets can be gated with `when:` or `anyOf:` conditions so that the API calls only happen when needed:
+
+```yaml
+enrich:
+  - pods                   # unconditional — runs every reconcile
+  - events:                # only fetched when the deployment is not fully ready
+      when:
+        - field: "{{ replicasReady .children.deployment }}"
+          equals: "false"
+```
+
+### Two-phase evaluation
+
+Conditions are evaluated in two phases inside `ReadChildren`:
+
+**Phase 1** — only unconditional targets are active. All child resources are read (`readResourceGroup` — one GET per declared resource) and their unconditional enrichments are applied. This populates `.children.deployment`, `.children.statefulset`, etc. in the data map.
+
+**Phase 2** — conditional targets are evaluated with the now-populated children map. Gates that reference `.children.*` (such as `{{ replicasReady .children.deployment }}`) can now resolve correctly. For any newly-active targets, `applySecondPhaseEnrichments` calls the enrichment functions on the already-read resource maps — no resource is fetched a second time.
+
+Each enrichment function checks `enrichmentEnabled` internally, so only the newly-active targets make real API calls in phase 2. Everything else returns immediately.
+
+**Why this matters:** evaluating conditional gates before any children are read (phase 1 upfront) means expressions like `{{ replicasReady .children.deployment }}` always see an empty map and always return false — the gate never opens. The two-phase approach is what makes child-dependent enrichment conditions work.
+
 ## `_pods` — pod enrichment
 
 **File:** [enrich_pods.go](../enrich_pods.go)  
@@ -47,7 +72,7 @@ _warnings: [
 ]
 ```
 
-Note functions: `hasWarnings`, `warningCount`, `firstWarningReason`, `firstWarningMessage`.
+Note functions: `hasWarnings`, `warningCount`, `firstWarningReason`, `firstWarning`.
 
 ## `_endpoints` — endpoint enrichment
 

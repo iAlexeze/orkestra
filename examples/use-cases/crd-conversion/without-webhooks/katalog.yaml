@@ -8,19 +8,10 @@ metadata:
     string before any reconcile logic runs. No typeOf branching needed anywhere.
     No webhooks. No multi-version CRD. Run with: ork run -f katalog-no-webhook.yaml
 
-security:
-  deletionProtection:
-    enabled: true
-
 spec:
   crds:
     cronjob:
-      apiTypes:
-        group: demo.orkestra.io
-        version: v1
-        kind: CronJob
-        plural: cronjobs
-
+      crdFile: crd-single.yaml
       workers: 5
       resync: 45s
 
@@ -72,14 +63,10 @@ spec:
             action: deny
 
       operatorBox:
-        finalizers:
-          - finalizer.cron.orkestra.io/cron-normalizer
-        default: true
-
         status:
           fields:
             - path: phase
-              value: "{{ boolTernary .spec.suspend \"Suspended\" \"Active\" }}"
+              value: '{{ boolTernary .spec.suspend "Suspended" "Active" }}'
             - path: scheduleExpression
               value: "{{ .spec.schedule }}"
             - path: scheduleDescription
@@ -89,9 +76,9 @@ spec:
             - path: concurrencyPolicy
               value: "{{ .spec.concurrencyPolicy }}"
             - path: lastScheduleTime
-              value: "{{ get .children.cronjob \"status\" \"lastScheduleTime\" }}"
+              value: '{{ cronJobLastScheduleTime .children.cronjob }}'
             - path: nextScheduleTime
-              value: "{{ get .children.cronjob \"status\" \"nextScheduleTime\" }}"
+              value: '{{ cronJobNextScheduleTime .children.cronjob }}'
 
         onCreate:
           cronJobs:

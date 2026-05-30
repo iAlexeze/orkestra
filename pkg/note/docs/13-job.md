@@ -147,6 +147,20 @@ Keywords: cronjob, cron, schedule, time, last, timestamp
 
 ---
 
+### `cronJobNextScheduleTime`
+
+Return the next time the CronJob is scheduled to run (`status.nextScheduleTime`). Returns `""` when the field is absent (not all Kubernetes versions populate it).
+
+Keywords: cronjob, cron, schedule, time, next, timestamp
+
+```yaml
+- path: nextScheduleTime
+  value: "{{ cronJobNextScheduleTime .children.cronjob }}"
+# → "2026-05-19T11:00:00Z"
+```
+
+---
+
 ### `cronJobLastSuccessTime`
 
 Return the last time the CronJob completed successfully (`status.lastSuccessfulTime`). Returns `""` when it has never succeeded.
@@ -246,6 +260,7 @@ resources:
 | `jobFailedPodNames` | `(obj any)` | `string` | `enrich: [pods]` |
 | `cronJobActiveCount` | `(obj any)` | `int` | — |
 | `cronJobLastScheduleTime` | `(obj any)` | `string` | — |
+| `cronJobNextScheduleTime` | `(obj any)` | `string` | — |
 | `cronJobLastSuccessTime` | `(obj any)` | `string` | — |
 | `cronJobLastJobName` | `(obj any)` | `string` | `enrich: [cronjob]` |
 | `cronJobLastJobSucceeded` | `(obj any)` | `bool` | `enrich: [cronjob]` |

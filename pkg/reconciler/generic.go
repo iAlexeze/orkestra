@@ -272,9 +272,12 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 
 	// Normalize before mutation/validation/template rendering ─────────────
 	// Normalize + base resolver
-	obj, resolver, err := r.applyNormalize(ctx, rawObj)
+	obj, resolver, normalizeChanges, err := r.applyNormalize(ctx, rawObj)
 	if err != nil {
 		return err
+	}
+	if len(normalizeChanges) > 0 {
+		resolver = resolver.WithNormalizeChanges(normalizeChanges)
 	}
 
 	// ──────────────────────────────────────────────────────────────────────────────

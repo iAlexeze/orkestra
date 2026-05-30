@@ -62,7 +62,7 @@ enriched pod notes on jobs: `jobFirstExitCode`, `jobActivePodNames`,
 ### `katalog-warnings.yaml`
 
 Covers warning event notes: `hasWarnings`, `warningCount`, `firstWarningReason`,
-`firstWarningMessage`. Events recorded on pods owned by a workload are also
+`firstWarning`. Events recorded on pods owned by a workload are also
 aggregated — container failures (ImagePullBackOff, OOMKilled) show up here.
 
 ---

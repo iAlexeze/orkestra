@@ -94,12 +94,24 @@ func noteReadyPodCount(obj interface{}) int {
 	return count
 }
 
-// noteHasCrashingPod returns true when any pod has restarted more than twice.
-// A restart count above 2 is a strong signal of a crash loop.
+// noteHasCrashingPod returns true when any pod shows signs of being unhealthy:
+// restart count above 2, or any container has a known failure reason.
 //
 //	{{ hasCrashingPod .children.deployment }}  → false
 func noteHasCrashingPod(obj interface{}) bool {
-	for _, p := range getPods(obj) {
+	pods := getPods(obj)
+	badReasons := []string{
+		"CrashLoopBackOff", "OOMKilled", "Error",
+		"ImagePullBackOff", "ErrImagePull", "InvalidImageName",
+		"RunContainerError", "CreateContainerError",
+		"PreStartHookError", "PostStartHookError",
+	}
+	for _, reason := range badReasons {
+		if hasContainerReason(pods, reason) {
+			return true
+		}
+	}
+	for _, p := range pods {
 		pod, ok := p.(map[string]interface{})
 		if !ok {
 			continue

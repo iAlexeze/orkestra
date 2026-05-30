@@ -40,7 +40,11 @@ case ResourceTiny, ..., ResourceXLarge:
 
 **6. Add the profile to the fixture** in `pkg/profiles/fixture/katalog-resource.yaml` — add a deployment using `resources.profile: xlarge` and run `ork run` to verify it creates the Deployment with the correct resource requests.
 
-**7. Update the reference table** in `docs/01-profiles.md`.
+**7. Add a deployment to the use-case example** in `examples/use-cases/profiles/01-resource/katalog.yaml` — add a deployment with `resources.profile: xlarge` alongside the existing ones, and add a row to the README table.
+
+**8. Update the reference table** in `docs/01-profiles.md`.
+
+**9. Update the concept doc** in `documentation/concepts/operatorbox/06-profiles/index.md` — add a row to the resource profiles table.
 
 ---
 
@@ -84,7 +88,9 @@ Export only `Apply*Profile` and `IsValid*Profile`. Keep internal config types un
 
 **7. Add to the fixture** in `pkg/profiles/fixture/katalog-pdb.yaml`.
 
-**8. Document** in `docs/01-profiles.md`.
+**8. Add a use-case example** in `examples/use-cases/profiles/` — create a new numbered directory following the existing pattern (katalog.yaml, README.md, cleanup.sh), add it to `examples/use-cases/profiles/README.md`, and add a Try it block to `documentation/concepts/operatorbox/06-profiles/index.md`.
+
+**9. Document** in `docs/01-profiles.md` and `documentation/concepts/operatorbox/06-profiles/index.md`.
 
 ---
 

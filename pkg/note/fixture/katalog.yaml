@@ -85,6 +85,12 @@ spec:
             - path: isSynced
               value: "{{ isSynced .children.deployment }}"
 
+            - path: resourceCPU
+              value: "{{ resourceCPU .children.deployment }}"
+
+            - path: resourceMemory
+              value: "{{ resourceMemory .children.deployment }}"
+
             - path: hasConditionAvailable
               value: "{{ hasCondition .children.deployment \"Available\" }}"
 

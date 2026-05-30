@@ -57,6 +57,10 @@ func kubernetesNotes() template.FuncMap {
 		"generation":         noteGeneration,
 		"observedGeneration": noteObservedGeneration,
 		"isSynced":           noteIsSynced,
+
+		// ── Spec resource request accessors ──────────────────────────────────
+		"resourceCPU":    noteResourceCPU,
+		"resourceMemory": noteResourceMemory,
 	}
 }
 
@@ -278,6 +282,41 @@ func noteExists(obj interface{}) bool {
 //   "generation":         noteGeneration,
 //   "observedGeneration": noteObservedGeneration,
 //   "isSynced":           noteIsSynced,
+
+// ── Spec resource request accessors ──────────────────────────────────────────
+
+// noteResourceCPU returns spec.resources.requests.cpu from any Kubernetes object.
+// Safe at every level — returns "" when spec, resources, requests, or cpu is absent.
+// Use in normalize blocks to default resource requests without nil pointer panics:
+//
+//	resources.requests.cpu: '{{ resourceCPU . | default "100m" }}'
+func noteResourceCPU(obj interface{}) string {
+	m, ok := obj.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	spec, _ := m["spec"].(map[string]interface{})
+	resources, _ := spec["resources"].(map[string]interface{})
+	requests, _ := resources["requests"].(map[string]interface{})
+	v, _ := requests["cpu"].(string)
+	return v
+}
+
+// noteResourceMemory returns spec.resources.requests.memory from any Kubernetes object.
+// Safe at every level — returns "" when spec, resources, requests, or memory is absent.
+//
+//	resources.requests.memory: '{{ resourceMemory . | default "128Mi" }}'
+func noteResourceMemory(obj interface{}) string {
+	m, ok := obj.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	spec, _ := m["spec"].(map[string]interface{})
+	resources, _ := spec["resources"].(map[string]interface{})
+	requests, _ := resources["requests"].(map[string]interface{})
+	v, _ := requests["memory"].(string)
+	return v
+}
 
 // ── Phase ─────────────────────────────────────────────────────────────────────
 

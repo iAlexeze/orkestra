@@ -330,6 +330,37 @@ when:
 | `generation` | `(obj any)` | `int64` |
 | `observedGeneration` | `(obj any)` | `int64` |
 | `isSynced` | `(obj any)` | `bool` |
+| `resourceCPU` | `(obj any)` | `string` |
+| `resourceMemory` | `(obj any)` | `string` |
+
+---
+
+### `resourceCPU`
+
+Return `spec.resources.requests.cpu` from any object. Returns `""` when spec, resources, requests, or cpu is absent — no nil pointer panic at any level.
+
+Keywords: spec, resources, requests, cpu, safe, default, normalize
+
+```yaml
+# normalize block — default resource requests without nil pointer panics
+normalize:
+  spec:
+    resources.requests.cpu:    '{{ resourceCPU . | default "100m" }}'
+    resources.requests.memory: '{{ resourceMemory . | default "128Mi" }}'
+```
+
+---
+
+### `resourceMemory`
+
+Return `spec.resources.requests.memory` from any object. Returns `""` when any level is absent.
+
+Keywords: spec, resources, requests, memory, safe, default, normalize
+
+```yaml
+- path: memoryRequest
+  value: "{{ resourceMemory .children.deployment }}"
+```
 
 ---
 

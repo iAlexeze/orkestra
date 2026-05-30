@@ -74,12 +74,22 @@ func ReadChildren(
 ) map[string]interface{} {
 	children := map[string]interface{}{}
 
-	// Apply conditional enrichment gates — filter crd.Enrich to only the targets
-	// whose when:/anyOf: conditions pass for the current CR state.
-	// Unconditional targets (no conditions) always pass.
-	// enrichmentEnabled() called deep inside each enrich_*.go sees the filtered list.
+	// Two-phase enrichment gate evaluation.
+	//
+	// Phase 1: run only unconditional targets. Resources are read and their
+	// unconditional enrichments (e.g. pods) are applied, populating .children.*.
+	//
+	// Phase 2: after reads complete, re-evaluate conditional targets with the
+	// now-populated children map. Gates like {{ replicasReady .children.deployment }}
+	// depend on child data that does not exist at function entry — evaluating them
+	// upfront against the empty resolver always fails.
+	//
+	// applySecondPhaseEnrichments (below) re-runs enrichment functions for any
+	// newly-active conditional targets. Each enricher is a no-op when its target
+	// is not in crd.Enrich, so only the newly-active ones do real API work.
+	originalEnrich := crd.Enrich
 	if !crd.EnrichAll {
-		crd.Enrich = crd.ActiveEnrichTargets(resolver.Data(), resolver.TemplateEvaluator())
+		crd.Enrich = crd.UnconditionalEnrichTargets()
 	}
 
 	// Collect all template sources across onCreate and onReconcile.
@@ -268,5 +278,99 @@ func ReadChildren(
 		children["pv"] = firstValue(m)
 	}
 
+	// ── Phase 2: conditional enrichment targets ───────────────────────────
+	// Now that children are populated, re-evaluate conditional gates.
+	//
+	// resolver.WithChildren injects children into both r.data AND the
+	// TemplateEvaluator closure — both must see .children.* for template
+	// expressions like {{ replicasReady .children.deployment }} to work.
+	// Building data2 manually and reusing the original evaluator does not work:
+	// the evaluator is a closure over r.data and ignores data2 entirely.
+	if !crd.EnrichAll && len(originalEnrich) > len(crd.Enrich) {
+		r2 := resolver.WithChildren(children)
+		crd.Enrich = originalEnrich
+		active := crd.ConditionalActiveEnrichTargets(r2.Data(), r2.TemplateEvaluator())
+		if len(active) > 0 {
+			crd.Enrich = active
+			applySecondPhaseEnrichments(ctx, kube, children, crd)
+		}
+	}
+
 	return children
+}
+
+// applySecondPhaseEnrichments re-runs enrichment functions against already-read
+// resource groups. Called after conditional targets are re-evaluated with children
+// data available. Each enricher checks enrichmentEnabled internally — only targets
+// present in crd.Enrich do real API work; all others return immediately.
+func applySecondPhaseEnrichments(
+	ctx context.Context,
+	kube kubeclient.KubeClient,
+	children map[string]interface{},
+	crd orktypes.CRDEntry,
+) {
+	if m, ok := children["deployments"].(map[string]interface{}); ok {
+		enrichGroupWithPods(ctx, kube, m, crd, "ReplicaSet")
+		enrichGroupWithReplicaSets(ctx, kube, m, crd)
+		enrichGroupWithWarnings(ctx, kube, m, crd, "Deployment")
+	}
+	if m, ok := children["statefulsets"].(map[string]interface{}); ok {
+		enrichGroupWithPods(ctx, kube, m, crd, "StatefulSet")
+		enrichGroupWithStatefulSetPVCs(ctx, kube, m, crd)
+		enrichGroupWithWarnings(ctx, kube, m, crd, "StatefulSet")
+	}
+	if m, ok := children["replicasets"].(map[string]interface{}); ok {
+		enrichGroupWithPods(ctx, kube, m, crd, "ReplicaSet")
+		enrichGroupWithOwner(ctx, kube, m, crd)
+		enrichGroupWithWarnings(ctx, kube, m, crd, "ReplicaSet")
+	}
+	if m, ok := children["customs"].(map[string]interface{}); ok {
+		enrichGroupWithWarnings(ctx, kube, m, crd, "")
+	}
+	if m, ok := children["services"].(map[string]interface{}); ok {
+		enrichGroupWithEndpoints(ctx, kube, m, crd)
+		enrichGroupWithBackingPods(ctx, kube, m, crd)
+		enrichGroupWithWarnings(ctx, kube, m, crd, "Service")
+	}
+	if m, ok := children["secrets"].(map[string]interface{}); ok {
+		enrichGroupWithWarnings(ctx, kube, m, crd, "Secret")
+	}
+	if m, ok := children["configmaps"].(map[string]interface{}); ok {
+		enrichGroupWithWarnings(ctx, kube, m, crd, "ConfigMap")
+	}
+	if m, ok := children["jobs"].(map[string]interface{}); ok {
+		enrichGroupWithPods(ctx, kube, m, crd, "Job")
+		enrichGroupWithWarnings(ctx, kube, m, crd, "Job")
+	}
+	if m, ok := children["cronjobs"].(map[string]interface{}); ok {
+		enrichGroupWithCronJobChildren(ctx, kube, m, crd)
+		enrichGroupWithWarnings(ctx, kube, m, crd, "CronJob")
+	}
+	if m, ok := children["pods"].(map[string]interface{}); ok {
+		enrichGroupWithNode(ctx, kube, m, crd)
+		enrichGroupWithWarnings(ctx, kube, m, crd, "Pod")
+	}
+	if m, ok := children["serviceaccounts"].(map[string]interface{}); ok {
+		enrichGroupWithWarnings(ctx, kube, m, crd, "ServiceAccount")
+	}
+	if m, ok := children["namespaces"].(map[string]interface{}); ok {
+		enrichGroupWithWarnings(ctx, kube, m, crd, "Namespace")
+	}
+	if m, ok := children["ingresses"].(map[string]interface{}); ok {
+		enrichGroupWithIngressData(ctx, kube, m, crd)
+		enrichGroupWithWarnings(ctx, kube, m, crd, "Ingress")
+	}
+	if m, ok := children["hpas"].(map[string]interface{}); ok {
+		enrichGroupWithHPAData(ctx, kube, m, crd)
+		enrichGroupWithWarnings(ctx, kube, m, crd, "HorizontalPodAutoscaler")
+	}
+	if m, ok := children["persistentvolumeclaims"].(map[string]interface{}); ok {
+		enrichGroupWithPV(ctx, kube, m, crd)
+		enrichGroupWithStorageClass(ctx, kube, m, crd)
+		enrichGroupWithWarnings(ctx, kube, m, crd, "PersistentVolumeClaim")
+	}
+	if m, ok := children["persistentvolumes"].(map[string]interface{}); ok {
+		enrichGroupWithPVC(ctx, kube, m, crd)
+		enrichGroupWithWarnings(ctx, kube, m, crd, "PersistentVolume")
+	}
 }
