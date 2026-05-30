@@ -59,6 +59,7 @@ kubectl apply -f ../cr.yaml
 Eight Deployments are created — one per profile. Click the `my-service` CR in the Control Center, then **top-right** to see all eight child Deployments.
 
 > `phase` transitions to `Ready` once pods are running — allow ~15s after applying.
+> If you are using a `1-node-kind-cluster`, some pods might be in `Pending` state due to limited resources.
 
 Verify what each profile expanded to:
 

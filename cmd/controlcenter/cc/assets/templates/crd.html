@@ -114,8 +114,8 @@
 
       <!-- Stats Grid -->
       {{ $queuePercent := 0 }}
-      {{ if gt .CRD.MaxQueueDepth 0 }}
-        {{ $queuePercent = div (mul .CRD.QueueDepth 100) .CRD.MaxQueueDepth }}
+      {{ if gt .CRD.MaxDepth 0 }}
+        {{ $queuePercent = div (mul .CRD.QueueDepth 100) .CRD.MaxDepth }}
       {{ end }}
 
       <div class="cc-stats-grid mb-6" style="grid-template-columns:repeat(5,1fr)">
@@ -137,7 +137,7 @@
         <div class="cc-stat-card">
           <div class="cc-stat-label">Queue</div>
           <div class="cc-stat-value font-mono">{{ .CRD.QueueDepth }}</div>
-          <div class="cc-stat-sub">Limit: {{ .CRD.MaxQueueDepth }}</div>
+          <div class="cc-stat-sub">Limit: {{ .CRD.MaxDepth }}</div>
         </div>
         <div class="cc-stat-card">
           <div class="cc-stat-label">Reconciles</div>
@@ -333,7 +333,7 @@
                 <tr>
                   <td style="color:var(--text-muted);padding:3px 0">Limit</td>
                   <td style="text-align:right;font-weight:500">
-                    {{ if gt .CRD.MaxQueueDepth 0 }}{{ .CRD.MaxQueueDepth }}{{ else }}∞{{ end }}
+                    {{ if gt .CRD.MaxDepth 0 }}{{ .CRD.MaxDepth }}{{ else }}∞{{ end }}
                   </td>
                 </tr>
                 {{ if $aw.OverrideActive }}
@@ -438,7 +438,7 @@
           <div class="flex items-center justify-between mb-2">
             <span style="font-size:12px;color:var(--text-muted)">Queue Depth</span>
             <span class="font-mono" style="font-size:13px;color:var(--text-primary)">
-              {{ .CRD.QueueDepth }} / {{ .CRD.MaxQueueDepth }}
+              {{ .CRD.QueueDepth }} / {{ .CRD.MaxDepth }}
               {{ if gt $queuePercent 0 }}<span style="color:var(--text-muted);font-size:11px;margin-left:4px">({{ $queuePercent }}%)</span>{{ end }}
             </span>
           </div>
@@ -446,10 +446,10 @@
             <div class="cc-progress-bar{{ if gt $queuePercent 80 }} degraded{{ else if gt $queuePercent 50 }} pending{{ end }}"
                  style="width:{{ min $queuePercent 100 }}%"></div>
           </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Source: {{ .CRD.MaxQueueDepthSource }}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Source: {{ .CRD.MaxDepthSource }}</div>
           {{ if gt $queuePercent 80 }}
           <div class="cc-alert mt-3 cc-alert-warn">
-            <span style="font-size:12px">High queue pressure — {{ .CRD.QueueDepth }} items waiting (max: {{ .CRD.MaxQueueDepth }})</span>
+            <span style="font-size:12px">High queue pressure — {{ .CRD.QueueDepth }} items waiting (max: {{ .CRD.MaxDepth }})</span>
           </div>
           {{ else if gt $queuePercent 50 }}
           <div class="cc-alert mt-3" style="background:var(--color-pending-bg);border-color:var(--color-pending-border);color:var(--color-pending)">

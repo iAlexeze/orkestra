@@ -169,7 +169,7 @@
           {{ if .HasAutoscaler }}(autoscaled, currently <strong>{{ .CRD.AutoscalerWorkers.Effective }} effective</strong>){{ end }}
           to process reconcile events concurrently.
           Each worker dequeues one CR key at a time, reconciles it, and returns.
-          The queue has a maximum depth of <strong>{{ .CRD.MaxQueueDepth }}</strong> events.
+          The queue has a maximum depth of <strong>{{ .CRD.MaxDepth }}</strong> events.
         </p>
         <p>
           Orkestra resyncs all managed resources every <strong>{{ .CRD.Resync }}</strong> by re-enqueueing every CR key. This ensures drift caused by external changes is corrected even without a Kubernetes watch event.
