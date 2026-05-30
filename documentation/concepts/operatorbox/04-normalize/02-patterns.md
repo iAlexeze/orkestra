@@ -102,11 +102,24 @@ Strip protocol and trailing slash from user-provided URLs:
 ```yaml
 normalize:
   spec:
-    domain: >
-      {{ trimSuffix (trimPrefix (trimPrefix (trimSpace .spec.domain) "https://") "http://") "/" }}
+    domain: '{{ domainHost .spec.domain }}'
 ```
 
-`"https://my-app.example.com/"` → `"my-app.example.com"`.
+`"https://my-app.example.com/"` → `"my-app.example.com"`. Also handles `http://`, leading/trailing whitespace, and trailing `/` — calling it on an already-clean hostname is a no-op.
+
+To also strip a leading `www.` subdomain use `domainBare`:
+
+```yaml
+domain: '{{ domainBare .spec.domain }}'
+```
+
+`"https://www.acme.com/"` → `"acme.com"`.
+
+The equivalent long-form chain (for reference):
+
+```
+{{ trimSuffix (trimPrefix (trimPrefix (trimSpace .spec.domain) "https://") "http://") "/" }}
+```
 
 **Try it — messy and clean inputs producing the same status:**
 ```bash

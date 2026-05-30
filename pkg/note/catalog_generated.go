@@ -224,6 +224,20 @@ var BuiltinNotes = []NoteInfo{
 		Keywords:    []string{"cron", "schedule", "validate", "valid", "check", "boolean"},
 	},
 	{
+		Name:        "domainBare",
+		Domain:      "domain",
+		Description: "Same as `domainHost`, and also strips a leading `www.` subdomain. Returns `\"\"` for nil or non-string input. Idempotent.",
+		Example:     "normalize:\n  spec:\n    domain: '{{ domainBare .spec.domain }}'\n# \"https://www.acme.com/\" → \"acme.com\"\n# \"https://acme.com/\"     → \"acme.com\"\n# \"www.acme.com\"          → \"acme.com\"\n# \"acme.com\"              → \"acme.com\"",
+		Keywords:    []string{"domain", "string", "www", "subdomain", "hostname", "normalize", "strip"},
+	},
+	{
+		Name:        "domainHost",
+		Domain:      "domain",
+		Description: "Strip surrounding whitespace, `https://` or `http://` prefix, and trailing `/`. Returns the bare hostname. Returns `\"\"` for nil or non-string input. Idempotent — calling it on an already-clean hostname is a no-op.",
+		Example:     "normalize:\n  spec:\n    domain: '{{ domainHost .spec.domain }}'\n# \"https://acme.example.com/\" → \"acme.example.com\"\n# \" http://acme.example.com \" → \"acme.example.com\"\n# \"acme.example.com\"          → \"acme.example.com\"\ndomain: '{{ trimSuffix (domainHost .spec.domain) \":8080\" }}'\n# \"https://acme.example.com:8080/\" → \"acme.example.com\"\n{{ trimSuffix (trimPrefix (trimPrefix (trimSpace .spec.domain) \"https://\") \"http://\") \"/\" }}",
+		Keywords:    []string{"domain", "string", "url", "hostname", "protocol", "normalize", "strip"},
+	},
+	{
 		Name:        "creationTimestamp",
 		Domain:      "fields",
 		Description: "Return `metadata.creationTimestamp` as an RFC3339 string.",
