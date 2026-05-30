@@ -75,16 +75,20 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	drifted := false
 	updated := existing.DeepCopy()
 
-	if *existing.Spec.Replicas != *desired.Spec.Replicas {
+	// Replicas
+	if existing.Spec.Replicas == nil || *existing.Spec.Replicas != *desired.Spec.Replicas {
 		updated.Spec.Replicas = desired.Spec.Replicas
 		drifted = true
+		logger.Info().Str("statefulset", spec.Name).Msg("statefulset replicas drifted")
 	}
-	if len(existing.Spec.Template.Spec.Containers) > 0 &&
-		existing.Spec.Template.Spec.Containers[0].Image != desired.Spec.Template.Spec.Containers[0].Image {
-		updated.Spec.Template.Spec.Containers[0].Image = desired.Spec.Template.Spec.Containers[0].Image
+
+	// Labels
+	if !common.LabelsEqual(existing.Labels, desired.Labels) {
+		updated.Labels = desired.Labels
 		drifted = true
 	}
 
+	// Resources
 	if spec.Resources != nil {
 		desiredRes := common.BuildResourceRequirements(spec.Resources)
 		var existingRes corev1.ResourceRequirements
@@ -96,6 +100,15 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 			drifted = true
 			logger.Info().Str("statefulset", spec.Name).Msg("statefulset resources drifted")
 		}
+	}
+
+	if len(updated.Spec.Template.Spec.Containers) > 0 && len(desired.Spec.Template.Spec.Containers) > 0 {
+		if common.SyncContainerSpec(&updated.Spec.Template.Spec.Containers[0], desired.Spec.Template.Spec.Containers[0]) {
+			drifted = true
+		}
+	}
+	if common.SyncPodSpec(&updated.Spec.Template.Spec, desired.Spec.Template.Spec) {
+		drifted = true
 	}
 
 	if !drifted {

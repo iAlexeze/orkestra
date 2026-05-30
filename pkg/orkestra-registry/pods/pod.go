@@ -4,6 +4,7 @@ package pods
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
@@ -83,23 +84,32 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		return fmt.Errorf("pod.Update: getting pod %q: %w", spec.Name, err)
 	}
 
+	// Pods are largely immutable — drift is handled by delete + recreate.
+	// Build the desired pod and compare all template-declared fields.
+	desired := buildPod(owner, spec, namespace)
 	needsRecreate := false
-	if len(existing.Spec.Containers) > 0 && existing.Spec.Containers[0].Image != spec.Image {
-		logger.Info().
-			Str("pod", spec.Name).
-			Str("current", existing.Spec.Containers[0].Image).
-			Str("desired", spec.Image).
-			Msg("pod image drifted — deleting and recreating")
-		needsRecreate = true
-	}
-	if !needsRecreate && spec.Resources != nil {
-		desiredRes := common.BuildResourceRequirements(spec.Resources)
-		var existingRes corev1.ResourceRequirements
-		if len(existing.Spec.Containers) > 0 {
-			existingRes = existing.Spec.Containers[0].Resources
+
+	if len(existing.Spec.Containers) > 0 && len(desired.Spec.Containers) > 0 {
+		ec := existing.Spec.Containers[0]
+		dc := desired.Spec.Containers[0]
+		if ec.Image != dc.Image ||
+			!common.ResourceRequirementsEqual(ec.Resources, dc.Resources) ||
+			!reflect.DeepEqual(ec.Env, dc.Env) ||
+			!reflect.DeepEqual(ec.EnvFrom, dc.EnvFrom) ||
+			!reflect.DeepEqual(ec.VolumeMounts, dc.VolumeMounts) ||
+			!reflect.DeepEqual(ec.LivenessProbe, dc.LivenessProbe) ||
+			!reflect.DeepEqual(ec.ReadinessProbe, dc.ReadinessProbe) ||
+			!reflect.DeepEqual(ec.StartupProbe, dc.StartupProbe) ||
+			!reflect.DeepEqual(ec.SecurityContext, dc.SecurityContext) {
+			logger.Info().Str("pod", spec.Name).Msg("pod container spec drifted — deleting and recreating")
+			needsRecreate = true
 		}
-		if !common.ResourceRequirementsEqual(existingRes, desiredRes) {
-			logger.Info().Str("pod", spec.Name).Msg("pod resources drifted — deleting and recreating")
+	}
+	if !needsRecreate {
+		if !reflect.DeepEqual(existing.Spec.Volumes, desired.Spec.Volumes) ||
+			!reflect.DeepEqual(existing.Spec.SecurityContext, desired.Spec.SecurityContext) ||
+			existing.Spec.ServiceAccountName != desired.Spec.ServiceAccountName {
+			logger.Info().Str("pod", spec.Name).Msg("pod spec drifted — deleting and recreating")
 			needsRecreate = true
 		}
 	}

@@ -64,7 +64,7 @@ spec:
 
 ## Where to go next
 
-- [Reconcile Pipeline](01-reconcile-pipeline.md) — the ordered steps from queue to status patch
+- [Reconcile Pipeline](01-reconcile-pipeline/index.md) — the ordered steps from queue to status patch, drift semantics, error behavior
 - [Normalize](04-normalize/index.md) — accept multiple input shapes, produce one canonical spec
 - [Enrich](05-enrich/index.md) — fetch live child state and embed it in template context
 - [Profiles](06-profiles/index.md) — named presets for resources, security, probes, rollout, and PDB

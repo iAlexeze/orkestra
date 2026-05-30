@@ -140,7 +140,7 @@ type Queue struct {
 	Shared *bool `yaml:"shared,omitempty" json:"shared,omitempty"`
 
 	// MaxQueueDepth — max items in the queue before new items are dropped.
-	// 0 → uses MAX_QUEUE_DEPTH env var (default: 2000).
+	// 0 → uses MAX_QUEUE_DEPTH env var (default: 100).
 	MaxQueueDepth int `yaml:"maxQueueDepth,omitempty" json:"maxQueueDepth,omitempty" validate:"omitempty,gte=0"`
 
 	// DegradeThreshold — consecutive failures before CRD health degrades.

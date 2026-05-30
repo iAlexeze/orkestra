@@ -84,32 +84,24 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		return fmt.Errorf("replicaset.Update: getting replicaset %q: %w", spec.Name, err)
 	}
 
+	desired := buildReplicaSet(owner, spec, namespace)
 	drifted := false
 	updated := existing.DeepCopy()
 
-	// Replicas drift
+	// Replicas
 	if existing.Spec.Replicas == nil || *existing.Spec.Replicas != spec.Replicas {
-		replicas := spec.Replicas
-		updated.Spec.Replicas = &replicas
+		updated.Spec.Replicas = desired.Spec.Replicas
 		drifted = true
-		logger.Info().
-			Str("replicaset", spec.Name).
-			Int32("desired", spec.Replicas).
-			Msg("replicaset replicas drifted")
+		logger.Info().Str("replicaset", spec.Name).Int32("desired", spec.Replicas).Msg("replicaset replicas drifted")
 	}
 
-	// Image drift
-	if len(existing.Spec.Template.Spec.Containers) > 0 &&
-		existing.Spec.Template.Spec.Containers[0].Image != spec.Image {
-		updated.Spec.Template.Spec.Containers[0].Image = spec.Image
+	// Labels
+	if !common.LabelsEqual(existing.Labels, desired.Labels) {
+		updated.Labels = desired.Labels
 		drifted = true
-		logger.Info().
-			Str("replicaset", spec.Name).
-			Str("desired", spec.Image).
-			Msg("replicaset image drifted")
 	}
 
-	// Resources drift
+	// Resources
 	if spec.Resources != nil {
 		desiredRes := common.BuildResourceRequirements(spec.Resources)
 		var existingRes corev1.ResourceRequirements
@@ -123,10 +115,17 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		}
 	}
 
+	if len(updated.Spec.Template.Spec.Containers) > 0 && len(desired.Spec.Template.Spec.Containers) > 0 {
+		if common.SyncContainerSpec(&updated.Spec.Template.Spec.Containers[0], desired.Spec.Template.Spec.Containers[0]) {
+			drifted = true
+		}
+	}
+	if common.SyncPodSpec(&updated.Spec.Template.Spec, desired.Spec.Template.Spec) {
+		drifted = true
+	}
+
 	if !drifted {
-		logger.Debug().
-			Str("replicaset", spec.Name).
-			Msg("replicaset in sync — no update needed")
+		logger.Debug().Str("replicaset", spec.Name).Msg("replicaset in sync — no update needed")
 		return nil
 	}
 
