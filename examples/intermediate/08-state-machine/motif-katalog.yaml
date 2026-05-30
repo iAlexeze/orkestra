@@ -18,8 +18,8 @@ spec:
       workers: 4
       resync: 10s
       queue:
-        degradeThreshold: 0.5
-        maxQueueDepth: 1000
+        maxDepth: 1000
+        failureThreshold: 0.5
 
       imports:
         - motif: ./motif/admission.yaml

@@ -187,7 +187,7 @@ func (k *Kontroller) safeReconcile(
 				Msg("reconciler panic recovered")
 
 			// Update CRD health state and metrics.
-			health.RecordFailure(err, k.degradeThreshold[gvk])
+			health.RecordFailure(err, k.failureThreshold[gvk])
 			metrics.RecordReconcile(gvk, "error")
 
 			// TODO: track panic stats differently with recovery
@@ -199,7 +199,7 @@ func (k *Kontroller) safeReconcile(
 	err = rec.Reconcile(ctx, key)
 	if err != nil {
 		// Update CRD health state and metrics.
-		health.RecordFailure(err, k.degradeThreshold[gvk])
+		health.RecordFailure(err, k.failureThreshold[gvk])
 		metrics.RecordReconcile(gvk, "error")
 		return err
 	}

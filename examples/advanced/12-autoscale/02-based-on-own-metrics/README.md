@@ -61,7 +61,7 @@ Watch the Control Center as resources are created:
   - Expand it to see the baseline configuration (exactly what you set in the katalog)
 
 > Note:  
-> You can override the default queue limit by setting `queue.maxQueueDepth`.
+> You can override the default queue limit by setting `queue.maxDepth`.
 
 ---
 

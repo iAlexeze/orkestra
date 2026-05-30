@@ -11,7 +11,7 @@ import "time"
 //   kfg.Katalog().ShutdownTimeout()
 //
 // The underlying katalogKonfig struct is expected to use unexported field
-// names (paths, defaultMaxQueueDepth, defaultDegradeThreshold, defaultResync,
+// names (paths, defaultQueueDepth, defaultFailureThreshold, defaultResync,
 // defaultWorkers, shutdownTimeout, shutdownGracePeriod).
 //
 // This file intentionally contains only simple, side-effect-free accessors
@@ -35,14 +35,14 @@ func (k *katalogKonfig) AddPath(path string) {
 	k.paths = append(k.paths, path)
 }
 
-// DefaultMaxQueueDepth returns the defaultmaximum  queue depth for CRD workers.
-func (k *katalogKonfig) DefaultMaxQueueDepth() int {
-	return k.defaultMaxQueueDepth
+// DefaultQueueDepth returns the defaultmaximum  queue depth for CRD workers.
+func (k *katalogKonfig) DefaultQueueDepth() int {
+	return k.defaultQueueDepth
 }
 
-// DefaultDegradeThreshold returns the default degrade threshold.
-func (k *katalogKonfig) DefaultDegradeThreshold() int {
-	return k.defaultDegradeThreshold
+// DefaultFailureThreshold returns the default degrade threshold.
+func (k *katalogKonfig) DefaultFailureThreshold() int {
+	return k.defaultFailureThreshold
 }
 
 // DefaultResync returns the default informer resync period.

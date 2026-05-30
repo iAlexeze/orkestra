@@ -17,10 +17,10 @@ type QueueItem struct {
 }
 
 type Workqueue struct {
-	name          string
-	Queue         workqueue.TypedRateLimitingInterface[QueueItem]
-	started       atomic.Bool
-	maxQueueDepth atomic.Int32 // 0 = unlimited; enforced atomically in Enqueue
+	name     string
+	Queue    workqueue.TypedRateLimitingInterface[QueueItem]
+	started  atomic.Bool
+	maxDepth atomic.Int32 // 0 = unlimited; enforced atomically in Enqueue
 }
 
 func NewWorkqueue() *Workqueue {
@@ -31,7 +31,7 @@ func NewWorkqueue() *Workqueue {
 }
 
 // Enqueue adds the object's key to the workqueue.
-// When a non-zero maxQueueDepth is set, new items are dropped (with a warning)
+// When a non-zero maxDepth is set, new items are dropped (with a warning)
 // once the queue is at or beyond that limit. Items already in the queue are
 // not evicted — only incoming enqueues are rejected.
 func (q *Workqueue) Enqueue(obj interface{}, gvk string) {
@@ -46,7 +46,7 @@ func (q *Workqueue) Enqueue(obj interface{}, gvk string) {
 		return
 	}
 
-	if limit := q.maxQueueDepth.Load(); limit > 0 && int32(q.Queue.Len()) >= limit {
+	if limit := q.maxDepth.Load(); limit > 0 && int32(q.Queue.Len()) >= limit {
 		logger.Warn().
 			Str("key", key).
 			Str("gvk", gvk).
@@ -60,10 +60,10 @@ func (q *Workqueue) Enqueue(obj interface{}, gvk string) {
 	logger.Debug().Str("key", key).Str("gvk", gvk).Msg("enqueued")
 }
 
-// SetMaxQueueDepth adjusts the queue depth limit at runtime.
+// SetQueueDepth adjusts the queue depth limit at runtime.
 // 0 means unlimited. Safe to call concurrently with Enqueue.
-func (q *Workqueue) SetMaxQueueDepth(n int) {
-	q.maxQueueDepth.Store(int32(n))
+func (q *Workqueue) SetQueueDepth(n int) {
+	q.maxDepth.Store(int32(n))
 }
 
 // Methods to implement the komponent interface
@@ -132,5 +132,5 @@ func (q *Workqueue) Depth() int {
 	return q.Queue.Len()
 }
 
-// MaxQueueDepth returns the current maximum queue depth (0 = unlimited).
-func (q *Workqueue) MaxQueueDepth() int { return int(q.maxQueueDepth.Load()) }
+// MaxDepth returns the current maximum queue depth (0 = unlimited).
+func (q *Workqueue) MaxDepth() int { return int(q.maxDepth.Load()) }

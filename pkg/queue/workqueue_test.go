@@ -22,7 +22,7 @@ func TestNewWorkqueue_InitialState(t *testing.T) {
 
 	assert.False(t, q.Started(), "queue must not report started before Start() is called")
 	assert.Equal(t, 0, q.Depth(), "empty queue must have depth 0")
-	assert.Equal(t, 0, q.MaxQueueDepth(), "default max depth is 0 (unconfigured)")
+	assert.Equal(t, 0, q.MaxDepth(), "default max depth is 0 (unconfigured)")
 }
 
 func TestNewWorkqueue_Name(t *testing.T) {

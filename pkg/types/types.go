@@ -139,11 +139,11 @@ type Queue struct {
 	// Default: false (each CRD gets its own isolated queue).
 	Shared *bool `yaml:"shared,omitempty" json:"shared,omitempty"`
 
-	// MaxQueueDepth — max items in the queue before new items are dropped.
-	// 0 → uses MAX_QUEUE_DEPTH env var (default: 100).
-	MaxQueueDepth int `yaml:"maxQueueDepth,omitempty" json:"maxQueueDepth,omitempty" validate:"omitempty,gte=0"`
+	// MaxDepth — max items in the queue before new items are dropped.
+	// 0 → uses QUEUE_DEPTH env var (default: 100).
+	MaxDepth int `yaml:"maxDepth,omitempty" json:"maxDepth,omitempty" validate:"omitempty,gte=0"`
 
-	// DegradeThreshold — consecutive failures before CRD health degrades.
-	// 0 → uses DEGRADE_THRESHOLD env var.
-	DegradeThreshold int `yaml:"degradeThreshold,omitempty" json:"degradeThreshold,omitempty" validate:"omitempty,gte=0"`
+	// FailureThreshold — consecutive failures before CRD health degrades.
+	// 0 → uses FAILURE_THRESHOLD env var.
+	FailureThreshold int `yaml:"failureThreshold,omitempty" json:"failureThreshold,omitempty" validate:"omitempty,gte=0"`
 }

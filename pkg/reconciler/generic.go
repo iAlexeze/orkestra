@@ -187,9 +187,9 @@ func NewGenericReconciler[PTR domain.Object](
 
 	if crd.AutoscaleEnabled() {
 		baseline := orktypes.AutoscaleBaseline{
-			Workers:       workers,
-			MaxQueueDepth: crd.Queue.MaxQueueDepth,
-			Resync:        crd.Resync,
+			Workers:  workers,
+			MaxDepth: crd.Queue.MaxDepth,
+			Resync:   crd.Resync,
 		}
 		r.autoscaler = autoscaler.NewAutoscaler(
 			crd.APITypes.Kind,

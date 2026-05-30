@@ -18,17 +18,17 @@ func emptyCRD() orktypes.CRDEntry {
 	return orktypes.CRDEntry{}
 }
 
-// ── SetMaxQueueDepth ──────────────────────────────────────────────────────────
+// ── SetQueueDepth ──────────────────────────────────────────────────────────
 
-func TestSetMaxQueueDepth_UsesDefault(t *testing.T) {
+func TestSetQueueDepth_UsesDefault(t *testing.T) {
 	c := emptyCRD()
-	assert.Equal(t, 10, c.SetMaxQueueDepth(10))
+	assert.Equal(t, 10, c.SetQueueDepth(10))
 }
 
-func TestSetMaxQueueDepth_UsesPerCRDValue(t *testing.T) {
+func TestSetQueueDepth_UsesPerCRDValue(t *testing.T) {
 	c := emptyCRD()
-	c.Queue.MaxQueueDepth = 25
-	assert.Equal(t, 25, c.SetMaxQueueDepth(10))
+	c.Queue.MaxDepth = 25
+	assert.Equal(t, 25, c.SetQueueDepth(10))
 }
 
 // ── SetWorkers ────────────────────────────────────────────────────────────────

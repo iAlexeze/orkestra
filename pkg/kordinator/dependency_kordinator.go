@@ -553,7 +553,7 @@ func (k *DependencyKordinator) startCRDWorkers(ctx context.Context, gvk string, 
 	// live concurrency metrics without importing the reconciler package.
 	if wip, ok := rec.(workerInfoProvider); ok {
 		k.crdHealthMap[gvk].SetWorkerInfoFn(func() *ork_autoscaler.WorkerInfo {
-			info := wip.WorkerInfo(entry.CRD.Resync.String(), workers, entry.CRD.Queue.MaxQueueDepth)
+			info := wip.WorkerInfo(entry.CRD.Resync.String(), workers, entry.CRD.Queue.MaxDepth)
 			return info
 		})
 	}

@@ -56,16 +56,16 @@ spec:
               value: {{ .Values.runtime.config.defaultWorkers | quote }}
             - name: DEFAULT_RESYNC
               value: {{ .Values.runtime.config.defaultResync | quote }}
-            - name: MAX_QUEUE_DEPTH
-              value: {{ .Values.runtime.config.maxQueueDepth | quote }}
+            - name: QUEUE_DEPTH
+              value: {{ .Values.runtime.config.maxDepth | quote }}
             - name: ORK_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
             - name: ORK_ENV
               value: {{ .Values.runtime.config.environment | quote }}
-            - name: DEGRADE_THRESHOLD
-              value: {{ .Values.runtime.config.degradeThreshold | quote }}
+            - name: FAILURE_THRESHOLD
+              value: {{ .Values.runtime.config.failureThreshold | quote }}
             - name: ORK_REGISTRY
               value: {{ .Values.runtime.registry.url | quote }}
             {{- if .Values.runtime.gatewayEndpoint }}

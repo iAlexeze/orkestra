@@ -130,11 +130,11 @@ func printBanner(kfg *runtimeKfg, konductor string) {
 			fmt.Printf("  Workers:       %d (default)\n", kfg.konfig.Katalog().DefaultWorkers())
 		}
 
-		if crd.Queue.MaxQueueDepth > 0 {
-			fmt.Printf("  MaxQueueDepth: %d\n", crd.Queue.MaxQueueDepth)
+		if crd.Queue.MaxDepth > 0 {
+			fmt.Printf("  MaxDepth: %d\n", crd.Queue.MaxDepth)
 		} else {
-			fmt.Printf("  MaxQueueDepth: %d (default)\n",
-				kfg.konfig.Katalog().DefaultMaxQueueDepth())
+			fmt.Printf("  MaxDepth: %d (default)\n",
+				kfg.konfig.Katalog().DefaultQueueDepth())
 		}
 
 		if crd.Resync != 0 {

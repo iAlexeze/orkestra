@@ -119,13 +119,13 @@ func (c *CRDEntry) GetRuntimeObjects() (runtime.Object, runtime.Object) {
 	return c.DynamicModeObject(), c.ListDynamicModeObject()
 }
 
-// SetMaxQueueDepth resolves the queue depth for this CRD. If a per‑CRD value is
+// SetQueueDepth resolves the queue depth for this CRD. If a per‑CRD value is
 // provided, it is used; otherwise the Orkestra/Konduktor‑level default is applied.
-func (c *CRDEntry) SetMaxQueueDepth(def int) int {
-	if c.Queue.MaxQueueDepth == 0 {
+func (c *CRDEntry) SetQueueDepth(def int) int {
+	if c.Queue.MaxDepth == 0 {
 		return def
 	}
-	return c.Queue.MaxQueueDepth
+	return c.Queue.MaxDepth
 }
 
 // SetWorkers resolves the worker count for this CRD. If a per‑CRD value is
