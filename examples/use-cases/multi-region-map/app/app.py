@@ -7,8 +7,8 @@ from flask import Flask, render_template_string
 app = Flask(__name__)
 
 REGION      = os.environ.get("REGION", "unknown")
-PORT        = os.environ.get("PORT", "8080")        # service port — shown on the page
-LISTEN_PORT = int(os.environ.get("LISTEN_PORT", "8080"))  # container listen port — fixed
+PORT        = os.environ.get("PORT", "8080")
+LISTEN_PORT = int(PORT)
 
 # Load logo once at startup — embedded as a data URI so no static route needed.
 _logo_path = Path(__file__).parent / "logo.png"

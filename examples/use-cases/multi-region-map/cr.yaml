@@ -21,4 +21,4 @@ spec:
       port: 8081
     ap-southeast-1:
       replicas: 2
-      port: 8080
+      port: 8082
