@@ -1,0 +1,98 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: microservice-operator-events
+  description: >
+    Enrich pattern 02 — conditional warning events.
+    pods: always fetched — 1 API call per reconcile.
+    events: only fetched when the deployment is NOT fully ready.
+    In steady state, zero event-list calls. Under degradation,
+    warning events appear in status and the phase flips to Degraded.
+
+spec:
+  crds:
+    microservice:
+      crdFile: ../crd.yaml
+
+      workers: 2
+      resync: 15s
+
+      # ── Enrichment ───────────────────────────────────────────────────────────
+      enrich:
+        # pods: always — cheap, useful in every state.
+        - pods
+
+        # events: only when the deployment is not fully ready.
+        # In steady state this gate fails → zero event-list calls.
+        # When something goes wrong → events are fetched and warnings surface.
+        - events:
+            when:
+              - field: "{{ replicasReady .children.deployment }}"
+                equals: "false"
+
+      validation:
+        rules:
+          - field: spec.image
+            operator: exists
+            message: "spec.image is required"
+            action: deny
+
+      operatorBox:
+        default: true
+
+        status:
+          fields:
+            - path: phase
+              value: "Pending"
+              when:
+                - field: status.phase
+                  operator: notExists
+
+            - path: phase
+              value: "Ready"
+              when:
+                - field: "{{ allReplicasReady .children.deployment }}"
+                  equals: "true"
+
+            - path: phase
+              value: "Degraded"
+              when:
+                - field: "{{ allReplicasReady .children.deployment }}"
+                  equals: "false"
+
+            # ── Pod notes (always available) ────────────────────────────────
+            - path: podCount
+              value: "{{ podCount .children.deployment }}"
+
+            - path: readyPodCount
+              value: "{{ readyPodCount .children.deployment }}"
+
+            - path: hasCrashingPod
+              value: "{{ hasCrashingPod .children.deployment }}"
+
+            # ── Warning notes (only available when enrichment ran) ──────────
+            # Gate matches the enrichment gate — no stale data written.
+            - path: hasWarnings
+              value: "{{ hasWarnings .children.deployment }}"
+              when:
+                - field: "{{ replicasReady .children.deployment }}"
+                  equals: "false"
+
+            - path: warningCount
+              value: "{{ warningCount .children.deployment }}"
+              when:
+                - field: "{{ hasWarnings .children.deployment }}"
+                  equals: "true"
+
+            - path: firstWarning
+              value: "{{ firstWarningMessage .children.deployment }}"
+              when:
+                - field: "{{ hasWarnings .children.deployment }}"
+                  equals: "true"
+
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}"
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              reconcile: true

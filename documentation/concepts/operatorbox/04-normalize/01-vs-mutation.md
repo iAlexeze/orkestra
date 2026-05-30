@@ -60,6 +60,16 @@ This is the same outcome as webhook-based mutation defaults, enforced at reconci
 
 Use `mutation:` rules when you need the default to be stored in etcd and visible to external tools reading the CR directly. Use `default` in normalize when in-memory consistency across reconcile is sufficient.
 
+**Try it — apply a minimal CR with no optional fields, watch normalize fill them all in:**
+```bash
+ork init --pack use-cases
+cd normalize/03-defaults-without-webhook
+ork run
+kubectl apply -f cr-minimal.yaml   # only spec.image declared
+kubectl get workload api-server -o yaml | grep -A10 "status:"
+# replicas, cpu, memory, concurrencyPolicy all defaulted
+```
+
 ---
 
-**Next →** [Patterns](02-patterns.md)
+<!-- **Next →** [Patterns](02-patterns.md) -->

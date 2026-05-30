@@ -63,4 +63,4 @@ normalize:
 
 ---
 
-**Back →** [Normalize](index.md)
+<!-- **Back →** [Normalize](index.md) -->

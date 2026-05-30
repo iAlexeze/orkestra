@@ -31,6 +31,23 @@ See [Reconcile Pipeline](../01-reconcile-pipeline.md) for the full sequence.
 
 ---
 
+## Try it
+
+Four runnable examples, each focused on one pattern:
+
+```bash
+ork init --pack use-cases
+cd normalize/01-string-cleanup   # toLower, trimSpace, domain cleanup
+cd normalize/02-image-normalization  # bare image → registry.internal/name:tag
+cd normalize/03-defaults-without-webhook  # default in normalize = mutation without gateway
+cd normalize/04-webservice       # all patterns combined: secrets, configmap, forEach
+ork run
+```
+
+Each example has two CRs — one messy, one clean — that both reconcile to identical downstream resources.
+
+---
+
 ## Where to go next
 
 - [Normalize vs Mutation](01-vs-mutation.md) — when to use each, and how `default` in normalize replaces webhook-based defaulting

@@ -1,0 +1,75 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: workload-operator
+  description: >
+    Normalize pattern 03 — defaults without a webhook.
+    The default note inside normalize applies field defaults at reconcile time.
+    No Orkestra Gateway required. cr-minimal and cr-full produce identical
+    Deployments — proof that normalize filled in everything the user left out.
+
+spec:
+  crds:
+    workload:
+      crdFile: ./crd.yaml
+
+      workers: 2
+      resync: 30s
+
+      # ── Normalize ──────────────────────────────────────────────────────────
+      # Using default in normalize = mutation without an admission webhook.
+      # Every field has a safe value after this block runs — no nil checks
+      # needed anywhere downstream.
+      normalize:
+        spec:
+          replicas:          "{{ default 1 .spec.replicas }}"
+          concurrencyPolicy: '{{ default "Allow" .spec.concurrencyPolicy }}'
+          suspend:           "{{ default false .spec.suspend }}"
+          resources.requests.cpu:    '{{ default "100m" .spec.resources.requests.cpu }}'
+          resources.requests.memory: '{{ default "128Mi" .spec.resources.requests.memory }}'
+
+      validation:
+        rules:
+          - field: spec.image
+            operator: exists
+            message: "spec.image is required"
+            action: deny
+
+      operatorBox:
+        default: true
+
+        status:
+          fields:
+            - path: phase
+              value: "Pending"
+              when:
+                - field: status.phase
+                  operator: notExists
+
+            - path: phase
+              value: "Ready"
+              when:
+                - field: "{{ readyReplicas .children.deployment }}"
+                  operator: gt
+                  value: "0"
+
+            # Show the defaults normalize applied — inspect these after applying cr-minimal.
+            - path: replicas
+              value: "{{ .spec.replicas }}"
+            - path: cpu
+              value: "{{ .spec.resources.requests.cpu }}"
+            - path: memory
+              value: "{{ .spec.resources.requests.memory }}"
+            - path: concurrencyPolicy
+              value: "{{ .spec.concurrencyPolicy }}"
+
+        onCreate:
+          deployments:
+            # All fields are guaranteed to have values — no defensive defaults here.
+            - name: "{{ .metadata.name }}"
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              reconcile: true
+              env:
+                - name: CONCURRENCY_POLICY
+                  value: "{{ .spec.concurrencyPolicy }}"

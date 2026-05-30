@@ -69,6 +69,16 @@ normalize:
       {{ end }}
 ```
 
+**Try it — all three image forms handled in one operator:**
+```bash
+ork init --pack use-cases
+cd normalize/02-image-normalization
+ork run
+kubectl apply -f cr-bare.yaml      # nginx → registry.internal/nginx:latest
+kubectl apply -f cr-tagged.yaml    # nginx:1.25 → registry.internal/nginx:1.25
+kubectl apply -f cr-full.yaml      # registry.internal/nginx:1.25 → unchanged
+```
+
 ---
 
 ## Environment name canonicalization
@@ -98,6 +108,15 @@ normalize:
 
 `"https://my-app.example.com/"` → `"my-app.example.com"`.
 
+**Try it — messy and clean inputs producing the same status:**
+```bash
+ork init --pack use-cases
+cd normalize/01-string-cleanup
+ork run
+kubectl apply -f cr-messy.yaml   # " Production ", "https://acme.example.com/"
+kubectl apply -f cr-clean.yaml   # already canonical
+```
+
 ---
 
 ## Composite field assembly
@@ -111,6 +130,14 @@ normalize:
 ```
 
 `tenant: "Acme Corp"`, `environment: "Production"` → `internalName: "acme-corp-production"`. Every child resource template references `.spec.internalName` — the assembly logic lives in one place.
+
+**Try it — `internalName` used across secrets, configmap, and all deployments:**
+```bash
+ork init --pack use-cases
+cd normalize/04-webservice
+ork run
+kubectl apply -f cr-simple.yaml
+```
 
 ---
 
@@ -126,6 +153,15 @@ normalize:
 ```
 
 Only the declared paths are overwritten. Other fields under `spec.resources` are untouched.
+
+**Try it — minimal CR with no resources, full CR with explicit values, identical Deployments:**
+```bash
+ork init --pack use-cases
+cd normalize/03-defaults-without-webhook
+ork run
+kubectl apply -f cr-minimal.yaml   # no resources declared
+kubectl apply -f cr-full.yaml      # explicit cpu/memory
+```
 
 ---
 
@@ -163,4 +199,4 @@ After normalize, `.spec.regions` is always a list. `forEach:` in `onReconcile` r
 
 ---
 
-**Next →** [Reference](03-reference.md)
+<!-- **Next →** [Reference](03-reference.md) -->
