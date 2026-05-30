@@ -100,7 +100,7 @@ Fix it:
 kubectl patch microservice api-server --type=merge -p '{"spec":{"image":"nginx:1.25"}}'
 ```
 
-`phase` returns to `Ready`. `crashReason` is absent — the status field is gated on `hasCrashingPod`.
+`phase` returns to `Ready`. `hasCrashingPod` goes back to `"false"`. `crashReason` is cleared to `""` — because the field declares `clearOnFalse: true`, which tells Orkestra to explicitly write an empty value when the condition is no longer true, rather than leaving the old value in place.
 
 ---
 

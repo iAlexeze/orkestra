@@ -69,9 +69,10 @@ spec:
             - path: hasCrashingPod
               value: "{{ hasCrashingPod .children.deployment }}"
 
-            # Written only when a pod is actually crashing — avoids noise.
+            # Written only when a pod is crashing; cleared automatically on recovery.
             - path: crashReason
               value: "{{ podContainerReasons .children.deployment }}"
+              clearOnFalse: true
               when:
                 - field: "{{ hasCrashingPod .children.deployment }}"
                   equals: "true"

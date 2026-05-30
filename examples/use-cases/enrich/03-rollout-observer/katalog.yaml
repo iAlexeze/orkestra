@@ -77,6 +77,7 @@ spec:
             # replicaSetCount — how many ReplicaSets exist (>1 during rollout).
             - path: replicaSetCount
               value: "{{ deploymentReplicaSetCount .children.deployment }}"
+              clearOnFalse: true
               when:
                 - field: "{{ replicasReady .children.deployment }}"
                   equals: "false"
@@ -84,13 +85,15 @@ spec:
             # oldReplicaSets — non-zero while old pods are still scaling down.
             - path: oldReplicaSets
               value: "{{ oldDeploymentReplicaSets .children.deployment }}"
+              clearOnFalse: true
               when:
                 - field: "{{ replicasReady .children.deployment }}"
                   equals: "false"
 
-            # Debug-mode rollout visibility — always written when debug is on.
+            # Debug-mode rollout visibility — cleared when debug is turned off.
             - path: debugReplicaSetCount
               value: "{{ deploymentReplicaSetCount .children.deployment }}"
+              clearOnFalse: true
               when:
                 - field: spec.debug
                   equals: "true"

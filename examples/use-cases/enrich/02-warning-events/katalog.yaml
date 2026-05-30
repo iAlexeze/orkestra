@@ -74,18 +74,21 @@ spec:
             # Gate matches the enrichment gate — no stale data written.
             - path: hasWarnings
               value: "{{ hasWarnings .children.deployment }}"
+              clearOnFalse: true
               when:
                 - field: "{{ replicasReady .children.deployment }}"
                   equals: "false"
 
             - path: warningCount
               value: "{{ warningCount .children.deployment }}"
+              clearOnFalse: true
               when:
                 - field: "{{ hasWarnings .children.deployment }}"
                   equals: "true"
 
             - path: firstWarning
               value: "{{ firstWarningMessage .children.deployment }}"
+              clearOnFalse: true
               when:
                 - field: "{{ hasWarnings .children.deployment }}"
                   equals: "true"

@@ -51,12 +51,13 @@ A **list** of field declarations. Resolved in declaration order — later entrie
 
 ```yaml
 fields:
-  - path: <dot.notation.path>   # required
-    value: "<string or template>" # required
-    type: string                  # optional
-    when:                         # optional — AND conditions
+  - path: <dot.notation.path>     # required
+    value: "<string or template>"  # required
+    type: string                   # optional
+    clearOnFalse: false            # optional
+    when:                          # optional — AND conditions
       - ...
-    anyOf:                        # optional — OR conditions
+    anyOf:                         # optional — OR conditions
       - ...
 ```
 
@@ -69,6 +70,7 @@ fields:
 | `type` | no | Cast the resolved value before writing. Defaults to `string`. |
 | `when` | no | List of conditions — **all must pass** (AND). Field is skipped if any fails. |
 | `anyOf` | no | List of conditions — **at least one must pass** (OR). |
+| `clearOnFalse` | no | When `true` and the `when:`/`anyOf:` condition evaluates to false, write `""` to the field instead of leaving the previous value. Use for transient fields (crash reasons, warning messages) that should disappear when the triggering condition clears. No effect when no conditions are declared. |
 
 When both `when` and `anyOf` are declared, both blocks must pass.
 
