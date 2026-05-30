@@ -59,9 +59,9 @@ See [Cost and When to Use](01-cost-and-when.md) for the full cost model and gati
 
 ```bash
 ork init --pack use-cases
-cd enrich/01-pod-health      # always-on pod enrichment — count, readiness, crash detection
-cd enrich/02-warning-events  # conditional event enrichment — only fetched when degraded
-cd enrich/03-rollout-observer # conditional replicaset enrichment — only during rollouts
+cd enrich/01-pod-health         # always-on pod enrichment — count, readiness, crash detection
+cd enrich/02-warning-events     # conditional event enrichment — only fetched when degraded
+cd enrich/03-rollout-observer   # conditional replicaset enrichment — only during rollouts
 ork run
 ```
 

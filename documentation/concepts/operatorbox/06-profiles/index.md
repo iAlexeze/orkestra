@@ -175,13 +175,11 @@ Use profiles when the preset matches your workload. Use explicit fields when you
 
 ---
 
-## Full profile reference
-
-The complete list of profiles, their expanded values, and their rationale:
+## Try it
 
 ```bash
 ork init --pack use-cases
-# then open: pkg/profiles/docs/01-profiles.md
+cd profiles
 ```
 
 ---

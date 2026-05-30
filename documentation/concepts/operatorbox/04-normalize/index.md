@@ -37,10 +37,10 @@ Four runnable examples, each focused on one pattern:
 
 ```bash
 ork init --pack use-cases
-cd normalize/01-string-cleanup   # toLower, trimSpace, domain cleanup
-cd normalize/02-image-normalization  # bare image → registry.internal/name:tag
+cd normalize/01-string-cleanup            # toLower, trimSpace, domain cleanup
+cd normalize/02-image-normalization       # bare image → registry.internal/name:tag
 cd normalize/03-defaults-without-webhook  # default in normalize = mutation without gateway
-cd normalize/04-webservice       # all patterns combined: secrets, configmap, forEach
+cd normalize/04-webservice                # all patterns combined: secrets, configmap, forEach
 ork run
 ```
 
