@@ -58,6 +58,8 @@ kubectl apply -f cr-simple.yaml
 - Two backends: `api`, `worker`
 - No replicas, no resources
 
+> The normalized image is `registry.internal/nginx:latest` — a fictional private registry. Deployments will show `ImagePullBackOff` and the phase will stay `Pending`. This is expected — the example demonstrates what normalize produces, not a running workload.
+
 Switch to the Control Center. The `my-app` WebService appears. Click it, then click **top-right** to open child resources. You will see:
 
 - **Secrets** — `my-app-production-acme-corp-api-key` and `my-app-production-jwt`
@@ -75,7 +77,7 @@ kubectl get webservice my-app -o yaml | grep -A15 "status:"
 Expected:
 ```yaml
 status:
-  phase: Ready
+  phase: Pending                            # ← registry.internal is fictional
   image: registry.internal/nginx:latest   # ← tag and registry added
   environment: production                  # ← trimmed, lowercase
   domain: my-app.example.com              # ← protocol and slash stripped
@@ -107,12 +109,12 @@ Check the backend Deployments:
 kubectl get deployments
 ```
 
-Expected:
+Expected (Deployments created — pods will show ImagePullBackOff since the registry is fictional):
 ```
 NAME                        READY
-my-app-production           1/1    ← main
-my-app-production-api       1/1    ← forEach backend
-my-app-production-worker    1/1    ← forEach backend
+my-app-production           0/1
+my-app-production-api       0/1
+my-app-production-worker    0/1
 ```
 
 ---

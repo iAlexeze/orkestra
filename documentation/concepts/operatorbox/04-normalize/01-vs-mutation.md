@@ -40,8 +40,8 @@ normalize:
     schedule:   "{{ cronFromAny .spec.schedule }}"
     environment: '{{ default "production" .spec.environment | toLower }}'
     replicas:    "{{ default 1 .spec.replicas }}"
-    resources.requests.cpu:    '{{ default "100m" .spec.resources.requests.cpu }}'
-    resources.requests.memory: '{{ default "128Mi" .spec.resources.requests.memory }}'
+    resources.requests.cpu:    '{{ resourceCPU . | default "100m" }}'
+    resources.requests.memory: '{{ resourceMemory . | default "128Mi" }}'
 ```
 
 - If `.spec.environment` is absent → `"production"`

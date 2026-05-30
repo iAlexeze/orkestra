@@ -55,6 +55,8 @@ This CR has `image: nginx` — no tag, no registry.
 
 Watch the Control Center: `app-bare` appears. Click it, then click **top-right** to see child resources. Open the `app-bare` Deployment.
 
+> Ignore the `Pending` status in the child resource. It is because of the image used which is not available so the condition `allReplicasReady` in the [katalog](katalog.yaml) is false.
+
 ```bash
 kubectl get app app-bare -o yaml | grep "image:" 
 ```
@@ -67,7 +69,7 @@ status:
 
 Deployment:
 ```bash
-kubectl get deployment app-bare -o jsonpath='{.spec.template.spec.containers[0].image}'
+kubectl get deployment app-bare -o jsonpath='{.spec.template.spec.containers[0].image}' && echo
 # registry.internal/nginx:latest
 ```
 

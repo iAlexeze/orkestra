@@ -22,6 +22,7 @@ spec:
       # All templates see the raw CR. Results overwrite in-memory fields only.
       # etcd is unchanged — kubectl get -o yaml returns what the user wrote.
       normalize:
+        audit: true
         spec:
           # Image — ensure registry prefix and explicit tag.
           image: >-
@@ -37,8 +38,8 @@ spec:
             {{- trimSuffix (trimPrefix (trimPrefix (trimSpace .spec.domain) "https://") "http://") "/" -}}
 
           # Resource request defaults.
-          resources.requests.cpu:    '{{ default "100m" .spec.resources.requests.cpu }}'
-          resources.requests.memory: '{{ default "128Mi" .spec.resources.requests.memory }}'
+          resources.requests.cpu:    '{{ resourceCPU . | default "100m" }}'
+          resources.requests.memory: '{{ resourceMemory . | default "128Mi" }}'
 
           # Replicas default.
           replicas: "{{ default 1 .spec.replicas }}"
@@ -80,9 +81,8 @@ spec:
             - path: phase
               value: "Ready"
               when:
-                - field: "{{ readyReplicas .children.deployment }}"
-                  operator: gt
-                  value: "0"
+                - field: "{{ allReplicasReady .children.deployment }}"
+                  equals: "true"
 
             # Normalized values — inspect these to see what normalize produced.
             - path: image
@@ -99,6 +99,14 @@ spec:
               value: "{{ len .spec.backends }}"
             - path: credentialsSecret
               value: '{{ printf "%s-%s-api-key" .spec.internalName .spec.organizationId }}'
+
+            # normalizeChanges — present only when cr-simple.yaml is applied (messy inputs).
+            # Absent for cr-full.yaml (already canonical — no transformations needed).
+            - path: normalizeChanges
+              value: "{{ toJson ._normalizeChanges }}"
+              when:
+                - field: "{{ notEmpty ._normalizeChanges }}"
+                  equals: "true"
 
         onCreate:
           # ── Secrets ────────────────────────────────────────────────────────

@@ -72,6 +72,8 @@ Click the `acme` to inspect it. Look at:
 - **Events** — the reconcile event
 - **Created resource** - `acme-config`
 
+> Status is written after the first reconcile — allow ~5s, then run:
+
 Run both of these and look at them side by side:
 
 ```bash

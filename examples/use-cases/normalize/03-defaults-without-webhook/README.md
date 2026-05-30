@@ -4,7 +4,7 @@
 
 This is mutation — `default` inside `normalize` — without deploying the Orkestra Gateway. No webhook. No admission configuration. Defaults are applied at reconcile time, in memory.
 
-**What you learn:** `default` in `normalize.spec`, the difference between this and `mutation:` rules, when each is appropriate.
+**What you learn:** `default` in `normalize.spec`, the difference between this and `mutation:` rules, when each is appropriate. Also: why nested optional fields like `spec.resources.requests.cpu` require `get` for safe navigation — direct dot-path access panics when an intermediate key is absent.
 
 ---
 
@@ -55,6 +55,8 @@ kubectl apply -f cr-minimal.yaml
 
 This CR declares only `spec.image`. Every other field is absent.
 
+> `phase` transitions from `Pending` to `Ready` once all pods are running — allow ~10s after applying.
+
 ```bash
 kubectl get workload api-server -o yaml | grep -A10 "status:"
 ```
@@ -87,6 +89,8 @@ kubectl apply -f cr-full.yaml
 ```
 
 This CR declares everything explicitly with different values.
+
+> `phase` transitions to `Ready` once all pods are running — allow ~10s after applying.
 
 ```bash
 kubectl get workload worker -o yaml | grep -A10 "status:"

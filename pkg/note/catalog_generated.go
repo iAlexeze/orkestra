@@ -595,11 +595,25 @@ var BuiltinNotes = []NoteInfo{
 		Keywords:    []string{"kubernetes", "status", "phase", "string", "pod", "lifecycle"},
 	},
 	{
+		Name:        "resourceCPU",
+		Domain:      "kubernetes",
+		Description: "Return `spec.resources.requests.cpu` from any object. Returns `\"\"` when spec, resources, requests, or cpu is absent — no nil pointer panic at any level.",
+		Example:     "# normalize block — default resource requests without nil pointer panics\nnormalize:\n  spec:\n    resources.requests.cpu:    '{{ resourceCPU . | default \"100m\" }}'\n    resources.requests.memory: '{{ resourceMemory . | default \"128Mi\" }}'",
+		Keywords:    []string{"spec", "resources", "requests", "cpu", "safe", "default", "normalize"},
+	},
+	{
 		Name:        "resourceExists",
 		Domain:      "kubernetes",
 		Description: "Return `true` when the object is a non-nil `map[string]interface{}`. Use to check whether a child resource has been created.",
 		Example:     "# value: \"{{ resourceExists .children.deployment }}\"\n\n# Gate dependent resources on child existence:\n# when:\n#   - field: \"{{ resourceExists .children.secret }}\"\n#     equals: \"true\"",
 		Keywords:    []string{"kubernetes", "exists", "check", "boolean", "nil", "created", "present"},
+	},
+	{
+		Name:        "resourceMemory",
+		Domain:      "kubernetes",
+		Description: "Return `spec.resources.requests.memory` from any object. Returns `\"\"` when any level is absent.",
+		Example:     "- path: memoryRequest\n  value: \"{{ resourceMemory .children.deployment }}\"",
+		Keywords:    []string{"spec", "resources", "requests", "memory", "safe", "default", "normalize"},
 	},
 	{
 		Name:        "spec",

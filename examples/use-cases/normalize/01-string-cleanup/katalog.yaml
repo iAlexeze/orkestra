@@ -20,6 +20,9 @@ spec:
       # Each field normalizes independently against the raw CR.
       # After this block, all template expressions see canonical values.
       normalize:
+        # audit: true records which fields were transformed and their before/after values.
+        # Available in status as ._normalizeChanges — see status.normalizeChanges below.
+        audit: true
         spec:
           # Environment — lowercase, no surrounding whitespace.
           # " Production ", "STAGING", "Development" → "production", "staging", "development"
@@ -68,6 +71,15 @@ spec:
               value: "{{ .spec.domain }}"
             - path: tier
               value: "{{ .spec.tier }}"
+
+            # normalizeChanges — what was transformed this reconcile cycle.
+            # Only present when at least one field differed from its raw value.
+            # Empty for cr-clean.yaml (already canonical — nothing to transform).
+            - path: normalizeChanges
+              value: "{{ toJson ._normalizeChanges }}"
+              when:
+                - field: "{{ notEmpty ._normalizeChanges }}"
+                  equals: "true"
 
         onCreate:
           configMaps:

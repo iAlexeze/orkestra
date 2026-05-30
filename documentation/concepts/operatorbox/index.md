@@ -67,5 +67,6 @@ spec:
 - [Reconcile Pipeline](01-reconcile-pipeline.md) — the ordered steps from queue to status patch
 - [Normalize](04-normalize/index.md) — accept multiple input shapes, produce one canonical spec
 - [Enrich](05-enrich/index.md) — fetch live child state and embed it in template context
+- [Profiles](06-profiles/index.md) — named presets for resources, security, probes, rollout, and PDB
 - [Isolation and IPC](02-isolation.md) — how isolation is enforced and how operatorBoxes communicate
 - [Startup Sequencing](03-startup-sequencing.md) — dependency order and the Katalog relationship

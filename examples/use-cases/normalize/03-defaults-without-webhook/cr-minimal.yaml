@@ -4,7 +4,7 @@ metadata:
   name: api-server
   namespace: default
 spec:
-  image: myorg/api-server:latest
+  image: nginx:1.25
   # replicas omitted        → normalize defaults to 1
   # resources omitted       → normalize defaults to cpu:100m, memory:128Mi
   # concurrencyPolicy omit  → normalize defaults to "Allow"

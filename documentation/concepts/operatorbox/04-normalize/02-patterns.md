@@ -148,11 +148,13 @@ Dot-notation paths reach deep fields without touching siblings:
 ```yaml
 normalize:
   spec:
-    resources.requests.cpu:    '{{ default "100m" .spec.resources.requests.cpu }}'
-    resources.requests.memory: '{{ default "128Mi" .spec.resources.requests.memory }}'
+    resources.requests.cpu:    '{{ resourceCPU . | default "100m" }}'
+    resources.requests.memory: '{{ resourceMemory . | default "128Mi" }}'
 ```
 
 Only the declared paths are overwritten. Other fields under `spec.resources` are untouched.
+
+**Why `resourceCPU` instead of direct path:** `{{ default "100m" .spec.resources.requests.cpu }}` evaluates the argument before `default` can act. If `spec.resources` is absent, navigating `.requests` panics — `nil pointer evaluating interface {}.requests`. `resourceCPU` navigates each level safely inside the note function and returns `""` at the first missing key. `default "100m"` then supplies the fallback via pipe.
 
 **Try it — minimal CR with no resources, full CR with explicit values, identical Deployments:**
 ```bash

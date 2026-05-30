@@ -15,8 +15,9 @@ normalize:
     # Multi-format input
     schedule: "{{ cronFromAny .spec.schedule }}"
 
-    # Default (inline — no Gateway required)
-    resources.requests.cpu: '{{ default "100m" .spec.resources.requests.cpu }}'
+    # Default for a nested field — resourceCPU navigates spec.resources.requests.cpu safely.
+    # Direct path (.spec.resources.requests.cpu) panics when spec.resources is absent.
+    resources.requests.cpu: '{{ resourceCPU . | default "100m" }}'
 
     # Type coercion
     suspend: "{{ toBool .spec.suspend }}"

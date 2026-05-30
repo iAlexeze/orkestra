@@ -22,11 +22,11 @@ spec:
       # needed anywhere downstream.
       normalize:
         spec:
-          replicas:          "{{ default 1 .spec.replicas }}"
-          concurrencyPolicy: '{{ default "Allow" .spec.concurrencyPolicy }}'
-          suspend:           "{{ default false .spec.suspend }}"
-          resources.requests.cpu:    '{{ default "100m" .spec.resources.requests.cpu }}'
-          resources.requests.memory: '{{ default "128Mi" .spec.resources.requests.memory }}'
+          replicas:          "{{ .spec.replicas | default 1  }}"
+          concurrencyPolicy: '{{ .spec.concurrencyPolicy | default "Allow" }}'
+          suspend:           "{{ .spec.suspend | default false }}"
+          resources.requests.cpu:    '{{ resourceCPU . | default "100m" }}'
+          resources.requests.memory: '{{ resourceMemory . | default "128Mi" }}'
 
       validation:
         rules:
@@ -49,9 +49,8 @@ spec:
             - path: phase
               value: "Ready"
               when:
-                - field: "{{ readyReplicas .children.deployment }}"
-                  operator: gt
-                  value: "0"
+                - field: "{{ allReplicasReady .children.deployment }}"
+                  equals: "true"
 
             # Show the defaults normalize applied — inspect these after applying cr-minimal.
             - path: replicas

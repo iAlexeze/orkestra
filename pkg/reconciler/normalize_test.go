@@ -81,6 +81,105 @@ func TestParseNormalizedValue_StringWithSpaces(t *testing.T) {
 	}
 }
 
+// ── coerceNormalizedValue ─────────────────────────────────────────────────────
+
+func TestCoerceNormalizedValue_EmptyStringReturnsNil(t *testing.T) {
+	for _, typ := range []string{"int", "bool", "float", "string"} {
+		got, err := coerceNormalizedValue("", typ)
+		if err != nil {
+			t.Errorf("type %q: unexpected error: %v", typ, err)
+		}
+		if got != nil {
+			t.Errorf("type %q: empty string must return nil, got %v", typ, got)
+		}
+	}
+}
+
+func TestCoerceNormalizedValue_Int(t *testing.T) {
+	got, err := coerceNormalizedValue("3", "int")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != int64(3) {
+		t.Errorf("expected int64(3), got %T %v", got, got)
+	}
+}
+
+func TestCoerceNormalizedValue_IntegerAlias(t *testing.T) {
+	got, err := coerceNormalizedValue("42", "integer")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != int64(42) {
+		t.Errorf("expected int64(42), got %T %v", got, got)
+	}
+}
+
+func TestCoerceNormalizedValue_BoolTrue(t *testing.T) {
+	got, err := coerceNormalizedValue("true", "bool")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != true {
+		t.Errorf("expected true, got %T %v", got, got)
+	}
+}
+
+func TestCoerceNormalizedValue_BoolFalse(t *testing.T) {
+	got, err := coerceNormalizedValue("false", "bool")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != false {
+		t.Errorf("expected false, got %T %v", got, got)
+	}
+}
+
+// Key difference from parseNormalizedValue: "0" declared as bool → false, not int64(0).
+func TestCoerceNormalizedValue_ZeroAsBool(t *testing.T) {
+	got, err := coerceNormalizedValue("0", "bool")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != false {
+		t.Errorf("expected false, got %T %v", got, got)
+	}
+}
+
+func TestCoerceNormalizedValue_Float(t *testing.T) {
+	got, err := coerceNormalizedValue("0.75", "float")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != float64(0.75) {
+		t.Errorf("expected 0.75, got %T %v", got, got)
+	}
+}
+
+func TestCoerceNormalizedValue_String(t *testing.T) {
+	got, err := coerceNormalizedValue("production", "string")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "production" {
+		t.Errorf("expected production, got %T %v", got, got)
+	}
+}
+
+func TestCoerceNormalizedValue_UnknownTypeReturnsError(t *testing.T) {
+	_, err := coerceNormalizedValue("value", "uuid")
+	if err == nil {
+		t.Error("expected error for unknown type")
+	}
+}
+
+func TestCoerceNormalizedValue_BadIntReturnsError(t *testing.T) {
+	_, err := coerceNormalizedValue("not-a-number", "int")
+	if err == nil {
+		t.Error("expected error for non-integer value with int type")
+	}
+}
+
 // ── splitDotPath ──────────────────────────────────────────────────────────────
 
 func TestSplitDotPath_SingleSegment(t *testing.T) {

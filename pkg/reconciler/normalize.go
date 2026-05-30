@@ -31,10 +31,12 @@ package reconciler
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"gopkg.in/yaml.v3"
 )
 
@@ -53,14 +55,14 @@ import (
 func (r *GenericReconciler[PTR]) applyNormalize(
 	ctx context.Context,
 	obj PTR,
-) (PTR, *orktmpl.Resolver, error) {
+) (PTR, *orktmpl.Resolver, []orktypes.NormalizeChange, error) {
 	// No normalize block → just build a resolver and return
 	if r.crd.Normalize == nil || len(r.crd.Normalize.Spec) == 0 {
 		baseResolver, err := orktmpl.NewResolver(ctx, obj)
 		if err != nil {
-			return obj, nil, fmt.Errorf("normalize: building base resolver: %w", err)
+			return obj, nil, nil, fmt.Errorf("normalize: building base resolver: %w", err)
 		}
-		return obj, baseResolver, nil
+		return obj, baseResolver, nil, nil
 	}
 
 	log := logger.FromContext(ctx)
@@ -70,7 +72,7 @@ func (r *GenericReconciler[PTR]) applyNormalize(
 	// Resolver over pre-normalize spec (for template evaluation)
 	baseResolver, err := orktmpl.NewResolver(ctx, cloned)
 	if err != nil {
-		return obj, nil, fmt.Errorf("normalize: building resolver: %w", err)
+		return obj, nil, nil, fmt.Errorf("normalize: building resolver: %w", err)
 	}
 
 	type unstructuredGetter interface {
@@ -79,23 +81,52 @@ func (r *GenericReconciler[PTR]) applyNormalize(
 	ug, ok := any(cloned).(unstructuredGetter)
 	if !ok {
 		log.Debug().Msg("normalize: skipping — object is typed mode, normalize requires dynamic mode")
-		return cloned, baseResolver, nil
+		return cloned, baseResolver, nil, nil
 	}
 	content := ug.UnstructuredContent()
 	if content == nil {
 		content = map[string]interface{}{}
 	}
 
+	audit := r.crd.Normalize.Audit
+	var changes []orktypes.NormalizeChange
+
 	for fieldPath, tpl := range r.crd.Normalize.Spec {
 		rendered, err := baseResolver.Resolve(tpl)
 		if err != nil {
-			return obj, nil, fmt.Errorf("normalize spec.%s: %w", fieldPath, err)
+			return obj, nil, nil, fmt.Errorf("normalize spec.%s: %w", fieldPath, err)
 		}
 		rendered = strings.TrimSpace(rendered)
-		parsed := parseNormalizedValue(rendered)
+
+		var parsed interface{}
+		if declaredType, ok := r.crd.Normalize.Types[fieldPath]; ok {
+			parsed, err = coerceNormalizedValue(rendered, declaredType)
+			if err != nil {
+				return obj, nil, nil, fmt.Errorf("normalize spec.%s: type %q: %w", fieldPath, declaredType, err)
+			}
+		} else {
+			parsed = parseNormalizedValue(rendered)
+		}
+
+		if parsed == nil {
+			log.Debug().Str("field", fieldPath).Msg("normalize: field omitted (nil)")
+			continue
+		}
+
 		fullPath := "spec." + fieldPath
+		var before interface{}
+		if audit {
+			before = nestedGet(content, fullPath)
+		}
 		if err := setNestedNormalized(content, fullPath, parsed); err != nil {
-			return obj, nil, fmt.Errorf("normalize spec.%s: setting field: %w", fieldPath, err)
+			return obj, nil, nil, fmt.Errorf("normalize spec.%s: setting field: %w", fieldPath, err)
+		}
+		if audit && fmt.Sprintf("%v", before) != fmt.Sprintf("%v", parsed) {
+			changes = append(changes, orktypes.NormalizeChange{
+				Field: fieldPath,
+				From:  before,
+				To:    parsed,
+			})
 		}
 		log.Debug().
 			Str("field", fieldPath).
@@ -108,10 +139,10 @@ func (r *GenericReconciler[PTR]) applyNormalize(
 	// Resolver over the normalized spec
 	normalizedResolver, err := orktmpl.NewResolver(ctx, normalized)
 	if err != nil {
-		return obj, nil, fmt.Errorf("normalize: building normalized resolver: %w", err)
+		return obj, nil, nil, fmt.Errorf("normalize: building normalized resolver: %w", err)
 	}
 
-	return normalized, normalizedResolver, nil
+	return normalized, normalizedResolver, changes, nil
 }
 
 // parseNormalizedValue converts a rendered template string to the most
@@ -152,6 +183,41 @@ func parseNormalizedValue(s string) interface{} {
 	return s
 }
 
+// coerceNormalizedValue casts a rendered template string to the declared type.
+// Returns nil when the rendered string is empty — the field is omitted rather
+// than written as an empty string, which would fail integer/boolean schema validation.
+//
+// Accepted types: "int", "integer", "bool", "boolean", "float", "number", "string".
+func coerceNormalizedValue(rendered, typ string) (interface{}, error) {
+	if rendered == "" {
+		return nil, nil
+	}
+	switch strings.ToLower(typ) {
+	case "int", "integer":
+		i, err := strconv.ParseInt(rendered, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert %q to int: %w", rendered, err)
+		}
+		return i, nil
+	case "bool", "boolean":
+		b, err := strconv.ParseBool(rendered)
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert %q to bool: %w", rendered, err)
+		}
+		return b, nil
+	case "float", "number":
+		f, err := strconv.ParseFloat(rendered, 64)
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert %q to float: %w", rendered, err)
+		}
+		return f, nil
+	case "string", "":
+		return rendered, nil
+	default:
+		return nil, fmt.Errorf("unknown type %q — use int, bool, float, or string", typ)
+	}
+}
+
 // setNestedNormalized writes a value at a dot-notation path through a
 // map[string]interface{}, creating intermediate maps as needed.
 //
@@ -185,6 +251,25 @@ func setNestedNormalized(obj map[string]interface{}, path string, value interfac
 
 	current[parts[len(parts)-1]] = value
 	return nil
+}
+
+// nestedGet reads the value at a dot-notation path through a
+// map[string]interface{}. Returns nil when any segment is missing or not a map.
+func nestedGet(obj map[string]interface{}, path string) interface{} {
+	parts := splitDotPath(path)
+	current := obj
+	for _, part := range parts[:len(parts)-1] {
+		next, ok := current[part]
+		if !ok {
+			return nil
+		}
+		m, ok := next.(map[string]interface{})
+		if !ok {
+			return nil
+		}
+		current = m
+	}
+	return current[parts[len(parts)-1]]
 }
 
 // splitDotPath splits a dot-notation path into segments.

@@ -4,7 +4,7 @@ metadata:
   name: worker
   namespace: default
 spec:
-  image: myorg/worker:2.1.0
+  image: nginx:1.25
   replicas: 3
   concurrencyPolicy: Forbid
   resources:
