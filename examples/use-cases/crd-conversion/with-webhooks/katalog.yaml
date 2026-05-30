@@ -8,14 +8,11 @@ metadata:
     declared entirely in YAML using cron notes. No Go. No hooks.
     No separate conversion webhook. One process. One Katalog.
 security:
-  deletionProtection:
-    enabled: true
   conversion:
     enabled: true
 
 gateway:
-  # endpoint: http://orkestra-gateway:8080
-  endpoint: http://localhost:8080
+  endpoint: http://orkestra-gateway:8080
 
 spec:
   crds:
@@ -63,28 +60,26 @@ spec:
             spec:
               schedule:                   "{{ cronToMap .spec.schedule }}"
               image:                      "{{ .spec.image }}"
-              concurrencyPolicy:          "{{ default .spec.concurrencyPolicy \"Allow\" }}"
+              concurrencyPolicy:          '{{ default "Allow" .spec.concurrencyPolicy }}'
               startingDeadlineSeconds:    "{{ .spec.startingDeadlineSeconds }}"
-              successfulJobsHistoryLimit: "{{ default .spec.successfulJobsHistoryLimit 3 }}"
-              failedJobsHistoryLimit:     "{{ default .spec.failedJobsHistoryLimit 1 }}"
-              suspend:                    "{{ default .spec.suspend false }}"
+              successfulJobsHistoryLimit: "{{ default 3 .spec.successfulJobsHistoryLimit }}"
+              failedJobsHistoryLimit:     "{{ default 1 .spec.failedJobsHistoryLimit }}"
+              suspend:                    "{{ default false .spec.suspend }}"
 
           # v2 → v1: cronFromMap converts structured maps to legacy flat strings.
           - from: v2
             to: v1
             spec:
-              schedule:                   "{{ cronFromAny .spec.schedule }}"
+              schedule:                   "{{ cronFromMap .spec.schedule }}"
               image:                      "{{ .spec.image }}"
-              concurrencyPolicy:          "{{ default .spec.concurrencyPolicy \"Allow\" }}"
+              concurrencyPolicy:          '{{ default "Allow" .spec.concurrencyPolicy }}'
               startingDeadlineSeconds:    "{{ .spec.startingDeadlineSeconds }}"
-              successfulJobsHistoryLimit: "{{ default .spec.successfulJobsHistoryLimit 3 }}"
-              failedJobsHistoryLimit:     "{{ default .spec.failedJobsHistoryLimit 1 }}"
-              suspend:                    "{{ default .spec.suspend false }}"
+              successfulJobsHistoryLimit: "{{ default 3 .spec.successfulJobsHistoryLimit }}"
+              failedJobsHistoryLimit:     "{{ default 1 .spec.failedJobsHistoryLimit }}"
+              suspend:                    "{{ default false .spec.suspend }}"
 
-      # ── Reconciler ─────────────────────────────────────────────────────────
+      # ── OperatorBox Reconciliation ─────────────────────────────────────────────────────────
       operatorBox:
-        default: true
-
         # Status — three layers
         # Layer 1: Ready condition — automatic after every reconcile
         # Layer 2: Declared fields — resolved from live CR
@@ -109,10 +104,10 @@ spec:
 
             # Last schedule time from the child CronJob
             - path: lastScheduleTime
-              value: '{{ default .children.cronjob.status.lastScheduleTime "" }}'
+              value: '{{ cronJobLastScheduleTime .children.cronjob }}'
 
             - path: nextScheduleTime
-              value: '{{ default .children.cronjob.status.nextScheduleTime "" }}'
+              value: '{{ cronJobNextScheduleTime .children.cronjob }}'
 
         onCreate:
           cronJobs:
@@ -142,7 +137,6 @@ spec:
       conversion:
         participant: true
       operatorBox:
-        default: true
         status:
           fields:
             - path: phase

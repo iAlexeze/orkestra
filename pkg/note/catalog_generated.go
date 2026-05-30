@@ -441,6 +441,13 @@ var BuiltinNotes = []NoteInfo{
 		Keywords:    []string{"cronjob", "cron", "job", "name", "successful", "enriched", "last"},
 	},
 	{
+		Name:        "cronJobNextScheduleTime",
+		Domain:      "job",
+		Description: "Return the next time the CronJob is scheduled to run (`status.nextScheduleTime`). Returns `\"\"` when the field is absent (not all Kubernetes versions populate it).",
+		Example:     "- path: nextScheduleTime\n  value: \"{{ cronJobNextScheduleTime .children.cronjob }}\"\n# → \"2026-05-19T11:00:00Z\"",
+		Keywords:    []string{"cronjob", "cron", "schedule", "time", "next", "timestamp"},
+	},
+	{
 		Name:        "jobActive",
 		Domain:      "job",
 		Description: "Return `true` when `status.active > 0` — at least one pod is currently running.",

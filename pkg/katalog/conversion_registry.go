@@ -53,7 +53,7 @@ func (r *InMemoryConversionRegistry) RegisterConversionRules(rules *orktypes.Con
 // other versions of the same CRD don't need conversion rules registered
 // because conversion is always expressed relative to the storage version.
 func (reg *InMemoryConversionRegistry) registerConversionRulesFromSpec(entry orktypes.CRDEntry) {
-	if entry.Conversion == nil {
+	if entry.Conversion == nil || entry.IsConversionParticipant() {
 		return
 	}
 

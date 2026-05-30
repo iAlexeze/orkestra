@@ -409,6 +409,17 @@ func (c *CRDEntry) AutoScaleProfile() string {
 	return c.OperatorBox.Autoscale.Profile
 }
 
+// IsConversionParticipant reports whether this CRD is a participant-only member
+// of a conversion pair. Participants hold no conversion paths — those live on
+// the CRD that owns the /convert logic. Used to skip path registration so a
+// participant entry can never clobber the real rules during Katalog load.
+func (c *CRDEntry) IsConversionParticipant() bool {
+	if c.Conversion == nil {
+		return false
+	}
+	return c.Conversion.Participant
+}
+
 // UpdateCRDCaBundle reports whether this CRD declares an updateCRD field
 // Used to update the crd when certificate is autogenerted by orkestra
 func (c *CRDEntry) UpdateCRDCaBundle() bool {

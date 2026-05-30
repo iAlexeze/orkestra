@@ -340,7 +340,7 @@ func (k *Katalog) GenerateGatewayRBACRules() []rbacv1.PolicyRule {
 			rules = append(rules, rbacv1.PolicyRule{
 				APIGroups:     []string{"apiextensions.k8s.io"},
 				Resources:     []string{"customresourcedefinitions"},
-				Verbs:         []string{"patch"},
+				Verbs:         []string{"patch", "watch"},
 				ResourceNames: []string{crd.APITypes.Plural + "." + crd.APITypes.Group},
 			})
 		}

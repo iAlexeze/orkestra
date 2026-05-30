@@ -64,6 +64,7 @@ spec:
 
 ## Where to go next
 
-- [Reconcile Pipeline](reconcile-pipeline/) — the ordered steps from queue to status patch
-- [Isolation and IPC](isolation/) — how isolation is enforced and how operatorBoxes communicate
-- [Startup Sequencing](startup-sequencing/) — dependency order and the Katalog relationship
+- [Reconcile Pipeline](01-reconcile-pipeline.md) — the ordered steps from queue to status patch
+- [Normalize](04-normalize/index.md) — accept multiple input shapes, produce one canonical spec
+- [Isolation and IPC](02-isolation.md) — how isolation is enforced and how operatorBoxes communicate
+- [Startup Sequencing](03-startup-sequencing.md) — dependency order and the Katalog relationship

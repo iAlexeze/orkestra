@@ -19,6 +19,7 @@ import "text/template"
 //	{{ jobFailedPodNames .children.job }}
 //	{{ cronJobActiveCount .children.cronjob }}
 //	{{ cronJobLastScheduleTime .children.cronjob }}
+//	{{ cronJobNextScheduleTime .children.cronjob }}
 //	{{ cronJobLastSuccessTime .children.cronjob }}
 //
 // Pod note functions (jobFirstExitCode, jobActivePodNames, etc.) require
@@ -36,6 +37,7 @@ func jobNotes() template.FuncMap {
 		// CronJob notes.
 		"cronJobActiveCount":      noteCronJobActiveCount,
 		"cronJobLastScheduleTime": noteCronJobLastScheduleTime,
+		"cronJobNextScheduleTime": noteCronJobNextScheduleTime,
 		"cronJobLastSuccessTime":  noteCronJobLastSuccessTime,
 		// Enriched CronJob last-job notes — require enrich: [cronjob] on the CRD.
 		"cronJobLastJobName":           noteCronJobLastJobName,
@@ -170,6 +172,16 @@ func noteCronJobActiveCount(obj interface{}) int {
 func noteCronJobLastScheduleTime(obj interface{}) string {
 	status := noteStatus(obj)
 	v, _ := status["lastScheduleTime"].(string)
+	return v
+}
+
+// noteCronJobNextScheduleTime returns the next time the CronJob is scheduled to run.
+// Returns "" when the field is absent (not all Kubernetes versions populate it).
+//
+//	{{ cronJobNextScheduleTime .children.cronjob }}  → "2026-05-19T11:00:00Z"
+func noteCronJobNextScheduleTime(obj interface{}) string {
+	status := noteStatus(obj)
+	v, _ := status["nextScheduleTime"].(string)
 	return v
 }
 

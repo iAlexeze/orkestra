@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-echo "Cleaning up Kubebuilder Conversion Solution..."
+echo "Cleaning up CRD Conversion Without Webhooks example..."
 
 kubectl delete -f cr-v1.yaml --ignore-not-found
 kubectl delete -f cr-v2.yaml --ignore-not-found

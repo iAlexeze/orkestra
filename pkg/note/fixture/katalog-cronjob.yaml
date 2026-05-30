@@ -70,6 +70,9 @@ spec:
             - path: lastScheduleTime
               value: "{{ cronJobLastScheduleTime .children.cronjob }}"
 
+            - path: nextScheduleTime
+              value: "{{ cronJobNextScheduleTime .children.cronjob }}"
+
             - path: lastSuccessTime
               value: "{{ cronJobLastSuccessTime .children.cronjob }}"
 
