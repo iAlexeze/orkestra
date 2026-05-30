@@ -49,6 +49,13 @@ spec:
               image: "{{ .spec.image }}"
               replicas: "{{ .spec.replicas }}"
               reconcile: true
+              volumes:
+                - name: app-config
+                  configMap:
+                    name: "{{ .metadata.name }}-config"
+              volumeMounts:
+                - name: app-config
+                  mountPath: /etc/config
 
           # Only written when the config call succeeded.
           configMaps:

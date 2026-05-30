@@ -193,6 +193,8 @@ func Resolve(src orktypes.PodTemplateSource, ownerName string) ResolvedPodSpec {
 	spec.Probes = src.Probes
 	spec.SecurityContext = common.ResolveContainerSecurityContext(src.SecurityContext)
 	spec.PodSecurity = common.ResolvePodSecurityContext(src.PodSecurity)
+	spec.Volumes = src.Volumes
+	spec.VolumeMounts = src.VolumeMounts
 	spec.Sleep = src.Sleep
 
 	if src.Port != "" {
@@ -260,6 +262,14 @@ func buildPod(owner domain.Object, spec ResolvedPodSpec, namespace string) *core
 
 	// Security
 	common.ApplySecurityContext(&pod.Spec.Containers[0], &pod.Spec, spec.SecurityContext, spec.PodSecurity)
+
+	// Volumes / VolumeMounts
+	if vols := common.BuildVolumes(spec.Volumes); len(vols) > 0 {
+		pod.Spec.Volumes = vols
+	}
+	if mounts := common.BuildVolumeMounts(spec.VolumeMounts); len(mounts) > 0 {
+		pod.Spec.Containers[0].VolumeMounts = mounts
+	}
 
 	return pod
 }

@@ -161,6 +161,8 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedS
 		Probes:          src.Probes,
 		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
 		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Volumes:         src.Volumes,
+		VolumeMounts:    src.VolumeMounts,
 		Sleep:           src.Sleep,
 	}
 
@@ -393,6 +395,16 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 				},
 			},
 		})
+	}
+
+	// Volumes / VolumeMounts (generic, in addition to VolumeClaimTemplates)
+	if vols := common.BuildVolumes(spec.Volumes); len(vols) > 0 {
+		sts.Spec.Template.Spec.Volumes = vols
+	}
+	if mounts := common.BuildVolumeMounts(spec.VolumeMounts); len(mounts) > 0 {
+		sts.Spec.Template.Spec.Containers[0].VolumeMounts = append(
+			sts.Spec.Template.Spec.Containers[0].VolumeMounts, mounts...,
+		)
 	}
 
 	return sts

@@ -203,6 +203,13 @@ func (r *Resolver) ResolvePodTemplate(src orktypes.PodTemplateSource) (orktypes.
 	resolved.SecurityContext = src.SecurityContext
 	resolved.PodSecurity = src.PodSecurity
 
+	if resolved.Volumes, err = r.resolveVolumes(src.Volumes); err != nil {
+		return resolved, fmt.Errorf("pod.volumes: %w", err)
+	}
+	if resolved.VolumeMounts, err = r.resolveVolumeMounts(src.VolumeMounts); err != nil {
+		return resolved, fmt.Errorf("pod.volumeMounts: %w", err)
+	}
+
 	return resolved, nil
 }
 
@@ -315,6 +322,13 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 
 	resolved.SecurityContext = src.SecurityContext
 	resolved.PodSecurity = src.PodSecurity
+
+	if resolved.Volumes, err = r.resolveVolumes(src.Volumes); err != nil {
+		return resolved, fmt.Errorf("deployment.volumes: %w", err)
+	}
+	if resolved.VolumeMounts, err = r.resolveVolumeMounts(src.VolumeMounts); err != nil {
+		return resolved, fmt.Errorf("deployment.volumeMounts: %w", err)
+	}
 
 	return resolved, nil
 }
@@ -444,6 +458,13 @@ func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSour
 
 	resolved.SecurityContext = src.SecurityContext
 	resolved.PodSecurity = src.PodSecurity
+
+	if resolved.Volumes, err = r.resolveVolumes(src.Volumes); err != nil {
+		return resolved, fmt.Errorf("replicaset.volumes: %w", err)
+	}
+	if resolved.VolumeMounts, err = r.resolveVolumeMounts(src.VolumeMounts); err != nil {
+		return resolved, fmt.Errorf("replicaset.volumeMounts: %w", err)
+	}
 
 	return resolved, nil
 }
@@ -584,6 +605,13 @@ func (r *Resolver) ResolveJobTemplate(src orktypes.JobTemplateSource) (orktypes.
 
 	resolved.SecurityContext = src.SecurityContext
 	resolved.PodSecurity = src.PodSecurity
+
+	if resolved.Volumes, err = r.resolveVolumes(src.Volumes); err != nil {
+		return resolved, fmt.Errorf("job.volumes: %w", err)
+	}
+	if resolved.VolumeMounts, err = r.resolveVolumeMounts(src.VolumeMounts); err != nil {
+		return resolved, fmt.Errorf("job.volumeMounts: %w", err)
+	}
 
 	return resolved, nil
 }
@@ -1254,6 +1282,13 @@ func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSo
 	resolved.SecurityContext = src.SecurityContext
 	resolved.PodSecurity = src.PodSecurity
 
+	if resolved.Volumes, err = r.resolveVolumes(src.Volumes); err != nil {
+		return resolved, fmt.Errorf("statefulset.volumes: %w", err)
+	}
+	if resolved.VolumeMounts, err = r.resolveVolumeMounts(src.VolumeMounts); err != nil {
+		return resolved, fmt.Errorf("statefulset.volumeMounts: %w", err)
+	}
+
 	return resolved, nil
 }
 
@@ -1337,4 +1372,68 @@ func (r *Resolver) ResolvePVTemplate(src orktypes.PVTemplateSource) (orktypes.PV
 	}
 
 	return resolved, nil
+}
+
+// ── Volume / VolumeMount resolution helpers ───────────────────────────────────
+
+// resolveVolumes resolves template expressions in volume name fields.
+// ConfigMap name, Secret name, and PVC claimName all support template expressions.
+func (r *Resolver) resolveVolumes(src []orktypes.VolumeSource) ([]orktypes.VolumeSource, error) {
+	if len(src) == 0 {
+		return nil, nil
+	}
+	result := make([]orktypes.VolumeSource, 0, len(src))
+	for i, v := range src {
+		rv := v
+		var err error
+		if rv.Name, err = r.Resolve(v.Name); err != nil {
+			return nil, fmt.Errorf("volume[%d].name: %w", i, err)
+		}
+		if v.ConfigMap != nil {
+			cm := *v.ConfigMap
+			if cm.Name, err = r.Resolve(v.ConfigMap.Name); err != nil {
+				return nil, fmt.Errorf("volume[%d].configMap.name: %w", i, err)
+			}
+			rv.ConfigMap = &cm
+		}
+		if v.Secret != nil {
+			s := *v.Secret
+			if s.Name, err = r.Resolve(v.Secret.Name); err != nil {
+				return nil, fmt.Errorf("volume[%d].secret.name: %w", i, err)
+			}
+			rv.Secret = &s
+		}
+		if v.PersistentVolumeClaim != nil {
+			pvc := *v.PersistentVolumeClaim
+			if pvc.ClaimName, err = r.Resolve(v.PersistentVolumeClaim.ClaimName); err != nil {
+				return nil, fmt.Errorf("volume[%d].persistentVolumeClaim.claimName: %w", i, err)
+			}
+			rv.PersistentVolumeClaim = &pvc
+		}
+		result = append(result, rv)
+	}
+	return result, nil
+}
+
+// resolveVolumeMounts resolves template expressions in mount name, mountPath, and subPath.
+func (r *Resolver) resolveVolumeMounts(src []orktypes.VolumeMount) ([]orktypes.VolumeMount, error) {
+	if len(src) == 0 {
+		return nil, nil
+	}
+	result := make([]orktypes.VolumeMount, 0, len(src))
+	for i, m := range src {
+		rm := m
+		var err error
+		if rm.Name, err = r.Resolve(m.Name); err != nil {
+			return nil, fmt.Errorf("volumeMount[%d].name: %w", i, err)
+		}
+		if rm.MountPath, err = r.Resolve(m.MountPath); err != nil {
+			return nil, fmt.Errorf("volumeMount[%d].mountPath: %w", i, err)
+		}
+		if rm.SubPath, err = r.Resolve(m.SubPath); err != nil {
+			return nil, fmt.Errorf("volumeMount[%d].subPath: %w", i, err)
+		}
+		result = append(result, rm)
+	}
+	return result, nil
 }

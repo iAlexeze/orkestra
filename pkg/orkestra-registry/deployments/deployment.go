@@ -221,6 +221,8 @@ func Resolve(src orktypes.DeploymentTemplateSource, ownerName string) ResolvedDe
 		Probes:          src.Probes,
 		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
 		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Volumes:         src.Volumes,
+		VolumeMounts:    src.VolumeMounts,
 		Sleep:           src.Sleep,
 	}
 
@@ -391,6 +393,14 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 					},
 				})
 		}
+	}
+
+	// Volumes / VolumeMounts
+	if vols := common.BuildVolumes(spec.Volumes); len(vols) > 0 {
+		d.Spec.Template.Spec.Volumes = vols
+	}
+	if mounts := common.BuildVolumeMounts(spec.VolumeMounts); len(mounts) > 0 {
+		d.Spec.Template.Spec.Containers[0].VolumeMounts = mounts
 	}
 
 	return d

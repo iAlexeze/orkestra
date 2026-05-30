@@ -205,6 +205,8 @@ func Resolve(src orktypes.ReplicaSetTemplateSource, ownerName string) ResolvedRe
 		Probes:          src.Probes,
 		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
 		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Volumes:         src.Volumes,
+		VolumeMounts:    src.VolumeMounts,
 		Sleep:           src.Sleep,
 	}
 
@@ -371,6 +373,14 @@ func buildReplicaSet(owner domain.Object, spec ResolvedReplicaSetSpec, namespace
 					},
 				})
 		}
+	}
+
+	// Volumes / VolumeMounts
+	if vols := common.BuildVolumes(spec.Volumes); len(vols) > 0 {
+		rs.Spec.Template.Spec.Volumes = vols
+	}
+	if mounts := common.BuildVolumeMounts(spec.VolumeMounts); len(mounts) > 0 {
+		rs.Spec.Template.Spec.Containers[0].VolumeMounts = mounts
 	}
 
 	return rs
