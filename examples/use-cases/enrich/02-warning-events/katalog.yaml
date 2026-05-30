@@ -27,7 +27,7 @@ spec:
         # When something goes wrong → events are fetched and warnings surface.
         - events:
             when:
-              - field: "{{ replicasReady .children.deployment }}"
+              - field: "{{ allReplicasReady .children.deployment }}"
                 equals: "false"
 
       validation:
@@ -76,7 +76,7 @@ spec:
               value: "{{ hasWarnings .children.deployment }}"
               clearOnFalse: true
               when:
-                - field: "{{ replicasReady .children.deployment }}"
+                - field: "{{ allReplicasReady .children.deployment }}"
                   equals: "false"
 
             - path: warningCount
@@ -87,7 +87,7 @@ spec:
                   equals: "true"
 
             - path: firstWarning
-              value: "{{ firstWarningMessage .children.deployment }}"
+              value: "{{ firstWarning .children.deployment }}"
               clearOnFalse: true
               when:
                 - field: "{{ hasWarnings .children.deployment }}"

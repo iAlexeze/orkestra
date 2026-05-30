@@ -118,7 +118,7 @@ spec:
                   equals: "false"
 
             - path: firstWarning
-              value: "{{ firstWarningMessage .children.deployment }}"
+              value: "{{ firstWarning .children.deployment }}"
               when:
                 - field: "{{ hasWarnings .children.deployment }}"
                   equals: "true"

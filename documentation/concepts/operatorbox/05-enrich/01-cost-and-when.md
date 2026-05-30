@@ -63,7 +63,7 @@ status:
 
     # Only written when degraded — matches the enrichment gate
     - path: firstWarning
-      value: "{{ firstWarningMessage .children.deployment }}"
+      value: "{{ firstWarning .children.deployment }}"
       when:
         - field: "{{ hasWarnings .children.deployment }}"
           equals: "true"

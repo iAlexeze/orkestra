@@ -53,7 +53,7 @@ Do **not** use it on `phase` or other fields that describe the last stable state
 
 ```yaml
 - path: firstWarning
-  value: "{{ firstWarningMessage .children.deployment }}"
+  value: "{{ firstWarning .children.deployment }}"
   clearOnFalse: true
   when:
     - field: "{{ hasWarnings .children.deployment }}"

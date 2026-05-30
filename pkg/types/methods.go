@@ -76,6 +76,36 @@ func (c *CRDEntry) ActiveEnrichTargets(data map[string]interface{}, eval Templat
 	return result
 }
 
+// UnconditionalEnrichTargets returns entries with no when:/anyOf: conditions.
+// These run in phase 1 of ReadChildren so that .children.* is populated before
+// conditional gates are evaluated.
+func (c *CRDEntry) UnconditionalEnrichTargets() []EnrichTarget {
+	result := make([]EnrichTarget, 0, len(c.Enrich))
+	for _, t := range c.Enrich {
+		if len(t.When) == 0 && len(t.AnyOf) == 0 {
+			result = append(result, t)
+		}
+	}
+	return result
+}
+
+// ConditionalActiveEnrichTargets returns entries that HAVE conditions and whose
+// conditions pass for the given data. Called in phase 2 of ReadChildren after
+// children data is available — gates like {{ replicasReady .children.deployment }}
+// can only be evaluated once the deployment has been read.
+func (c *CRDEntry) ConditionalActiveEnrichTargets(data map[string]interface{}, eval TemplateEvaluator) []EnrichTarget {
+	result := make([]EnrichTarget, 0)
+	for _, t := range c.Enrich {
+		if len(t.When) == 0 && len(t.AnyOf) == 0 {
+			continue // already ran in phase 1
+		}
+		if EvaluateWhen(data, t.When, t.AnyOf, eval) {
+			result = append(result, t)
+		}
+	}
+	return result
+}
+
 // IsStatusless reports whether this CRD has no meaningful readiness semantics.
 // These resources become "Ready" immediately upon creation.
 func (c *CRDEntry) IsStatuslessType() bool {

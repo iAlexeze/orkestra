@@ -34,7 +34,7 @@ status:
   fields:
     # Only written when enrichment ran — gate matches
     - path: firstWarning
-      value: "{{ firstWarningMessage .children.deployment }}"
+      value: "{{ firstWarning .children.deployment }}"
       when:
         - field: "{{ hasWarnings .children.deployment }}"
           equals: "true"

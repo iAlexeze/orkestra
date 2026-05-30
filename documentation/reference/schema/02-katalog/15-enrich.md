@@ -17,7 +17,7 @@ You can write any accepted identifier — the canonical name, plural, or a short
 | Target key(s) | Applies to | Embeds | Note functions |
 |---------------|-----------|--------|----------------|
 | `pods`, `pod` | Deployment, StatefulSet, ReplicaSet, Job | `_pods` — list of `{name, ip, phase, ready, node, restartCount, containers}` | `podCount`, `readyPodCount`, `podNames`, `podIPs`, `hasCrashingPod`, `podMaxRestarts`, … |
-| `events`, `warnings`, `event`, `ev` | any | `_warnings` — list of `{reason, message, count, lastTimestamp}` filtered to `type=Warning` | `hasWarnings`, `warningCount`, `firstWarningReason`, `firstWarningMessage` |
+| `events`, `warnings`, `event`, `ev` | any | `_warnings` — list of `{reason, message, count, lastTimestamp}` filtered to `type=Warning` | `hasWarnings`, `warningCount`, `firstWarningReason`, `firstWarning` |
 | `owner` | ReplicaSet | `_owner` — `{name, kind, uid}` from `metadata.ownerReferences` | `replicaSetOwnerName`, `replicaSetOwnerKind` |
 | `replicasets` | Deployment | `_replicaSets` — list of full ReplicaSet objects owned by the Deployment | `deploymentReplicaSetCount`, `deploymentReplicaSets`, `oldDeploymentReplicaSets` |
 | `pvcs` | StatefulSet | `_pvcs` — list of full PVC objects, resolved deterministically from `volumeClaimTemplates` | `statefulSetPVCCount` |
@@ -100,7 +100,7 @@ services:
 status:
   fields:
     - path: crashReason
-      value: "{{ firstWarningMessage .children.deployment }}"
+      value: "{{ firstWarning .children.deployment }}"
       when:
         - field: "{{ hasCrashingPod .children.deployment }}"
           equals: "true"

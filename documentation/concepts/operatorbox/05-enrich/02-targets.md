@@ -50,7 +50,7 @@ enrich:
 
 Each warning: `{reason, message, count, lastTimestamp}`.
 
-**Notes unlocked:** `hasWarnings`, `warningCount`, `firstWarning`, `firstWarningMessage`, `firstWarningReason`, `warningMessages`, `warningReasons`.
+**Notes unlocked:** `hasWarnings`, `warningCount`, `firstWarning`, `firstWarning`, `firstWarningReason`, `warningMessages`, `warningReasons`.
 
 ```yaml
 status:
@@ -58,7 +58,7 @@ status:
     - path: hasWarnings
       value: "{{ hasWarnings .children.deployment }}"
     - path: firstWarning
-      value: "{{ firstWarningMessage .children.deployment }}"
+      value: "{{ firstWarning .children.deployment }}"
       when:
         - field: "{{ hasWarnings .children.deployment }}"
           equals: "true"

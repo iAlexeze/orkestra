@@ -21,4 +21,4 @@ cd 12-autoscale
 
 ---
 
-**Further reading:** [Profiles concept doc](../../../documentation/concepts/operatorbox/06-profiles/index.md) · [Full profile reference](../../../pkg/profiles/docs/01-profiles.md)
+**Further reading:** [Profiles concept doc](https://orkestra.sh/docs/concepts/profiles/) · [Full profile reference](https://github.com/orkspace/orkestra/blob/main/pkg/profiles/docs/01-profiles.md)
