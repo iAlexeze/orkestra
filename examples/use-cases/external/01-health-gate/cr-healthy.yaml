@@ -1,0 +1,9 @@
+apiVersion: demo.orkestra.io/v1
+kind: WebApp
+metadata:
+  name: my-app-healthy
+spec:
+  image: nginx:1.25
+  # httpbin returns HTTP 200 for /status/200 — simulates a healthy upstream.
+  serviceUrl: "https://httpbin.org/status/200"
+  replicas: 2

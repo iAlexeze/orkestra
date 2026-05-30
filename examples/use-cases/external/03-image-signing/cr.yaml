@@ -1,0 +1,10 @@
+apiVersion: demo.orkestra.io/v1
+kind: WebApp
+metadata:
+  name: my-app
+spec:
+  image: nginx:1.25
+  # Replace with your image signing service URL.
+  # The operator will POST to {{ serviceUrl }}/sign with the image reference.
+  serviceUrl: "https://signing.internal"
+  replicas: 2
