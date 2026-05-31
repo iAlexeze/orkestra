@@ -61,8 +61,23 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// POST /sign → 200 signed (ignores body and token)
+// POST /sign → 200 signed, or 403 if the image is nginx:not-secure.
+// Simulates a signing policy that rejects images flagged as insecure.
 func signHandler(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		Image string `json:"image"`
+	}
+	json.NewDecoder(r.Body).Decode(&payload) //nolint:errcheck
+
+	if payload.Image == "nginx:not-secure" {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error":  "image rejected by signing policy",
+			"image":  payload.Image,
+			"reason": "image is flagged as insecure — update spec.image to a trusted tag",
+		})
+		return
+	}
+
 	writeJSON(w, http.StatusOK, map[string]bool{"signed": true})
 }
 

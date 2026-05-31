@@ -48,7 +48,7 @@ Open [http://localhost:8081](http://localhost:8081). Select **webapp-chained-cal
 ## Step 4 — Apply the CR
 
 ```bash
-kubectl apply -f cr.yaml
+kubectl apply -f cr-dev.yaml
 ```
 
 The operator:
@@ -65,6 +65,14 @@ Expected:
 status:
   phase: Ready
   lastExternalStatus: "200"
+```
+
+Check the Deployment was created:
+
+```bash
+kubectl get deploy
+# NAME      READY   UP-TO-DATE   AVAILABLE
+# my-app    1/1     1            1
 ```
 
 ---
