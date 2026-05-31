@@ -116,20 +116,17 @@ curl -sSL https://get.orkestra.sh | bash
 
 ### Initialize and run
 ```console
-ork init --pack beginner
-cd beginner/01-hello-website
+ork init
 ork run
 ```
 
 > No cluster? Add `--dev` to create a temporary kind cluster. Requires Docker.
 
-`ork init` with no arguments scaffolds a `katalog.yaml`, `crd.yaml`, and `cr.yaml` in the current directory — like `terraform init`. The `--pack` flag pulls a collection of runnable examples.
-
-**→ [Learning to Orkestrate](https://orkestra.sh/docs/getting-started/learning-to-orkestrate)** — the guided path from first operator to full platform. Every capability has a runnable example.
+`ork init` scaffolds a `katalog.yaml`, `crd.yaml`, and `cr.yaml` in the current directory — like `terraform init`.
 
 ---
 
-## Control Center
+### Control Center
 
 In another terminal:
 
@@ -137,6 +134,8 @@ In another terminal:
 ork control
 ```
 > → localhost:8081 · username:password → orkestra
+
+**→ [Learning to Orkestrate](https://orkestra.sh/docs/getting-started/learning-to-orkestrate)** — the guided path from first operator to full platform. Every capability has a runnable example.
 
 ![Control Center — multi-Runtime view](./documentation/assets/controlcenter/public/control-center.png)
 

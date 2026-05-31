@@ -17,6 +17,15 @@ func registerHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/auth/token", handle(authTokenHandler))
 	mux.HandleFunc("/resources/", handle(resourcesHandler))
 	mux.HandleFunc("/flags/", handle(flagsHandler))
+	// 06-sbom-cosign
+	mux.HandleFunc("/sbom/", handle(sbomHandler))
+	mux.HandleFunc("/cosign/verify", handle(cosignVerifyHandler))
+	// 07-vault-secret-gate
+	mux.HandleFunc("/vault/", handle(vaultHandler))
+	// 08-opa-policy
+	mux.HandleFunc("/v1/data/", handle(opaPolicyHandler))
+	// 09-cert-readiness
+	mux.HandleFunc("/certs/", handle(certsHandler))
 }
 
 // handle wraps a handler with debug logging.
@@ -100,6 +109,169 @@ func resourcesHandler(w http.ResponseWriter, r *http.Request) {
 		"status": "active",
 		"ready":  true,
 	})
+}
+
+// GET /sbom/:image → SBOM report. nginx:vulnerable returns high CVE counts (operator
+// gates the Deployment via a when: condition on the body). nginx:unknown → 404 (no SBOM).
+func sbomHandler(w http.ResponseWriter, r *http.Request) {
+	image := strings.TrimPrefix(r.URL.Path, "/sbom/")
+
+	if image == "nginx:unknown" {
+		writeJSON(w, http.StatusNotFound, map[string]string{
+			"error": "no SBOM found for image",
+			"image": image,
+		})
+		return
+	}
+
+	critical, high := 0, 0
+	if image == "nginx:vulnerable" {
+		critical, high = 3, 12
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"image":    image,
+		"scanner":  "dev-scanner",
+		"critical": critical,
+		"high":     high,
+		"medium":   2,
+		"low":      7,
+		"clean":    critical == 0 && high == 0,
+	})
+}
+
+// POST /cosign/verify → 200 verified, or 403 if the image is nginx:unsigned.
+// Chained after /sbom — the operator uses the SBOM result to gate this call.
+func cosignVerifyHandler(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		Image string `json:"image"`
+	}
+	json.NewDecoder(r.Body).Decode(&payload) //nolint:errcheck
+
+	if payload.Image == "nginx:unsigned" {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error":  "no valid signature found",
+			"image":  payload.Image,
+			"reason": "image has no cosign signature — sign it before deploying",
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"verified":  true,
+		"image":     payload.Image,
+		"signer":    "dev-signer@example.com",
+		"algorithm": "ecdsa-p256",
+	})
+}
+
+// GET /vault/v1/secret/data/:path → secret data, mimicking the Vault KV v2 API.
+// Paths ending in /expired → 403 lease expired. Paths ending in /missing → 404.
+func vaultHandler(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/vault/v1/secret/data/")
+
+	if strings.HasSuffix(path, "/expired") || strings.Contains(path, "expired") {
+		writeJSON(w, http.StatusForbidden, map[string]any{
+			"errors": []string{"permission denied — lease expired, secret must be rotated"},
+		})
+		return
+	}
+
+	if strings.HasSuffix(path, "/missing") || strings.Contains(path, "missing") {
+		writeJSON(w, http.StatusNotFound, map[string]any{
+			"errors": []string{"secret not found at path: " + path},
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"data": map[string]any{
+			"data": map[string]string{
+				"value":      "dev-secret-value",
+				"expires_at": "2099-12-31T00:00:00Z",
+			},
+			"metadata": map[string]any{
+				"version":       1,
+				"created_time":  "2026-01-01T00:00:00Z",
+				"deletion_time": "",
+				"destroyed":     false,
+			},
+		},
+	})
+}
+
+// POST /v1/data/:policy → OPA decision. Mimics the OPA REST API wire format.
+// Denies when input.namespace == "forbidden" or input.name contains "deny".
+func opaPolicyHandler(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Input map[string]any `json:"input"`
+	}
+	json.NewDecoder(r.Body).Decode(&body) //nolint:errcheck
+
+	deny := false
+	reason := ""
+
+	ns, _ := body.Input["namespace"].(string)
+	name, _ := body.Input["name"].(string)
+
+	if ns == "forbidden" {
+		deny = true
+		reason = "namespace 'forbidden' is not permitted by org policy"
+	} else if strings.Contains(name, "deny") {
+		deny = true
+		reason = "resource name contains a denied prefix — rename the CR"
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"result": map[string]any{
+			"allow":  !deny,
+			"deny":   deny,
+			"reason": reason,
+		},
+	})
+}
+
+// certsHandler routes /certs/* requests:
+//
+//	GET  /certs/:name/status → cert status (issued/pending)
+//	POST /certs/:name/toggle → flip between issued and pending, return new status
+func certsHandler(w http.ResponseWriter, r *http.Request) {
+	rest := strings.TrimPrefix(r.URL.Path, "/certs/")
+	rest = strings.TrimSuffix(rest, "/")
+	parts := strings.SplitN(rest, "/", 2)
+
+	if len(parts) < 2 {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "use /certs/:name/status or /certs/:name/toggle"})
+		return
+	}
+
+	name, action := parts[0], parts[1]
+
+	switch {
+	case action == "status" && r.Method == http.MethodGet:
+		issued := certGet(name)
+		status, code := "issued", http.StatusOK
+		if !issued {
+			status, code = "pending", http.StatusAccepted
+		}
+		writeJSON(w, code, map[string]any{
+			"name":       name,
+			"status":     status,
+			"issuer":     "dev-ca",
+			"expires_at": "2099-12-31T00:00:00Z",
+		})
+
+	case action == "toggle" && r.Method == http.MethodPost:
+		next := certToggle(name)
+		status := "issued"
+		if !next {
+			status = "pending"
+		}
+		writePlain(w, http.StatusOK, status)
+
+	default:
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "unknown certs route"})
+	}
 }
 
 // flagsHandler routes /flags/* requests:

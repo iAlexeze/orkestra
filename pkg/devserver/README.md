@@ -22,8 +22,16 @@ The server starts before the Orkestra runtime and prints its endpoint list in th
 | `/auth/token` | POST | 04-chained (first call) |
 | `/resources/:name` | GET | 04-chained (second call) |
 | `/flags/:name` | GET | full-stack gated-app (feature flags) |
+| `/flags/:name/:flag` | GET | 05-feature-flags (single flag value) |
+| `/flags/:name/:flag/toggle` | POST | 05-feature-flags (flip flag) |
+| `/sbom/:image` | GET | 06-sbom-cosign (first call — vulnerability report) |
+| `/cosign/verify` | POST | 06-sbom-cosign (second call — signature verification) |
+| `/vault/v1/secret/data/:path` | GET | 07-vault-secret-gate |
+| `/v1/data/:policy` | POST | 08-opa-policy |
+| `/certs/:name/status` | GET | 09-cert-readiness |
+| `/certs/:name/toggle` | POST | 09-cert-readiness (flip issued ↔ pending) |
 
-All responses are `application/json`. All handlers return immediately — no sleep, no blocking, no state.
+All responses are `application/json` unless noted. Stateful endpoints (`/flags/*/toggle`, `/certs/*/toggle`) hold state in memory for the lifetime of the process.
 
 See [docs/01-endpoints.md](docs/01-endpoints.md) for full request/response shapes.
 
