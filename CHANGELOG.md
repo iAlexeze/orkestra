@@ -16,10 +16,10 @@
 - `SetStarted()` was unconditionally setting `pending=true` on every worker start, including resync-triggered restarts — overwriting the `pending=false` set by `RecordSuccess()`. Now only sets pending if the CRD has not yet successfully reconciled.
 
 **CRD showing "not started" or "degraded" under network lag**
-- `PostStartRetryInterval` was left at 3 seconds (a debug value) instead of the intended 30 seconds. This caused the retry loop to hit the API server every 3 seconds across all CRDs continuously.
+- `postStartRetryInterval` was left at 3 seconds (a debug value) instead of the intended 30 seconds. This caused the retry loop to hit the API server every 3 seconds across all CRDs continuously.
 - `crdExists()` collapsed all errors — including network timeouts and dial failures — into `false`, treating any transient API server hiccup as "CRD disappeared." Phase 1 (runtime disappearance check) and Phase 2 (missing CRD activation) would then call `SetMissingAtRuntime()` + `SetDegraded()`, flipping healthy CRDs to degraded and pending CRDs to "not started."
 - Fixed: `crdExists()` now returns a tri-state — `(true, nil)` exists, `(false, nil)` definitively absent, `(false, err)` transient. All three callers skip state changes when `err != nil`.
-- `PostStartRetryInterval` restored to 90 seconds with exponential backoff capped at 5 minutes.
+- `postStartRetryInterval` restored to 90 seconds with exponential backoff capped at 5 minutes.
 
 ### RBAC — Namespace-Scoped ClusterRole Names
 
