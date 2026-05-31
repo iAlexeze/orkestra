@@ -1,5 +1,10 @@
 # Multi-Region Map — forEach over a map
 
+**Builds on:** [full-stack-app/01-multi-region](../full-stack-app/01-multi-region/README.md) — list forEach, same config for all regions.
+Here each region carries its own replica count and port — this is what map forEach enables.
+
+---
+
 You have one application and you want to run it in three regions, each with its own replica count and port. Normally that means a reconciler loop in Go, building one Deployment and Service per region. Here it is a twelve-line `forEach` block in a Katalog — Orkestra expands it at reconcile time.
 
 **What you learn:** `forEach` over a map field. How `.item` carries the map key (the region name) and `.value.*` carries the per-region data. How a single CR entry becomes N child resources automatically.
