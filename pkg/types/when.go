@@ -108,6 +108,15 @@ func EvaluateOneCond(data map[string]interface{}, cond Condition, eval TemplateE
 
 	op, expected := ResolveConditionOp(cond)
 
+	// ── Template expected-value resolution ────────────────────────────────
+	// If the comparison value itself is a template expression, evaluate it so
+	// conditions like `equals: "{{ .spec.image }}"` work as intended.
+	if isTemplate(expected) && eval != nil {
+		if resolved, ok := eval(expected); ok {
+			expected = resolved
+		}
+	}
+
 	// ── Template field resolution ──────────────────────────────────────────
 	// If the field is a template expression, evaluate it through the resolver.
 	// The string result is used for operator comparison — same logic as dot path.

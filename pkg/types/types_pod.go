@@ -37,6 +37,10 @@ type PodTemplateSource struct {
 	// Static: "8080" or Dynamic: "{{ .spec.port }}"
 	Port string `yaml:"port,omitempty" json:"port,omitempty" validate:"omitempty"`
 
+	// Protocol — network protocol for the container port.
+	// Accepted values: TCP (default), UDP, SCTP. Omit to use TCP.
+	Protocol string `yaml:"protocol,omitempty" json:"protocol,omitempty" validate:"omitempty"`
+
 	// Namespace — target namespace.
 	// Default when omitted: "{{ .metadata.namespace }}"
 	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty" validate:"omitempty"`

@@ -1,20 +1,20 @@
 # Patterns
 
-Six patterns covering the most common reasons teams reach for `external:`. Each shows the minimal Katalog snippet that makes it work and explains the key design choice.
+Five patterns covering the most common reasons teams reach for `external:`. Each shows the minimal Katalog snippet that makes it work and explains the key design choice.
 
 ---
 
 ## Health gate
 
-Gate a Deployment on an upstream service being healthy. If the health check fails, the Deployment is not created or updated — no broken app, no partial rollout.
+Gate a Deployment on an upstream service being healthy. When the health check fails the Deployment is not created or updated — no broken app, no partial rollout. The phase state machine surfaces the failure in status so it is visible in the Control Center.
 
 ```yaml
 onReconcile:
   external:
     - name: healthCheck
-      url: "{{ .spec.serviceUrl }}/health"
+      url: "{{ .spec.healthCheckUrl }}"   # full URL — no path appended
       expectedStatus: 200
-      continueOnError: true   # reconcile continues — phase state machine shows the failure
+      continueOnError: true               # reconcile continues — failure visible in status
       timeout: 5s
 
   deployments:
@@ -41,29 +41,34 @@ status:
           equals: "200"
         - field: "{{ allReplicasReady .children.deployment }}"
           equals: "true"
+
+    - path: lastHealthCheck
+      value: "{{ .external.healthCheck.status }}"
 ```
 
-`continueOnError: true` means a failed health check is visible in status rather than surfacing as a reconcile error. Use `continueOnError: false` when the Deployment must never exist without a passing health check — the reconcile halts and `Ready=False` is written on the condition.
+Use `spec.healthCheckUrl` (the full URL) rather than a base `serviceUrl` with `/health` appended. Each CR declares exactly which endpoint to call — production operators use internal standards like `/healthz`, `/ready`, or `/actuator/health`. The field name makes the intent explicit.
+
+`continueOnError: true` means a failed health check surfaces in `status.phase` rather than as a reconcile error. Use `continueOnError: false` when the Deployment must never exist without a passing check — the reconcile halts and `Ready=False` is written to the condition.
 
 **Try it:**
 ```bash
-ork init --pack use-cases
-cd external/01-health-gate
-ork run
+ork run --dev-server   # GET /health → 200, GET /status/503 → 503
+kubectl apply -f cr-dev-healthy.yaml
+kubectl apply -f cr-dev-degraded.yaml
 ```
 
 ---
 
 ## Dynamic config injection
 
-Fetch a JSON config blob from a config server on every reconcile. Embed the response body into a ConfigMap. The Deployment mounts the ConfigMap — the app always sees current config without a pod restart.
+Fetch a JSON config blob from a config server on every reconcile. Embed the response body into a ConfigMap. The Deployment mounts the ConfigMap — the app always sees current config without a pod restart or a redeployment.
 
 ```yaml
 onReconcile:
   external:
     - name: appConfig
       url: "{{ .spec.serviceUrl }}/config/{{ .metadata.name }}"
-      continueOnError: true   # config unavailable → keep the last written ConfigMap
+      continueOnError: true   # config unavailable → retain the last written ConfigMap
       timeout: 5s
 
   configMaps:
@@ -76,22 +81,43 @@ onReconcile:
           equals: "true"
         - field: external.appConfig.error
           operator: notExists
+
+  deployments:
+    - name: "{{ .metadata.name }}"
+      image: "{{ .spec.image }}"
+      volumes:
+        - name: app-config
+          configMap:
+            name: "{{ .metadata.name }}-config"
+      volumeMounts:
+        - name: app-config
+          mountPath: /etc/config
+
+status:
+  fields:
+    - path: configFresh
+      value: "true"
+      when:
+        - field: external.appConfig.called
+          equals: "true"
+        - field: external.appConfig.error
+          operator: notExists
 ```
 
 The `when:` condition on the ConfigMap means the config is only overwritten when the call succeeds. A transient config service outage leaves the last-written config in place — the Deployment keeps running without interruption.
 
 **Try it:**
 ```bash
-ork init --pack use-cases
-cd external/02-config-inject
-ork run
+ork run --dev-server   # GET /config/:name → static JSON blob
+kubectl apply -f cr.yaml
+kubectl get configmap my-app-config -o jsonpath='{.data.app\.json}' | jq .
 ```
 
 ---
 
-## Image signing — "once per image change"
+## Image signing — "once per image change" with rejection tracking
 
-Call a signing service when the image changes. Gate the Deployment on the signed status. Use a status field to remember the last signed image — the call is skipped on every subsequent reconcile until the image changes again.
+Call a signing service when the image changes. Gate the Deployment on the signed status. Track both successful signs (`signedImage`) and definitive rejections (`rejectedImage`) in status — different status fields, different gates, different behaviors on the next reconcile.
 
 ```yaml
 onReconcile:
@@ -99,39 +125,106 @@ onReconcile:
     - name: signImage
       url: "{{ .spec.serviceUrl }}/sign"
       method: POST
-      body: '{"image": "{{ .spec.image }}"}'
+      body: '{"image": "{{ .spec.image }}", "namespace": "{{ .metadata.namespace }}"}'
       token: "$IMAGE_SIGNING_TOKEN"
       expectedStatus: 200
-      continueOnError: false
+      continueOnError: true   # rejection details must be visible in status
       timeout: 15s
       when:
-        # Skip the call when the image is already signed.
         - field: status.signedImage
-          notEquals: "{{ .spec.image }}"
+          notEquals: "{{ .spec.image }}"    # skip if already signed
+        - field: status.rejectedImage
+          notEquals: "{{ .spec.image }}"    # skip if definitively rejected for this image
 
   deployments:
     - name: "{{ .metadata.name }}"
+      image: "{{ .spec.image }}"
+      reconcile: true
       when:
         - field: status.signedImage
-          equals: "{{ .spec.image }}"
+          equals: "{{ .spec.image }}"       # only deploy confirmed-safe images
 
 status:
   fields:
-    # Written after a successful sign — prevents re-signing on the next reconcile.
+    # Phase: Signing → waiting for first sign attempt
+    - path: phase
+      value: "Signing"
+      when:
+        - field: status.signedImage
+          notEquals: "{{ .spec.image }}"
+
+    # Phase: SigningRejected — reads from persistent status, survives reconciles where call is skipped
+    - path: phase
+      value: "SigningRejected"
+      when:
+        - field: status.rejectedImage
+          equals: "{{ .spec.image }}"
+
+    # Phase: SigningUnavailable — 5xx, transient, gate stays open, next reconcile retries
+    - path: phase
+      value: "SigningUnavailable"
+      when:
+        - field: external.signImage.called
+          equals: "true"
+        - field: external.signImage.status
+          prefix: "5"
+
+    # Phase: Ready — image signed, all replicas up
+    - path: phase
+      value: "Ready"
+      when:
+        - field: status.signedImage
+          equals: "{{ .spec.image }}"
+        - field: "{{ allReplicasReady .children.deployment }}"
+          equals: "true"
+
+    # Written after successful sign — closes the call gate until spec.image changes
     - path: signedImage
       value: "{{ .spec.image }}"
       when:
+        - field: external.signImage.called
+          equals: "true"
+        - field: external.signImage.status
+          equals: "200"
+
+    # 4xx → definitive rejection → lock out retries for this exact image
+    # Recovery: change spec.image → rejectedImage != spec.image → gate reopens
+    - path: rejectedImage
+      value: "{{ .spec.image }}"
+      when:
+        - field: external.signImage.called
+          equals: "true"
+        - field: external.signImage.status
+          prefix: "4"
+
+    # Surfaces the rejection reason — clears explicitly when signing succeeds
+    - path: lastSigningError
+      value: "{{ .external.signImage.error }}"
+      when:
+        - field: external.signImage.called
+          equals: "true"
+        - field: external.signImage.status
+          notEquals: "200"
+
+    - path: lastSigningError
+      value: ""
+      when:
+        - field: external.signImage.called
+          equals: "true"
         - field: external.signImage.status
           equals: "200"
 ```
 
-The pattern — **call → write result to status → gate future calls on status** — generalises to any "call once per spec change" scenario: license checks, DNS record creation, service mesh registration, cluster provisioning.
+**Why `continueOnError: true` here:** signing failure is a policy decision with meaningful information (status code, rejection reason). That information needs to reach status fields. With `continueOnError: false`, the reconcile halts before status is written — the rejection is only visible as a raw `Ready=False` condition message, not as structured status fields.
+
+**Why two gates on the call:** `signedImage != spec.image` alone retries the signing service on every reconcile after a rejection — expensive and pointless for a deterministic 403. Adding `rejectedImage != spec.image` closes the gate after a 4xx. A 5xx does not write `rejectedImage`, so the gate stays open and the reconcile retries naturally — the reconcile loop is the retry mechanism.
 
 **Try it:**
 ```bash
-ork init --pack use-cases
-cd external/03-image-signing
-ork run
+ork run --dev-server   # POST /sign → 200 for most images, 403 for nginx:not-secure
+kubectl apply -f cr-reject.yaml   # nginx:not-secure → SigningRejected, no Deployment
+kubectl patch webapp my-app --type=merge -p '{"spec":{"image":"nginx:1.25"}}'
+# → sign succeeds → Deployment created
 ```
 
 ---
@@ -144,97 +237,99 @@ Fetch a short-lived token, then use it in the next call. The resolver is updated
 onReconcile:
   external:
     - name: tokenFetch
-      url: "{{ .spec.authUrl }}/token"
+      url: "{{ .spec.serviceUrl }}/auth/token"
       method: POST
+      body: '{"client_id": "{{ .metadata.name }}", "namespace": "{{ .metadata.namespace }}"}'
       token: "$CLIENT_SECRET"
-      continueOnError: false   # no token = don't proceed
+      continueOnError: false      # no token = nothing to authenticate with, halt here
       timeout: 5s
 
     - name: resourceCheck
       url: "{{ .spec.serviceUrl }}/resources/{{ .metadata.name }}"
-      token: "{{ .external.tokenFetch.body }}"   # uses the previous call's result
+      token: "{{ .external.tokenFetch.body }}"   # result of the previous call
       continueOnError: true
       timeout: 5s
+
+  deployments:
+    - name: "{{ .metadata.name }}"
+      image: "{{ .spec.image }}"
+      when:
+        - field: external.tokenFetch.status
+          equals: "200"
+        - field: external.resourceCheck.status
+          equals: "200"
 ```
 
-If `tokenFetch` fails (with `continueOnError: false`), the reconcile halts and `resourceCheck` never runs. This is the correct behaviour — there is nothing to authenticate with.
+If `tokenFetch` fails (`continueOnError: false`), the reconcile halts and `resourceCheck` never runs. The token is not available — there is nothing to pass forward.
+
+The `token: "{{ .external.tokenFetch.body }}"` expression on `resourceCheck` resolves at call time, after `tokenFetch` has completed and its result has been injected into the resolver. The same mechanism works for `url:` and `body:` — any field in a later call can reference any earlier call's result.
 
 **Try it:**
 ```bash
-ork init --pack use-cases
-cd external/04-chained
-ork run
+ork run --dev-server   # POST /auth/token → "dev-token-abc123", GET /resources/:name → resource stub
+kubectl apply -f cr.yaml
 ```
 
 ---
 
-## Conditional webhook notification
+## Feature flag rollout — external call drives a resource attribute
 
-Fire a Slack or Teams webhook only when the phase transitions to a specific state. Use `when:` to gate the call so it does not fire on every reconcile.
+Read a live flag from a feature flag service on every reconcile. Use the result to drive `replicas` directly — not as a gate condition, but as a resource attribute. The cluster converges to the correct replica count within one reconcile cycle of the flag changing.
 
 ```yaml
 onReconcile:
   external:
-    - name: slackAlert
-      url: "$SLACK_WEBHOOK_URL"
-      method: POST
-      body: '{"text": "{{ .metadata.name }} is {{ .status.phase }} in {{ .metadata.namespace }}"}'
-      continueOnError: true
-      timeout: 3s
+    - name: flags
+      url: "{{ .spec.serviceUrl }}/flags/{{ .metadata.name }}/v2Enabled"
+      method: GET
+      continueOnError: true   # flag service down → degrade to baseline, keep running
+      timeout: 5s
+
+  # Full capacity when flag is on
+  deployments:
+    - name: "{{ .metadata.name }}"
+      image: "{{ .spec.image }}"
+      replicas: "{{ .spec.replicas }}"
+      reconcile: true
       when:
-        - field: status.phase
-          equals: "Degraded"
-```
+        - field: external.flags.body
+          equals: "true"
 
-The `when:` condition checks the current status before the call runs. The call fires only while the CR is in `Degraded` — once the phase changes, the condition fails and the call is skipped. To fire exactly once on transition (not every reconcile while degraded), add a second condition:
+  # Baseline when flag is off or flag service is unavailable
+  # notEquals: "true" also catches empty body on service outage — safe degradation
+    - name: "{{ .metadata.name }}"
+      image: "{{ .spec.image }}"
+      replicas: "1"
+      reconcile: true
+      when:
+        - field: external.flags.body
+          notEquals: "true"
 
-```yaml
-when:
-  - field: status.phase
-    equals: "Degraded"
-  - field: status.alertSent
-    operator: notExists
-
-# Then write status.alertSent after a successful notify:
 status:
   fields:
-    - path: alertSent
-      value: "true"
+    - path: v2Enabled
+      value: "{{ .external.flags.body }}"
       when:
-        - field: external.slackAlert.status
-          equals: "200"
-    - path: alertSent
-      value: ""
-      clearOnFalse: true
-      when:
-        - field: status.phase
-          equals: "Degraded"
-```
-
----
-
-## Feature flags and runtime toggles
-
-Fetch feature flag state from LaunchDarkly, Unleash, or a custom flags API. Gate which resources to create on the flag value. The `continueOnError: true` setting ensures the Deployment keeps running even if the flags service is unavailable.
-
-```yaml
-onReconcile:
-  external:
-    - name: featureFlags
-      url: "https://flags.internal/api/{{ .metadata.name }}"
-      token: "$FEATURE_FLAG_TOKEN"
-      continueOnError: true
-      timeout: 3s
-
-  deployments:
-    # v2 Deployment only created when the feature flag enables it.
-    - name: "{{ .metadata.name }}-v2"
-      image: "{{ .spec.imageV2 }}"
-      when:
-        - field: external.featureFlags.called
+        - field: external.flags.called
           equals: "true"
-        - field: external.featureFlags.body
-          contains: '"v2Enabled":true'
+
+    - path: activeReplicas
+      value: "{{ readyReplicas .children.deployment }}"
 ```
 
-The `contains:` operator on `.body` checks for a JSON substring. This avoids any JSON parsing — the operator treats the body as opaque text.
+Two deployment entries target the same name with different replica counts. Exactly one fires per reconcile — the `when:` conditions are mutually exclusive. `reconcile: true` ensures the existing Deployment is updated, not just created. The second entry catches flag service outages: an empty body from a failed call does not equal `"true"`, so the operator degrades to baseline safely rather than leaving the cluster at stale capacity.
+
+This call fires on every reconcile intentionally — the flag can change at any time. Check `orkestra_external_calls_total` in metrics to see the call count grow as reconciles run.
+
+**Try it:**
+```bash
+ork run --dev-server   # GET /flags/:name/:flag → "true" by default
+kubectl apply -f cr.yaml
+# Deployment: 5 replicas
+
+curl -X POST http://localhost:9999/flags/my-app/v2Enabled/toggle
+# Wait one reconcile → Deployment: 1 replica
+
+curl -X POST http://localhost:9999/flags/my-app/v2Enabled/toggle
+# Wait one reconcile → Deployment: 5 replicas
+```

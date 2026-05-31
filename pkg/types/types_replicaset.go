@@ -69,6 +69,10 @@ type ReplicaSetTemplateSource struct {
 	// Omit to expose no port.
 	Port string `yaml:"port,omitempty" json:"port,omitempty" validate:"omitempty"`
 
+	// Protocol — network protocol for the container port.
+	// Accepted values: TCP (default), UDP, SCTP. Omit to use TCP.
+	Protocol string `yaml:"protocol,omitempty" json:"protocol,omitempty" validate:"omitempty"`
+
 	// Namespace — target namespace for the ReplicaSet.
 	// Default when omitted: "{{ .metadata.namespace }}" (same namespace as the CR).
 	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty" validate:"omitempty"`

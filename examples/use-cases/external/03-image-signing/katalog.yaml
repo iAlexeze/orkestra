@@ -44,13 +44,17 @@ spec:
               body: '{"image": "{{ .spec.image }}", "namespace": "{{ .metadata.namespace }}"}'
               token: "$IMAGE_SIGNING_TOKEN"
               expectedStatus: 200
-              continueOnError: false
+              continueOnError: true
               timeout: 15s
               when:
                 - field: status.signedImage
                   notEquals: "{{ .spec.image }}"
+                - field: status.rejectedImage
+                  notEquals: "{{ .spec.image }}"
 
-          # Only created after the image is signed.
+          # Only created or updated after the image is signed.
+          # This is the key gate: the Deployment tracks spec.image only when
+          # the signing service has confirmed it is safe.
           deployments:
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
@@ -74,6 +78,24 @@ spec:
                 - field: status.signedImage
                   notEquals: "{{ .spec.image }}"
 
+            # 4xx → definitive rejection. Reads from status.rejectedImage (persistent)
+            # so the phase survives subsequent reconciles where the call is skipped.
+            - path: phase
+              value: "SigningRejected"
+              when:
+                - field: status.rejectedImage
+                  equals: "{{ .spec.image }}"
+
+            # 5xx → transient. Reads from external.* because it only applies during
+            # the reconcile where the call was made — next reconcile retries.
+            - path: phase
+              value: "SigningUnavailable"
+              when:
+                - field: external.signImage.called
+                  equals: "true"
+                - field: external.signImage.status
+                  prefix: "5"
+
             - path: phase
               value: "Ready"
               when:
@@ -93,8 +115,39 @@ spec:
                 - field: external.signImage.status
                   equals: "200"
 
-            - path: lastExternalStatus
+            - path: lastSigningStatus
               value: "{{ .external.signImage.status }}"
               when:
                 - field: external.signImage.called
                   equals: "true"
+
+            # 4xx → definitive policy rejection → lock out retries for this image.
+            # The reconcile (which is the retry) will skip the call until spec.image changes.
+            # 5xx → transient service failure → do NOT write rejectedImage → reconcile retries naturally.
+            - path: rejectedImage
+              value: "{{ .spec.image }}"
+              when:
+                - field: external.signImage.called
+                  equals: "true"
+                - field: external.signImage.status
+                  prefix: "4"
+
+            # Write error when call fires and fails — persists across reconciles where
+            # the call is skipped (no clearOnFalse — we never want to erase the error
+            # just because the gate prevented the call this cycle).
+            - path: lastSigningError
+              value: "{{ .external.signImage.error }}"
+              when:
+                - field: external.signImage.called
+                  equals: "true"
+                - field: external.signImage.status
+                  notEquals: "200"
+
+            # Explicitly clear the error when signing succeeds.
+            - path: lastSigningError
+              value: ""
+              when:
+                - field: external.signImage.called
+                  equals: "true"
+                - field: external.signImage.status
+                  equals: "200"

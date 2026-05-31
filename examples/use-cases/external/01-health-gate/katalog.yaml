@@ -23,9 +23,9 @@ spec:
             operator: exists
             message: "spec.image is required"
             action: deny
-          - field: spec.serviceUrl
+          - field: spec.healthCheckUrl
             operator: exists
-            message: "spec.serviceUrl is required — point it at the upstream service to health-check"
+            message: "spec.healthCheckUrl is required — full URL of the health endpoint to call before reconciling"
             action: deny
 
       operatorBox:
@@ -39,7 +39,7 @@ spec:
           # a broken app from being created or updated.
           external:
             - name: healthCheck
-              url: "{{ .spec.serviceUrl }}"
+              url: "{{ .spec.healthCheckUrl }}"
               method: GET
               expectedStatus: 200
               continueOnError: true

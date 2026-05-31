@@ -209,6 +209,7 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedS
 	if p, err := strconv.ParseInt(src.Port, 10, 32); err == nil {
 		spec.Port = int32(p)
 	}
+	spec.Protocol = common.ParseProtocol(src.Protocol)
 
 	for _, l := range src.Labels {
 		spec.Labels[l.Key] = l.Value
@@ -279,7 +280,7 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 	}
 
 	if spec.Port > 0 {
-		container.Ports = []corev1.ContainerPort{{ContainerPort: spec.Port}}
+		container.Ports = []corev1.ContainerPort{{ContainerPort: spec.Port, Protocol: spec.Protocol}}
 	}
 
 	if spec.Resources != nil {

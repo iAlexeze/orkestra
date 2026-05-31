@@ -27,18 +27,18 @@ operatorBox:
 
 | Field | Required | Default | Description |
 |---|---|---|---|
-| `name` | yes | — | Identifier for accessing the result as `.external.<name>.*`. Must be a valid Go identifier — camelCase, no hyphens. |
-| `url` | yes | — | Endpoint URL. Supports template expressions resolved against the current CR. |
+| `name` | yes | — | Identifier for accessing results as `.external.<name>.*`. Must be a valid Go identifier — camelCase, no hyphens. |
+| `url` | yes | — | Endpoint URL. Template expressions are resolved against the current CR and any earlier call results in the same reconcile. |
 | `method` | no | `GET` | HTTP method: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`. |
-| `body` | no | `""` | Request body. Supports template expressions. Sets `Content-Type: application/json` automatically when non-empty. |
-| `token` | no | `""` | Bearer token for the `Authorization` header. Use `$ENV_VAR` syntax — the value is expanded via `os.ExpandEnv` at call time. Never put raw secrets here. |
+| `body` | no | `""` | Request body. Template expressions supported. Sets `Content-Type: application/json` automatically when non-empty. |
+| `token` | no | `""` | Bearer token for the `Authorization` header. Use `$ENV_VAR` syntax — expanded via `os.ExpandEnv` at call time. Never put raw secrets here. |
 | `headers` | no | `{}` | Additional HTTP headers as a string map. Applied after `Authorization` and `Content-Type`. |
-| `timeout` | no | `10s` | Per-call timeout. Go duration format: `"5s"`, `"1m"`, `"500ms"`. Set this to a fraction of your `resync:` period. |
-| `expectedStatus` | no | `0` | When set, any response with a different status code is treated as a failure. When `0`: `2xx` succeeds, `4xx`/`5xx` fails. |
-| `continueOnError` | no | `false` | `false`: a failed call halts the reconcile and writes `Ready=False`. `true`: failure is logged, `.error` is set, reconcile continues. |
-| `when` | no | `[]` | AND conditions. If any condition fails, the call is skipped and `.called` is `"false"`. |
-| `anyOf` | no | `[]` | OR conditions. At least one must pass. Combined with `when:` using AND semantics. |
-| `sleep` | no | `""` | Delay injected before this call runs. Go duration format: `"2s"`. Use to pace sequential calls against rate-limited APIs, or to wait for an async side-effect from a previous call before polling. Not for production throttling — use `when:` conditions instead. |
+| `timeout` | no | `10s` | Per-call timeout. Go duration format: `"5s"`, `"1m"`, `"500ms"`. Set to a fraction of your `resync:` period. |
+| `expectedStatus` | no | `0` | When set, any response with a different status code is treated as a failure. When `0`: 4xx/5xx are errors, 2xx/3xx succeed. |
+| `continueOnError` | no | `false` | `false`: failure halts the reconcile and writes `Ready=False` to the CR condition. `true`: failure sets `.error`, the reconcile continues, status fields surface the details. |
+| `when` | no | `[]` | AND conditions evaluated before the call runs. If any condition fails, the call is skipped and `.called` is `"false"`. Template expressions in `field:` and in comparison values (`equals:`, `notEquals:`, etc.) are both resolved. |
+| `anyOf` | no | `[]` | OR conditions. At least one must pass. Combined with `when:` using AND semantics: `(all when:) AND (any one anyOf:)`. |
+| `sleep` | no | `""` | Delay injected before this call runs. Go duration format: `"2s"`. Use to pace sequential calls against rate-limited APIs or to wait for an async side-effect from a prior call. Not a substitute for proper `when:` conditions. |
 
 ## Result context
 
@@ -46,35 +46,76 @@ After a call completes, four fields are available under `.external.<name>`:
 
 | Field | Type | Description |
 |---|---|---|
-| `.status` | `string` | HTTP status code as a string: `"200"`, `"404"`, `"503"`. Empty when the call failed before receiving a response. |
+| `.status` | `string` | HTTP status code as a string: `"200"`, `"403"`, `"503"`. Empty when the call failed before receiving a response (network error, timeout). |
 | `.body` | `string` | First 4096 bytes of the response body. Truncated silently for larger responses. |
-| `.error` | `string` | Error message when the call failed. Empty string on success. |
-| `.called` | `string` | `"true"` when the call ran; `"false"` when skipped because `when:`/`anyOf:` conditions failed. |
+| `.error` | `string` | Error message when the call failed — includes `"expected status 200, got 403"` for status mismatches. Empty on success. |
+| `.called` | `string` | `"true"` when the call ran. `"false"` when skipped because `when:`/`anyOf:` conditions failed. |
 
-Access in templates:
+Access in any template expression or condition:
 
 ```yaml
-# Dot-path in a when: condition
+# Dot-path in a when: condition on a resource
 - field: external.healthCheck.status
   equals: "200"
+
+# Dot-path in a when: condition on a status field
+- field: external.signImage.called
+  equals: "true"
 
 # Template expression in a value
 value: "{{ .external.appConfig.body }}"
 
-# Template expression in a later call's url or token
+# Template expression in a later call's url or token (chaining)
 token: "{{ .external.tokenFetch.body }}"
+url: "{{ .external.discovery.body }}/api/v1/{{ .metadata.name }}"
 ```
+
+### Template expressions in condition comparison values
+
+Both `field:` and the comparison value (`equals:`, `notEquals:`, `prefix:`, `suffix:`, `contains:`) support template expressions. This is how you compare a live CR field against another live field:
+
+```yaml
+# Gate the signing call only when spec.image hasn't been signed yet
+when:
+  - field: status.signedImage
+    notEquals: "{{ .spec.image }}"   # resolved against the current CR at eval time
+
+# Gate the Deployment on the image being confirmed safe
+when:
+  - field: status.signedImage
+    equals: "{{ .spec.image }}"      # both sides resolve as strings before comparison
+```
+
+Comparison values that contain `{{ }}` are evaluated through the full template engine — note functions, cross-CRD data, and external call results are all available. Non-template values are used as-is.
+
+## Status code prefix matching
+
+The `prefix:` operator on `.external.<name>.status` enables HTTP status class matching without enumerating every code:
+
+```yaml
+# Matches any 4xx response — definitive errors, policy decisions
+- field: external.signImage.status
+  prefix: "4"
+
+# Matches any 5xx response — transient, service unavailable
+- field: external.signImage.status
+  prefix: "5"
+```
+
+This is the standard way to distinguish permanent rejections (4xx — gate future calls with `rejectedImage`) from transient failures (5xx — leave the gate open, retry naturally on the next reconcile).
 
 ## Constraints
 
-**Body cap — 4096 bytes.** Large responses are truncated. If you need more, filter or paginate on the server side before the operator calls it.
+**Body cap — 4096 bytes.** Large responses are truncated. Filter or paginate on the server side if you need more.
 
-**Sequential execution.** Calls run one at a time in declaration order. There is no parallelism. A later call can reference an earlier call's result; an earlier call cannot see a later one.
+**Sequential execution.** Calls run one at a time in declaration order. A later call can reference an earlier call's result; an earlier call cannot reference a later one.
 
-**camelCase names.** Call names must be valid Go identifiers. Hyphens in names break template access because `{{ .external.health-check.status }}` does not parse as a field access.
+**camelCase names.** Call names must be valid Go identifiers. Hyphens break template access: `{{ .external.health-check.status }}` does not parse.
 
-**Runs on every reconcile.** Unless gated by a `when:` condition, the call runs every time the CR is reconciled — including on every resync. Design calls to be idempotent or gate them with conditions.
+**Runs on every reconcile by default.** Unless gated by `when:`, the call fires every time the CR reconciles — including every resync. Design calls to be idempotent, or gate them with `when:` conditions on status fields.
 
-**Token expansion via `os.ExpandEnv`.** The `token:` field is expanded using standard Go environment variable syntax: `$VAR` and `${VAR}`. This happens after template resolution, so `token: "${{ .spec.tokenEnvVar }}"` does not work — only static `$VAR` references expand.
+**Token expansion via `os.ExpandEnv`.** The `token:` field expands `$VAR` and `${VAR}` after template resolution. `token: "${{ .spec.tokenEnvVar }}"` does not work — only static `$VAR` references expand. To dynamically select a token, reference an earlier call result directly: `token: "{{ .external.tokenFetch.body }}"`.
 
 **No response streaming.** The operator reads the full response body (up to 4096 bytes) before processing. Long-running or streaming endpoints are not supported.
+
+**`continueOnError: false` + status fields.** When a call fails with `continueOnError: false`, the reconcile returns an error before status fields are evaluated. The call result is available in the resolver — but if you need the failure visible in status (phase, error message), use `continueOnError: true` and enforce the invariant with `when:` conditions on resources instead.

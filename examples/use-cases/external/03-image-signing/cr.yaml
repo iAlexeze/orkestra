@@ -4,7 +4,7 @@ metadata:
   name: my-app
 spec:
   image: nginx:1.25
-  # Replace with your image signing service URL.
-  # The operator will POST to {{ serviceUrl }}/sign with the image reference.
-  serviceUrl: "https://signing.internal"
+  # Dev server responds to POST /sign with {"signed":true} — ignores body and token.
+  # No IMAGE_SIGNING_TOKEN needed in dev. Run `ork run --dev-server` before applying.
+  serviceUrl: "http://localhost:9999"
   replicas: 2

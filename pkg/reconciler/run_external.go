@@ -115,6 +115,10 @@ func runExternal(
 
 		metrics.RecordExternalCall(gvk, call.Name, resolvedURL, result.DurationSeconds, result.Error, result.StatusCode)
 
+		// Inject accumulated results before any early return so status fields
+		// can reference this call's outcome even when continueOnError is false.
+		resolver = resolver.WithExternal(results)
+
 		if result.Error != "" {
 			log.Warn().
 				Str("call", call.Name).
@@ -132,10 +136,6 @@ func runExternal(
 				Str("status", result.Status).
 				Msg("external call succeeded")
 		}
-
-		// Inject accumulated results so far — later calls can reference earlier ones.
-		// Each iteration creates a new resolver with the growing results map.
-		resolver = resolver.WithExternal(results)
 	}
 
 	return resolver, nil

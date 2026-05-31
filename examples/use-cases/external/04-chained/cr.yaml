@@ -4,8 +4,9 @@ metadata:
   name: my-app
 spec:
   image: nginx:1.25
-  # Replace with your API service base URL.
-  # Call 1: POST {{ serviceUrl }}/auth/token  → returns bearer token
-  # Call 2: GET  {{ serviceUrl }}/resources/my-app  (authenticated)
-  serviceUrl: "https://api.internal"
+  # Dev server handles the full chain:
+  #   POST /auth/token  → returns "dev-token-abc123"
+  #   GET  /resources/my-app (authenticated) → returns {"name":"my-app","status":"active","ready":true}
+  # No CLIENT_SECRET needed in dev. Run `ork run --dev-server` before applying.
+  serviceUrl: "http://localhost:9999"
   replicas: 1

@@ -43,3 +43,9 @@ All callers import this package with the `orktypes` alias:
 ```go
 import orktypes "github.com/orkspace/orkestra/pkg/types"
 ```
+
+## Contributor docs
+
+| Document | What it covers |
+|---|---|
+| [docs/hook-visitor-pattern.md](docs/hook-visitor-pattern.md) | How to write cross-hook validators using `VisitResources` + typed interfaces. Read this before adding a new field validator to `pkg/katalog/`. |

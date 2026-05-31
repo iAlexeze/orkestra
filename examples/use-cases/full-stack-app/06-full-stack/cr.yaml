@@ -11,6 +11,6 @@ spec:
     - eu-west-1
     - ap-southeast-1
   defaultReplicas: 1
-  serviceUrl: "https://waas.ondgo.dev"   # replace with your service
+  serviceUrl: "http://localhost:9999"
   environment: "production"
   notify: "true"

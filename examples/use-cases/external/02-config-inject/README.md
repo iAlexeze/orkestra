@@ -24,8 +24,10 @@ Expected:
 
 ## Step 2 — Start the operator
 
+`--dev-server` starts a mock HTTP server on `:9999` — no real config service needed. It responds to `GET /config/:name` with a static JSON config blob:
+
 ```bash
-ork run
+ork run --dev-server
 ```
 
 ---
@@ -50,7 +52,7 @@ kubectl apply -f cr.yaml
 ```
 
 Wait one reconcile (~30s). The operator:
-1. Calls `https://httpbin.org/config/my-app` — returns JSON
+1. Calls `http://localhost:9999/config/my-app` (dev) — returns a static JSON config blob
 2. Creates a ConfigMap with the response body
 3. Creates the Deployment mounted to that ConfigMap
 
@@ -76,16 +78,7 @@ kubectl get configmap my-app-config -o jsonpath='{.data.app\.json}' | jq .
 
 ## Step 5 — Watch live config update
 
-Every 30s the operator fetches the config URL again and updates the ConfigMap if the response changed. Any process watching the mounted file sees the update immediately — no pod restart needed.
-
-To simulate a config change, point the serviceUrl at a different endpoint:
-
-```bash
-kubectl patch webapp my-app --type=merge \
-  -p '{"spec":{"serviceUrl":"https://httpbin.org"}}'
-```
-
-Wait 30s. The ConfigMap is updated with the new response body.
+Every 30s the operator fetches the config URL again and updates the ConfigMap if the response changes. Any process watching the mounted file sees the update immediately — no pod restart needed.
 
 ---
 

@@ -230,6 +230,8 @@ func Resolve(src orktypes.DeploymentTemplateSource, ownerName string) ResolvedDe
 		}
 	}
 
+	spec.Protocol = common.ParseProtocol(src.Protocol)
+
 	for _, l := range src.Labels {
 		spec.Labels[l.Key] = l.Value
 	}
@@ -315,10 +317,10 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 		},
 	}
 
-	// Port
+	// Port — Protocol is resolved in Resolve() and defaults to TCP when not declared.
 	if spec.Port > 0 {
 		d.Spec.Template.Spec.Containers[0].Ports = []corev1.ContainerPort{
-			{ContainerPort: spec.Port},
+			{ContainerPort: spec.Port, Protocol: spec.Protocol},
 		}
 	}
 

@@ -1,7 +1,11 @@
 // pkg/orkestra-registry/statefulsets/types.go
 package statefulsets
 
-import orktypes "github.com/orkspace/orkestra/pkg/types"
+import (
+	corev1 "k8s.io/api/core/v1"
+
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+)
 
 // ResolvedVolumeClaimTemplate is one resolved PVC template for a StatefulSet.
 type ResolvedVolumeClaimTemplate struct {
@@ -19,6 +23,7 @@ type ResolvedStatefulSetSpec struct {
 	Image       string
 	Replicas    int32
 	Port        int32
+	Protocol    corev1.Protocol
 	ServiceName string
 
 	// VolumeClaimTemplates — resolved PVC templates (may be multiple).

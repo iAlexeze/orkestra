@@ -1,7 +1,11 @@
 // pkg/orkestra-registry/replicasets/types.go
 package replicasets
 
-import orktypes "github.com/orkspace/orkestra/pkg/types"
+import (
+	corev1 "k8s.io/api/core/v1"
+
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+)
 
 // ResolvedReplicaSetSpec is the fully resolved ReplicaSet specification.
 // Produced by resolving template expressions and merging static values.
@@ -17,7 +21,8 @@ type ResolvedReplicaSetSpec struct {
 	Replicas int32
 
 	// Port — container port. 0 means no port exposed.
-	Port int32
+	Port     int32
+	Protocol corev1.Protocol
 
 	// Namespace — target namespace. Required.
 	Namespace string

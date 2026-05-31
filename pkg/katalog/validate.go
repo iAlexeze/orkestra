@@ -202,5 +202,12 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 29. Validate port protocols (Deployments, ReplicaSets, StatefulSets, Pods)
+	// -------------------------------------------------------------------------
+	if err := k.validatePortProtocols(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }

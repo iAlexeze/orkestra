@@ -276,7 +276,7 @@ spec:
 {{ end }}      workers: 3
       resync: 30s
       queue:
-        maxQueueDepth: 100
+        maxDepth: 100
       operatorBox:
         default: {{ if .DefaultFalse }}false{{ else }}true{{ end }}
 {{ if .ShowHooks }}

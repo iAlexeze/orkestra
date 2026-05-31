@@ -25,8 +25,8 @@ hard-coded defaults
 | `ORK_GATEWAY_ENDPOINT` | `kfg.GatewayEndpoint()` | `""` | Companion gateway URL advertised to control center |
 | `ORK_SERVICE_NAME` | `kfg.Security().ServiceName` | `orkestra-runtime` | Service name used by webhook configurations |
 | `KATALOG_PATH` | `kfg.Katalog().Paths()` | `[]` | Paths to Katalog YAML files |
-| `MAX_QUEUE_DEPTH` | `kfg.Katalog().DefaultMaxQueueDepth()` | `100` | Default max items per CRD reconcile queue |
-| `DEGRADE_THRESHOLD` | `kfg.Katalog().DefaultDegradeThreshold()` | `5` | Consecutive failures before a CRD is marked degraded |
+| `QUEUE_DEPTH` | `kfg.Katalog().DefaultQueueDepth()` | `100` | Default max items per CRD reconcile queue |
+| `FAILURE_THRESHOLD` | `kfg.Katalog().DefaultFailureThreshold()` | `5` | Consecutive failures before a CRD is marked degraded |
 | `DEFAULT_RESYNC` | `kfg.Katalog().DefaultResync()` | `15s` | Default resync interval when not set on the CRD |
 | `DEFAULT_WORKERS` | `kfg.Katalog().DefaultWorkers()` | `3` | Default worker count per CRD |
 | `ORK_PORT` | `kfg.Health().Port` | `8080` | Health server port |

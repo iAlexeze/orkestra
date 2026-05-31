@@ -178,7 +178,7 @@ func BuildCRDInfoHandler(
   },
   "resync": "15s",
   "queueDepth": 0,
-  "maxQueueDepth": 100
+  "maxDepth": 100
 }
 ```
 
@@ -193,7 +193,7 @@ func BuildCRDInfoHandler(
   "workersProcessing": 0,
   "resync": "15s",
   "queueDepth": 0,
-  "maxQueueDepth": 100
+  "maxDepth": 100
 }
 ```
 

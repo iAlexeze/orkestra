@@ -2,7 +2,10 @@ package common
 
 import (
 	"fmt"
+	"strings"
 	"time"
+
+	corev1 "k8s.io/api/core/v1"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
@@ -53,6 +56,20 @@ func SleepIfNeeded(s string) error {
 	}
 
 	return nil
+}
+
+// ParseProtocol converts a protocol string to a corev1.Protocol.
+// Accepted values: TCP (default), UDP, SCTP — case-insensitive.
+// Empty string and anything unrecognised defaults to TCP, matching Kubernetes behaviour.
+func ParseProtocol(s string) corev1.Protocol {
+	switch strings.ToUpper(s) {
+	case "UDP":
+		return corev1.ProtocolUDP
+	case "SCTP":
+		return corev1.ProtocolSCTP
+	default:
+		return corev1.ProtocolTCP
+	}
 }
 
 // LabelsEqual reports whether two maps of labels are equivalent.

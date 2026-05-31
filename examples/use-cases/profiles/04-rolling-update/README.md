@@ -73,7 +73,7 @@ my-service-bg       100%        0
 Patch the image to start a rolling update across all three:
 
 ```bash
-kubectl patch service my-service --type=merge -p '{"spec":{"image":"nginx:1.26"}}'
+kubectl patch services.demo.orkestra.io my-service --type=merge -p '{"spec":{"image":"nginx:1.26"}}'
 ```
 
 Watch the rollout in real time:
@@ -84,10 +84,10 @@ kubectl rollout status deployment/my-service-fast     # parallel
 kubectl rollout status deployment/my-service-bg       # full surge first
 ```
 
-During the blue-green rollout, watch the pod count double temporarily:
+During the blue-green rollout, watch the pod count double temporarily and the start-time difference:
 
 ```bash
-watch kubectl get pods -l orkestra.io/managed-by=my-service
+watch kubectl get pods -l orkestra-owner=my-service
 ```
 
 ---

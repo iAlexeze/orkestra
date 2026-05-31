@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/orkspace/orkestra/cmd/internal"
+	"github.com/orkspace/orkestra/pkg/devserver"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/spf13/cobra"
@@ -20,10 +21,19 @@ var runCmd = &cobra.Command{
 	Short: "Start the Orkestra Runtime",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dev, _ := cmd.Flags().GetBool("dev")
+		devServer, _ := cmd.Flags().GetBool("dev-server")
+		devServerPort, _ := cmd.Flags().GetInt("dev-server-port")
 
 		// Handle dev mode cluster creation
 		if err := ensureClusterReady(dev); err != nil {
 			return err
+		}
+
+		// Start the mock dev server before the runtime if requested.
+		if devServer {
+			if err := devserver.Start(devServerPort); err != nil {
+				return fmt.Errorf("starting dev server: %w", err)
+			}
 		}
 
 		// Resolve katalog paths
@@ -59,4 +69,6 @@ var runCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(runCmd)
 	runCmd.Flags().Bool("dev", false, "Create a local Kind cluster if none is reachable (development only)")
+	runCmd.Flags().Bool("dev-server", false, "Start the mock dev server for external: examples (no real services needed)")
+	runCmd.Flags().Int("dev-server-port", devserver.Port, "Port for the mock dev server")
 }

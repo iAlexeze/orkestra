@@ -6,18 +6,6 @@ Two calls run sequentially. The first fetches a short-lived auth token. The seco
 
 ---
 
-## Prerequisites
-
-Set `CLIENT_SECRET` in the environment where `ork run` executes:
-
-```bash
-export CLIENT_SECRET="your-client-secret"
-```
-
-Replace `spec.serviceUrl` in `cr.yaml` with your API service base URL.
-
----
-
 ## Step 1 — Validate
 
 ```bash
@@ -36,8 +24,10 @@ Expected:
 
 ## Step 2 — Start the operator
 
+`--dev-server` starts a mock HTTP server on `:9999` — no auth service or secret needed. It handles the full chain: `POST /auth/token` returns `dev-token-abc123`, then `GET /resources/:name` returns a resource stub:
+
 ```bash
-ork run
+ork run --dev-server
 ```
 
 ---
@@ -58,12 +48,12 @@ Open [http://localhost:8081](http://localhost:8081). Select **webapp-chained-cal
 ## Step 4 — Apply the CR
 
 ```bash
-kubectl apply -f cr.yaml
+kubectl apply -f cr-dev.yaml
 ```
 
 The operator:
-1. Fetches a token from `{{ serviceUrl }}/auth/token`
-2. Uses that token to call `{{ serviceUrl }}/resources/my-app`
+1. Fetches a token from `/auth/token`
+2. Uses that token to call `/resources/my-app`
 3. Creates the Deployment only when both calls succeed
 
 ```bash
@@ -75,6 +65,14 @@ Expected:
 status:
   phase: Ready
   lastExternalStatus: "200"
+```
+
+Check the Deployment was created:
+
+```bash
+kubectl get deploy
+# NAME      READY   UP-TO-DATE   AVAILABLE
+# my-app    1/1     1            1
 ```
 
 ---
