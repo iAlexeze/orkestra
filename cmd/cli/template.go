@@ -79,6 +79,10 @@ Examples:
 
 		// ── Route to output mode ────────────────────────────────────────────────
 		var out []byte
+		var defaultOut bool
+		if !yamlOut && !jsonOut && !graphOut {
+			defaultOut = true
+		}
 
 		switch {
 
@@ -95,7 +99,7 @@ Examples:
 			}
 			if jsonOut {
 				out, err = json.MarshalIndent(crd, "", "  ")
-			} else if yamlOut {
+			} else if yamlOut || defaultOut {
 				out, err = yaml.Marshal(crd)
 			} else {
 				printCRDDetail(crd, depGraph)
@@ -108,18 +112,14 @@ Examples:
 			return nil
 
 		// ── --yaml / --json: full runtime Katalog ───────────────────────────────
-		case yamlOut || jsonOut:
+		case yamlOut || jsonOut || defaultOut:
 			view := buildRuntimeView(k)
 			if jsonOut {
 				out, err = json.MarshalIndent(view, "", "  ")
 			} else {
-				raw, merr := yaml.Marshal(view)
-				if merr != nil {
-					return fmt.Errorf("marshal: %w", merr)
-				}
-				pruned, perr := pruneEmptyYAML(raw)
-				if perr != nil {
-					return fmt.Errorf("prune: %w", perr)
+				pruned, err := pruneYamlFile(view)
+				if err != nil {
+					return err
 				}
 				out = append([]byte("---\n"), pruned...)
 			}
@@ -135,7 +135,7 @@ Examples:
 		}
 
 		if outFile != "" {
-			if yamlOut {
+			if yamlOut || defaultOut {
 				if err := writeFileAndFormat(outFile, out, 0644); err != nil {
 					return fmt.Errorf("writing %s: %w", outFile, err)
 				}
@@ -180,6 +180,18 @@ func buildRuntimeView(k *katalog.Katalog) templateRuntimeOutput {
 			CRDs: k.Enabled(),
 		},
 	}
+}
+
+func pruneYamlFile(view templateRuntimeOutput) ([]byte, error) {
+	raw, merr := yaml.Marshal(view)
+	if merr != nil {
+		return nil, fmt.Errorf("marshal: %w", merr)
+	}
+	pruned, perr := pruneEmptyYAML(raw)
+	if perr != nil {
+		return nil, fmt.Errorf("prune: %w", perr)
+	}
+	return pruned, nil
 }
 
 func init() {

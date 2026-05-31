@@ -120,8 +120,8 @@ func TestExpand_StaticConditionDropsResource(t *testing.T) {
 
 	// enableUI: "false" — the UI deployment should be dropped
 	expanded, err := motif.Expand(m, map[string]string{
-		"image":     "nginx",
-		"enableUI":  "false",
+		"image":    "nginx",
+		"enableUI": "false",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

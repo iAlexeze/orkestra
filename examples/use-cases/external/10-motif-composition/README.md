@@ -155,6 +155,17 @@ kubectl patch webapp my-app --type=merge -p '{"spec":{"image":"nginx:unsigned"}}
 
 The supply-chain motif calls cosign, gets 403, writes `rejectedImage`. The Deployment gate closes. The Worker is unaffected — it does not import supply-chain.
 
+Expected logs:
+
+```json
+{
+  "level":"warn","request_id":"28f9b66b-63af-4247-8be2-a9b6b40efaa8",
+  "crd":"demo.orkestra.io/v1, Kind=WebApp","resource":"default/my-app",
+  "call":"cosign","url":"http://localhost:9999/cosign/verify",
+  "error":"HTTP 403","time":1780254517,"message":"external call failed"
+}
+```
+
 ---
 
 ## Cleanup

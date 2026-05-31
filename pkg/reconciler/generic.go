@@ -382,22 +382,24 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 
 	labelMgr.EnsureManagedLabel(obj)
 
-	shouldHaveProtection := r.kat.IsDeletionProtectionEnabled() && r.crd.ShouldProtectCRs()
-	labelMgr.EnsureDeletionProtectionLabel(obj, shouldHaveProtection)
+	if r.kat.IsDeletionProtectionEnabled() {
+		shouldHaveProtection := r.kat.IsDeletionProtectionEnabled() && r.crd.ShouldProtectCRs()
+		labelMgr.EnsureDeletionProtectionLabel(obj, shouldHaveProtection)
 
-	effectiveStrict := r.crd.IsStrictDeletionProtection(r.kat.IsStrictModeEnabled())
-	currentlyProtected := serverLabels[labels.DeletionProtectionLabel] == labels.DeletionProtectionValue
-	if !shouldHaveProtection && currentlyProtected {
-		effectiveStrict = false // keep exempt label present so the webhook allows the removal
+		effectiveStrict := r.crd.IsStrictDeletionProtection(r.kat.IsStrictModeEnabled())
+		currentlyProtected := serverLabels[labels.DeletionProtectionLabel] == labels.DeletionProtectionValue
+		if !shouldHaveProtection && currentlyProtected {
+			effectiveStrict = false // keep exempt label present so the webhook allows the removal
+		}
+
+		logger.Debug().
+			Str("crd", r.crd.Name).
+			Str("resource", obj.GetName()).
+			Bool("effectiveStrict", effectiveStrict).
+			Bool("currentlyProtected", currentlyProtected).
+			Msg("label: evaluating strict mode")
+		labelMgr.EnsureStrictModeExemptLabel(obj, effectiveStrict)
 	}
-
-	logger.Debug().
-		Str("crd", r.crd.Name).
-		Str("resource", obj.GetName()).
-		Bool("effectiveStrict", effectiveStrict).
-		Bool("currentlyProtected", currentlyProtected).
-		Msg("label: evaluating strict mode")
-	labelMgr.EnsureStrictModeExemptLabel(obj, effectiveStrict)
 
 	// One atomic patch: diff serverLabels → desired. No-op if nothing changed.
 	if err := r.kube.PatchLabels(ctx, obj, r.crd.GVR(), serverLabels, obj.GetLabels()); err != nil {
@@ -513,20 +515,21 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 	}
 
 	// ── Phase 5: Rollback trigger check ─────────────────────────────────────
-	if err != nil && r.crd.HasRollbackRules() {
-		key := obj.GetNamespace() + "/" + obj.GetName()
-		h := r.getFailureHistory(key)
-		derived := r.crd.OperatorBox.DerivedRollback()
-		h.record(derived.Trigger.EffectiveConsecutiveFailures())
-		if r.shouldRollback(len(h.times), h) {
-			logger.FromContext(ctx).Warn().
-				Str("name", obj.GetName()).
-				Msg("rollback: threshold reached — marking rollback active")
-			if markErr := r.markRollbackActive(ctx, obj); markErr != nil {
-				logger.FromContext(ctx).Error().Err(markErr).Msg("rollback: failed to mark active")
-			}
-		}
-	}
+	// TODO
+	// if err != nil && r.crd.HasRollbackRules() {
+	// 	key := obj.GetNamespace() + "/" + obj.GetName()
+	// 	h := r.getFailureHistory(key)
+	// 	derived := r.crd.OperatorBox.DerivedRollback()
+	// 	h.record(derived.Trigger.EffectiveConsecutiveFailures())
+	// 	if r.shouldRollback(len(h.times), h) {
+	// 		logger.FromContext(ctx).Warn().
+	// 			Str("name", obj.GetName()).
+	// 			Msg("rollback: threshold reached — marking rollback active")
+	// 		if markErr := r.markRollbackActive(ctx, obj); markErr != nil {
+	// 			logger.FromContext(ctx).Error().Err(markErr).Msg("rollback: failed to mark active")
+	// 		}
+	// 	}
+	// }
 
 	// ── Phase 6: Snapshot + rollback cleanup ─────────────────────────────────
 	// TODO

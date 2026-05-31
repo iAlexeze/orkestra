@@ -66,6 +66,12 @@ status:
         - field: external.cosign.status
           equals: "200"
 
+    - path: supplyChainPhase
+      value: "Verifying"
+      when:
+        - field: status.verifiedImage
+          notEquals: "{{ .inputs.image }}"
+
     # Close both gates: rejectedImage written on cosign 4xx.
     - path: rejectedImage
       value: "{{ .inputs.image }}"
@@ -95,9 +101,3 @@ status:
       when:
         - field: status.rejectedImage
           equals: "{{ .inputs.image }}"
-
-    - path: supplyChainPhase
-      value: "Verifying"
-      when:
-        - field: status.verifiedImage
-          notEquals: "{{ .inputs.image }}"
