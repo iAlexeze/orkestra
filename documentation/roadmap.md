@@ -45,7 +45,7 @@ Orkestra is a complete declarative operator runtime for Kubernetes. The core is 
 
 **CLI**
 
-`ork init`, `ork run`, `ork gate`, `ork validate`, `ork template`, `ork simulate`, `ork plan`, `ork diff`, `ork generate`, `ork registry`, `ork control`, `ork notes`, `ork e2e`, `ork deploy`, `ork tunnel`, `ork version`
+`ork init`, `ork run`, `ork gate`, `ork validate`, `ork template`, `ork simulate`, `ork plan`, `ork diff`, `ork generate`, `ork registry`, `ork control`, `ork notes`, `ork e2e`, `ork version`
 
 **Distribution**
 
@@ -106,6 +106,32 @@ func main() {
 
 They get the full runtime, gateway, CLI, and webhook system. If they need a custom webhook, they know exactly where to plug it in. Two things needed: a version-pinned `go.mod` import and this entrypoint.
 
+### ork lint
+
+`ork validate` checks schema correctness — the document is well-formed. `ork lint` checks semantic correctness — the document is safe and sound for your deployment context.
+
+```bash
+ork lint -f katalog.yaml
+ork lint -f katalog.yaml --policy org-policy.yaml
+```
+
+Examples of what lint catches that validate cannot:
+
+- A Deployment with no resource requests (will be evicted under pressure)
+- A ServiceAccount bound to cluster-wide verbs (over-privileged)
+- A Secret with no rotation policy declared
+- A CRD with `condition: healthy` on a dependency that has a history of degradation
+
+Lint runs at CI time, not author time. It is a different gate — closer to `golangci-lint` than to `go vet`.
+
+### Namespaced katalogs
+
+Today, the merger merges all Katalog sources into one flat runtime Katalog. A Katalog with `namespace: platform-team` would stay scoped — the merger produces `map[namespace]*Katalog` instead of one merged output. Each namespaced Katalog runs in its own reconciler scope with independent health tracking, independent workers, and real isolation from other namespaces.
+
+The Control Center shows each namespace as a separate panel — from its perspective, namespaced Katalogs look like separate runtimes.
+
+This makes Orkestra usable as a shared platform primitive: one Orkestra instance, multiple teams with real isolation, no cross-contamination when one team's CRD degrades.
+
 ### Performance benchmarks
 
 Published numbers for reconcile throughput, queue latency, and informer memory usage at 50+ and 100+ CRDs. Stress test results with quality gates.
@@ -117,6 +143,26 @@ Target 2027. Prerequisite is production adoption at multiple organisations, with
 ---
 
 ## The longer horizon
+
+### Declarative canary rollouts
+
+A `rollout:` block in the Katalog gates how a template change propagates:
+
+```yaml
+operatorBox:
+  rollout:
+    strategy: canary
+    initialWeight: 10
+    increment: 20
+    interval: 5m
+    gate:
+      metric: error_rate
+      threshold: "< 1"
+```
+
+Orkestra manages the weight split, polls the gate condition (using the same expression engine as `when:`), and advances or rolls back automatically. The substrate already has all the pieces — template engine, health model, conditional evaluation. Canary is applying them to a new lifecycle concern.
+
+### Katalog and Komposer as native Kubernetes kinds
 
 Katalog and Komposer as native Kubernetes kinds — registered by the cluster itself, understood by `kube-controller-manager`, auditable through the standard Kubernetes audit log.
 
@@ -134,7 +180,7 @@ for the full argument.
 
 ## What we are not building
 
-**Multi-cluster federation.** Orkestra manages CRDs within one cluster. Cross-cluster operations belong to a different architectural layer.
+**Multi-cluster federation.** Orkestra manages CRDs within one cluster. Cross-cluster *composition* already works today: `cross:` reads sibling operator state over HTTP, and `external:` can gate a reconcile on a remote operator's health endpoint. Per-cluster Orkestra instances compose at runtime. What we are not building is a control plane deployed in one cluster that federates multiple clusters.
 
 **Replacing controller-runtime.** Orkestra is a higher-level abstraction. Custom constructors bridge to controller-runtime for use cases that need it. They are complementary, not competitive.
 
