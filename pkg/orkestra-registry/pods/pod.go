@@ -210,6 +210,7 @@ func Resolve(src orktypes.PodTemplateSource, ownerName string) ResolvedPodSpec {
 	if src.Port != "" {
 		spec.Port = common.ParsePort(src.Port)
 	}
+	spec.Protocol = common.ParseProtocol(src.Protocol)
 
 	for _, l := range src.Labels {
 		spec.Labels[l.Key] = l.Value
@@ -260,7 +261,7 @@ func buildPod(owner domain.Object, spec ResolvedPodSpec, namespace string) *core
 
 	if spec.Port > 0 {
 		pod.Spec.Containers[0].Ports = []corev1.ContainerPort{
-			{ContainerPort: int32(spec.Port)},
+			{ContainerPort: int32(spec.Port), Protocol: spec.Protocol},
 		}
 	}
 

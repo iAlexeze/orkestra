@@ -220,6 +220,7 @@ func Resolve(src orktypes.ReplicaSetTemplateSource, ownerName string) ResolvedRe
 			spec.Port = int32(p)
 		}
 	}
+	spec.Protocol = common.ParseProtocol(src.Protocol)
 
 	for _, l := range src.Labels {
 		spec.Labels[l.Key] = l.Value
@@ -315,7 +316,7 @@ func buildReplicaSet(owner domain.Object, spec ResolvedReplicaSetSpec, namespace
 
 	if spec.Port > 0 {
 		rs.Spec.Template.Spec.Containers[0].Ports = []corev1.ContainerPort{
-			{ContainerPort: spec.Port},
+			{ContainerPort: spec.Port, Protocol: spec.Protocol},
 		}
 	}
 

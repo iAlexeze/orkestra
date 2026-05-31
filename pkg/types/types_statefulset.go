@@ -47,6 +47,10 @@ type StatefulSetTemplateSource struct {
 	// Port — container port. "0" or empty means no port exposed.
 	Port string `yaml:"port,omitempty" json:"port,omitempty"`
 
+	// Protocol — network protocol for the container port.
+	// Accepted values: TCP (default), UDP, SCTP. Omit to use TCP.
+	Protocol string `yaml:"protocol,omitempty" json:"protocol,omitempty"`
+
 	// ServiceName — name of the headless Service governing the StatefulSet.
 	// Default: same as Name.
 	ServiceName string `yaml:"serviceName,omitempty" json:"serviceName,omitempty"`

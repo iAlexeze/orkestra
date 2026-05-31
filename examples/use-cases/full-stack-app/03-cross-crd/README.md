@@ -6,11 +6,10 @@ Two CRDs. `ManagedDatabase` creates a Postgres Deployment and writes its endpoin
 
 ---
 
-## Step 1 — Apply the CRDs
+## Step 1 — Apply the CRD
 
 ```bash
-kubectl apply -f crd-database.yaml
-kubectl apply -f crd-application.yaml
+kubectl apply -f crd.yaml
 ```
 
 ---
