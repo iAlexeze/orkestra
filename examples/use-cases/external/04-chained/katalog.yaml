@@ -61,7 +61,6 @@ spec:
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
               replicas: "{{ .spec.replicas }}"
-              reconcile: true
               when:
                 - field: external.tokenFetch.status
                   equals: "200"

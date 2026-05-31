@@ -9,7 +9,7 @@
 
 A log line like:
 
-```
+```text
 level=error error="deployment.Update: updating deployment \"my-app\": Operation cannot be fulfilled
 on deployments.apps \"my-app\": the object has been modified; please apply your changes to the
 latest version and try again"
