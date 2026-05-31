@@ -24,8 +24,10 @@ Expected:
 
 ## Step 2 — Start the operator
 
+`--dev-server` starts a mock HTTP server on `:9999` — no real upstream service needed. It serves `/health` (200) and `/status/503` (503) for the dev CRs:
+
 ```bash
-ork run
+ork run --dev-server
 ```
 
 ---
@@ -46,8 +48,8 @@ Open [http://localhost:8081](http://localhost:8081). Select **webapp-health-gate
 ## Step 4 — Apply both CRs
 
 ```bash
-kubectl apply -f cr-healthy.yaml
-kubectl apply -f cr-degraded.yaml
+kubectl apply -f cr-dev-healthy.yaml
+kubectl apply -f cr-dev-degraded.yaml
 ```
 
 Wait one reconcile cycle (~15s). Both CRs appear in the Control Center.
@@ -94,11 +96,11 @@ status:
 
 ## Step 6 — Fix the degraded app
 
-Edit the CR to point at a healthy URL:
+Patch the CR to point at the healthy dev endpoint:
 
 ```bash
 kubectl patch webapp my-app-degraded --type=merge \
-  -p '{"spec":{"serviceUrl":"https://httpbin.org/status/200"}}'
+  -p '{"spec":{"healthCheckUrl":"http://localhost:9999/health"}}'
 ```
 
 Wait a reconcile cycle. The phase flips to `Ready` and the Deployment appears.

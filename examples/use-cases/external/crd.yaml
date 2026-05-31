@@ -39,7 +39,10 @@ spec:
                   description: Container image to run.
                 serviceUrl:
                   type: string
-                  description: URL of the upstream service. Used for health checks, config fetch, or signing calls depending on the example.
+                  description: Base URL of the upstream service. Used by 02-config-inject, 03-image-signing, and 04-chained as the base URL for path construction.
+                healthCheckUrl:
+                  type: string
+                  description: Full URL of the health endpoint to call before reconciling resources. Used by 01-health-gate.
                 replicas:
                   type: integer
                   minimum: 1

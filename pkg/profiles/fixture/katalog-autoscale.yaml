@@ -19,7 +19,7 @@ spec:
       workers: 2
       resync: 30s
       queue:
-        maxQueueDepth: 50
+        maxDepth: 50
 
       autoscale:
         profile: burst
@@ -55,7 +55,7 @@ spec:
       workers: 2
       resync: 30s
       queue:
-        maxQueueDepth: 50
+        maxDepth: 50
 
       autoscale:
         profile: steady
@@ -91,7 +91,7 @@ spec:
       workers: 2
       resync: 30s
       queue:
-        maxQueueDepth: 50
+        maxDepth: 50
 
       autoscale:
         profile: batch
@@ -127,7 +127,7 @@ spec:
       workers: 4
       resync: 30s
       queue:
-        maxQueueDepth: 100
+        maxDepth: 100
 
       autoscale:
         profile: latency-sensitive
@@ -163,7 +163,7 @@ spec:
       workers: 4
       resync: 30s
       queue:
-        maxQueueDepth: 100
+        maxDepth: 100
 
       autoscale:
         profile: cost-optimized

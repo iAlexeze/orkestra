@@ -6,41 +6,6 @@ The signing call only fires when `spec.image` changes. After a successful sign, 
 
 ---
 
-## Prerequisites
-
-**Local / development:** set `IMAGE_SIGNING_TOKEN` in the shell before `ork run`:
-
-```bash
-export IMAGE_SIGNING_TOKEN="your-token-here"
-ork run
-```
-
-**Production deployment:** store the token in a Kubernetes Secret and mount it into the Orkestra runtime via `values.yaml`:
-
-```yaml
-# charts/orkestra/values.yaml
-runtime:
-  extraEnvFrom:
-    - secretRef:
-        name: image-signing-credentials   # kubectl create secret generic image-signing-credentials --from-literal=IMAGE_SIGNING_TOKEN=...
-```
-
-Or inject individual env vars:
-
-```yaml
-runtime:
-  extraEnv:
-    - name: IMAGE_SIGNING_TOKEN
-      valueFrom:
-        secretKeyRef:
-          name: image-signing-credentials
-          key: IMAGE_SIGNING_TOKEN
-```
-
-Replace `spec.serviceUrl` in `cr.yaml` with your signing service base URL. The operator will call `POST {{ serviceUrl }}/sign`.
-
----
-
 ## Step 1 — Validate
 
 ```bash
@@ -59,8 +24,10 @@ Expected:
 
 ## Step 2 — Start the operator
 
+`--dev-server` starts a mock HTTP server on `:9999` — no signing service or token needed. It responds to `POST /sign` with `{"signed":true}`, ignoring the body and any auth header:
+
 ```bash
-ork run
+ork run --dev-server
 ```
 
 ---

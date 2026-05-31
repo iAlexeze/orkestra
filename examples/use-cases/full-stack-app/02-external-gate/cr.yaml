@@ -1,5 +1,4 @@
 # 02 — external: health gate
-# Change spec.serviceUrl to a URL that returns 200 to unblock the Deployment
 apiVersion: advanced.orkestra.io/v1alpha1
 kind: GatedApp
 metadata:
@@ -7,5 +6,8 @@ metadata:
   namespace: default
 spec:
   image: nginx:1.25
-  serviceUrl: "https://controlcenter.orkestra.sh/controlcenter"   # replace with your service
-
+  # Dev server handles both calls:
+  #   GET /health           → 200 (gates Deployment creation)
+  #   GET /flags/my-gated-app → feature flags JSON (non-blocking)
+  # Run `ork run --dev-server` before applying this CR.
+  serviceUrl: "http://localhost:9999"

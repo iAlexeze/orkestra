@@ -4,7 +4,7 @@ metadata:
   name: my-app
 spec:
   image: nginx:1.25
-  # httpbin /json returns a static JSON object — a stand-in for a real config server.
-  # Replace with your actual config service URL.
-  serviceUrl: "https://httpbin.org"
+  # Dev server responds to GET /config/my-app with a static JSON config blob.
+  # Run `ork run --dev-server` before applying this CR.
+  serviceUrl: "http://localhost:9999"
   replicas: 1

@@ -1,0 +1,20 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Komposer
+metadata:
+  name: advanced-usecases
+  author: orkspace
+  version: 0.2.0
+  description: >
+    Advanced Orkestra patterns — forEach, external:, cross:, once:, anyOf:.
+    Each katalog demonstrates one pattern that previously required custom Go code.
+    Import all six to run the full example pack, or import individual katalogs
+    to focus on a single pattern.
+
+imports:
+  files:
+    - ./01-multi-region/katalog.yaml
+    - ./02-external-gate/katalog.yaml
+    - ./03-cross-crd/katalog.yaml
+    - ./04-once-secret/katalog.yaml
+    - ./05-anyof/katalog.yaml
+    - ./06-full-stack/katalog.yaml

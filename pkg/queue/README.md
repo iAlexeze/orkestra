@@ -44,6 +44,6 @@ safe.
 
 | Type | File | Role |
 |---|---|---|
-| `Workqueue` | `queue.go` | Per-CRD queue: Enqueue, Depth, SetMaxQueueDepth |
+| `Workqueue` | `queue.go` | Per-CRD queue: Enqueue, Depth, SetMaxDepth |
 | `QueueRegistry` | `registry.go` | GVK → Workqueue map; Orkestra component lifecycle |
 | `QueueItem` | `queue.go` | `{Key, GVK}` — the unit of work passed between informer and worker |
