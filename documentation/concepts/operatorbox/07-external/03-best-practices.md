@@ -82,25 +82,26 @@ If the call carries meaningful information even when it fails — a rejection re
 `.external.*` fields are available in any template expression — including resource spec fields. This means a live flag value can set replica counts directly, not just control whether a resource is created:
 
 ```yaml
-# Full capacity when flag is on
-deployments:
-  - name: "{{ .metadata.name }}"
-    replicas: "{{ .spec.replicas }}"
-    reconcile: true
-    when:
-      - field: external.flags.body
-        equals: "true"
+onCreate:
+  # Full capacity when flag is on
+  deployments:
+    - name: "{{ .metadata.name }}"
+      replicas: "{{ .spec.replicas }}"
+      reconcile: true
+      when:
+        - field: external.flags.body
+          equals: "true"
 
-# Baseline when flag is off or the flag service is unavailable
-  - name: "{{ .metadata.name }}"
-    replicas: "1"
-    reconcile: true
-    when:
-      - field: external.flags.body
-        notEquals: "true"   # also catches empty body on service outage
+  # Baseline when flag is off or the flag service is unavailable
+    - name: "{{ .metadata.name }}"
+      replicas: "1"
+      reconcile: true
+      when:
+        - field: external.flags.body
+          notEquals: "true"   # also catches empty body on service outage
 ```
 
-Both entries target the same Deployment name. Exactly one fires per reconcile. `reconcile: true` ensures the existing Deployment is updated, not just gated.
+Both entries target the same Deployment name. Exactly one fires per reconcile. Declared under `onCreate`, `reconcile: true` is required — without it, `onCreate` would only create the Deployment once and never update it when the flag changes. Under `onReconcile`, drift correction happens automatically and `reconcile: true` is redundant.
 
 ---
 

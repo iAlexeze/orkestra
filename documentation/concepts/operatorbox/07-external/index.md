@@ -2,6 +2,11 @@
 
 `external:` makes HTTP calls before any resource group runs. Results land in `.external.<name>.*` and are available to every resource template, `when:` condition, and status field for the rest of that reconcile cycle. A single external call can gate a Deployment, embed a live config into a ConfigMap, sign an image, or supply the auth token for the next call in the sequence.
 
+`external:` is a field on `HookTemplates` — the same struct used by `onCreate` and `onReconcile`. Declare it under whichever lifecycle hook owns the resources that consume it:
+
+- **`onReconcile:`** — the most common placement. The call runs every reconcile alongside drift-correction. Resources under `onReconcile` are already re-applied on every cycle; `reconcile: true` on individual resources is redundant here.
+- **`onCreate:`** — use when the external call gates resources that need both creation and drift correction. Declare `reconcile: true` on those resources so Orkestra updates them (not just creates them) on every reconcile.
+
 **Why it exists.** Operators often need to coordinate with the world outside the cluster — an upstream health check, a signing service, a feature flag API, an external auth provider. Without `external:`, you would write Go hooks for each. With `external:`, you declare the call and reference the result in templates. The operator handles the HTTP, the retry, the timeout, and the error surfacing.
 
 ---

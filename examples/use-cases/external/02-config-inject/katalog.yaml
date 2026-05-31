@@ -48,7 +48,6 @@ spec:
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
               replicas: "{{ .spec.replicas }}"
-              reconcile: true
               volumes:
                 - name: app-config
                   configMap:
@@ -60,7 +59,6 @@ spec:
           # Only written when the config call succeeded.
           configMaps:
             - name: "{{ .metadata.name }}-config"
-              reconcile: true
               data:
                 app.json: "{{ .external.appConfig.body }}"
               when:

@@ -305,6 +305,37 @@ func ValidateMotifTemplates(m *orktypes.Motif) []string {
 	return errs
 }
 
+// isRuntimeCondition reports whether a condition cannot be evaluated at motif
+// expansion time. A condition is runtime when its field or comparison value still
+// contains a template expression ({{ }}) — meaning it references .spec.*, .metadata.*,
+// .status.*, .external.*, or any other value only known during reconcile.
+//
+// After renderInputs runs, all {{ .inputs.* }} expressions have been replaced with
+// their bound values. Any remaining {{ }} is a runtime expression that must be
+// preserved on the resource for the reconciler to evaluate.
+func isRuntimeCondition(cond orktypes.Condition) bool {
+	if strings.Contains(cond.Field, "{{") {
+		return true
+	}
+	// Check comparison values
+	_, val := orktypes.ResolveConditionOp(cond)
+	return strings.Contains(val, "{{")
+}
+
+// splitConditions partitions conditions into those that can be evaluated now
+// (static — all inputs resolved, no remaining template expressions) and those
+// that must be deferred to the reconciler (runtime — still contain {{ }}).
+func splitConditions(conditions []orktypes.Condition) (static, runtime []orktypes.Condition) {
+	for _, c := range conditions {
+		if isRuntimeCondition(c) {
+			runtime = append(runtime, c)
+		} else {
+			static = append(static, c)
+		}
+	}
+	return
+}
+
 // evalMotifCondition evaluates a single motif condition against already-resolved values.
 // The field is treated as a literal value (not a dot-notation path to look up),
 // because inputs have already been substituted by renderInputs.
@@ -361,11 +392,13 @@ func passesMotifConditions(conditions []orktypes.Condition, anyOf []orktypes.Con
 func filterDeployments(srcs []orktypes.DeploymentTemplateSource) []orktypes.DeploymentTemplateSource {
 	var out []orktypes.DeploymentTemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -374,11 +407,13 @@ func filterDeployments(srcs []orktypes.DeploymentTemplateSource) []orktypes.Depl
 func filterReplicaSets(srcs []orktypes.ReplicaSetTemplateSource) []orktypes.ReplicaSetTemplateSource {
 	var out []orktypes.ReplicaSetTemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -387,11 +422,13 @@ func filterReplicaSets(srcs []orktypes.ReplicaSetTemplateSource) []orktypes.Repl
 func filterServices(srcs []orktypes.ServiceTemplateSource) []orktypes.ServiceTemplateSource {
 	var out []orktypes.ServiceTemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -400,11 +437,13 @@ func filterServices(srcs []orktypes.ServiceTemplateSource) []orktypes.ServiceTem
 func filterPods(srcs []orktypes.PodTemplateSource) []orktypes.PodTemplateSource {
 	var out []orktypes.PodTemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -413,11 +452,13 @@ func filterPods(srcs []orktypes.PodTemplateSource) []orktypes.PodTemplateSource 
 func filterJobs(srcs []orktypes.JobTemplateSource) []orktypes.JobTemplateSource {
 	var out []orktypes.JobTemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -426,11 +467,13 @@ func filterJobs(srcs []orktypes.JobTemplateSource) []orktypes.JobTemplateSource 
 func filterCronJobs(srcs []orktypes.CronJobTemplateSource) []orktypes.CronJobTemplateSource {
 	var out []orktypes.CronJobTemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -439,11 +482,13 @@ func filterCronJobs(srcs []orktypes.CronJobTemplateSource) []orktypes.CronJobTem
 func filterSecrets(srcs []orktypes.SecretTemplateSource) []orktypes.SecretTemplateSource {
 	var out []orktypes.SecretTemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -452,11 +497,13 @@ func filterSecrets(srcs []orktypes.SecretTemplateSource) []orktypes.SecretTempla
 func filterConfigMaps(srcs []orktypes.ConfigMapTemplateSource) []orktypes.ConfigMapTemplateSource {
 	var out []orktypes.ConfigMapTemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -465,11 +512,13 @@ func filterConfigMaps(srcs []orktypes.ConfigMapTemplateSource) []orktypes.Config
 func filterServiceAccounts(srcs []orktypes.ServiceAccountTemplateSource) []orktypes.ServiceAccountTemplateSource {
 	var out []orktypes.ServiceAccountTemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -478,11 +527,13 @@ func filterServiceAccounts(srcs []orktypes.ServiceAccountTemplateSource) []orkty
 func filterStatefulSets(srcs []orktypes.StatefulSetTemplateSource) []orktypes.StatefulSetTemplateSource {
 	var out []orktypes.StatefulSetTemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -491,11 +542,13 @@ func filterStatefulSets(srcs []orktypes.StatefulSetTemplateSource) []orktypes.St
 func filterIngresses(srcs []orktypes.IngressTemplateSource) []orktypes.IngressTemplateSource {
 	var out []orktypes.IngressTemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -504,11 +557,13 @@ func filterIngresses(srcs []orktypes.IngressTemplateSource) []orktypes.IngressTe
 func filterPersistentVolumes(srcs []orktypes.PVTemplateSource) []orktypes.PVTemplateSource {
 	var out []orktypes.PVTemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -517,11 +572,13 @@ func filterPersistentVolumes(srcs []orktypes.PVTemplateSource) []orktypes.PVTemp
 func filterPersistentVolumeClaims(srcs []orktypes.PVCTemplateSource) []orktypes.PVCTemplateSource {
 	var out []orktypes.PVCTemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -530,11 +587,13 @@ func filterPersistentVolumeClaims(srcs []orktypes.PVCTemplateSource) []orktypes.
 func filterHPAs(srcs []orktypes.HPATemplateSource) []orktypes.HPATemplateSource {
 	var out []orktypes.HPATemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -543,11 +602,13 @@ func filterHPAs(srcs []orktypes.HPATemplateSource) []orktypes.HPATemplateSource 
 func filterPDBs(srcs []orktypes.PDBTemplateSource) []orktypes.PDBTemplateSource {
 	var out []orktypes.PDBTemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -556,11 +617,13 @@ func filterPDBs(srcs []orktypes.PDBTemplateSource) []orktypes.PDBTemplateSource 
 func filterNamespaces(srcs []orktypes.NamespaceTemplateSource) []orktypes.NamespaceTemplateSource {
 	var out []orktypes.NamespaceTemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -569,11 +632,13 @@ func filterNamespaces(srcs []orktypes.NamespaceTemplateSource) []orktypes.Namesp
 func filterRoles(srcs []orktypes.RoleTemplateSource) []orktypes.RoleTemplateSource {
 	var out []orktypes.RoleTemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -582,11 +647,13 @@ func filterRoles(srcs []orktypes.RoleTemplateSource) []orktypes.RoleTemplateSour
 func filterRoleBindings(srcs []orktypes.RoleBindingTemplateSource) []orktypes.RoleBindingTemplateSource {
 	var out []orktypes.RoleBindingTemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -595,11 +662,13 @@ func filterRoleBindings(srcs []orktypes.RoleBindingTemplateSource) []orktypes.Ro
 func filterCustomResources(srcs []orktypes.CustomResourceTemplateSource) []orktypes.CustomResourceTemplateSource {
 	var out []orktypes.CustomResourceTemplateSource
 	for _, s := range srcs {
-		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+		static, runtime := splitConditions(s.Conditions)
+		staticAnyOf, runtimeAnyOf := splitConditions(s.AnyOf)
+		if !passesMotifConditions(static, staticAnyOf) {
 			continue
 		}
-		s.Conditions = nil
-		s.AnyOf = nil
+		s.Conditions = runtime
+		s.AnyOf = runtimeAnyOf
 		out = append(out, s)
 	}
 	return out
@@ -655,6 +724,7 @@ func MergeHookTemplates(dst, src *orktypes.HookTemplates) {
 	dst.ClusterRoles = append(dst.ClusterRoles, src.ClusterRoles...)
 	dst.ClusterRoleBindings = append(dst.ClusterRoleBindings, src.ClusterRoleBindings...)
 	dst.CustomResource = append(dst.CustomResource, src.CustomResource...)
+	dst.External = append(dst.External, src.External...)
 }
 
 func inputNames(inputs []orktypes.MotifInput) []string {

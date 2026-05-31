@@ -52,7 +52,10 @@ Use `spec.healthCheckUrl` (the full URL) rather than a base `serviceUrl` with `/
 
 **Try it:**
 ```bash
+ork init --pack use-cases
+cd external/01-health-gate
 ork run --dev-server   # GET /health → 200, GET /status/503 → 503
+
 kubectl apply -f cr-dev-healthy.yaml
 kubectl apply -f cr-dev-degraded.yaml
 ```
@@ -73,7 +76,6 @@ onReconcile:
 
   configMaps:
     - name: "{{ .metadata.name }}-config"
-      reconcile: true
       data:
         app.json: "{{ .external.appConfig.body }}"
       when:
@@ -108,7 +110,10 @@ The `when:` condition on the ConfigMap means the config is only overwritten when
 
 **Try it:**
 ```bash
+ork init --pack use-cases
+cd external/02-config-inject
 ork run --dev-server   # GET /config/:name → static JSON blob
+
 kubectl apply -f cr.yaml
 kubectl get configmap my-app-config -o jsonpath='{.data.app\.json}' | jq .
 ```
@@ -139,7 +144,6 @@ onReconcile:
   deployments:
     - name: "{{ .metadata.name }}"
       image: "{{ .spec.image }}"
-      reconcile: true
       when:
         - field: status.signedImage
           equals: "{{ .spec.image }}"       # only deploy confirmed-safe images
@@ -221,7 +225,10 @@ status:
 
 **Try it:**
 ```bash
+ork init --pack use-cases
+cd external/03-image-signing
 ork run --dev-server   # POST /sign → 200 for most images, 403 for nginx:not-secure
+
 kubectl apply -f cr-reject.yaml   # nginx:not-secure → SigningRejected, no Deployment
 kubectl patch webapp my-app --type=merge -p '{"spec":{"image":"nginx:1.25"}}'
 # → sign succeeds → Deployment created
@@ -266,7 +273,10 @@ The `token: "{{ .external.tokenFetch.body }}"` expression on `resourceCheck` res
 
 **Try it:**
 ```bash
+ork init --pack use-cases
+cd external/04-chained
 ork run --dev-server   # POST /auth/token → "dev-token-abc123", GET /resources/:name → resource stub
+
 kubectl apply -f cr.yaml
 ```
 
@@ -277,7 +287,7 @@ kubectl apply -f cr.yaml
 Read a live flag from a feature flag service on every reconcile. Use the result to drive `replicas` directly — not as a gate condition, but as a resource attribute. The cluster converges to the correct replica count within one reconcile cycle of the flag changing.
 
 ```yaml
-onReconcile:
+onCreate:
   external:
     - name: flags
       url: "{{ .spec.serviceUrl }}/flags/{{ .metadata.name }}/v2Enabled"
@@ -317,13 +327,16 @@ status:
       value: "{{ readyReplicas .children.deployment }}"
 ```
 
-Two deployment entries target the same name with different replica counts. Exactly one fires per reconcile — the `when:` conditions are mutually exclusive. `reconcile: true` ensures the existing Deployment is updated, not just created. The second entry catches flag service outages: an empty body from a failed call does not equal `"true"`, so the operator degrades to baseline safely rather than leaving the cluster at stale capacity.
+Two deployment entries target the same name with different replica counts. Exactly one fires per reconcile — the `when:` conditions are mutually exclusive. This is declared under `onCreate` with `reconcile: true` on each entry: `onCreate` runs every reconcile, and `reconcile: true` tells Orkestra to update the existing Deployment (not just create it) when the active entry changes. The second entry catches flag service outages: an empty body from a failed call does not equal `"true"`, so the operator degrades to baseline safely rather than leaving the cluster at stale capacity.
 
 This call fires on every reconcile intentionally — the flag can change at any time. Check `orkestra_external_calls_total` in metrics to see the call count grow as reconciles run.
 
 **Try it:**
 ```bash
+ork init --pack use-cases
+cd external/05-feature-flags
 ork run --dev-server   # GET /flags/:name/:flag → "true" by default
+
 kubectl apply -f cr.yaml
 # Deployment: 5 replicas
 

@@ -49,7 +49,6 @@ spec:
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
               replicas: "{{ .spec.replicas }}"
-              reconcile: true
               when:
                 - field: external.healthCheck.status
                   equals: "200"

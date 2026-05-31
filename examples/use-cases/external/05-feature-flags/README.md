@@ -135,25 +135,26 @@ Wait one reconcile. Deployment scales back to 5.
 Two deployment entries target the same name with different replicas. Exactly one fires per reconcile:
 
 ```yaml
-# Full capacity — fires when flag is true
-deployments:
-  - name: "{{ .metadata.name }}"
-    replicas: "{{ .spec.replicas }}"    # 5
-    reconcile: true
-    when:
-      - field: external.flags.body
-        equals: "true"
+onCreate:
+  # Full capacity — fires when flag is true
+  deployments:
+    - name: "{{ .metadata.name }}"
+      replicas: "{{ .spec.replicas }}"    # 5
+      reconcile: true
+      when:
+        - field: external.flags.body
+          equals: "true"
 
-  # Baseline — fires when flag is false or flag service is down
-  - name: "{{ .metadata.name }}"
-    replicas: "1"
-    reconcile: true
-    when:
-      - field: external.flags.body
-        notEquals: "true"
+    # Baseline — fires when flag is false or flag service is down
+    - name: "{{ .metadata.name }}"
+      replicas: "1"
+      reconcile: true
+      when:
+        - field: external.flags.body
+          notEquals: "true"
 ```
 
-`reconcile: true` under `onCreate` ensures the existing Deployment is updated, not just created. The second entry also catches flag service outages — if the call fails, `flags.body` is empty, `notEquals: "true"` passes, and the operator falls back to baseline safely.
+`reconcile: true` is required here because these resources are under `onCreate`. Without it, `onCreate` would create the Deployment once and never update it when the flag changes. `reconcile: true` tells Orkestra to apply the desired state on every reconcile — drift correction for `onCreate` resources. The second entry also catches flag service outages — if the call fails, `flags.body` is empty, `notEquals: "true"` passes, and the operator falls back to baseline safely.
 
 ---
 
