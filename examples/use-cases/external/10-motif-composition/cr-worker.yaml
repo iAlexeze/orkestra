@@ -3,7 +3,7 @@ kind: Worker
 metadata:
   name: my-worker
 spec:
-  image: busybox:1.36
+  image: httpd:2.4.67
   # Dev server handles both motif endpoints:
   #   GET  /vault/v1/secret/data/apps/my-worker → 200 secret data
   #   POST /v1/data/deploy                       → allow:true
