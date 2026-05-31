@@ -31,7 +31,7 @@ func writeKatalogFile(t *testing.T, name string, crdNames ...string) string {
 func TestKomposer_InlineOverride_WinsOverSource(t *testing.T) {
 	sourceKatalog := writeKatalogFile(t, "source", "website", "database")
 
-	komposerContent := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: override-test\nsources:\n  files:\n    - url: " + sourceKatalog + "\nspec:\n  crds:\n    website:\n      enabled: false\n"
+	komposerContent := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: override-test\nimports:\n  files:\n    - url: " + sourceKatalog + "\nspec:\n  crds:\n    website:\n      enabled: false\n"
 	f, err := os.CreateTemp("", "*.yaml")
 	if err != nil {
 		t.Fatalf("creating temp file: %v", err)
@@ -70,7 +70,7 @@ func TestKomposer_MultipleFileSources_AllMerged(t *testing.T) {
 	srcA := writeKatalogFile(t, "source-a", "crd-a1", "crd-a2")
 	srcB := writeKatalogFile(t, "source-b", "crd-b1")
 
-	content := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: multi-source\nsources:\n  files:\n    - url: " + srcA + "\n    - url: " + srcB + "\nspec:\n  crds: {}\n"
+	content := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: multi-source\nimports:\n  files:\n    - url: " + srcA + "\n    - url: " + srcB + "\nspec:\n  crds: {}\n"
 	f, _ := os.CreateTemp("", "*.yaml")
 	f.WriteString(content)
 	f.Close()

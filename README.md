@@ -124,6 +124,8 @@ ork run
 
 `ork init` scaffolds a `katalog.yaml`, `crd.yaml`, and `cr.yaml` in the current directory — like `terraform init`.
 
+**→ [Learning to Orkestrate](https://orkestra.sh/docs/getting-started/learning-to-orkestrate)** — the guided path from first operator to full platform. Every capability has a runnable example.
+
 ---
 
 ### Control Center
@@ -134,8 +136,6 @@ In another terminal:
 ork control
 ```
 > → localhost:8081 · username:password → orkestra
-
-**→ [Learning to Orkestrate](https://orkestra.sh/docs/getting-started/learning-to-orkestrate)** — the guided path from first operator to full platform. Every capability has a runnable example.
 
 ![Control Center — multi-Runtime view](./documentation/assets/controlcenter/public/control-center.png)
 

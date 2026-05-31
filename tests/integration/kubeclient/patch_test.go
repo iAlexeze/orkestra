@@ -151,7 +151,7 @@ func TestPatchLabels_AddsLabels(t *testing.T) {
 	obj := createProbe(t, ctx, "lbl-add", "default")
 
 	labels := map[string]string{"env": "test", "managed-by": "orkestra"}
-	if err := kube.PatchLabels(ctx, obj, probeGVR, labels); err != nil {
+	if err := kube.PatchLabels(ctx, obj, probeGVR, nil, labels); err != nil {
 		t.Fatalf("PatchLabels: %v", err)
 	}
 
@@ -184,7 +184,7 @@ func TestPatchLabels_DoesNotRemoveExistingLabels(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 
-	if err := kube.PatchLabels(ctx, created, probeGVR, map[string]string{"new": "label"}); err != nil {
+	if err := kube.PatchLabels(ctx, created, probeGVR, nil, map[string]string{"new": "label"}); err != nil {
 		t.Fatalf("PatchLabels: %v", err)
 	}
 
