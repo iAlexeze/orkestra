@@ -98,7 +98,7 @@ annotations:
     - kind: fixed
       description: "crdExists() now distinguishes transient network errors from genuine CRD absence"
     - kind: fixed
-      description: "PostStartRetryInterval restored from 3s (debug) to 90s with 5-minute capped backoff"
+      description: "postStartRetryInterval restored from 3s (debug) to 90s with 5-minute capped backoff"
     - kind: fixed
       description: "ClusterRole/ClusterRoleBinding names scoped to orkestra-<namespace> — no more last-write-wins collision"
     - kind: fixed

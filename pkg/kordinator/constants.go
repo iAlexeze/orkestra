@@ -9,7 +9,8 @@ const (
 	DefaultDependencyInterval = 10 * time.Second
 
 	// PostStart Retry loop
-	PostStartRetryInterval        = 90 * time.Second
+	postStartRetryInterval        = 90 * time.Second // in-cluster (prod)
+	postStartRetryIntervalDev     = 10 * time.Second // local dev (not in pod)
 	PostStartBackoff              = 5 * time.Second
 	PostStartBackoffMax           = 5 * time.Minute
 	DependencyHealthCheckInterval = 10 * time.Second

@@ -17,7 +17,7 @@ Startup:
   - Kordinate continues (does NOT block) because missing CRDs are skipped
   - Retry loop starts in background
 
-Retry loop (every PostStartRetryInterval):
+Retry loop (every postStartRetryInterval):
   - Phase 1: checks missing map
     - finds A is missing
     - calls utils.WaitForCRD() → false

@@ -13,54 +13,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// retryMissingCRDs runs continuously to detect and activate CRDs that were missing at startup.
-//
-// It runs forever because CRDs can be installed after Orkestra starts.
-// The loop stops only when the context is cancelled (leadership lost or shutdown).
-//
-// Flow:
-//   - Periodically checks the missing map
-//   - When a missing CRD appears in the cluster, activateCRD is called
-//   - Uses exponential backoff to avoid API server pressure
-//
-// Note: This loop handles activation only. Deactivation is not implemented —
-//
-//	if a CRD is deleted after startup, the informer continues running.
-//	But workers are drained through deactivateCRD.
-// dependenciesReady returns true if all declared dependencies are currently
-// satisfied (i.e., the required channel is already closed).
-// This check is non‑blocking.
-// func (k *DependencyKordinator) dependenciesReady(crd orktypes.CRDEntry, nameToGVK map[string]string) bool {
-// 	for depName, depCond := range crd.DependsOn {
-// 		depGVK, ok := nameToGVK[depName]
-// 		if !ok {
-// 			logger.Error().Str("crd", crd.Name).Str("dependency", depName).Msg("dependency GVK not found")
-// 			return false
-// 		}
-// 		switch strings.ToLower(depCond.Condition) {
-// 		case string(orktypes.DependencyConditionHealthy):
-// 			select {
-// 			case <-k.healthyCh[depGVK]:
-// 				// channel closed → dependency healthy
-// 			default:
-// 				return false
-// 			}
-// 		default: // started
-// 			select {
-// 			case <-k.startedCh[depGVK]:
-// 				// channel closed → dependency started
-// 			default:
-// 				return false
-// 			}
-// 		}
-// 	}
-// 	return true
-// }
-
 // retryMissingCRDs runs continuously to detect and activate CRDs that were missing at startup
 // or deferred because dependencies were not ready.
 func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
-	ticker := time.NewTicker(PostStartRetryInterval)
+	retryInterval := postStartRetryInterval
+	if !utils.IsRunningInCluster() {
+		retryInterval = postStartRetryIntervalDev
+	}
+	ticker := time.NewTicker(retryInterval)
 	defer ticker.Stop()
 
 	backoff := PostStartBackoff
