@@ -1,10 +1,10 @@
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
-  name: external-config-inject-e2e
+  name: external-cert-readiness-e2e
   description: >
-    external: config inject — GET /config/:name response body embedded into
-    a ConfigMap on every reconcile. Deployment mounts it without a restart.
+    external: certificate readiness gate — GET /certs/:name/status before
+    the Deployment. Cert issued (default) → Ready. Status surfaces cert detail.
     Run with `ork e2e --dev-server`.
 
 spec:
@@ -18,30 +18,30 @@ spec:
     reuse: false
 
   expect:
-    - name: ConfigMap created and contains injected config
+    - name: Deployment created when certificate is issued
       after: cr-applied
       timeout: 90s
       resources:
-        - kind: ConfigMap
-          name: my-app-config
+        - kind: Deployment
+          name: my-app
           namespace: default
-      commands:
-        - run: "kubectl get configmap my-app-config -o jsonpath='{.data.app\\.json}'"
-          outputContains: "production"
+          ready: true
 
-    - name: Status reflects successful external call
+    - name: Status phase is Ready and certStatus contains issued
       after: cr-applied
       timeout: 60s
       commands:
         - run: kubectl get webapp my-app -o jsonpath='{.status.phase}'
           outputContains: Ready
+        - run: kubectl get webapp my-app -o jsonpath='{.status.certStatus}'
+          outputContains: issued
 
     - name: Cleanup verified
       after: cr-deleted
       timeout: 30s
       resources:
-        - kind: ConfigMap
-          name: my-app-config
+        - kind: Deployment
+          name: my-app
           namespace: default
           count: 0
         - kind: WebApp

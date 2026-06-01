@@ -1,10 +1,11 @@
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
-  name: external-health-gate-e2e
+  name: external-vault-secret-gate-e2e
   description: >
-    external: health gate — Deployment only created when /health returns 200,
-    suppressed when /status/503 is returned. Run with `ork e2e --dev-server`.
+    external: Vault secret gate — GET /vault/v1/secret/data/:path before the
+    Deployment. Valid path → Ready. Path containing "expired" → SecretExpired,
+    no Deployment. Run with `ork e2e --dev-server`.
 
 spec:
   katalog: ./katalog.yaml
@@ -17,37 +18,40 @@ spec:
     reuse: false
 
   expect:
-    - name: Deployment created when health check passes
+    - name: Deployment created when Vault secret is valid
       after: cr-applied
       timeout: 90s
       resources:
         - kind: Deployment
-          name: my-app-healthy
+          name: my-app
           namespace: default
           ready: true
 
-    - name: No Deployment when health check fails
+    - name: No Deployment when secret is expired — status shows SecretExpired
       after: cr-applied
       timeout: 60s
       resources:
         - kind: Deployment
-          name: my-app-degraded
+          name: my-app-expired
           namespace: default
           count: 0
+      commands:
+        - run: kubectl get webapp my-app-expired -o jsonpath='{.status.phase}'
+          outputContains: SecretExpired
 
     - name: Cleanup verified
       after: cr-deleted
       timeout: 60s
       resources:
         - kind: Deployment
-          name: my-app-healthy
+          name: my-app
           namespace: default
           count: 0
         - kind: WebApp
-          name: my-app-healthy
+          name: my-app
           namespace: default
           count: 0
         - kind: WebApp
-          name: my-app-degraded
+          name: my-app-expired
           namespace: default
           count: 0
