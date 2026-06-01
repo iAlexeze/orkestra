@@ -7,6 +7,9 @@ const (
 	// OrkestraRuntime is the name of the runtime Deployment.
 	OrkestraRuntime = "orkestra-runtime"
 
+	// OrkestraGateway is the name of the gateway Deployment.
+	OrkestraGateway = "orkestra-gateway"
+
 	// OrkestraNamespace is the Kubernetes namespace Orkestra deploys into.
 	OrkestraNamespace = "orkestra-system"
 

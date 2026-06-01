@@ -53,10 +53,15 @@ type Runner struct {
 
 	katalogFile string
 	crFile      string
+
+	// Orkestra installation options
+	orkestraVersion string
+	valueFiles      []string
+	helmArgs        []string
 }
 
 // New loads an E2E spec from a YAML file and constructs a Runner.
-func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster bool) (*Runner, error) {
+func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster bool, orkestraVersion string, valueFiles []string, helmArgs ...string) (*Runner, error) {
 	data, err := os.ReadFile(e2eFile)
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", e2eFile, err)
@@ -71,11 +76,14 @@ func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster bool) (*Runner, 
 	}
 
 	r := &Runner{
-		e2e:           e2e,
-		e2eDir:        filepath.Dir(e2eFile),
-		keepCluster:   keepCluster,
-		clusterCtx:    clusterCtx,
-		useCurrentCtx: useCurrentCtx,
+		e2e:             e2e,
+		e2eDir:          filepath.Dir(e2eFile),
+		keepCluster:     keepCluster,
+		clusterCtx:      clusterCtx,
+		useCurrentCtx:   useCurrentCtx,
+		orkestraVersion: orkestraVersion,
+		valueFiles:      valueFiles,
+		helmArgs:        helmArgs,
 	}
 
 	if err := r.resolveSource(); err != nil {
@@ -211,7 +219,6 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 	appliedSetupPaths = setupPaths
 
 	// ── 6. Install Orkestra ──────────────────────────────────────────────
-	args := []string{}
 	text := "..."
 
 	gatewayEnabled, err := resolveGatewayEnabled(r.katalogFile)
@@ -219,18 +226,19 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 		return nil, err
 	}
 	if gatewayEnabled {
-		args = append(args, "--set", "gateway.enabled=true")
+		fmt.Printf("→ Gateway enabled...\n")
+		r.helmArgs = append(r.helmArgs, "--set", "gateway.enabled=true")
 		text = " with gateway..."
 	}
 
-	if !ork.OrkestraInstalled() {
+	if !ork.RuntimeInstalled() {
 		fmt.Printf("→ Installing Orkestra%s\n", text)
-		if err := ork.InstallOrUpgradeOrkestra("", nil, args...); err != nil {
+		if err := ork.InstallOrUpgradeOrkestra(r.orkestraVersion, r.valueFiles, r.helmArgs...); err != nil {
 			return nil, fmt.Errorf("helm install: %w", err)
 		}
 		installedOrkestra = true
 		fmt.Printf("  ✓ Orkestra installed\n")
-	} else if ork.RuntimeDeployed() {
+	} else if ork.RuntimeInstalled() {
 		// Orkestra is installed and the runtime deployment exists — the bundle
 		// applied above updated the orkestra-katalog ConfigMap, so the runtime
 		// must reload to pick up the new Katalog.
@@ -238,7 +246,16 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 		if err := ork.SyncRuntime(); err != nil {
 			return nil, fmt.Errorf("syncing Orkestra runtime: %w", err)
 		}
-		fmt.Printf("  ✓ Orkestra updated\n")
+		fmt.Printf("  ✓ Orkestra runtime updated\n")
+	} else if gatewayEnabled {
+		// Gateway is enabled
+		if ork.GatewayInstalled() {
+			fmt.Printf("→ Updating Orkestra with current bundle...\n")
+			if err := ork.SyncGateway(); err != nil {
+				return nil, fmt.Errorf("syncing Orkestra gateway: %w", err)
+			}
+			fmt.Printf("  ✓ Orkestra gateway updated\n")
+		}
 	} else {
 		fmt.Printf("  ✓ Orkestra already installed\n")
 	}
@@ -247,9 +264,18 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 	fmt.Printf("→ Waiting for Orkestra to be ready...\n")
 	status := ork.CheckRuntimeHealth()
 	if !status.Running {
-		return nil, fmt.Errorf("Orkestra not ready: %s", status.Reason)
+		return nil, fmt.Errorf("Orkestra runtime not ready: %s", status.Reason)
 	}
 	fmt.Printf("  ✓ Orkestra runtime ready\n\n")
+
+	if gatewayEnabled {
+		fmt.Printf("→ Waiting for Orkestra gateway to be ready...\n")
+		status := ork.CheckGatewayHealth()
+		if !status.Running {
+			return nil, fmt.Errorf("Orkestra gateway not ready: %s", status.Reason)
+		}
+		fmt.Printf("  ✓ Orkestra gateway ready\n\n")
+	}
 
 	// ── 8. Run expectations ──────────────────────────────────────────────
 	var cases []CaseResult
