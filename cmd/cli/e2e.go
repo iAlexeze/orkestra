@@ -35,7 +35,9 @@ The same command runs locally and in CI. The e2e.yaml file is the source of trut
 			helmArgs = append(helmArgs, "--set", arg)
 		}
 
-		runner, err := e2e.New(file, clusterCtx, useCurrentCtx, keepCluster, version, valuesFiles, helmArgs...)
+		devServer, _ := cmd.Flags().GetBool("dev-server")
+
+		runner, err := e2e.New(file, clusterCtx, useCurrentCtx, keepCluster, devServer, version, valuesFiles, helmArgs...)
 		if err != nil {
 			return err
 		}
@@ -54,6 +56,7 @@ func init() {
 	e2eCmd.Flags().String("version", "", "Orkestra version to install (e.g., v1.2.3)")
 	e2eCmd.Flags().StringSlice("values", []string{}, "Helm values files to pass to Orkestra installation")
 	e2eCmd.Flags().StringSlice("helm-arg", []string{}, "Additional Helm --set arguments (e.g., key=value)")
+	e2eCmd.Flags().Bool("dev-server", false, "Deploy the mock dev server into the cluster for external: examples")
 
 	// Shadow global flags
 	e2eCmd.Flags().Bool("debug", false, "")

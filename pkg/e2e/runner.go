@@ -58,10 +58,13 @@ type Runner struct {
 	orkestraVersion string
 	valueFiles      []string
 	helmArgs        []string
+
+	// devServer deploys the mock dev server into the cluster as part of setup.
+	devServer bool
 }
 
 // New loads an E2E spec from a YAML file and constructs a Runner.
-func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster bool, orkestraVersion string, valueFiles []string, helmArgs ...string) (*Runner, error) {
+func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster, devServer bool, orkestraVersion string, valueFiles []string, helmArgs ...string) (*Runner, error) {
 	data, err := os.ReadFile(e2eFile)
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", e2eFile, err)
@@ -81,6 +84,7 @@ func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster bool, orkestraVe
 		keepCluster:     keepCluster,
 		clusterCtx:      clusterCtx,
 		useCurrentCtx:   useCurrentCtx,
+		devServer:       devServer,
 		orkestraVersion: orkestraVersion,
 		valueFiles:      valueFiles,
 		helmArgs:        helmArgs,
@@ -229,6 +233,20 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 			return nil, fmt.Errorf("setup: %w", err)
 		}
 		appliedSetupPaths = setupPaths
+
+		// ── 6b. Dev server ───────────────────────────────────────────────
+		if r.devServer {
+			devManifest, err := applyDevServer(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("dev server: %w", err)
+			}
+			appliedSetupPaths = append(appliedSetupPaths, devManifest)
+			fmt.Printf("→ Waiting for dev server to be ready...\n")
+			if err := checkDevServerHealth(); err != nil {
+				return nil, err
+			}
+			fmt.Printf("  ✓ Dev server ready\n")
+		}
 
 		// ── 7. Install Orkestra ──────────────────────────────────────────
 		text := "..."
@@ -795,9 +813,9 @@ func (r *Runner) runImports(ctx context.Context) []ImportResult {
 		var sub *Runner
 		var err error
 		if imp.FreshCluster {
-			sub, err = New(absPath, "", false, r.keepCluster, r.orkestraVersion, r.valueFiles)
+			sub, err = New(absPath, "", false, r.keepCluster, r.devServer, r.orkestraVersion, r.valueFiles)
 		} else {
-			sub, err = New(absPath, "", true, false, r.orkestraVersion, r.valueFiles)
+			sub, err = New(absPath, "", true, false, r.devServer, r.orkestraVersion, r.valueFiles)
 		}
 		if err != nil {
 			ir.Err = fmt.Errorf("loading import %s: %w", imp.Path, err)
