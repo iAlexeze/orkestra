@@ -51,9 +51,9 @@ spec:
         status:
           fields:
             - path: phase
-              value: "running"
+              value: "Running"
             - path: entryCount
-              value: "{{ default \"0\" .spec.initialEntries }}"
+              value: '{{ default "0" .spec.initialEntries }}'
 
         onCreate:
           deployments:

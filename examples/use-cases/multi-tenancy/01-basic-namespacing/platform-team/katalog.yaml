@@ -29,6 +29,13 @@ spec:
               value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc:5432"
 
         onCreate:
+          secrets:
+            - name: "{{ .metadata.name }}-creds"
+              once: true
+              rotateAfter: 90d
+              data:
+                password: "{{ randomAlphanumeric 16 }}"
+
           services:
             - name: "{{ .metadata.name }}"
               port: "5432"
@@ -37,10 +44,17 @@ spec:
 
           deployments:
             - name: "{{ .metadata.name }}"
-              image: "{{ default \"postgres:15\" .spec.image }}"
+              image: '{{ default "postgres:15" .spec.image }}'
               replicas: "1"
               port: "5432"
               env:
                 - name: POSTGRES_DB
                   value: "{{ .metadata.name }}"
+                - name: POSTGRES_USER
+                  value: "{{ .metadata.name }}-user"
+                - name: POSTGRES_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .metadata.name }}-creds"
+                      key: password
               reconcile: true

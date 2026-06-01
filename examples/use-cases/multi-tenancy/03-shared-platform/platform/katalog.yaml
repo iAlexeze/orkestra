@@ -54,7 +54,7 @@ spec:
         status:
           fields:
             - path: phase
-              value: "ready"
+              value: "Ready"
             - path: amqpEndpoint
               value: "amqp://{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
 

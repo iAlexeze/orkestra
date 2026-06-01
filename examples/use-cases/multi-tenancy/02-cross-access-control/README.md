@@ -80,7 +80,7 @@ The Report reads `ledger` data (allowed) and reflects it in status. It cannot re
 ## Step 6 — Confirm payment is blocked
 
 ```bash
-kubectl get payment checkout -o yaml | grep -A3 "status:"
+kubectl get payment checkout -o yaml | grep -A5 "status:"
 ```
 
 The `report` CRD has no access to payment state. Its ConfigMap is created only from ledger data.

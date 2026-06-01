@@ -30,7 +30,7 @@ spec:
         status:
           fields:
             - path: phase
-              value: '{{ eqTernary .cross.ledgerState.found "true" "ready" "waiting" }}'
+              value: '{{ eqTernary .cross.ledgerState.found "true" "Ready" "Waiting" }}'
             - path: ledgerPhase
               value: "{{ .cross.ledgerState.status.phase }}"
 

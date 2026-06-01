@@ -35,7 +35,7 @@ spec:
         status:
           fields:
             - path: phase
-              value: '{{ boolTernary (and (eq .cross.sharedCache.found "true") (eq .cross.sharedQueue.found "true")) "running" "waiting" }}'
+              value: '{{ boolTernary (and (eq .cross.sharedCache.found "true") (eq .cross.sharedQueue.found "true")) "Running" "Waiting" }}'
 
         onCreate:
           deployments:
@@ -45,11 +45,9 @@ spec:
               port: "8080"
               when:
                 - field: cross.sharedCache.found
-                  operator: eq
-                  value: "true"
+                  equals: "true"
                 - field: cross.sharedQueue.found
-                  operator: eq
-                  value: "true"
+                  equals: "true"
               env:
                 - name: REDIS_URL
                   value: "{{ .cross.sharedCache.status.endpoint }}"
