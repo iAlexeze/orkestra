@@ -39,11 +39,13 @@ After init, your examples live at:
 my-operator/
 └── examples/
     └── <pack>/
+        ├── e2e.yaml            full suite — runs all examples in one command
         └── <example>/
             ├── README.md       step-by-step walkthrough
             ├── katalog.yaml    operator definition
             ├── crd.yaml        the CRD to install
             ├── cr.yaml         sample custom resource
+            ├── e2e.yaml        end-to-end test for this example
             └── cleanup.sh      removes everything the example created
 ```
 
@@ -144,6 +146,24 @@ Deploy your app to Kubernetes without writing operator code or knowing CRDs.
 | [04 — Notifications](./developer/04-notify/) | Slack/webhook alerts on deployment events. |
 | [05 — Deletion Protection](./developer/05-deletion-protection/) | Prevent accidental deletion of running services. |
 | [06 — Docker Compose + Postgres](./developer/06-docker-compose-with-postgres/) | Lift a Docker Compose stack into Kubernetes as-is. |
+
+---
+
+## E2E test suites
+
+Every example ships with `e2e.yaml`. Every pack ships with a root `e2e.yaml` that runs the full suite.
+
+```bash
+# Run a single example
+cd beginner/01-hello-website && ork e2e
+
+# Run an entire pack
+ork e2e -f beginner/e2e.yaml
+ork e2e -f intermediate/e2e.yaml
+ork e2e -f security/e2e.yaml
+```
+
+Each suite creates a kind cluster, runs all examples in sequence, and tears everything down. No extra setup needed.
 
 ---
 

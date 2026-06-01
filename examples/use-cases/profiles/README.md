@@ -22,3 +22,19 @@ cd 12-autoscale
 ---
 
 **Further reading:** [Profiles concept doc](https://orkestra.sh/docs/concepts/profiles/) · [Full profile reference](https://github.com/orkspace/orkestra/blob/main/pkg/profiles/docs/01-profiles.md)
+
+---
+
+## E2E
+
+Run the full suite — all five profile examples in one command:
+
+```bash
+ork e2e -f e2e.yaml
+```
+
+This runs [e2e.yaml](./e2e.yaml), which imports each sub-example's `e2e.yaml` and runs them sequentially in the same cluster. To run a single example:
+
+```bash
+cd 01-resource && ork e2e
+```

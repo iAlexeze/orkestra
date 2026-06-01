@@ -42,6 +42,24 @@ ork control       # localhost:8081 · orkestra / orkestra
 
 Pass `-f <file>` when the Katalog or Komposer uses a non-default filename. `ork e2e` defaults to `e2e.yaml`.
 
+---
+
+## E2E test suites
+
+Every example ships with a runnable `e2e.yaml`. Every pack ships with a root `e2e.yaml` that imports all sub-examples.
+
+```bash
+# Run a single example end-to-end
+cd beginner/01-hello-website && ork e2e
+
+# Run an entire pack in one command
+ork e2e -f beginner/e2e.yaml
+ork e2e -f intermediate/e2e.yaml
+ork e2e -f security/e2e.yaml
+```
+
+Each suite creates a kind cluster, runs all examples in sequence, and tears everything down. No setup required beyond the `ork` CLI and Docker.
+
 Each example has its own `README.md`. Follow it — it tells you exactly what to apply, what to observe, and what the expected output is. The README is the guide; the YAML files are the demonstration.
 
 ---

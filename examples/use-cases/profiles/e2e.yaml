@@ -1,0 +1,14 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: E2E
+metadata:
+  name: profiles-suite
+  description: >
+    Suite for the profiles use-case track — resource, security, probes,
+    rolling-update, and PDB profiles. Runs all five sub-examples in the same cluster.
+
+imports:
+  - ./01-resource/e2e.yaml
+  - ./02-security/e2e.yaml
+  - ./03-probes/e2e.yaml
+  - ./04-rolling-update/e2e.yaml
+  - ./05-pdb/e2e.yaml
