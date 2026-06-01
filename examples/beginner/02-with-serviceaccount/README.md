@@ -43,7 +43,39 @@ Expected output:
 
 ---
 
-## Step 2 — Start the operator
+## Step 2 — Simulate (optional, no cluster needed)
+
+Before starting against a real cluster, run the reconciler in memory to verify your templates produce the right resources:
+
+```bash
+ork simulate --cr cr.yaml
+```
+
+```
+Simulating website/my-site
+
+  Cycle 1:
+    + serviceaccounts/my-site-sa
+    + deployments/my-site
+    + services/my-site-svc
+    ~ status/my-site
+  Cycle 2:
+    ~ status/my-site
+  (cycles 3–10: identical)
+
+  ✓ Steady state at cycle 3 in 215ms
+```
+
+**What this means:**
+- `+` in Cycle 1 — these resources would be created: the ServiceAccount first, then the Deployment that references it, then the Service. The order matches `onCreate` processing order in the Katalog.
+- `~ status/my-site` — the CR's status fields would be written back on every cycle. Notes like `allReplicasReady` re-evaluate each reconcile.
+- Cycle 2 — no new resources. Status still updates because notes re-run unconditionally.
+- **Steady state at cycle 3** — from cycle 3 onward, reconciling this CR produces no changes. A healthy operator converges and stops acting. If your operator never reaches steady state, simulate tells you which resources keep changing and why.
+- 215ms — wall time for all 10 simulated cycles in memory. No cluster round-trips.
+
+---
+
+## Step 3 — Start the operator
 
 ```bash
 ork run       # add --dev if you don't have a cluster; Orkestra will create a kind cluster
@@ -54,7 +86,7 @@ and starts the operator. Watch the terminal for the informer sync and reconcile 
 
 ---
 
-## Step 3 — Open the Control Center
+## Step 4 — Open the Control Center
 
 In a separate terminal:
 
@@ -68,7 +100,7 @@ CRD health, worker state, reconcile metrics, and the `Website` CR.
 
 ---
 
-## Step 4 — Verify resources
+## Step 5 — Verify resources
 
 ```bash
 kubectl get websites
@@ -92,7 +124,7 @@ my-site-sa   0         <age>
 
 ---
 
-## Step 5 — Verify status
+## Step 6 — Verify status
 
 ```bash
 kubectl get website my-site -o yaml | grep -A20 "status:"
@@ -120,7 +152,7 @@ kubectl get website my-site -o jsonpath='{.status.allReplicasReady}' && echo
 
 ---
 
-## Step 6 — Test drift correction
+## Step 7 — Test drift correction
 
 Update [cr.yaml](cr.yaml) to change the image to `nginx:1.26` and reapply:
 
@@ -132,7 +164,7 @@ kubectl get deployment my-site -o jsonpath='{.spec.template.spec.containers[0].i
 
 ---
 
-## Step 7 — Scale and watch the note update
+## Step 8 — Scale and watch the note update
 
 ```bash
 kubectl patch website my-site --type=merge -p '{"spec":{"replicas":4}}'

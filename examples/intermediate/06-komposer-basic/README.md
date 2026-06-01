@@ -72,7 +72,34 @@ Expected:
     mode: dynamic / workers: 1
 ```
 
-### 4. Start the operator
+### 4. Simulate (optional, no cluster needed)
+
+Before running, verify what the operator would reconcile for a specific CR:
+
+```bash
+ork simulate --cr cr.yaml --crd website
+```
+
+```
+Simulating website/composed-site
+
+  Cycle 1:
+    + deployments/composed-site-deployment
+    + services/composed-site-svc
+    ~ status/composed-site
+  Cycle 2:
+    ~ status/composed-site
+  (cycles 3–10: identical)
+
+  ✓ Steady state at cycle 3 in 193ms
+```
+
+**What this means:**
+- `--crd website` scopes the simulation to the Website CRD only — the namespace-governance CRD from the other Katalog is not simulated here. Use `--crd` to isolate one CRD at a time when a Komposer contains many.
+- Cycle 1 creates a Deployment and a Service — the values come from the merged Komposer configuration, not either source Katalog alone. Worker count, resync, and any inline overrides in `komposer.yaml` are already baked in.
+- **Steady state at cycle 3** — the Website CRD converges in three cycles. This is what you want to see before connecting the Komposer to a real cluster.
+
+### 5. Start the operator
 
 ```bash
 ork run --file komposer.yaml

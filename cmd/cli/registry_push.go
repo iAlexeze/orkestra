@@ -166,7 +166,7 @@ var registryPushCmd = &cobra.Command{
 					}
 				} else {
 					fmt.Printf("\nRunning E2E gate (%s)...\n", registry.FileE2E)
-					runner, err := e2e.New(e2eFile, "", false, false)
+					runner, err := e2e.New(e2eFile, "", false, false, "", nil)
 					if err != nil {
 						return fmt.Errorf("e2e gate: %w\n\nUse --force or --no-e2e to skip", err)
 					}
