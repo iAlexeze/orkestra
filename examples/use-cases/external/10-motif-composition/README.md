@@ -173,3 +173,34 @@ Expected logs:
 ```bash
 chmod +x cleanup.sh && ./cleanup.sh
 ```
+
+---
+
+## E2E
+
+Run the full lifecycle — deploys the mock dev server, starts both operators from the komposer, applies WebApp and Worker CRs, asserts both Deployments are created and phases are Ready, then tears down:
+
+```bash
+ork e2e --dev-server
+```
+
+CRs use the in-cluster address defined in [cr-e2e.yaml](./cr-e2e.yaml). This runs everything in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: WebApp Deployment ready — all four motif checks pass
+    after: cr-applied
+    resources:
+      - kind: Deployment
+        name: my-app
+        ready: true
+    commands:
+      - run: kubectl get webapp my-app -o jsonpath='{.status.phase}'
+        outputContains: Ready
+  - name: Worker Deployment ready — vault + OPA checks pass
+    after: cr-applied
+    resources:
+      - kind: Deployment
+        name: my-worker
+        ready: true
+```

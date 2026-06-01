@@ -87,3 +87,24 @@ Every 30s the operator fetches the config URL again and updates the ConfigMap if
 ```bash
 chmod +x cleanup.sh && ./cleanup.sh
 ```
+
+---
+
+## E2E
+
+Run the full lifecycle — deploys the mock dev server, starts the operator, applies the CR, asserts the ConfigMap contains the injected config and status is Ready, then tears down:
+
+```bash
+ork e2e --dev-server
+```
+
+CRs use the in-cluster address defined in [cr-e2e.yaml](./cr-e2e.yaml). This runs everything in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: ConfigMap created and contains injected config
+    after: cr-applied
+    commands:
+      - run: "kubectl get configmap my-app-config -o jsonpath='{.data.app\\.json}'"
+        outputContains: "production"
+```

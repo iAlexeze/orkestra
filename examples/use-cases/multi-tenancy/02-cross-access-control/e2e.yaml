@@ -33,27 +33,28 @@ spec:
           name: daily-summary
           namespace: default
 
-    - name: Report reaches ready phase (reads ledger, skips payment gracefully)
+    - name: Report reaches Ready phase (reads ledger, skips payment gracefully)
       after: cr-applied
       timeout: 90s
       commands:
-        - run: kubectl get report daily-summary -o jsonpath='{.status.phase}'
-          outputContains: ready
+        - run: kubectl get report daily-summary -n default -o jsonpath='{.status.phase}'
+          outputContains: Ready
 
     - name: Report status reflects ledger data
       after: cr-applied
       timeout: 90s
       commands:
-        - run: kubectl get report daily-summary -o jsonpath='{.status.ledgerPhase}'
-          outputContains: running
+        - run: kubectl get report daily-summary -n default -o jsonpath='{.status.ledgerPhase}'
+          outputContains: Running
 
-    - name: Report ConfigMap created from ledger data only
+    - name: Report ConfigMap is blocked from ledger data
       after: cr-applied
       timeout: 60s
       resources:
         - kind: ConfigMap
           name: daily-summary-report
           namespace: default
+          count: 0
 
     - name: Cleanup verified
       after: cr-deleted

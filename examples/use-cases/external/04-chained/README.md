@@ -94,3 +94,30 @@ This works because Orkestra updates the resolver after each call — by the time
 ```bash
 chmod +x cleanup.sh && ./cleanup.sh
 ```
+
+---
+
+## E2E
+
+Run the full lifecycle — deploys the mock dev server, starts the operator, applies the CR, asserts the Deployment is created and status is Ready after both auth chain calls succeed, then tears down:
+
+```bash
+ork e2e --dev-server
+```
+
+CRs use the in-cluster address defined in [cr-e2e.yaml](./cr-e2e.yaml). This runs everything in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Deployment created after full auth chain succeeds
+    after: cr-applied
+    resources:
+      - kind: Deployment
+        name: my-app
+        ready: true
+  - name: Status phase is Ready
+    after: cr-applied
+    commands:
+      - run: kubectl get webapp my-app -o jsonpath='{.status.phase}'
+        outputContains: Ready
+```

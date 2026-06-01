@@ -1,0 +1,101 @@
+package e2e
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/orkspace/orkestra/pkg/ork"
+)
+
+const (
+	devServerImage     = "ghcr.io/orkspace/orkestra-dev-server:latest"
+	devServerName      = "orkestra-dev-server"
+	devServerNamespace = "orkestra-system"
+	// DevServerAddr is the in-cluster DNS address CR specs should use.
+	DevServerAddr = "http://orkestra-dev-server.orkestra-system.svc:9999"
+)
+
+// devServerManifest is the Deployment + Service applied into the cluster when
+// --dev-server is set. Runs in orkestra-system so CRs can reach it at
+// http://orkestra-dev-server.orkestra-system.svc:9999.
+const devServerManifest = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orkestra-dev-server
+  namespace: orkestra-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orkestra-dev-server
+  template:
+    metadata:
+      labels:
+        app: orkestra-dev-server
+    spec:
+      containers:
+        - name: dev-server
+          image: ghcr.io/orkspace/orkestra-dev-server:latest
+          ports:
+            - containerPort: 9999
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9999
+            initialDelaySeconds: 2
+            periodSeconds: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orkestra-dev-server
+  namespace: orkestra-system
+spec:
+  selector:
+    app: orkestra-dev-server
+  ports:
+    - port: 9999
+      targetPort: 9999
+`
+
+// applyDevServer writes the dev server manifest to a temp file, applies it,
+// waits for the pod to be ready, and returns the temp file path so the caller
+// can track it for teardown.
+func applyDevServer(ctx context.Context) (string, error) {
+	f, err := os.CreateTemp("", "ork-e2e-devserver-*.yaml")
+	if err != nil {
+		return "", fmt.Errorf("creating dev server manifest: %w", err)
+	}
+	if _, err := f.WriteString(devServerManifest); err != nil {
+		f.Close()
+		os.Remove(f.Name())
+		return "", fmt.Errorf("writing dev server manifest: %w", err)
+	}
+	f.Close()
+
+	fmt.Printf("→ Deploying dev server (%s)...\n", devServerImage)
+	if out, err := kubectl(ctx, "apply", "-f", f.Name()); err != nil {
+		os.Remove(f.Name())
+		return "", fmt.Errorf("applying dev server manifest: %w\n%s", err, out)
+	}
+	fmt.Printf("  ✓ Dev server deployed\n")
+	return f.Name(), nil
+}
+
+var devServerChecker = ork.DeploymentHealthChecker{
+	Name:      devServerName,
+	Namespace: devServerNamespace,
+}
+
+// checkDevServerHealth waits up to 120s for the dev server Deployment to have
+// ready replicas, using the same DeploymentHealthChecker pattern as the runtime
+// and gateway health checks.
+func checkDevServerHealth() error {
+	status := devServerChecker.CheckHealth(120*time.Second, nil)
+	if !status.Running {
+		return fmt.Errorf("dev server not ready: %s", status.Reason)
+	}
+	return nil
+}

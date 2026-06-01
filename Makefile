@@ -1,4 +1,4 @@
-.PHONY: build orkcc clean test test-unit test-race test-integration test-all test-coverage test-coverage-text vet certs docs docs-sync docs-build docs-serve hugo-install generate-notes test-fixture-note test-fixture-reconciler ork-gateway-linux docker-gateway gateway-reload runtime-reload controlcenter-reload reload
+.PHONY: build orkcc clean test test-unit test-race test-integration test-all test-coverage test-coverage-text vet certs docs docs-sync docs-build docs-serve hugo-install generate-notes test-fixture-note test-fixture-reconciler ork-gateway-linux docker-gateway gateway-reload runtime-reload controlcenter-reload reload docker-devserver release-devserver
 
 # ── Configuration ────────────────────────────────────────────────────────────
 ORKESTRA_DIR := .
@@ -79,6 +79,7 @@ endif
 ORK_IMAGE ?= ghcr.io/orkspace/orkestra:$(GIT_COMMIT)
 ORK_CC_IMAGE ?= ghcr.io/orkspace/orkestra-cc:$(GIT_COMMIT)
 ORK_GATEWAY_IMAGE ?= ghcr.io/orkspace/orkestra-gateway:$(GIT_COMMIT)
+ORK_DEVSERVER_IMAGE ?= ghcr.io/orkspace/orkestra-dev-server:latest
 
 # Target architectures
 ORK_AMD64_TARGET="ork-amd64"
@@ -177,8 +178,27 @@ docker-push:
 
 # ── Docker Release (build + push) ─────────────────────────────────────────────
 
-docker-release: docker docker-cc docker-gateway docker-push
+docker-release: docker docker-cc docker-gateway docker-devserver docker-push
 	@echo "✔ Docker release complete"
+
+# ── Dev Server Docker ─────────────────────────────────────────────────────────
+
+docker-devserver:
+	@mkdir -p $(DOCKER_TMP)
+	@echo "Building dev server (Linux amd64) → $(DOCKER_TMP)/ork-devserver..."
+	gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
+		-trimpath -ldflags "-s -w $(ORK_LDFLAGS)" \
+		-o $(DOCKER_TMP)/ork-devserver ./cmd/devserver
+	@echo "Building Docker image: $(ORK_DEVSERVER_IMAGE)"
+	@cp $(DOCKER_TMP)/ork-devserver ./$(ORK_AMD64_TARGET)
+	docker build -t $(ORK_DEVSERVER_IMAGE) .
+	@rm -f ./$(ORK_AMD64_TARGET) $(DOCKER_TMP)/ork-devserver
+	@echo "✔ Docker image built: $(ORK_DEVSERVER_IMAGE)"
+
+release-devserver: docker-devserver
+	@echo "Pushing Docker image: $(ORK_DEVSERVER_IMAGE)"
+	docker push $(ORK_DEVSERVER_IMAGE)
+	@echo "✔ Dev server image released: $(ORK_DEVSERVER_IMAGE)"
 
 # ── Runtime Reload (local dev) ────────────────────────────────────────────────
 

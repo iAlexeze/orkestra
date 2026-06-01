@@ -112,3 +112,34 @@ Wait a reconcile cycle. The phase flips to `Ready` and the Deployment appears.
 ```bash
 chmod +x cleanup.sh && ./cleanup.sh
 ```
+
+---
+
+## E2E
+
+Run the full lifecycle in one command — deploys the mock dev server into the cluster, applies the CRD, starts the operator, applies healthy and degraded CRs, asserts the Deployment appears for healthy and is absent for degraded, then tears down:
+
+```bash
+ork e2e --dev-server
+```
+
+The `--dev-server` flag deploys `ghcr.io/orkspace/orkestra-dev-server` into the cluster. CRs use the in-cluster address `orkestra-dev-server.orkestra-system.svc:9999` instead of `localhost:9999`. This is defined in [cr-e2e.yaml](./cr-e2e.yaml).
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Deployment created when health check passes
+    after: cr-applied
+    resources:
+      - kind: Deployment
+        name: my-app-healthy
+        ready: true
+
+  - name: No Deployment when health check fails
+    after: cr-applied
+    resources:
+      - kind: Deployment
+        name: my-app-degraded
+        count: 0
+```
