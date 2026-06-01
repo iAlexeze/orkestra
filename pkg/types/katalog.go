@@ -40,6 +40,12 @@ type KatalogFile struct {
 	Spec       KatalogSpec     `yaml:"spec"`
 	Security   KatalogSecurity `yaml:"security"`
 
+	// CrossAccess sets the default cross-read policy for all CRDs in this Katalog.
+	// When false, no other Katalog may read any CRD in this one via cross:.
+	// Individual CRDs may override with their own crossAccess field.
+	// Defaults to true (open) when not declared.
+	CrossAccess *bool `yaml:"crossAccess,omitempty" json:"crossAccess,omitempty"`
+
 	// Gateway declares how the gateway is deployed for this Katalog.
 	// When gateway.standalone: true, the gateway runs without a runtime operator
 	// and spec: may be empty.
@@ -74,6 +80,18 @@ type KatalogFile struct {
 type KatalogMeta struct {
 	// Name is the required unique identifier of the Katalog.
 	Name string `yaml:"name" json:"name,omitempty"`
+
+	// Namespace scopes this Katalog to a logical tenant or team within a single
+	// runtime. Defaults to "default" when not declared — identical to Kubernetes
+	// namespace semantics. The Control Center groups CRDs by namespace so each
+	// team sees only its own panel.
+	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty"`
+
+	// ClusterName identifies the cluster this Katalog runs in.
+	// Used by the Control Center for cluster-level filtering when multiple
+	// runtimes are connected. Katalog value takes precedence over the
+	// CLUSTER_NAME env var. Empty when neither is set.
+	ClusterName string `yaml:"clusterName,omitempty" json:"clusterName,omitempty"`
 
 	// Description provides a human-readable explanation of the Katalog's purpose.
 	Description string `yaml:"description,omitempty" json:"description,omitempty"`

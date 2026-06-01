@@ -476,6 +476,14 @@ func BuildCRDInfoHandler(
 // Katalog Response
 // ─────────────────────────────────────────────────────────────────────────────
 
+// KatalogNamespaceSummary groups CRDs that share the same katalog namespace.
+// Namespaces are declared in katalog.metadata.namespace — "default" when not set.
+type KatalogNamespaceSummary struct {
+	CRDs         []string     `json:"crds"`
+	StatusCounts StatusCounts `json:"statusCounts"`
+	Healthy      bool         `json:"healthy"`
+}
+
 type KatalogResponse struct {
 	CRDs               []CRDSummaryResponse   `json:"crds"`
 	Total              int                    `json:"total"`
@@ -494,7 +502,11 @@ type KatalogResponse struct {
 	Description        string                 `json:"description,omitempty"`
 	License            string                 `json:"license,omitempty"`
 	RuntimeVersion     string                 `json:"runtimeVersion,omitempty"`
+	ClusterName        string                 `json:"clusterName,omitempty"`
 	Projects           map[string]interface{} `json:"projects,omitempty"`
+	// Namespaces groups CRDs by katalog namespace. Always present — at minimum
+	// contains "default" when no katalog declares an explicit namespace.
+	Namespaces map[string]KatalogNamespaceSummary `json:"namespaces,omitempty"`
 	// GatewayEndpoint is the HTTP base URL of the companion gateway process.
 	// Set via ORK_GATEWAY_ENDPOINT on the runtime. The control center reads
 	// this field and fetches gateway:/katalog to merge per-CRD webhook stats.
@@ -533,6 +545,7 @@ type CRDSummaryResponse struct {
 	RBACCount                int                `json:"rbacCount,omitempty"`
 	DeletionProtection       bool               `json:"deletionProtection"`
 	ProviderCount            int                `json:"providerCount,omitempty"`
+	KatalogNamespace         string             `json:"katalogNamespace,omitempty"`
 }
 
 type OperatorBoxSummary struct {
@@ -575,6 +588,7 @@ func BuildKatalogHandler(
 	return func(w http.ResponseWriter, r *http.Request) {
 		crds := make([]CRDSummaryResponse, 0)
 		statusCounts := StatusCounts{}
+		namespaces := make(map[string]KatalogNamespaceSummary)
 		deletionProtectedCRDs := kat.DeletionProtectedCRDNames()
 
 		for _, crd := range kat.Enabled() {
@@ -642,17 +656,36 @@ func BuildKatalogHandler(
 					HasHooks:       crd.OperatorBox.Hooks != nil || crd.OperatorBox.HookFactory != nil,
 					HasConstructor: crd.OperatorBox.Constructor != nil,
 				},
-				Healthy:   isHealthy,
-				Started:   isStarted,
-				Pending:   isPending,
-				StartedAt: h.StartedAt(),
-				Uptime:    h.Uptime(),
-				ErrorRate: h.ErrorRatePercent(),
+				Healthy:          isHealthy,
+				Started:          isStarted,
+				Pending:          isPending,
+				StartedAt:        h.StartedAt(),
+				Uptime:           h.Uptime(),
+				ErrorRate:        h.ErrorRatePercent(),
+				KatalogNamespace: crd.KatalogNamespace,
 				Endpoints: EndpointInfo{
 					Health: "/katalog/" + strings.ToLower(crd.Name) + "/health",
 					Info:   "/katalog/" + strings.ToLower(crd.Name),
 				},
 			})
+
+			// Build namespace grouping for the Control Center.
+			ns := crd.KatalogNamespace
+			if ns == "" {
+				ns = "default"
+			}
+			nsSummary := namespaces[ns]
+			nsSummary.CRDs = append(nsSummary.CRDs, crd.Name)
+			switch {
+			case isHealthy:
+				nsSummary.StatusCounts.Healthy++
+			case isStarted && !isHealthy:
+				nsSummary.StatusCounts.Degraded++
+			default:
+				nsSummary.StatusCounts.Pending++
+			}
+			nsSummary.Healthy = nsSummary.StatusCounts.Degraded == 0
+			namespaces[ns] = nsSummary
 		}
 
 		healthy := statusCounts.Degraded == 0
@@ -698,6 +731,8 @@ func BuildKatalogHandler(
 			Description:        kat.Meta().Description,
 			Projects:           kat.Projects(),
 			RuntimeVersion:     version.Short(),
+			ClusterName:        kat.ClusterName(),
+			Namespaces:         namespaces,
 			GatewayEndpoint:    kat.GatewayEndpoint(),
 		})
 	}

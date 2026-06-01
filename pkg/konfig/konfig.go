@@ -23,7 +23,7 @@ func Init(filenames ...string) (*Konfig, error) {
 		cluster: clusterKonfig{
 			kubekonfigPath: GetStrEnv("KUBEKONFIG", ""),
 			masterURL:      GetStrEnv("MASTER_URL", ""),
-			name:           GetStrEnv("CLUSTER_NAME", "orkestra-cluster"),
+			name:           GetStrEnv("CLUSTER_NAME", ""),
 			namespace:      ns,
 		},
 		// ── Unified security configuration ───────────────────────────────────

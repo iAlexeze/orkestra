@@ -83,12 +83,28 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 
 	result := make(map[string]orktypes.CRDEntry, len(doc.Spec.CRDs))
 
+	// Resolve the katalog namespace — "default" when not declared.
+	katalogNamespace := doc.Metadata.Namespace
+	if katalogNamespace == "" {
+		katalogNamespace = "default"
+	}
+
 	for name, crd := range doc.Spec.CRDs {
 		if name == "" {
 			return nil, fmt.Errorf("%q spec.crds: CRD with empty key", path)
 		}
 		// Duplicate within the same file is impossible — map keys are unique.
 		crd.Name = name
+
+		// Stamp the katalog namespace so the runtime and CC can group by team.
+		crd.KatalogNamespace = katalogNamespace
+
+		// Apply katalog-level CrossAccess as the default for every CRD that
+		// does not declare its own crossAccess field.
+		if crd.CrossAccess == nil && doc.CrossAccess != nil {
+			v := *doc.CrossAccess
+			crd.CrossAccess = &v
+		}
 
 		// Merge spec-level restrictions into each CRD (additive).
 		protect := doc.Security.NamespaceProtection

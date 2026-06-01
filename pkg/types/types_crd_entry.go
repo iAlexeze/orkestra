@@ -24,8 +24,19 @@ type CRDEntry struct {
 	// Injected from the map key during loading — never set from YAML.
 	Name string `yaml:"-" json:"name" validate:"required,hostname_rfc1123"`
 
-	// KatalogName — unique identifier for the the katalog in the runtime
+	// KatalogName — unique identifier for the katalog in the runtime.
 	KatalogName string `yaml:"-" json:"katalogName,omitempty"`
+
+	// KatalogNamespace — the namespace this CRD's Katalog belongs to.
+	// Defaults to "default" when not declared. Used by the Control Center to
+	// group CRDs by team/tenant within a single runtime.
+	KatalogNamespace string `yaml:"-" json:"katalogNamespace,omitempty"`
+
+	// CrossAccess controls whether other Katalogs can read this CRD's CR state
+	// via the cross: block. Defaults to true (readable). Set to false to opt
+	// this CRD out of cross reads — the reconciler returns empty for any
+	// cross: reference that targets an opted-out CRD.
+	CrossAccess *bool `yaml:"crossAccess,omitempty" json:"crossAccess,omitempty"`
 
 	// Enabled — include this CRD in the runtime. false = skipped entirely.
 	// WARNING: only set to false after stripping Orkestra finalizers from all
