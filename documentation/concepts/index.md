@@ -99,3 +99,11 @@ The [Health Subsystem](health-subsystem/) is Orkestra's liveness, readiness, and
 [ONCOP](oncop/) (Orkestra Native Cross-Operator Protocol) is the cross-binary observation layer. One operator reads another's typed state — health, metrics, or full CR — without hard-coded URLs, with built-in caching, and with the same template surface as same-binary cross: reads.
 
 → [Read: ONCOP](oncop/)
+
+---
+
+## Declarative End-to-End Testing
+
+[Declarative E2E](e2e/) is how Orkestra verifies an operator against a real cluster — one YAML file, no test framework, no Go. Every learning example ships with a runnable `e2e.yaml`. The `imports:` field composes focused per-Katalog tests into suites that a single `ork e2e` command runs end to end.
+
+→ [Read: Declarative End-to-End Testing](e2e/)

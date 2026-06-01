@@ -57,4 +57,20 @@ spec:
 
 ---
 
+---
+
+## `imports`
+
+A top-level list of other E2E files to run after this test completes. Used to compose test suites without a cluster-per-test overhead. See [04-imports.md](04-imports.md) for the full field reference.
+
+```yaml
+imports:
+  - ./auth-e2e.yaml
+  - ./rbac-e2e.yaml
+  - path: ./infra-e2e.yaml
+    freshCluster: true     # this one gets its own cluster
+```
+
+---
+
 → Next: [02-setup.md](02-setup.md) — prerequisite resources before the operator starts

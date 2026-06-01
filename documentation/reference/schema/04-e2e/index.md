@@ -66,6 +66,11 @@ spec:
           name: hello-website
           namespace: default
           count: 0
+
+imports:                          # optional — run other E2E files after this one
+  - ./auth-e2e.yaml
+  - path: ./infra-e2e.yaml
+    freshCluster: true
 ```
 
 ---
@@ -129,6 +134,7 @@ ork e2e --keep-cluster
 | [01-spec.md](01-spec.md) | `katalog`, `crd`, `cr`, `cluster` |
 | [02-setup.md](02-setup.md) | `setup.apply`, `setup.helm`, `setup.wait` |
 | [03-expect.md](03-expect.md) | `expect` — resources, commands, after, timeout |
+| [04-imports.md](04-imports.md) | `imports` — test suites, cluster strategy, pure aggregators |
 
 ---
 
