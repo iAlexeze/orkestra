@@ -69,35 +69,6 @@ func ResourceExists(resourceType, resourceName, namespace string) bool {
 	return err == nil && len(bytes.TrimSpace(out)) > 0
 }
 
-// CheckDeployment checks if a deployment exists and has ready replicas.
-// Returns a DeploymentStatus with Running=true if the deployment is healthy.
-func CheckDeployment(ctx context.Context, deploymentName, namespace string) DeploymentStatus {
-	// Check if deployment exists
-	nameOut, err := exec.CommandContext(ctx,
-		"kubectl", "get", "deploy", deploymentName,
-		"-n", namespace, "--ignore-not-found", "-o", "name",
-	).Output()
-	if err != nil || len(bytes.TrimSpace(nameOut)) == 0 {
-		return DeploymentStatus{
-			Reason: fmt.Sprintf("deployment %s not found in %s", deploymentName, namespace),
-		}
-	}
-
-	// Check ready replicas
-	readyOut, _ := exec.CommandContext(ctx,
-		"kubectl", "get", "deploy", deploymentName,
-		"-n", namespace, "-o", `jsonpath={.status.readyReplicas}`,
-	).Output()
-	ready := strings.TrimSpace(string(readyOut))
-	if ready == "" || ready == "0" {
-		// For runtime, check crash loop; for gateway, this might be different
-		return DeploymentStatus{
-			Reason: fmt.Sprintf("no ready replicas for %s/%s", namespace, deploymentName),
-		}
-	}
-	return DeploymentStatus{Running: true}
-}
-
 // CheckHealth waits up to timeout for a deployment to have at least one ready replica.
 // Polls every 2 seconds. Returns immediately if a custom failure condition is detected.
 func (d DeploymentHealthChecker) CheckHealth(timeout time.Duration, checkFailure func(ctx context.Context) string) DeploymentStatus {
@@ -122,16 +93,14 @@ func (d DeploymentHealthChecker) CheckHealth(timeout time.Duration, checkFailure
 				spin.Success()
 				return status
 			}
-			// If there's a custom failure check (like crash loop)
+			// Only fail fast on crashloop — everything else
+			// ("not found", "no ready replicas") is transient and should
+			// keep polling until the timeout expires.
 			if checkFailure != nil {
 				if reason := checkFailure(ctx); reason != "" {
 					spin.Failure()
 					return DeploymentStatus{Reason: reason}
 				}
-			}
-			if status.Reason != "no ready replicas" {
-				spin.Failure()
-				return status
 			}
 		}
 	}
@@ -204,22 +173,6 @@ func (d DeploymentHealthChecker) HasReadyReplicas(ctx context.Context) bool {
 }
 
 // ── private helpers ───────────────────────────────────────────────────────────
-func checkRuntimeOnce(ctx context.Context) DeploymentStatus {
-	status := CheckDeployment(ctx, OrkestraRuntime, OrkestraNamespace)
-	if !status.Running {
-		// Check for crash loop specifically for runtime
-		if reason := crashLoopReason(ctx); reason != "" {
-			return DeploymentStatus{Reason: reason}
-		}
-	}
-	return DeploymentStatus{Running: status.Running, Reason: status.Reason}
-}
-
-func checkGatewayOnce(ctx context.Context) DeploymentStatus {
-	status := CheckDeployment(ctx, OrkestraGateway, OrkestraNamespace)
-	return DeploymentStatus{Running: status.Running, Reason: status.Reason}
-}
-
 func crashLoopReason(ctx context.Context) string {
 	out, err := exec.CommandContext(ctx, "kubectl", "get", "pods",
 		"-n", OrkestraNamespace,

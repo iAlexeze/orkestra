@@ -89,6 +89,9 @@ func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster bool, orkestraVe
 	if err := r.resolveSource(); err != nil {
 		return nil, err
 	}
+	if err := r.validateImports(); err != nil {
+		return nil, err
+	}
 
 	return r, nil
 }
@@ -114,8 +117,12 @@ func (r *Runner) resolveSource() error {
 		r.katalogFile = r.abs(spec.Katalog)
 		r.crFile = r.abs(spec.CR)
 
+	case len(r.e2e.Imports) > 0:
+		// Pure aggregator — no own katalog/CR, just orchestrates imports.
+		return nil
+
 	default:
-		return fmt.Errorf("e2e spec must declare either (katalog + cr) or init")
+		return fmt.Errorf("e2e spec must declare either (katalog + cr) or init, or have imports")
 	}
 
 	if _, err := os.Stat(r.katalogFile); err != nil {
@@ -221,6 +228,10 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 	// ── 6. Install Orkestra ──────────────────────────────────────────────
 	text := "..."
 
+	// Control center is never needed in e2e — disable it unconditionally to
+	// reduce resource usage and avoid unnecessary readiness checks.
+	r.helmArgs = append(r.helmArgs, "--set", "controlCenter.enabled=false")
+
 	gatewayEnabled, err := resolveGatewayEnabled(r.katalogFile)
 	if err != nil {
 		return nil, err
@@ -238,26 +249,30 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 		}
 		installedOrkestra = true
 		fmt.Printf("  ✓ Orkestra installed\n")
-	} else if ork.RuntimeInstalled() {
-		// Orkestra is installed and the runtime deployment exists — the bundle
-		// applied above updated the orkestra-katalog ConfigMap, so the runtime
-		// must reload to pick up the new Katalog.
-		fmt.Printf("→ Updating Orkestra with current bundle...\n")
+	} else {
+		// Runtime already installed — sync it to pick up the new bundle ConfigMap.
+		fmt.Printf("→ Syncing Orkestra runtime with current bundle...\n")
 		if err := ork.SyncRuntime(); err != nil {
 			return nil, fmt.Errorf("syncing Orkestra runtime: %w", err)
 		}
-		fmt.Printf("  ✓ Orkestra runtime updated\n")
-	} else if gatewayEnabled {
-		// Gateway is enabled
-		if ork.GatewayInstalled() {
-			fmt.Printf("→ Updating Orkestra with current bundle...\n")
-			if err := ork.SyncGateway(); err != nil {
-				return nil, fmt.Errorf("syncing Orkestra gateway: %w", err)
+		fmt.Printf("  ✓ Orkestra runtime synced\n")
+		if gatewayEnabled {
+			if ork.GatewayInstalled() {
+				fmt.Printf("→ Syncing Orkestra gateway with current bundle...\n")
+				if err := ork.SyncGateway(); err != nil {
+					return nil, fmt.Errorf("syncing Orkestra gateway: %w", err)
+				}
+				fmt.Printf("  ✓ Orkestra gateway synced\n")
+			} else {
+				// Gateway required but not yet deployed — upgrade to enable it.
+				fmt.Printf("→ Upgrading Orkestra to enable gateway...\n")
+				if err := ork.InstallOrUpgradeOrkestra(r.orkestraVersion, r.valueFiles, r.helmArgs...); err != nil {
+					return nil, fmt.Errorf("helm upgrade: %w", err)
+				}
+				installedOrkestra = true
+				fmt.Printf("  ✓ Orkestra upgraded with gateway\n")
 			}
-			fmt.Printf("  ✓ Orkestra gateway updated\n")
 		}
-	} else {
-		fmt.Printf("  ✓ Orkestra already installed\n")
 	}
 
 	// ── 7. Wait for Orkestra ready ───────────────────────────────────────
@@ -351,7 +366,20 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 		fmt.Printf("  Cluster: %s (%s)\n", clusterInfo, r.provider())
 	}
 
-	// ── 10. Cleanup ──────────────────────────────────────────────────────
+	// ── 10. Imports ─────────────────────────────────────────────────────────
+	var importErr error
+	if len(r.e2e.Imports) > 0 {
+		fmt.Printf("\n─── Running %d import(s) ───\n", len(r.e2e.Imports))
+		if errs := r.runImports(ctx); len(errs) > 0 {
+			msgs := make([]string, len(errs))
+			for i, e := range errs {
+				msgs[i] = e.Error()
+			}
+			importErr = fmt.Errorf("%d import(s) failed: %s", len(errs), strings.Join(msgs, "; "))
+		}
+	}
+
+	// ── 11. Cleanup ──────────────────────────────────────────────────────────
 	if !r.useCurrentCtx && !r.keepCluster && r.clusterCtx == "" {
 		fmt.Printf("\n→ Deleting cluster '%s'...\n", r.clusterName())
 		if err := r.deleteCluster(ctx); err != nil {
@@ -364,7 +392,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 	if !result.AllPassed() {
 		return result, fmt.Errorf("%d of %d expectations failed", result.Total()-result.Passed(), result.Total())
 	}
-	return result, nil
+	return result, importErr
 }
 
 // resolveGatewayEnabled inspects the katalog file and returns true if the
@@ -694,6 +722,74 @@ func (r *Runner) teardown(ctx context.Context, crdPaths []string, bundlePath str
 	}
 
 	fmt.Printf("  ✓ Cleanup complete\n")
+}
+
+// validateImports is a backstop that delegates to the exported ValidateImports.
+// ork e2e always calls this at startup so malformed imports are caught before
+// the cluster is provisioned. ork validate calls ValidateImports directly for
+// earlier, friendlier feedback.
+func (r *Runner) validateImports() error {
+	errs := ValidateImports(r.e2eDir, r.e2e.Imports)
+	if len(errs) == 0 {
+		return nil
+	}
+	msgs := make([]string, len(errs))
+	for i, e := range errs {
+		msgs[i] = e.Error()
+	}
+	return fmt.Errorf("invalid imports: %s", strings.Join(msgs, "; "))
+}
+
+// runImports runs each imported E2E file after the main test completes.
+//
+// Cluster strategy for shared-cluster imports (freshCluster: false, the default):
+//   - Parent used --use-current or --cluster: imports reuse the same active context.
+//   - Parent created its own kind cluster (no flags): a new separate kind cluster
+//     is created for all shared imports to run in together, then deleted after.
+//
+// Imports with freshCluster: true always provision their own independent cluster.
+func (r *Runner) runImports(ctx context.Context) []error {
+	// Determine whether shared imports need their own cluster.
+	parentOwnsCluster := r.clusterCtx == "" && !r.useCurrentCtx
+
+	if parentOwnsCluster {
+		// Create a dedicated cluster for this imports run so shared imports
+		// run together without touching the parent's cluster.
+		importCluster := r.clusterName() + "-imports"
+		fmt.Printf("→ Creating imports cluster '%s'...\n", importCluster)
+		if err := ork.EnsureKindCluster(importCluster); err != nil {
+			return []error{fmt.Errorf("creating imports cluster: %w", err)}
+		}
+		if !r.keepCluster {
+			defer func() {
+				fmt.Printf("→ Deleting imports cluster '%s'...\n", importCluster)
+				_ = deleteKindCluster(ctx, importCluster)
+			}()
+		}
+	}
+
+	var errs []error
+	for _, imp := range r.e2e.Imports {
+		absPath := r.abs(imp.Path)
+		var sub *Runner
+		var err error
+		if imp.FreshCluster {
+			// Sub-runner creates and manages its own cluster from scratch.
+			sub, err = New(absPath, "", false, r.keepCluster, r.orkestraVersion, r.valueFiles)
+		} else {
+			// All shared imports use the current kubectl context — either the
+			// imports cluster just created above, or the parent's existing cluster.
+			sub, err = New(absPath, "", true, false, r.orkestraVersion, r.valueFiles)
+		}
+		if err != nil {
+			errs = append(errs, fmt.Errorf("loading import %s: %w", imp.Path, err))
+			continue
+		}
+		if _, err := sub.Run(ctx); err != nil {
+			errs = append(errs, fmt.Errorf("import %s: %w", imp.Path, err))
+		}
+	}
+	return errs
 }
 
 func deleteKindCluster(ctx context.Context, name string) error {

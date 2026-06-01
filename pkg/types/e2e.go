@@ -127,10 +127,40 @@ type SetupWait struct {
 // Committed alongside the katalog, it drives `ork e2e` — the same command
 // that runs locally, in CI, and inside the GitHub Action.
 type E2E struct {
-	APIVersion string  `yaml:"apiVersion"`
-	Kind       string  `yaml:"kind"`
-	Metadata   E2EMeta `yaml:"metadata"`
-	Spec       E2ESpec `yaml:"spec"`
+	APIVersion string      `yaml:"apiVersion"`
+	Kind       string      `yaml:"kind"`
+	Metadata   E2EMeta     `yaml:"metadata"`
+	Spec       E2ESpec     `yaml:"spec"`
+	Imports    []E2EImport `yaml:"imports,omitempty"`
+}
+
+// E2EImport references another E2E file to run after this one completes.
+// By default imports share the same cluster. Set freshCluster: true to
+// provision a new cluster for that import instead.
+//
+// Shorthand — a plain path string is equivalent to {path: <string>}:
+//
+//	imports:
+//	  - ./auth-e2e.yaml
+//	  - ./rbac-e2e.yaml
+//	  - path: ./infra-e2e.yaml
+//	    freshCluster: true
+type E2EImport struct {
+	// Path is the path to another E2E spec file (must be kind: E2E).
+	Path string `yaml:"path"`
+	// FreshCluster provisions a new kind cluster for this import instead of
+	// reusing the parent's cluster. Default: false (share parent cluster).
+	FreshCluster bool `yaml:"freshCluster,omitempty"`
+}
+
+// UnmarshalYAML allows imports to be written as a plain string path.
+func (i *E2EImport) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		i.Path = value.Value
+		return nil
+	}
+	type plain E2EImport
+	return value.Decode((*plain)(i))
 }
 
 type E2EMeta struct {
