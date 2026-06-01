@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"gopkg.in/yaml.v3"
@@ -33,6 +34,11 @@ func ValidateImports(baseDir string, imports []orktypes.E2EImport) []error {
 		}
 		if head.Kind != "E2E" {
 			errs = append(errs, fmt.Errorf("%s: expected kind E2E, got %q", imp.Path, head.Kind))
+		}
+		if imp.Wait != "" {
+			if _, err := time.ParseDuration(imp.Wait); err != nil {
+				errs = append(errs, fmt.Errorf("%s: wait %q is not a valid duration: %w", imp.Path, imp.Wait, err))
+			}
 		}
 	}
 	return errs
