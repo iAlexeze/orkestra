@@ -2,6 +2,8 @@
 
 `enrich: [pods]` embeds the live pod list into `.children.deployment._pods` on every reconcile. Status fields surface pod count, readiness, and crash detection — without reading the pod list anywhere in your Katalog explicitly.
 
+**Cost:** one extra pod-list API call per reconcile cycle, always. This is the right pattern when you need pod health surfaced at all times — running count, crash detection, readiness. If you only need this data during degraded state, see [02-warning-events](../02-warning-events/README.md) for the conditional gate pattern that reduces this cost to zero in steady state.
+
 **What you learn:** what `enrich` is for, how pod notes require it, the one-line declaration that unlocks `podCount`, `readyPodCount`, `hasCrashingPod`, and more.
 
 ---
@@ -101,6 +103,35 @@ kubectl patch microservice api-server --type=merge -p '{"spec":{"image":"nginx:1
 ```
 
 `phase` returns to `Ready`. `hasCrashingPod` goes back to `"false"`. `crashReason` is cleared to `""` — because the field declares `clearOnFalse: true`, which tells Orkestra to explicitly write an empty value when the condition is no longer true, rather than leaving the old value in place.
+
+---
+
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, applies the CRD, starts the operator, applies the CR, asserts pod count and readiness appear in status, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Status has podCount
+    after: cr-applied
+    timeout: 90s
+    commands:
+      - run: kubectl get microservice api-server -o jsonpath='{.status.podCount}'
+        outputContains: "2"
+
+  - name: Status shows no crashing pods
+    after: cr-applied
+    timeout: 60s
+    commands:
+      - run: kubectl get microservice api-server -o jsonpath='{.status.hasCrashingPod}'
+        outputContains: "false"
+```
 
 ---
 

@@ -104,6 +104,13 @@ var BuiltinNotes = []NoteInfo{
 		Keywords:    []string{"conditional", "empty", "check", "boolean", "nil", "absent"},
 	},
 	{
+		Name:        "eqTernary",
+		Domain:      "conditional",
+		Description: "Return `trueVal` when `val` equals `target` (string comparison), `falseVal` otherwise. Shorthand for the `boolTernary (eq val target) trueVal falseVal` pattern — useful when branching on a string field value such as a status string, a mode flag, or a cross-CRD `found` result.",
+		Example:     "# value: '{{ eqTernary .cross.db.found \"true\" \"ready\" \"waiting\" }}'\n# found=\"true\"  → \"ready\"\n# found=\"false\" → \"waiting\"\n\n# value: '{{ eqTernary .spec.mode \"production\" \"strict\" \"permissive\" }}'\n# mode=\"production\" → \"strict\"\n# mode=\"staging\"    → \"permissive\"",
+		Keywords:    []string{"conditional", "branch", "equality", "string", "ternary", "compare", "match"},
+	},
+	{
 		Name:        "notEmpty",
 		Domain:      "conditional",
 		Description: "Return `true` when the value is non-empty. The inverse of `empty`.",

@@ -2,32 +2,19 @@
 
 One CR, all five patterns at once. A `FullStackApp` creates 3 regional Deployments (`forEach`), a generated Secret (`once:`), a ConfigMap sourced from a database CR (`cross:`), all gated on a health check (`external:`), with a cleanup Job on terminal phases (`anyOf:`). This is the showcase — everything Orkestra can do in a single declaration.
 
-**Prerequisite:** the `ManagedDatabase` from [03-cross-crd](../03-cross-crd/README.md) must be running — `FullStackApp` depends on it via `cross:`.
-
 ---
 
-## Step 1 — Apply the CRD
+## Step 1 — Apply the CRDs
 
 ```bash
 kubectl apply -f crd.yaml
 ```
 
----
-
-## Step 2 — Apply the database dependency
-
-If not already running from example 03:
-
-```bash
-kubectl apply -f ../03-cross-crd/crd-database.yaml
-kubectl apply -f ../03-cross-crd/database-cr.yaml
-kubectl get manageddatabase my-app-db
-# Wait until PHASE = Ready
-```
+This registers both `ManagedDatabase` (the cross: dependency) and `FullStackApp`.
 
 ---
 
-## Step 3 — Validate
+## Step 2 — Validate
 
 ```bash
 ork validate
@@ -44,7 +31,7 @@ Expected:
 
 ---
 
-## Step 4 — Start the operator
+## Step 3 — Start the operator
 
 `--dev-server` is required — the health check calls `/health` on every reconcile:
 
@@ -54,7 +41,7 @@ ork run --dev-server
 
 ---
 
-## Step 5 — Open the Control Center
+## Step 4 — Open the Control Center
 
 In a **separate terminal**:
 
@@ -67,13 +54,15 @@ Open [http://localhost:8081](http://localhost:8081). Select **full-stack-app**, 
 
 ---
 
-## Step 6 — Apply the CR
+## Step 5 — Apply the CR
+
+`cr.yaml` includes both the `ManagedDatabase` dependency and the `FullStackApp` — one apply is enough:
 
 ```bash
 kubectl apply -f cr.yaml
 ```
 
-The CR covers all five patterns in one spec:
+The FullStackApp spec covers all five patterns:
 
 ```yaml
 spec:
@@ -86,7 +75,7 @@ spec:
 
 ---
 
-## Step 7 — Watch the lifecycle
+## Step 6 — Watch the lifecycle
 
 Phase walks forward as each condition is satisfied:
 
@@ -115,7 +104,7 @@ configmap/my-app-config               (DB_HOST from database CR status)
 
 ---
 
-## Step 8 — Status tells the full story
+## Step 7 — Status tells the full story
 
 ```bash
 kubectl get fullstackapp my-app -o yaml | grep -A16 "status:"

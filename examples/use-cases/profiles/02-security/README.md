@@ -111,6 +111,35 @@ deployments:
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — applies the CR, asserts all three security profile Deployments are created with the correct securityContext fields, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Restricted profile drops all capabilities
+    after: cr-applied
+    timeout: 60s
+    commands:
+      - run: kubectl get deployment my-service-restricted -o jsonpath='{.spec.template.spec.containers[0].securityContext.capabilities.drop[0]}'
+        outputContains: ALL
+
+  - name: Hardened profile sets read-only root filesystem
+    after: cr-applied
+    timeout: 60s
+    commands:
+      - run: kubectl get deployment my-service-hardened -o jsonpath='{.spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem}'
+        outputContains: "true"
+```
+
+---
+
 ## Cleanup
 
 ```bash

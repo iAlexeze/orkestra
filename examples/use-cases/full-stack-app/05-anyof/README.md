@@ -115,6 +115,41 @@ Both Jobs appeared in sequence without writing any state machine logic. The phas
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, applies the CRD, starts the operator, applies the CR, asserts the Deployment is created and the notify Job fires when the `anyOf:` condition is met, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Deployment ready
+    after: cr-applied
+    timeout: 90s
+    resources:
+      - kind: Deployment
+        name: my-flex-app
+        namespace: default
+        ready: true
+
+  - name: Notify Job created when anyOf condition is met
+    after: cr-applied
+    timeout: 60s
+    commands:
+      - run: kubectl patch flexapp my-flex-app --type=merge -p '{"spec":{"notify":"true"}}'
+        exitCode: 0
+    resources:
+      - kind: Job
+        name: my-flex-app-notify
+        namespace: default
+```
+
+---
+
 ## Cleanup
 
 ```bash

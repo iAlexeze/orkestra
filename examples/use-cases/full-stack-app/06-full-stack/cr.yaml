@@ -1,8 +1,17 @@
-# 06 — full stack (apply 03a first so database is available)
+# ManagedDatabase — cross: dependency for FullStackApp
+apiVersion: advanced.orkestra.io/v1alpha1
+kind: ManagedDatabase
+metadata:
+  name: my-app-db
+  namespace: default
+spec: {}
+
+---
+# FullStackApp — all five patterns combined
 apiVersion: advanced.orkestra.io/v1alpha1
 kind: FullStackApp
 metadata:
-  name: my-app        # To make it easy to reference my-app-db in 'cross'
+  name: my-app        # cross: references my-app-db by name
   namespace: default
 spec:
   image: nginx:1.25

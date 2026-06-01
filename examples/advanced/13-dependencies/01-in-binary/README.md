@@ -60,7 +60,36 @@ Expected:
 
 ---
 
-## Step 2 — Apply the CRDs
+## Step 2 — Simulate (optional, no cluster needed)
+
+Verify what the App reconciler would produce for this CR:
+
+```bash
+ork simulate --cr cr-app.yaml --crd app
+```
+
+```
+Simulating app/my-database
+
+  Cycle 1:
+    + deployments/my-database-deployment
+    + services/my-database-svc
+    ~ status/my-database
+  Cycle 2:
+    ~ status/my-database
+  (cycles 3–10: identical)
+
+  ✓ Steady state at cycle 3 in 196ms
+```
+
+**What this means:**
+- Simulate models the App reconciler in isolation — it shows what the reconciler produces when it runs. The `dependsOn` enforcement that gates the reconcile in production is a coordinator-level concern, not part of the individual reconciler.
+- Cycle 1 shows the Deployment and Service the App would create once its reconcile is allowed to proceed. The `cross:` read for the database endpoint returns empty (no database in the in-memory cluster), so `DB_HOST` would be absent or empty in the Deployment env — you can verify this by inspecting the template output.
+- **Steady state at cycle 3** — the reconciler is idempotent. On a real cluster, Orkestra only runs this reconcile after the Database CR reaches `healthy`. Simulate confirms the reconciler itself is correct; the dependency gate ensures it runs at the right time.
+
+---
+
+## Step 3 — Apply the CRDs
 
 ```bash
 kubectl apply -f crd.yaml
@@ -68,7 +97,7 @@ kubectl apply -f crd.yaml
 
 ---
 
-## Step 3 — Run Orkestra and Control Center
+## Step 4 — Run Orkestra and Control Center
 
 ```bash
 ork run
@@ -79,7 +108,7 @@ ork contro start
 
 ---
 
-## Step 4 — Apply App first (to see the wait)
+## Step 5 — Apply App first (to see the wait)
 
 Apply App before Database to observe the dependency enforcement:
 
@@ -100,7 +129,7 @@ Select App and scroll down to see why under `"Dependencies"`
 
 ---
 
-## Step 5 — Apply Database
+## Step 6 — Apply Database
 
 ```bash
 kubectl apply -f cr-database.yaml
@@ -126,7 +155,7 @@ Check the control center and see App become healthy and the phase `Running`.
 
 ---
 
-## Step 6 — Verify the injected env
+## Step 7 — Verify the injected env
 
 ```bash
 kubectl get deployment my-database-deployment -o jsonpath='{.spec.template.spec.containers[0].env}' | jq .
@@ -143,7 +172,7 @@ kubectl get deployment my-database-deployment -o jsonpath='{.spec.template.spec.
 
 ---
 
-## Step 7 — Simulate a dependency restart
+## Step 8 — Simulate a dependency restart
 
 Delete Database CRD and watch App's behaviour:
 

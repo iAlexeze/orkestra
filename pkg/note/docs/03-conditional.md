@@ -52,6 +52,24 @@ Keywords: conditional, boolean, default, fallback, absent, nil
 
 ---
 
+### `eqTernary`
+
+Return `trueVal` when `val` equals `target` (string comparison), `falseVal` otherwise. Shorthand for the `boolTernary (eq val target) trueVal falseVal` pattern — useful when branching on a string field value such as a status string, a mode flag, or a cross-CRD `found` result.
+
+Keywords: conditional, branch, equality, string, ternary, compare, match
+
+```yaml
+# value: '{{ eqTernary .cross.db.found "true" "ready" "waiting" }}'
+# found="true"  → "ready"
+# found="false" → "waiting"
+
+# value: '{{ eqTernary .spec.mode "production" "strict" "permissive" }}'
+# mode="production" → "strict"
+# mode="staging"    → "permissive"
+```
+
+---
+
 ### `default`
 
 Return `val` if non-empty, otherwise return `def`. "Empty" means nil, `""`, `0`, `false`, empty slice, or empty map.

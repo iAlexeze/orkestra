@@ -329,7 +329,8 @@ func (r *GenericReconciler[PTR]) readCross(
 				if ns == "" {
 					ns = obj.GetNamespace()
 				}
-				data := ReadCrossFromInformer(inf.GetIndexer(), crossKey(ns, name))
+				crossAccess := r.katalogRegistry.GetCrossAccessByName(decl.Crd)
+				data := ReadCrossFromInformer(inf.GetIndexer(), crossKey(ns, name), crossAccess)
 				result[as] = data
 				continue
 			}

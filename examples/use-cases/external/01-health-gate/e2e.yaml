@@ -1,0 +1,48 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: E2E
+metadata:
+  name: external-health-gate-e2e
+  description: >
+    external: health gate — Deployment only created when /health returns 200.
+    Requires ork start dev-server in a separate terminal.
+
+spec:
+  katalog: ./katalog.yaml
+  crd: ../crd.yaml
+  cr: ./cr-dev-healthy.yaml
+
+  cluster:
+    provider: kind
+    name: ork-e2e
+    reuse: false
+
+  expect:
+    - name: Deployment created when health check passes
+      after: cr-applied
+      timeout: 60s
+      resources:
+        - kind: Deployment
+          name: my-app-healthy
+          namespace: default
+          ready: true
+
+    - name: No Deployment when health check fails
+      after: cr-applied
+      timeout: 30s
+      commands:
+        - run: kubectl apply -f cr-dev-degraded.yaml
+          exitCode: 0
+      resources:
+        - kind: Deployment
+          name: my-app-degraded
+          namespace: default
+          count: 0
+
+    - name: Cleanup verified
+      after: cr-deleted
+      timeout: 30s
+      resources:
+        - kind: Deployment
+          name: my-app-healthy
+          namespace: default
+          count: 0

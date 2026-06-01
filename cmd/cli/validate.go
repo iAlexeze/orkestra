@@ -8,6 +8,9 @@ import (
 	"sort"
 	"strings"
 
+	"path/filepath"
+
+	"github.com/orkspace/orkestra/pkg/e2e"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -179,70 +182,93 @@ func validateE2EFile(path string) error {
 		return fmt.Errorf("reading %s: %w", path, err)
 	}
 
-	var e2e orktypes.E2E
-	if err := yaml.Unmarshal(data, &e2e); err != nil {
+	var doc orktypes.E2E
+	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return fmt.Errorf("parsing %s: %w", path, err)
 	}
 
+	baseDir := filepath.Dir(path)
+	isAggregator := len(doc.Imports) > 0 && doc.Spec.Katalog == "" && doc.Spec.Init == nil
+
 	var errs []string
 
-	if e2e.Metadata.Name == "" {
+	if doc.Metadata.Name == "" {
 		errs = append(errs, "metadata.name is required")
 	}
-	if e2e.Spec.Katalog == "" && e2e.Spec.Init == nil {
-		errs = append(errs, "spec.katalog is required (or spec.init for example packs)")
-	}
-	if e2e.Spec.CRD == "" && e2e.Spec.Init == nil {
-		errs = append(errs, "spec.crd is required (or spec.init for example packs)")
-	}
-	if e2e.Spec.CR == "" && e2e.Spec.Init == nil {
-		errs = append(errs, "spec.cr is required (or spec.init for example packs)")
-	}
-	if len(e2e.Spec.Expect) == 0 {
-		errs = append(errs, "spec.expect must contain at least one expectation")
-	}
-	for i, exp := range e2e.Spec.Expect {
-		if exp.Name == "" {
-			errs = append(errs, fmt.Sprintf("spec.expect[%d].name is required", i))
+	if !isAggregator {
+		if doc.Spec.Katalog == "" && doc.Spec.Init == nil {
+			errs = append(errs, "spec.katalog is required (or spec.init for example packs, or imports)")
 		}
-		if exp.After != "cr-applied" && exp.After != "cr-deleted" {
-			errs = append(errs, fmt.Sprintf("spec.expect[%d].after must be cr-applied or cr-deleted (got %q)", i, exp.After))
+		if doc.Spec.CRD == "" && doc.Spec.Init == nil {
+			errs = append(errs, "spec.crd is required (or spec.init for example packs, or imports)")
 		}
-		if len(exp.Resources) == 0 && len(exp.Commands) == 0 {
-			errs = append(errs, fmt.Sprintf("spec.expect[%d] (%q): must have at least one resource or command check", i, exp.Name))
+		if doc.Spec.CR == "" && doc.Spec.Init == nil {
+			errs = append(errs, "spec.cr is required (or spec.init for example packs, or imports)")
+		}
+		if len(doc.Spec.Expect) == 0 {
+			errs = append(errs, "spec.expect must contain at least one expectation")
+		}
+		for i, exp := range doc.Spec.Expect {
+			if exp.Name == "" {
+				errs = append(errs, fmt.Sprintf("spec.expect[%d].name is required", i))
+			}
+			if exp.After != "cr-applied" && exp.After != "cr-deleted" {
+				errs = append(errs, fmt.Sprintf("spec.expect[%d].after must be cr-applied or cr-deleted (got %q)", i, exp.After))
+			}
+			if len(exp.Resources) == 0 && len(exp.Commands) == 0 {
+				errs = append(errs, fmt.Sprintf("spec.expect[%d] (%q): must have at least one resource or command check", i, exp.Name))
+			}
 		}
 	}
 
-	if len(errs) > 0 {
+	// Validate imports (collect per-import errors for display).
+	importErrs := e2e.ValidateImports(baseDir, doc.Imports)
+
+	if len(errs) > 0 || len(importErrs) > 0 {
 		for _, e := range errs {
 			fmt.Printf("  %s %s\n", failureMark(), e)
 		}
+		for _, ie := range importErrs {
+			fmt.Printf("  %s import: %s\n", failureMark(), ie)
+		}
 		fmt.Println()
-		return fmt.Errorf("%d validation error(s) in %s", len(errs), path)
+		return fmt.Errorf("%d validation error(s) in %s", len(errs)+len(importErrs), path)
 	}
 
 	icon := healthIcon("ready")
-	fmt.Printf("%s %s\n", icon, bold(e2e.Metadata.Name))
-	if e2e.Metadata.Description != "" {
-		fmt.Printf("    %s\n", gray(e2e.Metadata.Description))
+	fmt.Printf("%s %s\n", icon, bold(doc.Metadata.Name))
+	if doc.Metadata.Description != "" {
+		fmt.Printf("    %s\n", gray(doc.Metadata.Description))
 	}
-	fmt.Printf("    %s\n",
-		gray(fmt.Sprintf("katalog : %s\n    crd     : %s\n    cr      : %s",
-			e2e.Spec.Katalog, e2e.Spec.CRD, e2e.Spec.CR)),
-	)
-	if s := e2e.Spec.Setup; s != nil {
-		if len(s.Apply) > 0 {
-			fmt.Printf("    %s\n", gray("setup.apply : "+strings.Join(s.Apply, ", ")))
+	if !isAggregator {
+		fmt.Printf("    %s\n",
+			gray(fmt.Sprintf("katalog : %s\n    crd     : %s\n    cr      : %s",
+				doc.Spec.Katalog, doc.Spec.CRD, doc.Spec.CR)),
+		)
+		if s := doc.Spec.Setup; s != nil {
+			if len(s.Apply) > 0 {
+				fmt.Printf("    %s\n", gray("setup.apply : "+strings.Join(s.Apply, ", ")))
+			}
+			if len(s.Helm) > 0 {
+				fmt.Printf("    %s\n", gray(fmt.Sprintf("setup.helm  : %d chart(s)", len(s.Helm))))
+			}
+			if len(s.Wait) > 0 {
+				fmt.Printf("    %s\n", gray(fmt.Sprintf("setup.wait  : %d resource(s)", len(s.Wait))))
+			}
 		}
-		if len(s.Helm) > 0 {
-			fmt.Printf("    %s\n", gray(fmt.Sprintf("setup.helm  : %d chart(s)", len(s.Helm))))
-		}
-		if len(s.Wait) > 0 {
-			fmt.Printf("    %s\n", gray(fmt.Sprintf("setup.wait  : %d resource(s)", len(s.Wait))))
+	}
+	if len(doc.Imports) > 0 {
+		fmt.Printf("    %s\n", gray(fmt.Sprintf("imports : %d file(s)", len(doc.Imports))))
+		for _, imp := range doc.Imports {
+			label := imp.Path
+			if imp.FreshCluster {
+				label += " (fresh cluster)"
+			}
+			fmt.Printf("      %s %s\n", healthIcon("ready"), gray(label))
 		}
 	}
 	fmt.Println()
-	for _, exp := range e2e.Spec.Expect {
+	for _, exp := range doc.Spec.Expect {
 		to := exp.Timeout
 		if to == "" {
 			to = "60s"
@@ -252,7 +278,15 @@ func validateE2EFile(path string) error {
 	}
 	fmt.Println()
 	fmt.Println(strings.Repeat("─", 60))
-	fmt.Printf("%d expectation(s) valid\n", len(e2e.Spec.Expect))
+	if isAggregator {
+		fmt.Printf("%d import(s) valid\n", len(doc.Imports))
+	} else {
+		fmt.Printf("%d expectation(s) valid", len(doc.Spec.Expect))
+		if len(doc.Imports) > 0 {
+			fmt.Printf(", %d import(s) valid", len(doc.Imports))
+		}
+		fmt.Println()
+	}
 
 	return nil
 }

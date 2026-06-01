@@ -108,6 +108,41 @@ kubectl describe deploy my-secure-app | grep -A10 "Environment:"
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, applies the CRD, starts the operator, applies the CR, asserts the Secret is created exactly once and not regenerated on re-apply, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Secret created on first reconcile
+    after: cr-applied
+    timeout: 60s
+    resources:
+      - kind: Secret
+        name: my-secure-app-credentials
+        namespace: default
+
+  - name: Secret is not recreated on re-apply (once: semantics)
+    after: cr-applied
+    timeout: 30s
+    commands:
+      - run: >
+          ORIG=$(kubectl get secret my-secure-app-credentials -o jsonpath='{.metadata.resourceVersion}') &&
+          kubectl apply -f cr.yaml &&
+          sleep 5 &&
+          NEW=$(kubectl get secret my-secure-app-credentials -o jsonpath='{.metadata.resourceVersion}') &&
+          [ "$ORIG" = "$NEW" ] && echo "unchanged"
+        outputContains: unchanged
+```
+
+---
+
 ## Cleanup
 
 ```bash

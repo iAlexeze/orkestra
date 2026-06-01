@@ -262,6 +262,35 @@ In Orkestra they are notes — one word in a template expression.
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — installs Orkestra with Gateway, applies the multi-version CRD, applies the v1 CR, asserts it is readable via both API versions, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: v1 CronJob CR created
+    after: cr-applied
+    timeout: 60s
+    commands:
+      - run: kubectl get cronjobs.v1.demo.orkestra.io print-hello-v1
+        exitCode: 0
+
+  - name: v1 CR readable via v2 API
+    after: cr-applied
+    timeout: 60s
+    commands:
+      - run: kubectl get cronjobs.v2.demo.orkestra.io print-hello-v1
+        exitCode: 0
+```
+
+---
+
 ## Cleanup
 
 ```bash

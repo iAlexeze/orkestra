@@ -117,6 +117,28 @@ The Deployment template uses `image: "{{ .spec.image }}"` — one expression, th
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — applies the bare CR, asserts the normalized image (registry + tag added) appears in status, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Status image has registry and tag added
+    after: cr-applied
+    timeout: 60s
+    commands:
+      - run: kubectl get app app-bare -o jsonpath='{.status.image}'
+        outputContains: registry.internal/nginx
+```
+
+---
+
 ## Cleanup
 
 ```bash

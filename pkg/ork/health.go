@@ -3,83 +3,72 @@ package ork
 import (
 	"bytes"
 	"context"
-	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
-
-	"github.com/orkspace/orkestra/pkg/spinner"
 )
 
 const (
-	healthCheckTimeout   = 200 * time.Second
-	controlCenterDeploy  = OrkestraControlCenter
-	runtimeLogDir        = "/tmp/orkestra"
-	runtimeLogPath       = "/tmp/orkestra/runtime.log"
-	controlCenterLogPath = "/tmp/orkestra/controlcenter.log"
+	healthCheckTimeout    = 200 * time.Second
+	resourceExistsTimeout = 10 * time.Second
+	controlCenterDeploy   = OrkestraControlCenter
+	runtimeLogDir         = "/tmp/orkestra"
+	runtimeLogPath        = "/tmp/orkestra/runtime.log"
+	gatewayLogDir         = "/tmp/orkestra"
+	gatewayLogPath        = "/tmp/orkestra/gateway.log"
+	controlCenterLogPath  = "/tmp/orkestra/controlcenter.log"
 )
 
-// RuntimeStatus is the result of CheckRuntimeHealth.
-type RuntimeStatus struct {
-	Running bool
-	Reason  string // set when Running is false
+// RuntimeInstalled reports whether the Orkestra runtime Deployment exists.
+func RuntimeInstalled() bool {
+	return ResourceExists("deploy", OrkestraRuntime, OrkestraNamespace)
 }
 
-// OrkestraInstalled reports whether the Orkestra runtime Deployment exists
-// in OrkestraNamespace.
-func OrkestraInstalled() bool {
-	out, err := exec.Command("kubectl", "get", "deploy",
-		OrkestraRuntime,
-		"-n", OrkestraNamespace,
-		"--no-headers",
-		"-o", "name",
-	).Output()
-	return err == nil && len(strings.TrimSpace(string(out))) > 0
-}
-
-// RuntimeDeployed reports whether the runtime Deployment exists, with a
-// short timeout so it is safe to call during startup.
-func RuntimeDeployed() bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	out, err := exec.CommandContext(ctx, "kubectl", "get", "deploy", OrkestraRuntime,
-		"-n", OrkestraNamespace, "--ignore-not-found", "-o", "name").Output()
-	return err == nil && len(bytes.TrimSpace(out)) > 0
+// GatewayInstalled reports whether the Orkestra gateway Deployment exists.
+func GatewayInstalled() bool {
+	return ResourceExists("deploy", OrkestraGateway, OrkestraNamespace)
 }
 
 // CheckRuntimeHealth waits up to healthCheckTimeout for the Orkestra runtime
 // Deployment to have at least one ready replica. It polls every 2 seconds.
 // Returns immediately if pods are in CrashLoopBackOff.
-func CheckRuntimeHealth() RuntimeStatus {
-	spin := spinner.Start("  → Checking Orkestra runtime health...")
+var (
+	runtimeChecker       = DeploymentHealthChecker{Name: OrkestraRuntime, Namespace: OrkestraNamespace}
+	gatewayChecker       = DeploymentHealthChecker{Name: OrkestraGateway, Namespace: OrkestraNamespace}
+	controlCenterChecker = DeploymentHealthChecker{Name: controlCenterDeploy, Namespace: OrkestraNamespace}
+)
 
-	ctx, cancel := context.WithTimeout(context.Background(), healthCheckTimeout)
+// CheckRuntimeHealth waits up to healthCheckTimeout for the Orkestra runtime to be ready
+func CheckRuntimeHealth() DeploymentStatus {
+	return runtimeChecker.CheckHealth(healthCheckTimeout, func(ctx context.Context) string {
+		return crashLoopReason(ctx)
+	})
+}
+
+// CheckGatewayHealth waits up to healthCheckTimeout for the Orkestra gateway to be ready
+func CheckGatewayHealth() DeploymentStatus {
+	return gatewayChecker.CheckHealth(healthCheckTimeout, nil)
+}
+
+// FetchGatewayLogs saves gateway logs and returns the last 10 lines
+func FetchGatewayLogs() (tail string, err error) {
+	return gatewayChecker.FetchLogs(100, gatewayLogDir, gatewayLogPath)
+}
+
+// FetchControlCenterLogsIfNeeded fetches control center logs only if the deployment exists but has no ready replicas
+func FetchControlCenterLogsIfNeeded() error {
+	if !controlCenterChecker.Exists() {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			spin.Failure()
-			return RuntimeStatus{
-				Reason: fmt.Sprintf("timeout (%s) waiting for Orkestra runtime to become ready", healthCheckTimeout),
-			}
-		case <-ticker.C:
-			status := checkRuntimeOnce(ctx)
-			if status.Running {
-				spin.Success()
-				return status
-			}
-			if status.Reason != "no ready replicas" {
-				spin.Failure()
-				return status
-			}
-		}
+	if !controlCenterChecker.HasReadyReplicas(ctx) {
+		_, err := controlCenterChecker.FetchLogs(100, runtimeLogDir, controlCenterLogPath)
+		return err
 	}
+	return nil
 }
 
 // FetchRuntimeLogs saves the last 100 log lines from the Orkestra runtime to
@@ -87,58 +76,25 @@ func CheckRuntimeHealth() RuntimeStatus {
 // no ready replicas, its logs are saved to /tmp/orkestra/controlcenter.log.
 // Returns the last 10 lines of the runtime log for inline display.
 func FetchRuntimeLogs() (tail string, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	if mkErr := os.MkdirAll(runtimeLogDir, 0755); mkErr != nil {
-		return "", fmt.Errorf("creating log dir: %w", mkErr)
+	tail, err = runtimeChecker.FetchLogs(100, runtimeLogDir, runtimeLogPath)
+	if err != nil {
+		return "", err
 	}
 
-	runtimeLogs := fetchDeployLogs(ctx, OrkestraRuntime, OrkestraNamespace, 100)
-	if writeErr := os.WriteFile(runtimeLogPath, []byte(runtimeLogs), 0644); writeErr != nil {
-		return "", fmt.Errorf("writing runtime log: %w", writeErr)
-	}
+	// Optionally fetch control center logs if needed
+	_ = FetchControlCenterLogsIfNeeded()
 
-	ccName, _ := exec.CommandContext(ctx, "kubectl", "get", "deploy", controlCenterDeploy,
-		"-n", OrkestraNamespace, "--ignore-not-found", "-o", "name").Output()
-	if len(bytes.TrimSpace(ccName)) > 0 {
-		ccReady, _ := exec.CommandContext(ctx, "kubectl", "get", "deploy", controlCenterDeploy,
-			"-n", OrkestraNamespace, "-o", `jsonpath={.status.readyReplicas}`).Output()
-		if r := strings.TrimSpace(string(ccReady)); r == "" || r == "0" {
-			ccLogs := fetchDeployLogs(ctx, controlCenterDeploy, OrkestraNamespace, 100)
-			_ = os.WriteFile(controlCenterLogPath, []byte(ccLogs), 0644)
-		}
-	}
-
-	lines := strings.Split(strings.TrimRight(runtimeLogs, "\n"), "\n")
-	if start := len(lines) - 10; start > 0 {
-		lines = lines[start:]
-	}
-	return strings.Join(lines, "\n"), nil
+	return tail, nil
 }
 
-// SyncRuntime restarts the Orkestra runtime Deployment so it picks up a
-// new Katalog ConfigMap. Waits for the rollout to complete (3 minute timeout).
+// SyncRuntime restarts the Orkestra runtime Deployment and waits for rollout.
 func SyncRuntime() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
-	defer cancel()
+	return SyncDeployment(OrkestraRuntime, OrkestraNamespace, 3*time.Minute)
+}
 
-	restart := exec.CommandContext(ctx, "kubectl", "rollout", "restart",
-		"deploy/"+OrkestraRuntime, "-n", OrkestraNamespace)
-	restart.Stdout = os.Stdout
-	restart.Stderr = os.Stderr
-	if err := restart.Run(); err != nil {
-		return fmt.Errorf("restarting runtime: %w", err)
-	}
-
-	wait := exec.CommandContext(ctx, "kubectl", "rollout", "status",
-		"deploy/"+OrkestraRuntime, "-n", OrkestraNamespace)
-	wait.Stdout = os.Stdout
-	wait.Stderr = os.Stderr
-	if err := wait.Run(); err != nil {
-		return fmt.Errorf("waiting for rollout: %w", err)
-	}
-	return nil
+// SyncGateway restarts the Orkestra gateway Deployment and waits for rollout.
+func SyncGateway() error {
+	return SyncDeployment(OrkestraGateway, OrkestraNamespace, 3*time.Minute)
 }
 
 // KatalogChanged returns true when .orkestra/katalog.yaml has uncommitted
@@ -156,54 +112,4 @@ func KatalogChanged(dir string) bool {
 		}
 	}
 	return false
-}
-
-// ── private helpers ───────────────────────────────────────────────────────────
-
-func checkRuntimeOnce(ctx context.Context) RuntimeStatus {
-	nameOut, err := exec.CommandContext(ctx,
-		"kubectl", "get", "deploy", OrkestraRuntime,
-		"-n", OrkestraNamespace, "--ignore-not-found", "-o", "name",
-	).Output()
-	if err != nil || len(bytes.TrimSpace(nameOut)) == 0 {
-		return RuntimeStatus{Reason: "deployment " + OrkestraRuntime + " not found in " + OrkestraNamespace}
-	}
-
-	readyOut, _ := exec.CommandContext(ctx,
-		"kubectl", "get", "deploy", OrkestraRuntime,
-		"-n", OrkestraNamespace, "-o", `jsonpath={.status.readyReplicas}`,
-	).Output()
-	ready := strings.TrimSpace(string(readyOut))
-	if ready == "" || ready == "0" {
-		if reason := crashLoopReason(ctx); reason != "" {
-			return RuntimeStatus{Reason: reason}
-		}
-		return RuntimeStatus{Reason: "no ready replicas"}
-	}
-	return RuntimeStatus{Running: true}
-}
-
-func crashLoopReason(ctx context.Context) string {
-	out, err := exec.CommandContext(ctx, "kubectl", "get", "pods",
-		"-n", OrkestraNamespace,
-		"-o", `jsonpath={range .items[*]}{.metadata.name}{"\t"}{range .status.containerStatuses[*]}{.state.waiting.reason}{end}{"\n"}{end}`).Output()
-	if err != nil {
-		return ""
-	}
-	for _, line := range strings.Split(string(out), "\n") {
-		parts := strings.SplitN(strings.TrimSpace(line), "\t", 2)
-		if len(parts) == 2 && strings.Contains(parts[0], "runtime") && parts[1] == "CrashLoopBackOff" {
-			return fmt.Sprintf("pod %s is in CrashLoopBackOff", parts[0])
-		}
-	}
-	return ""
-}
-
-func fetchDeployLogs(ctx context.Context, deploy, ns string, tailLines int) string {
-	out, err := exec.CommandContext(ctx, "kubectl", "logs",
-		"deploy/"+deploy, "-n", ns, fmt.Sprintf("--tail=%d", tailLines)).CombinedOutput()
-	if err != nil {
-		return fmt.Sprintf("[failed to fetch logs for %s: %v]", deploy, err)
-	}
-	return string(out)
 }

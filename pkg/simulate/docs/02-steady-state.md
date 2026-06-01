@@ -17,7 +17,7 @@ If the simulation runs all requested cycles without converging:
 `--cycles N` runs exactly N reconcile cycles regardless of steady state. Use it to see how your operator behaves over time:
 
 ```sh
-ork simulate -f katalog.yaml --cr cr.yaml --cycles 20
+ork simulate --cr cr.yaml --cycles 20
 ```
 
 A persistent loop of creates or updates in later cycles usually means a drift condition in `onReconcile` — the operator is always writing even when nothing changed.

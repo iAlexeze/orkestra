@@ -143,14 +143,67 @@
             </div>
             <!-- Katalog cards -->
             {{ if gt (len .Katalogs) 0 }}
-            <h2 class="cc-section-title">Available Katalogs</h2>
-            <div class="cc-card-grid">
-               {{ range .Katalogs }}
-               <div class="cc-card" data-katalog="{{ .Name }}">
+
+            <!-- Filter bar -->
+            <div class="cc-filter-bar" style="flex-wrap:wrap;gap:8px;align-items:center">
+              <button data-filter="all" class="cc-filter-btn active">All ({{ len .Katalogs }})</button>
+              <button data-filter="healthy" class="cc-filter-btn">Healthy ({{ .HealthyKatalogs }})</button>
+              <button data-filter="degraded" class="cc-filter-btn">Degraded ({{ sub (len .Katalogs) .HealthyKatalogs }})</button>
+
+              {{ if gt (len .AllClusters) 0 }}
+              <div class="cc-filter-dropdown" id="clusterDropWrap" style="position:relative">
+                <button class="cc-filter-btn" id="clusterDropBtn" onclick="toggleDrop('clusterDrop')">
+                  Cluster <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div id="clusterDrop" class="cc-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:50;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:8px;min-width:160px">
+                  {{ range $.AllClusters }}
+                  <label class="cc-check-row"><input type="checkbox" class="cluster-cb" value="{{ . }}" onchange="applyFilters()"> {{ . }}</label>
+                  {{ end }}
+                </div>
+              </div>
+              {{ end }}
+
+              {{ if gt (len .AllNamespaces) 1 }}
+              <div class="cc-filter-dropdown" id="nsDropWrap" style="position:relative">
+                <button class="cc-filter-btn" id="nsDropBtn" onclick="toggleDrop('nsDrop')">
+                  Namespace <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div id="nsDrop" class="cc-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:50;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:8px;min-width:200px">
+                  {{ range $.AllNamespaces }}
+                  <label class="cc-check-row"><input type="checkbox" class="ns-cb" value="{{ . }}" onchange="applyFilters()"> {{ . }}</label>
+                  {{ end }}
+                </div>
+              </div>
+              {{ end }}
+
+              <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+                <input type="text" id="katalogSearch" placeholder="Search katalogs…" class="cc-search-input" oninput="applyFilters()">
+                <div class="cc-view-toggle">
+                  <button class="cc-view-btn active" id="viewGrid" data-view="grid" title="Grid view" onclick="setView('grid')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                  </button>
+                  <button class="cc-view-btn" id="viewList" data-view="list" title="List view" onclick="setView('list')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="cc-card-grid" id="katalogGrid">
+               {{ range $kat := .Katalogs }}
+               {{ if gt (len $kat.Namespaces) 1 }}
+               {{ range $ns := $kat.Namespaces }}
+               {{ $detail := index $kat.NamespaceDetails $ns }}
+               <div class="cc-card katalog-item"
+                    data-katalog="{{ $kat.Name }}"
+                    data-name="{{ $ns }}"
+                    data-status="{{ if $detail.Healthy }}healthy{{ else }}degraded{{ end }}"
+                    data-cluster="{{ $kat.ClusterName }}"
+                    data-namespaces="{{ $ns }}">
                   <div class="cc-card-body">
                      <div class="flex items-center justify-between mb-2">
-                        <h3 class="cc-card-title">{{ .Name }}</h3>
-                        {{ if .Healthy }}
+                        <h3 class="cc-card-title">{{ $ns }}</h3>
+                        {{ if $detail.Healthy }}
                         <span class="cc-badge cc-badge-healthy" data-live="badge">
                         <span class="cc-status-dot healthy"></span>Healthy
                         </span>
@@ -160,19 +213,86 @@
                         </span>
                         {{ end }}
                      </div>
+                     {{ if $kat.ClusterName }}
+                     <div class="flex gap-2 flex-wrap mb-2">
+                       <span class="cc-dep-pill" style="background:var(--bg-hover)">⬡ {{ $kat.ClusterName }}</span>
+                       <span class="cc-dep-pill">{{ $kat.Name }}</span>
+                     </div>
+                     {{ else }}
+                     <div class="flex gap-2 flex-wrap mb-2">
+                       <span class="cc-dep-pill">{{ $kat.Name }}</span>
+                     </div>
+                     {{ end }}
                      <p class="cc-card-desc">
-                        {{ if .Description }}{{ truncate .Description 100 }}{{ else }}<em>No description</em>{{ end }}
+                        {{ if $detail.Description }}{{ truncate $detail.Description 100 }}{{ else }}<em>No description</em>{{ end }}
                      </p>
-                     {{ if .Version }}
-                     <div class="text-xs text-muted font-mono mb-3">v{{ .Version }}</div>
+                     {{ if $detail.Version }}
+                     <div class="text-xs text-muted font-mono mb-3">v{{ $detail.Version }}</div>
                      {{ end }}
                   </div>
                   <div class="cc-card-footer">
                      <div class="cc-card-meta mb-3">
-                        {{ if eq .CreatedBy "orkdoctor" }}
+                        <div class="cc-card-row">
+                           <span class="cc-card-row-label">CRDs</span>
+                           <span class="cc-card-row-value">{{ len $detail.CRDs }} <span class="text-muted">({{ $detail.StatusCounts.Healthy }} healthy)</span></span>
+                        </div>
+                        <div class="cc-card-row">
+                           <span class="cc-card-row-label">Workers</span>
+                           <span class="cc-card-row-value">{{ $detail.Workers }}</span>
+                        </div>
+                        <div class="cc-card-row">
+                           <span class="cc-card-row-label">Resources</span>
+                           <span class="cc-card-row-value">{{ $detail.Resources }}</span>
+                        </div>
+                     </div>
+                     <a href="/controlcenter/katalog/{{ $kat.Name }}?ns={{ $ns }}" class="cc-btn cc-btn-primary w-full" style="justify-content:center">
+                        View Panel
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                           <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                     </a>
+                  </div>
+               </div>
+               {{ end }}
+               {{ else }}
+               <div class="cc-card katalog-item"
+                    data-katalog="{{ $kat.Name }}"
+                    data-name="{{ $kat.Name }}"
+                    data-status="{{ if $kat.Healthy }}healthy{{ else }}degraded{{ end }}"
+                    data-cluster="{{ $kat.ClusterName }}"
+                    data-namespaces="{{ range $i, $ns := $kat.Namespaces }}{{ if $i }},{{ end }}{{ $ns }}{{ end }}">
+                  <div class="cc-card-body">
+                     <div class="flex items-center justify-between mb-2">
+                        <h3 class="cc-card-title">{{ $kat.Name }}</h3>
+                        {{ if $kat.Healthy }}
+                        <span class="cc-badge cc-badge-healthy" data-live="badge">
+                        <span class="cc-status-dot healthy"></span>Healthy
+                        </span>
+                        {{ else }}
+                        <span class="cc-badge cc-badge-degraded" data-live="badge">
+                        <span class="cc-status-dot degraded"></span>Degraded
+                        </span>
+                        {{ end }}
+                     </div>
+                     {{ if or $kat.ClusterName $kat.Namespaces }}
+                     <div class="flex gap-2 flex-wrap mb-2">
+                       {{ if $kat.ClusterName }}<span class="cc-dep-pill" style="background:var(--bg-hover)">⬡ {{ $kat.ClusterName }}</span>{{ end }}
+                       {{ range $kat.Namespaces }}<span class="cc-dep-pill">{{ . }}</span>{{ end }}
+                     </div>
+                     {{ end }}
+                     <p class="cc-card-desc">
+                        {{ if $kat.Description }}{{ truncate $kat.Description 100 }}{{ else }}<em>No description</em>{{ end }}
+                     </p>
+                     {{ if $kat.Version }}
+                     <div class="text-xs text-muted font-mono mb-3">v{{ $kat.Version }}</div>
+                     {{ end }}
+                  </div>
+                  <div class="cc-card-footer">
+                     <div class="cc-card-meta mb-3">
+                        {{ if eq $kat.CreatedBy "orkdoctor" }}
                         <div class="cc-card-row">
                            <span class="cc-card-row-label">Applications</span>
-                           <span class="cc-card-row-value">{{ .AppCount }}</span>
+                           <span class="cc-card-row-value">{{ $kat.AppCount }}</span>
                         </div>
                         <div class="cc-card-row">
                            <span class="cc-card-row-label">Managed by</span>
@@ -181,20 +301,20 @@
                         {{ else }}
                         <div class="cc-card-row">
                            <span class="cc-card-row-label">CRDs</span>
-                           <span class="cc-card-row-value" data-live="totalCRDs">{{ .TotalCRDs }} <span class="text-muted">({{ .HealthyCRDs }} healthy)</span></span>
+                           <span class="cc-card-row-value" data-live="totalCRDs">{{ $kat.TotalCRDs }} <span class="text-muted">({{ $kat.HealthyCRDs }} healthy)</span></span>
                         </div>
                         <div class="cc-card-row">
                            <span class="cc-card-row-label">Workers</span>
-                           <span class="cc-card-row-value" data-live="totalWorkers">{{ .TotalWorkers }}</span>
+                           <span class="cc-card-row-value" data-live="totalWorkers">{{ $kat.TotalWorkers }}</span>
                         </div>
                         <div class="cc-card-row">
                            <span class="cc-card-row-label">Resources</span>
-                           <span class="cc-card-row-value" data-live="totalResources">{{ .TotalResources }}</span>
+                           <span class="cc-card-row-value" data-live="totalResources">{{ $kat.TotalResources }}</span>
                         </div>
                         {{ end }}
                      </div>
-                     <a href="/controlcenter/katalog/{{ .Name }}" class="cc-btn cc-btn-primary w-full" style="justify-content:center">
-                        {{ if eq .CreatedBy "orkdoctor" }}View Apps{{ else }}View Panel{{ end }}
+                     <a href="/controlcenter/katalog/{{ $kat.Name }}" class="cc-btn cc-btn-primary w-full" style="justify-content:center">
+                        {{ if eq $kat.CreatedBy "orkdoctor" }}View Apps{{ else }}View Panel{{ end }}
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                            <path d="M5 12h14M12 5l7 7-7 7"/>
                         </svg>
@@ -202,7 +322,29 @@
                   </div>
                </div>
                {{ end }}
+               {{ end }}
             </div>
+
+            <!-- Pagination -->
+            {{ if gt (len .Katalogs) 12 }}
+            <div class="cc-pagination">
+              <div class="cc-pagination-info">
+                Showing <span id="pageStart">1</span>–<span id="pageEnd">12</span> of <span id="totalCount">{{ len .Katalogs }}</span> katalogs
+              </div>
+              <div class="cc-pagination-btns">
+                <button id="prevPage" class="cc-page-btn" disabled>← Prev</button>
+                <div id="pageNumbers" class="cc-pagination-btns"></div>
+                <button id="nextPage" class="cc-page-btn">Next →</button>
+              </div>
+            </div>
+            {{ end }}
+
+            <div id="katalogEmpty" class="cc-empty-state hidden">
+              <div class="cc-empty-state-icon">⬡</div>
+              <div class="cc-empty-state-title">No katalogs match your filter</div>
+              <p class="cc-empty-state-text">Try changing your search or filter criteria.</p>
+            </div>
+
             {{ else }}
             <div class="cc-empty-state">
                <div class="cc-empty-state-icon">⬡</div>
@@ -260,6 +402,135 @@
       {{ end }}
       <!-- Script to manage runtimes -->
       <script src="/controlcenter/assets/static/js/controlcenter.js"></script>
+      <script>
+      (function() {
+        var PAGE_SIZE = 12;
+        var currentPage = 1;
+        var activeStatus = 'all';
+        var currentView = localStorage.getItem('cc-katalog-view') || 'grid';
+        var filtered = [];
+
+        function allItems() {
+          return Array.from(document.querySelectorAll('.katalog-item'));
+        }
+
+        function checkedValues(cls) {
+          return Array.from(document.querySelectorAll('.' + cls + ':checked')).map(function(el) { return el.value; });
+        }
+
+        window.applyFilters = function() {
+          var q = (document.getElementById('katalogSearch') || {}).value || '';
+          var ql = q.toLowerCase();
+          var clusters = checkedValues('cluster-cb');
+          var namespaces = checkedValues('ns-cb');
+
+          filtered = allItems().filter(function(el) {
+            var name = (el.dataset.name || '').toLowerCase();
+            var cluster = (el.dataset.cluster || '').toLowerCase();
+            var ns = (el.dataset.namespaces || '').toLowerCase();
+            var status = el.dataset.status || '';
+
+            if (activeStatus !== 'all' && status !== activeStatus) return false;
+            if (clusters.length && !clusters.some(function(c) { return c.toLowerCase() === cluster; })) return false;
+            if (namespaces.length && !namespaces.some(function(n) { return ns.split(',').map(function(s){return s.trim();}).includes(n); })) return false;
+            if (ql && name.indexOf(ql) < 0 && cluster.indexOf(ql) < 0 && ns.indexOf(ql) < 0) return false;
+            return true;
+          });
+
+          currentPage = 1;
+          renderPage();
+        };
+
+        function renderPage() {
+          var items = allItems();
+          items.forEach(function(el) { el.style.display = 'none'; });
+
+          var empty = document.getElementById('katalogEmpty');
+          if (filtered.length === 0) {
+            if (empty) empty.classList.remove('hidden');
+            updatePagination(0);
+            return;
+          }
+          if (empty) empty.classList.add('hidden');
+
+          var start = (currentPage - 1) * PAGE_SIZE;
+          var end = Math.min(start + PAGE_SIZE, filtered.length);
+          filtered.slice(start, end).forEach(function(el) { el.style.display = ''; });
+          updatePagination(filtered.length, start + 1, end);
+        }
+
+        function updatePagination(total, start, end) {
+          var ps = document.getElementById('pageStart');
+          var pe = document.getElementById('pageEnd');
+          var tc = document.getElementById('totalCount');
+          var prev = document.getElementById('prevPage');
+          var next = document.getElementById('nextPage');
+          if (ps) ps.textContent = start || 0;
+          if (pe) pe.textContent = end || 0;
+          if (tc) tc.textContent = total;
+          if (prev) prev.disabled = currentPage <= 1;
+          if (next) next.disabled = end >= total;
+
+          var pnums = document.getElementById('pageNumbers');
+          if (!pnums) return;
+          var totalPages = Math.ceil(total / PAGE_SIZE);
+          pnums.innerHTML = '';
+          for (var i = 1; i <= totalPages; i++) {
+            (function(p) {
+              var btn = document.createElement('button');
+              btn.className = 'cc-page-btn' + (p === currentPage ? ' active' : '');
+              btn.textContent = p;
+              btn.onclick = function() { currentPage = p; renderPage(); };
+              pnums.appendChild(btn);
+            })(i);
+          }
+        }
+
+        window.setView = function(view) {
+          currentView = view;
+          localStorage.setItem('cc-katalog-view', view);
+          var grid = document.getElementById('katalogGrid');
+          if (grid) grid.className = view === 'list' ? 'cc-card-grid list-view' : 'cc-card-grid';
+          document.getElementById('viewGrid').classList.toggle('active', view === 'grid');
+          document.getElementById('viewList').classList.toggle('active', view === 'list');
+        };
+
+        window.toggleDrop = function(id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          el.style.display = el.style.display === 'none' ? '' : 'none';
+        };
+
+        // Status filter buttons
+        document.querySelectorAll('[data-filter]').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            document.querySelectorAll('[data-filter]').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            activeStatus = btn.dataset.filter;
+            applyFilters();
+          });
+        });
+
+        // Prev / Next page
+        var prev = document.getElementById('prevPage');
+        var next = document.getElementById('nextPage');
+        if (prev) prev.addEventListener('click', function() { if (currentPage > 1) { currentPage--; renderPage(); } });
+        if (next) next.addEventListener('click', function() { currentPage++; renderPage(); });
+
+        // Close dropdowns on outside click
+        document.addEventListener('click', function(e) {
+          ['clusterDrop', 'nsDrop'].forEach(function(id) {
+            var el = document.getElementById(id);
+            var wrap = document.getElementById(id + 'Wrap') || document.getElementById(id.replace('Drop','DropWrap'));
+            if (el && wrap && !wrap.contains(e.target)) el.style.display = 'none';
+          });
+        });
+
+        // Init
+        setView(currentView);
+        applyFilters();
+      }());
+      </script>
       {{ if .EnableRuntimeManager }}
       <script src="/controlcenter/assets/static/js/manageRuntime.js"></script>
       {{ end }}

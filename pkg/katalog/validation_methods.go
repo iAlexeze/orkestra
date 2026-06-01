@@ -195,7 +195,17 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		if k.metadata.Name != "" {
 			crd.KatalogName = k.metadata.Name
 		} else {
-			crd.KatalogName = kfg.Cluster().Name()
+			crd.KatalogName = k.metadata.ClusterName + "-" + name
+		}
+
+		// Propagate katalog namespace — merger stamps it, but ensure the
+		// default is applied for any path that bypasses the merger (e.g. Go-mode).
+		if crd.KatalogNamespace == "" {
+			if k.metadata.Namespace != "" {
+				crd.KatalogNamespace = k.metadata.Namespace
+			} else {
+				crd.KatalogNamespace = "default"
+			}
 		}
 
 		// Name is already set from map key — normalise it

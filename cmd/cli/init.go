@@ -143,11 +143,15 @@ func initProject(name, pack string, refresh bool) error {
 
 	fmt.Printf("\n%s\n\n", green(projectPrint))
 
+	dir := p.Name
+	if first != "" {
+		dir = dir + "/" + first
+	}
 	fmt.Println("To run the first example:")
 	if !isCurrentDirectory(name) {
-		fmt.Printf("  cd %s/%s/%s\n", name, pack, first)
+		fmt.Printf("  cd %s/%s\n", name, dir)
 	} else {
-		fmt.Printf("  cd %s/%s\n", pack, first)
+		fmt.Printf("  cd %s\n", dir)
 	}
 
 	if p.isBeginnerPack() {

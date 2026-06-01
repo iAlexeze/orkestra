@@ -14,16 +14,19 @@ type KatalogListData struct {
 
 // KatalogSummary is a summary of a Katalog for the list view
 type KatalogSummary struct {
-	Name           string
-	Description    string
-	Version        string
-	Healthy        bool
-	CreatedBy      string
-	AppCount       int
-	TotalCRDs      int
-	HealthyCRDs    int
-	TotalWorkers   int
-	TotalResources int
+	Name             string
+	Description      string
+	Version          string
+	Healthy          bool
+	CreatedBy        string
+	AppCount         int
+	TotalCRDs        int
+	HealthyCRDs      int
+	TotalWorkers     int
+	TotalResources   int
+	ClusterName      string
+	Namespaces       []string                           // distinct namespace values from this Katalog's CRDs
+	NamespaceDetails map[string]KatalogNamespaceSummary // per-namespace stats from the runtime
 }
 
 // KatalogData is the data for the Katalog dashboard view
@@ -44,6 +47,7 @@ type KatalogData struct {
 	DegradedReason     string
 	StatusCounts       StatusCounts
 	RuntimeVersion     string
+	ClusterName        string
 }
 
 // IndexData is the data for the main page
@@ -60,6 +64,8 @@ type IndexData struct {
 	OrkestraURLs         string
 	EnableRuntimeManager bool
 	CCVersion            string
+	AllClusters          []string // distinct cluster names for filter checkboxes
+	AllNamespaces        []string // distinct namespace names for filter checkboxes
 }
 
 // StatusCounts tracks CRD health counts
@@ -85,27 +91,40 @@ type RBACRule struct {
 	Description string `json:"description,omitempty"`
 }
 
+// KatalogNamespaceSummary mirrors the runtime's namespace grouping.
+type KatalogNamespaceSummary struct {
+	CRDs         []string     `json:"crds"`
+	StatusCounts StatusCounts `json:"statusCounts"`
+	Healthy      bool         `json:"healthy"`
+	Description  string       `json:"description,omitempty"`
+	Version      string       `json:"version,omitempty"`
+	Workers      int          `json:"workers"`
+	Resources    int          `json:"resources"`
+}
+
 // KatalogResponse is the response from the /katalog endpoint
 type KatalogResponse struct {
-	Total              int                           `json:"total"`
-	TotalEnabled       int                           `json:"totalEnabled"`
-	Healthy            bool                          `json:"healthy"`
-	Status             int                           `json:"status"`
-	OrkReady           bool                          `json:"OrkReady"`
-	IsKonductor        bool                          `json:"isKonductor"`
-	DeletionProtection bool                          `json:"deletionProtection"`
-	CRDs               []CRDSummary                  `json:"crds"`
-	Name               string                        `json:"name,omitempty"`
-	Version            string                        `json:"version,omitempty"`
-	Author             string                        `json:"author,omitempty"`
-	Description        string                        `json:"description,omitempty"`
-	DegradedReason     string                        `json:"degradedReason,omitempty"`
-	StatusCounts       StatusCounts                  `json:"statusCounts"`
-	License            string                        `json:"license,omitempty"`
-	RuntimeVersion     string                        `json:"runtimeVersion,omitempty"`
-	CreatedBy          string                        `json:"createdBy,omitempty"`
-	Projects           map[string]ProjectInfoSummary `json:"projects,omitempty"`
-	GatewayEndpoint    string                        `json:"gatewayEndpoint,omitempty"`
+	Total              int                                `json:"total"`
+	TotalEnabled       int                                `json:"totalEnabled"`
+	Healthy            bool                               `json:"healthy"`
+	Status             int                                `json:"status"`
+	OrkReady           bool                               `json:"OrkReady"`
+	IsKonductor        bool                               `json:"isKonductor"`
+	DeletionProtection bool                               `json:"deletionProtection"`
+	CRDs               []CRDSummary                       `json:"crds"`
+	Name               string                             `json:"name,omitempty"`
+	Version            string                             `json:"version,omitempty"`
+	Author             string                             `json:"author,omitempty"`
+	Description        string                             `json:"description,omitempty"`
+	DegradedReason     string                             `json:"degradedReason,omitempty"`
+	StatusCounts       StatusCounts                       `json:"statusCounts"`
+	License            string                             `json:"license,omitempty"`
+	RuntimeVersion     string                             `json:"runtimeVersion,omitempty"`
+	ClusterName        string                             `json:"clusterName,omitempty"`
+	CreatedBy          string                             `json:"createdBy,omitempty"`
+	Projects           map[string]ProjectInfoSummary      `json:"projects,omitempty"`
+	Namespaces         map[string]KatalogNamespaceSummary `json:"namespaces,omitempty"`
+	GatewayEndpoint    string                             `json:"gatewayEndpoint,omitempty"`
 }
 
 // GatewayKatalogResponse mirrors the response served at GET /katalog by the
@@ -209,6 +228,7 @@ type CRDSummary struct {
 	HasUnhealthyDependencies bool     `json:"hasUnhealthyDependencies"`
 	DeletionProtection       bool     `json:"deletionProtection"`
 	ProviderCount            int      `json:"providerCount,omitempty"`
+	KatalogNamespace         string   `json:"katalogNamespace,omitempty"`
 }
 
 // CRDHealth is the response from the /katalog/{crd}/health endpoint

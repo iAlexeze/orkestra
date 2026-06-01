@@ -7,6 +7,8 @@ Here each region carries its own replica count and port — this is what map for
 
 You have one application and you want to run it in three regions, each with its own replica count and port. Normally that means a reconciler loop in Go, building one Deployment and Service per region. Here it is a twelve-line `forEach` block in a Katalog — Orkestra expands it at reconcile time.
 
+The key property: **adding or changing a region requires editing only the CR** — no Katalog change, no redeployment of Orkestra. Step 6 demonstrates this live.
+
 **What you learn:** `forEach` over a map field. How `.item` carries the map key (the region name) and `.value.*` carries the per-region data. How a single CR entry becomes N child resources automatically.
 
 ---
@@ -226,6 +228,45 @@ When `spec.regions` is a **map**, Orkestra iterates once per key-value pair:
 | `.spec.defaultPort` | `8080` (fallback if `.value.port` absent) |
 
 The Service block uses the same `forEach` — so each Deployment gets exactly one matching Service, selector already wired, port already set.
+
+---
+
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, applies the CRD, starts the operator, applies the CR, asserts all six regional resources are created with the correct replica counts, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Three Deployments created
+    after: cr-applied
+    timeout: 90s
+    resources:
+      - kind: Deployment
+        name: my-multi-region-us-east-1
+        namespace: default
+        ready: true
+      - kind: Deployment
+        name: my-multi-region-eu-west-1
+        namespace: default
+        ready: true
+      - kind: Deployment
+        name: my-multi-region-ap-southeast-1
+        namespace: default
+        ready: true
+
+  - name: us-east-1 has 3 replicas
+    after: cr-applied
+    timeout: 90s
+    commands:
+      - run: kubectl get deployment my-multi-region-us-east-1 -o jsonpath='{.spec.replicas}'
+        outputContains: "3"
+```
 
 ---
 

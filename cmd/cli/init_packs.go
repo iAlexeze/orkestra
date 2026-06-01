@@ -2,6 +2,12 @@
 
 package cli
 
+import (
+	"path/filepath"
+
+	"github.com/orkspace/orkestra/examples"
+)
+
 // packPaths maps CLI pack names to their paths inside the embedded FS.
 // Most packs are top-level directories; rollback is nested under use-cases.
 type Pack struct {
@@ -36,21 +42,19 @@ var Packs = map[string]Pack{
 		Description: "Full-stack, cross-CRD, external gates, once-secrets.",
 		Path:        "use-cases",
 	},
-	// "rollback": {
-	// 	Name:        "rollback",
-	// 	Description: "Zero-config and configurable failure recovery",
-	// 	Path:        "use-cases/rollback",
-	// },
-	// "developer": {
-	// 	Name:        "developer",
-	// 	Description: "Local to production in minutes — deploy your app without writing operator code.",
-	// 	Path:        "developer",
-	// },
 }
 
 func GetPack(name string) (Pack, bool) {
-	p, ok := Packs[name]
-	return p, ok
+	if p, ok := Packs[name]; ok {
+		return p, true
+	}
+	// Sub-path fallback: any valid directory in the embedded FS works as a pack.
+	// ork init my-project --pack use-cases/multi-tenancy extracts into my-project/multi-tenancy.
+	if f, err := examples.FS.Open(name); err == nil {
+		f.Close()
+		return Pack{Name: filepath.Base(name), Path: name}, true
+	}
+	return Pack{}, false
 }
 
 func ListPacks() []Pack {

@@ -86,13 +86,20 @@ func fetchCrossViaHTTP(ctx context.Context, endpoint, token string) map[string]i
 // Zero API server calls — pure in-memory map lookup.
 //
 // key is "namespace/name" for namespaced CRDs or "name" for cluster-scoped.
+// sourceCrossAccess is the CrossAccess field of the target CRD entry — nil means
+// allowed (default). When false, returns notFoundCrossResult() without reading.
 //
 // Returns a consistent map shape regardless of whether the CR was found —
 // callers use .found == "true" to gate their logic.
 func ReadCrossFromInformer(
 	indexer cache.Indexer,
 	key string,
+	sourceCrossAccess *bool,
 ) map[string]interface{} {
+	if sourceCrossAccess != nil && !*sourceCrossAccess {
+		return notFoundCrossResult()
+	}
+
 	raw, exists, err := indexer.GetByKey(key)
 	if err != nil || !exists {
 		return notFoundCrossResult()

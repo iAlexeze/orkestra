@@ -21,13 +21,13 @@ import (
 // ──────────────────────────────────────────────────────────────────────────────
 
 func extractEmbeddedPack(root, pack string) error {
-	p, ok := Packs[pack]
+	p, ok := GetPack(pack)
 	if !ok {
 		return fmt.Errorf("unknown pack %q — run `ork init --list` to see available packs", pack)
 	}
 	srcPath := p.Path
 
-	targetDir := filepath.Join(root, pack)
+	targetDir := filepath.Join(root, filepath.Base(p.Path))
 
 	if err := fs.WalkDir(examples.FS, srcPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

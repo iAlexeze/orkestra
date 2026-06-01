@@ -6,7 +6,7 @@
 
 ## Why it exists
 
-Most operator frameworks give you two options for testing: write unit tests that mock the Kubernetes client (which do not reflect real merge-patch semantics), or spin up a kind cluster and apply real CRs (which is slow and requires environment setup).
+Traditionally, there are two options for testing: write unit tests that mock the Kubernetes client (which do not reflect real merge-patch semantics), or spin up a kind cluster and apply real CRs (which is slow and requires environment setup).
 
 `ork simulate` takes a third path: it runs the same `GenericReconciler` that runs in production, but wires it to a fake in-memory Kubernetes store. This means:
 

@@ -105,6 +105,35 @@ deployments:
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — applies the CR, asserts all three rolling update profile Deployments are created, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Three rolling update profile Deployments created
+    after: cr-applied
+    timeout: 90s
+    resources:
+      - kind: Deployment
+        name: my-service-safe
+        namespace: default
+      - kind: Deployment
+        name: my-service-fast
+        namespace: default
+      - kind: Deployment
+        name: my-service-bg
+        namespace: default
+```
+
+---
+
 ## Cleanup
 
 ```bash

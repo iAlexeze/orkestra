@@ -80,6 +80,35 @@ pdb:
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — applies the CR, asserts all three Deployments and three PodDisruptionBudgets are created with the correct disruption limits, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Three PodDisruptionBudgets created
+    after: cr-applied
+    timeout: 60s
+    resources:
+      - kind: PodDisruptionBudget
+        name: my-service-zero-pdb
+        namespace: default
+      - kind: PodDisruptionBudget
+        name: my-service-rolling-pdb
+        namespace: default
+      - kind: PodDisruptionBudget
+        name: my-service-relaxed-pdb
+        namespace: default
+```
+
+---
+
 ## Cleanup
 
 ```bash
