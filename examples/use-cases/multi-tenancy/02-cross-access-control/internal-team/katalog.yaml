@@ -46,7 +46,6 @@ spec:
       resync: 30s
 
       crossAccess: true
-
       operatorBox:
         status:
           fields:

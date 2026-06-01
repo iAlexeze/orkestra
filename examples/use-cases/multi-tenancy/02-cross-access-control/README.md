@@ -69,8 +69,8 @@ kubectl get report daily-summary -o yaml | grep -A5 "status:"
 Expected:
 ```yaml
 status:
-  phase: ready
-  ledgerPhase: running
+  phase: Ready
+  ledgerPhase: Running
 ```
 
 The Report reads `ledger` data (allowed) and reflects it in status. It cannot read `payment` — `cross.paymentState.found` returns `"false"` and the Report reconciles gracefully without it.

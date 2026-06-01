@@ -374,13 +374,8 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 	var importErr error
 	if len(r.e2e.Imports) > 0 {
 		fmt.Printf("\n─── Running %d import(s) ───\n", len(r.e2e.Imports))
-		if errs := r.runImports(ctx); len(errs) > 0 {
-			msgs := make([]string, len(errs))
-			for i, e := range errs {
-				msgs[i] = e.Error()
-			}
-			importErr = fmt.Errorf("%d import(s) failed: %s", len(errs), strings.Join(msgs, "; "))
-		}
+		importResults := r.runImports(ctx)
+		importErr = printImportSummary(r.e2e.Metadata.Name, importResults)
 	}
 
 	// ── 11. Cleanup ──────────────────────────────────────────────────────
@@ -773,7 +768,7 @@ func (r *Runner) validateImports() error {
 //     is created so imports don't share state with the parent's live resources.
 //
 // Imports with freshCluster: true always provision their own independent cluster.
-func (r *Runner) runImports(ctx context.Context) []error {
+func (r *Runner) runImports(ctx context.Context) []ImportResult {
 	parentOwnsCluster := r.clusterCtx == "" && !r.useCurrentCtx
 
 	if parentOwnsCluster && !r.isPureAggregator() {
@@ -782,7 +777,7 @@ func (r *Runner) runImports(ctx context.Context) []error {
 		importCluster := r.clusterName() + "-imports"
 		fmt.Printf("→ Creating imports cluster '%s'...\n", importCluster)
 		if err := ork.EnsureKindCluster(importCluster); err != nil {
-			return []error{fmt.Errorf("creating imports cluster: %w", err)}
+			return []ImportResult{{Path: importCluster, Err: fmt.Errorf("creating imports cluster: %w", err)}}
 		}
 		if !r.keepCluster {
 			defer func() {
@@ -792,28 +787,29 @@ func (r *Runner) runImports(ctx context.Context) []error {
 		}
 	}
 
-	var errs []error
+	var results []ImportResult
 	for _, imp := range r.e2e.Imports {
 		absPath := r.abs(imp.Path)
+		ir := ImportResult{Path: imp.Path}
+
 		var sub *Runner
 		var err error
 		if imp.FreshCluster {
-			// Sub-runner creates and manages its own cluster from scratch.
 			sub, err = New(absPath, "", false, r.keepCluster, r.orkestraVersion, r.valueFiles)
 		} else {
-			// All shared imports use the current kubectl context — either the
-			// imports cluster just created above, or the parent's existing cluster.
 			sub, err = New(absPath, "", true, false, r.orkestraVersion, r.valueFiles)
 		}
 		if err != nil {
-			errs = append(errs, fmt.Errorf("loading import %s: %w", imp.Path, err))
+			ir.Err = fmt.Errorf("loading import %s: %w", imp.Path, err)
+			results = append(results, ir)
 			continue
 		}
-		if _, err := sub.Run(ctx); err != nil {
-			errs = append(errs, fmt.Errorf("import %s: %w", imp.Path, err))
-		}
+		res, runErr := sub.Run(ctx)
+		ir.Result = res
+		ir.Err = runErr
+		results = append(results, ir)
 	}
-	return errs
+	return results
 }
 
 func deleteKindCluster(ctx context.Context, name string) error {
