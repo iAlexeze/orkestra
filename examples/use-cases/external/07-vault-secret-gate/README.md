@@ -96,3 +96,34 @@ This is the rotation recovery pattern: fix the secret path (or rotate in Vault),
 ```bash
 chmod +x cleanup.sh && ./cleanup.sh
 ```
+
+---
+
+## E2E
+
+Run the full lifecycle — deploys the mock dev server, starts the operator, applies both CRs, asserts `my-app` gets a Deployment (valid secret) and `my-app-expired` is blocked with `status.phase=SecretExpired`, then tears down:
+
+```bash
+ork e2e --dev-server
+```
+
+CRs use the in-cluster address defined in [cr-e2e.yaml](./cr-e2e.yaml). This runs everything in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Deployment created when Vault secret is valid
+    after: cr-applied
+    resources:
+      - kind: Deployment
+        name: my-app
+        ready: true
+  - name: No Deployment when secret is expired — status shows SecretExpired
+    after: cr-applied
+    resources:
+      - kind: Deployment
+        name: my-app-expired
+        count: 0
+    commands:
+      - run: kubectl get webapp my-app-expired -o jsonpath='{.status.phase}'
+        outputContains: SecretExpired
+```

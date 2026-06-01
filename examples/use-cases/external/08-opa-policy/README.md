@@ -97,3 +97,34 @@ Or observe that `cr-denied.yaml` stays in `PolicyDenied` every reconcile — OPA
 ```bash
 chmod +x cleanup.sh && ./cleanup.sh
 ```
+
+---
+
+## E2E
+
+Run the full lifecycle — deploys the mock dev server, starts the operator, applies both CRs, asserts `my-app` gets a Deployment (policy allows) and `deny-my-app` is blocked with `status.phase=PolicyDenied`, then tears down:
+
+```bash
+ork e2e --dev-server
+```
+
+CRs use the in-cluster address defined in [cr-e2e.yaml](./cr-e2e.yaml). This runs everything in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Deployment created when OPA allows
+    after: cr-applied
+    resources:
+      - kind: Deployment
+        name: my-app
+        ready: true
+  - name: No Deployment when OPA denies — status shows PolicyDenied
+    after: cr-applied
+    resources:
+      - kind: Deployment
+        name: deny-my-app
+        count: 0
+    commands:
+      - run: kubectl get webapp deny-my-app -o jsonpath='{.status.phase}'
+        outputContains: PolicyDenied
+```
