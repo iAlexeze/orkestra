@@ -120,6 +120,35 @@ The event-list call appears only when it is needed.
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, applies the CRD, starts the operator, applies the healthy CR and the broken CR, asserts the conditional gate holds in steady state and fires when degraded, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Healthy CR has no event details (gate held)
+    after: cr-applied
+    timeout: 60s
+    commands:
+      - run: kubectl get microservice healthy-app -o jsonpath='{.status.warningEvents}'
+        outputContains: ""
+
+  - name: Broken CR has warning events in status
+    after: cr-applied
+    timeout: 120s
+    commands:
+      - run: kubectl get microservice broken-app -o jsonpath='{.status.warningEvents}'
+        outputContains: ImagePullBackOff
+```
+
+---
+
 ## Cleanup
 
 ```bash

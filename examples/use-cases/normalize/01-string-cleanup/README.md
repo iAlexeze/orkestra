@@ -123,6 +123,35 @@ Both CRs reconcile to the same ConfigMap shape. The operator never knew which fo
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, applies the CRD, starts the operator, applies the messy CR, asserts normalized values in status and ConfigMap, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Status shows normalized name (lowercase, trimmed)
+    after: cr-applied
+    timeout: 60s
+    commands:
+      - run: kubectl get tenant acme -o jsonpath='{.status.name}'
+        outputContains: acme corp
+
+  - name: Status shows normalized domain (protocol stripped)
+    after: cr-applied
+    timeout: 60s
+    commands:
+      - run: kubectl get tenant acme -o jsonpath='{.status.domain}'
+        outputContains: acme.example.com
+```
+
+---
+
 ## Cleanup
 
 ```bash

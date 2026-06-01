@@ -203,6 +203,36 @@ cd examples/advanced/07-validation-mutation
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — applies the string-format CR, asserts the CronJob is created and the status reflects the normalized schedule, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: CronJob CR created (string schedule)
+    after: cr-applied
+    timeout: 60s
+    resources:
+      - kind: CronJob
+        name: daily-backup-string
+        namespace: default
+
+  - name: Structured schedule CR also accepted
+    after: cr-applied
+    timeout: 30s
+    commands:
+      - run: kubectl apply -f cr-structured-schedule.yaml
+        exitCode: 0
+```
+
+---
+
 ## Cleanup
 
 ```bash

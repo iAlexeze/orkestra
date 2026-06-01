@@ -124,6 +124,39 @@ For JVM apps or databases, use a startup probe to get the 5-minute window:
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — applies the CR, asserts all four probe profile Deployments are created with the correct liveness probe timing, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Four probe profile Deployments created
+    after: cr-applied
+    timeout: 90s
+    resources:
+      - kind: Deployment
+        name: my-service-fast
+        namespace: default
+      - kind: Deployment
+        name: my-service-slow-start
+        namespace: default
+
+  - name: Fast profile has short probe period
+    after: cr-applied
+    timeout: 60s
+    commands:
+      - run: kubectl get deployment my-service-fast -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.periodSeconds}'
+        outputContains: "5"
+```
+
+---
+
 ## Cleanup
 
 ```bash

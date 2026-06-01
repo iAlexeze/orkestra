@@ -121,6 +121,35 @@ Use `mutation:` when the default needs to be stored and visible to external tool
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — applies the minimal CR, asserts that omitted fields received their defaults (replicas, CPU request), then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Status has defaulted replicas
+    after: cr-applied
+    timeout: 60s
+    commands:
+      - run: kubectl get workload api-server -o jsonpath='{.status.replicas}'
+        outputContains: "1"
+
+  - name: Deployment has defaulted resource requests
+    after: cr-applied
+    timeout: 60s
+    commands:
+      - run: kubectl get deployment api-server -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}'
+        outputContains: 100m
+```
+
+---
+
 ## Cleanup
 
 ```bash

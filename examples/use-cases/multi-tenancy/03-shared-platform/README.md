@@ -88,6 +88,37 @@ Orkestra injected the platform endpoints from the informer cache — zero API se
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, applies the CRDs, starts the operator, applies all CRs, asserts the Api Deployment is created after platform CRs are healthy, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Api Deployment ready (gated on Cache and Queue)
+    after: cr-applied
+    timeout: 120s
+    resources:
+      - kind: Deployment
+        name: my-api
+        namespace: default
+        ready: true
+
+  - name: Api Deployment has REDIS_URL env var
+    after: cr-applied
+    timeout: 90s
+    commands:
+      - run: kubectl get deployment my-api -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="REDIS_URL")].value}'
+        outputContains: app-cache
+```
+
+---
+
 ## Cleanup
 
 ```bash

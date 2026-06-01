@@ -87,6 +87,35 @@ The `report` CRD has no access to payment state. Its ConfigMap is created only f
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, applies the CRDs, starts the operator, applies all CRs, asserts access control behaviour, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Report reaches ready phase
+    after: cr-applied
+    timeout: 90s
+    commands:
+      - run: kubectl get report daily-summary -o jsonpath='{.status.phase}'
+        outputContains: ready
+
+  - name: Report status reflects ledger data
+    after: cr-applied
+    timeout: 90s
+    commands:
+      - run: kubectl get report daily-summary -o jsonpath='{.status.ledgerPhase}'
+        outputContains: running
+```
+
+---
+
 ## Cleanup
 
 ```bash

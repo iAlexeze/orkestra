@@ -106,6 +106,37 @@ The `cross:` observation reads from the in-memory informer cache — no `client.
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, applies both CRDs, sets up the database dependency, starts the operator, applies the application CR, asserts the cross: read injects the endpoint, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Deployment ready after database is available
+    after: cr-applied
+    timeout: 90s
+    resources:
+      - kind: Deployment
+        name: my-app
+        namespace: default
+        ready: true
+
+  - name: Status reflects database endpoint
+    after: cr-applied
+    timeout: 90s
+    commands:
+      - run: kubectl get databasebackedapp my-app -o jsonpath='{.status.databaseEndpoint}'
+        outputContains: my-app-db
+```
+
+---
+
 ## Cleanup
 
 ```bash

@@ -122,6 +122,38 @@ For per-region replicas and ports — where each region carries its own configur
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, applies the CRD, starts the operator, applies the CR, asserts three regional Deployments are created and ready, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Three regional Deployments ready
+    after: cr-applied
+    timeout: 90s
+    resources:
+      - kind: Deployment
+        name: my-multi-region-us-east-1
+        namespace: default
+        ready: true
+      - kind: Deployment
+        name: my-multi-region-eu-west-1
+        namespace: default
+        ready: true
+      - kind: Deployment
+        name: my-multi-region-ap-southeast-1
+        namespace: default
+        ready: true
+```
+
+---
+
 ## Cleanup
 
 ```bash

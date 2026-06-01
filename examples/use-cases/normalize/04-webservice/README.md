@@ -22,7 +22,46 @@ Expected:
 
 ---
 
-## Step 2 — Start the operator
+## Step 2 — Simulate (optional, no cluster needed)
+
+Run the reconciler against a fake in-memory cluster to see what normalize produces before applying to a real cluster:
+
+```bash
+ork simulate --cr cr-simple.yaml
+```
+
+```
+Simulating webservice/my-app
+
+  Cycle 1:
+    + secrets/my-app-production-acme-corp-api-key
+    + secrets/my-app-production-jwt
+    + configmaps/my-app-production-config
+    + deployments/my-app-production
+    + deployments/my-app-production-api
+    + deployments/my-app-production-worker
+    ~ status/my-app
+  Cycle 2:
+    ~ secrets/my-app-production-acme-corp-api-key
+    ~ secrets/my-app-production-jwt
+    ~ status/my-app
+  Cycle 3:
+    ~ status/my-app
+  (cycles 4–10: identical)
+
+  ✓ Steady state at cycle 4 in 350ms
+```
+
+**What this means:**
+- The resource names in Cycle 1 already contain `production` — that is `internalName` computed by normalize from the messy `cr-simple.yaml` input (`" Production "` → `production`). Normalize ran before any template was evaluated.
+- 2 secrets, 1 ConfigMap, and 3 Deployments (main + `api` + `worker` forEach backends) — all created from a single CR with bare, untidy inputs.
+- `~ secrets` in Cycle 2 — the `once:` check runs every reconcile. Orkestra sees both secrets already exist and marks them as unchanged (`~` not `+`). They will not be regenerated.
+- **Steady state at cycle 4** — one extra cycle compared to a simple operator, because `once:` takes a cycle to confirm the secret exists and skip rotation. From cycle 4 onward, no changes.
+- If there is a template error — a typo in a field name, a missing normalize rule — simulate catches it here instead of on a live cluster.
+
+---
+
+## Step 3 — Start the operator
 
 ```bash
 ork run
@@ -30,7 +69,7 @@ ork run
 
 ---
 
-## Step 3 — Open the Control Center
+## Step 4 — Open the Control Center
 
 In a **separate terminal**:
 
@@ -45,7 +84,7 @@ Select **webservice-operator**, then select the **WebService** CRD. Keep this ta
 
 ---
 
-## Step 4 — Apply the simple CR
+## Step 5 — Apply the simple CR
 
 ```bash
 kubectl apply -f cr-simple.yaml
@@ -119,7 +158,7 @@ my-app-production-worker    0/1
 
 ---
 
-## Step 5 — Apply the full CR
+## Step 6 — Apply the full CR
 
 ```bash
 kubectl apply -f cr-full.yaml

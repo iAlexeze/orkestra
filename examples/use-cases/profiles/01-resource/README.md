@@ -95,6 +95,39 @@ deployments:
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — applies the CR, asserts all eight profile Deployments are created with the correct CPU requests, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Eight profile Deployments created
+    after: cr-applied
+    timeout: 90s
+    resources:
+      - kind: Deployment
+        name: my-service-tiny
+        namespace: default
+      - kind: Deployment
+        name: my-service-large
+        namespace: default
+
+  - name: Tiny profile has correct CPU request
+    after: cr-applied
+    timeout: 60s
+    commands:
+      - run: kubectl get deployment my-service-tiny -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}'
+        outputContains: 25m
+```
+
+---
+
 ## Cleanup
 
 ```bash

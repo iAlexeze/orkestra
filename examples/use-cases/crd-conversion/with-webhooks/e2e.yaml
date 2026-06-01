@@ -1,0 +1,43 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: E2E
+metadata:
+  name: crd-conversion-webhook-e2e
+  description: >
+    Multi-version CronJob operator with conversion webhooks. Orkestra Gateway
+    handles v1 ↔ v2 schedule conversion. The proof: a v1 CR (cron string) and
+    a v2 CR (structured object) both produce a Kubernetes CronJob with the
+    correct normalized schedule — no Go, no webhook server to deploy.
+
+spec:
+  katalog: ./komposer.yaml
+  crd: ./crd.yaml
+  cr: ./cr-v1.yaml
+
+  cluster:
+    provider: kind
+    name: ork-e2e
+    reuse: false
+
+  expect:
+    - name: v1 CR produces Kubernetes CronJob with correct schedule
+      after: cr-applied
+      timeout: 60s
+      commands:
+        - run: kubectl get cronjob print-hello-v1 -o jsonpath='{.spec.schedule}'
+          outputContains: "*/1 * * * *"
+
+    - name: v2 CR also produces Kubernetes CronJob with correct schedule
+      after: cr-applied
+      timeout: 60s
+      commands:
+        - run: kubectl apply -f cr-v2.yaml
+          exitCode: 0
+        - run: kubectl get cronjob print-hello-v2 -o jsonpath='{.spec.schedule}'
+          outputContains: "0 2 * * 1-5"
+
+    - name: Cleanup verified
+      after: cr-deleted
+      timeout: 30s
+      commands:
+        - run: kubectl get cronjob print-hello-v1 2>&1
+          outputContains: NotFound

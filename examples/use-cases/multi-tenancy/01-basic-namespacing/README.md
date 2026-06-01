@@ -77,6 +77,55 @@ Each CRD card appears under its team's panel in the Control Center. Health count
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, applies the CRDs, starts the operator, applies both CRs, asserts every expectation, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Database Deployment ready
+    after: cr-applied
+    timeout: 90s
+    resources:
+      - kind: Deployment
+        name: main-db
+        namespace: default
+        ready: true
+      - kind: Secret
+        name: main-db-creds
+        namespace: default
+
+  - name: Website Deployment ready
+    after: cr-applied
+    timeout: 90s
+    resources:
+      - kind: Deployment
+        name: storefront
+        namespace: default
+        ready: true
+
+  - name: Cleanup verified
+    after: cr-deleted
+    timeout: 60s
+    resources:
+      - kind: Deployment
+        name: main-db
+        namespace: default
+        count: 0
+      - kind: Deployment
+        name: storefront
+        namespace: default
+        count: 0
+```
+
+---
+
 ## Cleanup
 
 ```bash
