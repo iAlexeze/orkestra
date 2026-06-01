@@ -10,11 +10,24 @@ func conditionalNotes() template.FuncMap {
 		"ternary":     noteTernary,
 		"boolTernary": noteBoolTernary,
 		"boolDefault": noteBoolDefault,
+		"eqTernary":   noteEqTernary,
 		"coalesce":    noteCoalesce,
 		"default":     noteDefault,
 		"empty":       noteEmpty,
 		"notEmpty":    noteNotEmpty,
 	}
+}
+
+// noteEqTernary returns trueVal when val equals target (string comparison),
+// falseVal otherwise. Shorthand for boolTernary (eq val target) trueVal falseVal.
+//
+//	{{ eqTernary .cross.db.found "true" "ready" "waiting" }}
+//	{{ eqTernary .spec.mode "production" "strict" "permissive" }}
+func noteEqTernary(val, target, trueVal, falseVal interface{}) interface{} {
+	if fmt.Sprintf("%v", val) == fmt.Sprintf("%v", target) {
+		return trueVal
+	}
+	return falseVal
 }
 
 // noteTernary returns trueVal when condition is truthy, falseVal otherwise.
