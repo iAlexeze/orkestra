@@ -196,11 +196,11 @@ func validateE2EFile(path string) error {
 		errs = append(errs, "metadata.name is required")
 	}
 	if !isAggregator {
-		if doc.Spec.Katalog == "" && doc.Spec.Init == nil {
-			errs = append(errs, "spec.katalog is required (or spec.init for example packs, or imports)")
+		if doc.Spec.Katalog == "" && doc.Spec.Init == nil && !doc.Spec.CustomOperator {
+			errs = append(errs, "spec.katalog is required (or spec.init for example packs, spec.customOperator for custom operators, or imports)")
 		}
-		if doc.Spec.CRD == "" && doc.Spec.Init == nil {
-			errs = append(errs, "spec.crd is required (or spec.init for example packs, or imports)")
+		if doc.Spec.CRD == "" && doc.Spec.Init == nil && !doc.Spec.CustomOperator {
+			errs = append(errs, "spec.crd is required (or spec.init for example packs, spec.customOperator for custom operators, or imports)")
 		}
 		if doc.Spec.CR == "" && doc.Spec.Init == nil {
 			errs = append(errs, "spec.cr is required (or spec.init for example packs, or imports)")
@@ -241,6 +241,9 @@ func validateE2EFile(path string) error {
 		fmt.Printf("    %s\n", gray(doc.Metadata.Description))
 	}
 	if !isAggregator {
+		if doc.Spec.CustomOperator {
+			fmt.Printf("    %s\n", gray("mode    : custom operator (Orkestra install skipped)"))
+		}
 		fmt.Printf("    %s\n",
 			gray(fmt.Sprintf("katalog : %s\n    crd     : %s\n    cr      : %s",
 				doc.Spec.Katalog, doc.Spec.CRD, doc.Spec.CR)),
@@ -263,6 +266,9 @@ func validateE2EFile(path string) error {
 			label := imp.Path
 			if imp.FreshCluster {
 				label += " (fresh cluster)"
+			}
+			if imp.Wait != "" {
+				label += " (wait: " + imp.Wait + ")"
 			}
 			fmt.Printf("      %s %s\n", healthIcon("ready"), gray(label))
 		}
