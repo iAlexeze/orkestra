@@ -30,7 +30,7 @@ Run the reconciler against a fake in-memory cluster to see what normalize produc
 ork simulate --cr cr-simple.yaml
 ```
 
-```
+```text
 Simulating webservice/my-app
 
   Cycle 1:
@@ -198,6 +198,49 @@ In the Control Center, select `payments-service` and open child resources. You w
 | `resources.requests.cpu` | _(absent)_ | `100m` |
 
 Every secret, configmap, and deployment name used `.spec.internalName` — assembled once in normalize, used everywhere.
+
+---
+
+## E2E
+
+Run the full lifecycle in one command — applies the simple CR, asserts that:
+- ConfigMap created with normalized values
+- Secrets created with once semantics
+-  Status internalName is normalized (environment trimmed and lowercased), then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+    - name: ConfigMap created with normalized values
+      after: cr-applied
+      timeout: 60s
+      resources:
+        - kind: ConfigMap
+          name: my-app-production-config
+          namespace: default
+
+    - name: Secrets created with once semantics
+      after: cr-applied
+      timeout: 60s
+      resources:
+        - kind: Secret
+          name: my-app-production-acme-corp-api-key
+          namespace: default
+        - kind: Secret
+          name: my-app-production-jwt
+          namespace: default
+
+    - name: Status internalName is normalized (environment trimmed and lowercased)
+      after: cr-applied
+      timeout: 60s
+      commands:
+        - run: kubectl get webservice my-app -o jsonpath='{.status.internalName}'
+          outputContains: my-app-production
+```
 
 ---
 
