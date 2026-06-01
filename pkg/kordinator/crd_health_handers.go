@@ -482,6 +482,10 @@ type KatalogNamespaceSummary struct {
 	CRDs         []string     `json:"crds"`
 	StatusCounts StatusCounts `json:"statusCounts"`
 	Healthy      bool         `json:"healthy"`
+	Description  string       `json:"description,omitempty"`
+	Version      string       `json:"version,omitempty"`
+	Workers      int          `json:"workers"`
+	Resources    int          `json:"resources"`
 }
 
 type KatalogResponse struct {
@@ -685,6 +689,14 @@ func BuildKatalogHandler(
 				nsSummary.StatusCounts.Pending++
 			}
 			nsSummary.Healthy = nsSummary.StatusCounts.Degraded == 0
+			nsSummary.Workers += v.workers
+			nsSummary.Resources += v.resourceCount
+			if nsSummary.Description == "" {
+				nsSummary.Description = crd.KatalogDescription
+			}
+			if nsSummary.Version == "" {
+				nsSummary.Version = crd.KatalogVersion
+			}
 			namespaces[ns] = nsSummary
 		}
 

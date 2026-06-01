@@ -540,6 +540,8 @@ func (cc *ControlCenter) handleIndex(w http.ResponseWriter, _ *http.Request) {
 	var summaries []KatalogSummary
 	totalCRDs, totalWorkers, totalResources, totalApps, healthyKatalogs := 0, 0, 0, 0, 0
 	hasOperatorKatalogs := false
+	clusterSeen := map[string]struct{}{}
+	nsSeen := map[string]struct{}{}
 
 	for _, inst := range insts {
 		kat := inst.Katalog
@@ -549,17 +551,33 @@ func (cc *ControlCenter) handleIndex(w http.ResponseWriter, _ *http.Request) {
 				healthyCRDs++
 			}
 		}
+
+		// Collect distinct namespaces from this katalog's namespace grouping.
+		var nsKeys []string
+		for ns := range kat.Namespaces {
+			nsKeys = append(nsKeys, ns)
+			nsSeen[ns] = struct{}{}
+		}
+		sort.Strings(nsKeys)
+
+		if kat.ClusterName != "" {
+			clusterSeen[kat.ClusterName] = struct{}{}
+		}
+
 		summary := KatalogSummary{
-			Name:           kat.Name,
-			Description:    kat.Description,
-			Version:        kat.Version,
-			Healthy:        kat.Healthy,
-			CreatedBy:      kat.CreatedBy,
-			AppCount:       len(kat.Projects),
-			TotalCRDs:      len(kat.CRDs),
-			HealthyCRDs:    healthyCRDs,
-			TotalWorkers:   sumWorkers(kat.CRDs),
-			TotalResources: sumResources(kat.CRDs),
+			Name:             kat.Name,
+			Description:      kat.Description,
+			Version:          kat.Version,
+			Healthy:          kat.Healthy,
+			CreatedBy:        kat.CreatedBy,
+			AppCount:         len(kat.Projects),
+			TotalCRDs:        len(kat.CRDs),
+			HealthyCRDs:      healthyCRDs,
+			TotalWorkers:     sumWorkers(kat.CRDs),
+			TotalResources:   sumResources(kat.CRDs),
+			ClusterName:      kat.ClusterName,
+			Namespaces:       nsKeys,
+			NamespaceDetails: kat.Namespaces,
 		}
 		summaries = append(summaries, summary)
 		if kat.CreatedBy == "orkdoctor" {
@@ -575,6 +593,18 @@ func (cc *ControlCenter) handleIndex(w http.ResponseWriter, _ *http.Request) {
 		}
 	}
 
+	allClusters := make([]string, 0, len(clusterSeen))
+	for c := range clusterSeen {
+		allClusters = append(allClusters, c)
+	}
+	sort.Strings(allClusters)
+
+	allNamespaces := make([]string, 0, len(nsSeen))
+	for ns := range nsSeen {
+		allNamespaces = append(allNamespaces, ns)
+	}
+	sort.Strings(allNamespaces)
+
 	cc.renderTemplate(w, "index.html", IndexData{
 		Katalogs:             summaries,
 		TotalKatalogs:        len(summaries),
@@ -587,6 +617,8 @@ func (cc *ControlCenter) handleIndex(w http.ResponseWriter, _ *http.Request) {
 		HasOperatorKatalogs:  hasOperatorKatalogs,
 		OrkestraURLs:         strings.Join(cc.urls, ", "),
 		CCVersion:            ccversion.Short(),
+		AllClusters:          allClusters,
+		AllNamespaces:        allNamespaces,
 		EnableRuntimeManager: cc.config.EnableRuntimeManager,
 	})
 }
@@ -611,6 +643,8 @@ func (cc *ControlCenter) handleKatalogPanel(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	ns := r.URL.Query().Get("ns")
+
 	// Sort CRDs by name for consistent display
 	sortedCRDs := make([]CRDSummary, len(kat.CRDs))
 	copy(sortedCRDs, kat.CRDs)
@@ -618,14 +652,24 @@ func (cc *ControlCenter) handleKatalogPanel(w http.ResponseWriter, r *http.Reque
 		return sortedCRDs[i].Name < sortedCRDs[j].Name
 	})
 
+	if ns != "" {
+		var filtered []CRDSummary
+		for _, crd := range sortedCRDs {
+			if crd.KatalogNamespace == ns {
+				filtered = append(filtered, crd)
+			}
+		}
+		sortedCRDs = filtered
+	}
+
 	cc.renderTemplate(w, "katalog.html", KatalogData{
 		CRDs:               sortedCRDs,
 		OrkReady:           kat.OrkReady,
 		DeletionProtection: kat.DeletionProtection,
-		TotalCRDs:          len(kat.CRDs),
-		TotalWorkers:       sumWorkers(kat.CRDs),
-		TotalResources:     sumResources(kat.CRDs),
-		HealthyCount:       countHealthyCRDs(kat.CRDs),
+		TotalCRDs:          len(sortedCRDs),
+		TotalWorkers:       sumWorkers(sortedCRDs),
+		TotalResources:     sumResources(sortedCRDs),
+		HealthyCount:       countHealthyCRDs(sortedCRDs),
 		KatalogName:        kat.Name,
 		KatalogDescription: kat.Description,
 		KatalogHealthy:     kat.Healthy,
@@ -633,8 +677,9 @@ func (cc *ControlCenter) handleKatalogPanel(w http.ResponseWriter, r *http.Reque
 		KatalogAuthor:      kat.Author,
 		KatalogLicense:     kat.License,
 		DegradedReason:     kat.DegradedReason,
-		StatusCounts:       kat.StatusCounts,
+		StatusCounts:       computeStatusCounts(sortedCRDs),
 		RuntimeVersion:     kat.RuntimeVersion,
+		ClusterName:        kat.ClusterName,
 	})
 }
 
@@ -994,6 +1039,23 @@ func countHealthyCRDs(crds []CRDSummary) int {
 		}
 	}
 	return n
+}
+
+func computeStatusCounts(crds []CRDSummary) StatusCounts {
+	var sc StatusCounts
+	for _, c := range crds {
+		switch c.State {
+		case "healthy":
+			sc.Healthy++
+		case "degraded":
+			sc.Degraded++
+		case "started":
+			sc.Started++
+		default:
+			sc.Pending++
+		}
+	}
+	return sc
 }
 
 func min(a, b int) int {

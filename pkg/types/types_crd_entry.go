@@ -32,6 +32,14 @@ type CRDEntry struct {
 	// group CRDs by team/tenant within a single runtime.
 	KatalogNamespace string `yaml:"-" json:"katalogNamespace,omitempty"`
 
+	// KatalogDescription — the description from the source Katalog's metadata.
+	// Falls back to the Komposer's description when the sub-Katalog has none.
+	KatalogDescription string `yaml:"-" json:"katalogDescription,omitempty"`
+
+	// KatalogVersion — the version from the source Katalog's metadata.
+	// Falls back to the Komposer's version when the sub-Katalog has none.
+	KatalogVersion string `yaml:"-" json:"katalogVersion,omitempty"`
+
 	// CrossAccess controls whether other Katalogs can read this CRD's CR state
 	// via the cross: block. Defaults to true (readable). Set to false to opt
 	// this CRD out of cross reads — the reconciler returns empty for any

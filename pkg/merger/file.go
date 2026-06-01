@@ -98,6 +98,8 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 
 		// Stamp the katalog namespace so the runtime and CC can group by team.
 		crd.KatalogNamespace = katalogNamespace
+		crd.KatalogDescription = doc.Metadata.Description
+		crd.KatalogVersion = doc.Metadata.Version
 
 		// Apply katalog-level CrossAccess as the default for every CRD that
 		// does not declare its own crossAccess field.
@@ -294,6 +296,22 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 
 		localSeen[name] = inlineKey
 	}
+	// Fill KatalogDescription and KatalogVersion fallbacks — if the sub-Katalog had none, use the Komposer's.
+	for name, crd := range allCRDs {
+		changed := false
+		if crd.KatalogDescription == "" && doc.Metadata.Description != "" {
+			crd.KatalogDescription = doc.Metadata.Description
+			changed = true
+		}
+		if crd.KatalogVersion == "" && doc.Metadata.Version != "" {
+			crd.KatalogVersion = doc.Metadata.Version
+			changed = true
+		}
+		if changed {
+			allCRDs[name] = crd
+		}
+	}
+
 	// Merge Komposer-level restrictions into every CRD (additive).
 	protect := doc.Security.NamespaceProtection
 	if protect != nil {

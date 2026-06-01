@@ -76,8 +76,8 @@ A `cross:` reference to a closed CRD returns `found: "false"` silently. Use `whe
 ```bash
 ork init my-project --pack use-cases/multi-tenancy
 cd my-project/multi-tenancy
-ork run -f komposer.yaml
-ork control
+
+# Follow the steps in the README
 ```
 
 | | |

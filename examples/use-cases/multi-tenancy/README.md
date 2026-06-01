@@ -1,65 +1,15 @@
 # Multi-tenancy
 
-One Orkestra runtime, multiple teams. Each Katalog declares `metadata.namespace` and the Control Center groups CRDs into separate panels per namespace. Workers, health tracking, informers, and reconcile loops are independent per CRD regardless of namespace.
+Three focused examples showing how Katalog namespaces scope CRDs by team within a single runtime and how `crossAccess` controls which teams can read each other's CR state.
 
-## Namespace declaration
-
-```yaml
-metadata:
-  name: payments
-  namespace: fintech-team
-```
-
-Omitting `namespace` defaults to `"default"`.
-
-## Cross-read access control
-
-```yaml
-crossAccess: false   # Katalog-level default
-
-spec:
-  crds:
-    public-crd:
-      crossAccess: true   # CRD-level override
-    private-crd: {}       # inherits crossAccess: false
-```
-
-A `cross:` reference to an opted-out CRD returns `found: "false"` silently.
-
-## Examples
-
-| | |
+| Example | What it teaches |
 |---|---|
-| [01 — Basic namespacing](./01-basic-namespacing/README.md) | Two teams, separate CC panels |
-| [02 — Access control](./02-cross-access-control/README.md) | Katalog-level `crossAccess: false` with CRD override |
-| [03 — Shared platform](./03-shared-platform/README.md) | Platform infra consumed by application teams |
+| [01 — Basic namespacing](01-basic-namespacing/README.md) | Two teams, one runtime — Control Center renders a separate panel per namespace |
+| [02 — Cross-read access control](02-cross-access-control/README.md) | `crossAccess: false` closes a Katalog; one CRD overrides back to open |
+| [03 — Shared platform](03-shared-platform/README.md) | Platform infra CRDs expose endpoints; application teams read them via `cross:` |
 
-## Run all
+Each example is self-contained with its own `crd.yaml`, `cr.yaml`, `komposer.yaml`, and `cleanup.sh`. Run any example in isolation from its subfolder, or run them all at once with the root `komposer.yaml`.
 
-From the root directory:
+---
 
-### Apply CRDs
-
-```bash
-kubectl apply -f 01-basic-namespacing/crd.yaml
-kubectl apply -f 02-cross-access-control/crd.yaml
-kubectl apply -f 03-shared-platform/crd.yaml
-```
-
-### Validate
-
-```bash
-ork validate
-```
-
-### Run
-
-```bash
-ork run
-```
-
-#### Start the Control Center:
-
-```bash
-ork control
-```
+**Further reading:** [Multi-tenancy concept doc](https://orkestra.sh/docs/concepts/operatorbox/multi-tenancy/)
