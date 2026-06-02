@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 const (
@@ -23,9 +24,19 @@ const (
 func resolveKatalogPaths(cliPaths []string) ([]string, error) {
 	cfgPaths := kfg.Katalog().Paths()
 
-	// 1. CLI-provided paths
+	// 1. CLI-provided paths — convert to absolute so all downstream relative
+	// path resolutions (crdFile, crFiles, setup, Komposer imports) use the
+	// file's directory as the base, not the current working directory.
 	if len(cliPaths) > 0 {
-		return cliPaths, nil
+		abs := make([]string, len(cliPaths))
+		for i, p := range cliPaths {
+			if a, err := filepath.Abs(p); err == nil {
+				abs[i] = a
+			} else {
+				abs[i] = p
+			}
+		}
+		return abs, nil
 	}
 
 	// 2. Default file paths

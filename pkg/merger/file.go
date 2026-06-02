@@ -3,6 +3,8 @@ package merger
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
 
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -89,12 +91,36 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 		katalogNamespace = "default"
 	}
 
+	// katalogDir is used to resolve relative crdFile and crFiles paths.
+	// We resolve them here — while we still have the katalog file's path —
+	// so they become absolute before being merged into the top-level map.
+	// This allows ork run/validate -f /any/path/katalog.yaml to work from
+	// any working directory, even when the katalog is imported by a Komposer.
+	katalogDir := filepath.Dir(path)
+
 	for name, crd := range doc.Spec.CRDs {
 		if name == "" {
 			return nil, fmt.Errorf("%q spec.crds: CRD with empty key", path)
 		}
 		// Duplicate within the same file is impossible — map keys are unique.
 		crd.Name = name
+
+		// Resolve crdFile and crFiles to absolute paths relative to this katalog.
+		if crd.CRDFile != "" && !filepath.IsAbs(crd.CRDFile) && !strings.HasPrefix(crd.CRDFile, "http") {
+			crd.CRDFile = filepath.Join(katalogDir, crd.CRDFile)
+		}
+		for i, cf := range crd.CRFiles {
+			if !filepath.IsAbs(cf) && !strings.HasPrefix(cf, "http") {
+				crd.CRFiles[i] = filepath.Join(katalogDir, cf)
+			}
+		}
+		if crd.Setup != nil {
+			for i, cf := range crd.Setup.Apply {
+				if !filepath.IsAbs(cf) && !strings.HasPrefix(cf, "http") {
+					crd.Setup.Apply[i] = filepath.Join(katalogDir, cf)
+				}
+			}
+		}
 
 		// Stamp the katalog namespace so the runtime and CC can group by team.
 		crd.KatalogNamespace = katalogNamespace
@@ -205,6 +231,12 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 			resolved, err := resolveEnvVar(fileSrc.URL)
 			if err != nil {
 				return nil, fmt.Errorf("%q imports.files: %w", path, err)
+			}
+
+			// Resolve relative paths against the Komposer's directory so
+			// ork run -f /any/path/komposer.yaml works from any working directory.
+			if !filepath.IsAbs(resolved) && !strings.HasPrefix(resolved, "http") {
+				resolved = filepath.Join(filepath.Dir(path), resolved)
 			}
 
 			// Resolve authentication credentials from environment variables
