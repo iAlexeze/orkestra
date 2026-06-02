@@ -1,3 +1,5 @@
+//go:build ignore
+
 // reconciler/pipeline_reconciler.go
 //
 // A custom reconciler for the Pipeline CRD. This implements domain.Reconciler
