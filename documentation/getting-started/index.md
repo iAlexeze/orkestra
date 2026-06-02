@@ -151,7 +151,7 @@ curl localhost:8080/metrics
 
 ```bash
 # Delete the CR — cascades to the Deployment
-kubectl delete -f examples/beginner/01-hello-website/cr.yaml
+kubectl delete -f cr.yaml
 
 # Stop the operator
 Ctrl+C
@@ -164,10 +164,10 @@ Ctrl+C
 | Command | Description |
 |---------|-------------|
 | `ork init` | Scaffold a new operator project in the current directory |
-| `ork run -f <path>` | Start the operator runtime |
-| `ork run --dev -f <path>` | Start the operator, create kind cluster if needed |
-| `ork validate -f <path>` | Validate a Katalog without starting |
-| `ork template -f <path>` | Preview the merged, resolved Katalog |
+| `ork run -f <path>` | Start the operator runtime. `<path>` is optional if `katalog.yaml` or `komposer.yaml` is in the current directory |
+| `ork run --dev -f` | Start the operator, create kind cluster if needed |
+| `ork validate -f` | Validate a Katalog without starting |
+| `ork template -f` | Preview the merged, resolved Katalog |
 | `ork control` | Start the Control Center at localhost:8081 |
 | `ork version` | Print version |
 
