@@ -59,10 +59,32 @@ Run arbitrary shell commands and assert exit code or output:
 
 ```yaml
 commands:
+  - run: kubectl get pipeline build-and-test -o jsonpath='{.status.phase}'
+    outputContains: Succeeded
   - run: kubectl delete crd apps.security.orkestra.io
     exitCode: 1
     outputContains: "denied the request"
 ```
+
+Commands also serve as **action commands** — imperative steps that run before resource state is checked. This is the pattern for cleanup that requires an explicit delete:
+
+```yaml
+- name: Cleanup verified
+  after: cr-deleted
+  timeout: 30s
+  commands:
+    - run: kubectl delete secret my-tls-secret --ignore-not-found
+      exitCode: 0
+  resources:
+    - kind: Secret
+      name: my-tls-secret
+      namespace: default
+      count: 0
+```
+
+## Evaluation order
+
+Within each polling iteration: **commands run first, then resources**. This ensures action commands (like a delete) execute before the resource state assertion checks the result.
 
 ## Polling
 
