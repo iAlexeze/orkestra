@@ -125,16 +125,41 @@ To keep the cluster for inspection after the test:
 ork e2e --keep-cluster
 ```
 
+### Run a full pack
+
+Every example pack ships with a root `e2e.yaml`. Run the full suite in one command:
+
+```bash
+ork e2e -f examples/beginner/e2e.yaml --use-current
+ork e2e -f examples/intermediate/e2e.yaml --use-current
+```
+
+Orkestra installs once before the suite, each test updates the bundle in place, Orkestra uninstalls once at the end.
+
+### Discover and run without a root file
+
+`./...` finds every leaf test automatically — no root `e2e.yaml` needed:
+
+```bash
+ork e2e ./examples/beginner/...          # all beginner tests
+ork e2e ./... --skip external            # everything except external gate tests
+ork e2e ./... --dry-run                  # list what would run, no cluster created
+```
+
+See [06-discovery.md](06-discovery.md).
+
 ---
 
 ## Where to go
 
 | Page | Covers |
 |------|--------|
-| [01-spec.md](01-spec.md) | `katalog`, `crd`, `cr`, `cluster` |
+| [01-spec.md](01-spec.md) | `katalog`, `crd`, `cr`, `cluster`, `customOperator` |
 | [02-setup.md](02-setup.md) | `setup.apply`, `setup.helm`, `setup.wait` |
 | [03-expect.md](03-expect.md) | `expect` — resources, commands, after, timeout |
-| [04-imports.md](04-imports.md) | `imports` — test suites, cluster strategy, pure aggregators |
+| [04-imports.md](04-imports.md) | `imports` — test suites, `wait:`, cluster strategy, pure aggregators |
+| [05-custom-operator.md](05-custom-operator.md) | `customOperator: true` — test any operator without Orkestra |
+| [06-discovery.md](06-discovery.md) | `./...` discovery, `--wait`, `--skip`, `--dry-run` |
 
 ---
 
