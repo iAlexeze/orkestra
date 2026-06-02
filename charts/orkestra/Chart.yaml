@@ -86,6 +86,26 @@ annotations:
       description: Declarative end-to-end testing for Kubernetes operators
   artifacthub.io/changes: |
     - kind: added
+      description: "early access release — first public build of Orkestra v0.7.0"
+    - kind: added
+      description: "e2e: wait: on import declarations, spec.customOperator, shared Orkestra across imports, ork e2e ./... discovery, --dry-run"
+    - kind: added
+      description: "advanced typed examples: 09-hooks, 10-constructor, 11-mixed-operator-pattern — now correctly embedded and extracted by ork init --pack advanced"
+    - kind: added
+      description: "ork init: restores go.mod and strips //go:build ignore from extracted typed example files"
+    - kind: fixed
+      description: "ork generate registry was always empty — enabledCRDs never seeded from merger; TypeRegistry iterated over nil"
+    - kind: fixed
+      description: "CustomHooksEnabled and ConstructorEnabled returned inverted logic (== nil instead of != nil)"
+    - kind: fixed
+      description: "crdFile, crFiles, setup.apply, and Komposer imports.files now resolve relative to the declaring file — ork run -f /abs/path works from any directory"
+    - kind: fixed
+      description: "go:embed skipped 09-hooks, 10-constructor, 11-mixed-operator-pattern — go.mod presence caused silent directory exclusion; fixed by renaming to go.mod.txt at embed time"
+    - kind: changed
+      description: "ork generate registry output: → / ✓ / ○ style; ensureMainGo only written when registry has content"
+    - kind: changed
+      description: "use-cases/full-stack-app: all six sub-katalogs switched to crdFile: — manual kubectl apply CRD pre-step eliminated"
+    - kind: added
       description: "deployments/public/: six-cluster public demo — 6 runtimes, 75 CRDs, 1 Control Center"
     - kind: added
       description: "webhook housekeeper: namespace labels and CRD conversion caBundle now reconciled continuously — previously applied once at startup, now watched and restored on drift"
