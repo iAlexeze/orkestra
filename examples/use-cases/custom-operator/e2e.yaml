@@ -8,4 +8,5 @@ metadata:
 
 imports:
   - ./01-pure-custom/e2e.yaml
-  - ./02-side-by-side/e2e-orkestra.yaml
+  - path: ./02-side-by-side/e2e-orkestra.yaml
+    wait: 10s

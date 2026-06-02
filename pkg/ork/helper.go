@@ -31,22 +31,14 @@ func SyncDeployment(deploymentName, namespace string, timeout time.Duration) err
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	// Restart the deployment
-	restart := exec.CommandContext(ctx, "kubectl", "rollout", "restart",
-		"deploy/"+deploymentName, "-n", namespace)
-	restart.Stdout = os.Stdout
-	restart.Stderr = os.Stderr
-	if err := restart.Run(); err != nil {
-		return fmt.Errorf("restarting deployment %s/%s: %w", namespace, deploymentName, err)
+	if out, err := exec.CommandContext(ctx, "kubectl", "rollout", "restart",
+		"deploy/"+deploymentName, "-n", namespace).CombinedOutput(); err != nil {
+		return fmt.Errorf("restarting deployment %s/%s: %w\n%s", namespace, deploymentName, err, out)
 	}
 
-	// Wait for rollout to complete
-	wait := exec.CommandContext(ctx, "kubectl", "rollout", "status",
-		"deploy/"+deploymentName, "-n", namespace)
-	wait.Stdout = os.Stdout
-	wait.Stderr = os.Stderr
-	if err := wait.Run(); err != nil {
-		return fmt.Errorf("waiting for rollout of %s/%s: %w", namespace, deploymentName, err)
+	if out, err := exec.CommandContext(ctx, "kubectl", "rollout", "status",
+		"deploy/"+deploymentName, "-n", namespace).CombinedOutput(); err != nil {
+		return fmt.Errorf("waiting for rollout of %s/%s: %w\n%s", namespace, deploymentName, err, out)
 	}
 
 	return nil

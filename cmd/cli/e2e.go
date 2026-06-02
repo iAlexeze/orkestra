@@ -38,6 +38,10 @@ Discovery mode — runs all *e2e.yaml files found recursively (skips pure aggreg
   ork e2e ./... --skip vendor,testdata,external/07-vault`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		file, _ := cmd.Flags().GetString("file")
+		// Allow positional argument: ork e2e ./... (like go test ./...)
+		if len(args) > 0 {
+			file = args[0]
+		}
 		keepCluster, _ := cmd.Flags().GetBool("keep-cluster")
 		useCurrentCtx, _ := cmd.Flags().GetBool("use-current")
 		clusterCtx, _ := cmd.Flags().GetString("cluster")
@@ -51,6 +55,7 @@ Discovery mode — runs all *e2e.yaml files found recursively (skips pure aggreg
 		devServer, _ := cmd.Flags().GetBool("dev-server")
 		wait, _ := cmd.Flags().GetString("wait")
 		skipRaw, _ := cmd.Flags().GetStringSlice("skip")
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
 
 		// Discovery mode: -f ./... or -f ./some/path/...
 		if strings.HasSuffix(file, "/...") || file == "./..." || file == "..." {
@@ -58,7 +63,14 @@ Discovery mode — runs all *e2e.yaml files found recursively (skips pure aggreg
 			if root == "." || root == "" {
 				root = "."
 			}
+			if dryRun {
+				return dryRunDiscovery(root, skipRaw)
+			}
 			return runDiscovery(cmd, root, wait, skipRaw, clusterCtx, useCurrentCtx, keepCluster, devServer, version, valuesFiles, helmArgs)
+		}
+
+		if dryRun {
+			return validateE2EFile(file)
 		}
 
 		runner, err := e2e.New(file, clusterCtx, useCurrentCtx, keepCluster, devServer, version, valuesFiles, helmArgs...)
@@ -68,6 +80,40 @@ Discovery mode — runs all *e2e.yaml files found recursively (skips pure aggreg
 		_, err = runner.Run(cmd.Context())
 		return err
 	},
+}
+
+// dryRunDiscovery lists the files that would be discovered without running them.
+func dryRunDiscovery(root string, skip []string) error {
+	var patterns []string
+	for _, s := range skip {
+		for _, p := range strings.Split(s, ",") {
+			if p = strings.TrimSpace(p); p != "" {
+				patterns = append(patterns, p)
+			}
+		}
+	}
+
+	paths, err := e2e.DiscoverE2EFiles(root, patterns)
+	if err != nil {
+		return fmt.Errorf("discovery: %w", err)
+	}
+	if len(paths) == 0 {
+		fmt.Printf("No e2e files found under %s\n", root)
+		return nil
+	}
+
+	absRoot, _ := filepath.Abs(root)
+	const maxShow = 10
+	fmt.Printf("→ Would run %d e2e file(s) under %s\n\n", len(paths), root)
+	for i, p := range paths {
+		if i >= maxShow {
+			fmt.Printf("  ... %d more\n", len(paths)-maxShow)
+			break
+		}
+		rel, _ := filepath.Rel(absRoot, p)
+		fmt.Printf("  %s\n", rel)
+	}
+	return nil
 }
 
 // runDiscovery finds all *e2e.yaml leaf files under root, builds a temp
@@ -135,6 +181,7 @@ func init() {
 	e2eCmd.Flags().Bool("dev-server", false, "Deploy the mock dev server into the cluster for external: examples")
 	e2eCmd.Flags().String("wait", "", "Duration to wait between discovered tests (e.g. 2s). Only applies in ./... discovery mode.")
 	e2eCmd.Flags().StringSlice("skip", []string{}, "Comma-separated path patterns to skip during ./... discovery (e.g. vendor,testdata)")
+	e2eCmd.Flags().Bool("dry-run", false, "Print what would run without executing. Single file: runs validate. ./...: lists discovered files.")
 
 	// Shadow global flags
 	e2eCmd.Flags().Bool("debug", false, "")
