@@ -21,11 +21,15 @@ ORK_LDFLAGS := -X github.com/orkspace/orkestra/pkg/version.Version=$(GIT_VERSION
 # Re-run whenever you change apiTypes fields in katalog.yaml.
 .PHONY: registry
 registry:
+	@[ -f go.mod.txt ] && mv go.mod.txt go.mod || true
+	@[ -f go.sum.txt ] && mv go.sum.txt go.sum || true
 	ork generate registry --file $(KATALOG)
 
 # ── build ─────────────────────────────────────────────────────────────────────
 .PHONY: build
 build:
+	@[ -f go.mod.txt ] && mv go.mod.txt go.mod || true
+	@[ -f go.sum.txt ] && mv go.sum.txt go.sum || true
 	@mkdir -p $(OUTPUT_DIR)
 	go mod tidy
 	gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \

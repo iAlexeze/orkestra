@@ -124,8 +124,6 @@ Each project directory must contain:
 // generateRegistryForDir performs the full registry generation pipeline
 // for a single operator project directory.
 func generateRegistryForDir(dir string, cmd *cobra.Command, perModuleTimeout time.Duration, dryRun bool) error {
-	logger.Info().Str("dir", dir).Msg("generating registry for project")
-
 	// Save original working directory
 	cwd, _ := os.Getwd()
 	defer os.Chdir(cwd)
@@ -147,26 +145,34 @@ func generateRegistryForDir(dir string, cmd *cobra.Command, perModuleTimeout tim
 		return fmt.Errorf("validating project: %w", err)
 	}
 
-	// Normalize and collect modules from katalog.
-	kat, mods := collectModulesToGet(out.kat)
+	fmt.Printf("→ generating registry for %s\n", bold(moduleName))
+
+	// Collect modules to fetch from hook/constructor declarations.
+	mods := collectModulesToGet(out.enabled)
 
 	// Generate runtime registry
-	logger.Info().Msg("generating runtime registry...")
-	if err := generate.TypeRegistry(kat.Enabled(), dryRun); err != nil {
+	wrote, err := generate.TypeRegistry(out.enabled, dryRun)
+	if err != nil {
 		return fmt.Errorf("generate runtime registry: %w", err)
 	}
 
-	logger.Info().
-		Str("registry", filepath.Join(generate.TypeRegistryPackage, generate.RegistryFile)).
-		Msg("runtime registry generated successfully")
+	if !wrote {
+		fmt.Printf("  %s nothing to generate — declarative templates are interpreted at runtime\n", dim("○"))
+		return nil
+	}
 
-	// Ensure main.go exists
+	registryPath := filepath.Join(generate.TypeRegistryPackage, generate.RegistryFile)
+	fmt.Printf("  %s %s\n", successMark(), dim(registryPath))
+
+	// Ensure main.go only when the registry was actually written.
+	mainGoPath := filepath.Join("cmd", "orkestra", "main.go")
 	if err := ensureMainGo(root, moduleName, dryRun); err != nil {
-		logger.Warn().Err(err).Msg("failed to ensure main.go - you may need to add import manually")
+		fmt.Fprintf(os.Stderr, "  %s main.go: %v\n", failureMark(), err)
+	} else {
+		fmt.Printf("  %s %s\n", successMark(), dim(mainGoPath))
 	}
 
 	if len(mods) > 0 {
-		// If dryRun, we only print what we'd fetch.
 		if err := goGetModules(mods, perModuleTimeout, dryRun); err != nil {
 			return fmt.Errorf("fetching declared module versions: %w", err)
 		}
@@ -216,6 +222,7 @@ import (
     "github.com/orkspace/orkestra/cmd/cli"
     "github.com/orkspace/orkestra/pkg/konfig"
     "github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/utils"
 
     %s
 )
@@ -224,7 +231,7 @@ func main() {
     kfg, err := konfig.Init()
     if err != nil {
         logger.Fatal().AnErr("failed to load configurations", err)
-        cliExit(err)
+        utils.Exit(err)
     }
     ctx, cancel := context.WithCancel(context.Background())
     defer cancel()

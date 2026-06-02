@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/orkspace/orkestra/pkg/katalog"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // splitLocationVersion splits "path" into modulePath and version.
@@ -25,15 +25,14 @@ func splitLocationVersion(path string) (modulePath, version string) {
 	return
 }
 
-// collectModulesToGet inspects the katalog and returns unique module@version strings
+// collectModulesToGet inspects enabled CRDs and returns unique module@version strings
 // for any HookDeclaration or ConstructorDeclaration that has Version set and Fetch == true.
 // It tolerates version present in location (location@vX) by normalizing via splitLocationVersion.
-func collectModulesToGet(k *katalog.Katalog) (*katalog.Katalog, []string) {
+func collectModulesToGet(crds map[string]orktypes.CRDEntry) []string {
 	seen := map[string]struct{}{}
 	var mods []string
 
-	// iterate enabled CRDs in katalog
-	for _, crd := range k.EnabledCRDs() { // adjust accessor to your katalog API; you used k.enabledCRDs earlier
+	for _, crd := range crds {
 		if !crd.HasAnyHookTemplates() {
 			continue
 		}
@@ -89,7 +88,7 @@ func collectModulesToGet(k *katalog.Katalog) (*katalog.Katalog, []string) {
 		}
 	}
 
-	return k, mods
+	return mods
 }
 
 // goGetModules runs `go get module@version` for each module in mods.

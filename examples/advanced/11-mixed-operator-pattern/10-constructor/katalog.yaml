@@ -12,7 +12,17 @@ metadata:
 spec:
   crds:
     pipeline:
-      crdFile: ./crd.yaml
+      apiTypes:
+        group: demo.orkestra.io
+        version: v1alpha1
+        kind: Pipeline
+        plural: pipelines
+        object: Pipeline
+        objectList: PipelineList
+        # location enables typed mode — the informer delivers *apiv1.Pipeline
+        # instead of *unstructured.Unstructured.
+        location: github.com/orkspace/orkestra-mixed-operator-pattern/10-constructor/api/v1alpha1
+        alias: pipev1alpha1
       workers: 5       # pipelines can be IO-bound — more workers tolerated
       resync: 10s      # short resync to check Job completion quickly
 
@@ -29,6 +39,7 @@ spec:
         constructor:
           location: github.com/orkspace/orkestra-mixed-operator-pattern/10-constructor/reconciler
           function: NewPipelineReconciler
+          alias: pipeconstructor
           # 
           # (Required for RBAC)
           # Define the resources managed by this reconciler

@@ -43,7 +43,6 @@ var (
 	orkestraLogo       = utils.OrkestraLogoCLI
 	isRunningInCluster = utils.IsRunningInCluster
 	writeFileAndFormat = utils.WriteFileAndFormat
-	cliExit            = utils.Exit
 )
 
 // ── printTemplateSummary ──────────────────────────────────────────────────────

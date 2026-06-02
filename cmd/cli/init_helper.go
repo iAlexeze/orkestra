@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/orkspace/orkestra/examples"
 )
@@ -45,6 +46,13 @@ func extractEmbeddedPack(root, pack string) error {
 			return os.MkdirAll(dst, 0755)
 		}
 
+		// go.mod.txt and go.sum.txt are renamed at embed time because
+		// //go:embed skips subdirectories containing a go.mod (nested modules).
+		// Restore the real names transparently on extraction.
+		if name := d.Name(); name == "go.mod.txt" || name == "go.sum.txt" {
+			dst = filepath.Join(filepath.Dir(dst), strings.TrimSuffix(name, ".txt"))
+		}
+
 		if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 			return err
 		}
@@ -57,21 +65,6 @@ func extractEmbeddedPack(root, pack string) error {
 		return os.WriteFile(dst, data, 0644)
 	}); err != nil {
 		return err
-	}
-
-	// Copy shared files (Makefile, setup-kind.sh, load.sh) into the pack root.
-	// These are at the examples/ embed root, not inside any pack directory.
-	sharedFiles := map[string]os.FileMode{
-		"Makefile":      0644,
-		"setup-kind.sh": 0755,
-		"load.sh":       0755,
-	}
-	for name, mode := range sharedFiles {
-		data, err := examples.FS.ReadFile(name)
-		if err != nil {
-			continue // shared file absent in this build — non-fatal
-		}
-		_ = os.WriteFile(filepath.Join(targetDir, name), data, mode)
 	}
 
 	return nil

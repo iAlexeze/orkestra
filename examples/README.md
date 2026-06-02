@@ -84,7 +84,7 @@ Production patterns. Admission policy, registry composition, Go hooks, autoscali
 | [08 — Komposer with Registry](./advanced/08-komposer-registry/) | OCI registry source. Multi-environment Komposer. |
 | [09 — Go Hooks](./advanced/09-hooks/) | Typed hooks. OrkestraRegistry from Go. External API calls. |
 | [10 — Custom Constructor](./advanced/10-constructor/) | Full reconciler control. Migration from existing operators. |
-| [11 — Mixed Operator Pattern](./advanced/11-mixed-operator-patterm/) | Dynamic + Hooks + Constructor together in one binary. |
+| [11 — Mixed Operator Pattern](./advanced/11-mixed-operator-pattern/) | Dynamic + Hooks + Constructor together in one binary. |
 | [12 — Autoscale](./advanced/12-autoscale/) | Queue-depth autoscaling, sibling metrics, external gates. |
 | [13 — Dependencies](./advanced/13-dependencies/) | Ordered startup across CRDs in-binary, cross-binary, cross-cluster. |
 | [14 — Cross-Operator Communication](./advanced/14-cross-operator/) | Share data between operators: in-binary, cross-binary, cross-cluster. |

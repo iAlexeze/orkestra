@@ -34,7 +34,7 @@ import (
 //	  GenericReconciler.runTemplateReconcile() reads the Katalog's operatorBox:Config
 //	  directly at runtime and calls the OrkestraRegistry functions itself.
 //	  No generated file. No ork generate registry. Just ork run.
-func TypeRegistry(crds map[string]orktypes.CRDEntry, dryRun bool) error {
+func TypeRegistry(crds map[string]orktypes.CRDEntry, dryRun bool) (bool, error) {
 
 	var (
 		imports     []importEntry
@@ -62,13 +62,13 @@ func TypeRegistry(crds map[string]orktypes.CRDEntry, dryRun bool) error {
 		// client which bypasses scheme decoding.
 		if !crd.IsDynamic() && crd.APITypes.Location != "" {
 			if err := validateAPITypes(crd); err != nil {
-				return fmt.Errorf("CRD %q: %w", crd.Name, err)
+				return false, fmt.Errorf("CRD %q: %w", crd.Name, err)
 			}
 
 			alias := resolveAlias(crd.APITypes.Alias, crd.Name, crd.APITypes.Location)
 
 			if err := dedupeImport(seenObjectAliases, alias, crd.APITypes.Location, crd.Name); err != nil {
-				return err
+				return false, err
 			}
 			if _, seen := seenObjectAliases[alias]; !seen {
 				imports = append(imports, importEntry{Alias: alias, Location: crd.APITypes.Location})
@@ -98,13 +98,13 @@ func TypeRegistry(crds map[string]orktypes.CRDEntry, dryRun bool) error {
 			h := crd.OperatorBox.Hooks
 
 			if err := validateHookEntry(h, crd.Name); err != nil {
-				return err
+				return false, err
 			}
 
 			hookAlias := resolveAlias(h.Alias, crd.Name+"hooks", h.Location)
 
 			if err := dedupeImport(seenHookAliases, hookAlias, h.Location, crd.Name); err != nil {
-				return err
+				return false, err
 			}
 			if _, seen := seenHookAliases[hookAlias]; !seen {
 				imports = append(imports, importEntry{Alias: hookAlias, Location: h.Location})
@@ -126,7 +126,7 @@ func TypeRegistry(crds map[string]orktypes.CRDEntry, dryRun bool) error {
 		// so addReconcilers() can wire it at startup.
 		if !crd.DefaultReconcile() {
 			if crd.OperatorBox.ConstructorDecl == nil {
-				return fmt.Errorf(
+				return false, fmt.Errorf(
 					"CRD %q: reconciler.default is false but no constructor declared — "+
 						"add reconciler.constructor with location and function, "+
 						"then re-run ork generate registry",
@@ -137,13 +137,13 @@ func TypeRegistry(crds map[string]orktypes.CRDEntry, dryRun bool) error {
 			c := crd.OperatorBox.ConstructorDecl
 
 			if err := validateConstructorEntry(c, crd.Name); err != nil {
-				return err
+				return false, err
 			}
 
 			recAlias := resolveAlias(c.Alias, crd.Name+"rec", c.Location)
 
 			if err := dedupeImport(seenRecAliases, recAlias, c.Location, crd.Name); err != nil {
-				return err
+				return false, err
 			}
 			if _, seen := seenRecAliases[recAlias]; !seen {
 				imports = append(imports, importEntry{Alias: recAlias, Location: c.Location})
@@ -164,11 +164,7 @@ func TypeRegistry(crds map[string]orktypes.CRDEntry, dryRun bool) error {
 	// Pure dynamic template Katalogs produce zero entries — this is correct.
 	// GenericReconciler handles them at runtime. Exit cleanly, no file written.
 	if len(entries) == 0 && len(recEntries) == 0 && len(hookEntries) == 0 {
-		if !dryRun {
-			fmt.Println("nothing to generate — all CRDs use declarative templates " +
-				"(interpreted at runtime by GenericReconciler, no generate step needed)")
-		}
-		return nil
+		return false, nil
 	}
 
 	// ── Render registry file ──────────────────────────────────────────────────
@@ -183,7 +179,7 @@ func TypeRegistry(crds map[string]orktypes.CRDEntry, dryRun bool) error {
 	}
 
 	outPath := filepath.Join(TypeRegistryPackage, RegistryFile)
-	return renderTemplateToFile(registryTemplate, registryData, outPath, true, dryRun)
+	return true, renderTemplateToFile(registryTemplate, registryData, outPath, true, dryRun)
 }
 
 // ── Validation helpers ────────────────────────────────────────────────────────

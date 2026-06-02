@@ -11,7 +11,19 @@ metadata:
 spec:
   crds:
     database:
-      crdFile: ./crd.yaml
+      apiTypes:
+        group: demo.orkestra.io
+        version: v1alpha1
+        kind: Database
+        plural: databases
+        object: Database
+        objectList: DatabaseList
+        # location enables typed mode — the informer decodes API server
+        # responses into *apiv1.Database rather than *unstructured.Unstructured.
+        # Required when hooks need type-safe struct access.
+        # After setting this, run: ork generate registry --file katalog.yaml
+        location: github.com/orkspace/orkestra-mixed-operator-pattern/09-hooks/api/v1alpha1
+        alias: dbv1alpha1
       workers: 3
       resync: 30s
 

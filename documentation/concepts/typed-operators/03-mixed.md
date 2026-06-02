@@ -10,7 +10,7 @@ To try this example:
 
 ```bash
 ork init --pack advanced
-cd 11-mixed-operator-patterm
+cd 11-mixed-operator-pattern
 ork run
 ```
 
