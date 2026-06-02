@@ -40,13 +40,15 @@ func verifyExpectation(ctx context.Context, exp orktypes.E2EExpectation, workDir
 }
 
 func checkAll(ctx context.Context, exp orktypes.E2EExpectation, workDir string) error {
-	for _, r := range exp.Resources {
-		if err := checkResource(ctx, r, workDir); err != nil {
+	// Commands run before resources so that action commands (e.g. cleanup deletes)
+	// execute before the resource state is checked.
+	for _, cmd := range exp.Commands {
+		if err := checkCommand(ctx, cmd, workDir); err != nil {
 			return err
 		}
 	}
-	for _, cmd := range exp.Commands {
-		if err := checkCommand(ctx, cmd, workDir); err != nil {
+	for _, r := range exp.Resources {
+		if err := checkResource(ctx, r, workDir); err != nil {
 			return err
 		}
 	}

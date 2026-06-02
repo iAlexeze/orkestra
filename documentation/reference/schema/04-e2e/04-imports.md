@@ -45,6 +45,26 @@ imports:
 |-------|----------|---------|-------------|
 | `path` | yes | — | Path to another E2E spec file. Relative to this file's directory. |
 | `freshCluster` | no | `false` | When `true`, provisions a new kind cluster for this import instead of sharing the suite cluster. |
+| `wait` | no | — | Duration to sleep before this import starts (e.g. `"10s"`, `"1m30s"`). Validated at load time — invalid durations are caught before the cluster starts. |
+
+---
+
+## When to use `wait`
+
+The common cases where state from the previous import needs time to clear:
+
+- **Webhook deregistration** — the API server takes a few seconds to fully remove a `ValidatingWebhookConfiguration` or `MutatingWebhookConfiguration` after the previous test uninstalls it. The next test that installs conflicting CRDs will fail without a brief wait.
+- **Namespace termination** — a deleted namespace stays in `Terminating` briefly. If the next import creates the same namespace, add `wait: 5s`.
+- **Certificate provisioning** — cert-manager (installed via `setup.helm`) takes a moment to issue its first certificate after the webhook pod is running.
+
+```yaml
+imports:
+  - ./admission/e2e.yaml
+  - path: ./deletion-protection/e2e.yaml
+    wait: 10s   # wait for admission webhook to deregister
+  - path: ./namespace-protection/e2e.yaml
+    freshCluster: true
+```
 
 ---
 

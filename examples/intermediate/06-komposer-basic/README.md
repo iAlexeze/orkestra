@@ -80,7 +80,7 @@ Before running, verify what the operator would reconcile for a specific CR:
 ork simulate --cr cr.yaml --crd website
 ```
 
-```
+```text
 Simulating website/composed-site
 
   Cycle 1:

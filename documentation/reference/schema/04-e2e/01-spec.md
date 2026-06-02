@@ -13,6 +13,8 @@ spec:
   katalog: ./katalog.yaml
 ```
 
+Optional when `spec.customOperator: true` — see [05-custom-operator.md](05-custom-operator.md).
+
 ---
 
 ## `spec.crd`
@@ -56,6 +58,25 @@ spec:
 | `reuse` | `false` | When `true`, keeps the cluster after the test — useful for debugging failed runs. |
 
 ---
+
+---
+
+## `spec.customOperator`
+
+Declares that this test uses its own operator. Skips bundle generation and Orkestra helm install/uninstall. Everything else runs unchanged.
+
+```yaml
+spec:
+  customOperator: true
+  crd: ./crd.yaml
+  cr: ./cr.yaml
+  setup:
+    helm:
+      - repo: https://charts.example.com
+        chart: my-operator
+```
+
+See [05-custom-operator.md](05-custom-operator.md) for full documentation and use cases.
 
 ---
 

@@ -51,7 +51,7 @@ Before starting against a real cluster, run the reconciler in memory to verify y
 ork simulate --cr cr.yaml
 ```
 
-```
+```text
 Simulating website/my-site
 
   Cycle 1:

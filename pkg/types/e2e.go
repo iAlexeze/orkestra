@@ -151,6 +151,11 @@ type E2EImport struct {
 	// FreshCluster provisions a new kind cluster for this import instead of
 	// reusing the parent's cluster. Default: false (share parent cluster).
 	FreshCluster bool `yaml:"freshCluster,omitempty"`
+	// Wait is an optional duration to sleep before this import starts.
+	// Useful when the previous test leaves cluster state that needs time to
+	// clear — webhook deregistration, namespace termination, cert provisioning.
+	// Must be a valid Go duration string (e.g. "10s", "1m30s").
+	Wait string `yaml:"wait,omitempty"`
 }
 
 // UnmarshalYAML allows imports to be written as a plain string path.
@@ -172,12 +177,22 @@ type E2ESpec struct {
 	// Core operator spec — the three files that define every Orkestra operator.
 
 	// Katalog is the path to the katalog.yaml file.
+	// Optional when customOperator is true.
 	Katalog string `yaml:"katalog,omitempty"`
 	// CRD is the path to the CRD YAML file for this operator.
 	// Applied before the bundle and before Orkestra starts.
 	CRD string `yaml:"crd,omitempty"`
 	// CR is the path to the CR YAML file to apply during the test.
 	CR string `yaml:"cr,omitempty"`
+
+	// CustomOperator declares that this test uses its own operator rather than
+	// Orkestra's reconcile loop. Bundle generation and Orkestra helm install/uninstall
+	// are skipped. Everything else runs unchanged: cluster setup, CRD apply, setup
+	// manifests, CR apply, assertions, and cleanup.
+	//
+	// Use this when your operator is installed via setup.helm or is already present
+	// in the cluster. See documentation/reference/schema/04-e2e/05-custom-operator.md.
+	CustomOperator bool `yaml:"customOperator,omitempty"`
 
 	// Init uses an example pack — for Orkestra's own CI.
 	Init *E2EInit `yaml:"init,omitempty"`

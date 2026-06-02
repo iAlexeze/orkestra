@@ -59,7 +59,7 @@ ork simulate --cycles 5
 
 ## Reading the output
 
-```
+```text
 Simulating website/my-site
 
   Cycle 1:
