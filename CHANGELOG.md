@@ -1,3 +1,50 @@
+## v0.7.0 — Early Access
+
+This release ships the first public early-access build of Orkestra. It focuses on the E2E framework, the typed operator toolchain, and making every example runnable end-to-end without manual pre-steps.
+
+### E2E Framework
+
+- **`wait:` on import declarations** — sleep a duration before an import starts; validated at load time, shown in `ork validate`.
+- **`spec.customOperator: true`** — skip the Orkestra bundle and Helm install; use `ork e2e` as a pure test harness for any operator (cert-manager, custom controllers, etc.).
+- **Shared Orkestra across imports** — one Helm install and one uninstall per suite; `sharedOrkestra` prevents namespace deletion from cascading across imports. All sync output suppressed.
+- **`ork e2e ./...` discovery** — recursive discovery of e2e files, skips pure aggregators, supports `--wait` and `--skip`.
+- **`--dry-run` flag** — single file calls `ork validate`; `./...` lists files with count and first ten.
+- **Helm output suppression** — install/uninstall/setup output captured silently; included in error message on failure.
+- **Bug fixes** — `isPureAggregator` inline check, `WaitForResource` for Deployments, `checkAll` command-before-resource ordering.
+
+### CLI — `ork generate registry`
+
+- **Registry generation fixed** — `generateKatalog` was setting `kat.Spec` but never calling `m.Enabled()`, so `kat.Enabled()` always returned nil. `generate.TypeRegistry` iterated over an empty map and silently exited on every invocation — no registry file was ever written.
+- **`TypeRegistry` returns `(bool, error)`** — `ensureMainGo` is now only written when the registry actually produced content.
+- **`CustomHooksEnabled` and `ConstructorEnabled` corrected** — both methods returned `== nil` instead of `!= nil`. Safe for declarative CRDs (all call sites are guarded by `DefaultReconcile()`) but would have caused panics and wrong behaviour for typed operators.
+- **Output style** — `→ generating registry for <module>`, `✓ pkg/typeregistry/zz_generated_typeregistry.go`, `○ nothing to generate` — matches the rest of the CLI.
+
+### CLI — `ork init --pack advanced`
+
+- **Typed examples embedded** — `go:embed` silently skips subdirectories containing a `go.mod` (nested module rule). `09-hooks`, `10-constructor`, and `11-mixed-operator-pattern` were missing from every `ork init --pack advanced` invocation. Fixed by renaming `go.mod`/`go.sum` → `.txt` at embed time.
+- **Transparent extraction** — `ork init` now restores `go.mod.txt` → `go.mod`, `go.sum.txt` → `go.sum`, and strips `//go:build ignore` from all extracted `.go` files. Users get a fully compilable project with no manual steps.
+- **Makefile safety net** — `make registry` and `make build` in typed examples perform the same restoration for users who clone the repo directly.
+
+### CLI — path-relative resolution
+
+- `crdFile`, `crFiles`, `setup.apply`, and Komposer `imports.files` now resolve relative to the declaring file. `ork run -f /any/path/katalog.yaml` works from any directory.
+- CLI-provided `-f` paths are converted to absolute on intake so downstream resolution is always anchored correctly.
+
+### Examples
+
+- **`examples/use-cases/full-stack-app`** — all six sub-katalogs switched from inline `apiTypes:` to `crdFile:`; manual `kubectl apply -f crd.yaml` pre-step eliminated from every walkthrough. `03-cross-crd/crd.yaml` split into `crd-managed-database.yaml` + `crd-database-backed-app.yaml`. `06-full-stack` uses a `setup:` block to pull in the managed-database dependency.
+- **Advanced typed examples** — `09-hooks` (typed Go hooks), `10-constructor` (custom reconciler), and `11-mixed-operator-pattern` (dynamic + hooks + constructor together) fully implemented, documented, and e2e-ready.
+- **Typed e2e documented** — READMEs for typed examples now explain `--helm-arg runtime.image.repository` / `--helm-arg runtime.image.tag` so `ork e2e` deploys the user's custom image (which contains the generated type registry) instead of the default Orkestra image.
+
+### Documentation
+
+- **`pkg/e2e` developer docs** — all four existing reference pages rewritten; three new pages: `05-imports.md`, `06-discovery.md`, `07-custom-operator.md`.
+- **Schema docs** — `wait:` imports field and `spec.customOperator` documented.
+- **Getting-started** — CLI reference table updated; `ork run -f` note on optional `-f` when `katalog.yaml` is in the current directory.
+- **Blog** — `04-why-i-built-this.md`.
+
+---
+
 ## pre-v1-alpha — Public Deployment, CRD Health Stability, Multi-Runtime
 
 ### Public Deployment (`deployments/public/`)
