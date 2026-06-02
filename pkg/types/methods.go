@@ -282,13 +282,13 @@ func (c *CRDEntry) SharedQueue() bool {
 // CustomHooksEnabled reports whether the reconcile behaviour uses custom hooks.
 // Defaults to false when omitted.
 func (c *CRDEntry) CustomHooksEnabled() bool {
-	return c.OperatorBox.Hooks == nil
+	return c.OperatorBox.Hooks != nil
 }
 
 // ConstructorEnabled reports whether the reconcile behaviour uses a constructor.
 // Defaults to false when omitted.
 func (c *CRDEntry) ConstructorEnabled() bool {
-	return c.OperatorBox.Constructor == nil
+	return c.OperatorBox.ConstructorDecl != nil
 }
 
 // IsHealthEnabled reports whether the /health endpoint is enabled for this CRD.
