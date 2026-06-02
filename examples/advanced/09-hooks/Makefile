@@ -23,6 +23,7 @@ ORK_LDFLAGS := -X github.com/orkspace/orkestra/pkg/version.Version=$(GIT_VERSION
 registry:
 	@[ -f go.mod.txt ] && mv go.mod.txt go.mod || true
 	@[ -f go.sum.txt ] && mv go.sum.txt go.sum || true
+	@find . -name "*.go" | xargs grep -l "^//go:build ignore$$" 2>/dev/null | while read f; do tail -n +3 "$$f" > "$$f.tmp" && mv "$$f.tmp" "$$f"; done || true
 	ork generate registry --file $(KATALOG)
 
 # ── build ─────────────────────────────────────────────────────────────────────
@@ -30,6 +31,7 @@ registry:
 build:
 	@[ -f go.mod.txt ] && mv go.mod.txt go.mod || true
 	@[ -f go.sum.txt ] && mv go.sum.txt go.sum || true
+	@find . -name "*.go" | xargs grep -l "^//go:build ignore$$" 2>/dev/null | while read f; do tail -n +3 "$$f" > "$$f.tmp" && mv "$$f.tmp" "$$f"; done || true
 	@mkdir -p $(OUTPUT_DIR)
 	go mod tidy
 	gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
