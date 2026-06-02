@@ -4,6 +4,7 @@ package cli
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"fmt"
 	"io"
@@ -60,6 +61,13 @@ func extractEmbeddedPack(root, pack string) error {
 		data, err := examples.FS.ReadFile(path)
 		if err != nil {
 			return err
+		}
+
+		// Strip //go:build ignore added at embed time to keep go vet clean.
+		// The tag is only meaningful inside the parent module; the user's
+		// extracted project has its own go.mod and must compile normally.
+		if filepath.Ext(dst) == ".go" {
+			data = bytes.TrimPrefix(data, []byte("//go:build ignore\n\n"))
 		}
 
 		return os.WriteFile(dst, data, 0644)
