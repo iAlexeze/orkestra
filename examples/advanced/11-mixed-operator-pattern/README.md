@@ -98,7 +98,7 @@ Both are regenerated whenever the Komposer changes.
 The standard `ork` CLI does not know about your typed CRDs:
 
 ```bash
-ork validate -f komposer.yaml
+ork validate
 ```
 
 You will see:
@@ -130,7 +130,7 @@ Now `./ork` knows about:
 ## Step 5 — Validate with your custom binary
 
 ```bash
-./ork validate -f komposer.yaml
+./ork validate
 ```
 
 You should now see:
@@ -148,7 +148,7 @@ All valid.
 Run Orkestra against the Komposer:
 
 ```bash
-./ork run -f komposer.yaml --dev
+./ork run --dev
 ```
 
 This:

@@ -13,7 +13,11 @@ metadata:
 spec:
   crds:
     website:
-      crdFile: ./crd.yaml
+      apiTypes:
+        group: demo.orkestra.io
+        version: v1alpha1
+        kind: Website
+        plural: websites
       allowedNamespaces:
         - default
 
