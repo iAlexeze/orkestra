@@ -11,11 +11,7 @@ metadata:
 spec:
   crds:
     secure-app:
-      apiTypes:
-        group: advanced.orkestra.io
-        version: v1alpha1
-        kind: SecureApp
-        plural: secureapps
+      crdFile: ./crd.yaml
 
       workers: 2
       resync: 30s
