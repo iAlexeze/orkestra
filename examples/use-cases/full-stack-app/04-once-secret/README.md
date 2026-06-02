@@ -6,15 +6,7 @@
 
 ---
 
-## Step 1 — Apply the CRD
-
-```bash
-kubectl apply -f crd.yaml
-```
-
----
-
-## Step 2 — Validate
+## Step 1 — Validate
 
 ```bash
 ork validate
@@ -30,7 +22,9 @@ Expected:
 
 ---
 
-## Step 3 — Start the operator
+## Step 2 — Start the operator
+
+`ork run` reads the `crdFile` declared in `katalog.yaml`, applies the CRD to the cluster, and starts the runtime:
 
 ```bash
 ork run
@@ -38,7 +32,7 @@ ork run
 
 ---
 
-## Step 4 — Open the Control Center
+## Step 3 — Open the Control Center
 
 In a **separate terminal**:
 
@@ -51,7 +45,7 @@ Open [http://localhost:8081](http://localhost:8081). Select **secure-app**, then
 
 ---
 
-## Step 5 — Apply the CR
+## Step 4 — Apply the CR
 
 ```bash
 kubectl apply -f cr.yaml
@@ -77,7 +71,7 @@ kubectl get deploy my-secure-app
 
 ---
 
-## Step 6 — Verify idempotency
+## Step 5 — Verify idempotency
 
 Delete the Secret manually and watch the next reconcile recreate it:
 
@@ -98,7 +92,7 @@ New CR, new Secret with a fresh password. The `once:` guard is per Secret existe
 
 ---
 
-## Step 7 — Check the Deployment mounts
+## Step 6 — Check the Deployment mounts
 
 ```bash
 kubectl describe deploy my-secure-app | grep -A10 "Environment:"

@@ -6,15 +6,7 @@
 
 ---
 
-## Step 1 — Apply the CRD
-
-```bash
-kubectl apply -f crd.yaml
-```
-
----
-
-## Step 2 — Validate
+## Step 1 — Validate
 
 ```bash
 ork validate
@@ -30,7 +22,9 @@ Expected:
 
 ---
 
-## Step 3 — Start the operator
+## Step 2 — Start the operator
+
+`ork run` reads the `crdFile` declared in `katalog.yaml`, applies the CRD to the cluster, and starts the runtime:
 
 ```bash
 ork run
@@ -38,7 +32,7 @@ ork run
 
 ---
 
-## Step 4 — Open the Control Center
+## Step 3 — Open the Control Center
 
 In a **separate terminal**:
 
@@ -51,7 +45,7 @@ Open [http://localhost:8081](http://localhost:8081). Select **flex-app**, then s
 
 ---
 
-## Step 5 — Apply the CR
+## Step 4 — Apply the CR
 
 ```bash
 kubectl apply -f cr.yaml
@@ -72,7 +66,7 @@ kubectl get jobs
 
 ---
 
-## Step 6 — Enable notifications
+## Step 5 — Enable notifications
 
 Patch `spec.notify` to `"true"`:
 
@@ -100,7 +94,7 @@ kubectl get flexapp my-flex-app
 
 ---
 
-## Step 7 — Cascade to cleanup
+## Step 6 — Cascade to cleanup
 
 Phase is now `Succeeded` — the cleanup Job's `anyOf:` fires:
 
