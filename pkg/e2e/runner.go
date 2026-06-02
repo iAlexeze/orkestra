@@ -65,6 +65,13 @@ type Runner struct {
 	// customOperator skips bundle generation and Orkestra helm install/uninstall.
 	// Set from spec.customOperator — the file is the source of truth.
 	customOperator bool
+
+	// sharedOrkestra means Orkestra is managed by the parent runImports coordinator.
+	// The sub-runner must not delete the bundle from the cluster (the bundle contains
+	// the orkestra-system namespace; deleting it cascades to the Orkestra deployment).
+	// It also suppresses all sync/health-check output — only the coordinator's single
+	// install and uninstall messages are visible.
+	sharedOrkestra bool
 }
 
 // New loads an E2E spec from a YAML file and constructs a Runner.
@@ -290,18 +297,15 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 				installedOrkestra = true
 				fmt.Printf("  ✓ Orkestra installed\n")
 			} else {
-				fmt.Printf("→ Syncing Orkestra runtime with current bundle...\n")
+				// Orkestra already running — sync bundle silently.
 				if err := ork.SyncRuntime(); err != nil {
 					return nil, fmt.Errorf("syncing Orkestra runtime: %w", err)
 				}
-				fmt.Printf("  ✓ Orkestra runtime synced\n")
 				if gatewayEnabled {
 					if ork.GatewayInstalled() {
-						fmt.Printf("→ Syncing Orkestra gateway with current bundle...\n")
 						if err := ork.SyncGateway(); err != nil {
 							return nil, fmt.Errorf("syncing Orkestra gateway: %w", err)
 						}
-						fmt.Printf("  ✓ Orkestra gateway synced\n")
 					} else {
 						fmt.Printf("→ Upgrading Orkestra to enable gateway...\n")
 						if err := ork.InstallOrUpgradeOrkestra(r.orkestraVersion, r.valueFiles, r.helmArgs...); err != nil {
@@ -311,22 +315,33 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 						fmt.Printf("  ✓ Orkestra upgraded with gateway\n")
 					}
 				}
-			}
-
-			fmt.Printf("→ Waiting for Orkestra to be ready...\n")
-			status := ork.CheckRuntimeHealth()
-			if !status.Running {
-				return nil, fmt.Errorf("Orkestra runtime not ready: %s", status.Reason)
-			}
-			fmt.Printf("  ✓ Orkestra runtime ready\n\n")
-
-			if gatewayEnabled {
-				fmt.Printf("→ Waiting for Orkestra gateway to be ready...\n")
-				status := ork.CheckGatewayHealth()
-				if !status.Running {
-					return nil, fmt.Errorf("Orkestra gateway not ready: %s", status.Reason)
+				// Health check — silent, still blocks until ready.
+				if status := ork.CheckRuntimeHealth(); !status.Running {
+					return nil, fmt.Errorf("Orkestra runtime not ready after sync: %s", status.Reason)
 				}
-				fmt.Printf("  ✓ Orkestra gateway ready\n\n")
+				if gatewayEnabled {
+					if status := ork.CheckGatewayHealth(); !status.Running {
+						return nil, fmt.Errorf("Orkestra gateway not ready after sync: %s", status.Reason)
+					}
+				}
+			}
+
+			if installedOrkestra {
+				fmt.Printf("→ Waiting for Orkestra to be ready...\n")
+				status := ork.CheckRuntimeHealth()
+				if !status.Running {
+					return nil, fmt.Errorf("Orkestra runtime not ready: %s", status.Reason)
+				}
+				fmt.Printf("  ✓ Orkestra runtime ready\n\n")
+
+				if gatewayEnabled {
+					fmt.Printf("→ Waiting for Orkestra gateway to be ready...\n")
+					status := ork.CheckGatewayHealth()
+					if !status.Running {
+						return nil, fmt.Errorf("Orkestra gateway not ready: %s", status.Reason)
+					}
+					fmt.Printf("  ✓ Orkestra gateway ready\n\n")
+				}
 			}
 		}
 
@@ -414,7 +429,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 	if importCount == 1 {
 		importText = "import"
 	}
-	
+
 	if importCount > 0 {
 		fmt.Printf("\n─── Running %d %s ───\n", importCount, importText)
 		importResults := r.runImports(ctx)
@@ -757,12 +772,17 @@ func (r *Runner) teardown(ctx context.Context, crdPaths []string, bundlePath str
 	}
 
 	// Bundle (RBAC, ConfigMap, Namespace created by ork generate bundle).
+	// sharedOrkestra: skip kubectl delete — the bundle contains orkestra-system namespace;
+	// deleting it cascades to the Orkestra deployment managed by the coordinator.
+	// The temp file is still removed.
 	if bundlePath != "" {
-		fmt.Printf("  → Deleting bundle resources...\n")
-		if out, err := kubectl(ctx, "delete", "-f", bundlePath, "--ignore-not-found"); err != nil {
-			fmt.Printf("  ! bundle delete failed: %v\n%s\n", err, out)
-		} else {
-			fmt.Printf("  ✓ Bundle resources deleted\n")
+		if !r.sharedOrkestra {
+			fmt.Printf("  → Deleting bundle resources...\n")
+			if out, err := kubectl(ctx, "delete", "-f", bundlePath, "--ignore-not-found"); err != nil {
+				fmt.Printf("  ! bundle delete failed: %v\n%s\n", err, out)
+			} else {
+				fmt.Printf("  ✓ Bundle resources deleted\n")
+			}
 		}
 		os.Remove(bundlePath)
 	}
@@ -891,6 +911,9 @@ func (r *Runner) runImports(ctx context.Context) []ImportResult {
 			sub, err = New(absPath, "", false, r.keepCluster, r.devServer, r.orkestraVersion, r.valueFiles)
 		} else {
 			sub, err = New(absPath, "", true, false, r.devServer, r.orkestraVersion, r.valueFiles)
+			if err == nil {
+				sub.sharedOrkestra = true
+			}
 		}
 		// customOperator is declared in the sub-file itself; the parent's value
 		// does not override it — each import is authoritative about its own mode.
