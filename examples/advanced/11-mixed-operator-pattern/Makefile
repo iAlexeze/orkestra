@@ -1,7 +1,7 @@
 # ── Typed Orkestra Operator — Hooks ───────────────────────────────────────────
 BINARY_NAME ?= ork
 OUTPUT_DIR  ?= $(HOME)/.orkestra/bin
-KATALOG     ?= katalog.yaml
+KATALOG     ?= komposer.yaml
 
 IMAGE_REPO  ?= myorg/my-operator
 IMAGE_TAG   ?= latest
