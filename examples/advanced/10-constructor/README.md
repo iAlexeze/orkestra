@@ -190,11 +190,25 @@ kubectl apply -f cr.yaml
 
 ## E2E
 
-Run the full typed operator lifecycle in one command — spins up a kind cluster, builds and deploys the operator, applies the CR, asserts the state machine ran to completion, then tears down:
+Typed operators require your own published image — `ork e2e` installs Orkestra via Helm and you must point it at your image so the deployed runtime includes your generated type registry.
+
+**Step 1 — build and push your image:**
 
 ```bash
-ork e2e
+make docker push IMAGE_REPO=yourregistry/pipeline-operator IMAGE_TAG=latest
 ```
+
+**Step 2 — run e2e with your image:**
+
+```bash
+ork e2e \
+  --helm-arg runtime.image.repository=yourregistry/pipeline-operator \
+  --helm-arg runtime.image.tag=latest
+```
+
+The `--helm-arg` flags are forwarded as `--set` values to the Helm install (`runtime.image.repository` / `runtime.image.tag` in `charts/orkestra/values.yaml`), so the cluster runs your image instead of the default Orkestra image.
+
+This spins up a kind cluster, deploys your operator, applies the CR, asserts the state machine ran to completion, then tears down.
 
 This runs everything defined in [e2e.yaml](./e2e.yaml):
 

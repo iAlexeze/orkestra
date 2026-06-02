@@ -307,6 +307,28 @@ This is the mixed operator pattern in practice.
 
 ---
 
+## E2E
+
+This example contains typed operators (hooks + constructor) so e2e requires your own published image that includes the generated type registry.
+
+**Step 1 — build and push:**
+
+```bash
+make docker push IMAGE_REPO=yourregistry/mixed-operator IMAGE_TAG=latest
+```
+
+**Step 2 — run e2e with your image:**
+
+```bash
+ork e2e \
+  --helm-arg runtime.image.repository=yourregistry/mixed-operator \
+  --helm-arg runtime.image.tag=latest
+```
+
+The `--helm-arg` flags become `--set` values on the Helm install so the cluster runs your image (with the type registry for all three CRDs) instead of the default Orkestra image.
+
+---
+
 ## Cleanup
 
 ```bash
