@@ -9,8 +9,8 @@ metadata:
 
 spec:
   katalog: ./katalog.yaml
-  crd: ./crd.yaml
-  cr: ./application-cr.yaml
+  crd: ./crd-managed-database.yaml
+  cr: ./database-cr.yaml
 
   cluster:
     provider: kind
@@ -19,7 +19,8 @@ spec:
 
   setup:
     apply:
-      - ./database-cr.yaml
+      - ./application-cr.yaml
+      - ./crd-database-backed-app.yaml
     wait:
       - kind: ManagedDatabase
         name: my-app-db
