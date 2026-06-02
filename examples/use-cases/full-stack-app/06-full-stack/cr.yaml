@@ -1,12 +1,3 @@
-# ManagedDatabase — cross: dependency for FullStackApp
-apiVersion: advanced.orkestra.io/v1alpha1
-kind: ManagedDatabase
-metadata:
-  name: my-app-db
-  namespace: default
-spec: {}
-
----
 # FullStackApp — all five patterns combined
 apiVersion: advanced.orkestra.io/v1alpha1
 kind: FullStackApp

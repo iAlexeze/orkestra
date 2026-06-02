@@ -23,8 +23,6 @@ Examples 02 and 06 call external HTTP endpoints — start the mock dev server fi
 ork run --dev-server
 ```
 
-Example 06 depends on the `ManagedDatabase` from example 03 — apply `03-cross-crd/database-cr.yaml` before applying the full-stack CR.
-
 ---
 
 **Next step:** [multi-region-map](../multi-region-map/README.md) — forEach over a map with per-region replica counts and ports, plus a real app you can port-forward to.

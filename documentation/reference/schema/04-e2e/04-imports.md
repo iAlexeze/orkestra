@@ -1,4 +1,4 @@
-# imports
+# Imports
 
 `imports` is a top-level field (same level as `spec:`) that lists other E2E files to run after the current one completes. It is the building block for test suites.
 

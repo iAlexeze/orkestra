@@ -6,15 +6,7 @@ One CR, one list, N Deployments. Orkestra iterates `spec.regions` and creates a 
 
 ---
 
-## Step 1 — Apply the CRD
-
-```bash
-kubectl apply -f crd.yaml
-```
-
----
-
-## Step 2 — Validate
+## Step 1 — Validate
 
 ```bash
 ork validate
@@ -30,7 +22,9 @@ Expected:
 
 ---
 
-## Step 3 — Start the operator
+## Step 2 — Start the operator
+
+`ork run` reads the `crdFile` declared in `katalog.yaml`, applies the CRD to the cluster, and starts the runtime:
 
 ```bash
 ork run
@@ -38,7 +32,7 @@ ork run
 
 ---
 
-## Step 4 — Open the Control Center
+## Step 3 — Open the Control Center
 
 In a **separate terminal**:
 
@@ -51,7 +45,7 @@ Open [http://localhost:8081](http://localhost:8081). Select **multi-region-app**
 
 ---
 
-## Step 5 — Apply the CR
+## Step 4 — Apply the CR
 
 ```bash
 kubectl apply -f cr.yaml
@@ -84,7 +78,7 @@ status:
 
 ---
 
-## Step 6 — Check the Deployments
+## Step 5 — Check the Deployments
 
 ```bash
 kubectl get deploy -l orkestra-owner=my-multi-region
@@ -102,7 +96,7 @@ Three Deployments from one CR. All the same image, all 1 replica. Notice there a
 
 ---
 
-## Step 7 — Add a region live
+## Step 6 — Add a region live
 
 Edit the CR and add a fourth region:
 
@@ -114,7 +108,7 @@ Add `ap-northeast-1` to the regions list. Orkestra reconciles immediately on the
 
 ---
 
-## Step 8 — The list limitation
+## Step 7 — The list limitation
 
 All three Deployments use the same port. There is no way to assign different ports or replica counts to individual regions using a list — every region gets identical config.
 

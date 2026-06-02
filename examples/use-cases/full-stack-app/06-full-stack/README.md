@@ -4,17 +4,7 @@ One CR, all five patterns at once. A `FullStackApp` creates 3 regional Deploymen
 
 ---
 
-## Step 1 — Apply the CRDs
-
-```bash
-kubectl apply -f crd.yaml
-```
-
-This registers both `ManagedDatabase` (the cross: dependency) and `FullStackApp`.
-
----
-
-## Step 2 — Validate
+## Step 1 — Validate
 
 ```bash
 ork validate
@@ -31,9 +21,9 @@ Expected:
 
 ---
 
-## Step 3 — Start the operator
+## Step 2 — Start the operator
 
-`--dev-server` is required — the health check calls `/health` on every reconcile:
+`ork run` reads the `crdFile` declared in `katalog.yaml`, applies the other dependencies defined in the `setup` block — the managed-database CRD and its seed CR — and starts the runtime. `--dev-server` is required — the health check calls `/health` on every reconcile:
 
 ```bash
 ork run --dev-server
@@ -41,7 +31,7 @@ ork run --dev-server
 
 ---
 
-## Step 4 — Open the Control Center
+## Step 3 — Open the Control Center
 
 In a **separate terminal**:
 
@@ -54,7 +44,7 @@ Open [http://localhost:8081](http://localhost:8081). Select **full-stack-app**, 
 
 ---
 
-## Step 5 — Apply the CR
+## Step 4 — Apply the CR
 
 `cr.yaml` includes both the `ManagedDatabase` dependency and the `FullStackApp` — one apply is enough:
 
@@ -75,7 +65,7 @@ spec:
 
 ---
 
-## Step 6 — Watch the lifecycle
+## Step 5 — Watch the lifecycle
 
 Phase walks forward as each condition is satisfied:
 
@@ -104,7 +94,7 @@ configmap/my-app-config               (DB_HOST from database CR status)
 
 ---
 
-## Step 7 — Status tells the full story
+## Step 6 — Status tells the full story
 
 ```bash
 kubectl get fullstackapp my-app -o yaml | grep -A16 "status:"

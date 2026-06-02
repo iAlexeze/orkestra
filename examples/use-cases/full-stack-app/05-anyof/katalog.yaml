@@ -11,11 +11,7 @@ metadata:
 spec:
   crds:
     flex-app:
-      apiTypes:
-        group: advanced.orkestra.io
-        version: v1alpha1
-        kind: FlexApp
-        plural: flexapps
+      crdFile: ./crd.yaml
 
       workers: 2
       resync: 30s

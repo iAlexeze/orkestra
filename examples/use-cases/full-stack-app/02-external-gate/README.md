@@ -6,15 +6,7 @@ The Deployment is only created when an upstream health check returns 200. A seco
 
 ---
 
-## Step 1 — Apply the CRD
-
-```bash
-kubectl apply -f crd.yaml
-```
-
----
-
-## Step 2 — Validate
+## Step 1 — Validate
 
 ```bash
 ork validate
@@ -30,9 +22,9 @@ Expected:
 
 ---
 
-## Step 3 — Start the operator
+## Step 2 — Start the operator
 
-`--dev-server` starts a mock HTTP server on `:9999`. It serves `/health` (200) and `/flags/:name` for both calls — no real service needed:
+`ork run` reads the `crdFile` declared in `katalog.yaml`, applies the CRD to the cluster, and starts the runtime. `--dev-server` also starts a mock HTTP server on `:9999` serving `/health` (200) and `/flags/:name` — no real service needed:
 
 ```bash
 ork run --dev-server
@@ -40,7 +32,7 @@ ork run --dev-server
 
 ---
 
-## Step 4 — Open the Control Center
+## Step 3 — Open the Control Center
 
 In a **separate terminal**:
 
@@ -53,7 +45,7 @@ Open [http://localhost:8081](http://localhost:8081). Select **gated-app**, then 
 
 ---
 
-## Step 5 — Apply the CR
+## Step 4 — Apply the CR
 
 ```bash
 kubectl apply -f cr.yaml
@@ -80,7 +72,7 @@ kubectl get deploy my-gated-app
 
 ---
 
-## Step 6 — See the gate in action
+## Step 5 — See the gate in action
 
 Patch the CR to point at a URL that returns a non-200:
 

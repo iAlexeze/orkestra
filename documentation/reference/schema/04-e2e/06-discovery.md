@@ -57,7 +57,7 @@ ork e2e ./... --dry-run
 
 Lists the files that would be discovered:
 
-```
+```text
 → Would run 12 e2e file(s) under .
 
   examples/beginner/01-hello-website/e2e.yaml

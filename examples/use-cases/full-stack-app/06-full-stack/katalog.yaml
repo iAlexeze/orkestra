@@ -11,11 +11,10 @@ metadata:
 spec:
   crds:
     full-stack-app:
-      apiTypes:
-        group: advanced.orkestra.io
-        version: v1alpha1
-        kind: FullStackApp
-        plural: fullstackapps
+      crdFile: ./crd.yaml
+      setup:
+        - ../03-cross-crd/crd-managed-database.yaml
+        - ../03-cross-crd/database-cr.yaml
 
       workers: 2
       resync: 30s

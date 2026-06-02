@@ -6,15 +6,7 @@ Two CRDs. `ManagedDatabase` creates a Postgres Deployment and writes its endpoin
 
 ---
 
-## Step 1 — Apply the CRD
-
-```bash
-kubectl apply -f crd.yaml
-```
-
----
-
-## Step 2 — Validate
+## Step 1 — Validate
 
 ```bash
 ork validate
@@ -33,7 +25,9 @@ Expected:
 
 ---
 
-## Step 3 — Start the operator
+## Step 2 — Start the operator
+
+`ork run` reads the `crdFile` entries declared in `katalog.yaml`, applies both CRDs to the cluster, and starts the runtime:
 
 ```bash
 ork run
@@ -41,7 +35,7 @@ ork run
 
 ---
 
-## Step 4 — Open the Control Center
+## Step 3 — Open the Control Center
 
 In a **separate terminal**:
 
@@ -54,7 +48,7 @@ Open [http://localhost:8081](http://localhost:8081). Select **cross-crd** to see
 
 ---
 
-## Step 5 — Apply the database CR first
+## Step 4 — Apply the database CR first
 
 ```bash
 kubectl apply -f database-cr.yaml
@@ -72,7 +66,7 @@ The `ManagedDatabase` reconciler created a Postgres Deployment and Service, then
 
 ---
 
-## Step 6 — Apply the application CR
+## Step 5 — Apply the application CR
 
 ```bash
 kubectl apply -f application-cr.yaml
@@ -100,7 +94,7 @@ The ConfigMap contains `DB_HOST` populated from the database CR's status — wri
 
 ---
 
-## Step 7 — The informer cache
+## Step 6 — The informer cache
 
 The `cross:` observation reads from the in-memory informer cache — no `client.Get()`, no API call. Delete and re-apply `database-cr.yaml` and watch `DatabaseBackedApp` transition to `WaitingForDatabase`, then back to `Ready` as the database recovers.
 
@@ -142,5 +136,5 @@ expect:
 ```bash
 kubectl delete databasebackedapp my-app --ignore-not-found
 kubectl delete manageddatabase my-app-db --ignore-not-found
-kubectl delete -f crd-database.yaml -f crd-application.yaml --ignore-not-found
+kubectl delete -f crd-managed-database.yaml -f crd-database-backed-app.yaml --ignore-not-found
 ```

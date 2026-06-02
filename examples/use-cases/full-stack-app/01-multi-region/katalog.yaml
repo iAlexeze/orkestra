@@ -10,11 +10,7 @@ metadata:
 spec:
   crds:
     multi-region-app:
-      apiTypes:
-        group: advanced.orkestra.io
-        version: v1alpha1
-        kind: MultiRegionApp
-        plural: multiregionapps
+      crdFile: ./crd.yaml
 
       workers: 2
       resync: 30s
