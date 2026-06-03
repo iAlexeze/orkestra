@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/orkspace/orkestra/domain"
@@ -11,16 +13,33 @@ import (
 	"github.com/orkspace/orkestra/pkg/katalog"
 	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/reconciler"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 )
+
+// noopTransport returns an empty 200 response for every request.
+// Used to stub out external: HTTP calls during simulation so they
+// execute the full call path but produce empty result fields
+// rather than real network errors.
+type noopTransport struct{}
+
+func (noopTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: 200,
+		Body:       io.NopCloser(strings.NewReader("")),
+		Header:     make(http.Header),
+	}, nil
+}
 
 // Result is the output of one simulation run.
 type Result struct {
 	Cycles   []CycleResult
 	Steady   bool
-	SteadyAt int // cycle number where steady state was first detected (0 if not reached)
+	SteadyAt int      // cycle number where steady state was first detected (0 if not reached)
+	Notes    []string // informational notes about blocks that could not execute (e.g. constructor body)
 }
 
 // CycleResult is the output of one reconcile cycle.
@@ -41,6 +60,14 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 	prev := log.Logger
 	log.Logger = log.Output(io.Discard)
 	defer func() { log.Logger = prev }()
+
+	// Stub out external: HTTP calls — return empty 200 instead of hitting the network.
+	// This lets the reconciler execute the full external call path (template resolution,
+	// continueOnError logic, result injection) without real network calls.
+	// Result fields will be empty; when: conditions on them evaluate as unmet.
+	prevTransport := reconciler.ExternalHTTPTransport
+	reconciler.ExternalHTTPTransport = noopTransport{}
+	defer func() { reconciler.ExternalHTTPTransport = prevTransport }()
 
 	crdEntry, ok := kat.CRDEntry(crdName)
 	if !ok {
@@ -70,25 +97,49 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 	}
 	informer := newFakeInformer(indexer)
 
-	// Build the reconciler with the fake cluster.
-	// event.NoopRecorder discards all events — simulation doesn't emit events.
-	r := reconciler.NewGenericReconciler[domain.Object](
-		crdEntry,
-		informer,
-		&event.NoopRecorder{},
-		fakeKube,
-		nil, // no Go hooks
-		func() domain.Object { return &unstructured.Unstructured{} },
-		nil, nil, nil, nil,
-		kat, // Katalog for notification wiring
-	)
+	gvk := schema.GroupVersionKind{
+		Group:   crdEntry.APITypes.Group,
+		Version: crdEntry.APITypes.Version,
+		Kind:    crdEntry.APITypes.Kind,
+	}
+
+	// Look up hooks from the registry. In the standard ork binary the map is
+	// empty for custom types and hookBinder stays nil.
+	// In a custom operator binary produced by `make registry && make build`,
+	// the init() in zz_generated_typeregistry.go populates HookRegistry so
+	// the actual hook function runs inside the fake cluster.
+	var hookBinder domain.AnyReconcileHooks
+	if fn, ok := orktypes.HookRegistry[gvk]; ok {
+		hookBinder = fn()
+	}
+
+	result := &Result{}
+
+	// Build the reconciler. If a constructor is registered (custom binary with
+	// ork generate registry output), use it directly — it receives the fake
+	// kubeclient and runs its full reconcile loop against the in-memory cluster.
+	// nil is passed for *event.Event; constructors should guard against nil ev.
+	// Otherwise fall back to GenericReconciler with any registered hook binder.
+	var r domain.Reconciler
+	if factoryFn, ok := orktypes.ReconcilerRegistry[gvk]; ok {
+		r = factoryFn(fakeKube, informer, nil)
+	} else {
+		r = reconciler.NewGenericReconciler[domain.Object](
+			crdEntry,
+			informer,
+			&event.NoopRecorder{},
+			fakeKube,
+			hookBinder,
+			func() domain.Object { return &unstructured.Unstructured{} },
+			nil, nil, nil, nil,
+			kat,
+		)
+	}
 
 	key, err := cache.MetaNamespaceKeyFunc(cr)
 	if err != nil {
 		return nil, fmt.Errorf("computing CR key: %w", err)
 	}
-
-	result := &Result{}
 	var prevCycleOps []Op
 
 	for cycle := 1; cycle <= maxCycles; cycle++ {
