@@ -10,5 +10,5 @@ import (
 type NewReconcilerFunc func(
 	kube kubeclient.KubeClient,
 	inf cache.SharedIndexInformer,
-	ev *event.Event,
+	ev event.Recorder,
 ) domain.Reconciler
