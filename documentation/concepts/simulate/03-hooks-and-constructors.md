@@ -58,11 +58,11 @@ Simulating pipeline/my-pipeline
 
 The constructor owns its full reconcile loop — simulate just provides the fake cluster for it to act against.
 
-**Note:** `*event.Event` is passed as `nil` to the constructor. If your constructor calls event recording methods, guard them:
+**Note:** `nil` is passed for `ev event.Recorder` to the constructor during simulation. If your constructor calls event recording methods, guard them:
 
 ```go
 if r.ev != nil {
-    r.ev.Record(...)
+    r.ev.Eventf(obj, corev1.EventTypeNormal, "Reason", "message")
 }
 ```
 
