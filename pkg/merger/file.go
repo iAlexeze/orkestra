@@ -121,6 +121,13 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 				}
 			}
 		}
+		// Resolve motif file paths in imports to absolute so they work regardless
+		// of the working directory when expandMotifImports runs.
+		for i, imp := range crd.Imports {
+			if isFileMotif(imp.Motif) && !filepath.IsAbs(imp.Motif) {
+				crd.Imports[i].Motif = filepath.Join(katalogDir, imp.Motif)
+			}
+		}
 
 		// Stamp the katalog namespace so the runtime and CC can group by team.
 		crd.KatalogNamespace = katalogNamespace
