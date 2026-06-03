@@ -8,7 +8,7 @@ import (
 )
 
 type NewReconcilerFunc func(
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	inf cache.SharedIndexInformer,
 	ev *event.Event,
 ) domain.Reconciler
