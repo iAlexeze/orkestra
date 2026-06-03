@@ -53,6 +53,10 @@ Run simulate over every e2e.yaml under the current directory:
 
 ```bash
 ork simulate ./...
+
+# Skip specific files or directories
+ork simulate ./... --skip cr-e2e.yaml
+ork simulate ./... --skip vendor,testdata
 ```
 
 Output:
@@ -86,6 +90,8 @@ Simulating 6 e2e file(s) under .
 | `--cr` | `cr.yaml` | Path to the CR YAML to simulate |
 | `--crd` | all | CRD name to simulate (default: all CRDs in the Katalog) |
 | `--cycles` | `10` | Maximum number of reconcile cycles |
+| `--skip` | — | Comma-separated path patterns to exclude during `./...` discovery |
+| `--skip-external` | `false` | Stub `external:` HTTP calls with empty 200 responses instead of hitting the real network |
 
 ---
 

@@ -10,7 +10,7 @@ These blocks do not cause a skip — simulate runs everything else and emits a n
 
 | Block | Status | What you see |
 |-------|--------|--------------|
-| `external:` HTTP calls | Inactive — no outbound network | `external.*` fields are empty; `when:` conditions on them evaluate as unmet |
+| `external:` HTTP calls | Active by default — calls hit the real network; pass `--skip-external` to stub with empty 200 | Without `--skip-external`: real calls; with it: `external.*` fields are empty |
 | `cross:` informer reads | Inactive — only one CR seeded | `cross.*` fields are empty; dependent resources with `when:` on cross fields are not created |
 
 The output for these files still shows whether the declarative layer (templates, status fields, `once:`, `forEach:`) is correct given absent data.
