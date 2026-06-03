@@ -54,14 +54,14 @@ const (
 //	Pending → Running → Succeeded | Failed
 type PipelineReconciler struct {
 	informer cache.SharedIndexInformer
-	kube     *kubeclient.Kubeclient
+	kube     kubeclient.KubeClient
 	ev       *event.Event
 }
 
 // NewPipelineReconciler is the constructor function registered in the Katalog.
-// Signature matches what Orkestra expects: (kube, informer, ev) → domain.Reconciler.
+// Signature matches orktypes.NewReconcilerFunc: (kube, informer, ev) → domain.Reconciler.
 func NewPipelineReconciler(
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	informer cache.SharedIndexInformer,
 	ev *event.Event,
 ) domain.Reconciler {
