@@ -55,7 +55,7 @@ const (
 type PipelineReconciler struct {
 	informer cache.SharedIndexInformer
 	kube     kubeclient.KubeClient
-	ev       *event.Event
+	ev       event.Recorder
 }
 
 // NewPipelineReconciler is the constructor function registered in the Katalog.
@@ -63,7 +63,7 @@ type PipelineReconciler struct {
 func NewPipelineReconciler(
 	kube kubeclient.KubeClient,
 	informer cache.SharedIndexInformer,
-	ev *event.Event,
+	ev event.Recorder,
 ) domain.Reconciler {
 	return &PipelineReconciler{
 		informer: informer,
@@ -155,8 +155,10 @@ func (r *PipelineReconciler) handlePending(ctx context.Context, p *apiv1.Pipelin
 	p.Status.CurrentStep = firstStep.Name
 	p.Status.StartTime = &now
 
-	r.ev.Eventf(p, corev1.EventTypeNormal, "PipelineStarted",
-		"Pipeline %s/%s started — step: %s", p.Namespace, p.Name, firstStep.Name)
+	if r.ev != nil {
+		r.ev.Eventf(p, corev1.EventTypeNormal, "PipelineStarted",
+			"Pipeline %s/%s started — step: %s", p.Namespace, p.Name, firstStep.Name)
+	}
 
 	return r.patchStatus(ctx, p)
 }
@@ -178,8 +180,10 @@ func (r *PipelineReconciler) handleRunning(ctx context.Context, p *apiv1.Pipelin
 
 	// Check Job outcome
 	if isJobFailed(job) {
-		r.ev.Eventf(p, corev1.EventTypeWarning, "StepFailed",
-			"Pipeline step %q failed", p.Status.CurrentStep)
+		if r.ev != nil {
+			r.ev.Eventf(p, corev1.EventTypeWarning, "StepFailed",
+				"Pipeline step %q failed", p.Status.CurrentStep)
+		}
 		return r.setPhase(ctx, p, apiv1.PipelinePhaseFailed,
 			fmt.Sprintf("step %q failed", p.Status.CurrentStep))
 	}
@@ -209,8 +213,10 @@ func (r *PipelineReconciler) advanceStep(ctx context.Context, p *apiv1.Pipeline)
 		// All steps complete
 		now := metav1.NewTime(time.Now())
 		p.Status.CompletionTime = &now
-		r.ev.Eventf(p, corev1.EventTypeNormal, "PipelineSucceeded",
-			"Pipeline %s/%s completed all %d steps", p.Namespace, p.Name, len(p.Spec.Steps))
+		if r.ev != nil {
+			r.ev.Eventf(p, corev1.EventTypeNormal, "PipelineSucceeded",
+				"Pipeline %s/%s completed all %d steps", p.Namespace, p.Name, len(p.Spec.Steps))
+		}
 		return r.setPhase(ctx, p, apiv1.PipelinePhaseSucceeded, "all steps completed")
 	}
 
@@ -231,8 +237,10 @@ func (r *PipelineReconciler) advanceStep(ctx context.Context, p *apiv1.Pipeline)
 	}
 
 	p.Status.CurrentStep = nextStep.Name
-	r.ev.Eventf(p, corev1.EventTypeNormal, "StepStarted",
-		"Pipeline advancing to step %q", nextStep.Name)
+	if r.ev != nil {
+		r.ev.Eventf(p, corev1.EventTypeNormal, "StepStarted",
+			"Pipeline advancing to step %q", nextStep.Name)
+	}
 
 	return r.patchStatus(ctx, p)
 }
