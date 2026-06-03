@@ -19,9 +19,9 @@ Events are discarded silently once `Shutdown()` is called, so no goroutine leaks
 
 `Shutdown()` sets a stopped flag, waits for all in-flight events to flush (with the given context deadline as a timeout), then calls `broadcaster.Shutdown()` to release the underlying connection. A context timeout produces a warning log but is otherwise clean.
 
-## NoopRecorder
+## Recorder interface
 
-`NoopRecorder` implements the `Recorder` interface and discards all events. Used by `ork simulate` and tests that do not need Kubernetes event side-effects:
+`Recorder` is declared in this package and is the only surface that reconcilers and constructors depend on:
 
 ```go
 type Recorder interface {
@@ -29,4 +29,4 @@ type Recorder interface {
 }
 ```
 
-Swap `*event.Event` for `*event.NoopRecorder` anywhere a `Recorder` is accepted.
+`*Event` implements `Recorder` for real clusters. Passing `nil` is safe anywhere that nil-coalesces internally (e.g. `NewGenericReconciler`). Constructor functions (`NewReconcilerFunc`) receive `event.Recorder` and should guard with `if ev != nil` before calling `Eventf`.

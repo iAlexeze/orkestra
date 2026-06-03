@@ -21,6 +21,7 @@ import (
 	orkqueue "github.com/orkspace/orkestra/pkg/queue"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 )
@@ -118,6 +119,12 @@ type GenericReconciler[PTR domain.Object] struct {
 	rollbackClearFn   func()
 }
 
+// discardRecorder is the package-private noop used when nil is passed for ev.
+// Used by ork simulate
+type discardRecorder struct{}
+
+func (discardRecorder) Eventf(_ runtime.Object, _, _, _ string, _ ...interface{}) {}
+
 // NewGenericReconciler constructs a GenericReconciler for the given CRD.
 //
 // PTR must be a pointer to the concrete CR type (e.g. *Database). When called
@@ -158,6 +165,10 @@ func NewGenericReconciler[PTR domain.Object](
 			))
 		}
 		hooks = binder.BindToObjectHooks()
+	}
+
+	if ev == nil {
+		ev = discardRecorder{}
 	}
 
 	workers := crd.Workers

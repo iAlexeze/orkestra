@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/reconciler"
@@ -49,25 +48,33 @@ type CycleResult struct {
 	Error error
 }
 
+// RunOptions controls optional behaviour for a simulation run.
+type RunOptions struct {
+	// SkipExternal stubs all external: HTTP calls with an empty 200 response.
+	// When false (the default), external calls are attempted against the real network.
+	SkipExternal bool
+}
+
 // Run simulates the operator against an in-memory cluster.
 //
 // kat is the parsed Katalog.
 // crdName is the CRD entry to simulate.
 // cr is the CR to reconcile.
 // maxCycles is the maximum number of reconcile cycles.
-func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstructured.Unstructured, maxCycles int) (*Result, error) {
+func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstructured.Unstructured, maxCycles int, opts RunOptions) (*Result, error) {
 	// Silence the reconciler's JSON logs — simulation output is structured by the caller.
 	prev := log.Logger
 	log.Logger = log.Output(io.Discard)
 	defer func() { log.Logger = prev }()
 
-	// Stub out external: HTTP calls — return empty 200 instead of hitting the network.
-	// This lets the reconciler execute the full external call path (template resolution,
-	// continueOnError logic, result injection) without real network calls.
-	// Result fields will be empty; when: conditions on them evaluate as unmet.
-	prevTransport := reconciler.ExternalHTTPTransport
-	reconciler.ExternalHTTPTransport = noopTransport{}
-	defer func() { reconciler.ExternalHTTPTransport = prevTransport }()
+	// Stub out external: HTTP calls only when --skip-external is requested.
+	// Without it, external calls hit the real network — useful when targeting a
+	// local mock server or a staging API from a development machine.
+	if opts.SkipExternal {
+		prevTransport := reconciler.ExternalHTTPTransport
+		reconciler.ExternalHTTPTransport = noopTransport{}
+		defer func() { reconciler.ExternalHTTPTransport = prevTransport }()
+	}
 
 	crdEntry, ok := kat.CRDEntry(crdName)
 	if !ok {
@@ -127,7 +134,7 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 		r = reconciler.NewGenericReconciler[domain.Object](
 			crdEntry,
 			informer,
-			&event.NoopRecorder{},
+			nil,
 			fakeKube,
 			hookBinder,
 			func() domain.Object { return &unstructured.Unstructured{} },

@@ -16,6 +16,13 @@ import (
 	"k8s.io/client-go/tools/record"
 )
 
+// Recorder is the interface for emitting Kubernetes events.
+// *Event implements this for real clusters; nil is accepted by any consumer
+// that guards with if ev != nil, or that uses a nil-coalescing noop internally.
+type Recorder interface {
+	Eventf(obj runtime.Object, eventType, reason, messageFmt string, args ...interface{})
+}
+
 type Event struct {
 	name        string
 	kube        *kubeclient.Kubeclient
