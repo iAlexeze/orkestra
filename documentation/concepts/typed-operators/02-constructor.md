@@ -72,7 +72,7 @@ import (
 )
 
 func NewPipelineReconciler(
-    kube *kubeclient.Kubeclient,
+    kube kubeclient.Kubeclient,
     informer cache.SharedIndexInformer,
     ev *event.Event,
 ) domain.Reconciler {
