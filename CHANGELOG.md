@@ -1,3 +1,31 @@
+## v0.7.1 — Simulate + E2E fixes
+
+### `ork simulate`
+
+- **`e2e.yaml` input** — `ork simulate -f e2e.yaml` reads `spec.katalog` and `spec.cr`; skips `customOperator: true`; expands aggregator imports recursively.
+- **`./...` discovery** — discovers all `*e2e.yaml` files, prints per-file results and aggregate summary; exit code 1 on cycle errors; `--skip` patterns follow the same convention as `ork e2e ./... --skip`.
+- **`--skip-external`** — stubs `external:` HTTP calls with empty 200 responses. Default: calls hit the real network.
+- **`--debug-ops`** — prints every recorded op with cycle number (diagnostic).
+- **GVK-aware CR matching** — multi-document CR files (separated by `---`) supported; each CRD matched to the CR whose `kind` matches `apiTypes.kind`; CRDs with no matching CR skipped with a note.
+- **`cross:` observation** — when sibling CRDs' CRs are present in the CR file, they are seeded into per-CRD fake informers and wired as `katalogRegistry`; `cross.*` fields populate correctly.
+- **Hook wiring** — `HookRegistry[gvk]` looked up at runtime; custom binary runs real hooks against the fake cluster.
+- **Constructor wiring** — `ReconcilerRegistry[gvk]` looked up; constructor called with `fakeKube`, `informer`, and `event.Discard()`.
+- **Typed indexer** — typed CRDs have their CR converted via JSON round-trip to the registered Go type before being seeded; fixes constructor type-assertions and hook `BindToObjectHooks` panics.
+- **`event.Discard()`** — constructors receive a silent no-op recorder; `noop.go` removed; `Recorder` interface moved to `event.go`.
+- **Motif path fix** — `isFileMotif()` implemented; motif import file paths absolutized relative to the katalog dir (same fix as `crdFile`).
+
+### E2E
+
+- **`crdFile` path in bundle** — `CRDFile` is now cleared from every `CRDEntry` after `populateAPITypesFromCRDFile` runs; `apiTypes` are fully populated before the field is erased. Prevents the runtime pod from trying to read a local filesystem path that does not exist inside the container.
+- **`10-motif-composition` e2e** — `crd-worker.yaml` added to `setup.apply`; both CRDs are installed before the CR is applied.
+
+### Internals
+
+- **Logger default level** — `pkg/logger` sets `InfoLevel` in its own `init()`; typeregistry debug logs no longer appear before CLI flag parsing.
+- **`NewReconcilerFunc`** — changed from `*event.Event` to `event.Recorder` interface; registry template closure updated to `kubeclient.KubeClient` + `event.Recorder`.
+
+---
+
 ## v0.7.0 — Early Access
 
 This release ships the first public early-access build of Orkestra. It focuses on the E2E framework, the typed operator toolchain, and making every example runnable end-to-end without manual pre-steps.
