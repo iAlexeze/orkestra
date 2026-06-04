@@ -9,15 +9,9 @@ The fake cluster has no external connectivity and no real API server. Some opera
 | Block | Status | What you see |
 |-------|--------|--------------|
 | `external:` HTTP calls | Active by default — calls hit the real network; pass `--skip-external` to stub with empty 200 | Without `--skip-external`: real HTTP; with it: `external.*` fields are empty, note printed |
-| `cross:` informer reads | Inactive — only the seeded CR is visible to the reconciler | If the cross-dependent CRD has a matching CR in the file it is simulated with a note ("cross: observation not executed") and `cross.*` fields are empty. If it has no matching CR, it is skipped entirely with a note ("no CR found — skipped") |
+| `cross:` informer reads | Active when peer CRs are in the CR file | Include all sibling CRDs' CRs separated by `---` in the CR file. Each is seeded into a fake informer so `cross.*` fields populate. Without a peer CR, `cross.*` fields are empty and a note is printed. |
 
 The output still shows whether the declarative layer (templates, status fields, `once:`, `forEach:`) is correct given absent data.
-
----
-
-## Constructor: discarding event recorder
-
-When a constructor is called from simulate, `ev event.Recorder` is a silent no-op — `event.Discard()`. The Kubernetes event recorder is not wired to a real API server, so all `Eventf` calls are discarded silently. No guards are needed; call `r.ev.Eventf(...)` normally.
 
 ---
 
@@ -45,7 +39,7 @@ ork simulate --cr cr.yaml
 | Cross-namespace secret reads | `ork e2e` |
 | Provider blocks (AWS, MongoDB) | `ork e2e` |
 
-For anything in the right column, provision a kind cluster and run `ork e2e`.
+For anything in the right column, provision a kind cluster and run [ork e2e](../e2e/index.md).
 
 ---
 

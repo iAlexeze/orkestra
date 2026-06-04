@@ -34,7 +34,7 @@ ork simulate -f e2e.yaml
 
 `spec.customOperator: true` files are skipped with a note. Aggregator files (imports but no `spec.cr`) expand their imports automatically.
 
-**Multi-document CR files** are supported — separate multiple CRs with `---` and simulate matches each CRD to the CR whose `kind` matches. CRDs with no matching CR in the file are skipped with a note:
+**Multi-document CR files** are supported — separate multiple CRs with `---`. Simulate matches each CRD to the CR whose `kind` matches and seeds the remaining CRs as peers in the fake cluster, enabling `cross:` observation between them. CRDs with no matching CR in the file are skipped with a note:
 
 ```text
   note: no CR found for DatabaseBackedApp — skipped
