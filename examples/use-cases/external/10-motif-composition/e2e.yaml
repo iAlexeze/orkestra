@@ -18,6 +18,10 @@ spec:
     name: ork-e2e
     reuse: false
 
+  setup:
+    apply:
+      - ./crd-worker.yaml
+
   expect:
     - name: Both CRs created
       after: cr-applied
