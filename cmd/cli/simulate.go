@@ -3,6 +3,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -84,15 +85,11 @@ func runSimulate(ctx context.Context, katalogFile, crFile, crdName string, maxCy
 	if err != nil {
 		return fmt.Errorf("reading CR: %w", err)
 	}
-	// Convert YAML→JSON so numbers become float64, not int.
-	// k8s DeepCopyJSON only handles float64 for numeric values.
-	jsonData, err := sigsyaml.YAMLToJSON(crData)
-	if err != nil {
-		return fmt.Errorf("parsing CR: %w", err)
-	}
-	var cr unstructured.Unstructured
-	if err := json.Unmarshal(jsonData, &cr.Object); err != nil {
-		return fmt.Errorf("parsing CR: %w", err)
+
+	// Parse all documents; key by lowercase kind so each CRD gets its own CR.
+	crs := parseMultiDocCRs(crData)
+	if len(crs) == 0 {
+		return fmt.Errorf("reading CR: no valid documents found in %s", crFile)
 	}
 
 	// If --crd is given, simulate that CRD only. Otherwise simulate all.
@@ -104,7 +101,19 @@ func runSimulate(ctx context.Context, katalogFile, crFile, crdName string, maxCy
 	}
 
 	for _, name := range targets {
-		if err := simulateOne(ctx, kat, name, &cr, maxCycles, opts); err != nil {
+		crdEntry, ok := kat.CRDEntry(name)
+		if !ok {
+			continue
+		}
+		cr, ok := crs[strings.ToLower(crdEntry.APITypes.Kind)]
+		if !ok {
+			if len(targets) > 1 {
+				fmt.Printf("  %s no CR found for %s — skipped\n\n", dim("note:"), crdEntry.APITypes.Kind)
+				continue
+			}
+			return fmt.Errorf("no CR found for CRD %q (kind: %s) in %s", name, crdEntry.APITypes.Kind, crFile)
+		}
+		if err := simulateOne(ctx, kat, name, cr, maxCycles, opts); err != nil {
 			return err
 		}
 	}
@@ -257,6 +266,36 @@ func filterOps(ops []simulate.Op, verbs ...string) []simulate.Op {
 	return result
 }
 
+// parseMultiDocCRs splits a YAML file on document separators and returns all
+// valid CR documents keyed by lowercase kind. Supports single- and multi-doc
+// CR files (multiple CRs separated by ---).
+func parseMultiDocCRs(data []byte) map[string]*unstructured.Unstructured {
+	crs := map[string]*unstructured.Unstructured{}
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	for {
+		var node yaml.Node
+		if err := dec.Decode(&node); err != nil {
+			break // EOF or parse error
+		}
+		b, err := yaml.Marshal(&node)
+		if err != nil {
+			continue
+		}
+		j, err := sigsyaml.YAMLToJSON(b)
+		if err != nil {
+			continue
+		}
+		var cr unstructured.Unstructured
+		if err := json.Unmarshal(j, &cr.Object); err != nil {
+			continue
+		}
+		if kind := cr.GetKind(); kind != "" {
+			crs[strings.ToLower(kind)] = &cr
+		}
+	}
+	return crs
+}
+
 // ── E2E-aware entry points ─────────────────────────────────────────────────────
 
 // isE2EDoc returns true when the file's kind is "E2E".
@@ -387,14 +426,10 @@ func runSimulateDiscovery(ctx context.Context, root, crdName string, maxCycles i
 			fmt.Printf("  %-55s %s\n", rel, red("✗ "+err.Error()))
 			continue
 		}
-		jsonData, err := sigsyaml.YAMLToJSON(crData)
-		if err != nil {
-			fmt.Printf("  %-55s %s\n", rel, red("✗ "+err.Error()))
-			continue
-		}
-		var cr unstructured.Unstructured
-		if err := json.Unmarshal(jsonData, &cr.Object); err != nil {
-			fmt.Printf("  %-55s %s\n", rel, red("✗ "+err.Error()))
+
+		crs := parseMultiDocCRs(crData)
+		if len(crs) == 0 {
+			fmt.Printf("  %-55s %s\n", rel, red("✗ no valid CR documents"))
 			continue
 		}
 
@@ -408,7 +443,15 @@ func runSimulateDiscovery(ctx context.Context, root, crdName string, maxCycles i
 
 		var hasCycleErrors bool
 		for _, name := range targets {
-			r, err := simulate.Run(ctx, kat, name, &cr, maxCycles, opts)
+			crdEntry, ok := kat.CRDEntry(name)
+			if !ok {
+				continue
+			}
+			cr, ok := crs[strings.ToLower(crdEntry.APITypes.Kind)]
+			if !ok {
+				continue // no CR for this CRD — skip silently in discovery
+			}
+			r, err := simulate.Run(ctx, kat, name, cr, maxCycles, opts)
 			if err != nil {
 				fmt.Printf("  %-55s %s\n", rel, red("✗ "+err.Error()))
 				break

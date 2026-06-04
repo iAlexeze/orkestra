@@ -6,5 +6,6 @@ spec:
   image: nginx:1.25
   # httpbin returns HTTP 503 for /status/503 — simulates an unhealthy upstream.
   # The Deployment for this CR will never be created until the URL returns 200.
+  # Run `ork run --dev-server` before applying this CR.
   healthCheckUrl: "https://httpbin.org/status/503"
   replicas: 2
