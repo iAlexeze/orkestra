@@ -2,6 +2,7 @@ package simulate
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -40,6 +41,7 @@ type Result struct {
 	Steady   bool
 	SteadyAt int      // cycle number where steady state was first detected (0 if not reached)
 	Notes    []string // informational notes about blocks that could not execute (e.g. constructor body)
+	AllOps   []Op     // every op recorded across all cycles, for diagnostic use
 }
 
 // CycleResult is the output of one reconcile cycle.
@@ -87,29 +89,46 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 		return nil, fmt.Errorf("building scheme: %w", err)
 	}
 
-	// Build the fake cluster
-	fakeKube := NewFakeKubeclient(scheme)
-
-	// Pre-seed the CR with managed labels and annotations so the reconciler's
-	// idempotency guards skip those patches in every cycle. Without this, the
-	// reconciler deep-copies from the indexer each cycle and always sees them
-	// as missing, producing noise in every cycle's op list.
-	// KatalogName is only set after ValidateConfig, which ParseFile doesn't call.
-	// Use the Katalog metadata name directly — it is set by KomposeRuntimeKatalog.
-	seedManagedMeta(cr, kat.Metadata().Name)
-
-	// Build a fake informer backed by a static indexer containing the CR
-	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
-	if err := indexer.Add(cr); err != nil {
-		return nil, fmt.Errorf("adding CR to indexer: %w", err)
-	}
-	informer := newFakeInformer(indexer)
-
 	gvk := schema.GroupVersionKind{
 		Group:   crdEntry.APITypes.Group,
 		Version: crdEntry.APITypes.Version,
 		Kind:    crdEntry.APITypes.Kind,
 	}
+
+	// Build the fake cluster
+	fakeKube := NewFakeKubeclient(scheme)
+
+	// Pre-seed managed labels/annotations so the reconciler's idempotency
+	// guards skip those patches on every cycle.
+	seedManagedMeta(cr, kat.Metadata().Name)
+
+	// For typed CRDs, the indexer must hold the concrete Go type — not
+	// *unstructured.Unstructured — so that constructor type-assertions
+	// (raw.(*MyType)) and hook BindToObjectHooks closures succeed.
+	// Convert via JSON round-trip: unstructured.Object → JSON → typed struct.
+	seedObj := interface{}(cr)
+	newObjFn := func() domain.Object { return &unstructured.Unstructured{} }
+
+	if objFactory, ok := orktypes.ObjectRegistry[gvk]; ok {
+		typed := objFactory()
+		if jsonBytes, err := json.Marshal(cr.Object); err == nil {
+			if json.Unmarshal(jsonBytes, typed) == nil {
+				if domObj, ok := typed.(domain.Object); ok {
+					seedObj = domObj
+					newObjFn = func() domain.Object {
+						return orktypes.ObjectRegistry[gvk]().(domain.Object)
+					}
+				}
+			}
+		}
+	}
+
+	// Build a fake informer backed by a static indexer containing the CR.
+	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
+	if err := indexer.Add(seedObj); err != nil {
+		return nil, fmt.Errorf("adding CR to indexer: %w", err)
+	}
+	informer := newFakeInformer(indexer)
 
 	// Look up hooks from the registry. In the standard ork binary the map is
 	// empty for custom types and hookBinder stays nil.
@@ -123,11 +142,10 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 
 	result := &Result{}
 
-	// Build the reconciler. If a constructor is registered (custom binary with
-	// ork generate registry output), use it directly — it receives the fake
-	// kubeclient and runs its full reconcile loop against the in-memory cluster.
-	// nil is passed for *event.Event; constructors should guard against nil ev.
-	// Otherwise fall back to GenericReconciler with any registered hook binder.
+	// Build the reconciler. Constructor path: use it directly with the fake
+	// kubeclient and a discarding event recorder.
+	// Fallback: GenericReconciler with the typed newObj factory so hook
+	// BindToObjectHooks type-assertions see the correct concrete type.
 	var r domain.Reconciler
 	if factoryFn, ok := orktypes.ReconcilerRegistry[gvk]; ok {
 		r = factoryFn(fakeKube, informer, event.Discard())
@@ -138,7 +156,7 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 			nil,
 			fakeKube,
 			hookBinder,
-			func() domain.Object { return &unstructured.Unstructured{} },
+			newObjFn,
 			nil, nil, nil, nil,
 			kat,
 		)
@@ -175,6 +193,7 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 		prevCycleOps = cycleResult.Ops
 	}
 
+	result.AllOps = fakeKube.Ops()
 	return result, nil
 }
 

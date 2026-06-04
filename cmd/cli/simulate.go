@@ -35,13 +35,14 @@ Shows resource creation and state transitions across reconcile cycles.
 		maxCycles, _ := cmd.Flags().GetInt("cycles")
 
 		skipExternal, _ := cmd.Flags().GetBool("skip-external")
+		debugOps, _ := cmd.Flags().GetBool("debug-ops")
 		opts := simulate.RunOptions{SkipExternal: skipExternal}
 
 		// Discovery mode: ork simulate ./...
 		if len(args) > 0 && args[0] == "./..." {
 			skipRaw, _ := cmd.Flags().GetStringSlice("skip")
 			root := "."
-			return runSimulateDiscovery(cmd.Context(), root, crdName, maxCycles, skipRaw, opts)
+			return runSimulateDiscovery(cmd.Context(), root, crdName, maxCycles, skipRaw, opts, debugOps)
 		}
 
 		katalogFile, _ := cmd.Flags().GetString("file")
@@ -56,7 +57,7 @@ Shows resource creation and state transitions across reconcile cycles.
 
 		// E2E mode: input is an e2e.yaml
 		if isE2EDoc(katalogFile) {
-			return runSimulateFromE2E(cmd.Context(), katalogFile, crdName, maxCycles, opts)
+			return runSimulateFromE2E(cmd.Context(), katalogFile, crdName, maxCycles, opts, debugOps)
 		}
 
 		crFile, _ := cmd.Flags().GetString("cr")
@@ -67,11 +68,11 @@ Shows resource creation and state transitions across reconcile cycles.
 			return fmt.Errorf("--cr is required")
 		}
 
-		return runSimulate(cmd.Context(), katalogFile, crFile, crdName, maxCycles, opts)
+		return runSimulate(cmd.Context(), katalogFile, crFile, crdName, maxCycles, opts, debugOps)
 	},
 }
 
-func runSimulate(ctx context.Context, katalogFile, crFile, crdName string, maxCycles int, opts simulate.RunOptions) error {
+func runSimulate(ctx context.Context, katalogFile, crFile, crdName string, maxCycles int, opts simulate.RunOptions, debugOps bool) error {
 	if maxCycles <= 0 {
 		maxCycles = 10
 	}
@@ -113,14 +114,14 @@ func runSimulate(ctx context.Context, katalogFile, crFile, crdName string, maxCy
 			}
 			return fmt.Errorf("no CR found for CRD %q (kind: %s) in %s", name, crdEntry.APITypes.Kind, crFile)
 		}
-		if err := simulateOne(ctx, kat, name, cr, maxCycles, opts); err != nil {
+		if err := simulateOne(ctx, kat, name, cr, maxCycles, opts, debugOps); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstructured.Unstructured, maxCycles int, opts simulate.RunOptions) error {
+func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstructured.Unstructured, maxCycles int, opts simulate.RunOptions, debugOps bool) error {
 	fmt.Printf("Simulating %s/%s\n", crdName, cr.GetName())
 
 	// Emit notes for operatorBox blocks that cannot execute in the fake cluster.
@@ -143,6 +144,15 @@ func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *
 		return err
 	}
 	elapsed := time.Since(start)
+
+	if debugOps {
+		fmt.Printf("  [debug-ops] %d total ops recorded across all cycles:\n", len(result.AllOps))
+		for _, op := range result.AllOps {
+			fmt.Printf("  [debug-ops]   cycle=%-2d  verb=%-8s  resource=%-20s  name=%s\n",
+				op.Cycle, op.Verb, op.Resource, op.Name)
+		}
+		fmt.Println()
+	}
 
 	for _, note := range result.Notes {
 		fmt.Printf("  %s %s\n", dim("note:"), note)
@@ -314,7 +324,7 @@ func isE2EDoc(path string) bool {
 // runSimulateFromE2E loads an e2e.yaml, applies skip/note rules, and runs
 // simulate against the katalog and CR it declares.
 // Returns (skipped, skipReason, error).
-func runSimulateFromE2E(ctx context.Context, path, crdName string, maxCycles int, opts simulate.RunOptions) error {
+func runSimulateFromE2E(ctx context.Context, path, crdName string, maxCycles int, opts simulate.RunOptions, debugOps bool) error {
 	// Convert to absolute so all downstream path joins (crdFile, crFiles, katalog
 	// imports) use the file's directory as the base — same pattern as files.go.
 	if abs, err := filepath.Abs(path); err == nil {
@@ -344,7 +354,7 @@ func runSimulateFromE2E(ctx context.Context, path, crdName string, maxCycles int
 			if !filepath.IsAbs(impPath) {
 				impPath = filepath.Join(dir, impPath)
 			}
-			if err := runSimulateFromE2E(ctx, impPath, crdName, maxCycles, opts); err != nil {
+			if err := runSimulateFromE2E(ctx, impPath, crdName, maxCycles, opts, debugOps); err != nil {
 				return err
 			}
 		}
@@ -353,7 +363,7 @@ func runSimulateFromE2E(ctx context.Context, path, crdName string, maxCycles int
 
 	katalogPath := filepath.Join(dir, doc.Spec.Katalog)
 	crPath := filepath.Join(dir, doc.Spec.CR)
-	return runSimulate(ctx, katalogPath, crPath, crdName, maxCycles, opts)
+	return runSimulate(ctx, katalogPath, crPath, crdName, maxCycles, opts, debugOps)
 }
 
 // ── Discovery mode ─────────────────────────────────────────────────────────────
@@ -370,7 +380,7 @@ type simulateFileResult struct {
 
 // runSimulateDiscovery finds all e2e.yaml files under root, simulates each,
 // and prints an aggregate summary.
-func runSimulateDiscovery(ctx context.Context, root, crdName string, maxCycles int, skip []string, opts simulate.RunOptions) error {
+func runSimulateDiscovery(ctx context.Context, root, crdName string, maxCycles int, skip []string, opts simulate.RunOptions, debugOps bool) error {
 	var patterns []string
 	for _, s := range skip {
 		patterns = append(patterns, s)
@@ -539,6 +549,7 @@ func init() {
 	simulateCmd.Flags().Int("cycles", 10, "Maximum number of reconcile cycles")
 	simulateCmd.Flags().StringSlice("skip", []string{}, "Comma-separated path patterns to skip during ./... discovery (e.g. vendor,cr-e2e.yaml)")
 	simulateCmd.Flags().Bool("skip-external", false, "Stub external: HTTP calls with empty 200 responses instead of hitting the real network")
+	simulateCmd.Flags().Bool("debug-ops", false, "Print every recorded op with its cycle number (diagnostic)")
 
 	// Shadow global flags
 	simulateCmd.Flags().Bool("debug", false, "")
