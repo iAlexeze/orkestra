@@ -14,7 +14,7 @@ At startup, the cluster contains only the CR you provide. The informer cache is 
 
 ## The reconciler
 
-`ork simulate` runs the same `GenericReconciler` that runs in production. Not a mock, not an approximation — the actual reconciler binary.
+`ork simulate` by default runs the same `GenericReconciler` that runs in production. When your operator binary registers a custom constructor or hooks, simulate runs that code instead — still the actual production reconciler, not a mock.
 
 This means simulation catches things that static analysis cannot:
 
@@ -58,7 +58,7 @@ Identical consecutive cycles are collapsed. Steady state is noted but does not s
 2. Run `ork simulate` — verify the right resources appear in cycle 1
 3. Check that cycle 2 shows only `status/...`
 4. Adjust `when:` conditions, field references, or template expressions as needed
-5. When simulation is clean, run against a real cluster with `ork run`
+5. When simulation is clean, run against a real cluster with `ork e2e` and then `ork run`.
 
 ---
 
