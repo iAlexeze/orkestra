@@ -17,11 +17,18 @@ import (
 )
 
 // Recorder is the interface for emitting Kubernetes events.
-// *Event implements this for real clusters; nil is accepted by any consumer
-// that guards with if ev != nil, or that uses a nil-coalescing noop internally.
+// *Event implements this for real clusters; Discard() returns a silent no-op.
 type Recorder interface {
 	Eventf(obj runtime.Object, eventType, reason, messageFmt string, args ...interface{})
 }
+
+// Discard returns a Recorder that silently drops all events.
+// Passed to constructors by ork simulate so ev is always non-nil.
+func Discard() Recorder { return discardEvent{} }
+
+type discardEvent struct{}
+
+func (discardEvent) Eventf(runtime.Object, string, string, string, ...interface{}) {}
 
 type Event struct {
 	name        string

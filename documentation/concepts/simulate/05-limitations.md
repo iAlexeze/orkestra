@@ -6,28 +6,18 @@ The fake cluster has no external connectivity and no real API server. Some opera
 
 ## Blocks that are inactive in simulation
 
-These blocks do not cause a skip — simulate runs everything else and emits a note.
-
 | Block | Status | What you see |
 |-------|--------|--------------|
-| `external:` HTTP calls | Active by default — calls hit the real network; pass `--skip-external` to stub with empty 200 | Without `--skip-external`: real calls; with it: `external.*` fields are empty |
-| `cross:` informer reads | Inactive — only one CR seeded | `cross.*` fields are empty; dependent resources with `when:` on cross fields are not created |
+| `external:` HTTP calls | Active by default — calls hit the real network; pass `--skip-external` to stub with empty 200 | Without `--skip-external`: real HTTP; with it: `external.*` fields are empty, note printed |
+| `cross:` informer reads | Inactive — only the seeded CR is visible to the reconciler | If the cross-dependent CRD has a matching CR in the file it is simulated with a note ("cross: observation not executed") and `cross.*` fields are empty. If it has no matching CR, it is skipped entirely with a note ("no CR found — skipped") |
 
-The output for these files still shows whether the declarative layer (templates, status fields, `once:`, `forEach:`) is correct given absent data.
+The output still shows whether the declarative layer (templates, status fields, `once:`, `forEach:`) is correct given absent data.
 
 ---
 
-## Constructor: nil event recorder
+## Constructor: discarding event recorder
 
-When a constructor is called from simulate, `*event.Event` is `nil`. The Kubernetes event recorder is not wired — there is no real API server to record to.
-
-If your constructor calls `r.ev.Record(...)` or similar without guarding, it will panic. Guard all event recorder calls:
-
-```go
-if r.ev != nil {
-    r.ev.Record(ctx, obj, corev1.EventTypeNormal, "Reconciled", "pipeline ready")
-}
-```
+When a constructor is called from simulate, `ev event.Recorder` is a silent no-op — `event.Discard()`. The Kubernetes event recorder is not wired to a real API server, so all `Eventf` calls are discarded silently. No guards are needed; call `r.ev.Eventf(...)` normally.
 
 ---
 

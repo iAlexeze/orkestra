@@ -34,11 +34,20 @@ ork simulate -f e2e.yaml
 
 `spec.customOperator: true` files are skipped with a note. Aggregator files (imports but no `spec.cr`) expand their imports automatically.
 
-Blocks that cannot execute in the fake cluster (`external:`, `cross:`) produce a note at the top of the output rather than failing the simulation:
+**Multi-document CR files** are supported — separate multiple CRs with `---` and simulate matches each CRD to the CR whose `kind` matches. CRDs with no matching CR in the file are skipped with a note:
+
+```text
+  note: no CR found for DatabaseBackedApp — skipped
+
+Simulating managed-database/my-app-db
+  ✓ Steady state at cycle 3 in 199ms
+```
+
+When `--skip-external` is passed, `external:` blocks produce a note instead of hitting the real network:
 
 ```text
 Simulating gated-app/my-gated-app
-  note: external: calls not executed — result fields will be empty
+  note: external: calls stubbed — result fields will be empty
 
   Cycle 1:
     ~ status/my-gated-app

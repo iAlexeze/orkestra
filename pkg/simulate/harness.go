@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/reconciler"
@@ -129,7 +130,7 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 	// Otherwise fall back to GenericReconciler with any registered hook binder.
 	var r domain.Reconciler
 	if factoryFn, ok := orktypes.ReconcilerRegistry[gvk]; ok {
-		r = factoryFn(fakeKube, informer, nil)
+		r = factoryFn(fakeKube, informer, event.Discard())
 	} else {
 		r = reconciler.NewGenericReconciler[domain.Object](
 			crdEntry,
