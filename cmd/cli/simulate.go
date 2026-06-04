@@ -114,7 +114,15 @@ func runSimulate(ctx context.Context, katalogFile, crFile, crdName string, maxCy
 			}
 			return fmt.Errorf("no CR found for CRD %q (kind: %s) in %s", name, crdEntry.APITypes.Kind, crFile)
 		}
-		if err := simulateOne(ctx, kat, name, cr, maxCycles, opts, debugOps); err != nil {
+		// Pass all other CRs as peers so cross: declarations can read sibling CRDs.
+		crdOpts := opts
+		crdOpts.Peers = make(map[string]*unstructured.Unstructured, len(crs))
+		for k, v := range crs {
+			if k != strings.ToLower(crdEntry.APITypes.Kind) {
+				crdOpts.Peers[k] = v
+			}
+		}
+		if err := simulateOne(ctx, kat, name, cr, maxCycles, crdOpts, debugOps); err != nil {
 			return err
 		}
 	}
@@ -133,8 +141,8 @@ func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *
 			fmt.Printf("  %s external: calls will hit the real network (pass --skip-external to stub)\n", dim("note:"))
 		}
 	}
-	if len(crdEntry.OperatorBox.Cross) > 0 {
-		fmt.Printf("  %s cross: observation not executed — cross.* fields will be empty\n", dim("note:"))
+	if len(crdEntry.OperatorBox.Cross) > 0 && len(opts.Peers) == 0 {
+		fmt.Printf("  %s cross: peer CRs not provided — cross.* fields will be empty (add sibling CRs to the CR file)\n", dim("note:"))
 	}
 	fmt.Println()
 
@@ -461,7 +469,15 @@ func runSimulateDiscovery(ctx context.Context, root, crdName string, maxCycles i
 			if !ok {
 				continue // no CR for this CRD — skip silently in discovery
 			}
-			r, err := simulate.Run(ctx, kat, name, cr, maxCycles, opts)
+			// Populate peers: all other CRs so cross: declarations can read them.
+			crdOpts := opts
+			crdOpts.Peers = make(map[string]*unstructured.Unstructured, len(crs))
+			for k, v := range crs {
+				if k != strings.ToLower(crdEntry.APITypes.Kind) {
+					crdOpts.Peers[k] = v
+				}
+			}
+			r, err := simulate.Run(ctx, kat, name, cr, maxCycles, crdOpts)
 			if err != nil {
 				fmt.Printf("  %-55s %s\n", rel, red("✗ "+err.Error()))
 				break
@@ -489,9 +505,6 @@ func runSimulateDiscovery(ctx context.Context, root, crdName string, maxCycles i
 		var tags []string
 		if crdEntry.OperatorBox.OnReconcile != nil && len(crdEntry.OperatorBox.OnReconcile.External) > 0 {
 			tags = append(tags, "external: inactive")
-		}
-		if len(crdEntry.OperatorBox.Cross) > 0 {
-			tags = append(tags, "cross: inactive")
 		}
 		if hasCycleErrors {
 			tags = append(tags, "cycle errors")

@@ -12,6 +12,7 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/kordinator"
 	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/reconciler"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -56,6 +57,11 @@ type RunOptions struct {
 	// SkipExternal stubs all external: HTTP calls with an empty 200 response.
 	// When false (the default), external calls are attempted against the real network.
 	SkipExternal bool
+
+	// Peers holds CRs for sibling CRDs in the same Katalog, keyed by lowercase kind.
+	// When set, cross: declarations in the reconciler can observe these CRs
+	// via the fake katalog registry instead of returning empty results.
+	Peers map[string]*unstructured.Unstructured
 }
 
 // Run simulates the operator against an in-memory cluster.
@@ -142,10 +148,38 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 
 	result := &Result{}
 
+	// Build a peer registry so cross: declarations can read sibling CRDs' CRs
+	// from the fake informer cache rather than returning empty results.
+	// Each peer CR is seeded into its own static indexer and wrapped in a
+	// fakeInformer; the registry maps CRD name → informer for readCross().
+	peerRegistry := kordinator.NewKordinatorRegistry()
+	for _, peerName := range kat.CRDNames() {
+		if peerName == crdEntry.Name {
+			continue
+		}
+		peerEntry, ok := kat.CRDEntry(peerName)
+		if !ok {
+			continue
+		}
+		peerCR, ok := opts.Peers[strings.ToLower(peerEntry.APITypes.Kind)]
+		if !ok {
+			continue
+		}
+		peerIdx := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
+		_ = peerIdx.Add(peerCR)
+		peerInf := newFakeInformer(peerIdx)
+		peerGVKStr := schema.GroupVersionKind{
+			Group:   peerEntry.APITypes.Group,
+			Version: peerEntry.APITypes.Version,
+			Kind:    peerEntry.APITypes.Kind,
+		}.String()
+		peerRegistry.Register(peerGVKStr, peerEntry, peerInf, nil)
+	}
+
 	// Build the reconciler. Constructor path: use it directly with the fake
 	// kubeclient and a discarding event recorder.
-	// Fallback: GenericReconciler with the typed newObj factory so hook
-	// BindToObjectHooks type-assertions see the correct concrete type.
+	// Fallback: GenericReconciler with the typed newObj factory and peer registry
+	// so hook BindToObjectHooks type-assertions and cross: lookups both work.
 	var r domain.Reconciler
 	if factoryFn, ok := orktypes.ReconcilerRegistry[gvk]; ok {
 		r = factoryFn(fakeKube, informer, event.Discard())
@@ -157,7 +191,7 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 			fakeKube,
 			hookBinder,
 			newObjFn,
-			nil, nil, nil, nil,
+			peerRegistry, nil, nil, nil,
 			kat,
 		)
 	}
