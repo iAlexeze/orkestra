@@ -1,0 +1,46 @@
+# Limitations
+
+The fake cluster has no external connectivity and no real API server. Some operator features require a real cluster or a compiled user binary.
+
+---
+
+## Blocks that are inactive in simulation
+
+| Block | Status | What you see |
+|-------|--------|--------------|
+| `external:` HTTP calls | Active by default — calls hit the real network; pass `--skip-external` to stub with empty 200 | Without `--skip-external`: real HTTP; with it: `external.*` fields are empty, note printed |
+| `cross:` informer reads | Active when peer CRs are in the CR file | Include all sibling CRDs' CRs separated by `---` in the CR file. Each is seeded into a fake informer so `cross.*` fields populate. Without a peer CR, `cross.*` fields are empty and a note is printed. |
+
+The output still shows whether the declarative layer (templates, status fields, `once:`, `forEach:`) is correct given absent data.
+
+---
+
+## Standard binary fallback
+
+When running from the standard `ork` binary (not a custom operator binary), `HookRegistry` and `ReconcilerRegistry` are empty for your custom types. Hook bodies and constructor reconcile loops do not execute. Simulate falls back to `GenericReconciler` and runs the status layer only.
+
+Build and use your own `ork` binary to get full hook and constructor simulation:
+
+```bash
+make registry && make build
+ork simulate --cr cr.yaml
+```
+
+---
+
+## What simulate cannot cover
+
+| Feature | Use instead |
+|---------|-------------|
+| Admission webhook validation/mutation | `ork e2e` |
+| Real pod scheduling and readiness | `ork e2e` |
+| Watch events triggering reconciles | `ork e2e` |
+| Actual merge-patch / SSA semantics | `ork e2e` |
+| Cross-namespace secret reads | `ork e2e` |
+| Provider blocks (AWS, MongoDB) | `ork e2e` |
+
+For anything in the right column, provision a kind cluster and run [ork e2e](../e2e/index.md).
+
+---
+
+→ Back to: [ork simulate](index.md)

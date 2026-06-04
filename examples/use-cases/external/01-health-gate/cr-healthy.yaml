@@ -4,6 +4,7 @@ metadata:
   name: my-app-healthy
 spec:
   image: nginx:1.25
-  # httpbin returns HTTP 200 for /status/200 — simulates a healthy upstream.
+  # Dev server /health returns 200 — Deployment is created.
+  # Run `ork run --dev-server` before applying this CR.
   healthCheckUrl: "https://httpbin.org/status/200"
   replicas: 2

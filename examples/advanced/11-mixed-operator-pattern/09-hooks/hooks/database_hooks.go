@@ -1,5 +1,4 @@
 //go:build ignore
-
 // hooks/database_hooks.go
 //
 // Typed Go hooks for the Database CRD.

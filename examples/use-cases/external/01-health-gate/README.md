@@ -48,8 +48,8 @@ Open [http://localhost:8081](http://localhost:8081). Select **webapp-health-gate
 ## Step 4 — Apply both CRs
 
 ```bash
-kubectl apply -f cr-dev-healthy.yaml
-kubectl apply -f cr-dev-degraded.yaml
+kubectl apply -f cr-healthy.yaml
+kubectl apply -f cr-degraded.yaml
 ```
 
 Wait one reconcile cycle (~15s). Both CRs appear in the Control Center.

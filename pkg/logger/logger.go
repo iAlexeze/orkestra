@@ -8,6 +8,12 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+func init() {
+	// Default to info so package-level init() calls (e.g. typeregistry)
+	// don't emit debug logs before the CLI has a chance to parse --debug.
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+}
+
 func Init(level string) {
 	// UNIX Time is faster and smaller than most timestamps
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix

@@ -102,10 +102,13 @@ func (k *Katalog) KomposeRuntimeKatalog(
 	for name, entry := range k.enabledCRDs {
 		// Populate APITypes from crdFile before enrichment so isFullySpecified sees
 		// the correct values. crdFile is the source of truth — overwrites any apiTypes.
+		// Clear CRDFile afterwards: the runtime (and any serialized bundle) must not
+		// reference local filesystem paths that don't exist inside a container.
 		if entry.CRDFile != "" {
 			if err := populateAPITypesFromCRDFile(&entry, k.katalogDir); err != nil {
 				return nil, fmt.Errorf("CRD %q: %w", name, err)
 			}
+			entry.CRDFile = ""
 		}
 
 		// Enrich enabled CRDs

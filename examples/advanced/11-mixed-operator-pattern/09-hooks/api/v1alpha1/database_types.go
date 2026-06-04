@@ -1,5 +1,3 @@
-//go:build ignore
-
 // api/v1alpha1/database_types.go
 //
 // The Go type for the Database CRD.
