@@ -3,13 +3,25 @@
 `simulate` runs your operator's reconcile loop against an in-memory fake cluster — no Kubernetes required. Give it a Katalog and a CR file and it shows exactly which resources your operator creates, updates, or deletes, and when it converges.
 
 ```sh
-ork simulate                        # Defaults to katalog.yaml/komposer.yaml and cr.yaml
+ork simulate                                   # katalog.yaml + cr.yaml in current dir
+ork simulate -f my-katalog.yaml --cr my-cr.yaml
+ork simulate -f e2e.yaml                       # reads spec.katalog and spec.cr
+ork simulate ./...                             # discovers and runs all e2e.yaml files
+ork simulate ./... --skip vendor               # skip patterns during discovery
+ork simulate --skip-external                   # stub external: HTTP calls
+ork simulate --debug-ops                       # print all recorded ops with cycle numbers
 ```
 
-Or pass custom files:
-```sh
-ork simulate -f my-katalog.yaml --cr my-cr.yaml
-```
+## What works
+
+| Feature | How |
+|---------|-----|
+| Declarative operators (templates, status, conditions) | Always — no binary needed |
+| `external:` HTTP calls | Hits real network by default; pass `--skip-external` to stub |
+| `cross:` CRD observation | Include sibling CRs separated by `---` in the CR file |
+| Go hooks (`OnReconcile`, `OnDelete`) | Build your operator binary with `make registry && make build` |
+| Custom constructors | Same binary requirement as hooks |
+| Multi-CRD Katalogs | Multi-doc CR file — each CRD matched to its CR by `kind` |
 
 ## Developer documentation
 
@@ -18,4 +30,4 @@ ork simulate -f my-katalog.yaml --cr my-cr.yaml
 | Read the output and understand what each line means | [docs/01-output.md](docs/01-output.md) |
 | Understand steady state and how to tune cycles | [docs/02-steady-state.md](docs/02-steady-state.md) |
 | Understand what simulate does not cover | [docs/03-limitations.md](docs/03-limitations.md) |
-| Understand the internals (fake cluster, reactors, indexer) | [docs/04-internals.md](docs/04-internals.md) |
+| Understand the internals (fake cluster, reactors, indexer, cross: wiring) | [docs/04-internals.md](docs/04-internals.md) |
