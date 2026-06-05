@@ -1,6 +1,6 @@
 # Roadmap
 
-*Last updated: May 2026*
+*Last updated: June 2026*
 
 ---
 
@@ -34,6 +34,7 @@ Orkestra is a complete declarative operator runtime for Kubernetes. The core is 
 - Gateway (`ork gate`) — admission webhooks, TLS, conversion webhooks, notifications
 - Control Center (`ork control`) — live operator dashboard, multi-runtime support
 - Registry (`ork registry`) — publish and pull operator patterns as OCI artifacts
+- Simulate (`ork simulate`) — declarative reconciler assertions, zero-cluster, `simulate.yaml` kind with assert mode and registry gate
 - E2E (`ork e2e`) — declarative end-to-end testing that gates registry publication
 
 **Security**
@@ -87,7 +88,7 @@ rollback:
 
 A Deployment that never becomes `Available` within the timeout triggers rollback — not an abstract reconcile failure count. Snapshots are taken only after child resources confirm healthy; they are refreshed when the spec changes and resources are healthy. Rollback exits automatically when the CR generation changes (user fixed the spec).
 
-### Operator as library
+### Operator as library ✓ shipped
 
 Orkestra is a Go library. Teams can import it (`go.mod` version pin) and write their own entrypoint — full control, no fork needed:
 
@@ -105,6 +106,50 @@ func main() {
 ```
 
 They get the full runtime, gateway, CLI, and webhook system. If they need a custom webhook, they know exactly where to plug it in. Two things needed: a version-pinned `go.mod` import and this entrypoint.
+
+### ork simulate init ✓ shipped
+
+`ork simulate` currently requires you to run `--debug-ops`, read the output, and manually write `expect:` rules. `ork simulate init` closes the loop:
+
+```bash
+ork simulate init              # reads katalog.yaml + cr.yaml in current dir
+ork simulate init -f katalog.yaml --cr cr.yaml
+```
+
+It runs the reconciler once with `--debug-ops` internally and generates a `simulate.yaml` pre-filled with the observed cycle-1 ops as `expect:` rules. The user gets a working assertion file without writing anything — edit and refine from there. Time-to-first-assertion: zero.
+
+### simulate.yaml expect.absent ✓ shipped
+
+`expect:` currently asserts that ops happened. `expect.absent` asserts they did not:
+
+```yaml
+expect:
+  ops:
+    - cycle: 1
+      verb: create
+      resource: ingresses   # assert ingress WAS created
+  absent:
+    - cycle: 1
+      verb: create
+      resource: ingresses
+      name: my-app-ingress  # assert this specific ingress was NOT created
+```
+
+This covers conditional resources — created only when a spec field is present, absent when it is not. Without absent assertions, the gap between "the Ingress is conditional on spec.host" and "the simulation verified the conditional works" cannot be closed in `simulate.yaml`.
+
+### Simulate steady-state diagnostics
+
+Today, when a simulation does not reach steady state, the output shows which ops changed in each cycle but does not identify the root cause. The enhancement adds a "why not steady" block:
+
+```text
+  ~ Max cycles reached (10) in 381ms
+
+  Unstable ops (still changing at cycle 10):
+    ~ status/my-app  ← status.phase transitions on every cycle (spec.replicas note re-evaluates)
+    ~ secrets/my-app-creds  ← once: check fires every cycle (secret exists but update still runs)
+```
+
+This makes it immediately clear which resource is preventing convergence and why — without reading ten cycles of output.
 
 ### ork lint
 
