@@ -242,17 +242,35 @@ Typed operators require your own published image — `ork e2e` installs Orkestra
 make docker push IMAGE_REPO=yourregistry/database-operator IMAGE_TAG=latest
 ```
 
+
+**Important notes: (build-time security)**
+
+- `make docker` builds a production‑only binary (tags `runtime`) – it cannot run developer commands like `validate` or `e2e`
+- The binary is copied from `~/.orkestra/bin/runtime/ork` into the current directory for `docker build`, then removed
+- Your local `./ork` (development CLI) is restored after the build – it remains unchanged and fully featured
+- This round‑trip ensures your container image contains only the secure runtime, while your local environment keeps all developer tools
+
+#### Try running a developer command
+It will fail (as intended), only `ork run` succeeds.
+
+```bash
+~/.orkestra/bin/runtime/ork validate
+# unknown command "validate" for "ork"
+```
+
+---
+
 **Step 2 — run e2e with your image:**
 
 ```bash
 ork e2e \
-  --helm-arg runtime.image.repository=yourregistry/database-operator \
-  --helm-arg runtime.image.tag=latest
+  --set runtime.image.repository=yourregistry/database-operator \
+  --set runtime.image.tag=latest
 ```
 
-The `--helm-arg` flags are forwarded as `--set` values to the Helm install (`runtime.image.repository` / `runtime.image.tag` in `charts/orkestra/values.yaml`), so the cluster runs your image instead of the default Orkestra image.
+The `--set` flags are are used by `ork e2e`, so the cluster runs your image instead of the default Orkestra image.
 
-This spins up a kind cluster, deploys your operator, applies the CR, asserts your Go hooks fired and the expected resources exist, then tears down.
+This spins up a kind cluster, deploys your custom Orkestra runtime, applies the CR, asserts your Go hooks fired and the expected resources exist, then tears down.
 
 This runs everything defined in [e2e.yaml](./e2e.yaml):
 

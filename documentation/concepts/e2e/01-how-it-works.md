@@ -96,11 +96,11 @@ For owned kind clusters, the cluster deletion handles all of this in one shot.
 
 `ork e2e` always passes `--set controlCenter.enabled=false` to Helm. The Control Center is not needed in automated tests and adds startup time.
 
-Additional flags are passed with `--helm-arg`:
+Additional flags are passed with `--set`:
 
 ```bash
-# Each --helm-arg becomes --set key=value
-ork e2e --helm-arg "runtime.image.tag=dev" --helm-arg "gateway.replicas=3"
+# Each --set becomes --set key=value
+ork e2e --set "runtime.image.tag=dev" --set "gateway.replicas=3"
 ```
 
 When the Katalog declares a `gateway:` block, `--set gateway.enabled=true` is appended automatically.

@@ -317,15 +317,45 @@ This example contains typed operators (hooks + constructor) so e2e requires your
 make docker push IMAGE_REPO=yourregistry/mixed-operator IMAGE_TAG=latest
 ```
 
+**Important notes: (build-time security)**
+
+- `make docker` builds a production‑only binary (tags `runtime`) – it cannot run developer commands like `validate` or `e2e`
+- The binary is copied from `~/.orkestra/bin/runtime/ork` into the current directory for `docker build`, then removed
+- Your local `./ork` (development CLI) is restored after the build – it remains unchanged and fully featured
+- This round‑trip ensures your container image contains only the secure runtime, while your local environment keeps all developer tools
+
+#### Try running a developer command
+It will fail (as intended), only `ork run` succeeds.
+
+```bash
+~/.orkestra/bin/runtime/ork validate
+# unknown command "validate" for "ork"
+```
+
+---
+
 **Step 2 — run e2e with your image:**
 
 ```bash
 ork e2e \
-  --helm-arg runtime.image.repository=yourregistry/mixed-operator \
-  --helm-arg runtime.image.tag=latest
+  --set runtime.image.repository=yourregistry/mixed-operator \
+  --set runtime.image.tag=latest
 ```
 
-The `--helm-arg` flags become `--set` values on the Helm install so the cluster runs your image (with the type registry for all three CRDs) instead of the default Orkestra image.
+The `--set` flags are are used by `ork e2e`, so the cluster runs your image instead of the default Orkestra image.
+
+This spins up a kind cluster, deploys your custom Orkestra runtime, runs the e2e tests for each operator, then tears down.
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+imports:
+  files:
+  - ./01-hello-website/e2e.yaml
+  - ./09-hooks/e2e.yaml
+  - path: 10-constructor/e2e.yaml
+    wait: 30s     # let the cluster settle after hooks teardown before constructor starts
+```
 
 ---
 

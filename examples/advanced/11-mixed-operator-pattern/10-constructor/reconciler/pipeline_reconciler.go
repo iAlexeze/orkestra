@@ -1,4 +1,5 @@
 //go:build ignore
+
 // reconciler/pipeline_reconciler.go
 //
 // A custom reconciler for the Pipeline CRD. This implements domain.Reconciler
@@ -23,6 +24,7 @@
 //   - Kubernetes events
 //   - Status updates
 //   - All reconcile and delete logic
+//
 package reconciler
 
 import (
