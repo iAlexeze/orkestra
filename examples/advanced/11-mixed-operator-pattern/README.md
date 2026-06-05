@@ -353,7 +353,8 @@ imports:
   files:
   - ./01-hello-website/e2e.yaml
   - ./09-hooks/e2e.yaml
-  - ./10-constructor/e2e.yaml
+  - path: 10-constructor/e2e.yaml
+    wait: 30s     # let the cluster settle after hooks teardown before constructor starts
 ```
 
 ---
