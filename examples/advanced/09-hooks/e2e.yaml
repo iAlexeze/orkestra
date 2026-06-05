@@ -15,18 +15,25 @@ spec:
     reuse: false
 
   expect:
-    - name: Database deployment created
+    - name: Database statefulSet and Cronjob created
       after: cr-applied
       timeout: 90s
       resources:
-        - kind: Deployment
+        - kind: StatefulSet
           namespace: default
           ready: true
+        - kind: Cronjob
+          name: my-db-backup
+          namespace: default
 
-    - name: Deployment removed on delete
+    - name: Deployment and Cronjob removed on delete
       after: cr-deleted
       timeout: 30s
       resources:
-        - kind: Deployment
+        - kind: StatefulSet
           namespace: default
+          count: 0
+        - kind: Cronjob
+          namespace: default
+          name: my-db-backup
           count: 0
