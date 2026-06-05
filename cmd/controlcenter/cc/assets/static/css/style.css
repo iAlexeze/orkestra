@@ -373,10 +373,9 @@ code, .mono {
   box-shadow: none;
   background: var(--bg-elevated);
 }
-/* Name + badge + pills: fixed left section, does not expand */
+/* Name + badge + stats: expands to fill remaining row space */
 .cc-card-grid.list-view .cc-card-body {
-  flex: none;
-  min-width: 260px;
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -393,12 +392,9 @@ code, .mono {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Footer: takes remaining space, lays stats + button in a row */
+/* Footer (View Details button): always visible, pushed right */
 .cc-card-grid.list-view .cc-card-footer {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 24px;
+  flex-shrink: 0;
   padding: 0;
   border: none;
   background: none;
@@ -434,12 +430,11 @@ code, .mono {
 .cc-card-grid.list-view .cc-card-body > .font-mono {
   display: none;
 }
-/* Button: stays compact, never shrinks */
+/* Button: stays compact */
 .cc-card-grid.list-view .cc-card-footer .cc-btn {
   width: auto;
-  flex-shrink: 0;
   font-size: 12px;
-  padding: 5px 14px;
+  padding: 5px 10px;
 }
 
 /* ── Grid view for resource table (cr_list.html) ───────────── */
