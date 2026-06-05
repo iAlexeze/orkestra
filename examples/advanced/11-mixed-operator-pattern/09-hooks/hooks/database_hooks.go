@@ -17,7 +17,6 @@
 //   - Type-safe struct access (obj.Spec.Engine, not unstructured map navigation)
 //   - The business logic that cannot be expressed in templates
 //   - OrkestraRegistry calls for Kubernetes child resources
-//
 package hooks
 
 import (

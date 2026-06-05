@@ -43,7 +43,7 @@ Open [http://localhost:8081](http://localhost:8081).
 
 ---
 
-## Step 4 — Start the operator
+## Step 4 — Start the runtime
 
 ```bash
 ork run

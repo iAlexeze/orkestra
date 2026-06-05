@@ -12,7 +12,7 @@ We'll use the `hello-website` example from `ork init`. It has:
 - `katalog.yaml` — the Orkestra operator definition
 - `cr.yaml` — a sample `Website` CR
 
-Start the operator:
+Start the runtime:
 
 ```bash
 ork run

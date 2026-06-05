@@ -22,7 +22,7 @@ Expected:
 
 ---
 
-## Step 2 — Start the operator
+## Step 2 — Start the runtime
 
 `ork run` reads the `crdFile` declared in `katalog.yaml`, applies the CRD to the cluster, and starts the runtime:
 

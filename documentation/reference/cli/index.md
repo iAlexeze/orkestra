@@ -24,6 +24,6 @@ Commands that accept a Katalog or Komposer (`ork run`, `ork validate`, `ork plan
 | [`ork e2e`](./08-e2e.md) | Run declarative end-to-end tests against a real cluster |
 | [`ork template`](./04-template.md) | Render the merged, post‑validation Katalog |
 | [`ork generate registry`](./generate/registry.md) | Generate runtime registry for typed CRDs and hooks |
-| [`ork run`](./07-run.md) | Start the operator runtime |
+| [`ork run`](./07-run.md) | Start the runtime |
 | [`ork reconcile`](./reconcile.md) | Trigger reconciliation for one or all CRs |
 | [`ork version`](./version.md) | Print version and build information |

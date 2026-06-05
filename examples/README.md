@@ -158,7 +158,7 @@ Advanced typed examples (09, 10, 11) also require:
 ork init my-operator --pack beginner
 cd my-operator/beginner/01-hello-website
 
-# 2. Start the operator
+# 2. Start the runtime
 ork run --dev
 
 # 3. Watch the resources appear

@@ -59,9 +59,27 @@ Simulating webservice/my-app
 - **Steady state at cycle 4** — one extra cycle compared to a simple operator, because `once:` takes a cycle to confirm the secret exists and skip rotation. From cycle 4 onward, no changes.
 - If there is a template error — a typo in a field name, a missing normalize rule — simulate catches it here instead of on a live cluster.
 
+The example ships with [simulate.yaml](./simulate.yaml) which records these expectations so they are verified on every run:
+
+```bash
+ork simulate
+```
+
+```text
+  ✓ steady
+  ✓ noErrors
+  ✓ create secrets/my-app-production-acme-corp-api-key (cycle 1)
+  ✓ create configmaps/my-app-production-config (cycle 1)
+  ✓ create deployments/my-app-production (cycle 1)
+  ✓ create deployments/my-app-production-api (cycle 1)
+  ✓ create deployments/my-app-production-worker (cycle 1)
+
+  PASS
+```
+
 ---
 
-## Step 3 — Start the operator
+## Step 3 — Start the runtime
 
 ```bash
 ork run

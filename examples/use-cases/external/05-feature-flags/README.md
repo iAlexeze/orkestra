@@ -22,7 +22,7 @@ Expected:
 
 ---
 
-## Step 2 — Start the operator
+## Step 2 — Start the runtime
 
 `--dev-server` starts a mock server on `:9999`. `GET /flags/my-app/v2Enabled` returns `true` by default. The toggle endpoint lets you flip it live without restarting anything:
 

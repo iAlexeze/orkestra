@@ -82,7 +82,7 @@ Expected:
 The group is `platform.acme.io` — not `vendor.example.io`. The workers and
 resync values come from the vendor Katalog.
 
-### 3. Start the operator
+### 3. Start the runtime
 
 ```bash
 ork run --file komposer.yaml

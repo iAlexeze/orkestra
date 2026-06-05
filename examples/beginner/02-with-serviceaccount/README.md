@@ -73,9 +73,27 @@ Simulating website/my-site
 - **Steady state at cycle 3** — from cycle 3 onward, reconciling this CR produces no changes. A healthy operator converges and stops acting. If your operator never reaches steady state, simulate tells you which resources keep changing and why.
 - 215ms — wall time for all 10 simulated cycles in memory. No cluster round-trips.
 
+The example ships with [simulate.yaml](./simulate.yaml) which records these expectations so they are verified on every run:
+
+```bash
+ork simulate
+```
+
+```text
+  ✓ steady
+  ✓ noErrors
+  ✓ create serviceaccounts/my-site-sa (cycle 1)
+  ✓ create deployments/my-site (cycle 1)
+  ✓ create services/my-site-svc (cycle 1)
+
+  PASS
+```
+
+`ork simulate` with a `simulate.yaml` present is the fast inner check — no cluster, under a second. [`ork e2e`](#e2e) is the full integration gate.
+
 ---
 
-## Step 3 — Start the operator
+## Step 3 — Start the runtime
 
 ```bash
 ork run       # add --dev if you don't have a cluster; Orkestra will create a kind cluster

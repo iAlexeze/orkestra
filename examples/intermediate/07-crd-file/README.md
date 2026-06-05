@@ -59,7 +59,7 @@ Expected:
     mode: dynamic / workers: 1 / resync: 60s
 ```
 
-### 2. Start the operator
+### 2. Start the runtime
 
 ```bash
 ork run --file katalog.yaml

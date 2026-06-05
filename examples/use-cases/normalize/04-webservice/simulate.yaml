@@ -1,0 +1,35 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: webservice-normalize-sim
+  description: Simulate the webservice normalize example — verify secrets, configmap, and deployments created in cycle 1
+
+spec:
+  katalog: ./katalog.yaml
+  cr: ./cr-simple.yaml
+  cycles: 5
+
+  expect:
+    steady: true
+    noErrors: true
+    ops:
+      - cycle: 1
+        verb: create
+        resource: secrets
+        name: my-app-production-acme-corp-api-key
+      - cycle: 1
+        verb: create
+        resource: configmaps
+        name: my-app-production-config
+      - cycle: 1
+        verb: create
+        resource: deployments
+        name: my-app-production
+      - cycle: 1
+        verb: create
+        resource: deployments
+        name: my-app-production-api
+      - cycle: 1
+        verb: create
+        resource: deployments
+        name: my-app-production-worker

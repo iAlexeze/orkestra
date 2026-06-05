@@ -48,7 +48,7 @@ Expected:
     mode: dynamic / workers: 2 / resync: 30s
 ```
 
-### 2. Start the operator
+### 2. Start the runtime
 
 ```bash
 ork run --file komposer.yaml

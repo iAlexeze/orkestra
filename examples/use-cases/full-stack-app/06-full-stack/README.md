@@ -21,7 +21,7 @@ Expected:
 
 ---
 
-## Step 2 — Start the operator
+## Step 2 — Start the runtime
 
 `ork run` reads the `crdFile` declared in `katalog.yaml`, applies the other dependencies defined in the `setup` block — the managed-database CRD and its seed CR — and starts the runtime. `--dev-server` is required — the health check calls `/health` on every reconcile:
 

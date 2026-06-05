@@ -108,7 +108,7 @@ kubectl apply -f crd-objectstore.yaml
 kubectl apply -f crd-searchcluster.yaml
 ```
 
-### 2. Start the operator
+### 2. Start the runtime
 
 ```bash
 ork run 
