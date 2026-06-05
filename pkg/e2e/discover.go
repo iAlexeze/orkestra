@@ -91,6 +91,70 @@ func matchesSkip(pattern, path string) bool {
 	return false
 }
 
+// DiscoverSimulateFiles walks root recursively and returns paths to all
+// simulate.yaml leaf files (files with a spec:, not pure aggregators).
+// Results are sorted for deterministic order.
+func DiscoverSimulateFiles(root string, skip []string) ([]string, error) {
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		return nil, err
+	}
+
+	var found []string
+	err = filepath.WalkDir(abs, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			for _, pattern := range skip {
+				if matchesSkip(pattern, path) {
+					return filepath.SkipDir
+				}
+			}
+			return nil
+		}
+		if !strings.HasSuffix(d.Name(), "simulate.yaml") {
+			return nil
+		}
+		for _, pattern := range skip {
+			if matchesSkip(pattern, path) {
+				return nil
+			}
+		}
+		if isSimulatePureAggregator(path) {
+			return nil
+		}
+		found = append(found, path)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Strings(found)
+	return found, nil
+}
+
+// isSimulatePureAggregator returns true when the file has imports but no spec.
+func isSimulatePureAggregator(path string) bool {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	var doc struct {
+		Imports *struct {
+			Files []string `yaml:"files"`
+		} `yaml:"imports"`
+		Spec *struct {
+			Katalog string `yaml:"katalog"`
+		} `yaml:"spec"`
+	}
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return false
+	}
+	return doc.Imports != nil && len(doc.Imports.Files) > 0 && doc.Spec == nil
+}
+
 // isPureAggregatorFile reads the file and returns true if it has imports but no spec.
 func isPureAggregatorFile(path string) bool {
 	data, err := os.ReadFile(path)
