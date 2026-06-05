@@ -165,9 +165,9 @@ Ctrl+C
 |---------|-------------|
 | `ork init` | Scaffold a new operator project in the current directory |
 | `ork run -f <path>` | Start the operator runtime. `<path>` is optional if `katalog.yaml` or `komposer.yaml` is in the current directory |
-| `ork run --dev -f` | Start the operator, create kind cluster if needed |
-| `ork validate -f` | Validate a Katalog without starting |
-| `ork template -f` | Preview the merged, resolved Katalog |
+| `ork run --dev` | Start the operator, create kind cluster if needed |
+| `ork validate` | Validate a Katalog without starting |
+| `ork template` | Preview the merged, resolved Katalog |
 | `ork control` | Start the Control Center at localhost:8081 |
 | `ork version` | Print version |
 

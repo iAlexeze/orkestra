@@ -30,28 +30,37 @@ inputs:
   - name: image
     description: Redis image tag
     default: "redis:7-alpine"
+  
+  - name: replicas
+    description: Number of replicas
+    default: "1"
 
   - name: password
     description: Redis password (leave empty to disable auth)
     default: ""
+  
+  - name: rotateAfter
+    description: How long before the password is rotated
+    default: 30d
 
 resources:
   onCreate:
     secrets:
-      - name: "{{ .metadata.name }}-redis-creds"
+      - name: "{{ .inputs.name }}-redis-creds"
         once: true
+        rotateAfter: "{{ .inputs.rotateAfter }}"
         data:
           password: "{{ .inputs.password }}"
 
   deployments:
-    - name: "{{ .metadata.name }}-redis"
+    - name: "{{ .inputs.name }}-redis"
       image: "{{ .inputs.image }}"
-      replicas: "1"
+      replicas: "{{ .inputs.replicas }}"
       port: "6379"
       reconcile: true
 
   services:
-    - name: "{{ .metadata.name }}-redis"
+    - name: "{{ .inputs.name }}-redis"
       port: "6379"
       targetPort: "6379"
       reconcile: true
@@ -62,7 +71,7 @@ status:
       value: "{{ replicasReady .children.deployment }}"
 ```
 
-The template context is the CR being reconciled — `.metadata.name` is the CR's name, not the Motif's name. The Motif does not know which CRD will import it.
+The template context is the CR being reconciled — `.inputs.name` is the CR's name, not the Motif's name. The Motif does not know which CRD will import it.
 
 ---
 
@@ -102,8 +111,9 @@ spec:
       imports:
         - motif: ./motif.yaml
           with:
-            image: "{{ .spec.redisImage | default \"redis:7-alpine\" }}"
-            password: "{{ .spec.redisPassword }}"
+            image: '{{ .spec.redisImage | default "redis:7-alpine" }}'
+            replicas: "{{ .spec.replicas }}"
+            password: "{{ randomBase64 32 }}"       # Orkestra random note
 
       operatorBox:
         deployments:
@@ -152,7 +162,7 @@ CR spec                              Motif
 Once the Motif works locally, push it:
 
 ```bash
-ork registry push ./motif.yaml --registry oci://ghcr.io/myorg/patterns/redis --tag v0.1.0
+ork registry push ./<motif-dir> --registry oci://ghcr.io/myorg/patterns/redis
 ```
 
 Other Katalogs can then import it by OCI reference:
@@ -172,10 +182,10 @@ imports:
 ```text
 redis/
   motif.yaml          # the Motif
-  example/
+  example/            # (optional)
     katalog.yaml      # example Katalog importing this Motif
-    crd.yaml
-    cr.yaml
+    crd.yaml          # CRD definition
+    cr.yaml           # CR definition
 ```
 
 ---
