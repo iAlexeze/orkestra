@@ -42,4 +42,4 @@ resources:
 # status:
 #   fields:
 #     - path: ready
-#       value: "{{ replicasReady .children.deployment }}"
+#       value: "{{ allReplicasReady .children.deployment }}"

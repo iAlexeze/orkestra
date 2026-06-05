@@ -690,7 +690,7 @@ func (k *Katalog) validateTeams() error {
 		return nil
 	}
 
-	for name, _ := range k.enabledCRDs {
+	for name := range k.enabledCRDs {
 		if _, ok := k.Notification.Teams[name]; !ok {
 			return fmt.Errorf("%s team not found", name)
 		}
