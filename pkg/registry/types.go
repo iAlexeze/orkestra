@@ -24,7 +24,8 @@ type PatternMeta struct {
 	Author      string
 	License     string
 	Tags        []string
-	E2E         *PatternE2E // populated at push time from running ork e2e; nil when absent
+	E2E         *PatternE2E      // populated at push time from running ork e2e; nil when absent
+	Simulate    *PatternSimulate // populated at push time from running simulate gate; nil when absent
 }
 
 // PatternE2E holds E2E verification metadata embedded in OCI annotations at push time.
@@ -35,15 +36,27 @@ type PatternE2E struct {
 	Runner   string // "local" or "github-actions"
 }
 
+// PatternSimulate holds simulate gate metadata embedded in OCI annotations at push time.
+// Status values:
+//   - "passed"       — simulate.yaml had expect: blocks and all assertions passed
+//   - "no-assertion" — simulate.yaml present but no expect: block; ran clean, nothing asserted
+//   - "skipped"      — --no-simulate or --force used
+type PatternSimulate struct {
+	Status   string // "passed", "no-assertion", "skipped"
+	Duration string // e.g. "4ms"; empty for skipped/no-assertion
+	TestedAt string // RFC3339
+}
+
 // PatternEntry is one row in the pattern index.
 type PatternEntry struct {
-	Name          string   `json:"name"`
-	LatestVersion string   `json:"latestVersion"`
-	Description   string   `json:"description"`
-	Tags          []string `json:"tags"`
-	Author        string   `json:"author,omitempty"`
-	Kind          string   `json:"kind,omitempty"`      // "Katalog" or "Motif"
-	E2EStatus     string   `json:"e2eStatus,omitempty"` // "passed", "skipped", or ""
+	Name           string   `json:"name"`
+	LatestVersion  string   `json:"latestVersion"`
+	Description    string   `json:"description"`
+	Tags           []string `json:"tags"`
+	Author         string   `json:"author,omitempty"`
+	Kind           string   `json:"kind,omitempty"`           // "Katalog" or "Motif"
+	E2EStatus      string   `json:"e2eStatus,omitempty"`      // "passed", "skipped", or ""
+	SimulateStatus string   `json:"simulateStatus,omitempty"` // "passed", "skipped", "no-assertion", or ""
 }
 
 // PatternIndex is the top-level index stored at registry/index:latest.

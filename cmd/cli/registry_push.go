@@ -13,6 +13,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/registry"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // ── push ──────────────────────────────────────────────────────────────────────
@@ -22,6 +23,7 @@ var (
 	registryPushUpdateMeta bool
 	registryPushE2EFile    string
 	registryPushNoE2E      bool
+	registryPushNoSimulate bool
 )
 
 var registryPushCmd = &cobra.Command{
@@ -146,6 +148,44 @@ var registryPushCmd = &cobra.Command{
 			fmt.Printf("  %s %-20s (%s)\n", successMark(), f, formatSize(info.Size()))
 		}
 
+		// Simulate gate: runs before E2E — instant, no cluster required.
+		// Skip with --force or --no-simulate.
+		var simulateMeta *registry.PatternSimulate
+		if patternKind == registry.KatalogKind {
+			simFile := filepath.Join(dir, registry.FileSimulate)
+			if _, err := os.Stat(simFile); err == nil {
+				if registryPushForce || registryPushNoSimulate {
+					fmt.Printf("  ~ Simulate skipped\n")
+					simulateMeta = &registry.PatternSimulate{
+						Status:   "skipped",
+						TestedAt: time.Now().UTC().Format(time.RFC3339),
+					}
+				} else {
+					hasAssertions := simulateFileHasAssertions(simFile)
+					if !hasAssertions {
+						fmt.Printf("  %s simulate.yaml has no assertions — add expect: to enforce behavior\n", yellow("⚠"))
+						simulateMeta = &registry.PatternSimulate{
+							Status:   "no-assertion",
+							TestedAt: time.Now().UTC().Format(time.RFC3339),
+						}
+					} else {
+						fmt.Printf("\nRunning simulate gate (%s)...\n", registry.FileSimulate)
+						start := time.Now()
+						if err := runSimulateFromSpec(cmd.Context(), simFile, "", 10, false); err != nil {
+							return fmt.Errorf("simulate gate failed: %w\n\nFix the assertions or use --force to push anyway", err)
+						}
+						dur := time.Since(start).Round(time.Millisecond).String()
+						fmt.Printf("  %s Simulate passed (%s)\n", successMark(), dur)
+						simulateMeta = &registry.PatternSimulate{
+							Status:   "passed",
+							Duration: dur,
+							TestedAt: time.Now().UTC().Format(time.RFC3339),
+						}
+					}
+				}
+			}
+		}
+
 		// E2E gate: run e2e.yaml before pushing if it exists (Katalog only).
 		// Skip with --force or --no-e2e.
 		var e2eMeta *registry.PatternE2E
@@ -194,7 +234,7 @@ var registryPushCmd = &cobra.Command{
 			fmt.Printf("  → %-20s (%s)\n", file, formatSize(size))
 		}
 
-		digest, err := client.Push(cmd.Context(), ref, dir, e2eMeta, progress)
+		digest, err := client.Push(cmd.Context(), ref, dir, e2eMeta, simulateMeta, progress)
 		if err != nil {
 			return fmt.Errorf("push failed: %w", err)
 		}
@@ -210,7 +250,7 @@ var registryPushCmd = &cobra.Command{
 				motifRef, err := registry.ResolveForKind(fmt.Sprintf("%s:%s", meta.Name, meta.Version), registry.MotifKind)
 				if err == nil {
 					fmt.Printf("\nAlso pushing %s to %s...\n", registry.FileMotif, motifRef.Registry)
-					if mDigest, err := client.Push(cmd.Context(), motifRef, dir, nil, progress); err != nil {
+					if mDigest, err := client.Push(cmd.Context(), motifRef, dir, nil, nil, progress); err != nil {
 						fmt.Fprintf(os.Stderr, "warning: motif push failed: %v\n", err)
 					} else {
 						fmt.Printf("%s Pushed motif: %s\n", successMark(), motifRef.String())
@@ -233,6 +273,24 @@ var registryPushCmd = &cobra.Command{
 		_ = meta
 		return nil
 	},
+}
+
+// simulateFileHasAssertions returns true when simulate.yaml contains an
+// expect: block — meaning the simulate gate will actually assert something.
+func simulateFileHasAssertions(path string) bool {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	var doc struct {
+		Spec *struct {
+			Expect *struct{} `yaml:"expect"`
+		} `yaml:"spec"`
+	}
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return false
+	}
+	return doc.Spec != nil && doc.Spec.Expect != nil
 }
 
 func detectRunner() string {

@@ -56,6 +56,25 @@ var registryInfoCmd = &cobra.Command{
 		if m.License != "" {
 			fmt.Printf("  License:     %s\n", m.License)
 		}
+		if m.Simulate != nil {
+			switch m.Simulate.Status {
+			case "passed":
+				suffix := m.Simulate.Duration
+				if m.Simulate.TestedAt != "" {
+					if t, err := time.Parse(time.RFC3339, m.Simulate.TestedAt); err == nil {
+						if suffix != "" {
+							suffix += " · "
+						}
+						suffix += "tested " + humanDuration(time.Since(t)) + " ago"
+					}
+				}
+				fmt.Printf("  Simulate:    %s\n", simulateVerified(suffix))
+			case "skipped":
+				fmt.Printf("  Simulate:    %s\n", simulateSkipped())
+			case "no-assertion":
+				fmt.Printf("  Simulate:    %s\n", simulateNoAssertion())
+			}
+		}
 		if m.E2E != nil {
 			switch m.E2E.Status {
 			case "passed":
