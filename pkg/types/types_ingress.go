@@ -15,7 +15,7 @@ package types
 //	      servicePort: "{{ .spec.port }}"
 //	      path: /
 //	      pathType: Prefix
-//	      ingressClass: nginx
+//	      className: nginx
 //	      tls:
 //	        enabled: true
 //	        secretName: "{{ .metadata.name }}-tls"

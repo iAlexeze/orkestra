@@ -74,4 +74,4 @@ This is still useful for verifying template logic before building the binary.
 
 ---
 
-→ Next: [Aggregator mode](04-aggregator.md)
+→ Next: [Aggregator mode](05-aggregator.md)

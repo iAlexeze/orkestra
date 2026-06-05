@@ -55,7 +55,7 @@ Expected output:
 
 ---
 
-## Step 3 — Start the operator
+## Step 3 — Start the runtime
 
 ```bash
 ork run --file katalog.yaml

@@ -22,7 +22,7 @@ Expected:
 
 ---
 
-## Step 2 — Start the operator
+## Step 2 — Start the runtime
 
 `--dev-server` starts a mock HTTP server on `:9999` — no real config service needed. It responds to `GET /config/:name` with a static JSON config blob:
 

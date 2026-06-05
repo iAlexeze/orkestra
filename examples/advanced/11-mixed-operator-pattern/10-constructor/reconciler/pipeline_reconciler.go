@@ -24,7 +24,6 @@
 //   - Kubernetes events
 //   - Status updates
 //   - All reconcile and delete logic
-//
 package reconciler
 
 import (

@@ -130,7 +130,7 @@ kubectl apply -f crd-processor.yaml
 kubectl apply -f crd-auditor.yaml
 ```
 
-### 2. Start the operator
+### 2. Start the runtime
 
 ```bash
 ork run --dev

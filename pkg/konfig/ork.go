@@ -119,6 +119,11 @@ func E2EKind() string {
 	return kindE2E
 }
 
+// SimulateKind returns the kind string for a Simulate document.
+func SimulateKind() string {
+	return kindSimulate
+}
+
 // KonduktorKind returns the kind string for a Konduktor document.
 func KonduktorKind() string {
 	return kindKonductor
@@ -149,19 +154,25 @@ func IsE2EKind(kind string) bool {
 	return kind == kindE2E
 }
 
+// IsSimulateKind returns true if the given kind is a Simulate.
+func IsSimulateKind(kind string) bool {
+	return kind == kindSimulate
+}
+
 // IsValidDocumentKind reports whether the given kind is one of the supported
 // Orkestra document kinds.
 func IsValidDocumentKind(kind string) bool {
 	return kind == kindKatalog ||
 		kind == kindKomposer ||
 		kind == kindMotif ||
-		kind == kindE2E
+		kind == kindE2E ||
+		kind == kindSimulate
 }
 
 // ValidKindsString returns a comma‑separated list of all supported document kinds.
 // Useful for error messages and CLI diagnostics.
 func ValidKindsString() string {
-	return "Katalog, Komposer, Motif, E2E"
+	return "Katalog, Komposer, Motif, E2E, Simulate"
 }
 
 // IsValidApiVersion returns true if the given apiVersion is a supported version.

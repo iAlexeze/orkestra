@@ -21,7 +21,7 @@ import (
 
 var validateCmd = &cobra.Command{
 	Use:   "validate",
-	Short: "Validate an Orkestra document (Katalog, Komposer, Motif, E2E)",
+	Short: "Validate an Orkestra document (Katalog, Komposer, Motif, E2E, Simulate)",
 	Long: `Validates any Orkestra document and reports errors.
 
 The document kind is detected automatically from the 'kind' field:
@@ -29,6 +29,7 @@ The document kind is detected automatically from the 'kind' field:
   Komposer  — multi-source katalog composer
   Motif     — reusable operator pattern
   E2E       — declarative end-to-end test spec
+  Simulate  — declarative reconciler assertions
 
 Reads katalog.yaml or komposer.yaml from the current directory by default.
 Pass -f to validate a different file.
@@ -36,6 +37,7 @@ Pass -f to validate a different file.
 Examples:
   ork validate
   ork validate -f e2e.yaml
+  ork validate -f simulate.yaml
   ork validate -f motif.yaml`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		paths, _ := cmd.Flags().GetStringSlice("file")
@@ -74,6 +76,10 @@ Examples:
 
 			if konfig.IsE2EKind(kind) {
 				return validateE2EFile(path)
+			}
+
+			if konfig.IsSimulateKind(kind) {
+				return validateSimulateFile(path)
 			}
 
 			docKind = kind
@@ -294,6 +300,137 @@ func validateE2EFile(path string) error {
 		fmt.Println()
 	}
 
+	return nil
+}
+
+// validateSimulateFile validates a Simulate spec file and prints a summary.
+func validateSimulateFile(path string) error {
+	fmt.Println()
+	fmt.Println(bold("Validating Simulate..."))
+	fmt.Println()
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("reading %s: %w", path, err)
+	}
+
+	var doc orktypes.Simulate
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return fmt.Errorf("parsing %s: %w", path, err)
+	}
+
+	baseDir := filepath.Dir(path)
+	isAggregator := doc.Imports != nil && len(doc.Imports.Files) > 0 && doc.Spec == nil
+
+	check := func(ok bool, pass, fail string) {
+		if ok {
+			fmt.Printf("  %s %s\n", successMark(), pass)
+		} else {
+			fmt.Printf("  %s %s\n", failureMark(), fail)
+		}
+	}
+
+	var errs []string
+
+	if doc.Metadata.Name == "" {
+		errs = append(errs, "metadata.name is required")
+		fmt.Printf("  %s metadata.name is required\n", failureMark())
+	} else {
+		fmt.Printf("  %s metadata.name: %s\n", successMark(), doc.Metadata.Name)
+	}
+
+	if !isAggregator && doc.Spec == nil {
+		errs = append(errs, "spec or imports is required")
+		fmt.Printf("  %s spec or imports is required\n", failureMark())
+	}
+
+	if isAggregator {
+		for _, f := range doc.Imports.Files {
+			p := f
+			if !filepath.IsAbs(p) {
+				p = filepath.Join(baseDir, p)
+			}
+			check(fileExists(p), "imports.files: "+f+" (found)", "imports.files: "+f+" (not found)")
+			if !fileExists(p) {
+				errs = append(errs, "import not found: "+f)
+			}
+		}
+	}
+
+	if doc.Spec != nil {
+		if doc.Spec.Katalog == "" {
+			errs = append(errs, "spec.katalog is required")
+			fmt.Printf("  %s spec.katalog is required\n", failureMark())
+		} else {
+			p := filepath.Join(baseDir, doc.Spec.Katalog)
+			check(fileExists(p), "spec.katalog: "+doc.Spec.Katalog+" (found)", "spec.katalog: "+doc.Spec.Katalog+" (not found)")
+			if !fileExists(p) {
+				errs = append(errs, "spec.katalog not found: "+doc.Spec.Katalog)
+			}
+		}
+
+		if doc.Spec.CR == "" {
+			errs = append(errs, "spec.cr is required")
+			fmt.Printf("  %s spec.cr is required\n", failureMark())
+		} else {
+			p := filepath.Join(baseDir, doc.Spec.CR)
+			check(fileExists(p), "spec.cr: "+doc.Spec.CR+" (found)", "spec.cr: "+doc.Spec.CR+" (not found)")
+			if !fileExists(p) {
+				errs = append(errs, "spec.cr not found: "+doc.Spec.CR)
+			}
+		}
+
+		if doc.Spec.Cycles <= 0 {
+			fmt.Printf("  %s spec.cycles: not set — defaulting to 10\n", yellow("⚠"))
+		} else {
+			fmt.Printf("  %s spec.cycles: %d\n", successMark(), doc.Spec.Cycles)
+		}
+
+		if doc.Spec.Expect != nil {
+			fmt.Printf("  %s expect.ops: %d rule(s)\n", successMark(), len(doc.Spec.Expect.Ops))
+			validVerbs := map[string]bool{"create": true, "update": true, "delete": true, "patch": true}
+			for i, rule := range doc.Spec.Expect.Ops {
+				switch {
+				case rule.Verb == "" || rule.Resource == "":
+					errs = append(errs, fmt.Sprintf("expect.ops[%d]: verb and resource are required", i))
+					fmt.Printf("  %s expect.ops[%d]: verb and resource are required\n", failureMark(), i)
+				case !validVerbs[rule.Verb]:
+					errs = append(errs, fmt.Sprintf("expect.ops[%d]: invalid verb %q (must be create, update, delete, or patch)", i, rule.Verb))
+					fmt.Printf("  %s expect.ops[%d]: invalid verb %q\n", failureMark(), i, rule.Verb)
+				}
+			}
+			for i, rule := range doc.Spec.Expect.Absent {
+				switch {
+				case rule.Verb == "" || rule.Resource == "":
+					errs = append(errs, fmt.Sprintf("expect.absent[%d]: verb and resource are required", i))
+					fmt.Printf("  %s expect.absent[%d]: verb and resource are required\n", failureMark(), i)
+				case !validVerbs[rule.Verb]:
+					errs = append(errs, fmt.Sprintf("expect.absent[%d]: invalid verb %q (must be create, update, delete, or patch)", i, rule.Verb))
+					fmt.Printf("  %s expect.absent[%d]: invalid verb %q\n", failureMark(), i, rule.Verb)
+				}
+			}
+			if len(doc.Spec.Expect.Absent) > 0 {
+				fmt.Printf("  %s expect.absent: %d rule(s)\n", successMark(), len(doc.Spec.Expect.Absent))
+			}
+		}
+	}
+
+	fmt.Println()
+	fmt.Println(strings.Repeat("─", 60))
+
+	if len(errs) > 0 {
+		return fmt.Errorf("%d validation error(s) in %s", len(errs), path)
+	}
+
+	if isAggregator {
+		fmt.Printf("%d import(s) valid\n", len(doc.Imports.Files))
+	} else {
+		ops := 0
+		if doc.Spec.Expect != nil {
+			ops = len(doc.Spec.Expect.Ops)
+		}
+		fmt.Printf("Simulate is valid (%d op rule(s))\n", ops)
+	}
 	return nil
 }
 

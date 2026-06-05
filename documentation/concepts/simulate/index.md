@@ -9,10 +9,11 @@
 | Page | What it covers |
 |------|----------------|
 | [How it works](01-how-it-works.md) | The fake cluster model, same reconciler, steady state detection |
-| [Running simulate](02-running.md) | All invocation forms: `--cr`, `-f e2e.yaml`, `./...`, flags |
-| [Hooks and constructors](03-hooks-and-constructors.md) | Custom binary, registry wiring, what the standard binary shows |
-| [Aggregator mode](04-aggregator.md) | `./...` discovery and aggregator e2e.yaml |
-| [Limitations](05-limitations.md) | What simulate cannot cover and what to use instead |
+| [simulate.yaml](02-simulate-kind.md) | The recommended entry point — schema, `expect:`, assert mode, validation |
+| [Running simulate](03-running.md) | All invocation forms: `--cr`, `-f e2e.yaml`, `./...`, flags |
+| [Hooks and constructors](04-hooks-and-constructors.md) | Custom binary, registry wiring, what the standard binary shows |
+| [Aggregator mode](05-aggregator.md) | `./...` discovery and aggregator simulate/e2e files |
+| [Limitations](06-limitations.md) | What simulate cannot cover and what to use instead |
 
 ---
 

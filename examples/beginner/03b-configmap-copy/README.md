@@ -34,7 +34,7 @@ kubectl get cd -n default
 kubectl get configmap app-config -n platform
 ```
 
-### 2. Start the operator
+### 2. Start the runtime
 
 ```bash
 ork run       # add --dev if you don't have a cluster; Orkestra will create a kind cluster

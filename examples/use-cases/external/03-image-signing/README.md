@@ -22,7 +22,7 @@ Expected:
 
 ---
 
-## Step 2 — Start the operator
+## Step 2 — Start the runtime
 
 `--dev-server` starts a mock HTTP server on `:9999`. `POST /sign` accepts any image except `nginx:not-secure`, which it rejects with 403 — simulating a signing policy violation. No `IMAGE_SIGNING_TOKEN` needed:
 

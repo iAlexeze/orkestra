@@ -99,7 +99,22 @@ Simulating website/composed-site
 - Cycle 1 creates a Deployment and a Service — the values come from the merged Komposer configuration, not either source Katalog alone. Worker count, resync, and any inline overrides in `komposer.yaml` are already baked in.
 - **Steady state at cycle 3** — the Website CRD converges in three cycles. This is what you want to see before connecting the Komposer to a real cluster.
 
-### 5. Start the operator
+The example ships with [simulate.yaml](./simulate.yaml) which records these expectations so they are verified on every run:
+
+```bash
+ork simulate
+```
+
+```text
+  ✓ steady
+  ✓ noErrors
+  ✓ create deployments/composed-site-deployment (cycle 1)
+  ✓ create services/composed-site-svc (cycle 1)
+
+  PASS
+```
+
+### 5. Start the runtime
 
 ```bash
 ork run --file komposer.yaml

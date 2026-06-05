@@ -45,7 +45,7 @@ Expected output:
 
 ---
 
-## Step 2 — Start the operator
+## Step 2 — Start the runtime
 
 ```bash
 ork run       # add --dev if you don't have a cluster; Orkestra will create a kind cluster

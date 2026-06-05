@@ -77,7 +77,7 @@ kubectl apply -f crd-shardedstore.yaml
 kubectl apply -f crd-shard.yaml
 ```
 
-### 2. Start the operator
+### 2. Start the runtime
 
 ```bash
 ork run 

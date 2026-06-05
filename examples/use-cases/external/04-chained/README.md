@@ -22,7 +22,7 @@ Expected:
 
 ---
 
-## Step 2 — Start the operator
+## Step 2 — Start the runtime
 
 `--dev-server` starts a mock HTTP server on `:9999` — no auth service or secret needed. It handles the full chain: `POST /auth/token` returns `dev-token-abc123`, then `GET /resources/:name` returns a resource stub:
 

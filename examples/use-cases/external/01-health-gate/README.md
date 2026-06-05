@@ -22,7 +22,7 @@ Expected:
 
 ---
 
-## Step 2 — Start the operator
+## Step 2 — Start the runtime
 
 `--dev-server` starts a mock HTTP server on `:9999` — no real upstream service needed. It serves `/health` (200) and `/status/503` (503) for the dev CRs:
 

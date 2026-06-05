@@ -47,7 +47,7 @@ ork init
 
 `ork init` creates a `katalog.yaml` in the current directory, ready to run.
 
-**Step 2 — Start the operator**
+**Step 2 — Start the runtime**
 
 If you have a running cluster:
 
@@ -164,8 +164,8 @@ Ctrl+C
 | Command | Description |
 |---------|-------------|
 | `ork init` | Scaffold a new operator project in the current directory |
-| `ork run -f <path>` | Start the operator runtime. `<path>` is optional if `katalog.yaml` or `komposer.yaml` is in the current directory |
-| `ork run --dev` | Start the operator, create kind cluster if needed |
+| `ork run -f <path>` | Start the runtime. `<path>` is optional if `katalog.yaml` or `komposer.yaml` is in the current directory |
+| `ork run --dev` | Start the runtime, create kind cluster if needed |
 | `ork validate` | Validate a Katalog without starting |
 | `ork template` | Preview the merged, resolved Katalog |
 | `ork control` | Start the Control Center at localhost:8081 |

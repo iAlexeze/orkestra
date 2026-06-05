@@ -83,7 +83,7 @@ kubectl apply -f crd-workspace.yaml
 kubectl apply -f crd-secretvault.yaml
 ```
 
-### 2. Start the operator
+### 2. Start the runtime
 
 ```bash
 ork run 

@@ -30,7 +30,7 @@ tells you what Kubernetes has actually achieved.
 
 ## Steps
 
-### 1. Start the operator
+### 1. Start the runtime
 
 ```bash
 ork run

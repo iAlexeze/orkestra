@@ -39,7 +39,7 @@ Visit: **http://localhost:8081**
 
 ## Run the Example
 
-### 1. Start the operator
+### 1. Start the runtime
 
 ```bash
 ork run
