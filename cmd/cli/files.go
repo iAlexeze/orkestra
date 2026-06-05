@@ -10,6 +10,7 @@ const (
 	fileKatalog  = "katalog.yaml"
 	fileKomposer = "komposer.yaml"
 	fileE2e      = "e2e.yaml"
+	fileSimulate = "simulate.yaml"
 	fileCrd      = "crd.yaml"
 	fileCr       = "cr.yaml"
 )
@@ -66,3 +67,9 @@ func defaultFilePaths() []string {
 
 const errNoKatalog = "no katalog.yaml or komposer.yaml found in current directory\n" +
 	"pass -f <file> or create one with ork init"
+
+// fileExists reports whether a file exists at the given path.
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
