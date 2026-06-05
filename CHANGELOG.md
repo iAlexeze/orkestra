@@ -62,7 +62,7 @@ This release ships the first public early-access build of Orkestra. It focuses o
 
 - **`examples/use-cases/full-stack-app`** — all six sub-katalogs switched from inline `apiTypes:` to `crdFile:`; manual `kubectl apply -f crd.yaml` pre-step eliminated from every walkthrough. `03-cross-crd/crd.yaml` split into `crd-managed-database.yaml` + `crd-database-backed-app.yaml`. `06-full-stack` uses a `setup:` block to pull in the managed-database dependency.
 - **Advanced typed examples** — `09-hooks` (typed Go hooks), `10-constructor` (custom reconciler), and `11-mixed-operator-pattern` (dynamic + hooks + constructor together) fully implemented, documented, and e2e-ready.
-- **Typed e2e documented** — READMEs for typed examples now explain `--helm-arg runtime.image.repository` / `--helm-arg runtime.image.tag` so `ork e2e` deploys the user's custom image (which contains the generated type registry) instead of the default Orkestra image.
+- **Typed e2e documented** — READMEs for typed examples now explain `--set runtime.image.repository` / `--set runtime.image.tag` so `ork e2e` deploys the user's custom image (which contains the generated type registry) instead of the default Orkestra image.
 
 ### Documentation
 
