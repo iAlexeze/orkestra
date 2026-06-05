@@ -1,6 +1,7 @@
 # ── Typed Orkestra Operator — Hooks ───────────────────────────────────────────
 BINARY_NAME ?= ork
-OUTPUT_DIR  ?= $(HOME)/.orkestra/bin
+DEV_OUTPUT_DIR  ?= $(HOME)/.orkestra/bin
+PROD_OUTPUT_DIR ?= $(HOME)/.orkestra/bin/runtime
 KATALOG     ?= katalog.yaml
 
 IMAGE_REPO  ?= myorg/my-operator
@@ -26,33 +27,65 @@ registry:
 	@find . -name "*.go" | xargs grep -l "^//go:build ignore$$" 2>/dev/null | while read f; do tail -n +3 "$$f" > "$$f.tmp" && mv "$$f.tmp" "$$f"; done || true
 	ork generate registry --file $(KATALOG)
 
-# ── build ─────────────────────────────────────────────────────────────────────
+# ── build (development) ───────────────────────────────────────────────────────
+# Builds the full CLI with all commands (validate, e2e, simulate, run, etc.)
 .PHONY: build
 build:
 	@[ -f go.mod.txt ] && mv go.mod.txt go.mod || true
 	@[ -f go.sum.txt ] && mv go.sum.txt go.sum || true
 	@find . -name "*.go" | xargs grep -l "^//go:build ignore$$" 2>/dev/null | while read f; do tail -n +3 "$$f" > "$$f.tmp" && mv "$$f.tmp" "$$f"; done || true
-	@mkdir -p $(OUTPUT_DIR)
+	@mkdir -p $(DEV_OUTPUT_DIR)
 	go mod tidy
-	gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
-		-tags "$(BUILD_TAGS)" \
+	gofmt -w .
+	go build \
 		-ldflags "$(ORK_LDFLAGS)" \
-		-o $(OUTPUT_DIR)/$(BINARY_NAME) ./cmd/orkestra
-	@echo "✅ $(OUTPUT_DIR)/$(BINARY_NAME)"
+		-o $(DEV_OUTPUT_DIR)/$(BINARY_NAME) ./cmd/orkestra
+	@echo "✅ Development build: $(DEV_OUTPUT_DIR)/$(BINARY_NAME)"
+
+# ── build-runtime (production) ────────────────────────────────────────────────
+# Builds a production binary with ONLY the `run` command (no validate, e2e, etc.)
+# This is what runs in your cluster — smaller attack surface, focused responsibility.
+.PHONY: build-runtime
+build-runtime:
+	@[ -f go.mod.txt ] && mv go.mod.txt go.mod || true
+	@[ -f go.sum.txt ] && mv go.sum.txt go.sum || true
+	@find . -name "*.go" | xargs grep -l "^//go:build ignore$$" 2>/dev/null | while read f; do tail -n +3 "$$f" > "$$f.tmp" && mv "$$f.tmp" "$$f"; done || true
+	@mkdir -p $(PROD_OUTPUT_DIR)
+	go mod tidy
+	gofmt -w .
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
+		-tags "runtime" \
+		-ldflags "$(ORK_LDFLAGS)" \
+		-o $(PROD_OUTPUT_DIR)/$(BINARY_NAME) ./cmd/orkestra
+	@echo "✅ Production runtime build: $(PROD_OUTPUT_DIR)/$(BINARY_NAME)"
+	@echo "   This binary only supports 'ork run' — perfect for production."
 
 # ── validate ──────────────────────────────────────────────────────────────────
 .PHONY: validate
 validate:
-	$(OUTPUT_DIR)/$(BINARY_NAME) validate -f $(KATALOG)
+	$(DEV_OUTPUT_DIR)/$(BINARY_NAME) validate -f $(KATALOG)
+
+# ── e2e ───────────────────────────────────────────────────────────────────────
+.PHONY: e2e
+e2e:
+	$(DEV_OUTPUT_DIR)/$(BINARY_NAME) e2e
 
 # ── docker / push / release ───────────────────────────────────────────────────
+# Builds the production runtime binary, copies it to the current directory for
+# Docker build, then restores the development binary (if it exists) or leaves
+# a clean state. This round‑trip is required because the Docker image should
+# contain ONLY the production binary (runtime tag), not the full CLI.
 .PHONY: docker
-docker:
-	$(MAKE) build BUILD_TAGS=runtime
-	@cp $(OUTPUT_DIR)/$(BINARY_NAME) ./$(BINARY_NAME)
+docker: build-runtime
+	@echo "📦 Preparing production binary for Docker image..."
+	@cp $(PROD_OUTPUT_DIR)/$(BINARY_NAME) ./$(BINARY_NAME)
 	docker build -t $(IMAGE) .
 	@rm -f ./$(BINARY_NAME)
-	@echo "✅ $(IMAGE)"
+	@if [ -f $(DEV_OUTPUT_DIR)/$(BINARY_NAME) ]; then \
+		cp $(DEV_OUTPUT_DIR)/$(BINARY_NAME) ./$(BINARY_NAME); \
+		echo "🔧 Restored development binary to ./$(BINARY_NAME)"; \
+	fi
+	@echo "✅ Docker image built: $(IMAGE)"
 
 .PHONY: push
 push:
@@ -62,17 +95,21 @@ push:
 release: docker push
 
 # ── clean ─────────────────────────────────────────────────────────────────────
-# Removes the local typed binary only. The standard ork CLI is unaffected.
 .PHONY: clean
 clean:
-	@rm -f $(OUTPUT_DIR)/$(BINARY_NAME)
-	@echo "✅ removed $(OUTPUT_DIR)/$(BINARY_NAME)"
+	@rm -f $(DEV_OUTPUT_DIR)/$(BINARY_NAME)
+	@rm -rf $(PROD_OUTPUT_DIR)
+	@echo "✅ Removed all local builds"
 
 # ── help ──────────────────────────────────────────────────────────────────────
 .PHONY: help
 help:
-	@echo "  registry   generate pkg/typeregistry/zz_generated_typeregistry.go"
-	@echo "  build      compile the typed operator binary"
-	@echo "  validate   run katalog validation with your binary"
-	@echo "  release    build + push  IMAGE=repo/name:tag"
-	@echo "  clean      remove local binary (standard ork unaffected)"
+	@echo "  registry       generate type registry from Katalog"
+	@echo "  build          compile full development CLI (all commands)"
+	@echo "  build-runtime  compile production binary (only 'ork run')"
+	@echo "  validate       run katalog validation (using development binary)"
+	@echo "  e2e            run end‑to‑end tests (using development binary)"
+	@echo "  docker         build-runtime + copy into Docker image"
+	@echo "  push           push Docker image to registry"
+	@echo "  release        docker + push"
+	@echo "  clean          remove all local builds"
