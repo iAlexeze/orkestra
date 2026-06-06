@@ -180,13 +180,13 @@ Six Runtimes. 75 CRDs. One Control Center.
 
 | | |
 |---|---|
-| [Why Orkestra](https://orkestra.sh/docs) | What Orkestra is, how it works, and why it’s different |
+| [Why Orkestra](https://orkestra.sh/blog/why-orkestra) | What Orkestra is, how it works, and why it’s different |
 | [Trust and Failure Model](https://orkestra.sh/publications/trust-and-failure-model) | What happens when things go wrong |
 | [Getting Started](https://orkestra.sh/docs/getting-started) | First operator in under an hour |
 | [Learning to Orkestrate](https://orkestra.sh/docs/getting-started/learning-to-orkestrate) | Every capability, as a runnable example |
 | [Katalog Reference](https://orkestra.sh/docs/reference/schema/katalog/) | Complete field reference |
 | [Orkestra Registry](https://orkestra.sh/docs/orkestra-registry/) | OCI distribution for operators |
-| [Security](https://orkestra.sh/docs/security/) | Deletion protection, RBAC, admission |
+| [Security](https://orkestra.sh/docs/security/) | How Orkestra is secure by default |
 
 ---
 

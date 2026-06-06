@@ -311,7 +311,7 @@ echo "Syncing blog: $SRC_DIR/blog → $BLOG_DIR"
 
 weight=1
 find "$SRC_DIR/blog" -name '*.md' 2>/dev/null | sort | while read -r src_file; do
-  dst_file="$BLOG_DIR/$(basename "$src_file")"
+  dst_file="$BLOG_DIR/$(basename "$src_file" | sed 's/^[0-9][0-9]*-//')"
   sync_file "$src_file" "$dst_file" "$weight" "$src_file"
   ((weight++)) || true
   echo "  blog: $(basename "$src_file")"
