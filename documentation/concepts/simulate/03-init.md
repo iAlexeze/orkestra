@@ -171,6 +171,3 @@ Simulate reads the `simulate.yaml` automatically and runs in assert mode — eve
 | `--force` | `false` | Overwrite an existing `simulate.yaml` |
 | `--dry-run` | `false` | Print to stdout instead of writing the file |
 
----
-
-→ Next: [Running simulate](03-running.md)

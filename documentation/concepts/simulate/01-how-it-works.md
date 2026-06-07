@@ -59,7 +59,3 @@ Identical consecutive cycles are collapsed. Steady state is noted but does not s
 3. Check that cycle 2 shows only `status/...`
 4. Adjust `when:` conditions, field references, or template expressions as needed
 5. When simulation is clean, run against a real cluster with `ork e2e` and then `ork run`.
-
----
-
-→ Next: [Running simulate](02-running.md)

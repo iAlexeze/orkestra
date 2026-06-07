@@ -371,28 +371,6 @@ test-fixture-reconciler:
 
 DOCS_PORT ?= 8090
 
-docs-sync:
-	@echo "Syncing documentation/ → website/content/docs/ ..."
-	@bash website/scripts/sync-docs.sh
-	@echo "✅ Docs synced"
-
-docs: docs-sync
-	@if [ -z "$(HUGO)" ]; then echo "Hugo not found. Run: make hugo-install"; exit 1; fi
-	@echo "Starting Hugo docs server at http://localhost:$(DOCS_PORT) ..."
-	hugo server --source website --port $(DOCS_PORT) --bind 0.0.0.0 --disableFastRender --logLevel warn
-	@echo "✅ Docs server stopped"
-
-docs-build: docs-sync
-	@if [ -z "$(HUGO)" ]; then echo "Hugo not found. Run: make hugo-install"; exit 1; fi
-	@echo "Building Hugo static site..."
-	hugo --source website --minify
-	@echo "✅ Hugo site built to website/public/"
-
-docs-serve: docs-sync
-	@if [ -z "$(HUGO)" ]; then echo "Hugo not found. Run: make hugo-install"; exit 1; fi
-	@echo "Serving production Hugo build on port $(DOCS_PORT)..."
-	hugo server --source website --port $(DOCS_PORT) --bind 0.0.0.0 --renderStaticToDisk
-
 HUGO := $(shell which hugo 2>/dev/null)
 
 # Install Hugo extended if not present (Linux/macOS)
@@ -410,6 +388,28 @@ hugo-install:
 	echo "Installing Hugo v$${VER} from $$URL ..."; \
 	curl -sSL "$$URL" | tar -xz -C /tmp hugo && sudo mv /tmp/hugo /usr/local/bin/hugo; \
 	echo "✅ Hugo installed: $$(hugo version)"
+
+docs-sync:
+	@echo "Syncing documentation/ → website/content/docs/ ..."
+	@bash website/scripts/sync-docs.sh
+	@echo "✅ Docs synced"
+
+docs: hugo-install docs-sync
+	@if [ -z "$(HUGO)" ]; then echo "Hugo not found. Run: make hugo-install"; exit 1; fi
+	@echo "Starting Hugo docs server at http://localhost:$(DOCS_PORT) ..."
+	hugo server --source website --port $(DOCS_PORT) --bind 0.0.0.0 --disableFastRender --logLevel warn
+	@echo "✅ Docs server stopped"
+
+docs-build: docs-sync
+	@if [ -z "$(HUGO)" ]; then echo "Hugo not found. Run: make hugo-install"; exit 1; fi
+	@echo "Building Hugo static site..."
+	hugo --source website --minify
+	@echo "✅ Hugo site built to website/public/"
+
+docs-serve: docs-sync
+	@if [ -z "$(HUGO)" ]; then echo "Hugo not found. Run: make hugo-install"; exit 1; fi
+	@echo "Serving production Hugo build on port $(DOCS_PORT)..."
+	hugo server --source website --port $(DOCS_PORT) --bind 0.0.0.0 --renderStaticToDisk
 
 # ── Vet ───────────────────────────────────────────────────────────────────────
 vet:

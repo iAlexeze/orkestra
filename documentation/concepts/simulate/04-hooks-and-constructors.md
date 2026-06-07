@@ -72,6 +72,3 @@ When running `ork simulate` from the standard `ork` binary (not a custom operato
 
 This is still useful for verifying template logic before building the binary.
 
----
-
-→ Next: [Aggregator mode](05-aggregator.md)

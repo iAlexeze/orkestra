@@ -110,6 +110,14 @@ The [Health Subsystem](health-subsystem/) is Orkestra's liveness, readiness, and
 
 ---
 
+## Declarative Unit Testing
+
+[Declarative Unit Testing](simulate/) is how Orkestra verifies reconciler behavior without a cluster — one `simulate.yaml`, no Kubernetes, no Docker, sub-second. Declare which resources should appear in which cycle. The same reconciler that runs in production runs here.
+
+→ [Read: Declarative Unit Testing](simulate/)
+
+---
+
 ## Declarative End-to-End Testing
 
 [Declarative E2E](e2e/) is how Orkestra verifies an operator against a real cluster — one YAML file, no test framework, no Go. Every learning example ships with a runnable `e2e.yaml`. The `imports:` field composes focused per-Katalog tests into suites that a single `ork e2e` command runs end to end.
