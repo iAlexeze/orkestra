@@ -1,7 +1,7 @@
 # Katalog
 
 !!! note "Katalog is not a Kubernetes CRD"
-    `kubectl apply` will not work. Orkestra kinds are consumed by the `ork` CLI and runtime — not by the Kubernetes API server. [Your CRD is enough](../../../blog/02-your-crd-is-enough.md).
+    `kubectl apply` will not work. Orkestra kinds are consumed by the `ork` CLI and runtime — not by the Kubernetes API server. [Your CRD is enough](/blog/your-crd-is-enough/).
 
 A Katalog declares one or more CRDs and defines how Orkestra manages them. It is the **unit of operator definition** — everything the runtime needs to run an operator from a single YAML file.
 
