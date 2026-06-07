@@ -1,7 +1,5 @@
 # Running Orkestra
 
----
-
 ## Can Orkestra manage multiple CRDs?
 
 Yes — any number. This is the point.
@@ -206,6 +204,6 @@ failure mode, what it means, and how Orkestra handles it.
 
 ## Next
 
-- **[Patterns](./03-patterns.md)** — validation, mutation, built-in kinds
+- **[Usage](./03-usage.md)** — validation, mutation, built-in kinds
 - **[Ecosystem](./04-ecosystem.md)** — comparisons and the Kubernetes roadmap
 - **[Deploying](../deploying.md)** — full cluster setup

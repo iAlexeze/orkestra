@@ -1,6 +1,4 @@
-# Patterns
-
----
+# Usage
 
 ## Can Orkestra manage built-in Kubernetes resources?
 

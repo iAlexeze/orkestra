@@ -29,7 +29,7 @@ Setup, configuration, operations, and RBAC.
 
 ---
 
-## [Patterns](./03-patterns.md)
+## [Usage](./03-usage.md)
 
 Common usage patterns — built-in kinds, validation, mutation, conditions.
 
@@ -45,9 +45,25 @@ Common usage patterns — built-in kinds, validation, mutation, conditions.
 
 Comparisons and the path forward.
 
+- How does Orkestra compare to ArgoCD?
+- How does Orkestra compare to Kubebuilder and Operator SDK?
 - How does Orkestra compare to kro?
 - Can Orkestra manage third-party CRDs?
 - What is the path to Kubernetes core?
+
+---
+
+## [Testing](./06-testing.md)
+
+Simulate, E2E, and the testing tools.
+
+- How do I test an Orkestra operator?
+- What is the difference between `ork simulate` and `ork e2e`?
+- How do I generate a `simulate.yaml`?
+- What does `skipExternal: true` do?
+- What is `ork simulate --dev-server`?
+- Can I run simulate for multiple operators at once?
+- Does simulate run the real reconciler?
 
 ---
 
