@@ -5,6 +5,8 @@
 Core concepts — what Orkestra is, how it works, and how it compares.
 
 - What is Orkestra?
+- Is Orkestra an operator?
+- Does Orkestra install my CRDs?
 - Do I need to write Go code?
 - How does Orkestra differ from Helm or Kustomize?
 - What is a Katalog? What is a Komposer?
@@ -26,6 +28,7 @@ Setup, configuration, operations, and RBAC.
 - What RBAC permissions does Orkestra need?
 - How do I debug a CRD in production?
 - Is Orkestra safe for production?
+- What happens when Orkestra restarts?
 
 ---
 
@@ -64,6 +67,17 @@ Simulate, E2E, and the testing tools.
 - What is `ork simulate --dev-server`?
 - Can I run simulate for multiple operators at once?
 - Does simulate run the real reconciler?
+
+---
+
+## [Registry](./07-registry.md)
+
+Publishing patterns and quality gates.
+
+- How do I publish a Katalog to the registry?
+- How do I publish a Motif?
+- How do simulate and e2e gate publication?
+- Can I use a private registry?
 
 ---
 

@@ -34,7 +34,7 @@ A small platform might be one Katalog. A large one might be a Komposer pulling t
 
 A Pattern is not tied to the team that wrote it. It is an OCI artifact, versioned and distributable:
 
-```
+```text
 ghcr.io/orkspace/orkestra-registry/patterns/katalogs/postgres:v1.0.0
 ```
 
