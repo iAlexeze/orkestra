@@ -1,3 +1,30 @@
+## v0.7.2 Simulate: standalone operation
+
+`ork simulate` is now a self-contained command. Key changes:
+
+**Flat imports syntax** — simulate aggregators now use a plain list, matching e2e:
+
+```yaml
+imports:
+  - ./09-hooks/simulate.yaml
+  - ./10-constructor/simulate.yaml
+```
+
+**`--dev-server` flag** — start the mock server before running simulate, no cluster needed:
+
+```bash
+ork simulate --dev-server
+ork simulate -f simulate.yaml --dev-server
+```
+
+**Decoupled from e2e** — passing an `e2e.yaml` to `ork simulate` now returns a helpful error instead of silently falling back to op-print mode.
+
+**Example suites** — root `simulate.yaml` aggregators added to the beginner, intermediate, and external example packs. The three external examples with `serviceUrl`/`healthCheckUrl` now have full simulate.yaml files with `expect:` assertions, all runnable with `--dev-server`.
+
+**health-gate CRs** — `cr-healthy.yaml` and `cr-degraded.yaml` now point to `localhost:9999` instead of httpbin.org, so they work with `--dev-server` without any external network dependency.
+
+**`ork simulate init` improvements** — the generated `simulate.yaml` now includes a commented `absent:` block (seeded with the first observed resource type) as a hint for failure-path coverage. A new `--dry-run` flag prints to stdout instead of writing the file — useful for previewing before committing.
+
 ## v0.7.1 — Simulate + E2E fixes
 
 ### `ork simulate`

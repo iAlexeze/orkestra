@@ -320,7 +320,7 @@ func validateSimulateFile(path string) error {
 	}
 
 	baseDir := filepath.Dir(path)
-	isAggregator := doc.Imports != nil && len(doc.Imports.Files) > 0 && doc.Spec == nil
+	isAggregator := len(doc.Imports) > 0 && doc.Spec == nil
 
 	check := func(ok bool, pass, fail string) {
 		if ok {
@@ -345,12 +345,12 @@ func validateSimulateFile(path string) error {
 	}
 
 	if isAggregator {
-		for _, f := range doc.Imports.Files {
+		for _, f := range doc.Imports {
 			p := f
 			if !filepath.IsAbs(p) {
 				p = filepath.Join(baseDir, p)
 			}
-			check(fileExists(p), "imports.files: "+f+" (found)", "imports.files: "+f+" (not found)")
+			check(fileExists(p), "imports: "+f+" (found)", "imports: "+f+" (not found)")
 			if !fileExists(p) {
 				errs = append(errs, "import not found: "+f)
 			}
@@ -423,7 +423,7 @@ func validateSimulateFile(path string) error {
 	}
 
 	if isAggregator {
-		fmt.Printf("%d import(s) valid\n", len(doc.Imports.Files))
+		fmt.Printf("%d import(s) valid\n", len(doc.Imports))
 	} else {
 		ops := 0
 		if doc.Spec.Expect != nil {

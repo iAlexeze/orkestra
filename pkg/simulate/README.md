@@ -5,14 +5,14 @@
 The recommended entry point is `simulate.yaml` — it records what your operator should produce so the run is repeatable and verifiable:
 
 ```sh
-ork simulate                                   # auto-detects simulate.yaml, then e2e.yaml, then katalog.yaml
+ork simulate                                   # auto-detects simulate.yaml, then katalog.yaml
 ork simulate -f simulate.yaml                  # explicit — assert mode when expect: is set
 ork simulate -f my-katalog.yaml --cr my-cr.yaml
-ork simulate -f e2e.yaml                       # reads spec.katalog and spec.cr; op-print only
-ork simulate ./...                             # discovers simulate.yaml and e2e.yaml files
+ork simulate ./...                             # discovers all simulate.yaml files recursively
 ork simulate ./... --skip vendor               # skip patterns during discovery
 ork simulate --skip-external                   # stub external: HTTP calls
 ork simulate --debug-ops                       # print all recorded ops with cycle numbers
+ork simulate --dev-server                      # start mock dev server for external: examples
 ```
 
 ## What works

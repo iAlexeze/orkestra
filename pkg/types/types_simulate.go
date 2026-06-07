@@ -2,28 +2,23 @@ package types
 
 // Simulate is the schema for simulate.yaml.
 //
-// Without expect: it runs in op-print mode (same output as ork simulate -f e2e.yaml).
+// Without expect: it runs in op-print mode.
 // With expect: it asserts that the reconciler produces the declared ops and
 // reaches the declared steady state — the run passes or fails like a test.
 //
 // Aggregator form (imports + no spec) runs each imported simulate.yaml as an
 // independent test, reporting pass/fail for each.
 type Simulate struct {
-	APIVersion string           `yaml:"apiVersion"`
-	Kind       string           `yaml:"kind"`
-	Metadata   SimulateMeta     `yaml:"metadata"`
-	Imports    *SimulateImports `yaml:"imports,omitempty"`
-	Spec       *SimulateSpec    `yaml:"spec,omitempty"`
+	APIVersion string        `yaml:"apiVersion"`
+	Kind       string        `yaml:"kind"`
+	Metadata   SimulateMeta  `yaml:"metadata"`
+	Imports    []string      `yaml:"imports,omitempty"`
+	Spec       *SimulateSpec `yaml:"spec,omitempty"`
 }
 
 type SimulateMeta struct {
 	Name        string `yaml:"name"`
 	Description string `yaml:"description,omitempty"`
-}
-
-// SimulateImports is the aggregator form — lists other simulate.yaml files to run.
-type SimulateImports struct {
-	Files []string `yaml:"files"`
 }
 
 type SimulateSpec struct {

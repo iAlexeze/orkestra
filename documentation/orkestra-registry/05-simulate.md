@@ -99,18 +99,34 @@ spec:
 
 ## Running simulate locally
 
+Start by scaffolding a `simulate.yaml` from a live reconcile run — no manual rule writing:
+
 ```bash
-# Auto-detects simulate.yaml in the current directory
+ork simulate init
+```
+
+This runs the reconciler once, captures the cycle-1 create operations, and writes a `simulate.yaml` pre-filled with `expect:` rules. Then run it:
+
+```bash
 ork simulate
+```
 
-# Explicit path
-ork simulate -f ./patterns/postgres/simulate.yaml
+Use `--debug-ops` to see every op recorded across all cycles — useful when you want to add rules beyond what `init` captured, or understand what an unfamiliar operator does:
 
-# See every recorded op with its cycle number — useful for writing expect: rules
+```bash
 ork simulate --debug-ops
 ```
 
-Use `--debug-ops` to discover what a new or unfamiliar operator creates, then copy those ops into `expect:` blocks.
+```text
+  [debug-ops] 5 total ops recorded across all cycles:
+  [debug-ops]   cycle=1   verb=create   resource=deployments          name=my-postgres
+  [debug-ops]   cycle=1   verb=create   resource=services             name=my-postgres
+  [debug-ops]   cycle=1   verb=create   resource=persistentvolumeclaims  name=my-postgres-data
+  [debug-ops]   cycle=2   verb=update   resource=statuses             name=my-postgres
+  [debug-ops]   cycle=3   verb=update   resource=statuses             name=my-postgres
+```
+
+Copy any ops you want to assert on into the `expect:` block in your `simulate.yaml`.
 
 ---
 
@@ -165,9 +181,8 @@ metadata:
   name: multi-tenancy-sim
 
 imports:
-  files:
-    - ./01-basic-namespacing/simulate.yaml
-    - ./02-cross-access-control/simulate.yaml
+  - ./01-basic-namespacing/simulate.yaml
+  - ./02-cross-access-control/simulate.yaml
 ```
 
 `ork registry push` discovers `simulate.yaml` at the pattern root and runs it. Each sub-simulation runs independently; one failure stops the push.
@@ -178,8 +193,8 @@ imports:
 Validating Simulate...
 
   ✓ metadata.name: multi-tenancy-sim
-  ✓ imports.files: ./01-basic-namespacing/simulate.yaml (found)
-  ✓ imports.files: ./02-cross-access-control/simulate.yaml (found)
+  ✓ imports: ./01-basic-namespacing/simulate.yaml (found)
+  ✓ imports: ./02-cross-access-control/simulate.yaml (found)
 
 2 import(s) valid
 ```

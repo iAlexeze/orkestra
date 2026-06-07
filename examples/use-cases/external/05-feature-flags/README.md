@@ -166,6 +166,20 @@ chmod +x cleanup.sh && ./cleanup.sh
 
 ---
 
+## Simulate
+
+Verify the Deployment is created at full capacity when `v2Enabled` is true — no cluster needed:
+
+```bash
+ork simulate --dev-server
+```
+
+`--dev-server` starts the mock server at `localhost:9999` before running simulate. The dev server returns `"true"` for the flag by default, so the full-capacity path runs and the Deployment is asserted at `spec.replicas`. See [simulate.yaml](./simulate.yaml).
+
+To test the baseline path, run without `--dev-server` (external call fails, operator falls back to 1 replica).
+
+---
+
 ## E2E
 
 Run the full lifecycle — deploys the mock dev server, starts the operator, applies the CR, asserts the Deployment runs at full replicas (`v2Enabled=true` default), then tears down:

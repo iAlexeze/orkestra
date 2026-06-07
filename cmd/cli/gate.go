@@ -1,3 +1,14 @@
+// gateway.go — Production gateway entrypoint.
+//
+// This command has one responsibility: run Orkestra Gateway.
+// It performs exactly three tasks:
+//  1. Load all provided katalog files.
+//  2. Merge them into a single resolved Katalog.
+//  3. Start the Orkestra gateway using the merged result.
+//
+// All development‑only behavior are excluded from production
+// builds via build tags.
+
 //go:build gateway
 
 package cli
