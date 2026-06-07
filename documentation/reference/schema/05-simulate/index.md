@@ -1,7 +1,7 @@
 # Simulate
 
 !!! note "Simulate is not a Kubernetes CRD"
-    `kubectl apply` will not work. Orkestra kinds are consumed by the `ork` CLI and runtime — not by the Kubernetes API server. [Your CRD is enough](../../../blog/02-your-crd-is-enough.md).
+    `kubectl apply` will not work. Orkestra kinds are consumed by the `ork` CLI and runtime — not by the Kubernetes API server. [Your CRD is enough](/blog/your-crd-is-enough/).
 
 A `Simulate` Pattern declares what your operator should produce — which resources, in which cycle — and verifies it by running the reconciler against a fake in-memory cluster. No Kubernetes. No Docker. Sub-second.
 

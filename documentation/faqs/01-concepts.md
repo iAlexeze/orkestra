@@ -1,7 +1,5 @@
 # Concepts
 
----
-
 ## What is Orkestra?
 
 Orkestra is a declarative operator runtime for Kubernetes. It turns CRDs into
@@ -218,5 +216,5 @@ declared alongside reconcile templates:
 ## Next
 
 - **[Running](./02-running.md)** — setup, configuration, and operations
-- **[Patterns](./03-patterns.md)** — validation, mutation, built-in kinds
+- **[Usage](./03-usage.md)** — validation, mutation, built-in kinds
 - **[Ecosystem](./04-ecosystem.md)** — comparisons and the Kubernetes roadmap
