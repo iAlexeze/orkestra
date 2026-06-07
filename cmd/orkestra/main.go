@@ -1,3 +1,31 @@
+// Package main is the entry point for the Orkestra CLI (ork).
+//
+// Orkestra is a declarative operator runtime for Kubernetes. You declare your
+// operator in YAML — CRDs, reconcile templates, status, conditions, lifecycle
+// hooks — and Orkestra runs the reconcile loop: informers, workqueue, worker
+// pool, finalizers, RBAC, and drift correction are all provided.
+//
+// The runtime supports two authoring modes:
+//
+//   - Dynamic mode — zero Go code. The full operator runs from katalog.yaml alone.
+//   - Typed mode — Go types and hooks for type-safe field access and custom business
+//     logic, compiled into the same binary with make build.
+//
+// Key commands:
+//
+//	ork run          Start the Orkestra runtime with a Katalog or Komposer
+//	ork simulate     Run the reconciler in memory — no cluster required
+//	ork e2e          Declarative end-to-end tests against a real cluster
+//	ork validate     Validate any Orkestra document (Katalog, Komposer, Motif, E2E, Simulate)
+//	ork registry     Publish and pull operator patterns as OCI artifacts
+//	ork control      Launch the live control center
+//	ork gate         Start the admission and conversion webhook server
+//
+// The production binary (built with -tags runtime) contains only ork run.
+// All developer commands are excluded from the runtime image.
+//
+// Documentation: https://orkestra.sh
+// Source: https://github.com/orkspace/orkestra
 package main
 
 import (

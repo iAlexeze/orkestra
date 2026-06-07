@@ -1,0 +1,51 @@
+package types
+
+// Simulate is the schema for simulate.yaml.
+//
+// Without expect: it runs in op-print mode.
+// With expect: it asserts that the reconciler produces the declared ops and
+// reaches the declared steady state — the run passes or fails like a test.
+//
+// Aggregator form (imports + no spec) runs each imported simulate.yaml as an
+// independent test, reporting pass/fail for each.
+type Simulate struct {
+	APIVersion string        `yaml:"apiVersion"`
+	Kind       string        `yaml:"kind"`
+	Metadata   SimulateMeta  `yaml:"metadata"`
+	Imports    []string      `yaml:"imports,omitempty"`
+	Spec       *SimulateSpec `yaml:"spec,omitempty"`
+}
+
+type SimulateMeta struct {
+	Name        string `yaml:"name"`
+	Description string `yaml:"description,omitempty"`
+}
+
+type SimulateSpec struct {
+	Katalog      string          `yaml:"katalog"`
+	CR           string          `yaml:"cr"`
+	Cycles       int             `yaml:"cycles,omitempty"` // default 10 when unset
+	SkipExternal bool            `yaml:"skipExternal,omitempty"`
+	Expect       *SimulateExpect `yaml:"expect,omitempty"` // nil = op-print only
+}
+
+// SimulateExpect declares what the reconciler must produce.
+// Top-level fields apply to all CRDs; crds overrides per named CRD.
+type SimulateExpect struct {
+	Steady   *bool                      `yaml:"steady,omitempty"`
+	SteadyAt *int                       `yaml:"steadyAt,omitempty"` // result.SteadyAt must be ≤ this
+	NoErrors bool                       `yaml:"noErrors,omitempty"`
+	Ops      []SimulateOpRule           `yaml:"ops,omitempty"`
+	Absent   []SimulateOpRule           `yaml:"absent,omitempty"` // ops that must NOT appear
+	CRDs     map[string]*SimulateExpect `yaml:"crds,omitempty"`
+}
+
+// SimulateOpRule asserts that at least one recorded op in the given cycle
+// matches all non-empty fields. count overrides the minimum (default ≥1).
+type SimulateOpRule struct {
+	Cycle    int    `yaml:"cycle"`
+	Verb     string `yaml:"verb"`            // create | update | delete | patch
+	Resource string `yaml:"resource"`        // deployments | statefulsets | etc.
+	Name     string `yaml:"name,omitempty"`  // optional: match a specific resource name
+	Count    int    `yaml:"count,omitempty"` // 0 = at least 1
+}

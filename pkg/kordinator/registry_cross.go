@@ -55,6 +55,21 @@ func (r *ResourceKatalog) GetInformerByName(name string) (cache.SharedIndexInfor
 // This is used by GenericReconciler via the KatalogRegistry interface
 // to support cross‑context reads without importing pkg/kordinator
 // directly (avoiding import cycles).
+// GetCrossAccessByName returns the CrossAccess field of the named CRD.
+// nil means readable (default). *false means the CRD has opted out of cross reads.
+func (r *ResourceKatalog) GetCrossAccessByName(name string) *bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	nameLower := strings.ToLower(name)
+	for _, entry := range r.entries {
+		if strings.ToLower(entry.CRD.Name) == nameLower {
+			return entry.CRD.CrossAccess
+		}
+	}
+	return nil
+}
+
 func (r *ResourceKatalog) GetInformerByLabelSelector(key, value string) (cache.SharedIndexInformer, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -138,6 +139,15 @@ func gitClone(repo, dst, ref string) error {
 	}
 
 	return nil
+}
+
+// isFileMotif returns true when a motif reference is a local file path
+// (starts with ./, ../, or /). OCI references (ghcr.io/...) and URLs
+// (https://...) do not match and are left unchanged by the caller.
+func isFileMotif(motif string) bool {
+	return strings.HasPrefix(motif, "./") ||
+		strings.HasPrefix(motif, "../") ||
+		filepath.IsAbs(motif)
 }
 
 // unused but kept for completeness

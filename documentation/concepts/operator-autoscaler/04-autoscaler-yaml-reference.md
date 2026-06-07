@@ -246,7 +246,7 @@ The CRD’s declared configuration is always the baseline:
 ```yaml
 workers: 4
 queue:
-  maxQueueDepth: 100
+  maxDepth: 100
 resync: 120s
 ```
 

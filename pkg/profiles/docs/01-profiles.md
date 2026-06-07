@@ -56,7 +56,7 @@ Set via `probes.liveness.profile`, `probes.readiness.profile`, or `probes.startu
 
 ## Autoscale profiles
 
-Set via `autoscale.profile`. Expands into a complete `autoscale` block using the CRD's declared `workers` and `queue.maxQueueDepth` as the baseline.
+Set via `autoscale.profile`. Expands into a complete `autoscale` block using the CRD's declared `workers` and `queue.maxDepth` as the baseline.
 
 | Profile | Trigger | Scale up | Interval | Cooldown | Use for |
 |---------|---------|----------|----------|----------|---------|

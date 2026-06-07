@@ -21,7 +21,7 @@ const (
 )
 
 // profileConfig holds the static multipliers and timing for each autoscale profile.
-// Thresholds are computed relative to maxQueueDepth; overrides relative to baseline.
+// Thresholds are computed relative to maxDepth; overrides relative to baseline.
 type profileConfig struct {
 	queueThresholdPct float64
 	workerMultiplier  float64
@@ -101,9 +101,9 @@ func IsValidAutoscaleProfile(name string) bool {
 }
 
 func expandBurst(b orktypes.AutoscaleBaseline, cfg profileConfig) *orktypes.AutoscaleSpec {
-	threshold := int(float64(b.MaxQueueDepth) * cfg.queueThresholdPct)
+	threshold := int(float64(b.MaxDepth) * cfg.queueThresholdPct)
 	workers := int(float64(b.Workers) * cfg.workerMultiplier)
-	queue := int(float64(b.MaxQueueDepth) * cfg.queueMultiplier)
+	queue := int(float64(b.MaxDepth) * cfg.queueMultiplier)
 	return &orktypes.AutoscaleSpec{
 		Interval: orktypes.Duration{Duration: cfg.interval},
 		Cooldown: orktypes.Duration{Duration: cfg.cooldown},
@@ -115,9 +115,9 @@ func expandBurst(b orktypes.AutoscaleBaseline, cfg profileConfig) *orktypes.Auto
 }
 
 func expandSteady(b orktypes.AutoscaleBaseline, cfg profileConfig) *orktypes.AutoscaleSpec {
-	threshold := int(float64(b.MaxQueueDepth) * cfg.queueThresholdPct)
+	threshold := int(float64(b.MaxDepth) * cfg.queueThresholdPct)
 	workers := int(float64(b.Workers) * cfg.workerMultiplier)
-	queue := int(float64(b.MaxQueueDepth) * cfg.queueMultiplier)
+	queue := int(float64(b.MaxDepth) * cfg.queueMultiplier)
 	return &orktypes.AutoscaleSpec{
 		Interval: orktypes.Duration{Duration: cfg.interval},
 		Cooldown: orktypes.Duration{Duration: cfg.cooldown},
@@ -133,7 +133,7 @@ func expandSteady(b orktypes.AutoscaleBaseline, cfg profileConfig) *orktypes.Aut
 
 func expandBatch(b orktypes.AutoscaleBaseline, cfg profileConfig) *orktypes.AutoscaleSpec {
 	workers := int(float64(b.Workers) * cfg.workerMultiplier)
-	queue := int(float64(b.MaxQueueDepth) * cfg.queueMultiplier)
+	queue := int(float64(b.MaxDepth) * cfg.queueMultiplier)
 	return &orktypes.AutoscaleSpec{
 		Interval: orktypes.Duration{Duration: cfg.interval},
 		Cooldown: orktypes.Duration{Duration: cfg.cooldown},
@@ -158,8 +158,8 @@ func expandLatencySensitive(b orktypes.AutoscaleBaseline, cfg profileConfig) *or
 
 func expandCostOptimized(b orktypes.AutoscaleBaseline, cfg profileConfig) *orktypes.AutoscaleSpec {
 	workers := int(math.Max(1, float64(b.Workers)*cfg.workerMultiplier))
-	queue := int(float64(b.MaxQueueDepth) * cfg.queueMultiplier)
-	threshold := int(float64(b.MaxQueueDepth) * cfg.queueThresholdPct)
+	queue := int(float64(b.MaxDepth) * cfg.queueMultiplier)
+	threshold := int(float64(b.MaxDepth) * cfg.queueThresholdPct)
 	return &orktypes.AutoscaleSpec{
 		Interval: orktypes.Duration{Duration: cfg.interval},
 		Cooldown: orktypes.Duration{Duration: cfg.cooldown},

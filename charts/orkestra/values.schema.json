@@ -50,8 +50,8 @@
             "logLevel":        { "type": "string", "enum": ["debug", "info", "warn", "error"] },
             "defaultWorkers":  { "type": "integer", "minimum": 1 },
             "defaultResync":   { "type": "string" },
-            "maxQueueDepth":   { "type": "integer", "minimum": 1 },
-            "degradeThreshold": { "type": "integer", "minimum": 0 },
+            "MaxDepth":   { "type": "integer", "minimum": 1 },
+            "failureThreshold": { "type": "integer", "minimum": 0 },
             "environment":     { "type": "string" }
           }
         },

@@ -1,7 +1,11 @@
 // pkg/orkestra-registry/pods/types.go
 package pods
 
-import orktypes "github.com/orkspace/orkestra/pkg/types"
+import (
+	corev1 "k8s.io/api/core/v1"
+
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+)
 
 // ResolvedPodSpec is the fully resolved Pod specification.
 // Produced by merging PodFromCRD (dynamic) and PodFromKatalog (static).
@@ -18,7 +22,8 @@ type ResolvedPodSpec struct {
 	Namespace string
 
 	// Port — container port. 0 means no port exposed.
-	Port int
+	Port     int
+	Protocol corev1.Protocol
 
 	// Labels — merged labels from both sources.
 	// Orkestra always adds: managed-by=orkestra, orkestra-owner=<cr-name>
@@ -55,6 +60,10 @@ type ResolvedPodSpec struct {
 
 	// PodSecurity — pod-level security settings.
 	PodSecurity *orktypes.PodSecurityContext
+
+	// Volumes / VolumeMounts — pod volumes and container mounts.
+	Volumes      []orktypes.VolumeSource
+	VolumeMounts []orktypes.VolumeMount
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.

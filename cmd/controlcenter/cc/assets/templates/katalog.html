@@ -243,8 +243,8 @@
       <div class="cc-card-grid" id="crdGrid">
         {{ range .CRDs }}
         {{ $queuePercent := 0 }}
-        {{ if gt .MaxQueueDepth 0 }}
-          {{ $queuePercent = div (mul .QueueDepth 100) .MaxQueueDepth }}
+        {{ if gt .MaxDepth 0 }}
+          {{ $queuePercent = div (mul .QueueDepth 100) .MaxDepth }}
         {{ end }}
 
         <div class="cc-card crd-grid-item"
@@ -298,7 +298,7 @@
               <div>
                 <div class="cc-card-row mb-1">
                   <span class="cc-card-row-label">Queue</span>
-                  <span class="cc-card-row-value font-mono">{{ .QueueDepth }}/{{ .MaxQueueDepth }}</span>
+                  <span class="cc-card-row-value font-mono">{{ .QueueDepth }}/{{ .MaxDepth }}</span>
                 </div>
                 <div class="cc-progress-bar-wrap">
                   <div class="cc-progress-bar{{ if gt $queuePercent 80 }} degraded{{ else if gt $queuePercent 50 }} pending{{ end }}"

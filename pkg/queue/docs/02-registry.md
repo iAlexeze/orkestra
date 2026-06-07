@@ -22,16 +22,16 @@ use `Lock`.
 Each CRD is registered before the kordinator starts workers:
 
 ```go
-func (qr *QueueRegistry) Register(gvk string, maxQueueDepth int) *Workqueue {
+func (qr *QueueRegistry) Register(gvk string, maxDepth int) *Workqueue {
     wq := NewWorkqueue()
     qr.queues[gvk] = wq
-    wq.maxQueueDepth.Store(int32(maxQueueDepth))
+    wq.maxDepth.Store(int32(maxDepth))
     return wq
 }
 ```
 
 `Register` is called in `konstructRuntime` during the Katalog loading step,
-one call per CRD with `queue.maxQueueDepth` from the Katalog. The returned
+one call per CRD with `queue.maxDepth` from the Katalog. The returned
 `*Workqueue` is passed to the informer's event handler so informer events go
 directly into the right queue.
 

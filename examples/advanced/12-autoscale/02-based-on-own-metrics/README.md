@@ -44,7 +44,7 @@ Visit: **http://localhost:8081**
 
 ## Run the Example
 
-### 1. Start the operator
+### 1. Start the runtime
 
 ```bash
 ork run
@@ -61,7 +61,7 @@ Watch the Control Center as resources are created:
   - Expand it to see the baseline configuration (exactly what you set in the katalog)
 
 > Note:  
-> You can override the default queue limit by setting `queue.maxQueueDepth`.
+> You can override the default queue limit by setting `queue.maxDepth`.
 
 ---
 

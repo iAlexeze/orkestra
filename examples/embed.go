@@ -9,5 +9,5 @@ import "embed"
 //
 // developer
 //
-//go:embed beginner intermediate advanced security use-cases Makefile setup-kind.sh load.sh
+//go:embed beginner intermediate advanced security use-cases
 var FS embed.FS

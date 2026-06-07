@@ -195,7 +195,17 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		if k.metadata.Name != "" {
 			crd.KatalogName = k.metadata.Name
 		} else {
-			crd.KatalogName = kfg.Cluster().Name()
+			crd.KatalogName = k.metadata.ClusterName + "-" + name
+		}
+
+		// Propagate katalog namespace — merger stamps it, but ensure the
+		// default is applied for any path that bypasses the merger (e.g. Go-mode).
+		if crd.KatalogNamespace == "" {
+			if k.metadata.Namespace != "" {
+				crd.KatalogNamespace = k.metadata.Namespace
+			} else {
+				crd.KatalogNamespace = "default"
+			}
 		}
 
 		// Name is already set from map key — normalise it
@@ -240,13 +250,13 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		}
 
 		// Handle QueueDepth
-		if crd.Queue.MaxQueueDepth == 0 {
-			crd.Queue.MaxQueueDepth = crd.SetMaxQueueDepth(kfg.Katalog().DefaultMaxQueueDepth())
+		if crd.Queue.MaxDepth == 0 {
+			crd.Queue.MaxDepth = crd.SetQueueDepth(kfg.Katalog().DefaultQueueDepth())
 		}
 
-		// Handle QueueDegradeThreshold
-		if crd.Queue.DegradeThreshold == 0 {
-			crd.Queue.DegradeThreshold = crd.SetMaxQueueDepth(kfg.Katalog().DefaultDegradeThreshold())
+		// Handle QueueFailureThreshold
+		if crd.Queue.FailureThreshold == 0 {
+			crd.Queue.FailureThreshold = crd.SetQueueDepth(kfg.Katalog().DefaultFailureThreshold())
 		}
 
 		// Handle Notifications
@@ -680,7 +690,7 @@ func (k *Katalog) validateTeams() error {
 		return nil
 	}
 
-	for name, _ := range k.enabledCRDs {
+	for name := range k.enabledCRDs {
 		if _, ok := k.Notification.Teams[name]; !ok {
 			return fmt.Errorf("%s team not found", name)
 		}

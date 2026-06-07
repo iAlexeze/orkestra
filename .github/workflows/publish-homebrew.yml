@@ -103,7 +103,7 @@ jobs:
         run: |
           VERSION="${TAG#v}"
           cat > homebrew-tap/Formula/orkcc.rb << EOF
-          class OrkCc < Formula
+          class Orkcc < Formula
             desc "Web-based Control Center for Orkestra - visualize and manage your operators"
             homepage "https://github.com/${REPO}"
             version "${VERSION}"

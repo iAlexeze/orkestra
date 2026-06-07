@@ -1,6 +1,6 @@
 # 01 — Reading the output
 
-```
+```text
 Simulating website/hello-website
 
   Cycle 1:

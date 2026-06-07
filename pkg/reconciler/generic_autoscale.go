@@ -126,7 +126,7 @@ func (r *GenericReconciler[PTR]) WorkerInfo(configuredResync string, configuredW
 // 0 means unlimited (the default). Safe to call at any time.
 func (r *GenericReconciler[PTR]) SetQueueDepthLimit(n int) {
 	if r.queue != nil {
-		r.queue.SetMaxQueueDepth(n)
+		r.queue.SetQueueDepth(n)
 	}
 	logger.Info().
 		Str("crd", r.crd.GVKString()).

@@ -21,6 +21,7 @@ import (
 	orkqueue "github.com/orkspace/orkestra/pkg/queue"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 )
@@ -118,6 +119,12 @@ type GenericReconciler[PTR domain.Object] struct {
 	rollbackClearFn   func()
 }
 
+// discardRecorder is the package-private noop used when nil is passed for ev.
+// Used by ork simulate
+type discardRecorder struct{}
+
+func (discardRecorder) Eventf(_ runtime.Object, _, _, _ string, _ ...interface{}) {}
+
 // NewGenericReconciler constructs a GenericReconciler for the given CRD.
 //
 // PTR must be a pointer to the concrete CR type (e.g. *Database). When called
@@ -160,6 +167,10 @@ func NewGenericReconciler[PTR domain.Object](
 		hooks = binder.BindToObjectHooks()
 	}
 
+	if ev == nil {
+		ev = discardRecorder{}
+	}
+
 	workers := crd.Workers
 	if workers <= 0 {
 		workers = 1
@@ -187,9 +198,9 @@ func NewGenericReconciler[PTR domain.Object](
 
 	if crd.AutoscaleEnabled() {
 		baseline := orktypes.AutoscaleBaseline{
-			Workers:       workers,
-			MaxQueueDepth: crd.Queue.MaxQueueDepth,
-			Resync:        crd.Resync,
+			Workers:  workers,
+			MaxDepth: crd.Queue.MaxDepth,
+			Resync:   crd.Resync,
 		}
 		r.autoscaler = autoscaler.NewAutoscaler(
 			crd.APITypes.Kind,
@@ -272,9 +283,12 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 
 	// Normalize before mutation/validation/template rendering ─────────────
 	// Normalize + base resolver
-	obj, resolver, err := r.applyNormalize(ctx, rawObj)
+	obj, resolver, normalizeChanges, err := r.applyNormalize(ctx, rawObj)
 	if err != nil {
 		return err
+	}
+	if len(normalizeChanges) > 0 {
+		resolver = resolver.WithNormalizeChanges(normalizeChanges)
 	}
 
 	// ──────────────────────────────────────────────────────────────────────────────
@@ -379,22 +393,24 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 
 	labelMgr.EnsureManagedLabel(obj)
 
-	shouldHaveProtection := r.kat.IsDeletionProtectionEnabled() && r.crd.ShouldProtectCRs()
-	labelMgr.EnsureDeletionProtectionLabel(obj, shouldHaveProtection)
+	if r.kat.IsDeletionProtectionEnabled() {
+		shouldHaveProtection := r.kat.IsDeletionProtectionEnabled() && r.crd.ShouldProtectCRs()
+		labelMgr.EnsureDeletionProtectionLabel(obj, shouldHaveProtection)
 
-	effectiveStrict := r.crd.IsStrictDeletionProtection(r.kat.IsStrictModeEnabled())
-	currentlyProtected := serverLabels[labels.DeletionProtectionLabel] == labels.DeletionProtectionValue
-	if !shouldHaveProtection && currentlyProtected {
-		effectiveStrict = false // keep exempt label present so the webhook allows the removal
+		effectiveStrict := r.crd.IsStrictDeletionProtection(r.kat.IsStrictModeEnabled())
+		currentlyProtected := serverLabels[labels.DeletionProtectionLabel] == labels.DeletionProtectionValue
+		if !shouldHaveProtection && currentlyProtected {
+			effectiveStrict = false // keep exempt label present so the webhook allows the removal
+		}
+
+		logger.Debug().
+			Str("crd", r.crd.Name).
+			Str("resource", obj.GetName()).
+			Bool("effectiveStrict", effectiveStrict).
+			Bool("currentlyProtected", currentlyProtected).
+			Msg("label: evaluating strict mode")
+		labelMgr.EnsureStrictModeExemptLabel(obj, effectiveStrict)
 	}
-
-	logger.Debug().
-		Str("crd", r.crd.Name).
-		Str("resource", obj.GetName()).
-		Bool("effectiveStrict", effectiveStrict).
-		Bool("currentlyProtected", currentlyProtected).
-		Msg("label: evaluating strict mode")
-	labelMgr.EnsureStrictModeExemptLabel(obj, effectiveStrict)
 
 	// One atomic patch: diff serverLabels → desired. No-op if nothing changed.
 	if err := r.kube.PatchLabels(ctx, obj, r.crd.GVR(), serverLabels, obj.GetLabels()); err != nil {
@@ -510,20 +526,21 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 	}
 
 	// ── Phase 5: Rollback trigger check ─────────────────────────────────────
-	if err != nil && r.crd.HasRollbackRules() {
-		key := obj.GetNamespace() + "/" + obj.GetName()
-		h := r.getFailureHistory(key)
-		derived := r.crd.OperatorBox.DerivedRollback()
-		h.record(derived.Trigger.EffectiveConsecutiveFailures())
-		if r.shouldRollback(len(h.times), h) {
-			logger.FromContext(ctx).Warn().
-				Str("name", obj.GetName()).
-				Msg("rollback: threshold reached — marking rollback active")
-			if markErr := r.markRollbackActive(ctx, obj); markErr != nil {
-				logger.FromContext(ctx).Error().Err(markErr).Msg("rollback: failed to mark active")
-			}
-		}
-	}
+	// TODO
+	// if err != nil && r.crd.HasRollbackRules() {
+	// 	key := obj.GetNamespace() + "/" + obj.GetName()
+	// 	h := r.getFailureHistory(key)
+	// 	derived := r.crd.OperatorBox.DerivedRollback()
+	// 	h.record(derived.Trigger.EffectiveConsecutiveFailures())
+	// 	if r.shouldRollback(len(h.times), h) {
+	// 		logger.FromContext(ctx).Warn().
+	// 			Str("name", obj.GetName()).
+	// 			Msg("rollback: threshold reached — marking rollback active")
+	// 		if markErr := r.markRollbackActive(ctx, obj); markErr != nil {
+	// 			logger.FromContext(ctx).Error().Err(markErr).Msg("rollback: failed to mark active")
+	// 		}
+	// 	}
+	// }
 
 	// ── Phase 6: Snapshot + rollback cleanup ─────────────────────────────────
 	// TODO

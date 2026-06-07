@@ -67,14 +67,14 @@ func (k *Katalog) mergeExpandedMotif(entry *orktypes.CRDEntry, expanded *motif.E
 		if !entry.HasOnCreate() {
 			entry.OperatorBox.OnCreate = &orktypes.HookTemplates{}
 		}
-		motif.MergeHookTemplates(entry.OperatorBox.OnCreate, expanded.OnCreate)
+		entry.OperatorBox.OnCreate.MergeFrom(expanded.OnCreate)
 	}
 	// resources flat fields → CRD onReconcile (drift correction)
 	if expanded.OnReconcile != nil {
 		if !entry.HasOnReconcile() {
 			entry.OperatorBox.OnReconcile = &orktypes.HookTemplates{}
 		}
-		motif.MergeHookTemplates(entry.OperatorBox.OnReconcile, expanded.OnReconcile)
+		entry.OperatorBox.OnReconcile.MergeFrom(expanded.OnReconcile)
 	}
 
 	// Merge status fields

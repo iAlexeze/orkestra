@@ -125,7 +125,7 @@ func (r *Resolver) resolveValueTemplates(v any) (any, error) {
 		// When a template expression was resolved, try to coerce the result to a
 		// native type so integer/boolean CRD fields pass API server validation.
 		if strings.Contains(vv, "{{") {
-			return tryCoerceString(res), nil
+			return TryCoerceString(res), nil
 		}
 		return res, nil
 
@@ -166,12 +166,12 @@ func (r *Resolver) resolveValueTemplates(v any) (any, error) {
 	}
 }
 
-// tryCoerceString attempts to parse a resolved template string as a native Go
+// TryCoerceString attempts to parse a resolved template string as a native Go
 // type so that integer/boolean CRD fields pass Kubernetes API server validation.
 // Only called when the original value contained a template expression ("{{").
 // Returns float64 for integers and floats (JSON-safe), bool for booleans,
 // and the original string for everything else.
-func tryCoerceString(s string) any {
+func TryCoerceString(s string) any {
 	if i, err := strconv.ParseInt(s, 10, 64); err == nil {
 		return float64(i)
 	}

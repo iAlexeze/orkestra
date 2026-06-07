@@ -112,12 +112,65 @@ setup-envtest use 1.32.x --bin-dir ~/.envtest-bins
 
 ---
 
-### 3. E2E tests — not yet written
+### 3. E2E tests — `ork e2e`
 
-End-to-end tests would run `ork` as a real process against a real cluster
-(e.g. kind) and verify that creating a CR causes the expected Deployments,
-Services, and health transitions. They are the planned next layer after
-integration coverage matures.
+E2E tests are declarative YAML documents (`kind: E2E`) executed by `ork e2e`.
+They run `ork` as a real process against a real cluster and verify that
+creating a CR causes the expected Deployments, Services, and health transitions.
+
+**How it works:**
+
+```
+kind cluster → CRD apply → setup manifests → bundle generate+apply
+  → ork helm install → CR apply → expectation polling → teardown
+```
+
+Teardown always runs — owned clusters are deleted unless `--keep-cluster` is
+set; borrowed clusters (`--use-current` / `--cluster`) are cleaned up but not
+destroyed.
+
+**Running an E2E spec:**
+
+```bash
+ork e2e ./e2e.yaml                        # provisions a new kind cluster
+ork e2e ./e2e.yaml --use-current          # uses the current kube context
+ork e2e ./e2e.yaml --cluster my-ctx       # uses a specific named context
+ork e2e ./e2e.yaml --keep-cluster         # skips cluster teardown (debug)
+```
+
+**Writing an E2E spec (`kind: E2E`):**
+
+```yaml
+apiVersion: orkestra.orkspace.io/v1
+kind: E2E
+metadata:
+  name: website-smoke
+spec:
+  katalog: ./katalog.yaml
+  cr: ./website-cr.yaml
+  cluster:
+    provider: kind          # default
+    name: ork-e2e           # default
+  expect:
+    - after: cr-applied
+      timeout: 60s
+      resources:
+        - kind: Deployment
+          name: website
+          namespace: default
+          fields:
+            spec.replicas: 1
+        - kind: Service
+          name: website-svc
+          namespace: default
+```
+
+Expectations are polled until they pass or the timeout expires. Each
+`resources` entry can check field values, existence, and command exit codes.
+Results are returned as a `*Result` with per-case timings — `ork registry push`
+embeds them as OCI annotations.
+
+E2E specs live alongside the Katalog they test, not under `tests/`.
 
 ---
 

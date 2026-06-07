@@ -1,170 +1,72 @@
-# Multi-Region Map Demo — Per-Region Config with forEach
+# Multi-Region Map — forEach over a map
 
-This example deploys a real web application into multiple regions from a single
-CR. Each region gets its own Deployment and Service, with independent replica
-count and port configured directly in the CR — no Go code, no Helm chart, no
-templating engine.
-
-This is the **map forEach** pattern. Unlike the list forEach example (which
-deploys the same config everywhere), here every region entry is a map with
-its own `replicas` and `port`. Orkestra expands them at reconcile time.
+**Builds on:** [full-stack-app/01-multi-region](../full-stack-app/01-multi-region/README.md) — list forEach, same config for all regions.
+Here each region carries its own replica count and port — this is what map forEach enables.
 
 ---
 
-## What the app shows
+You have one application and you want to run it in three regions, each with its own replica count and port. Normally that means a reconciler loop in Go, building one Deployment and Service per region. Here it is a twelve-line `forEach` block in a Katalog — Orkestra expands it at reconcile time.
 
-The demo app reads two environment variables Orkestra injects from the CR:
+The key property: **adding or changing a region requires editing only the CR** — no Katalog change, no redeployment of Orkestra. Step 6 demonstrates this live.
 
-| Variable | Source in CR | Purpose |
-|---|---|---|
-| `REGION` | map key (`us-east-1`, `eu-west-1`, ...) | shown in the page |
-| `PORT` | `regions.<name>.port` or `defaultPort` | port the app listens on |
-
-After port-forwarding to any region's Service you will see:
-
-```
-Orkestra Multi-Region Demo
-Region: ap-southeast-1
-This instance is running in ap-southeast-1.
-```
-
-Each region's pod shows its own name. The replicas and port are different
-per-region — Orkestra reads them from the CR map and wires everything up.
+**What you learn:** `forEach` over a map field. How `.item` carries the map key (the region name) and `.value.*` carries the per-region data. How a single CR entry becomes N child resources automatically.
 
 ---
 
-## How the map forEach works
-
-The CR declares regions as a map instead of a list:
-
-```yaml
-spec:
-  regions:
-    us-east-1:
-      replicas: 3
-      port: 8080
-    eu-west-1:
-      replicas: 1
-      port: 8081
-    ap-southeast-1:
-      replicas: 2
-      port: 8080
-```
-
-The Katalog template uses `.item` for the region name and `.value.*` for the
-per-region fields:
-
-```yaml
-deployments:
-  - name: "{{ .metadata.name }}-{{ .item }}"
-    replicas: "{{ or .value.replicas .spec.defaultReplicas }}"
-    port: "{{ or .value.port .spec.defaultPort }}"
-    env:
-      - name: REGION
-        value: "{{ .item }}"
-      - name: PORT
-        value: "{{ or .value.port .spec.defaultPort }}"
-    forEach:
-      field: spec.regions
-      as: item
-```
-
-Orkestra expands this into three fully-resolved Deployment declarations before
-a single API call is made. The `or` fallback means a region entry can omit
-`replicas` or `port` and the CR-level defaults apply.
-
----
-
-## Step 1 — Apply the CRD
+## Step 1 — Validate
 
 ```bash
-kubectl apply -f examples/multi-region-map/crd.yaml
+ork validate
 ```
 
-This registers `MultiRegionApp` in your cluster. Check it appeared:
-
-```bash
-kubectl get crd multiregionapps.advanced.orkestra.io
+Expected:
+```
+✓ multi-region-app
+    kind: MultiRegionApp
+    group: advanced.orkestra.io / version: v1alpha1 / plural: multiregionapps
+    mode: dynamic / workers: 2 / resync: 30s
 ```
 
 ---
 
-## Step 2 — Run Orkestra
-
-Choose the path that matches your setup.
-
-### Option A — Dev mode (quickest)
-
-Runs Orkestra directly against your current kubeconfig. No cluster deployment needed.
+## Step 2 — Start the runtime
 
 ```bash
-ork run -f examples/multi-region-map/katalog.yaml
+ork run
 ```
 
-### Option B — Helm deployment (recommended for shared clusters)
+Orkestra registers `crd.yaml` and starts the operator. You will see:
 
-If Orkestra is already installed via Helm, generate the least-privilege RBAC,
-ServiceAccount, and Katalog ConfigMap for this example:
-
-```bash
-# Full bundle — RBAC + ServiceAccount + ConfigMap
-ork generate bundle \
-  -f examples/multi-region-map/katalog.yaml \
-  -o /tmp/multi-region-bundle.yaml
-
-kubectl apply -f /tmp/multi-region-bundle.yaml
+```
+{"level":"info","message":"health server listening on :8080"}
+{"level":"info","crd":"advanced.orkestra.io/v1alpha1, Kind=MultiRegionApp","message":"informer synced"}
+{"level":"info","message":"✅ All komponents started successfully"}
 ```
 
-Or generate each piece separately:
-
-```bash
-# ConfigMap only — if RBAC is already applied
-ork generate configmap \
-  -f examples/multi-region-map/katalog.yaml \
-  -o /tmp/multi-region-configmap.yaml
-
-# RBAC only
-ork generate bundle --rbac \
-  -f examples/multi-region-map/katalog.yaml \
-  -o /tmp/multi-region-rbac.yaml
-```
+---
 
 ## Step 3 — Open the Control Center
-### If running with Helm
-```bash
-kubectl port-forward svc/orkestra-cc -n orkestra-system 8081:8081 &
-```
 
-Open **http://localhost:8081** and select **multi-region-demo**. You will see
-the `multi-region-app` operatorBox in `started` state — no CRs yet, so no
-reconciles have run.
-
----
-
-### If running directly
-Open the Control Center in a second terminal:
+In a **separate terminal**:
 
 ```bash
-ork control             # serves on http://localhost:8081 by default
-# username:password → orkestra
-ork control --port 9090 # or on a custom port
+ork control
 # username:password → orkestra
 ```
 
-Open **http://localhost:8081** (or whichever port you passed to `ork control`).
-Select **multi-region-demo**. You will see
-the `multi-region-app` operatorBox in `started` state — no CRs yet, so no
-reconciles have run.
+Open [http://localhost:8081](http://localhost:8081).
+
+Select **multi-region-demo** from the katalog list, then select the **MultiRegionApp** CRD. You will see an empty view — no CRs yet. Keep this open.
 
 ---
 
 ## Step 4 — Apply the CR
 
 ```bash
-kubectl apply -f examples/multi-region-map/cr.yaml
+kubectl apply -f cr.yaml
 ```
 
-The CR declares three regions with distinct replica counts and ports:
+The [CR](cr.yaml) declares three regions as a map. Each key is a region name; each value carries that region's specific config:
 
 ```yaml
 spec:
@@ -183,124 +85,193 @@ spec:
       port: 8080
 ```
 
+Switch to the Control Center. The `my-multi-region` CR appears in the list. Click it, then click the **top-right button** to open child resources. You will see **6 children** — one Deployment and one Service per region.
+
+> The Katalog's `forEach` block iterates `spec.regions` once per key. `.item` is the region name, `.value.replicas` and `.value.port` are the per-region overrides. Where a region omits a field, the `or` fallback picks up `spec.defaultReplicas` or `spec.defaultPort`.
+
 ---
 
-## Step 5 — Watch reconciliation
-
-Orkestra reconciles immediately. Watch the resources appear:
+## Step 5 — Check what got created
 
 ```bash
 kubectl get deployments,services -l orkestra-owner=my-multi-region
 ```
 
-Expected output (within a few seconds):
+Expected (within a few seconds):
 
 ```
-NAME                                          READY   UP-TO-DATE   AVAILABLE
-deployment.apps/my-multi-region-ap-southeast-1   2/2     2            2
-deployment.apps/my-multi-region-eu-west-1        1/1     1            1
-deployment.apps/my-multi-region-us-east-1        3/3     3            3
+NAME                                                READY   UP-TO-DATE   AVAILABLE
+deployment.apps/my-multi-region-ap-southeast-1     2/2     2            2
+deployment.apps/my-multi-region-eu-west-1          1/1     1            1
+deployment.apps/my-multi-region-us-east-1          3/3     3            3
 
-NAME                                              TYPE        CLUSTER-IP   PORT(S)
-service/my-multi-region-ap-southeast-1-svc   ClusterIP   ...          8080/TCP
-service/my-multi-region-eu-west-1-svc        ClusterIP   ...          8081/TCP
-service/my-multi-region-us-east-1-svc        ClusterIP   ...          8080/TCP
+NAME                                                    TYPE        PORT(S)
+service/my-multi-region-ap-southeast-1-svc             ClusterIP   8080/TCP
+service/my-multi-region-eu-west-1-svc                  ClusterIP   8081/TCP
+service/my-multi-region-us-east-1-svc                  ClusterIP   8082/TCP
 ```
 
-Replica counts match exactly what you declared in the CR map.
-`eu-west-1` runs on port `8081`. All others on `8080`.
+One CR entry → 6 Kubernetes resources. Replica counts and ports match exactly what you declared in the map.
 
-In the **Control Center**:
+Check status on the CR itself:
 
-1. Click **multi-region-app** → **View Resources**
-2. Click `my-multi-region`
-3. **Children** section shows all 6 child resources (3 Deployments + 3 Services)
-4. **Status** section shows `phase: Ready` once the first replica is up
+```bash
+kubectl get multiregionapp my-multi-region
+```
+
+```
+NAME               PHASE   REGIONS   AGE
+my-multi-region    Ready             30s
+```
 
 ---
 
-## Step 6 — Port-forward and see each region
+## Step 6 — Port-forward and visit each region
 
 Open three terminals and forward to each region's Service:
 
 ```bash
-# Terminal 1 — ap-southeast-1 (port 8080)
-kubectl port-forward svc/my-multi-region-ap-southeast-1-svc 8001:8080
+# Terminal 1 — us-east-1
+kubectl port-forward svc/my-multi-region-us-east-1-svc 8000:8080
 
-# Terminal 2 — eu-west-1 (port 8081)
-kubectl port-forward svc/my-multi-region-eu-west-1-svc 8002:8081
+# Terminal 2 — eu-west-1
+kubectl port-forward svc/my-multi-region-eu-west-1-svc 8001:8081
 
-# Terminal 3 — us-east-1 (port 8080)
-kubectl port-forward svc/my-multi-region-us-east-1-svc 8003:8080
+# Terminal 3 — ap-southeast-1
+kubectl port-forward svc/my-multi-region-ap-southeast-1-svc 8002:8082
 ```
 
 Visit each in your browser:
 
 | URL | Shows |
 |---|---|
-| http://localhost:8001 | `Region: ap-southeast-1` |
-| http://localhost:8002 | `Region: eu-west-1` |
-| http://localhost:8003 | `Region: us-east-1` |
+| [http://localhost:8000](http://localhost:8000) | `Region: us-east-1` |
+| [http://localhost:8001](http://localhost:8001) | `Region: eu-west-1` |
+| [http://localhost:8002](http://localhost:8002) | `Region: ap-southeast-1` |
 
-Each pod only knows its own region because Orkestra injected `REGION={{ .item }}`
-and `PORT={{ or .value.port .spec.defaultPort }}` at reconcile time. The app
-itself has no region-specific logic — it just reads the environment.
+Each pod only knows its own region because Orkestra injected `REGION={{ .item }}` and `PORT={{ or .value.port .spec.defaultPort }}` at reconcile time. The container image is identical across all three — no region-specific build, no env-file per region.
 
 ---
 
 ## Step 7 — Change a region live
 
-Edit the CR to scale `eu-west-1` up and shift its port:
+Scale `eu-west-1` up and shift its port:
 
 ```bash
 kubectl edit multiregionapp my-multi-region
 ```
 
 Change:
+
 ```yaml
 eu-west-1:
   replicas: 3
   port: 9000
 ```
 
-Orkestra reconciles within `resync: 30s` (or immediately on the edit event).
-Watch the deployment scale and the Service port update:
+Orkestra reconciles immediately on the edit event. Watch the deployment scale:
 
 ```bash
 kubectl get deployment my-multi-region-eu-west-1 -w
+```
+
+```
+NAME                             READY   UP-TO-DATE   AVAILABLE
+my-multi-region-eu-west-1       1/1     1            1
+my-multi-region-eu-west-1       1/1     1            1
+my-multi-region-eu-west-1       3/3     3            3
+```
+
+Check the Service port updated too:
+
+```bash
 kubectl get svc my-multi-region-eu-west-1-svc
 ```
 
-No Katalog change. No redeployment of Orkestra. The operator reflected the
-new desired state from the CR map automatically.
+```
+NAME                              TYPE        CLUSTER-IP   PORT(S)
+my-multi-region-eu-west-1-svc    ClusterIP   ...          9000/TCP
+```
+
+No Katalog change. No redeployment of Orkestra. The map in the CR is the single source of truth — edit the map, the cluster reflects it.
 
 ---
 
-## What Orkestra replaced here
+## How the forEach works
 
-Without Orkestra you would have written a reconciler that:
+The Katalog deployment block:
 
-```go
-func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-    var app v1alpha1.MultiRegionApp
-    r.Get(ctx, req.NamespacedName, &app)
-
-    for region, config := range app.Spec.Regions {
-        deploy := buildDeployment(app.Name, region, config.Replicas, config.Port, app.Spec.Image)
-        if err := r.createOrUpdate(ctx, deploy); err != nil {
-            return ctrl.Result{}, err
-        }
-        svc := buildService(app.Name, region, config.Port)
-        svc.Spec.Selector = map[string]string{"app": app.Name + "-" + region}
-        if err := r.createOrUpdate(ctx, svc); err != nil {
-            return ctrl.Result{}, err
-        }
-    }
-    return ctrl.Result{}, nil
-}
+```yaml
+deployments:
+  - name: "{{ .metadata.name }}-{{ .item }}"
+    image: "{{ .spec.image }}"
+    replicas: "{{ or .value.replicas .spec.defaultReplicas }}"
+    port: "{{ or .value.port .spec.defaultPort }}"
+    env:
+      - name: REGION
+        value: "{{ .item }}"
+      - name: PORT
+        value: "{{ or .value.port .spec.defaultPort }}"
+    forEach:
+      field: spec.regions
+      as: item
 ```
 
-That is ~80 lines of Go including type definitions, owner references, drift
-detection, and label wiring. The Katalog replaces all of it with the
-`forEach` map expansion — and adds drift correction, status management, and
-reconcile observability for free.
+When `spec.regions` is a **map**, Orkestra iterates once per key-value pair:
+
+| Variable | Value for `eu-west-1` entry |
+|---|---|
+| `.item` | `eu-west-1` |
+| `.value.replicas` | `1` |
+| `.value.port` | `8081` |
+| `.spec.defaultReplicas` | `1` (fallback if `.value.replicas` absent) |
+| `.spec.defaultPort` | `8080` (fallback if `.value.port` absent) |
+
+The Service block uses the same `forEach` — so each Deployment gets exactly one matching Service, selector already wired, port already set.
+
+---
+
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, applies the CRD, starts the operator, applies the CR, asserts all six regional resources are created with the correct replica counts, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Three Deployments created
+    after: cr-applied
+    timeout: 90s
+    resources:
+      - kind: Deployment
+        name: my-multi-region-us-east-1
+        namespace: default
+        ready: true
+      - kind: Deployment
+        name: my-multi-region-eu-west-1
+        namespace: default
+        ready: true
+      - kind: Deployment
+        name: my-multi-region-ap-southeast-1
+        namespace: default
+        ready: true
+
+  - name: us-east-1 has 3 replicas
+    after: cr-applied
+    timeout: 90s
+    commands:
+      - run: kubectl get deployment my-multi-region-us-east-1 -o jsonpath='{.spec.replicas}'
+        outputContains: "3"
+```
+
+---
+
+## Cleanup
+
+```bash
+chmod +x cleanup.sh && ./cleanup.sh
+```

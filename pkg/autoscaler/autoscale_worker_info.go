@@ -131,7 +131,7 @@ func (a *Autoscaler) Snapshot() *autoscalerStateSnapshot {
 		return nil
 	}
 	workers := a.baseline.Workers
-	qdepth := a.baseline.MaxQueueDepth
+	qdepth := a.baseline.MaxDepth
 	resync := a.baseline.Resync
 	overrideActive := a.state.OverrideActive
 

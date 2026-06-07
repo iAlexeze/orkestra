@@ -1,3 +1,105 @@
+## v0.7.3 Simulate: standalone operation
+
+`ork simulate` is now a self-contained command. Key changes:
+
+**Flat imports syntax** — simulate aggregators now use a plain list, matching e2e:
+
+```yaml
+imports:
+  - ./09-hooks/simulate.yaml
+  - ./10-constructor/simulate.yaml
+```
+
+**`--dev-server` flag** — start the mock server before running simulate, no cluster needed:
+
+```bash
+ork simulate --dev-server
+ork simulate -f simulate.yaml --dev-server
+```
+
+**Decoupled from e2e** — passing an `e2e.yaml` to `ork simulate` now returns a helpful error instead of silently falling back to op-print mode.
+
+**Example suites** — root `simulate.yaml` aggregators added to the beginner, intermediate, and external example packs. The three external examples with `serviceUrl`/`healthCheckUrl` now have full simulate.yaml files with `expect:` assertions, all runnable with `--dev-server`.
+
+**health-gate CRs** — `cr-healthy.yaml` and `cr-degraded.yaml` now point to `localhost:9999` instead of httpbin.org, so they work with `--dev-server` without any external network dependency.
+
+**`ork simulate init` improvements** — the generated `simulate.yaml` now includes a commented `absent:` block (seeded with the first observed resource type) as a hint for failure-path coverage. A new `--dry-run` flag prints to stdout instead of writing the file — useful for previewing before committing.
+
+## v0.7.1 — Simulate + E2E fixes
+
+### `ork simulate`
+
+- **`e2e.yaml` input** — `ork simulate -f e2e.yaml` reads `spec.katalog` and `spec.cr`; skips `customOperator: true`; expands aggregator imports recursively.
+- **`./...` discovery** — discovers all `*e2e.yaml` files, prints per-file results and aggregate summary; exit code 1 on cycle errors; `--skip` patterns follow the same convention as `ork e2e ./... --skip`.
+- **`--skip-external`** — stubs `external:` HTTP calls with empty 200 responses. Default: calls hit the real network.
+- **`--debug-ops`** — prints every recorded op with cycle number (diagnostic).
+- **GVK-aware CR matching** — multi-document CR files (separated by `---`) supported; each CRD matched to the CR whose `kind` matches `apiTypes.kind`; CRDs with no matching CR skipped with a note.
+- **`cross:` observation** — when sibling CRDs' CRs are present in the CR file, they are seeded into per-CRD fake informers and wired as `katalogRegistry`; `cross.*` fields populate correctly.
+- **Hook wiring** — `HookRegistry[gvk]` looked up at runtime; custom binary runs real hooks against the fake cluster.
+- **Constructor wiring** — `ReconcilerRegistry[gvk]` looked up; constructor called with `fakeKube`, `informer`, and `event.Discard()`.
+- **Typed indexer** — typed CRDs have their CR converted via JSON round-trip to the registered Go type before being seeded; fixes constructor type-assertions and hook `BindToObjectHooks` panics.
+- **`event.Discard()`** — constructors receive a silent no-op recorder; `noop.go` removed; `Recorder` interface moved to `event.go`.
+- **Motif path fix** — `isFileMotif()` implemented; motif import file paths absolutized relative to the katalog dir (same fix as `crdFile`).
+
+### E2E
+
+- **`crdFile` path in bundle** — `CRDFile` is now cleared from every `CRDEntry` after `populateAPITypesFromCRDFile` runs; `apiTypes` are fully populated before the field is erased. Prevents the runtime pod from trying to read a local filesystem path that does not exist inside the container.
+- **`10-motif-composition` e2e** — `crd-worker.yaml` added to `setup.apply`; both CRDs are installed before the CR is applied.
+
+### Internals
+
+- **Logger default level** — `pkg/logger` sets `InfoLevel` in its own `init()`; typeregistry debug logs no longer appear before CLI flag parsing.
+- **`NewReconcilerFunc`** — changed from `*event.Event` to `event.Recorder` interface; registry template closure updated to `kubeclient.KubeClient` + `event.Recorder`.
+
+---
+
+## v0.7.0 — Early Access
+
+This release ships the first public early-access build of Orkestra. It focuses on the E2E framework, the typed operator toolchain, and making every example runnable end-to-end without manual pre-steps.
+
+### E2E Framework
+
+- **`wait:` on import declarations** — sleep a duration before an import starts; validated at load time, shown in `ork validate`.
+- **`spec.customOperator: true`** — skip the Orkestra bundle and Helm install; use `ork e2e` as a pure test harness for any operator (cert-manager, custom controllers, etc.).
+- **Shared Orkestra across imports** — one Helm install and one uninstall per suite; `sharedOrkestra` prevents namespace deletion from cascading across imports. All sync output suppressed.
+- **`ork e2e ./...` discovery** — recursive discovery of e2e files, skips pure aggregators, supports `--wait` and `--skip`.
+- **`--dry-run` flag** — single file calls `ork validate`; `./...` lists files with count and first ten.
+- **Helm output suppression** — install/uninstall/setup output captured silently; included in error message on failure.
+- **Bug fixes** — `isPureAggregator` inline check, `WaitForResource` for Deployments, `checkAll` command-before-resource ordering.
+
+### CLI — `ork generate registry`
+
+- **Registry generation fixed** — `generateKatalog` was setting `kat.Spec` but never calling `m.Enabled()`, so `kat.Enabled()` always returned nil. `generate.TypeRegistry` iterated over an empty map and silently exited on every invocation — no registry file was ever written.
+- **`TypeRegistry` returns `(bool, error)`** — `ensureMainGo` is now only written when the registry actually produced content.
+- **`CustomHooksEnabled` and `ConstructorEnabled` corrected** — both methods returned `== nil` instead of `!= nil`. Safe for declarative CRDs (all call sites are guarded by `DefaultReconcile()`) but would have caused panics and wrong behaviour for typed operators.
+- **Output style** — `→ generating registry for <module>`, `✓ pkg/typeregistry/zz_generated_typeregistry.go`, `○ nothing to generate` — matches the rest of the CLI.
+
+### CLI — `ork init --pack advanced`
+
+- **Typed examples embedded** — `go:embed` silently skips subdirectories containing a `go.mod` (nested module rule). `09-hooks`, `10-constructor`, and `11-mixed-operator-pattern` were missing from every `ork init --pack advanced` invocation. Fixed by renaming `go.mod`/`go.sum` → `.txt` at embed time.
+- **Transparent extraction** — `ork init` now restores `go.mod.txt` → `go.mod`, `go.sum.txt` → `go.sum`, and strips `//go:build ignore` from all extracted `.go` files. Users get a fully compilable project with no manual steps.
+- **Makefile safety net** — `make registry` and `make build` in typed examples perform the same restoration for users who clone the repo directly.
+
+### CLI — path-relative resolution
+
+- `crdFile`, `crFiles`, `setup.apply`, and Komposer `imports.files` now resolve relative to the declaring file. `ork run -f /any/path/katalog.yaml` works from any directory.
+- CLI-provided `-f` paths are converted to absolute on intake so downstream resolution is always anchored correctly.
+
+### Examples
+
+- **`examples/use-cases/full-stack-app`** — all six sub-katalogs switched from inline `apiTypes:` to `crdFile:`; manual `kubectl apply -f crd.yaml` pre-step eliminated from every walkthrough. `03-cross-crd/crd.yaml` split into `crd-managed-database.yaml` + `crd-database-backed-app.yaml`. `06-full-stack` uses a `setup:` block to pull in the managed-database dependency.
+- **Advanced typed examples** — `09-hooks` (typed Go hooks), `10-constructor` (custom reconciler), and `11-mixed-operator-pattern` (dynamic + hooks + constructor together) fully implemented, documented, and e2e-ready.
+- **Typed e2e documented** — READMEs for typed examples now explain `--set runtime.image.repository` / `--set runtime.image.tag` so `ork e2e` deploys the user's custom image (which contains the generated type registry) instead of the default Orkestra image.
+
+### Documentation
+
+- **`pkg/e2e` developer docs** — all four existing reference pages rewritten; three new pages: `05-imports.md`, `06-discovery.md`, `07-custom-operator.md`.
+- **Schema docs** — `wait:` imports field and `spec.customOperator` documented.
+- **Getting-started** — CLI reference table updated; `ork run -f` note on optional `-f` when `katalog.yaml` is in the current directory.
+- **Blog** — `04-why-i-built-this.md`.
+
+---
+
 ## pre-v1-alpha — Public Deployment, CRD Health Stability, Multi-Runtime
 
 ### Public Deployment (`deployments/public/`)
@@ -16,10 +118,10 @@
 - `SetStarted()` was unconditionally setting `pending=true` on every worker start, including resync-triggered restarts — overwriting the `pending=false` set by `RecordSuccess()`. Now only sets pending if the CRD has not yet successfully reconciled.
 
 **CRD showing "not started" or "degraded" under network lag**
-- `PostStartRetryInterval` was left at 3 seconds (a debug value) instead of the intended 30 seconds. This caused the retry loop to hit the API server every 3 seconds across all CRDs continuously.
+- `postStartRetryInterval` was left at 3 seconds (a debug value) instead of the intended 30 seconds. This caused the retry loop to hit the API server every 3 seconds across all CRDs continuously.
 - `crdExists()` collapsed all errors — including network timeouts and dial failures — into `false`, treating any transient API server hiccup as "CRD disappeared." Phase 1 (runtime disappearance check) and Phase 2 (missing CRD activation) would then call `SetMissingAtRuntime()` + `SetDegraded()`, flipping healthy CRDs to degraded and pending CRDs to "not started."
 - Fixed: `crdExists()` now returns a tri-state — `(true, nil)` exists, `(false, nil)` definitively absent, `(false, err)` transient. All three callers skip state changes when `err != nil`.
-- `PostStartRetryInterval` restored to 90 seconds with exponential backoff capped at 5 minutes.
+- `postStartRetryInterval` restored to 90 seconds with exponential backoff capped at 5 minutes.
 
 ### RBAC — Namespace-Scoped ClusterRole Names
 

@@ -4,6 +4,7 @@ package cli
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/orkspace/orkestra/examples"
 )
@@ -21,13 +23,13 @@ import (
 // ──────────────────────────────────────────────────────────────────────────────
 
 func extractEmbeddedPack(root, pack string) error {
-	p, ok := Packs[pack]
+	p, ok := GetPack(pack)
 	if !ok {
 		return fmt.Errorf("unknown pack %q — run `ork init --list` to see available packs", pack)
 	}
 	srcPath := p.Path
 
-	targetDir := filepath.Join(root, pack)
+	targetDir := filepath.Join(root, filepath.Base(p.Path))
 
 	if err := fs.WalkDir(examples.FS, srcPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -45,6 +47,13 @@ func extractEmbeddedPack(root, pack string) error {
 			return os.MkdirAll(dst, 0755)
 		}
 
+		// go.mod.txt and go.sum.txt are renamed at embed time because
+		// //go:embed skips subdirectories containing a go.mod (nested modules).
+		// Restore the real names transparently on extraction.
+		if name := d.Name(); name == "go.mod.txt" || name == "go.sum.txt" {
+			dst = filepath.Join(filepath.Dir(dst), strings.TrimSuffix(name, ".txt"))
+		}
+
 		if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 			return err
 		}
@@ -54,24 +63,16 @@ func extractEmbeddedPack(root, pack string) error {
 			return err
 		}
 
+		// Strip //go:build ignore added at embed time to keep go vet clean.
+		// The tag is only meaningful inside the parent module; the user's
+		// extracted project has its own go.mod and must compile normally.
+		if filepath.Ext(dst) == ".go" {
+			data = bytes.TrimPrefix(data, []byte("//go:build ignore\n\n"))
+		}
+
 		return os.WriteFile(dst, data, 0644)
 	}); err != nil {
 		return err
-	}
-
-	// Copy shared files (Makefile, setup-kind.sh, load.sh) into the pack root.
-	// These are at the examples/ embed root, not inside any pack directory.
-	sharedFiles := map[string]os.FileMode{
-		"Makefile":      0644,
-		"setup-kind.sh": 0755,
-		"load.sh":       0755,
-	}
-	for name, mode := range sharedFiles {
-		data, err := examples.FS.ReadFile(name)
-		if err != nil {
-			continue // shared file absent in this build — non-fatal
-		}
-		_ = os.WriteFile(filepath.Join(targetDir, name), data, mode)
 	}
 
 	return nil

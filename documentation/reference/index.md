@@ -28,7 +28,7 @@ Complete field reference for every Orkestra document type.
 
 | Command | Description |
 |---------|-------------|
-| [ork run](./cli/run.md) | Start the operator runtime |
+| [ork run](./cli/run.md) | Start the runtime |
 | [ork validate](./cli/validate.md) | Validate a Katalog or Komposer |
 | [ork template](./cli/template.md) | Render the merged, resolved Katalog |
 | [ork simulate](./cli/simulate.md) | Simulate reconciliation in memory |

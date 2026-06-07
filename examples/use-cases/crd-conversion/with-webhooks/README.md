@@ -54,16 +54,16 @@ Orkestra expresses the conversion as two one-liner notes:
   spec:
     schedule: "{{ cronToMap .spec.schedule }}"
 
-# v2 → v1: cronFromAny handles both structured maps and legacy flat strings.
+# v2 → v1: cronFromMap reassembles the structured map back into a cron string
 - from: v2
   to: v1
   spec:
-    schedule: "{{ cronFromAny .spec.schedule }}"
+    schedule: "{{ cronFromMap .spec.schedule }}"
 ```
 
 Round-trip: `"0 2 * * 1-5"` → `{minute:"0", hour:"2", dom:"*", month:"*", dow:"1-5"}` → `"0 2 * * 1-5"`. Lossless. `@`-macros (`@hourly`, `@daily`) are expanded transparently.
 
-Both notes accept either schedule shape — if an object was stored before the schema added structured fields, `cronFromAny` falls back to normalising the flat string rather than failing.
+`cronFromAny` is used separately in status fields — it accepts either a string or a map and produces the canonical cron string. This is what drives the `SCHEDULE` column in `kubectl get`.
 
 ---
 
@@ -90,15 +90,11 @@ When you apply a CronJob CR, Orkestra:
 
 1. **Converts** — if the CR is v1, Orkestra's `/convert` endpoint splits the cron string into structured fields and stores it as v2. When you read it back as v1, the cron string is reconstructed.
 
-2. **Validates** — ensures `spec.image` and `spec.schedule` are present. A deny rule blocks the object if either is missing.
+2. **Reconciles** — creates a Kubernetes `batch/v1 CronJob` with the schedule reconstructed by `cronFromAny`. The child CronJob has owner references — garbage collected when the CR is deleted.
 
-3. **Mutates** — applies defaults (`concurrencyPolicy: Allow`, `successfulJobsHistoryLimit: 3`, `failedJobsHistoryLimit: 1`) before validation runs. `mutateFirst: true` ensures defaults exist before rules check them.
+3. **Propagates status** — writes `phase`, `scheduleExpression`, `lastScheduleTime`, and `nextScheduleTime` after every successful reconcile. Phase respects `spec.suspend` via the `ternary` note.
 
-4. **Reconciles** — creates a Kubernetes `batch/v1 CronJob` with the schedule reconstructed by `cronFromAny`. The child CronJob has owner references — garbage collected when the CR is deleted.
-
-5. **Propagates status** — writes `phase`, `scheduleExpression`, `lastScheduleTime`, and `nextScheduleTime` after every successful reconcile. Phase respects `spec.suspend` via the `ternary` note.
-
-6. **Corrects drift** — with `reconcile: true`, any external change to the child CronJob is restored on the next reconcile cycle.
+4. **Corrects drift** — with `reconcile: true`, any external change to the child CronJob is restored on the next reconcile cycle.
 
 ---
 
@@ -160,7 +156,7 @@ kubectl apply -f cr-v1.yaml
 ### 7. Verify reconciliation
 
 ```bash
-kubectl get cj
+kubectl get cronjob -n default 
 ```
 
 Expected:
@@ -198,7 +194,7 @@ The object is stored once in v2. Orkestra converts on read when v1 is requested.
 ## Observing conversions
 
 ```bash
-kubectl port-forward svc/orkestra-runtime 8080:8080 -n orkestra-system &
+kubectl port-forward svc/orkestra-gateway 8080:8080 -n orkestra-system &
 
 curl localhost:8080/katalog/cronjob-v2 | jq '.conversion'
 ```
@@ -253,16 +249,45 @@ kubectl patch cronjob.v2.demo.orkestra.io daily-backup -n default \
 
 ## The notes that made this possible
 
-| Note | What it does | Replaces in Go |
-|---|---|---|
-| `cronToMap .spec.schedule` | Split cron string into structured map | `strings.Split` + five field assignments |
-| `cronFromAny .spec.schedule` | String or map → canonical cron string | `if/else` type check + `strings.Split` + nil checks |
-| `cronFromMap .spec.schedule` | Map → canonical cron string | `strings.Join(fields, " ")` |
-| `ternary .spec.suspend "Suspended" "Active"` | Conditional status value | `if/else` block |
-| `default .spec.concurrencyPolicy "Allow"` | Field default with fallback | nil check + default assignment |
+| Note | Where used | What it does | Replaces in Go |
+|---|---|---|---|
+| `cronToMap .spec.schedule` | Conversion (v1→v2) | Split cron string into structured map | `strings.Split` + five field assignments |
+| `cronFromMap .spec.schedule` | Conversion (v2→v1) | Map → canonical cron string | `strings.Join(fields, " ")` |
+| `cronFromAny .spec.schedule` | Status, onCreate | String or map → canonical cron string | `if/else` type check + `strings.Split` + nil checks |
+| `ternary .spec.suspend "Suspended" "Active"` | Status | Conditional status value | `if/else` block |
+| `default false .spec.suspend` | Conversion | Field default with fallback | nil check + default assignment |
 
 Every one of these was Go code in the Kubebuilder tutorial.
 In Orkestra they are notes — one word in a template expression.
+
+---
+
+## E2E
+
+Run the full lifecycle in one command — installs Orkestra with Gateway, applies the multi-version CRD, applies the v1 CR, asserts it is readable via both API versions, then tears down:
+
+```bash
+ork e2e
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: v1 CronJob CR created
+    after: cr-applied
+    timeout: 60s
+    commands:
+      - run: kubectl get cronjobs.v1.demo.orkestra.io print-hello-v1
+        exitCode: 0
+
+  - name: v1 CR readable via v2 API
+    after: cr-applied
+    timeout: 60s
+    commands:
+      - run: kubectl get cronjobs.v2.demo.orkestra.io print-hello-v1
+        exitCode: 0
+```
 
 ---
 
@@ -279,7 +304,7 @@ chmod +x cleanup.sh && ./cleanup.sh
 | File | Purpose |
 |---|---|
 | `crd.yaml` | v1 and v2 schemas, conversion webhook config |
-| `katalog.yaml` | Complete operator — reconciler, mutation, validation, status, conversion |
+| `katalog.yaml` | Complete operator — reconciler, status, conversion paths |
 | `komposer.yaml` | Production overlay with tuned workers |
 | `bundle.yaml` | Least-privilege RBAC and ConfigMap (regenerate: `ork generate bundle -k komposer.yaml`) |
 | `cr-v1.yaml` | Example v1 CR |

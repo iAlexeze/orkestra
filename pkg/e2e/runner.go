@@ -53,10 +53,29 @@ type Runner struct {
 
 	katalogFile string
 	crFile      string
+
+	// Orkestra installation options
+	orkestraVersion string
+	valueFiles      []string
+	helmArgs        []string
+
+	// devServer deploys the mock dev server into the cluster as part of setup.
+	devServer bool
+
+	// customOperator skips bundle generation and Orkestra helm install/uninstall.
+	// Set from spec.customOperator — the file is the source of truth.
+	customOperator bool
+
+	// sharedOrkestra means Orkestra is managed by the parent runImports coordinator.
+	// The sub-runner must not delete the bundle from the cluster (the bundle contains
+	// the orkestra-system namespace; deleting it cascades to the Orkestra deployment).
+	// It also suppresses all sync/health-check output — only the coordinator's single
+	// install and uninstall messages are visible.
+	sharedOrkestra bool
 }
 
 // New loads an E2E spec from a YAML file and constructs a Runner.
-func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster bool) (*Runner, error) {
+func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster, devServer bool, orkestraVersion string, valueFiles []string, helmArgs ...string) (*Runner, error) {
 	data, err := os.ReadFile(e2eFile)
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", e2eFile, err)
@@ -71,14 +90,22 @@ func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster bool) (*Runner, 
 	}
 
 	r := &Runner{
-		e2e:           e2e,
-		e2eDir:        filepath.Dir(e2eFile),
-		keepCluster:   keepCluster,
-		clusterCtx:    clusterCtx,
-		useCurrentCtx: useCurrentCtx,
+		e2e:             e2e,
+		e2eDir:          filepath.Dir(e2eFile),
+		keepCluster:     keepCluster,
+		clusterCtx:      clusterCtx,
+		useCurrentCtx:   useCurrentCtx,
+		devServer:       devServer,
+		orkestraVersion: orkestraVersion,
+		valueFiles:      valueFiles,
+		helmArgs:        helmArgs,
+		customOperator:  e2e.Spec.CustomOperator,
 	}
 
 	if err := r.resolveSource(); err != nil {
+		return nil, err
+	}
+	if err := r.validateImports(); err != nil {
 		return nil, err
 	}
 
@@ -106,12 +133,22 @@ func (r *Runner) resolveSource() error {
 		r.katalogFile = r.abs(spec.Katalog)
 		r.crFile = r.abs(spec.CR)
 
+	case spec.CR != "" && spec.CustomOperator:
+		// customOperator: katalog is optional — no bundle or Orkestra install.
+		r.crFile = r.abs(spec.CR)
+
+	case len(r.e2e.Imports) > 0:
+		// Pure aggregator — no own katalog/CR, just orchestrates imports.
+		return nil
+
 	default:
-		return fmt.Errorf("e2e spec must declare either (katalog + cr) or init")
+		return fmt.Errorf("e2e spec must declare either (katalog + cr) or init, or have imports")
 	}
 
-	if _, err := os.Stat(r.katalogFile); err != nil {
-		return fmt.Errorf("katalog file not found: %s", r.katalogFile)
+	if r.katalogFile != "" {
+		if _, err := os.Stat(r.katalogFile); err != nil {
+			return fmt.Errorf("katalog file not found: %s", r.katalogFile)
+		}
 	}
 	if _, err := os.Stat(r.crFile); err != nil {
 		return fmt.Errorf("CR file not found: %s", r.crFile)
@@ -147,6 +184,8 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 	//
 	// When e2e creates and deletes its own ephemeral cluster, teardown is handled
 	// by the cluster deletion — no per-resource cleanup is needed.
+	isPureAgg := r.isPureAggregator()
+
 	ownsCluster := r.clusterCtx == "" && !r.keepCluster && !r.useCurrentCtx
 	var (
 		appliedCRDPaths   []string
@@ -166,141 +205,196 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 		return nil, fmt.Errorf("cluster: %w", err)
 	}
 
-	// ── 2. Dependencies ──────────────────────────────────────────────────
-	fmt.Println("→ Ensuring dependencies...")
-	if err := ork.EnsureDependencies(); err != nil {
-		return nil, fmt.Errorf("dependencies: %w", err)
-	}
-
-	// ── 3. Apply operator CRD ────────────────────────────────────────────
-	crdPaths, err := r.applyCRD(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("applying CRD: %w", err)
-	}
-	appliedCRDPaths = crdPaths
-
-	// ── 4. Pre-pull OCI imports so bundle generation works without credentials ──
-	if err := r.pullOCIImports(ctx); err != nil {
-		return nil, fmt.Errorf("pulling OCI imports: %w", err)
-	}
-
-	// ── 5. Generate and apply bundle ─────────────────────────────────────
-	bundleFile, err := r.generateBundle(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("generate bundle: %w", err)
-	}
-	// Bundle temp file is removed after teardown uses it (or immediately if
-	// cluster is ephemeral and teardown won't need it).
-	if ownsCluster {
-		defer os.Remove(bundleFile)
-	} else {
-		appliedBundlePath = bundleFile
-	}
-
-	fmt.Printf("→ Applying bundle...\n")
-	if out, err := kubectl(ctx, "apply", "-f", bundleFile); err != nil {
-		return nil, fmt.Errorf("apply bundle: %w\n%s", err, out)
-	}
-	fmt.Printf("  ✓ Bundle applied\n")
-
-	// ── 5. Setup — namespaces, secrets, extra CRDs, other dependencies ──
-	setupPaths, err := r.applySetup(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("setup: %w", err)
-	}
-	appliedSetupPaths = setupPaths
-
-	// ── 6. Install Orkestra ──────────────────────────────────────────────
-	args := []string{}
-	text := "..."
-
-	gatewayEnabled, err := resolveGatewayEnabled(r.katalogFile)
-	if err != nil {
-		return nil, err
-	}
-	if gatewayEnabled {
-		args = append(args, "--set", "gateway.enabled=true")
-		text = " with gateway..."
-	}
-
-	if !ork.OrkestraInstalled() {
-		fmt.Printf("→ Installing Orkestra%s\n", text)
-		if err := ork.InstallOrUpgradeOrkestra("", nil, args...); err != nil {
-			return nil, fmt.Errorf("helm install: %w", err)
-		}
-		installedOrkestra = true
-		fmt.Printf("  ✓ Orkestra installed\n")
-	} else if ork.RuntimeDeployed() {
-		// Orkestra is installed and the runtime deployment exists — the bundle
-		// applied above updated the orkestra-katalog ConfigMap, so the runtime
-		// must reload to pick up the new Katalog.
-		fmt.Printf("→ Updating Orkestra with current bundle...\n")
-		if err := ork.SyncRuntime(); err != nil {
-			return nil, fmt.Errorf("syncing Orkestra runtime: %w", err)
-		}
-		fmt.Printf("  ✓ Orkestra updated\n")
-	} else {
-		fmt.Printf("  ✓ Orkestra already installed\n")
-	}
-
-	// ── 7. Wait for Orkestra ready ───────────────────────────────────────
-	fmt.Printf("→ Waiting for Orkestra to be ready...\n")
-	status := ork.CheckRuntimeHealth()
-	if !status.Running {
-		return nil, fmt.Errorf("Orkestra not ready: %s", status.Reason)
-	}
-	fmt.Printf("  ✓ Orkestra runtime ready\n\n")
-
-	// ── 8. Run expectations ──────────────────────────────────────────────
+	// Steps 2–9 are skipped for pure aggregators (no spec — imports only).
+	// Each imported E2E runs its own full lifecycle against the shared cluster.
 	var cases []CaseResult
-	crApplied := false
-	crDeleted := false
 
-	for _, exp := range r.e2e.Spec.Expect {
-		switch exp.After {
-		case "cr-applied":
-			if !crApplied {
-				fmt.Printf("→ Applying CR...\n")
-				if out, err := kubectl(ctx, "apply", "-f", r.crFile); err != nil {
-					return nil, fmt.Errorf("apply CR: %w\n%s", err, out)
-				}
-				fmt.Printf("  ✓ CR applied\n\n")
-				crApplied = true
-			}
-
-		case "cr-deleted":
-			if !crDeleted {
-				fmt.Printf("→ Deleting CR...\n")
-				if out, err := kubectl(ctx, "delete", "-f", r.crFile, "--ignore-not-found"); err != nil {
-					return nil, fmt.Errorf("delete CR: %w\n%s", err, out)
-				}
-				fmt.Printf("  ✓ CR deleted\n\n")
-				crDeleted = true
-			}
-
-		default:
-			return nil, fmt.Errorf("unknown after: %q (must be cr-applied or cr-deleted)", exp.After)
+	if !isPureAgg {
+		// ── 2. Dependencies ──────────────────────────────────────────────
+		fmt.Println("→ Ensuring dependencies...")
+		if err := ork.EnsureDependencies(); err != nil {
+			return nil, fmt.Errorf("dependencies: %w", err)
 		}
 
-		to := exp.Timeout
-		if to == "" {
-			to = defaultTimeout
+		// ── 3. Apply operator CRD ────────────────────────────────────────
+		crdPaths, err := r.applyCRD(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("applying CRD: %w", err)
 		}
-		fmt.Printf("  Waiting for %q (timeout: %s)...\n", exp.Name, to)
-		caseStart := time.Now()
-		verifyErr := verifyExpectation(ctx, exp, r.e2eDir)
-		caseElapsed := time.Since(caseStart)
+		appliedCRDPaths = crdPaths
 
-		cases = append(cases, CaseResult{
-			Name:    exp.Name,
-			Passed:  verifyErr == nil,
-			Elapsed: caseElapsed,
-			Err:     verifyErr,
-		})
-		if verifyErr != nil {
-			fmt.Printf("  ✗ %s (%s): %v\n", exp.Name, caseElapsed.Round(time.Millisecond), verifyErr)
-		} else {
-			fmt.Printf("  ✓ %s (%s)\n", exp.Name, caseElapsed.Round(time.Millisecond))
+		// ── 4. Pre-pull OCI imports ──────────────────────────────────────
+		if !r.customOperator {
+			if err := r.pullOCIImports(ctx); err != nil {
+				return nil, fmt.Errorf("pulling OCI imports: %w", err)
+			}
+		}
+
+		// ── 5. Generate and apply bundle ─────────────────────────────────
+		if !r.customOperator {
+			bundleFile, err := r.generateBundle(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("generate bundle: %w", err)
+			}
+			if ownsCluster {
+				defer os.Remove(bundleFile)
+			} else {
+				appliedBundlePath = bundleFile
+			}
+
+			fmt.Printf("→ Applying bundle...\n")
+			if out, err := kubectl(ctx, "apply", "-f", bundleFile); err != nil {
+				return nil, fmt.Errorf("apply bundle: %w\n%s", err, out)
+			}
+			fmt.Printf("  ✓ Bundle applied\n")
+		}
+
+		// ── 6. Setup ─────────────────────────────────────────────────────
+		setupPaths, err := r.applySetup(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("setup: %w", err)
+		}
+		appliedSetupPaths = setupPaths
+
+		// ── 6b. Dev server ───────────────────────────────────────────────
+		if r.devServer {
+			devManifest, err := applyDevServer(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("dev server: %w", err)
+			}
+			appliedSetupPaths = append(appliedSetupPaths, devManifest)
+			fmt.Printf("→ Waiting for dev server to be ready...\n")
+			if err := checkDevServerHealth(); err != nil {
+				return nil, err
+			}
+			fmt.Printf("  ✓ Dev server ready\n")
+		}
+
+		// ── 7. Install Orkestra ──────────────────────────────────────────
+		// ── 8. Wait for Orkestra ready ───────────────────────────────────
+		// Both steps skipped when customOperator: true.
+		if !r.customOperator {
+			text := "..."
+
+			// Control center is never needed in e2e — disable it unconditionally.
+			r.helmArgs = append(r.helmArgs, "--set", "controlCenter.enabled=false")
+
+			gatewayEnabled, err := resolveGatewayEnabled(r.katalogFile)
+			if err != nil {
+				return nil, err
+			}
+			if gatewayEnabled {
+				fmt.Printf("→ Gateway enabled...\n")
+				r.helmArgs = append(r.helmArgs, "--set", "gateway.enabled=true")
+				text = " with gateway..."
+			}
+
+			if !ork.RuntimeInstalled() {
+				fmt.Printf("→ Installing Orkestra%s\n", text)
+				if err := ork.InstallOrUpgradeOrkestra(r.orkestraVersion, r.valueFiles, r.helmArgs...); err != nil {
+					return nil, fmt.Errorf("helm install: %w", err)
+				}
+				installedOrkestra = true
+				fmt.Printf("  ✓ Orkestra installed\n")
+			} else {
+				// Orkestra already running — sync bundle silently.
+				if err := ork.SyncRuntime(); err != nil {
+					return nil, fmt.Errorf("syncing Orkestra runtime: %w", err)
+				}
+				if gatewayEnabled {
+					if ork.GatewayInstalled() {
+						if err := ork.SyncGateway(); err != nil {
+							return nil, fmt.Errorf("syncing Orkestra gateway: %w", err)
+						}
+					} else {
+						fmt.Printf("→ Upgrading Orkestra to enable gateway...\n")
+						if err := ork.InstallOrUpgradeOrkestra(r.orkestraVersion, r.valueFiles, r.helmArgs...); err != nil {
+							return nil, fmt.Errorf("helm upgrade: %w", err)
+						}
+						installedOrkestra = true
+						fmt.Printf("  ✓ Orkestra upgraded with gateway\n")
+					}
+				}
+				// Health check — silent, still blocks until ready.
+				if status := ork.CheckRuntimeHealth(); !status.Running {
+					return nil, fmt.Errorf("Orkestra runtime not ready after sync: %s", status.Reason)
+				}
+				if gatewayEnabled {
+					if status := ork.CheckGatewayHealth(); !status.Running {
+						return nil, fmt.Errorf("Orkestra gateway not ready after sync: %s", status.Reason)
+					}
+				}
+			}
+
+			if installedOrkestra {
+				fmt.Printf("→ Waiting for Orkestra to be ready...\n")
+				status := ork.CheckRuntimeHealth()
+				if !status.Running {
+					return nil, fmt.Errorf("Orkestra runtime not ready: %s", status.Reason)
+				}
+				fmt.Printf("  ✓ Orkestra runtime ready\n\n")
+
+				if gatewayEnabled {
+					fmt.Printf("→ Waiting for Orkestra gateway to be ready...\n")
+					status := ork.CheckGatewayHealth()
+					if !status.Running {
+						return nil, fmt.Errorf("Orkestra gateway not ready: %s", status.Reason)
+					}
+					fmt.Printf("  ✓ Orkestra gateway ready\n\n")
+				}
+			}
+		}
+
+		// ── 9. Run expectations ──────────────────────────────────────────
+		crApplied := false
+		crDeleted := false
+
+		for _, exp := range r.e2e.Spec.Expect {
+			switch exp.After {
+			case "cr-applied":
+				if !crApplied {
+					fmt.Printf("→ Applying CR...\n")
+					if out, err := kubectl(ctx, "apply", "-f", r.crFile); err != nil {
+						return nil, fmt.Errorf("apply CR: %w\n%s", err, out)
+					}
+					fmt.Printf("  ✓ CR applied\n\n")
+					crApplied = true
+				}
+
+			case "cr-deleted":
+				if !crDeleted {
+					fmt.Printf("→ Deleting CR...\n")
+					if out, err := kubectl(ctx, "delete", "-f", r.crFile, "--ignore-not-found"); err != nil {
+						return nil, fmt.Errorf("delete CR: %w\n%s", err, out)
+					}
+					fmt.Printf("  ✓ CR deleted\n\n")
+					crDeleted = true
+				}
+
+			default:
+				return nil, fmt.Errorf("unknown after: %q (must be cr-applied or cr-deleted)", exp.After)
+			}
+
+			to := exp.Timeout
+			if to == "" {
+				to = defaultTimeout
+			}
+			fmt.Printf("  Waiting for %q (timeout: %s)...\n", exp.Name, to)
+			caseStart := time.Now()
+			verifyErr := verifyExpectation(ctx, exp, r.e2eDir)
+			caseElapsed := time.Since(caseStart)
+
+			cases = append(cases, CaseResult{
+				Name:    exp.Name,
+				Passed:  verifyErr == nil,
+				Elapsed: caseElapsed,
+				Err:     verifyErr,
+			})
+			if verifyErr != nil {
+				fmt.Printf("  ✗ %s (%s): %v\n", exp.Name, caseElapsed.Round(time.Millisecond), verifyErr)
+			} else {
+				fmt.Printf("  ✓ %s (%s)\n", exp.Name, caseElapsed.Round(time.Millisecond))
+			}
 		}
 	}
 
@@ -310,22 +404,39 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 		Elapsed: time.Since(start),
 	}
 
-	// ── 9. Report ────────────────────────────────────────────────────────
-	fmt.Printf("\nE2E Results: %s\n\n", name)
-	for _, c := range cases {
-		if c.Passed {
-			fmt.Printf("  ✓ %-40s (%s)\n", c.Name, c.Elapsed.Round(time.Millisecond))
-		} else {
-			fmt.Printf("  ✗ %-40s (%s)\n", c.Name, c.Elapsed.Round(time.Millisecond))
+	// ── Report ───────────────────────────────────────────────────────────
+	if !isPureAgg {
+		fmt.Printf("\nE2E Results: %s\n\n", name)
+		for _, c := range cases {
+			if c.Passed {
+				fmt.Printf("  ✓ %-40s (%s)\n", c.Name, c.Elapsed.Round(time.Millisecond))
+			} else {
+				fmt.Printf("  ✗ %-40s (%s)\n", c.Name, c.Elapsed.Round(time.Millisecond))
+			}
+		}
+		clusterInfo := r.clusterName()
+		fmt.Printf("\n  %s\n", result.Summary())
+		if clusterInfo != "" {
+			fmt.Printf("  Cluster: %s (%s)\n", clusterInfo, r.provider())
 		}
 	}
-	clusterInfo := r.clusterName()
-	fmt.Printf("\n  %s\n", result.Summary())
-	if clusterInfo != "" {
-		fmt.Printf("  Cluster: %s (%s)\n", clusterInfo, r.provider())
+
+	// ── 10. Imports ──────────────────────────────────────────────────────
+	var importErr error
+	importCount := len(r.e2e.Imports)
+	importText := "imports"
+
+	if importCount == 1 {
+		importText = "import"
 	}
 
-	// ── 10. Cleanup ──────────────────────────────────────────────────────
+	if importCount > 0 {
+		fmt.Printf("\n─── Running %d %s ───\n", importCount, importText)
+		importResults := r.runImports(ctx)
+		importErr = printImportSummary(r.e2e.Metadata.Name, importResults)
+	}
+
+	// ── 11. Cleanup ──────────────────────────────────────────────────────
 	if !r.useCurrentCtx && !r.keepCluster && r.clusterCtx == "" {
 		fmt.Printf("\n→ Deleting cluster '%s'...\n", r.clusterName())
 		if err := r.deleteCluster(ctx); err != nil {
@@ -338,7 +449,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 	if !result.AllPassed() {
 		return result, fmt.Errorf("%d of %d expectations failed", result.Total()-result.Passed(), result.Total())
 	}
-	return result, nil
+	return result, importErr
 }
 
 // resolveGatewayEnabled inspects the katalog file and returns true if the
@@ -411,6 +522,10 @@ func (r *Runner) applyCRD(ctx context.Context) ([]string, error) {
 	}
 
 	// Fallback: read crdFile references from the katalog.
+	// When customOperator is true and no katalog is provided, there is nothing to fall back to.
+	if r.katalogFile == "" {
+		return nil, nil
+	}
 	var raw struct {
 		Spec struct {
 			CRDs map[string]struct {
@@ -447,6 +562,15 @@ func (r *Runner) applyCRD(ctx context.Context) ([]string, error) {
 }
 
 func (r *Runner) generateBundle(ctx context.Context) (string, error) {
+	// Anchor the katalog directory as an absolute path. r.katalogFile may be
+	// relative when ork e2e is invoked without an explicit -f path; all temp
+	// file creation and cmd.Dir must use an absolute base to avoid double-nested
+	// paths when cmd.Dir is set.
+	katalogDir, err := filepath.Abs(filepath.Dir(r.katalogFile))
+	if err != nil {
+		return "", fmt.Errorf("resolving katalog directory: %w", err)
+	}
+
 	// Resolve any crdFile references to inline apiTypes before bundling.
 	// The Orkestra runtime runs inside a container and cannot read local files —
 	// all type information must be embedded in the ConfigMap.
@@ -455,7 +579,9 @@ func (r *Runner) generateBundle(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("resolving crdFile references: %w", err)
 	}
 
-	resolvedKatalog, err := os.CreateTemp("", "ork-e2e-katalog-*.yaml")
+	// Create the temp file in the katalog's directory (absolute) so that
+	// relative imports.files paths resolve correctly when ork generate bundle runs.
+	resolvedKatalog, err := os.CreateTemp(katalogDir, "ork-e2e-katalog-*.yaml")
 	if err != nil {
 		return "", err
 	}
@@ -482,6 +608,9 @@ func (r *Runner) generateBundle(ctx context.Context) (string, error) {
 		"-f", resolvedKatalog.Name(),
 		"-o", bundleFile.Name(),
 	)
+	// Run from the katalog's directory (absolute) so relative imports.files
+	// paths (e.g. ./platform-team/katalog.yaml) resolve correctly.
+	cmd.Dir = katalogDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -585,6 +714,13 @@ func (r *Runner) provider() string {
 	return defaultProvider
 }
 
+// isPureAggregator returns true when this E2E has no spec of its own —
+// it exists only to run imported E2E files.
+// A customOperator spec with a cr but no katalog is NOT a pure aggregator.
+func (r *Runner) isPureAggregator() bool {
+	return r.katalogFile == "" && r.crFile == ""
+}
+
 func (r *Runner) abs(path string) string {
 	if filepath.IsAbs(path) {
 		return path
@@ -628,22 +764,25 @@ func (r *Runner) teardown(ctx context.Context, crdPaths []string, bundlePath str
 		fmt.Printf("  → Uninstalling Orkestra...\n")
 		cmd := exec.CommandContext(ctx, "helm", "uninstall", ork.Orkestra,
 			"--namespace", ork.OrkestraNamespace, "--ignore-not-found")
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			fmt.Printf("  ! helm uninstall failed: %v\n", err)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			fmt.Printf("  ! helm uninstall failed: %v\n%s\n", err, out)
 		} else {
 			fmt.Printf("  ✓ Orkestra uninstalled\n")
 		}
 	}
 
 	// Bundle (RBAC, ConfigMap, Namespace created by ork generate bundle).
+	// sharedOrkestra: skip kubectl delete — the bundle contains orkestra-system namespace;
+	// deleting it cascades to the Orkestra deployment managed by the coordinator.
+	// The temp file is still removed.
 	if bundlePath != "" {
-		fmt.Printf("  → Deleting bundle resources...\n")
-		if out, err := kubectl(ctx, "delete", "-f", bundlePath, "--ignore-not-found"); err != nil {
-			fmt.Printf("  ! bundle delete failed: %v\n%s\n", err, out)
-		} else {
-			fmt.Printf("  ✓ Bundle resources deleted\n")
+		if !r.sharedOrkestra {
+			fmt.Printf("  → Deleting bundle resources...\n")
+			if out, err := kubectl(ctx, "delete", "-f", bundlePath, "--ignore-not-found"); err != nil {
+				fmt.Printf("  ! bundle delete failed: %v\n%s\n", err, out)
+			} else {
+				fmt.Printf("  ✓ Bundle resources deleted\n")
+			}
 		}
 		os.Remove(bundlePath)
 	}
@@ -668,6 +807,127 @@ func (r *Runner) teardown(ctx context.Context, crdPaths []string, bundlePath str
 	}
 
 	fmt.Printf("  ✓ Cleanup complete\n")
+}
+
+// validateImports is a backstop that delegates to the exported ValidateImports.
+// ork e2e always calls this at startup so malformed imports are caught before
+// the cluster is provisioned. ork validate calls ValidateImports directly for
+// earlier, friendlier feedback.
+func (r *Runner) validateImports() error {
+	errs := ValidateImports(r.e2eDir, r.e2e.Imports)
+	if len(errs) == 0 {
+		return nil
+	}
+	msgs := make([]string, len(errs))
+	for i, e := range errs {
+		msgs[i] = e.Error()
+	}
+	return fmt.Errorf("invalid imports: %s", strings.Join(msgs, "; "))
+}
+
+// runImports runs each imported E2E file after the main test completes.
+//
+// Cluster strategy for shared-cluster imports (freshCluster: false, the default):
+//   - Parent is a pure aggregator: imports use the cluster ensureCluster already set up.
+//   - Parent used --use-current or --cluster: imports reuse the same active context.
+//   - Parent ran its own test and created a kind cluster: a separate kind cluster
+//     is created so imports don't share state with the parent's live resources.
+//
+// Imports with freshCluster: true always provision their own independent cluster.
+func (r *Runner) runImports(ctx context.Context) []ImportResult {
+	parentOwnsCluster := r.clusterCtx == "" && !r.useCurrentCtx
+
+	if parentOwnsCluster && !r.isPureAggregator() {
+		// Non-aggregator parent created its own cluster — provision a separate
+		// one so imports don't run alongside the parent's Orkestra install.
+		importCluster := r.clusterName() + "-imports"
+		fmt.Printf("→ Creating imports cluster '%s'...\n", importCluster)
+		if err := ork.EnsureKindCluster(importCluster); err != nil {
+			return []ImportResult{{Path: importCluster, Err: fmt.Errorf("creating imports cluster: %w", err)}}
+		}
+		if !r.keepCluster {
+			defer func() {
+				fmt.Printf("→ Deleting imports cluster '%s'...\n", importCluster)
+				_ = deleteKindCluster(ctx, importCluster)
+			}()
+		}
+	}
+
+	// Pre-install Orkestra once for all shared-cluster imports so each sub-runner
+	// takes the sync-bundle path instead of the install→test→uninstall cycle.
+	// Each sub-runner finds RuntimeInstalled()=true, enters the sync branch, and
+	// leaves installedOrkestra=false — so its teardown never uninstalls.
+	// We uninstall once here after all imports complete.
+	installedByCoordinator := false
+	if !r.customOperator {
+		sharedImportCount := 0
+		for _, imp := range r.e2e.Imports {
+			if !imp.FreshCluster {
+				sharedImportCount++
+			}
+		}
+		importText := "imports"
+		if sharedImportCount == 1 {
+			importText = "import"
+		}
+
+		if sharedImportCount > 0 && !ork.RuntimeInstalled() {
+			fmt.Printf("→ Installing Orkestra (shared across %d %s)...\n", sharedImportCount, importText)
+			helmArgs := append(r.helmArgs, "--set", "controlCenter.enabled=false")
+			if err := ork.InstallOrUpgradeOrkestra(r.orkestraVersion, r.valueFiles, helmArgs...); err != nil {
+				return []ImportResult{{Err: fmt.Errorf("installing Orkestra for imports: %w", err)}}
+			}
+			installedByCoordinator = true
+			fmt.Printf("  ✓ Orkestra installed\n")
+		}
+	}
+	if installedByCoordinator {
+		defer func() {
+			fmt.Printf("→ Uninstalling Orkestra...\n")
+			cmd := exec.CommandContext(ctx, "helm", "uninstall", ork.Orkestra,
+				"--namespace", ork.OrkestraNamespace, "--ignore-not-found")
+			if out, err := cmd.CombinedOutput(); err != nil {
+				fmt.Printf("  ! helm uninstall failed: %v\n%s\n", err, out)
+			} else {
+				fmt.Printf("  ✓ Orkestra uninstalled\n")
+			}
+		}()
+	}
+
+	var results []ImportResult
+	for _, imp := range r.e2e.Imports {
+		absPath := r.abs(imp.Path)
+		ir := ImportResult{Path: imp.Path}
+
+		if imp.Wait != "" {
+			d, _ := time.ParseDuration(imp.Wait) // already validated at load time
+			fmt.Printf("→ Waiting %s before %s...\n", imp.Wait, filepath.Base(imp.Path))
+			time.Sleep(d)
+		}
+
+		var sub *Runner
+		var err error
+		if imp.FreshCluster {
+			sub, err = New(absPath, "", false, r.keepCluster, r.devServer, r.orkestraVersion, r.valueFiles)
+		} else {
+			sub, err = New(absPath, "", true, false, r.devServer, r.orkestraVersion, r.valueFiles)
+			if err == nil {
+				sub.sharedOrkestra = true
+			}
+		}
+		// customOperator is declared in the sub-file itself; the parent's value
+		// does not override it — each import is authoritative about its own mode.
+		if err != nil {
+			ir.Err = fmt.Errorf("loading import %s: %w", imp.Path, err)
+			results = append(results, ir)
+			continue
+		}
+		res, runErr := sub.Run(ctx)
+		ir.Result = res
+		ir.Err = runErr
+		results = append(results, ir)
+	}
+	return results
 }
 
 func deleteKindCluster(ctx context.Context, name string) error {

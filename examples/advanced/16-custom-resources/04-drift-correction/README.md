@@ -73,7 +73,7 @@ kubectl apply -f crd-database.yaml
 kubectl apply -f crd-backuppolicy.yaml
 ```
 
-### 2. Start the operator
+### 2. Start the runtime
 
 ```bash
 ork run 

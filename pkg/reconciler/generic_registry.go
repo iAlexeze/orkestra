@@ -30,4 +30,9 @@ type KatalogRegistry interface {
 	// to know the CRD's short name. Lookup is case-insensitive on both
 	// key and value. Returns nil, false when no CRD matches.
 	GetInformerByLabel(key, value string) (cache.SharedIndexInformer, bool)
+
+	// GetCrossAccessByName returns the CrossAccess field of the named CRD.
+	// nil means the CRD allows cross reads (default). *false means opted out.
+	// Returns nil when the CRD is not registered.
+	GetCrossAccessByName(name string) *bool
 }

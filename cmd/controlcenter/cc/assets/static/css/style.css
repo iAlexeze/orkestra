@@ -373,13 +373,13 @@ code, .mono {
   box-shadow: none;
   background: var(--bg-elevated);
 }
-/* Name + badge: fixed left column */
+/* Name + badge + stats: expands to fill remaining row space */
 .cc-card-grid.list-view .cc-card-body {
   flex: 1;
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   padding: 0;
   border: none;
 }
@@ -392,12 +392,20 @@ code, .mono {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Show card-meta as inline row of pills */
+/* Footer (View Details button): always visible, pushed right */
+.cc-card-grid.list-view .cc-card-footer {
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+}
+/* Stats row expands to fill the middle */
 .cc-card-grid.list-view .cc-card-meta {
   display: flex;
   flex-direction: row;
   gap: 16px;
-  flex-wrap: wrap;
+  flex: 1;
+  flex-wrap: nowrap;
   margin: 0;
 }
 .cc-card-grid.list-view .cc-card-row {
@@ -411,20 +419,18 @@ code, .mono {
 .cc-card-grid.list-view .cc-card-row-label {
   color: var(--text-muted);
 }
-/* Hide progress bars and desc in list mode */
+/* Hide progress bars, desc, and version line in list mode */
 .cc-card-grid.list-view .cc-progress-bar-wrap,
 .cc-card-grid.list-view .cc-card-desc,
 .cc-card-grid.list-view .text-red.text-xs,
 .cc-card-grid.list-view .text-amber.text-xs {
   display: none;
 }
-/* Footer (View Details button): always visible, pushed right */
-.cc-card-grid.list-view .cc-card-footer {
-  flex-shrink: 0;
-  padding: 0;
-  border: none;
-  background: none;
+/* Hide the version div (direct child of card-body) in list mode */
+.cc-card-grid.list-view .cc-card-body > .font-mono {
+  display: none;
 }
+/* Button: stays compact */
 .cc-card-grid.list-view .cc-card-footer .cc-btn {
   width: auto;
   font-size: 12px;
@@ -632,6 +638,8 @@ code, .mono {
   border-radius: var(--radius);
   transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .cc-card:hover {
@@ -642,6 +650,7 @@ code, .mono {
 
 .cc-card-body {
   padding: 18px;
+  flex: 1;
 }
 
 .cc-card-title {
@@ -678,6 +687,33 @@ code, .mono {
 
 .cc-card-row-label { color: var(--text-muted); }
 .cc-card-row-value { color: var(--text-primary); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* ── Filter dropdown ────────────────────────────────────────── */
+.cc-dropdown {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* --bg-card is not defined; force a solid background so the dropdown is opaque */
+  background: var(--bg-elevated) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+.cc-check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.cc-check-row:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
 
 /* ── Badges ────────────────────────────────────────────────── */
 .cc-badge {

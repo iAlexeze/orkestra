@@ -31,13 +31,13 @@ func NewQueueRegistry() *QueueRegistry {
 
 // Register registers each CRD with their respective
 // GVK and maximum queue depth
-func (qr *QueueRegistry) Register(gvk string, maxQueueDepth int) *Workqueue {
+func (qr *QueueRegistry) Register(gvk string, maxDepth int) *Workqueue {
 	qr.mu.Lock()
 	defer qr.mu.Unlock()
 
 	wq := NewWorkqueue()
-	qr.queues[gvk] = wq                          // Register each CRD to a workqueue
-	wq.maxQueueDepth.Store(int32(maxQueueDepth)) // Set the maximum queue depth for this new queue per CRD
+	qr.queues[gvk] = wq                // Register each CRD to a workqueue
+	wq.maxDepth.Store(int32(maxDepth)) // Set the maximum queue depth for this new queue per CRD
 
 	return wq
 }

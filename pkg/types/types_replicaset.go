@@ -69,6 +69,10 @@ type ReplicaSetTemplateSource struct {
 	// Omit to expose no port.
 	Port string `yaml:"port,omitempty" json:"port,omitempty" validate:"omitempty"`
 
+	// Protocol — network protocol for the container port.
+	// Accepted values: TCP (default), UDP, SCTP. Omit to use TCP.
+	Protocol string `yaml:"protocol,omitempty" json:"protocol,omitempty" validate:"omitempty"`
+
 	// Namespace — target namespace for the ReplicaSet.
 	// Default when omitted: "{{ .metadata.namespace }}" (same namespace as the CR).
 	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty" validate:"omitempty"`
@@ -137,6 +141,12 @@ type ReplicaSetTemplateSource struct {
 	// Set rollingUpdate.profile for a named preset (safe, fast, blue-green),
 	// or declare maxSurge/maxUnavailable explicitly.
 	RollingUpdate *RollingUpdateBehavior `yaml:"rollingUpdate,omitempty" json:"rollingUpdate,omitempty"`
+
+	// Volumes — pod volumes available for mounting into the container.
+	Volumes []VolumeSource `yaml:"volumes,omitempty" json:"volumes,omitempty"`
+
+	// VolumeMounts — mounts for the primary container.
+	VolumeMounts []VolumeMount `yaml:"volumeMounts,omitempty" json:"volumeMounts,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.

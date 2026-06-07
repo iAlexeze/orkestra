@@ -32,7 +32,7 @@ namespace stays in sync automatically.
 
 ## Steps
 
-### 1. Start the operator
+### 1. Start the runtime
 
 ```bash
 ork run       # add --dev if you don't have a cluster; Orkestra will create a kind cluster

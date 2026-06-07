@@ -35,10 +35,8 @@ func InstallOrUpgradeOrkestra(version string, valueFiles []string, args ...strin
 	helmArgs = append(helmArgs, args...)
 
 	cmd := exec.Command("helm", helmArgs...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("installing/upgrading Orkestra: %w", err)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("installing/upgrading Orkestra: %w\n%s", err, out)
 	}
 	return nil
 }

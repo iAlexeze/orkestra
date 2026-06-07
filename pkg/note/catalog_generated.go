@@ -104,6 +104,13 @@ var BuiltinNotes = []NoteInfo{
 		Keywords:    []string{"conditional", "empty", "check", "boolean", "nil", "absent"},
 	},
 	{
+		Name:        "eqTernary",
+		Domain:      "conditional",
+		Description: "Return `trueVal` when `val` equals `target` (string comparison), `falseVal` otherwise. Shorthand for the `boolTernary (eq val target) trueVal falseVal` pattern — useful when branching on a string field value such as a status string, a mode flag, or a cross-CRD `found` result.",
+		Example:     "# value: '{{ eqTernary .cross.db.found \"true\" \"ready\" \"waiting\" }}'\n# found=\"true\"  → \"ready\"\n# found=\"false\" → \"waiting\"\n\n# value: '{{ eqTernary .spec.mode \"production\" \"strict\" \"permissive\" }}'\n# mode=\"production\" → \"strict\"\n# mode=\"staging\"    → \"permissive\"",
+		Keywords:    []string{"conditional", "branch", "equality", "string", "ternary", "compare", "match"},
+	},
+	{
 		Name:        "notEmpty",
 		Domain:      "conditional",
 		Description: "Return `true` when the value is non-empty. The inverse of `empty`.",
@@ -222,6 +229,20 @@ var BuiltinNotes = []NoteInfo{
 		Description: "Return `true` when the expression is structurally valid (five fields present after macro expansion). Does not validate field ranges.",
 		Example:     "validation:\n  rules:\n    - field: spec.schedule\n      operator: custom\n      value: \"{{ cronValid .spec.schedule }}\"\n      message: \"spec.schedule must be a valid cron expression\"\n      action: deny",
 		Keywords:    []string{"cron", "schedule", "validate", "valid", "check", "boolean"},
+	},
+	{
+		Name:        "domainBare",
+		Domain:      "domain",
+		Description: "Same as `domainHost`, and also strips a leading `www.` subdomain. Returns `\"\"` for nil or non-string input. Idempotent.",
+		Example:     "normalize:\n  spec:\n    domain: '{{ domainBare .spec.domain }}'\n# \"https://www.acme.com/\" → \"acme.com\"\n# \"https://acme.com/\"     → \"acme.com\"\n# \"www.acme.com\"          → \"acme.com\"\n# \"acme.com\"              → \"acme.com\"",
+		Keywords:    []string{"domain", "string", "www", "subdomain", "hostname", "normalize", "strip"},
+	},
+	{
+		Name:        "domainHost",
+		Domain:      "domain",
+		Description: "Strip surrounding whitespace, `https://` or `http://` prefix, and trailing `/`. Returns the bare hostname. Returns `\"\"` for nil or non-string input. Idempotent — calling it on an already-clean hostname is a no-op.",
+		Example:     "normalize:\n  spec:\n    domain: '{{ domainHost .spec.domain }}'\n# \"https://acme.example.com/\" → \"acme.example.com\"\n# \" http://acme.example.com \" → \"acme.example.com\"\n# \"acme.example.com\"          → \"acme.example.com\"\ndomain: '{{ trimSuffix (domainHost .spec.domain) \":8080\" }}'\n# \"https://acme.example.com:8080/\" → \"acme.example.com\"\n{{ trimSuffix (trimPrefix (trimPrefix (trimSpace .spec.domain) \"https://\") \"http://\") \"/\" }}",
+		Keywords:    []string{"domain", "string", "url", "hostname", "protocol", "normalize", "strip"},
 	},
 	{
 		Name:        "creationTimestamp",
@@ -441,6 +462,13 @@ var BuiltinNotes = []NoteInfo{
 		Keywords:    []string{"cronjob", "cron", "job", "name", "successful", "enriched", "last"},
 	},
 	{
+		Name:        "cronJobNextScheduleTime",
+		Domain:      "job",
+		Description: "Return the next time the CronJob is scheduled to run (`status.nextScheduleTime`). Returns `\"\"` when the field is absent (not all Kubernetes versions populate it).",
+		Example:     "- path: nextScheduleTime\n  value: \"{{ cronJobNextScheduleTime .children.cronjob }}\"\n# → \"2026-05-19T11:00:00Z\"",
+		Keywords:    []string{"cronjob", "cron", "schedule", "time", "next", "timestamp"},
+	},
+	{
 		Name:        "jobActive",
 		Domain:      "job",
 		Description: "Return `true` when `status.active > 0` — at least one pod is currently running.",
@@ -588,11 +616,25 @@ var BuiltinNotes = []NoteInfo{
 		Keywords:    []string{"kubernetes", "status", "phase", "string", "pod", "lifecycle"},
 	},
 	{
+		Name:        "resourceCPU",
+		Domain:      "kubernetes",
+		Description: "Return `spec.resources.requests.cpu` from any object. Returns `\"\"` when spec, resources, requests, or cpu is absent — no nil pointer panic at any level.",
+		Example:     "# normalize block — default resource requests without nil pointer panics\nnormalize:\n  spec:\n    resources.requests.cpu:    '{{ resourceCPU . | default \"100m\" }}'\n    resources.requests.memory: '{{ resourceMemory . | default \"128Mi\" }}'",
+		Keywords:    []string{"spec", "resources", "requests", "cpu", "safe", "default", "normalize"},
+	},
+	{
 		Name:        "resourceExists",
 		Domain:      "kubernetes",
 		Description: "Return `true` when the object is a non-nil `map[string]interface{}`. Use to check whether a child resource has been created.",
 		Example:     "# value: \"{{ resourceExists .children.deployment }}\"\n\n# Gate dependent resources on child existence:\n# when:\n#   - field: \"{{ resourceExists .children.secret }}\"\n#     equals: \"true\"",
 		Keywords:    []string{"kubernetes", "exists", "check", "boolean", "nil", "created", "present"},
+	},
+	{
+		Name:        "resourceMemory",
+		Domain:      "kubernetes",
+		Description: "Return `spec.resources.requests.memory` from any object. Returns `\"\"` when any level is absent.",
+		Example:     "- path: memoryRequest\n  value: \"{{ resourceMemory .children.deployment }}\"",
+		Keywords:    []string{"spec", "resources", "requests", "memory", "safe", "default", "normalize"},
 	},
 	{
 		Name:        "spec",

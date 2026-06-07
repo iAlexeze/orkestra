@@ -95,10 +95,11 @@ func parseFilePaths(paths []string) []string {
 }
 
 type mergerOut struct {
-	m     *merger.Merger
-	crds  []orktypes.CRDEntry
-	kat   *katalog.Katalog
-	paths []string
+	m       *merger.Merger
+	crds    []orktypes.CRDEntry
+	kat     *katalog.Katalog
+	paths   []string
+	enabled map[string]orktypes.CRDEntry // m.Enabled()
 }
 
 func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
@@ -128,10 +129,11 @@ func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
 	}
 
 	return &mergerOut{
-		m:     m,
-		crds:  crds,
-		kat:   &kat,
-		paths: katalogPaths,
+		m:       m,
+		crds:    crds,
+		kat:     &kat,
+		paths:   katalogPaths,
+		enabled: m.Enabled(),
 	}, nil
 }
 
@@ -172,7 +174,7 @@ var generateAllCmd = &cobra.Command{
 
 		log.Println("running all generators...")
 
-		if err := generate.TypeRegistry(out.kat.Enabled(), dryRun); err != nil {
+		if _, err := generate.TypeRegistry(out.enabled, dryRun); err != nil {
 			return fmt.Errorf("generate runtime: %w", err)
 		}
 		if err := generate.Dashboards(out.crds, dryRun); err != nil {

@@ -10,15 +10,15 @@ type Workqueue struct {
     name          string
     Queue         workqueue.TypedRateLimitingInterface[QueueItem]
     started       atomic.Bool
-    maxQueueDepth atomic.Int32  // 0 = unlimited
+    maxDepth atomic.Int32  // 0 = unlimited
 }
 ```
 
 `Queue` is the client-go rate-limiting workqueue. It handles deduplication,
 rate limiting on re-queues, and the `Done`/`Forget` acknowledgement protocol.
 
-`maxQueueDepth` is an `atomic.Int32` so reads in `Enqueue` (called from
-informer goroutines) and writes in `SetMaxQueueDepth` (called from the
+`maxDepth` is an `atomic.Int32` so reads in `Enqueue` (called from
+informer goroutines) and writes in `SetMaxDepth` (called from the
 autoscaler goroutine) are race-free without a mutex.
 
 ## QueueItem
@@ -47,7 +47,7 @@ func (q *Workqueue) Enqueue(obj interface{}, gvk string) {
     if err != nil { ... return }
 
     // Depth limit: drop if at or beyond limit (0 = unlimited)
-    if limit := q.maxQueueDepth.Load(); limit > 0 && int32(q.Queue.Len()) >= limit {
+    if limit := q.maxDepth.Load(); limit > 0 && int32(q.Queue.Len()) >= limit {
         logger.Warn(). ... .Msg("enqueue: queue depth limit reached — item dropped")
         return
     }
@@ -66,11 +66,11 @@ local cache misses the final state of a deleted object, the informer wraps it
 in a `DeletedFinalStateUnknown` tombstone. Without unwrapping, `MetaNamespaceKeyFunc`
 would fail on the wrapper type.
 
-## SetMaxQueueDepth
+## SetMaxDepth
 
 ```go
-func (q *Workqueue) SetMaxQueueDepth(n int) {
-    q.maxQueueDepth.Store(int32(n))
+func (q *Workqueue) SetMaxDepth(n int) {
+    q.maxDepth.Store(int32(n))
 }
 ```
 

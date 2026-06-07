@@ -47,7 +47,7 @@ ork init
 
 `ork init` creates a `katalog.yaml` in the current directory, ready to run.
 
-**Step 2 — Start the operator**
+**Step 2 — Start the runtime**
 
 If you have a running cluster:
 
@@ -151,7 +151,7 @@ curl localhost:8080/metrics
 
 ```bash
 # Delete the CR — cascades to the Deployment
-kubectl delete -f examples/beginner/01-hello-website/cr.yaml
+kubectl delete -f cr.yaml
 
 # Stop the operator
 Ctrl+C
@@ -164,10 +164,10 @@ Ctrl+C
 | Command | Description |
 |---------|-------------|
 | `ork init` | Scaffold a new operator project in the current directory |
-| `ork run -f <path>` | Start the operator runtime |
-| `ork run --dev -f <path>` | Start the operator, create kind cluster if needed |
-| `ork validate -f <path>` | Validate a Katalog without starting |
-| `ork template -f <path>` | Preview the merged, resolved Katalog |
+| `ork run -f <path>` | Start the runtime. `<path>` is optional if `katalog.yaml` or `komposer.yaml` is in the current directory |
+| `ork run --dev` | Start the runtime, create kind cluster if needed |
+| `ork validate` | Validate a Katalog without starting |
+| `ork template` | Preview the merged, resolved Katalog |
 | `ork control` | Start the Control Center at localhost:8081 |
 | `ork version` | Print version |
 
@@ -180,4 +180,4 @@ Ctrl+C
 - **[Writing Your First Komposer](./04-writing-your-first-komposer.md)** — compose multiple Katalogs
 - **[Basic Reconciliation](./05-basic-reconciliation.md)** — understand the full reconcile lifecycle
 - **[Writing Your First E2E Test](./06-writing-your-first-e2e.md)** — declarative end-to-end testing
-- **[Learning to Orkestrate](./01-learning-to-orkestrate.md)** — progression through the example packs
+- **[Learning to Orkestrate](./01-learning-to-orkestrate/index.md)** — progression through the example packs

@@ -1,0 +1,9 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: intermediate-sim
+  description: >
+    Suite for the intermediate pack — runs simulate for all examples that have a simulate.yaml.
+
+imports:
+  - ./06-komposer-basic/simulate.yaml

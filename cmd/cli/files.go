@@ -3,12 +3,14 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 const (
 	fileKatalog  = "katalog.yaml"
 	fileKomposer = "komposer.yaml"
 	fileE2e      = "e2e.yaml"
+	fileSimulate = "simulate.yaml"
 	fileCrd      = "crd.yaml"
 	fileCr       = "cr.yaml"
 )
@@ -23,9 +25,19 @@ const (
 func resolveKatalogPaths(cliPaths []string) ([]string, error) {
 	cfgPaths := kfg.Katalog().Paths()
 
-	// 1. CLI-provided paths
+	// 1. CLI-provided paths — convert to absolute so all downstream relative
+	// path resolutions (crdFile, crFiles, setup, Komposer imports) use the
+	// file's directory as the base, not the current working directory.
 	if len(cliPaths) > 0 {
-		return cliPaths, nil
+		abs := make([]string, len(cliPaths))
+		for i, p := range cliPaths {
+			if a, err := filepath.Abs(p); err == nil {
+				abs[i] = a
+			} else {
+				abs[i] = p
+			}
+		}
+		return abs, nil
 	}
 
 	// 2. Default file paths
@@ -55,3 +67,9 @@ func defaultFilePaths() []string {
 
 const errNoKatalog = "no katalog.yaml or komposer.yaml found in current directory\n" +
 	"pass -f <file> or create one with ork init"
+
+// fileExists reports whether a file exists at the given path.
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}

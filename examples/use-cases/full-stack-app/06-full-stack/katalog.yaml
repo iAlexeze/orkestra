@@ -1,0 +1,137 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: full-stack-app
+  description: >
+    Pattern 06 — all patterns combined.
+    One CR creates 3 regional Deployments (forEach), a generated Secret (once:),
+    a ConfigMap from a database CR (cross:), all gated on a health check (external:),
+    with a cleanup Job on terminal phases (anyOf:).
+
+spec:
+  crds:
+    full-stack-app:
+      crdFile: ./crd.yaml
+      setup:
+        - ../03-cross-crd/crd-managed-database.yaml
+        - ../03-cross-crd/database-cr.yaml
+
+      workers: 2
+      resync: 30s
+      dependsOn:
+        managed-database: healthy
+
+      validation:
+        rules:
+          - field: spec.image
+            operator: exists
+            action: deny
+          - field: spec.regions
+            operator: exists
+            action: deny
+          - field: spec.serviceUrl
+            operator: exists
+            action: deny
+
+      mutation:
+        rules:
+          - field: spec.defaultReplicas
+            default: 1
+            valueType: int
+          - field: spec.notify
+            default: "false"
+
+      operatorBox:
+        cross:
+          - crd: managed-database
+            selector:
+              name: "{{ .metadata.name }}-db"
+              namespace: "{{ .metadata.namespace }}"
+            as: db
+
+        onCreate:
+          secrets:
+            - name: "{{ .metadata.name }}-creds"
+              once: true
+              rotateAfter: 90d
+              data:
+                password: "{{ randomAlphanumeric 32 }}"
+
+        onReconcile:
+          external:
+            - name: healthCheck
+              url: "{{ .spec.serviceUrl }}/health"
+              expectedStatus: 200
+              continueOnError: false
+              timeout: 5s
+
+          deployments:
+            - name: "{{ .metadata.name }}-{{ .item }}"
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.defaultReplicas }}"
+              forEach:
+                field: spec.regions
+                as: item
+              when:
+                - field: external.healthCheck.status
+                  equals: "200"
+                - field: "{{ phase .cross.db }}"
+                  equals: "Ready"
+
+          configMaps:
+            - name: "{{ .metadata.name }}-config"
+              data:
+                DB_HOST: "{{ get .cross.db \"status\" \"endpoint\" }}"
+                APP_ENV: "{{ .spec.environment }}"
+              when:
+                - field: "{{ resourceExists .cross.db }}"
+                  equals: "true"
+
+          jobs:
+            - name: "{{ .metadata.name }}-cleanup"
+              image: alpine:3.19
+              command: ["/bin/sh", "-c", "echo cleanup"]
+              anyOf:
+                - field: status.phase
+                  equals: "Failed"
+                - field: status.phase
+                  equals: "Succeeded"
+
+        status:
+          fields:
+            - path: phase
+              value: "Pending"
+              when:
+                - field: status.phase
+                  operator: notExists
+            - path: phase
+              value: "WaitingForDatabase"
+              when:
+                - field: "{{ phase .cross.db }}"
+                  notEquals: "Ready"
+            - path: phase
+              value: "HealthCheckFailed"
+              when:
+                - field: external.healthCheck.status
+                  operator: exists
+                - field: external.healthCheck.status
+                  notEquals: "200"
+            - path: phase
+              value: "Ready"
+              when:
+                - field: "{{ phase .cross.db }}"
+                  equals: "Ready"
+                - field: external.healthCheck.status
+                  equals: "200"
+                - field: "{{ readyReplicas .children.deployment }}"
+                  operator: gt
+                  value: "0"
+            - path: regionsDeployed
+              value: "{{ len .spec.regions }}"
+            - path: databaseEndpoint
+              value: "{{ get .cross.db \"status\" \"endpoint\" }}"
+              when:
+                - field: "{{ resourceExists .cross.db }}"
+                  equals: "true"
+            - path: credentialsSecret
+              value: "{{ .metadata.name }}-creds"

@@ -415,6 +415,23 @@ func (k *Katalog) GatewayEndpoint() string {
 	return ""
 }
 
+// ClusterName returns the effective cluster name for this Katalog.
+//
+// Precedence:
+//
+//	metadata.clusterName non-empty → use Katalog value
+//	CLUSTER_NAME env var set       → use konfig value
+//	Neither set                    → empty string
+func (k *Katalog) ClusterName() string {
+	if k.metadata.ClusterName != "" {
+		return k.metadata.ClusterName
+	}
+	if k.konfig != nil {
+		return k.konfig.Cluster().Name()
+	}
+	return ""
+}
+
 // ── Gateway requirement ───────────────────────────────────────────────────────
 
 // NeedsGateway reports whether this Katalog requires a companion gateway process.

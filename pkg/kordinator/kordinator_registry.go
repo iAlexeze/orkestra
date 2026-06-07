@@ -13,7 +13,7 @@ type RegistryEntry struct {
 	CRD               orktypes.CRDEntry
 	Informer          cache.SharedIndexInformer
 	ReconcilerFactory func() domain.Reconciler // factory lives here
-	DegradeThreshold  int
+	FailureThreshold  int
 }
 
 type ResourceKatalog struct {

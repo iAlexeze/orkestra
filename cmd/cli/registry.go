@@ -46,6 +46,7 @@ func init() {
 	registryPushCmd.Flags().BoolVar(&registryPushUpdateMeta, "update-meta", false, "persist overridden metadata.version back to the primary file")
 	registryPushCmd.Flags().StringVar(&registryPushE2EFile, "e2e", "", "path to e2e spec file (default: e2e.yaml in pattern dir)")
 	registryPushCmd.Flags().BoolVar(&registryPushNoE2E, "no-e2e", false, "skip the e2e gate even if e2e.yaml is present")
+	registryPushCmd.Flags().BoolVar(&registryPushNoSimulate, "no-simulate", false, "skip the simulate gate even if simulate.yaml is present")
 
 	// Shadow global flags
 	for _, cmd := range []*cobra.Command{registryCmd, registryPushCmd, registryPullCmd, registryInfoCmd, registryListCmd} {

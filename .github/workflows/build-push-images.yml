@@ -247,3 +247,74 @@ jobs:
         run: |
           echo "## Control Center Image" >> "$GITHUB_STEP_SUMMARY"
           echo "\`ghcr.io/${{ inputs.repository }}-cc:${{ inputs.image_tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  build-devserver:
+    name: Build and Push Dev Server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.1.0
+        with:
+          driver-opts: |
+            image=moby/buildkit:buildx-stable-1
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.ORK_PUBLISH_PAT }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ inputs.repository }}-dev-server
+          tags: |
+            type=semver,pattern={{version}},value=${{ inputs.image_tag }}
+            type=raw,value=latest
+
+      - name: Cache compiled Linux binaries
+        id: cache-binaries
+        uses: actions/cache@v5
+        with:
+          path: |
+            ork-amd64
+            ork-arm64
+          key: linux-binaries-devserver-${{ hashFiles('go.sum', 'pkg/devserver/**/*.go', 'cmd/devserver/**/*.go') }}
+
+      - name: Build Linux binaries (if cache miss)
+        if: steps.cache-binaries.outputs.cache-hit != 'true'
+        run: |
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          LDFLAGS="-X github.com/orkspace/orkestra/pkg/version.Version=${{ github.ref_name }} -X github.com/orkspace/orkestra/pkg/version.Commit=${{ github.sha }} -X github.com/orkspace/orkestra/pkg/version.Date=$DATE"
+          for arch in amd64 arm64; do
+            echo "Building ork-devserver-$arch"
+            GOOS=linux GOARCH=$arch CGO_ENABLED=0 go build \
+              -trimpath \
+              -ldflags="-s -w $LDFLAGS" \
+              -o ork-$arch ./cmd/devserver
+          done
+
+      - name: Build and push dev server image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Write image summary
+        run: |
+          echo "## Dev Server Image" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`ghcr.io/${{ inputs.repository }}-dev-server:latest\`" >> "$GITHUB_STEP_SUMMARY"

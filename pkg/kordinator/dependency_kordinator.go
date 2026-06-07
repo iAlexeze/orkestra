@@ -17,7 +17,7 @@ Startup:
   - Kordinate continues (does NOT block) because missing CRDs are skipped
   - Retry loop starts in background
 
-Retry loop (every PostStartRetryInterval):
+Retry loop (every postStartRetryInterval):
   - Phase 1: checks missing map
     - finds A is missing
     - calls utils.WaitForCRD() → false
@@ -553,7 +553,7 @@ func (k *DependencyKordinator) startCRDWorkers(ctx context.Context, gvk string, 
 	// live concurrency metrics without importing the reconciler package.
 	if wip, ok := rec.(workerInfoProvider); ok {
 		k.crdHealthMap[gvk].SetWorkerInfoFn(func() *ork_autoscaler.WorkerInfo {
-			info := wip.WorkerInfo(entry.CRD.Resync.String(), workers, entry.CRD.Queue.MaxQueueDepth)
+			info := wip.WorkerInfo(entry.CRD.Resync.String(), workers, entry.CRD.Queue.MaxDepth)
 			return info
 		})
 	}

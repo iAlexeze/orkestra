@@ -215,7 +215,10 @@ func (f *FakeKubeclient) PatchFinalizers(_ context.Context, obj runtime.Object, 
 	return nil
 }
 
-func (f *FakeKubeclient) PatchLabels(_ context.Context, obj runtime.Object, _ schema.GroupVersionResource, _, desired map[string]string) error {
+func (f *FakeKubeclient) PatchLabels(_ context.Context, obj runtime.Object, _ schema.GroupVersionResource, base, desired map[string]string) error {
+	if stringMapsEqual(base, desired) {
+		return nil
+	}
 	f.mu.Lock()
 	f.ops = append(f.ops, Op{
 		Cycle:    f.currentCycle,
@@ -225,8 +228,6 @@ func (f *FakeKubeclient) PatchLabels(_ context.Context, obj runtime.Object, _ sc
 		At:       time.Now(),
 	})
 	f.mu.Unlock()
-	// Persist to the in-memory object so subsequent cycles see the update
-	// and the idempotency guard in Ensure**Label skips the patch.
 	if mo, ok := obj.(metav1.Object); ok {
 		mo.SetLabels(desired)
 	}
@@ -262,6 +263,18 @@ func (f *FakeKubeclient) PatchStatus(_ context.Context, obj domain.Object, _ sch
 	})
 	f.mu.Unlock()
 	return nil
+}
+
+func stringMapsEqual(a, b map[string]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, v := range a {
+		if b[k] != v {
+			return false
+		}
+	}
+	return true
 }
 
 func nameFromRuntimeObject(obj runtime.Object) string {

@@ -160,11 +160,11 @@ func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
 	if override.Resync != 0 {
 		result.Resync = override.Resync
 	}
-	if override.Queue.MaxQueueDepth > 0 {
-		result.Queue.MaxQueueDepth = override.Queue.MaxQueueDepth
+	if override.Queue.MaxDepth > 0 {
+		result.Queue.MaxDepth = override.Queue.MaxDepth
 	}
-	if override.Queue.DegradeThreshold > 0 {
-		result.Queue.DegradeThreshold = override.Queue.DegradeThreshold
+	if override.Queue.FailureThreshold > 0 {
+		result.Queue.FailureThreshold = override.Queue.FailureThreshold
 	}
 
 	// ── Deletion Protection ───────────────────────────────────────────────

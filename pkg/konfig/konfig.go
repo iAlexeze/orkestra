@@ -23,7 +23,7 @@ func Init(filenames ...string) (*Konfig, error) {
 		cluster: clusterKonfig{
 			kubekonfigPath: GetStrEnv("KUBEKONFIG", ""),
 			masterURL:      GetStrEnv("MASTER_URL", ""),
-			name:           GetStrEnv("CLUSTER_NAME", "orkestra-cluster"),
+			name:           GetStrEnv("CLUSTER_NAME", ""),
 			namespace:      ns,
 		},
 		// ── Unified security configuration ───────────────────────────────────
@@ -126,8 +126,8 @@ func Init(filenames ...string) (*Konfig, error) {
 			retryPeriod:   GetDurEnvSeconds("RETRY_PERIOD", 10),
 		},
 		katalog: katalogKonfig{
-			defaultMaxQueueDepth:    GetIntEnv("MAX_QUEUE_DEPTH", 100),
-			defaultDegradeThreshold: GetIntEnv("DEGRADE_THRESHOLD", 5),
+			defaultQueueDepth:       GetIntEnv("QUEUE_DEPTH", 100),
+			defaultFailureThreshold: GetIntEnv("FAILURE_THRESHOLD", 5),
 			paths:                   GetStrSliceEnv("KATALOG_PATH", []string{}),
 			defaultResync:           GetDurEnvSeconds("DEFAULT_RESYNC", 15),
 			defaultWorkers:          GetIntEnv("DEFAULT_WORKERS", 3),

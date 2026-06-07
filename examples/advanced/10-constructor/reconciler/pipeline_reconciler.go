@@ -1,3 +1,5 @@
+//go:build ignore
+
 // reconciler/pipeline_reconciler.go
 //
 // A custom reconciler for the Pipeline CRD. This implements domain.Reconciler
@@ -52,16 +54,16 @@ const (
 //	Pending → Running → Succeeded | Failed
 type PipelineReconciler struct {
 	informer cache.SharedIndexInformer
-	kube     *kubeclient.Kubeclient
-	ev       *event.Event
+	kube     kubeclient.KubeClient
+	ev       event.Recorder
 }
 
 // NewPipelineReconciler is the constructor function registered in the Katalog.
-// Signature matches what Orkestra expects: (kube, informer, ev) → domain.Reconciler.
+// Signature matches orktypes.NewReconcilerFunc: (kube, informer, ev) → domain.Reconciler.
 func NewPipelineReconciler(
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	informer cache.SharedIndexInformer,
-	ev *event.Event,
+	ev event.Recorder,
 ) domain.Reconciler {
 	return &PipelineReconciler{
 		informer: informer,

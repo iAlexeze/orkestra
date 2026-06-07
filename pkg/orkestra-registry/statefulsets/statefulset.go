@@ -75,16 +75,20 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	drifted := false
 	updated := existing.DeepCopy()
 
-	if *existing.Spec.Replicas != *desired.Spec.Replicas {
+	// Replicas
+	if existing.Spec.Replicas == nil || *existing.Spec.Replicas != *desired.Spec.Replicas {
 		updated.Spec.Replicas = desired.Spec.Replicas
 		drifted = true
+		logger.Info().Str("statefulset", spec.Name).Msg("statefulset replicas drifted")
 	}
-	if len(existing.Spec.Template.Spec.Containers) > 0 &&
-		existing.Spec.Template.Spec.Containers[0].Image != desired.Spec.Template.Spec.Containers[0].Image {
-		updated.Spec.Template.Spec.Containers[0].Image = desired.Spec.Template.Spec.Containers[0].Image
+
+	// Labels
+	if !common.LabelsEqual(existing.Labels, desired.Labels) {
+		updated.Labels = desired.Labels
 		drifted = true
 	}
 
+	// Resources
 	if spec.Resources != nil {
 		desiredRes := common.BuildResourceRequirements(spec.Resources)
 		var existingRes corev1.ResourceRequirements
@@ -96,6 +100,15 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 			drifted = true
 			logger.Info().Str("statefulset", spec.Name).Msg("statefulset resources drifted")
 		}
+	}
+
+	if len(updated.Spec.Template.Spec.Containers) > 0 && len(desired.Spec.Template.Spec.Containers) > 0 {
+		if common.SyncContainerSpec(&updated.Spec.Template.Spec.Containers[0], desired.Spec.Template.Spec.Containers[0]) {
+			drifted = true
+		}
+	}
+	if common.SyncPodSpec(&updated.Spec.Template.Spec, desired.Spec.Template.Spec) {
+		drifted = true
 	}
 
 	if !drifted {
@@ -161,6 +174,8 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedS
 		Probes:          src.Probes,
 		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
 		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Volumes:         src.Volumes,
+		VolumeMounts:    src.VolumeMounts,
 		Sleep:           src.Sleep,
 	}
 
@@ -194,6 +209,7 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedS
 	if p, err := strconv.ParseInt(src.Port, 10, 32); err == nil {
 		spec.Port = int32(p)
 	}
+	spec.Protocol = common.ParseProtocol(src.Protocol)
 
 	for _, l := range src.Labels {
 		spec.Labels[l.Key] = l.Value
@@ -264,7 +280,7 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 	}
 
 	if spec.Port > 0 {
-		container.Ports = []corev1.ContainerPort{{ContainerPort: spec.Port}}
+		container.Ports = []corev1.ContainerPort{{ContainerPort: spec.Port, Protocol: spec.Protocol}}
 	}
 
 	if spec.Resources != nil {
@@ -393,6 +409,16 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 				},
 			},
 		})
+	}
+
+	// Volumes / VolumeMounts (generic, in addition to VolumeClaimTemplates)
+	if vols := common.BuildVolumes(spec.Volumes); len(vols) > 0 {
+		sts.Spec.Template.Spec.Volumes = vols
+	}
+	if mounts := common.BuildVolumeMounts(spec.VolumeMounts); len(mounts) > 0 {
+		sts.Spec.Template.Spec.Containers[0].VolumeMounts = append(
+			sts.Spec.Template.Spec.Containers[0].VolumeMounts, mounts...,
+		)
 	}
 
 	return sts

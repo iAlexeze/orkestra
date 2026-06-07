@@ -1,7 +1,11 @@
 // pkg/orkestra-registry/deployments/types.go
 package deployments
 
-import orktypes "github.com/orkspace/orkestra/pkg/types"
+import (
+	corev1 "k8s.io/api/core/v1"
+
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+)
 
 // ResolvedDeploymentSpec is the fully resolved Deployment specification.
 // Produced by resolving template expressions and merging static values.
@@ -18,6 +22,9 @@ type ResolvedDeploymentSpec struct {
 
 	// Port — container port. 0 means no port exposed.
 	Port int32
+
+	// Protocol — resolved container port protocol. Defaults to TCP when not declared.
+	Protocol corev1.Protocol
 
 	// Namespace — target namespace. Required.
 	Namespace string
@@ -65,6 +72,10 @@ type ResolvedDeploymentSpec struct {
 	// RollingUpdate — resolved rolling update strategy.
 	// nil means use Kubernetes defaults (25%/25%).
 	RollingUpdate *orktypes.RollingUpdateBehavior
+
+	// Volumes / VolumeMounts — pod volumes and container mounts.
+	Volumes      []orktypes.VolumeSource
+	VolumeMounts []orktypes.VolumeMount
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.

@@ -85,6 +85,12 @@ spec:
             - path: isSynced
               value: "{{ isSynced .children.deployment }}"
 
+            - path: resourceCPU
+              value: "{{ resourceCPU .children.deployment }}"
+
+            - path: resourceMemory
+              value: "{{ resourceMemory .children.deployment }}"
+
             - path: hasConditionAvailable
               value: "{{ hasCondition .children.deployment \"Available\" }}"
 
@@ -135,3 +141,10 @@ spec:
 
             - path: endpointsReady
               value: "{{ endpointsReady .children.endpointslice }}"
+
+            # ── domain notes ────────────────────────────────────────────────
+            - path: domainHost
+              value: '{{ domainHost "https://acme.example.com/" }}'
+
+            - path: domainBare
+              value: '{{ domainBare "https://www.acme.com/" }}'

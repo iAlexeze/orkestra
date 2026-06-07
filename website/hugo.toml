@@ -15,7 +15,7 @@ enableGitInfo = true
     startLevel = 2
 
 [params]
-  description = "The declarative control plane for Kubernetes operators"
+  description = "The Declarative Control Plane for Kubernetes operators"
   github = "https://github.com/orkspace/orkestra"
   controlcenter = "https://cc.orkestra.sh"
   version = "v1"

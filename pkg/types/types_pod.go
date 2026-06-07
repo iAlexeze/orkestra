@@ -37,6 +37,10 @@ type PodTemplateSource struct {
 	// Static: "8080" or Dynamic: "{{ .spec.port }}"
 	Port string `yaml:"port,omitempty" json:"port,omitempty" validate:"omitempty"`
 
+	// Protocol — network protocol for the container port.
+	// Accepted values: TCP (default), UDP, SCTP. Omit to use TCP.
+	Protocol string `yaml:"protocol,omitempty" json:"protocol,omitempty" validate:"omitempty"`
+
 	// Namespace — target namespace.
 	// Default when omitted: "{{ .metadata.namespace }}"
 	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty" validate:"omitempty"`
@@ -112,6 +116,12 @@ type PodTemplateSource struct {
 	// PodSecurity — pod-level security settings applied to the pod spec.
 	// Set podSecurity.profile for a named preset or declare individual fields.
 	PodSecurity *PodSecurityContext `yaml:"podSecurity,omitempty" json:"podSecurity,omitempty"`
+
+	// Volumes — pod volumes available for mounting into the container.
+	Volumes []VolumeSource `yaml:"volumes,omitempty" json:"volumes,omitempty"`
+
+	// VolumeMounts — mounts for the primary container.
+	VolumeMounts []VolumeMount `yaml:"volumeMounts,omitempty" json:"volumeMounts,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.

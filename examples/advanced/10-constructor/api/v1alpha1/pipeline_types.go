@@ -1,3 +1,5 @@
+//go:build ignore
+
 // api/v1alpha1/pipeline_types.go
 package v1alpha1
 

@@ -10,11 +10,24 @@ func conditionalNotes() template.FuncMap {
 		"ternary":     noteTernary,
 		"boolTernary": noteBoolTernary,
 		"boolDefault": noteBoolDefault,
+		"eqTernary":   noteEqTernary,
 		"coalesce":    noteCoalesce,
 		"default":     noteDefault,
 		"empty":       noteEmpty,
 		"notEmpty":    noteNotEmpty,
 	}
+}
+
+// noteEqTernary returns trueVal when val equals target (string comparison),
+// falseVal otherwise. Shorthand for boolTernary (eq val target) trueVal falseVal.
+//
+//	{{ eqTernary .cross.db.found "true" "ready" "waiting" }}
+//	{{ eqTernary .spec.mode "production" "strict" "permissive" }}
+func noteEqTernary(val, target, trueVal, falseVal interface{}) interface{} {
+	if fmt.Sprintf("%v", val) == fmt.Sprintf("%v", target) {
+		return trueVal
+	}
+	return falseVal
 }
 
 // noteTernary returns trueVal when condition is truthy, falseVal otherwise.
@@ -49,10 +62,11 @@ func noteCoalesce(vals ...interface{}) interface{} {
 // }
 
 // noteDefault returns val if non-empty, otherwise returns dflt.
-// In template pipelines: {{ val | default dflt }} calls noteDefault(dflt, val).
+// Both forms are equivalent — the fallback is always the first argument:
 //
-//	{{ default .spec.replicas 2 }}     →  2 if spec.replicas is absent or zero
-//	{{ default .spec.port "8080" }}    →  "8080" if spec.port is absent
+//	{{ default false .spec.suspend }}          →  false if suspend is absent
+//	{{ .spec.suspend | default false }}        →  same call, pipe appends last
+//	{{ default 3 .spec.successfulJobsHistoryLimit }}  →  3 if field is absent
 func noteDefault(dflt, val interface{}) interface{} {
 	if noteEmpty(val) {
 		return dflt

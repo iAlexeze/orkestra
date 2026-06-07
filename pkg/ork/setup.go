@@ -3,7 +3,6 @@ package ork
 import (
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -47,12 +46,12 @@ func HelmInstall(ctx context.Context, h orktypes.SetupHelmInstall) error {
 		args = append(args, "--set", fmt.Sprintf("%s=%v", k, v))
 	}
 
+	fmt.Printf("  → Installing %s...\n", release)
 	cmd := exec.CommandContext(ctx, "helm", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("helm install %s/%s: %w", h.Repo, h.Chart, err)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("helm install %s/%s: %w\n%s", h.Repo, h.Chart, err, out)
 	}
+	fmt.Printf("  ✓ %s installed\n", release)
 	return nil
 }
 
@@ -69,15 +68,23 @@ func WaitForResource(ctx context.Context, w orktypes.SetupWait) error {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		if w.Ready {
-			// Use kubectl wait for ready condition
-			args := []string{
-				"wait",
-				fmt.Sprintf("%s/%s", strings.ToLower(w.Kind), w.Name),
-				"--for=condition=Ready",
-				"--timeout=5s",
-			}
-			if w.Namespace != "" {
-				args = append(args, "-n", w.Namespace)
+			var args []string
+			if strings.EqualFold(w.Kind, "Deployment") {
+				// Deployments — use rollout status.
+				args = []string{"rollout", "status", "deployment/" + w.Name, "--timeout=5s"}
+				if w.Namespace != "" {
+					args = append(args, "-n", w.Namespace)
+				}
+			} else {
+				args = []string{
+					"wait",
+					fmt.Sprintf("%s/%s", strings.ToLower(w.Kind), w.Name),
+					"--for=condition=Ready",
+					"--timeout=5s",
+				}
+				if w.Namespace != "" {
+					args = append(args, "-n", w.Namespace)
+				}
 			}
 			if err := exec.CommandContext(ctx, "kubectl", args...).Run(); err == nil {
 				return nil

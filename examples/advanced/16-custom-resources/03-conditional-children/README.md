@@ -77,7 +77,7 @@ kubectl apply -f crd-cachecluster.yaml
 kubectl apply -f crd-searchindex.yaml
 ```
 
-### 2. Start the operator
+### 2. Start the runtime
 
 ```bash
 ork run 

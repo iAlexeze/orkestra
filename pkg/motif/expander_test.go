@@ -82,14 +82,15 @@ func TestValidateMotifTemplates_AllDeclared(t *testing.T) {
 	}
 }
 
-func TestMergeHookTemplates_Appends(t *testing.T) {
+func TestMergeFrom_Appends(t *testing.T) {
 	dst := &orktypes.HookTemplates{}
 	src := &orktypes.HookTemplates{
 		Deployments: []orktypes.DeploymentTemplateSource{{Name: "app"}},
 		Services:    []orktypes.ServiceTemplateSource{{Name: "svc"}},
+		External:    []orktypes.ExternalCallSpec{{Name: "health"}},
 	}
 
-	motif.MergeHookTemplates(dst, src)
+	dst.MergeFrom(src)
 
 	if len(dst.Deployments) != 1 {
 		t.Errorf("deployments = %d, want 1", len(dst.Deployments))
@@ -97,11 +98,121 @@ func TestMergeHookTemplates_Appends(t *testing.T) {
 	if len(dst.Services) != 1 {
 		t.Errorf("services = %d, want 1", len(dst.Services))
 	}
+	if len(dst.External) != 1 {
+		t.Errorf("external = %d, want 1", len(dst.External))
+	}
 }
 
-func TestMergeHookTemplates_NilSafe(t *testing.T) {
+func TestMergeFrom_NilSafe(t *testing.T) {
 	dst := &orktypes.HookTemplates{}
-	// Should not panic
-	motif.MergeHookTemplates(dst, nil)
-	motif.MergeHookTemplates(nil, dst)
+	// Should not panic with nil src
+	dst.MergeFrom(nil)
+	// Should not panic with nil receiver
+	var nilDst *orktypes.HookTemplates
+	nilDst.MergeFrom(dst)
+}
+
+// TestExpand_StaticConditionDropsResource verifies that a resource whose
+// when: condition references only inputs (static) is dropped from the
+// expanded output when that condition fails at expansion time.
+func TestExpand_StaticConditionDropsResource(t *testing.T) {
+	m := loadTestMotif(t, "testdata/conditional.yaml")
+
+	// enableUI: "false" — the UI deployment should be dropped
+	expanded, err := motif.Expand(m, map[string]string{
+		"image":    "nginx",
+		"enableUI": "false",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if expanded.OnReconcile == nil {
+		t.Fatal("expected OnReconcile to be non-nil")
+	}
+	for _, d := range expanded.OnReconcile.Deployments {
+		if d.Name == "{{ .metadata.name }}-ui" {
+			t.Error("UI deployment should have been dropped (enableUI=false) but was present")
+		}
+	}
+}
+
+// TestExpand_StaticConditionKeepsResource verifies that a resource whose
+// static condition passes is kept and has its static conditions stripped.
+func TestExpand_StaticConditionKeepsResource(t *testing.T) {
+	m := loadTestMotif(t, "testdata/conditional.yaml")
+
+	// enableUI: "true" — the UI deployment should be present with no conditions
+	expanded, err := motif.Expand(m, map[string]string{
+		"image":    "nginx",
+		"enableUI": "true",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var found bool
+	for _, d := range expanded.OnReconcile.Deployments {
+		if d.Name == "{{ .metadata.name }}-ui" {
+			found = true
+			if len(d.Conditions) != 0 {
+				t.Errorf("static conditions should be stripped from kept resource, got %d", len(d.Conditions))
+			}
+		}
+	}
+	if !found {
+		t.Error("UI deployment should be present (enableUI=true) but was not found")
+	}
+}
+
+// TestExpand_RuntimeConditionPreserved verifies that a resource whose when:
+// condition references a runtime field ({{ .spec.* }}) is kept and has its
+// condition preserved for the reconciler — not evaluated at expansion time.
+func TestExpand_RuntimeConditionPreserved(t *testing.T) {
+	m := loadTestMotif(t, "testdata/conditional.yaml")
+
+	expanded, err := motif.Expand(m, map[string]string{
+		"image":    "nginx",
+		"enableUI": "false",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var found bool
+	for _, d := range expanded.OnReconcile.Deployments {
+		if d.Name == "{{ .metadata.name }}" {
+			found = true
+			if len(d.Conditions) == 0 {
+				t.Error("runtime condition should be preserved on the resource")
+			}
+			if d.Conditions[0].Field != "{{ .spec.tier }}" {
+				t.Errorf("runtime condition field = %q, want %q", d.Conditions[0].Field, "{{ .spec.tier }}")
+			}
+		}
+	}
+	if !found {
+		t.Error("main deployment should be present regardless of enableUI")
+	}
+}
+
+// TestExpand_ExternalCallsMerged verifies that external: blocks declared in
+// motif resources are included in the expanded OnReconcile output.
+func TestExpand_ExternalCallsMerged(t *testing.T) {
+	m := loadTestMotif(t, "testdata/conditional.yaml")
+
+	expanded, err := motif.Expand(m, map[string]string{
+		"image":      "nginx",
+		"enableUI":   "false",
+		"serviceUrl": "http://localhost:9999",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if expanded.OnReconcile == nil {
+		t.Fatal("expected OnReconcile to be non-nil")
+	}
+	if len(expanded.OnReconcile.External) == 0 {
+		t.Error("external calls from motif resources should be merged into OnReconcile")
+	}
+	if expanded.OnReconcile.External[0].Name != "healthCheck" {
+		t.Errorf("external[0].Name = %q, want %q", expanded.OnReconcile.External[0].Name, "healthCheck")
+	}
 }

@@ -2,25 +2,47 @@ package simulate
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/kordinator"
 	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/reconciler"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 )
+
+// noopTransport returns an empty 200 response for every request.
+// Used to stub out external: HTTP calls during simulation so they
+// execute the full call path but produce empty result fields
+// rather than real network errors.
+type noopTransport struct{}
+
+func (noopTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: 200,
+		Body:       io.NopCloser(strings.NewReader("")),
+		Header:     make(http.Header),
+	}, nil
+}
 
 // Result is the output of one simulation run.
 type Result struct {
 	Cycles   []CycleResult
 	Steady   bool
-	SteadyAt int // cycle number where steady state was first detected (0 if not reached)
+	SteadyAt int      // cycle number where steady state was first detected (0 if not reached)
+	Notes    []string // informational notes about blocks that could not execute (e.g. constructor body)
+	AllOps   []Op     // every op recorded across all cycles, for diagnostic use
 }
 
 // CycleResult is the output of one reconcile cycle.
@@ -30,17 +52,38 @@ type CycleResult struct {
 	Error error
 }
 
+// RunOptions controls optional behaviour for a simulation run.
+type RunOptions struct {
+	// SkipExternal stubs all external: HTTP calls with an empty 200 response.
+	// When false (the default), external calls are attempted against the real network.
+	SkipExternal bool
+
+	// Peers holds CRs for sibling CRDs in the same Katalog, keyed by lowercase kind.
+	// When set, cross: declarations in the reconciler can observe these CRs
+	// via the fake katalog registry instead of returning empty results.
+	Peers map[string]*unstructured.Unstructured
+}
+
 // Run simulates the operator against an in-memory cluster.
 //
 // kat is the parsed Katalog.
 // crdName is the CRD entry to simulate.
 // cr is the CR to reconcile.
 // maxCycles is the maximum number of reconcile cycles.
-func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstructured.Unstructured, maxCycles int) (*Result, error) {
+func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstructured.Unstructured, maxCycles int, opts RunOptions) (*Result, error) {
 	// Silence the reconciler's JSON logs — simulation output is structured by the caller.
 	prev := log.Logger
 	log.Logger = log.Output(io.Discard)
 	defer func() { log.Logger = prev }()
+
+	// Stub out external: HTTP calls only when --skip-external is requested.
+	// Without it, external calls hit the real network — useful when targeting a
+	// local mock server or a staging API from a development machine.
+	if opts.SkipExternal {
+		prevTransport := reconciler.ExternalHTTPTransport
+		reconciler.ExternalHTTPTransport = noopTransport{}
+		defer func() { reconciler.ExternalHTTPTransport = prevTransport }()
+	}
 
 	crdEntry, ok := kat.CRDEntry(crdName)
 	if !ok {
@@ -52,43 +95,111 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 		return nil, fmt.Errorf("building scheme: %w", err)
 	}
 
+	gvk := schema.GroupVersionKind{
+		Group:   crdEntry.APITypes.Group,
+		Version: crdEntry.APITypes.Version,
+		Kind:    crdEntry.APITypes.Kind,
+	}
+
 	// Build the fake cluster
 	fakeKube := NewFakeKubeclient(scheme)
 
-	// Pre-seed the CR with managed labels and annotations so the reconciler's
-	// idempotency guards skip those patches in every cycle. Without this, the
-	// reconciler deep-copies from the indexer each cycle and always sees them
-	// as missing, producing noise in every cycle's op list.
-	// KatalogName is only set after ValidateConfig, which ParseFile doesn't call.
-	// Use the Katalog metadata name directly — it is set by KomposeRuntimeKatalog.
+	// Pre-seed managed labels/annotations so the reconciler's idempotency
+	// guards skip those patches on every cycle.
 	seedManagedMeta(cr, kat.Metadata().Name)
 
-	// Build a fake informer backed by a static indexer containing the CR
+	// For typed CRDs, the indexer must hold the concrete Go type — not
+	// *unstructured.Unstructured — so that constructor type-assertions
+	// (raw.(*MyType)) and hook BindToObjectHooks closures succeed.
+	// Convert via JSON round-trip: unstructured.Object → JSON → typed struct.
+	seedObj := interface{}(cr)
+	newObjFn := func() domain.Object { return &unstructured.Unstructured{} }
+
+	if objFactory, ok := orktypes.ObjectRegistry[gvk]; ok {
+		typed := objFactory()
+		if jsonBytes, err := json.Marshal(cr.Object); err == nil {
+			if json.Unmarshal(jsonBytes, typed) == nil {
+				if domObj, ok := typed.(domain.Object); ok {
+					seedObj = domObj
+					newObjFn = func() domain.Object {
+						return orktypes.ObjectRegistry[gvk]().(domain.Object)
+					}
+				}
+			}
+		}
+	}
+
+	// Build a fake informer backed by a static indexer containing the CR.
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
-	if err := indexer.Add(cr); err != nil {
+	if err := indexer.Add(seedObj); err != nil {
 		return nil, fmt.Errorf("adding CR to indexer: %w", err)
 	}
 	informer := newFakeInformer(indexer)
 
-	// Build the reconciler with the fake cluster.
-	// event.NoopRecorder discards all events — simulation doesn't emit events.
-	r := reconciler.NewGenericReconciler[domain.Object](
-		crdEntry,
-		informer,
-		&event.NoopRecorder{},
-		fakeKube,
-		nil, // no Go hooks
-		func() domain.Object { return &unstructured.Unstructured{} },
-		nil, nil, nil, nil,
-		kat, // Katalog for notification wiring
-	)
+	// Look up hooks from the registry. In the standard ork binary the map is
+	// empty for custom types and hookBinder stays nil.
+	// In a custom operator binary produced by `make registry && make build`,
+	// the init() in zz_generated_typeregistry.go populates HookRegistry so
+	// the actual hook function runs inside the fake cluster.
+	var hookBinder domain.AnyReconcileHooks
+	if fn, ok := orktypes.HookRegistry[gvk]; ok {
+		hookBinder = fn()
+	}
+
+	result := &Result{}
+
+	// Build a peer registry so cross: declarations can read sibling CRDs' CRs
+	// from the fake informer cache rather than returning empty results.
+	// Each peer CR is seeded into its own static indexer and wrapped in a
+	// fakeInformer; the registry maps CRD name → informer for readCross().
+	peerRegistry := kordinator.NewKordinatorRegistry()
+	for _, peerName := range kat.CRDNames() {
+		if peerName == crdEntry.Name {
+			continue
+		}
+		peerEntry, ok := kat.CRDEntry(peerName)
+		if !ok {
+			continue
+		}
+		peerCR, ok := opts.Peers[strings.ToLower(peerEntry.APITypes.Kind)]
+		if !ok {
+			continue
+		}
+		peerIdx := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
+		_ = peerIdx.Add(peerCR)
+		peerInf := newFakeInformer(peerIdx)
+		peerGVKStr := schema.GroupVersionKind{
+			Group:   peerEntry.APITypes.Group,
+			Version: peerEntry.APITypes.Version,
+			Kind:    peerEntry.APITypes.Kind,
+		}.String()
+		peerRegistry.Register(peerGVKStr, peerEntry, peerInf, nil)
+	}
+
+	// Build the reconciler. Constructor path: use it directly with the fake
+	// kubeclient and a discarding event recorder.
+	// Fallback: GenericReconciler with the typed newObj factory and peer registry
+	// so hook BindToObjectHooks type-assertions and cross: lookups both work.
+	var r domain.Reconciler
+	if factoryFn, ok := orktypes.ReconcilerRegistry[gvk]; ok {
+		r = factoryFn(fakeKube, informer, event.Discard())
+	} else {
+		r = reconciler.NewGenericReconciler[domain.Object](
+			crdEntry,
+			informer,
+			nil,
+			fakeKube,
+			hookBinder,
+			newObjFn,
+			peerRegistry, nil, nil, nil,
+			kat,
+		)
+	}
 
 	key, err := cache.MetaNamespaceKeyFunc(cr)
 	if err != nil {
 		return nil, fmt.Errorf("computing CR key: %w", err)
 	}
-
-	result := &Result{}
 	var prevCycleOps []Op
 
 	for cycle := 1; cycle <= maxCycles; cycle++ {
@@ -116,6 +227,7 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 		prevCycleOps = cycleResult.Ops
 	}
 
+	result.AllOps = fakeKube.Ops()
 	return result, nil
 }
 

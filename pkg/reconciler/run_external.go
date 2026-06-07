@@ -42,6 +42,11 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
+// ExternalHTTPTransport is the http.RoundTripper used for all external: calls.
+// nil uses http.DefaultTransport (production). Set to a stub in tests or
+// simulation to prevent real network calls. Used by ork simulate
+var ExternalHTTPTransport http.RoundTripper
+
 const (
 	// maxBodyBytes is the maximum bytes read from an HTTP response body.
 	// Large responses are truncated — template expressions rarely need full bodies.
@@ -115,6 +120,10 @@ func runExternal(
 
 		metrics.RecordExternalCall(gvk, call.Name, resolvedURL, result.DurationSeconds, result.Error, result.StatusCode)
 
+		// Inject accumulated results before any early return so status fields
+		// can reference this call's outcome even when continueOnError is false.
+		resolver = resolver.WithExternal(results)
+
 		if result.Error != "" {
 			log.Warn().
 				Str("call", call.Name).
@@ -132,10 +141,6 @@ func runExternal(
 				Str("status", result.Status).
 				Msg("external call succeeded")
 		}
-
-		// Inject accumulated results so far — later calls can reference earlier ones.
-		// Each iteration creates a new resolver with the growing results map.
-		resolver = resolver.WithExternal(results)
 	}
 
 	return resolver, nil
@@ -189,7 +194,12 @@ func executeHTTPCall(
 
 	start := time.Now()
 
-	client := &http.Client{Timeout: timeout}
+	var client *http.Client
+	if ExternalHTTPTransport != nil {
+		client = &http.Client{Timeout: timeout, Transport: ExternalHTTPTransport}
+	} else {
+		client = &http.Client{Timeout: timeout}
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return orktypes.ExternalCallResult{

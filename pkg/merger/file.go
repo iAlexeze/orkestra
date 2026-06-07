@@ -3,6 +3,8 @@ package merger
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
 
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -83,12 +85,61 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 
 	result := make(map[string]orktypes.CRDEntry, len(doc.Spec.CRDs))
 
+	// Resolve the katalog namespace — "default" when not declared.
+	katalogNamespace := doc.Metadata.Namespace
+	if katalogNamespace == "" {
+		katalogNamespace = "default"
+	}
+
+	// katalogDir is used to resolve relative crdFile and crFiles paths.
+	// We resolve them here — while we still have the katalog file's path —
+	// so they become absolute before being merged into the top-level map.
+	// This allows ork run/validate -f /any/path/katalog.yaml to work from
+	// any working directory, even when the katalog is imported by a Komposer.
+	katalogDir := filepath.Dir(path)
+
 	for name, crd := range doc.Spec.CRDs {
 		if name == "" {
 			return nil, fmt.Errorf("%q spec.crds: CRD with empty key", path)
 		}
 		// Duplicate within the same file is impossible — map keys are unique.
 		crd.Name = name
+
+		// Resolve crdFile and crFiles to absolute paths relative to this katalog.
+		if crd.CRDFile != "" && !filepath.IsAbs(crd.CRDFile) && !strings.HasPrefix(crd.CRDFile, "http") {
+			crd.CRDFile = filepath.Join(katalogDir, crd.CRDFile)
+		}
+		for i, cf := range crd.CRFiles {
+			if !filepath.IsAbs(cf) && !strings.HasPrefix(cf, "http") {
+				crd.CRFiles[i] = filepath.Join(katalogDir, cf)
+			}
+		}
+		if crd.Setup != nil {
+			for i, cf := range crd.Setup.Apply {
+				if !filepath.IsAbs(cf) && !strings.HasPrefix(cf, "http") {
+					crd.Setup.Apply[i] = filepath.Join(katalogDir, cf)
+				}
+			}
+		}
+		// Resolve motif file paths in imports to absolute so they work regardless
+		// of the working directory when expandMotifImports runs.
+		for i, imp := range crd.Imports {
+			if isFileMotif(imp.Motif) && !filepath.IsAbs(imp.Motif) {
+				crd.Imports[i].Motif = filepath.Join(katalogDir, imp.Motif)
+			}
+		}
+
+		// Stamp the katalog namespace so the runtime and CC can group by team.
+		crd.KatalogNamespace = katalogNamespace
+		crd.KatalogDescription = doc.Metadata.Description
+		crd.KatalogVersion = doc.Metadata.Version
+
+		// Apply katalog-level CrossAccess as the default for every CRD that
+		// does not declare its own crossAccess field.
+		if crd.CrossAccess == nil && doc.CrossAccess != nil {
+			v := *doc.CrossAccess
+			crd.CrossAccess = &v
+		}
 
 		// Merge spec-level restrictions into each CRD (additive).
 		protect := doc.Security.NamespaceProtection
@@ -189,6 +240,12 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 				return nil, fmt.Errorf("%q imports.files: %w", path, err)
 			}
 
+			// Resolve relative paths against the Komposer's directory so
+			// ork run -f /any/path/komposer.yaml works from any working directory.
+			if !filepath.IsAbs(resolved) && !strings.HasPrefix(resolved, "http") {
+				resolved = filepath.Join(filepath.Dir(path), resolved)
+			}
+
 			// Resolve authentication credentials from environment variables
 			auth, err := fileSrc.Auth.Resolve()
 			if err != nil {
@@ -278,6 +335,22 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 
 		localSeen[name] = inlineKey
 	}
+	// Fill KatalogDescription and KatalogVersion fallbacks — if the sub-Katalog had none, use the Komposer's.
+	for name, crd := range allCRDs {
+		changed := false
+		if crd.KatalogDescription == "" && doc.Metadata.Description != "" {
+			crd.KatalogDescription = doc.Metadata.Description
+			changed = true
+		}
+		if crd.KatalogVersion == "" && doc.Metadata.Version != "" {
+			crd.KatalogVersion = doc.Metadata.Version
+			changed = true
+		}
+		if changed {
+			allCRDs[name] = crd
+		}
+	}
+
 	// Merge Komposer-level restrictions into every CRD (additive).
 	protect := doc.Security.NamespaceProtection
 	if protect != nil {

@@ -76,4 +76,4 @@ The operatorBox's `CRDHealth` is updated: consecutive failure counter resets, su
 
 ## On failure
 
-Any step failure stops the pipeline at that point. The `Ready` condition is written as `False` with the error message. The consecutive failure counter increments. After the configured `degradeThreshold` is crossed, the operatorBox enters degraded state. The CR is requeued with backoff.
+Any step failure stops the pipeline at that point. The `Ready` condition is written as `False` with the error message. The consecutive failure counter increments. After the configured `failureThreshold` is crossed, the operatorBox enters degraded state. The CR is requeued with backoff.

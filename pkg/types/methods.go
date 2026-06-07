@@ -76,6 +76,36 @@ func (c *CRDEntry) ActiveEnrichTargets(data map[string]interface{}, eval Templat
 	return result
 }
 
+// UnconditionalEnrichTargets returns entries with no when:/anyOf: conditions.
+// These run in phase 1 of ReadChildren so that .children.* is populated before
+// conditional gates are evaluated.
+func (c *CRDEntry) UnconditionalEnrichTargets() []EnrichTarget {
+	result := make([]EnrichTarget, 0, len(c.Enrich))
+	for _, t := range c.Enrich {
+		if len(t.When) == 0 && len(t.AnyOf) == 0 {
+			result = append(result, t)
+		}
+	}
+	return result
+}
+
+// ConditionalActiveEnrichTargets returns entries that HAVE conditions and whose
+// conditions pass for the given data. Called in phase 2 of ReadChildren after
+// children data is available — gates like {{ replicasReady .children.deployment }}
+// can only be evaluated once the deployment has been read.
+func (c *CRDEntry) ConditionalActiveEnrichTargets(data map[string]interface{}, eval TemplateEvaluator) []EnrichTarget {
+	result := make([]EnrichTarget, 0)
+	for _, t := range c.Enrich {
+		if len(t.When) == 0 && len(t.AnyOf) == 0 {
+			continue // already ran in phase 1
+		}
+		if EvaluateWhen(data, t.When, t.AnyOf, eval) {
+			result = append(result, t)
+		}
+	}
+	return result
+}
+
 // IsStatusless reports whether this CRD has no meaningful readiness semantics.
 // These resources become "Ready" immediately upon creation.
 func (c *CRDEntry) IsStatuslessType() bool {
@@ -89,13 +119,13 @@ func (c *CRDEntry) GetRuntimeObjects() (runtime.Object, runtime.Object) {
 	return c.DynamicModeObject(), c.ListDynamicModeObject()
 }
 
-// SetMaxQueueDepth resolves the queue depth for this CRD. If a per‑CRD value is
+// SetQueueDepth resolves the queue depth for this CRD. If a per‑CRD value is
 // provided, it is used; otherwise the Orkestra/Konduktor‑level default is applied.
-func (c *CRDEntry) SetMaxQueueDepth(def int) int {
-	if c.Queue.MaxQueueDepth == 0 {
+func (c *CRDEntry) SetQueueDepth(def int) int {
+	if c.Queue.MaxDepth == 0 {
 		return def
 	}
-	return c.Queue.MaxQueueDepth
+	return c.Queue.MaxDepth
 }
 
 // SetWorkers resolves the worker count for this CRD. If a per‑CRD value is
@@ -252,13 +282,13 @@ func (c *CRDEntry) SharedQueue() bool {
 // CustomHooksEnabled reports whether the reconcile behaviour uses custom hooks.
 // Defaults to false when omitted.
 func (c *CRDEntry) CustomHooksEnabled() bool {
-	return c.OperatorBox.Hooks == nil
+	return c.OperatorBox.Hooks != nil
 }
 
 // ConstructorEnabled reports whether the reconcile behaviour uses a constructor.
 // Defaults to false when omitted.
 func (c *CRDEntry) ConstructorEnabled() bool {
-	return c.OperatorBox.Constructor == nil
+	return c.OperatorBox.ConstructorDecl != nil
 }
 
 // IsHealthEnabled reports whether the /health endpoint is enabled for this CRD.
@@ -407,6 +437,17 @@ func (c *CRDEntry) HasAutoscaleProfile() bool {
 // AutoScaleProfile returns the string value of the autoscale profile
 func (c *CRDEntry) AutoScaleProfile() string {
 	return c.OperatorBox.Autoscale.Profile
+}
+
+// IsConversionParticipant reports whether this CRD is a participant-only member
+// of a conversion pair. Participants hold no conversion paths — those live on
+// the CRD that owns the /convert logic. Used to skip path registration so a
+// participant entry can never clobber the real rules during Katalog load.
+func (c *CRDEntry) IsConversionParticipant() bool {
+	if c.Conversion == nil {
+		return false
+	}
+	return c.Conversion.Participant
 }
 
 // UpdateCRDCaBundle reports whether this CRD declares an updateCRD field

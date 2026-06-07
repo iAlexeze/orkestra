@@ -248,7 +248,7 @@ runtime guarantees:
 kubectl apply -f crd.yaml
 ```
 
-### 2. Start the operator
+### 2. Start the runtime
 
 ```bash
 ork run -f katalog.yaml

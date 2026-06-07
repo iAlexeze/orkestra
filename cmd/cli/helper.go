@@ -43,7 +43,6 @@ var (
 	orkestraLogo       = utils.OrkestraLogoCLI
 	isRunningInCluster = utils.IsRunningInCluster
 	writeFileAndFormat = utils.WriteFileAndFormat
-	cliExit            = utils.Exit
 )
 
 // ── printTemplateSummary ──────────────────────────────────────────────────────
@@ -99,8 +98,8 @@ func printTemplateSummary(k *katalog.Katalog, crds map[string]orktypes.CRDEntry,
 			green(fmt.Sprintf("%d", crd.Workers)),
 			green(crd.Resync.String()),
 		)
-		if crd.Queue.MaxQueueDepth > 0 {
-			fmt.Printf("  queue:%s", green(fmt.Sprintf("%d", crd.Queue.MaxQueueDepth)))
+		if crd.Queue.MaxDepth > 0 {
+			fmt.Printf("  queue:%s", green(fmt.Sprintf("%d", crd.Queue.MaxDepth)))
 		}
 		fmt.Println()
 
@@ -317,8 +316,8 @@ func printCRDDetail(crd orktypes.CRDEntry, g *katalog.DependencyGraph) {
 	fmt.Printf("  %s\n", cyan(bold("Runtime")))
 	fmt.Printf("    Workers:       %s\n", green(fmt.Sprintf("%d", crd.Workers)))
 	fmt.Printf("    Resync:        %s\n", green(crd.Resync.String()))
-	if crd.Queue.MaxQueueDepth > 0 {
-		fmt.Printf("    MaxQueueDepth: %s\n", green(fmt.Sprintf("%d", crd.Queue.MaxQueueDepth)))
+	if crd.Queue.MaxDepth > 0 {
+		fmt.Printf("    MaxDepth: %s\n", green(fmt.Sprintf("%d", crd.Queue.MaxDepth)))
 	}
 	fmt.Println()
 

@@ -73,6 +73,11 @@ type DeploymentTemplateSource struct {
 	// Omit to expose no port.
 	Port string `yaml:"port,omitempty" json:"port,omitempty" validate:"omitempty"`
 
+	// Protocol — network protocol for the container port.
+	// Accepted values: TCP (default), UDP, SCTP.
+	// Omit to use TCP.
+	Protocol string `yaml:"protocol,omitempty" json:"protocol,omitempty" validate:"omitempty"`
+
 	// Namespace — target namespace for the Deployment.
 	// Default when omitted: "{{ .metadata.namespace }}" (same namespace as the CR).
 	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty" validate:"omitempty"`
@@ -168,6 +173,15 @@ type DeploymentTemplateSource struct {
 	// or declare maxSurge/maxUnavailable explicitly.
 	// Profile and explicit fields are mutually exclusive.
 	RollingUpdate *RollingUpdateBehavior `yaml:"rollingUpdate,omitempty" json:"rollingUpdate,omitempty"`
+
+	// Volumes — pod volumes available for mounting into the container.
+	// Supports configMap, secret, emptyDir, persistentVolumeClaim, and hostPath sources.
+	// Volume names support template expressions.
+	Volumes []VolumeSource `yaml:"volumes,omitempty" json:"volumes,omitempty"`
+
+	// VolumeMounts — mounts for the primary container. Each entry references a
+	// volume declared in volumes: by name.
+	VolumeMounts []VolumeMount `yaml:"volumeMounts,omitempty" json:"volumeMounts,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.

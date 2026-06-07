@@ -28,7 +28,7 @@ type Kontroller struct {
 	katalog          *ResourceKatalog
 	queueRegistry    *queue.QueueRegistry
 	defaultWorkqueue *queue.Workqueue
-	degradeThreshold map[string]int
+	failureThreshold map[string]int
 
 	hs           domain.Health
 	crdHealthMap map[string]*CRDHealth
@@ -78,13 +78,13 @@ func NewKontroller(
 		failed:           make(map[string]int),
 		wgs:              make(map[string]*sync.WaitGroup),
 		reconcilers:      make(map[string]domain.Reconciler),
-		degradeThreshold: make(map[string]int),
+		failureThreshold: make(map[string]int),
 	}
 
 	// Load registry entries
 	for gvk, entry := range katalog.Entries() {
 		k.crds = append(k.crds, entry.CRD)
-		k.degradeThreshold[gvk] = entry.CRD.Queue.DegradeThreshold
+		k.failureThreshold[gvk] = entry.CRD.Queue.FailureThreshold
 	}
 
 	return k
@@ -101,7 +101,7 @@ func (k *Kontroller) Start(ctx context.Context) error {
 			continue
 		}
 		logger.Warn().Str("gvk", gvk).Msg("CRD missing — marking as degraded")
-		k.crdHealthMap[gvk].RecordStartupFailure(errors.New("CRD not found"), crd.Queue.DegradeThreshold)
+		k.crdHealthMap[gvk].RecordStartupFailure(errors.New("CRD not found"), crd.Queue.FailureThreshold)
 	}
 
 	// All CRDs confirmed (filtered by informer) — now sync caches
@@ -148,18 +148,6 @@ func (k *Kontroller) Shutdown(ctx context.Context) {}
 // Controller name
 func (k *Kontroller) Name() string {
 	return "orkestra kontroller"
-}
-
-// Errorrate
-func (k *Kontroller) errorRate(gvk string) float64 {
-	k.mu.RLock()
-	defer k.mu.RUnlock()
-
-	if k.total[gvk] == 0 {
-		return 0
-	}
-
-	return float64(k.failed[gvk] / k.total[gvk])
 }
 
 // Handle failure writes for concurrency

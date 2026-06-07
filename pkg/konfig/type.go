@@ -150,8 +150,8 @@ type NotificationConfig struct {
 
 type katalogKonfig struct {
 	paths                   []string // Comma separated Paths to CRD katalog YAML file
-	defaultMaxQueueDepth    int
-	defaultDegradeThreshold int `validate:"required"`
+	defaultQueueDepth       int
+	defaultFailureThreshold int `validate:"required"`
 	defaultResync           time.Duration
 	defaultWorkers          int
 	shutdownTimeout         time.Duration

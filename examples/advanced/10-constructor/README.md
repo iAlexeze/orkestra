@@ -122,7 +122,7 @@ First, see the expected error with the standard `ork` CLI:
 
 ```bash
 ork validate
-# error: no reconciler constructor registered for Kind=Pipeline
+# CRD "pipeline": no constructor registered — check reconciler.constructor in Katalog and re-run ork generate registry
 ```
 
 Now build your own binary:
@@ -190,11 +190,43 @@ kubectl apply -f cr.yaml
 
 ## E2E
 
-Run the full typed operator lifecycle in one command — spins up a kind cluster, builds and deploys the operator, applies the CR, asserts the state machine ran to completion, then tears down:
+Typed operators require your own published image — `ork e2e` installs Orkestra via Helm and you must point it at your image so the deployed runtime includes your generated type registry.
+
+**Step 1 — build and push your image:**
 
 ```bash
-ork e2e
+make docker push IMAGE_REPO=yourregistry/pipeline-operator IMAGE_TAG=latest
 ```
+
+
+**Important notes: (build-time security)**
+
+- `make docker` builds a production‑only binary (tags `runtime`) – it cannot run developer commands like `validate` or `e2e`
+- The binary is copied from `~/.orkestra/bin/runtime/ork` into the current directory for `docker build`, then removed
+- Your local `./ork` (development CLI) is restored after the build – it remains unchanged and fully featured
+- This round‑trip ensures your container image contains only the secure runtime, while your local environment keeps all developer tools
+
+#### Try running a developer command
+It will fail (as intended), only `ork run` succeeds.
+
+```bash
+~/.orkestra/bin/runtime/ork validate
+# unknown command "validate" for "ork"
+```
+
+---
+
+**Step 2 — run e2e with your image:**
+
+```bash
+ork e2e \
+  --set runtime.image.repository=yourregistry/pipeline-operator \
+  --set runtime.image.tag=latest
+```
+
+The `--set` flags are are used by `ork e2e`, so the cluster runs your image instead of the default Orkestra image.
+
+This spins up a kind cluster, deploys your custom Orkestra runtime, applies the CR, asserts the state machine ran to completion, then tears down.
 
 This runs everything defined in [e2e.yaml](./e2e.yaml):
 

@@ -29,6 +29,9 @@ const (
 	// FileE2E is the E2E test definition file for a Katalog pattern.
 	FileE2E = "e2e.yaml"
 
+	// FileSimulate is the simulate spec file for a Katalog pattern.
+	FileSimulate = "simulate.yaml"
+
 	// DefaultKatalogRegistry is the official OCI path for Katalog patterns.
 	DefaultKatalogRegistry = "ghcr.io/orkspace/orkestra-registry/patterns/katalogs"
 

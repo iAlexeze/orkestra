@@ -84,8 +84,8 @@ type CRDMeta struct {
 	}
 
 	Queue struct {
-		MaxQueueDepth int
-		Shared        bool
+		MaxDepth int
+		Shared   bool
 	}
 
 	API struct {

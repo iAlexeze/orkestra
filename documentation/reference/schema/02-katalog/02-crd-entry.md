@@ -26,8 +26,8 @@ spec:
 
       queue:
         shared: false
-        maxQueueDepth: 100
-        degradeThreshold: 5
+        maxDepth: 100
+        failureThreshold: 5
 
       enrich:                      # optional → enrich.md
         - pods
@@ -130,8 +130,8 @@ dependsOn:
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `shared` | bool | `false` | Use the shared default workqueue instead of a per-CRD queue. |
-| `maxQueueDepth` | int | `100` (`MAX_QUEUE_DEPTH` env) | Max items in the queue before new items are dropped. |
-| `degradeThreshold` | int | `5` (`DEGRADE_THRESHOLD` env) | Consecutive reconcile failures before health transitions to degraded. |
+| `maxDepth` | int | `100` (`QUEUE_DEPTH` env) | Max items in the queue before new items are dropped. |
+| `failureThreshold` | int | `5` (`FAILURE_THRESHOLD` env) | Consecutive reconcile failures before health transitions to degraded. |
 
 ## `enrich`
 

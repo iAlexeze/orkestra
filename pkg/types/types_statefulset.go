@@ -47,6 +47,10 @@ type StatefulSetTemplateSource struct {
 	// Port — container port. "0" or empty means no port exposed.
 	Port string `yaml:"port,omitempty" json:"port,omitempty"`
 
+	// Protocol — network protocol for the container port.
+	// Accepted values: TCP (default), UDP, SCTP. Omit to use TCP.
+	Protocol string `yaml:"protocol,omitempty" json:"protocol,omitempty"`
+
 	// ServiceName — name of the headless Service governing the StatefulSet.
 	// Default: same as Name.
 	ServiceName string `yaml:"serviceName,omitempty" json:"serviceName,omitempty"`
@@ -97,6 +101,12 @@ type StatefulSetTemplateSource struct {
 	// Set rollingUpdate.profile for a named preset (safe, fast, blue-green),
 	// or declare maxSurge/maxUnavailable explicitly.
 	RollingUpdate *RollingUpdateBehavior `yaml:"rollingUpdate,omitempty" json:"rollingUpdate,omitempty"`
+
+	// Volumes — pod volumes available for mounting into the container.
+	Volumes []VolumeSource `yaml:"volumes,omitempty" json:"volumes,omitempty"`
+
+	// VolumeMounts — mounts for the primary container.
+	VolumeMounts []VolumeMount `yaml:"volumeMounts,omitempty" json:"volumeMounts,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.

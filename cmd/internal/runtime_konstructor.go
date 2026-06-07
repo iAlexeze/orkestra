@@ -276,7 +276,7 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 
 		object, _ := crd.GetRuntimeObjects()
 
-		wq := queueRegistry.Register(gvk, crd.SetMaxQueueDepth(kfg.Katalog().DefaultMaxQueueDepth()))
+		wq := queueRegistry.Register(gvk, crd.SetQueueDepth(kfg.Katalog().DefaultQueueDepth()))
 
 		// compute selectors
 		labelSelector := orktypes.SelectorMap(crd.LabelSelector).String()

@@ -13,6 +13,8 @@ spec:
   katalog: ./katalog.yaml
 ```
 
+Optional when `spec.customOperator: true` — see [05-custom-operator.md](05-custom-operator.md).
+
 ---
 
 ## `spec.crd`
@@ -54,6 +56,41 @@ spec:
 | `provider` | `kind` | `kind` creates a local kind cluster. `existing` uses the current kubeconfig context. |
 | `name` | `ork-e2e` | Cluster name. For `kind`, the kind cluster name. For `existing`, used in output only. |
 | `reuse` | `false` | When `true`, keeps the cluster after the test — useful for debugging failed runs. |
+
+---
+
+---
+
+## `spec.customOperator`
+
+Declares that this test uses its own operator. Skips bundle generation and Orkestra helm install/uninstall. Everything else runs unchanged.
+
+```yaml
+spec:
+  customOperator: true
+  crd: ./crd.yaml
+  cr: ./cr.yaml
+  setup:
+    helm:
+      - repo: https://charts.example.com
+        chart: my-operator
+```
+
+See [05-custom-operator.md](05-custom-operator.md) for full documentation and use cases.
+
+---
+
+## `imports`
+
+A top-level list of other E2E files to run after this test completes. Used to compose test suites without a cluster-per-test overhead. See [04-imports.md](04-imports.md) for the full field reference.
+
+```yaml
+imports:
+  - ./auth-e2e.yaml
+  - ./rbac-e2e.yaml
+  - path: ./infra-e2e.yaml
+    freshCluster: true     # this one gets its own cluster
+```
 
 ---
 

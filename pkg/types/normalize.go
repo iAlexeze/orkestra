@@ -51,4 +51,51 @@ type NormalizeConfig struct {
 	//   "*/5 * * * *" → string
 	// Empty result ("") sets the field to empty string — not nil.
 	Spec map[string]string `yaml:"spec,omitempty" json:"spec,omitempty"`
+
+	// Audit enables per-field change tracking during normalize.
+	// When true, Orkestra records which spec fields were transformed and what
+	// value they held before normalization. The changes are available in status
+	// field templates under ._normalizeChanges as a list of {field, from, to}.
+	//
+	// Example:
+	//
+	//   normalize:
+	//     audit: true
+	//     spec:
+	//       environment: '{{ default "production" .spec.environment | toLower }}'
+	//
+	//   status:
+	//     fields:
+	//       - path: normalizeChanges
+	//         value: "{{ toJson ._normalizeChanges }}"
+	Audit bool `yaml:"audit,omitempty" json:"audit,omitempty"`
+
+	// Types declares the expected output type for specific spec fields.
+	// When a field is listed here, its rendered value is cast to the declared
+	// type instead of being inferred via YAML parsing. This is more precise:
+	//   - An empty string ("") for a typed field writes nil (omits the field)
+	//     rather than an empty string, which would fail integer/boolean schema validation.
+	//   - "0" declared as bool → false, not int64(0).
+	//   - "false" declared as bool → false even when YAML would parse it correctly.
+	//
+	// Accepted type values: "int", "integer", "bool", "boolean", "float", "number", "string".
+	//
+	// Example:
+	//
+	//   normalize:
+	//     spec:
+	//       replicas: "{{ default 1 .spec.replicas }}"
+	//       suspend:  "{{ default false .spec.suspend }}"
+	//     types:
+	//       replicas: int
+	//       suspend:  bool
+	Types map[string]string `yaml:"types,omitempty" json:"types,omitempty"`
+}
+
+// NormalizeChange records a single field transformation during normalize.
+// Available in status templates as ._normalizeChanges when audit: true.
+type NormalizeChange struct {
+	Field string      `json:"field"`
+	From  interface{} `json:"from,omitempty"`
+	To    interface{} `json:"to,omitempty"`
 }

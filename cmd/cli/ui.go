@@ -20,6 +20,22 @@ func e2eNotVerified() string {
 	return gray("- Not verified")
 }
 
+func simulateVerified(suffix string) string {
+	s := green("✓ Verified")
+	if suffix != "" {
+		s += " · " + suffix
+	}
+	return s
+}
+
+func simulateSkipped() string {
+	return yellow("~ Skipped") + " (pushed with --force or --no-simulate)"
+}
+
+func simulateNoAssertion() string {
+	return yellow("⚠ No assertions") + " (add expect: to simulate.yaml to enforce behavior)"
+}
+
 // Diff change icons used in simulate output.
 
 func iconAdded() string   { return green("+") }
