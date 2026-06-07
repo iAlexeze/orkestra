@@ -5,6 +5,6 @@ metadata:
 spec:
   image: nginx:1.25
   # Dev server /health returns 200 — Deployment is created.
-  # Run `ork run --dev-server` before applying this CR.
-  healthCheckUrl: "https://httpbin.org/status/200"
+  # Run `ork run --dev-server` or `ork simulate --dev-server` before applying this CR.
+  healthCheckUrl: "http://localhost:9999/health"
   replicas: 2
