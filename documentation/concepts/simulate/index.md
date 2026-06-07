@@ -1,4 +1,4 @@
-# ork simulate
+# Simulate
 
 `ork simulate` runs the operator reconcile loop against a fake in-memory cluster. No Kubernetes, no `kubectl`, no network — results in milliseconds.
 

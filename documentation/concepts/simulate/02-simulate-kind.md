@@ -1,6 +1,6 @@
-# simulate.yaml — the recommended way to run simulate
+# simulate.yaml
 
-`simulate.yaml` is a first-class Orkestra document. It declares what your operator should produce — which resources, in which cycle — so every run is repeatable and verifiable without a cluster.
+`simulate.yaml` declares what your operator should produce — which resources, in which cycle — so every run is repeatable and verifiable without a cluster.
 
 ```bash
 ork simulate          # auto-detects simulate.yaml in the current directory

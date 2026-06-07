@@ -1,41 +1,73 @@
-# Aggregator mode
+# Suites and imports
 
-`ork simulate` can run over an entire directory tree in one command, matching the same pattern as `ork e2e ./...`.
+A simulate suite is a Simulate file whose only job is to run other Simulate files. It has no spec of its own — it composes.
+
+---
+
+## Why suites
+
+Each Katalog in a Komposer deserves its own focused simulate: small, fast, easy to debug when it fails. But verifying a whole pattern — or enforcing simulate coverage across an entire pack — should be one command.
+
+The `imports` field bridges the two levels. One suite file at the root imports all the sub-simulations. `ork simulate -f simulate.yaml` runs the suite. Sub-simulations still run individually with `ork simulate -f sub/simulate.yaml`.
+
+---
+
+## Writing a suite file
+
+```yaml
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: multi-tenancy-sim
+  description: >
+    Runs simulate for all three multi-tenancy sub-examples.
+
+imports:
+  - ./01-basic-namespacing/simulate.yaml
+  - ./02-cross-access-control/simulate.yaml
+  - ./03-shared-platform/simulate.yaml
+```
+
+No `spec:` needed. This is a pure aggregator. `ork validate` confirms each import exists:
+
+```text
+✓ multi-tenancy-sim
+    imports : 3 file(s)
+      ✓ ./01-basic-namespacing/simulate.yaml
+      ✓ ./02-cross-access-control/simulate.yaml
+      ✓ ./03-shared-platform/simulate.yaml
+
+3 import(s) valid
+```
+
+**Try it:**
+```bash
+ork simulate init      # generate simulate.yaml in each sub-directory first
+ork simulate -f simulate.yaml
+```
 
 ---
 
 ## Discovery: `ork simulate ./...`
 
-Discovers all `e2e.yaml` files recursively under the current directory and simulates each:
+Discovers all `simulate.yaml` leaf files (files with a `spec:`, not pure aggregators) recursively under the current directory and runs each in assert mode:
 
 ```bash
-cd my-operator/beginner
+cd my-operator
 ork simulate ./...
 ```
 
 ```text
-Simulating 4 e2e file(s) under .
+Simulating 4 file(s) under .
 
-  01-hello-website/e2e.yaml .............. ✓ steady at cycle 2 (180ms)
-  02-website-with-service/e2e.yaml ....... ✓ steady at cycle 2 (195ms)
-  03-secret-copy/e2e.yaml ................ ✓ steady at cycle 3 (210ms)
-  03b-bonus-configmap-copy/e2e.yaml ...... ✓ steady at cycle 2 (175ms)
+  01-hello-website/simulate.yaml ......... ✓ passed (180ms)  [assert]
+  02-with-serviceaccount/simulate.yaml ... ✓ passed (195ms)  [assert]
+  03-secret-copy/simulate.yaml ........... ✓ passed (210ms)  [assert]
+  03b-bonus-configmap-copy/simulate.yaml . ✓ passed (175ms)  [assert]
 
   4 file(s) — 4 simulated, 0 skipped
-  Slowest: 03-secret-copy (cycle 3, 210ms)
+  Slowest: 03-secret-copy/simulate.yaml (210ms)
 ```
-
----
-
-## Aggregator e2e.yaml
-
-An aggregator e2e.yaml has `imports` but no `spec.cr`. When simulate receives one as input, it expands the imports and simulates each:
-
-```bash
-ork simulate -f e2e.yaml          # e2e.yaml is an aggregator
-```
-
-This is the same as `./...` but restricted to the imports declared in that file.
 
 ---
 
@@ -43,23 +75,13 @@ This is the same as `./...` but restricted to the imports declared in that file.
 
 | Condition | Behaviour |
 |-----------|-----------|
-| `spec.customOperator: true` | Printed as `○ skipped (customOperator)` |
-| Pure aggregator (no `spec.cr`) | Skipped silently — nothing to simulate directly |
+| Pure aggregator (imports, no spec) | Skipped silently — nothing to simulate directly |
 
-Everything else simulates — including files with `external:` or `cross:` blocks. Those blocks produce notes in the per-file output but do not cause a skip.
+Use `--skip` to exclude directories or filename patterns:
 
----
-
-## Inactive block tags
-
-Files where a block could not execute show a bracketed tag in the aggregate line:
-
-```text
-  02-external-gate/e2e.yaml .............. ✓ steady at cycle 1 (120ms)  [external: inactive]
-  03-cross-crd/e2e.yaml .................. ✓ steady at cycle 3 (210ms)  [cross: inactive]
+```bash
+ork simulate ./... --skip vendor,testdata
 ```
-
-The tag means the resource templates and status fields ran, but the block that feeds them data (the HTTP call or informer cross-read) did not. The simulation is still valid for verifying the declarative layer.
 
 ---
 
