@@ -12,10 +12,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/orkspace/orkestra/pkg/devserver"
 	orke2e "github.com/orkspace/orkestra/pkg/e2e"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/simulate"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	orkutils "github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -33,32 +35,37 @@ should produce so the run is repeatable and verifiable:
 
   ork simulate                              # simulate.yaml auto-detected
   ork simulate -f simulate.yaml             # explicit — assert mode when expect: is set
-  ork simulate -f e2e.yaml                  # reads spec.katalog and spec.cr; op-print only
   ork simulate -f katalog.yaml --cr cr.yaml # direct flags; op-print only
-  ork simulate ./...                        # discovers simulate.yaml and e2e.yaml files`,
+  ork simulate ./...                        # discovers all simulate.yaml files recursively`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		crdName, _ := cmd.Flags().GetString("crd")
 		maxCycles, _ := cmd.Flags().GetInt("cycles")
 
 		skipExternal, _ := cmd.Flags().GetBool("skip-external")
 		debugOps, _ := cmd.Flags().GetBool("debug-ops")
+		devServer, _ := cmd.Flags().GetBool("dev-server")
 		opts := simulate.RunOptions{SkipExternal: skipExternal}
+
+		if devServer {
+			devServerPort, _ := cmd.Flags().GetInt("dev-server-port")
+			if err := devserver.Start(devServerPort); err != nil {
+				return fmt.Errorf("starting dev server: %w", err)
+			}
+		}
 
 		// Discovery mode: ork simulate ./...
 		if len(args) > 0 && args[0] == "./..." {
 			skipRaw, _ := cmd.Flags().GetStringSlice("skip")
 			root := "."
-			return runSimulateDiscovery(cmd.Context(), root, crdName, maxCycles, skipRaw, opts, debugOps)
+			return runSimulateDiscovery(cmd.Context(), root, crdName, maxCycles, skipRaw, debugOps)
 		}
 
 		katalogFile, _ := cmd.Flags().GetString("file")
 		if katalogFile == "" {
-			// Auto-detect: simulate.yaml → e2e.yaml → katalog.yaml/komposer.yaml
+			// Auto-detect: simulate.yaml → katalog.yaml/komposer.yaml
 			switch {
 			case fileExists(fileSimulate):
 				katalogFile = fileSimulate
-			case fileExists(fileE2e):
-				katalogFile = fileE2e
 			default:
 				if d := defaultFilePaths(); len(d) > 0 {
 					katalogFile = d[0]
@@ -74,9 +81,9 @@ should produce so the run is repeatable and verifiable:
 			return runSimulateFromSpec(cmd.Context(), katalogFile, crdName, maxCycles, debugOps)
 		}
 
-		// E2E mode: op-print only
+		// Reject E2E files with a clear message
 		if isE2EDoc(katalogFile) {
-			return runSimulateFromE2E(cmd.Context(), katalogFile, crdName, maxCycles, opts, debugOps)
+			return fmt.Errorf("%s is an E2E file — use 'ork e2e' for cluster testing, or run 'ork simulate init' to generate a simulate.yaml", katalogFile)
 		}
 
 		crFile, _ := cmd.Flags().GetString("cr")
@@ -446,14 +453,14 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 	}
 	var doc orktypes.Simulate
 	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return fmt.Errorf("parsing %s: %w", path, err)
+		return fmt.Errorf("parsing %s:\n%s", path, orkutils.FormatYAMLError(err, data))
 	}
 
 	dir := filepath.Dir(path)
 
 	// Aggregator: imports but no spec.
-	if doc.Spec == nil && doc.Imports != nil {
-		for _, imp := range doc.Imports.Files {
+	if doc.Spec == nil && len(doc.Imports) > 0 {
+		for _, imp := range doc.Imports {
 			impPath := imp
 			if !filepath.IsAbs(impPath) {
 				impPath = filepath.Join(dir, impPath)
@@ -530,8 +537,6 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 	return nil
 }
 
-// ── E2E-aware entry points ─────────────────────────────────────────────────────
-
 // isE2EDoc returns true when the file's kind is "E2E".
 func isE2EDoc(path string) bool {
 	data, err := os.ReadFile(path)
@@ -543,51 +548,6 @@ func isE2EDoc(path string) bool {
 	}
 	_ = yaml.Unmarshal(data, &head)
 	return head.Kind == "E2E"
-}
-
-// runSimulateFromE2E loads an e2e.yaml, applies skip/note rules, and runs
-// simulate against the katalog and CR it declares.
-// Returns (skipped, skipReason, error).
-func runSimulateFromE2E(ctx context.Context, path, crdName string, maxCycles int, opts simulate.RunOptions, debugOps bool) error {
-	// Convert to absolute so all downstream path joins (crdFile, crFiles, katalog
-	// imports) use the file's directory as the base — same pattern as files.go.
-	if abs, err := filepath.Abs(path); err == nil {
-		path = abs
-	}
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("reading %s: %w", path, err)
-	}
-	var doc orktypes.E2E
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return fmt.Errorf("parsing %s: %w", path, err)
-	}
-
-	if doc.Spec.CustomOperator {
-		fmt.Printf("  %s %s — skipped (customOperator)\n", dim("○"), path)
-		return nil
-	}
-
-	dir := filepath.Dir(path)
-
-	// Aggregator: has imports but no direct cr/katalog — loop through imports.
-	if doc.Spec.CR == "" && len(doc.Imports) > 0 {
-		for _, imp := range doc.Imports {
-			impPath := imp.Path
-			if !filepath.IsAbs(impPath) {
-				impPath = filepath.Join(dir, impPath)
-			}
-			if err := runSimulateFromE2E(ctx, impPath, crdName, maxCycles, opts, debugOps); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	katalogPath := filepath.Join(dir, doc.Spec.Katalog)
-	crPath := filepath.Join(dir, doc.Spec.CR)
-	return runSimulate(ctx, katalogPath, crPath, crdName, maxCycles, opts, debugOps)
 }
 
 // ── Discovery mode ─────────────────────────────────────────────────────────────
@@ -604,158 +564,42 @@ type simulateFileResult struct {
 
 // runSimulateDiscovery finds all e2e.yaml files under root, simulates each,
 // and prints an aggregate summary.
-func runSimulateDiscovery(ctx context.Context, root, crdName string, maxCycles int, skip []string, opts simulate.RunOptions, debugOps bool) error {
+func runSimulateDiscovery(ctx context.Context, root, crdName string, maxCycles int, skip []string, debugOps bool) error {
 	var patterns []string
 	for _, s := range skip {
 		patterns = append(patterns, s)
 	}
-	e2ePaths, err := orke2e.DiscoverE2EFiles(root, patterns)
-	if err != nil {
-		return fmt.Errorf("discovering e2e files: %w", err)
-	}
-	simPaths, err := orke2e.DiscoverSimulateFiles(root, patterns)
+	paths, err := orke2e.DiscoverSimulateFiles(root, patterns)
 	if err != nil {
 		return fmt.Errorf("discovering simulate files: %w", err)
 	}
-	// simulate.yaml files run first (assert mode), then e2e.yaml files (op-print)
-	paths := append(simPaths, e2ePaths...)
 	if len(paths) == 0 {
-		fmt.Printf("no simulate.yaml or e2e.yaml files found under %s\n", root)
+		fmt.Printf("no simulate.yaml files found under %s\n", root)
 		return nil
 	}
 
 	fmt.Printf("Simulating %d file(s) under %s\n\n", len(paths), root)
 
-	// DiscoverE2EFiles returns absolute paths; Rel needs an absolute base too.
 	absRoot, _ := filepath.Abs(root)
 
 	var results []simulateFileResult
 	for _, p := range paths {
 		rel, _ := filepath.Rel(absRoot, p)
 
-		// simulate.yaml files run in assert mode inline; e2e.yaml files use op-print
-		if isSimulateDoc(p) {
-			start := time.Now()
-			err := runSimulateFromSpec(ctx, p, crdName, maxCycles, debugOps)
-			elapsed := time.Since(start)
-			var res simulateFileResult
-			res.path = rel
-			if err != nil {
-				fmt.Printf("  %-55s %s  %s\n", rel, red("✗ "+err.Error()), dim("[assert]"))
-				res.cycleErrs = true
-			} else {
-				fmt.Printf("  %-55s %s  %s\n", rel, green(fmt.Sprintf("✓ passed (%s)", elapsed.Round(time.Millisecond))), dim("[assert]"))
-				res.steady = true
-			}
-			res.elapsed = elapsed
-			results = append(results, res)
-			continue
-		}
-
-		data, err := os.ReadFile(p)
-		if err != nil {
-			continue
-		}
-		var doc orktypes.E2E
-		if err := yaml.Unmarshal(data, &doc); err != nil {
-			continue
-		}
-		if doc.Spec.CustomOperator {
-			fmt.Printf("  %-55s %s\n", rel, dim("○ skipped (customOperator)"))
-			results = append(results, simulateFileResult{path: rel, skipped: true, skipMsg: "customOperator"})
-			continue
-		}
-		if doc.Spec.CR == "" {
-			continue // pure aggregator — skip silently
-		}
-
-		dir := filepath.Dir(p)
-		katalogPath := filepath.Join(dir, doc.Spec.Katalog)
-		crPath := filepath.Join(dir, doc.Spec.CR)
-
 		start := time.Now()
-		// Capture simulate output by running inline via a minimal path.
-		kat, err := katalog.ParseFile(katalogPath)
-		if err != nil {
-			fmt.Printf("  %-55s %s\n", rel, red("✗ "+err.Error()))
-			continue
-		}
-		crData, err := os.ReadFile(crPath)
-		if err != nil {
-			fmt.Printf("  %-55s %s\n", rel, red("✗ "+err.Error()))
-			continue
-		}
-
-		crs := parseMultiDocCRs(crData)
-		if len(crs) == 0 {
-			fmt.Printf("  %-55s %s\n", rel, red("✗ no valid CR documents"))
-			continue
-		}
-
-		targets := kat.CRDNames()
-		if crdName != "" {
-			targets = []string{crdName}
-		}
+		err := runSimulateFromSpec(ctx, p, crdName, maxCycles, debugOps)
+		elapsed := time.Since(start)
 
 		var res simulateFileResult
 		res.path = rel
-
-		var hasCycleErrors bool
-		for _, name := range targets {
-			crdEntry, ok := kat.CRDEntry(name)
-			if !ok {
-				continue
-			}
-			cr, ok := crs[strings.ToLower(crdEntry.APITypes.Kind)]
-			if !ok {
-				continue // no CR for this CRD — skip silently in discovery
-			}
-			// Populate peers: all other CRs so cross: declarations can read them.
-			crdOpts := opts
-			crdOpts.Peers = make(map[string]*unstructured.Unstructured, len(crs))
-			for k, v := range crs {
-				if k != strings.ToLower(crdEntry.APITypes.Kind) {
-					crdOpts.Peers[k] = v
-				}
-			}
-			r, err := simulate.Run(ctx, kat, name, cr, maxCycles, crdOpts)
-			if err != nil {
-				fmt.Printf("  %-55s %s\n", rel, red("✗ "+err.Error()))
-				break
-			}
-			res.steady = r.Steady
-			res.cycle = r.SteadyAt
-			for _, c := range r.Cycles {
-				if c.Error != nil {
-					hasCycleErrors = true
-					break
-				}
-			}
-		}
-		res.elapsed = time.Since(start)
-
-		var suffix string
-		if res.steady {
-			suffix = green(fmt.Sprintf("✓ steady at cycle %d (%s)", res.cycle, res.elapsed.Round(time.Millisecond)))
-		} else {
-			suffix = yellow(fmt.Sprintf("~ max cycles (%s)", res.elapsed.Round(time.Millisecond)))
-		}
-
-		// Append inactive-block and cycle-error tags
-		crdEntry, _ := kat.CRDEntry(targets[0])
-		var tags []string
-		if crdEntry.OperatorBox.OnReconcile != nil && len(crdEntry.OperatorBox.OnReconcile.External) > 0 {
-			tags = append(tags, "external: inactive")
-		}
-		if hasCycleErrors {
-			tags = append(tags, "cycle errors")
+		res.elapsed = elapsed
+		if err != nil {
+			fmt.Printf("  %-55s %s  %s\n", rel, red("✗ "+err.Error()), dim("[assert]"))
 			res.cycleErrs = true
+		} else {
+			fmt.Printf("  %-55s %s  %s\n", rel, green(fmt.Sprintf("✓ passed (%s)", elapsed.Round(time.Millisecond))), dim("[assert]"))
+			res.steady = true
 		}
-		if len(tags) > 0 {
-			suffix += "  " + dim("["+strings.Join(tags, ", ")+"]")
-		}
-
-		fmt.Printf("  %-55s %s\n", rel, suffix)
 		results = append(results, res)
 	}
 
@@ -774,7 +618,7 @@ func runSimulateDiscovery(ctx context.Context, root, crdName string, maxCycles i
 	}
 	fmt.Printf("\n  %d file(s) — %d simulated, %d skipped\n", len(results), simulated, skipped)
 	if slowest.path != "" {
-		fmt.Printf("  Slowest: %s (cycle %d, %s)\n", slowest.path, slowest.cycle, slowest.elapsed.Round(time.Millisecond))
+		fmt.Printf("  Slowest: %s (%s)\n", slowest.path, slowest.elapsed.Round(time.Millisecond))
 	}
 
 	var errFiles []simulateFileResult
@@ -814,6 +658,7 @@ observed cycle-1 create operations as expect: rules. Edit and refine from there.
 		katalogFile, _ := cmd.Flags().GetString("file")
 		crFile, _ := cmd.Flags().GetString("cr")
 		force, _ := cmd.Flags().GetBool("force")
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
 
 		if katalogFile == "" {
 			if d := defaultFilePaths(); len(d) > 0 {
@@ -846,7 +691,7 @@ observed cycle-1 create operations as expect: rules. Edit and refine from there.
 		}
 
 		outPath := fileSimulate
-		if !force {
+		if !dryRun && !force {
 			if fileExists(outPath) {
 				return fmt.Errorf("%s already exists — use --force to overwrite", outPath)
 			}
@@ -899,12 +744,21 @@ observed cycle-1 create operations as expect: rules. Edit and refine from there.
 
 		doc := generateSimulateDoc(relKatalog, relCR, kat.Metadata().Name, results)
 
-		f, err := os.Create(outPath)
-		if err != nil {
-			return fmt.Errorf("creating %s: %w", outPath, err)
+		var buf bytes.Buffer
+		enc := yaml.NewEncoder(&buf)
+		enc.SetIndent(2)
+		if err := enc.Encode(doc); err != nil {
+			return fmt.Errorf("encoding simulate.yaml: %w", err)
 		}
-		defer f.Close()
-		if err := yaml.NewEncoder(f).Encode(doc); err != nil {
+
+		output := injectAbsentComment(buf.Bytes(), results)
+
+		if dryRun {
+			fmt.Print(string(output))
+			return nil
+		}
+
+		if err := os.WriteFile(outPath, output, 0644); err != nil {
 			return fmt.Errorf("writing %s: %w", outPath, err)
 		}
 
@@ -987,6 +841,52 @@ func countRules(results []crdOps) int {
 	return n
 }
 
+// injectAbsentComment parses the encoded YAML, adds a HeadComment on every
+// "steady" key hinting at the absent: block, then re-encodes with 2-space indent.
+func injectAbsentComment(data []byte, results []crdOps) []byte {
+	var root yaml.Node
+	if err := yaml.Unmarshal(data, &root); err != nil {
+		return data
+	}
+
+	resource := "deployments"
+	if len(results) > 0 && len(results[0].ops) > 0 {
+		resource = results[0].ops[0].Resource
+	}
+
+	comment := "# absent:   # ops that must NOT appear — fill in for failure-path coverage\n" +
+		"#   - cycle: 1\n" +
+		"#     verb: create\n" +
+		"#     resource: " + resource
+
+	addHeadComment(&root, "steady", comment)
+
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(&root); err != nil {
+		return data
+	}
+	return buf.Bytes()
+}
+
+// addHeadComment recursively sets HeadComment on every mapping key matching name.
+func addHeadComment(node *yaml.Node, name, comment string) {
+	if node == nil {
+		return
+	}
+	if node.Kind == yaml.MappingNode {
+		for i := 0; i < len(node.Content)-1; i += 2 {
+			if node.Content[i].Value == name {
+				node.Content[i].HeadComment = comment
+			}
+		}
+	}
+	for _, child := range node.Content {
+		addHeadComment(child, name, comment)
+	}
+}
+
 func init() {
 	rootCmd.AddCommand(simulateCmd)
 	simulateCmd.AddCommand(simulateInitCmd)
@@ -994,6 +894,7 @@ func init() {
 	simulateInitCmd.Flags().StringP("file", "f", "", "Path to katalog.yaml or komposer.yaml")
 	simulateInitCmd.Flags().String("cr", "", "Path to the CR YAML file")
 	simulateInitCmd.Flags().Bool("force", false, "Overwrite existing simulate.yaml")
+	simulateInitCmd.Flags().Bool("dry-run", false, "Print the generated simulate.yaml to stdout instead of writing the file")
 
 	simulateCmd.Flags().StringP("file", "f", "", "Path to katalog.yaml")
 	simulateCmd.Flags().String("cr", "", "Path to the CR YAML file to simulate")
@@ -1002,6 +903,8 @@ func init() {
 	simulateCmd.Flags().StringSlice("skip", []string{}, "Comma-separated path patterns to skip during ./... discovery (e.g. vendor,cr-e2e.yaml)")
 	simulateCmd.Flags().Bool("skip-external", false, "Stub external: HTTP calls with empty 200 responses instead of hitting the real network")
 	simulateCmd.Flags().Bool("debug-ops", false, "Print every recorded op with its cycle number (diagnostic)")
+	simulateCmd.Flags().Bool("dev-server", false, "Start the mock dev server for external: examples")
+	simulateCmd.Flags().Int("dev-server-port", devserver.Port, "Port for the mock dev server")
 
 	// Shadow global flags
 	simulateCmd.Flags().Bool("debug", false, "")

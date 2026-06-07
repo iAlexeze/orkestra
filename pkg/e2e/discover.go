@@ -142,17 +142,15 @@ func isSimulatePureAggregator(path string) bool {
 		return false
 	}
 	var doc struct {
-		Imports *struct {
-			Files []string `yaml:"files"`
-		} `yaml:"imports"`
-		Spec *struct {
+		Imports []string `yaml:"imports"`
+		Spec    *struct {
 			Katalog string `yaml:"katalog"`
 		} `yaml:"spec"`
 	}
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return false
 	}
-	return doc.Imports != nil && len(doc.Imports.Files) > 0 && doc.Spec == nil
+	return len(doc.Imports) > 0 && doc.Spec == nil
 }
 
 // isPureAggregatorFile reads the file and returns true if it has imports but no spec.

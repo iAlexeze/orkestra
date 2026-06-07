@@ -1,6 +1,6 @@
 // run.go — Production runtime entrypoint.
 //
-// This command has one responsibility: run Orkestra.
+// This command has one responsibility: run Orkestra Runtime.
 // It performs exactly three tasks:
 //  1. Load all provided katalog files.
 //  2. Merge them into a single resolved Katalog.
