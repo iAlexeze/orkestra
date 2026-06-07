@@ -90,6 +90,18 @@ chmod +x cleanup.sh && ./cleanup.sh
 
 ---
 
+## Simulate
+
+Verify the Deployment and ConfigMap are both created in cycle 1 with real config data — no cluster needed:
+
+```bash
+ork simulate --dev-server
+```
+
+`--dev-server` starts the mock server at `localhost:9999` before running simulate. The external call hits the dev server, which responds to `GET /config/my-app` with a static JSON blob — so the ConfigMap `when:` condition passes and both resources are asserted. See [simulate.yaml](./simulate.yaml).
+
+---
+
 ## E2E
 
 Run the full lifecycle — deploys the mock dev server, starts the operator, applies the CR, asserts the ConfigMap contains the injected config and status is Ready, then tears down:

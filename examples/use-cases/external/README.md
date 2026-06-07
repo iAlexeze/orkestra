@@ -21,4 +21,30 @@ Run any example in isolation from its subfolder, or run them all at once with th
 
 ---
 
+## Simulate
+
+Three examples (01, 02, 05) ship with a `simulate.yaml`. Run simulate for a single example:
+
+```bash
+cd 01-health-gate && ork simulate --dev-server
+```
+
+Or run all three at once with the suite aggregator:
+
+```bash
+ork simulate -f simulate.yaml --dev-server
+```
+
+---
+
+## E2E
+
+Run the full external suite — deploys the mock dev server into the cluster, runs each example in sequence, then tears everything down:
+
+```bash
+ork e2e -f e2e.yaml --dev-server
+```
+
+---
+
 **Further reading:** [External concept doc](https://orkestra.sh/docs/concepts/operatorbox/external/)

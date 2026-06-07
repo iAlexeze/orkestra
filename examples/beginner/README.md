@@ -31,6 +31,24 @@ No cluster? Add `--dev` to create a temporary kind cluster.
 
 ---
 
+## Simulate
+
+Some examples ship with a `simulate.yaml`. Run simulate for a single example:
+
+```bash
+cd 02-with-serviceaccount && ork simulate
+```
+
+Or run the full beginner suite — all examples that have a simulate.yaml:
+
+```bash
+ork simulate -f simulate.yaml
+```
+
+No cluster needed. Each run completes in under a second.
+
+---
+
 ## E2E
 
 Every example ships with a runnable `e2e.yaml`. Run a single example end-to-end:

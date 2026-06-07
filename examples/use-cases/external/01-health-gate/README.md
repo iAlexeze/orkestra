@@ -115,6 +115,18 @@ chmod +x cleanup.sh && ./cleanup.sh
 
 ---
 
+## Simulate
+
+Verify the reconciler creates the Deployment when the health check passes — no cluster needed:
+
+```bash
+ork simulate --dev-server
+```
+
+`--dev-server` starts the mock server at `localhost:9999` before running simulate. The health endpoint returns 200, so the `when:` condition passes and the Deployment is asserted in cycle 1. See [simulate.yaml](./simulate.yaml).
+
+---
+
 ## E2E
 
 Run the full lifecycle in one command — deploys the mock dev server into the cluster, applies the CRD, starts the operator, applies healthy and degraded CRs, asserts the Deployment appears for healthy and is absent for degraded, then tears down:
