@@ -23,7 +23,7 @@ enableGitInfo = true
   [params.algolia]
     appId = "IDBZPZV9Q6"
     searchKey = "6eadbb67e7c72aaaa5309e17c4e1e9ad"
-    indexName = "Orkestra Documentation"
+    indexName = "Orkestra Documentaion"
 
 
 [menu]
