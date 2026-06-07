@@ -1,4 +1,4 @@
-## v0.7.2 Simulate: standalone operation
+## v0.7.3 Simulate: standalone operation
 
 `ork simulate` is now a self-contained command. Key changes:
 
