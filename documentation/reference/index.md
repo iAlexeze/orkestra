@@ -6,9 +6,9 @@ Technical reference for the Orkestra runtime, schemas, and CLI.
 
 ## Schema
 
-Complete field reference for every Orkestra document type.
+Complete field reference for every Orkestra Pattern.
 
-| Document | Description |
+| Pattern | Description |
 |----------|-------------|
 | [Katalog](./schema/katalog.md) | Top-level operator definition |
 | [Komposer](./schema/komposer.md) | Multi-source composition |
@@ -38,6 +38,6 @@ Complete field reference for every Orkestra document type.
 
 ## Where to go next
 
-- **[Schema Reference](./schema/katalog.md)** — every field in every document type
+- **[Schema Reference](./schema/motif.md)** — every field in every Pattern
 - **[CLI Reference](./cli/run.md)** — full flag reference for every command
 - **[Typed Operators](../concepts/typed-operators/index.md)** — hooks, constructors, and mixed patterns

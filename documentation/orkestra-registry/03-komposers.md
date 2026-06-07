@@ -1,6 +1,6 @@
 # Komposers
 
-A Komposer is the **composition plane**: it declares where to pull operator patterns from and how to compose them into a running platform. Komposers are the only document type with a top-level `imports` block (registry, file, and Helm sources). Katalogs import only Motifs, and only at the CRD level — they cannot pull other Katalogs or Komposers.
+A Komposer is the **composition plane**: it declares where to pull operator patterns from and how to compose them into a running platform. Komposers are the only Pattern with a top-level `imports` block (registry, file, and Helm sources). Katalogs import only Motifs, and only at the CRD level — they cannot pull other Katalogs or Komposers.
 
 ---
 

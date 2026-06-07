@@ -60,7 +60,7 @@ Output:
 
 ## What it generates
 
-`ork simulate init` produces a `Simulate` document pre-filled with the observed cycle-1 create operations as `expect:` rules:
+`ork simulate init` produces a `Simulate` Pattern pre-filled with the observed cycle-1 create operations as `expect:` rules:
 
 ```yaml
 apiVersion: orkestra.orkspace.io/v1
