@@ -202,6 +202,26 @@ failure mode, what it means, and how Orkestra handles it.
 
 ---
 
+## What happens when Orkestra restarts?
+
+Nothing is lost. Orkestra follows standard Kubernetes deployment semantics with leader election. When the running instance exits — planned rollout, node failure, OOMKill — a follower pod acquires the lease and resumes reconciling. CRs are not modified during the transition; they are queued and processed when the new leader starts.
+
+The transition window is controlled by the lease duration:
+
+```yaml
+# charts/orkestra/values.yaml
+leaderElection:
+  leaseDuration: 15   # seconds until a follower declares the leader dead
+  renewDeadline: 10   # seconds the leader has to renew before losing the lease
+  retryPeriod: 5      # seconds between follower acquire attempts
+```
+
+Override via Helm values or the `LEASE_DURATION` environment variable.
+
+→ [Is Orkestra safe for production?](#is-orkestra-safe-for-production) — per-CRD failure isolation, safeReconcile, and the full failover timing breakdown
+
+---
+
 ## Next
 
 - **[Usage](./03-usage.md)** — validation, mutation, built-in kinds

@@ -17,6 +17,34 @@ See [Your CRD Is Enough](/blog/your-crd-is-enough/) for the full picture.
 
 ---
 
+## Is Orkestra an operator?
+
+Not in the way the term is usually meant.
+
+Orkestra runs in a cluster, watches resources, and reacts to events — so by the loose definition, yes. But that framing misses what it actually is. The closer analogy is `kube-controller-manager`: it runs as a pod, it watches CRDs, but no one calls it an operator. It is the thing that makes controllers run.
+
+Orkestra is the same shape. It does not reconcile your CRD. It produces a complete, isolated operator for your CRD from a Katalog declaration — its own informer, queue, worker pool, health state, metrics. At runtime you have an operator for your CRD. At the source level you have a YAML file, not a controller.
+
+The tell is [cmd/orkestra/main.go](https://github.com/orkspace/orkestra/blob/main/cmd/orkestra/main.go). There is no `Reconcile`, no `ctrl.SetupWithManager`, no scheme registration for your types. Those are not missing — they are generated at startup from the Katalog per CRD.
+Traditionally, operators have that boilerplate in the code — the reconciler, the controller setup, the scheme registration. Orkestra puts it in the runtime.
+
+
+→ [Declarative Operators whitepaper](/publications/declarative-operators-whitepaper/) — the super-operator model in full
+
+---
+
+## Does Orkestra install my CRDs?
+
+No — and that is the point.
+
+Orkestra is built on the premise that your CRD already has everything needed to manage it. It does not need another CRD to manage it. You bring the CRD. Orkestra turns it into an operator.
+
+Install your CRD the same way you always have — `kubectl apply`, Helm, GitOps. Once it exists in the cluster, point a Katalog at it and Orkestra starts managing it.
+
+→ [Why Katalog and Komposer are not CRDs](./05-why-not-crds.md) — the full reasoning, and what it means for your cluster
+
+---
+
 ## Do I need to write Go code?
 
 No — for the common case.
@@ -149,6 +177,14 @@ These are called by the reconciler when it processes declarative templates.
 **2. The public pattern registry** (`orkspace/orkestra-registry`) — versioned
 operator patterns distributed as OCI artifacts. Pull a Postgres operator pattern
 with one line in a Komposer. No binary. No deployment. Just a Katalog.
+
+The default registry is `orkspace/orkestra-registry`. Point Orkestra at your own
+registry — for internal patterns, air-gapped environments, or private Motif libraries:
+
+```bash
+ORK_REGISTRY=ghcr.io/myorg/katalogs         # Katalog registry
+ORK_MOTIFS_REGISTRY=ghcr.io/myorg/motifs    # Motif registry
+```
 
 !!! tip "The npm analogy"
     The OrkestraRegistry is Orkestra's package manager for operator behavior.
