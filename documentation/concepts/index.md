@@ -4,6 +4,14 @@ Concepts are the building blocks that make Orkestra expressive without being ver
 
 ---
 
+## Orkestra Patterns
+
+Every file you write in Orkestra — `katalog.yaml`, `simulate.yaml`, `komposer.yaml` — is an **Orkestra Pattern**: a versioned, distributable artifact with a specific kind and a specific job. The name reflects something real: these files don't just describe resources, they encode solutions to recurring problems in the operator world.
+
+→ [Read: Orkestra Patterns](patterns/)
+
+---
+
 ## Profiles
 
 [Profiles](profiles/) are named presets that expand into fully-formed configuration at Katalog load time. They cover resources, autoscaling, probes, and security. A profile is a decision made once by someone who thought it through, shared with everyone who shouldn't have to.

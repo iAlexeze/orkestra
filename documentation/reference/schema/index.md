@@ -8,6 +8,7 @@ The schema is organised by kind. Each kind has its own subfolder.
 | [Katalog](02-katalog/) | `02-katalog/` | Operator declaration. Defines CRDs, resources, status, and admission rules. |
 | [Komposer](03-komposer/) | `03-komposer/` | Compose multiple Katalogs from files, Helm, or OCI registries. |
 | [E2E](04-e2e/) | `04-e2e/` | Declarative end-to-end test for a Katalog. [spec](04-e2e/01-spec.md) · [setup](04-e2e/02-setup.md) · [expect](04-e2e/03-expect.md) |
+| [Simulate](05-simulate/) | `05-simulate/` | In-memory reconciler verification — no cluster. [field reference](05-simulate/index.md) |
 
 ---
 
@@ -15,7 +16,7 @@ The schema is organised by kind. Each kind has its own subfolder.
 
 All fields that live inside a Katalog `spec.crds.<name>` entry:
 
-| Document | Covers |
+| Pattern | Covers |
 |----------|--------|
 | [01-top-level.md](02-katalog/01-top-level.md) | Top-level Katalog structure |
 | [02-crd-entry.md](02-katalog/02-crd-entry.md) | Fields inside `spec.crds.<name>` |
