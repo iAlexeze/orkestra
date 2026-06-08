@@ -206,16 +206,10 @@ func e2eInitScaffold(cmd *cobra.Command) error {
 	force, _ := cmd.Flags().GetBool("force")
 	dryRun, _ := cmd.Flags().GetBool("dry-run")
 
-	if katalogFile == "" {
-		if d := defaultFilePaths(); len(d) > 0 {
-			katalogFile = d[0]
-		}
-	}
-	if katalogFile == "" {
-		return fmt.Errorf(errNoKatalog)
-	}
-	if abs, err := filepath.Abs(katalogFile); err == nil {
-		katalogFile = abs
+	var err error
+	katalogFile, err = resolveKatalogFile(katalogFile)
+	if err != nil {
+		return err
 	}
 
 	kat, err := katalog.ParseFile(katalogFile)
