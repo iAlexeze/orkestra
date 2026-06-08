@@ -1,3 +1,4 @@
+# Schema reference: https://orkestra.sh/docs/reference/schema/komposer/
 apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:

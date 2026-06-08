@@ -73,3 +73,21 @@ func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
 }
+
+// resolveKatalogFile resolves a single katalog file path from a CLI flag value.
+// If flagValue is empty it falls back to defaultFilePaths(). The resolved path
+// is always returned as an absolute path.
+func resolveKatalogFile(flagValue string) (string, error) {
+	if flagValue == "" {
+		if d := defaultFilePaths(); len(d) > 0 {
+			flagValue = d[0]
+		}
+	}
+	if flagValue == "" {
+		return "", fmt.Errorf(errNoKatalog)
+	}
+	if abs, err := filepath.Abs(flagValue); err == nil {
+		return abs, nil
+	}
+	return flagValue, nil
+}

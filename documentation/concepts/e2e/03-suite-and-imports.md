@@ -46,6 +46,18 @@ ork init --pack use-cases/multi-tenancy
 ork e2e -f e2e.yaml
 ```
 
+**Scaffold it:**
+
+`ork e2e init --suite` discovers all `e2e.yaml` leaf files under the given directory and writes the aggregator for you:
+
+```bash
+ork e2e init --suite               # discover under .
+ork e2e init --suite ./examples/   # scoped to a subdirectory
+ork e2e init --suite --wait 10s    # custom pause between imports
+```
+
+See [Scaffolding tests](05-init.md) for full details.
+
 ---
 
 ## String shorthand

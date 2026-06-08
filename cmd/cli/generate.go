@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -94,6 +95,41 @@ func parseFilePaths(paths []string) []string {
 	return expanded
 }
 
+// rejectCRDFile returns an error if any CRD used a local crdFile shortcut.
+// Pass k.WithCRDFiles() as names and k.Enabled() as resolved — both available
+// after katalog.BuildExpanded, which records crdFile names before clearing the field.
+func rejectCRDFile(names []string, resolved map[string]orktypes.CRDEntry) error {
+	for _, name := range names {
+		crd := resolved[name]
+		g := orDefault(crd.APITypes.Group, "<group>")
+		v := orDefault(crd.APITypes.Version, "<version>")
+		k := orDefault(crd.APITypes.Kind, "<Kind>")
+		p := orDefault(crd.APITypes.Plural, "<plural>")
+		return fmt.Errorf(
+			"CRD %q uses crdFile, which is a local development shortcut.\n\n"+
+				"bundle, configmap, and rbac are production artifacts — the file will not\n"+
+				"be available at runtime. Replace crdFile with explicit apiTypes:\n\n"+
+				"  spec:\n"+
+				"    crds:\n"+
+				"      %s:\n"+
+				"        apiTypes:\n"+
+				"          group: %s\n"+
+				"          version: %s\n"+
+				"          kind: %s\n"+
+				"          plural: %s",
+			name, name, g, v, k, p,
+		)
+	}
+	return nil
+}
+
+func orDefault(s, fallback string) string {
+	if s != "" {
+		return s
+	}
+	return fallback
+}
+
 type mergerOut struct {
 	m       *merger.Merger
 	crds    []orktypes.CRDEntry
@@ -111,6 +147,15 @@ func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
 	}
 	if len(expanded) == 0 {
 		return nil, fmt.Errorf(errNoKatalog)
+	}
+
+	// Absolutize so merger.FirstEntryDir() is always absolute. Without this,
+	// relative paths cause a double-join when populateAPITypesFromCRDFile
+	// prepends katalogDir to a crdFile that was already joined once during load.
+	for i, p := range expanded {
+		if abs, err := filepath.Abs(p); err == nil {
+			expanded[i] = abs
+		}
 	}
 
 	m := merger.New(expanded...)
@@ -205,16 +250,18 @@ Examples:
 		if err != nil {
 			return err
 		}
-
 		namespace, _ := cmd.Flags().GetString("namespace")
 		outputFile, _ := cmd.Flags().GetString("output")
-
-		log.Println("generating rbac...")
 
 		k, err := katalog.BuildExpanded(kfg, out.m)
 		if err != nil {
 			return fmt.Errorf("build katalog: %w", err)
 		}
+		if err := rejectCRDFile(k.WithCRDFiles(), k.Enabled()); err != nil {
+			return err
+		}
+
+		log.Println("generating rbac...")
 
 		opts, err := bundleOptsFromFor(cmd)
 		if err != nil {
@@ -252,12 +299,16 @@ Example:
 		namespace, _ := cmd.Flags().GetString("namespace")
 		outputFile, _ := cmd.Flags().GetString("output")
 
-		log.Println("generating configmap...")
-
 		k, err := katalog.BuildExpanded(kfg, out.m)
 		if err != nil {
 			return fmt.Errorf("build katalog: %w", err)
 		}
+		if err := rejectCRDFile(k.WithCRDFiles(), k.Enabled()); err != nil {
+			return err
+		}
+
+		log.Println("generating configmap...")
+
 		expanded, err := k.SerializeExpanded()
 		if err != nil {
 			return fmt.Errorf("serialize katalog: %w", err)
@@ -294,6 +345,7 @@ Examples:
 		if err != nil {
 			return err
 		}
+
 		namespace, _ := cmd.Flags().GetString("namespace")
 		workloadNamespace, _ := cmd.Flags().GetString("workload-namespace")
 		outputFile, _ := cmd.Flags().GetString("output")
@@ -301,6 +353,9 @@ Examples:
 		k, err := katalog.BuildExpanded(kfg, out.m)
 		if err != nil {
 			return fmt.Errorf("build katalog: %w", err)
+		}
+		if err := rejectCRDFile(k.WithCRDFiles(), k.Enabled()); err != nil {
+			return err
 		}
 
 		opts, err := bundleOptsFromFor(cmd)
