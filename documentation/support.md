@@ -15,7 +15,7 @@ Most questions are answered in:
 - **Orkestra logs** — structured JSON logs with `crd`, `cr`, and `error` fields
 - **Existing GitHub issues** — search before opening a new one
 
-The `/katalog/{crd}` endpoint resolves the majority of operational questions without any external help. For a full live view, use the [Control Center](./controlcenter/controlcenter.md).
+The `/katalog/{crd}` endpoint resolves the majority of operational questions without any external help. For a full live view, use the [Control Center](./orkestra-core/03-controlcenter/index.md).
 
 ---
 
@@ -72,7 +72,7 @@ solution.
 
 !!! warning "Do not open public GitHub issues for security vulnerabilities"
 
-See the [Security](./security.md) page for responsible disclosure instructions.
+See the [Security](./security/) page for responsible disclosure instructions.
 
 ---
 

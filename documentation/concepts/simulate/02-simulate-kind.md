@@ -37,7 +37,7 @@ spec:
         name: my-db-backup   # optional: assert a specific resource name
 ```
 
-**`expect:` is optional.** Without it, simulate runs in op-print mode — same output as `ork simulate -f e2e.yaml`, no pass/fail. Add `expect:` when you know the sequence and want it enforced.
+**`expect:` is optional.** Without it, simulate runs in op-print mode — prints every op recorded per cycle, always exits 0. Add `expect:` when you know the sequence and want it enforced.
 
 ---
 
@@ -96,9 +96,8 @@ metadata:
   name: advanced-suite
 
 imports:
-  files:
-    - ./09-hooks/simulate.yaml
-    - ./10-constructor/simulate.yaml
+  - ./09-hooks/simulate.yaml
+  - ./10-constructor/simulate.yaml
 ```
 
 An aggregator has no `spec:`. Each imported file runs independently; the suite fails if any file fails.
@@ -166,7 +165,3 @@ Validating Simulate...
 | What is asserted | reconciler ops by cycle | Kubernetes resources in a live cluster |
 | `expect:` | ops, steady, noErrors | resource kind/name/ready/count |
 | When to use | reconciler behavior | integration truth |
-
----
-
-**Next →** [Running simulate](03-running.md)

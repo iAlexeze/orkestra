@@ -73,6 +73,31 @@ This lets examples that call external services (config injection, feature flags,
 
 ---
 
+## What does `--debug-ops` do?
+
+`--debug-ops` prints every operation the reconciler performed across every cycle before the assertion output — the full picture of what your operator actually did:
+
+```text
+  [debug-ops] 7 total ops recorded across all cycles:
+  [debug-ops]   cycle=1   verb=create   resource=deployments         name=my-website
+  [debug-ops]   cycle=1   verb=create   resource=services            name=my-website
+  [debug-ops]   cycle=2   verb=update   resource=deployments         name=my-website
+  [debug-ops]   cycle=3   verb=get      resource=deployments         name=my-website
+```
+
+Use it to understand what your operator does before writing assertions. The intended authoring workflow:
+
+```bash
+ork simulate --debug-ops     # see every op across all cycles
+ork simulate init            # capture cycle-1 creates as assertions automatically
+# edit simulate.yaml         # add absent: blocks, later cycles, edge cases
+ork registry push            # simulate gate runs these assertions before publish
+```
+
+`--debug-ops` works in all three invocation modes: direct flags, a `simulate.yaml` file, and `./...` discovery.
+
+---
+
 ## Can I run simulate for multiple operators at once?
 
 Yes — with an aggregator. A `simulate.yaml` with `imports:` and no `spec:` runs each imported file independently:
@@ -107,7 +132,6 @@ Yes. `ork simulate` uses the same reconciler pipeline that runs against a live c
 
 If a test passes in simulate, the reconciler logic is correct. What you cannot verify in simulate: admission webhook behavior end-to-end, network policies, actual pod scheduling, and anything that depends on Kubernetes controllers running (e.g. ReplicaSet → Pod creation). That is what `ork e2e` is for.
 
----
 
 ## Next
 

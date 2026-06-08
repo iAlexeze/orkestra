@@ -125,6 +125,180 @@ See [CRD Entry Schema](../reference/schema/02-katalog/02-crd-entry.md) for the f
 
 ---
 
+## What does `forEach` do?
+
+`forEach` expands one resource declaration into N resources — one per element in a list field on the CR spec. Each iteration element is bound to a name and available as a template variable alongside the parent CR's fields.
+
+```yaml
+# CR spec
+spec:
+  replicationFactor: 3
+  shards:
+    - name: us-east
+      region: us-east-1
+      size: 50Gi
+    - name: eu-west
+      region: eu-west-1
+      size: 50Gi
+
+# Katalog
+onCreate:
+  custom:
+    - apiVersion: storage.example.io/v1alpha1
+      kind: Shard
+      forEach:
+        field: spec.shards   # iterate over this list
+        as: shard            # bind each element as .shard
+      metadata:
+        name: "{{ .metadata.name }}-{{ .shard.name }}"
+        namespace: "{{ .metadata.namespace }}"
+        namespaced: true
+      spec:
+        region: "{{ .shard.region }}"
+        size: "{{ .shard.size }}"
+        replicationFactor: "{{ .spec.replicationFactor }}"
+```
+
+This creates two `Shard` CRs — `my-store-us-east` and `my-store-eu-west` — from a single declaration. If the parent CR's `spec.shards` is updated at runtime, Orkestra adds new entries and deletes removed ones on the next reconcile.
+
+`forEach` works on the `custom:` block (Custom Resources) and on standard resource blocks (`deployments:`, `services:`, etc.).
+
+Try it:
+
+```bash
+ork init --pack advanced/16-custom-resources
+cd 05-forEach-sharding
+# Follow the steps in README
+```
+
+---
+
+## What is the difference between `normalize:` and `conversion.paths:`?
+
+Both use note expressions to transform CR fields, but they solve different problems.
+
+**`normalize:`** — runs in-memory before every reconcile. The raw CR in etcd is unchanged. Kubernetes never sees two versions of the CRD. Use it when you want to tolerate input shape variation within a single schema version:
+
+```yaml
+normalize:
+  spec:
+    schedule: "{{ cronFromAny .spec.schedule }}"
+    # accepts both "*/5 * * * *" and {minute:"*/5", hour:"*",...}
+    # downstream templates always see a plain cron string
+```
+
+No webhook registration. No TLS. No infrastructure cost.
+
+**`conversion.paths:`** — runs in the gateway's `/convert` HTTPS endpoint, called by the Kubernetes API server. Use it when you have a real multi-version CRD (`v1`, `v2`) and need Kubernetes to translate between stored and requested versions:
+
+```yaml
+conversion:
+  storageVersion: v1
+  updateCRD: true
+  paths:
+    - from: v1
+      to: v2
+      spec:
+        schedule: "{{ cronToMap .spec.schedule }}"
+```
+
+The rule: if you control the CRD and want to tolerate different input shapes — `normalize:`. If you have committed to multiple API versions and need the API server to convert between them — `conversion.paths:`.
+
+→ [Schema Evolution](../concepts/conversion/index.md)
+
+---
+
+## When do I need Go hooks?
+
+The `external:` block handles HTTP already — GET, POST, bearer tokens, chained calls where each result flows into the next via `.external.{name}.body`. `when:` and `anyOf:` handle conditional logic. For most operators, those are enough.
+
+Hooks become necessary when the work is genuinely outside HTTP:
+
+- **Non-HTTP protocols** — gRPC, database connections, message queue operations, anything that isn't an HTTP endpoint
+- **Complex computed fields from non-HTTP sources** — deriving values that require SDK calls, database queries, or binary protocols where there is no HTTP endpoint to call
+
+For AWS, GCP, and Stripe — providers are in development for common SDK integrations (`aws:`, `gcp:`, `stripe:` blocks in the Katalog). Until a provider covers your case, hooks are the path.
+
+Hooks are additive: the hook runs, then Orkestra applies `onCreate`/`onReconcile` templates as normal. The template layer does not disappear.
+
+```yaml
+operatorBox:
+  default: true   # GenericReconciler still runs; hooks are additive
+
+  hooks:
+    location: github.com/myorg/database-operator/hooks
+    function: DatabaseHooks
+```
+
+Try it:
+
+```bash
+ork init --pack advanced/09-hooks
+cd 09-hooks
+# Follow the steps in README
+```
+
+→ [Typed Operators — Hooks](../concepts/typed-operators/01-hooks.md)
+
+---
+
+## When do I need a constructor?
+
+When you need to own the full reconcile loop — typically when integrating an existing operator without rewriting it.
+
+```yaml
+operatorBox:
+  default: false   # GenericReconciler is replaced; constructor owns everything
+```
+
+`default: false` is the one field change that replaces the entire reconciler. Your constructor receives Orkestra's `KubeClient` and informer — no `controller-runtime` required. Declarative templates (`onCreate`, `onReconcile`, `status.fields`) are not applied when `default: false`; the constructor is responsible for all state.
+
+Try it:
+
+```bash
+ork init --pack advanced/10-constructor
+cd 10-constructor
+# Follow the steps in README
+```
+
+→ [Typed Operators — Constructor](../concepts/typed-operators/02-constructor.md)
+
+---
+
+## Can I mix declarative, hooks, and constructor operators in one binary?
+
+Yes. Each CRD in a Katalog or Komposer can use a different mode. One binary, one process:
+
+```yaml
+# komposer.yaml
+spec:
+  crds:
+    database:          # typed hooks — Go SDK calls alongside declarative templates
+      workers: 5
+    website:           # dynamic — pure YAML, no Go
+      dependsOn:
+        database:
+          condition: healthy
+    pipeline:          # constructor — full custom reconciler
+      dependsOn:
+        website:
+          condition: started
+```
+
+You promote along a single axis: start pure YAML, add `hooks:` when you need Go logic, flip `default: false` when you need full control. No project restructure. No framework switch.
+
+Try it:
+
+```bash
+ork init --pack advanced/11-mixed-operator-pattern
+cd 11-mixed-operator-pattern
+# Follow the steps in README
+```
+
+→ [Typed Operators — Mixing all three](../concepts/typed-operators/03-mixed.md)
+
+---
+
 ## Next
 
 - **[Running](./02-running.md)** — setup, configuration, and operations

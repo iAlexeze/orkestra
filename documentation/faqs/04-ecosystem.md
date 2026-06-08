@@ -8,7 +8,7 @@ The real question is what you do when you need an operator — when drift correc
 
 At that point you drop into Go. And every team that does this builds the same machinery, from scratch, for every operator: informers, workqueues, leader election, worker pools, health endpoints, Prometheus metrics, retry logic, finalizers, status management, safe panic recovery, multi-version CRD handling, admission and deletion protection.
 
-That machinery is not the reason the operator exists. It is the cost of entry.
+**That machinery is not the reason the operator exists. It is the cost of entry.**
 
 Orkestra says: the machinery is the runtime's job. You focus on the reason the operator exists — your custom logic.
 
@@ -33,7 +33,7 @@ Both Kubebuilder and Operator SDK are scaffolding frameworks. They generate the 
 
 You still own the machinery. Queue depth, worker count, leader election lease, health endpoints, Prometheus metrics, retry logic, panic recovery — all of it is yours to configure, test, and maintain. Kubebuilder scaffolds it. You own it.
 
-Orkestra is a runtime. You do not write controllers. The machinery is the runtime's job.
+**Orkestra is a runtime. You do not write controllers. The machinery is the runtime's job.**
 
 | | Kubebuilder / Operator SDK | Orkestra |
 |---|---|---|
@@ -112,7 +112,6 @@ is the end state. At that point, every cluster ships with a meta-controller that
 understands declarative operator definitions. Platform teams write Katalogs. Kubernetes
 manages them.
 
----
 
 ## Next
 

@@ -78,6 +78,14 @@ The [Operator of Operators](operator-of-operators/) pattern lets one Orkestra op
 
 ---
 
+## Schema Evolution
+
+[Schema Evolution](conversion/) is how Orkestra handles CRD field changes over time — without breaking stored objects, without manual caBundle management, and without a separate conversion webhook deployment. Two approaches: `normalize:` for single-version input tolerance, `conversion.paths:` for multi-version APIs.
+
+→ [Read: Schema Evolution](conversion/)
+
+---
+
 ## Typed Operators
 
 [Typed Operators](typed-operators/) are the escape hatch for cases that genuinely need Go code: hooks that run alongside declarative templates, constructors that replace the reconciler entirely, and operator-as-library for full control.
@@ -107,6 +115,14 @@ The [Health Subsystem](health-subsystem/) is Orkestra's liveness, readiness, and
 [ONCOP](oncop/) (Orkestra Native Cross-Operator Protocol) is the cross-binary observation layer. One operator reads another's typed state — health, metrics, or full CR — without hard-coded URLs, with built-in caching, and with the same template surface as same-binary cross: reads.
 
 → [Read: ONCOP](oncop/)
+
+---
+
+## Declarative Unit Testing
+
+[Declarative Unit Testing](simulate/) is how Orkestra verifies reconciler behavior without a cluster — one `simulate.yaml`, no Kubernetes, no Docker, sub-second. Declare which resources should appear in which cycle. The same reconciler that runs in production runs here.
+
+→ [Read: Declarative Unit Testing](simulate/)
 
 ---
 

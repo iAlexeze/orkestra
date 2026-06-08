@@ -143,6 +143,36 @@ This produces a scoped ClusterRole, ClusterRoleBinding, and a ConfigMap containi
 
 ---
 
+## What does `ork generate bundle` do, and when do I re-run it?
+
+`ork generate bundle` reads your Katalog and produces a single YAML document stream — ready to apply — containing:
+
+- **ServiceAccounts** for runtime, gateway and control center
+- **ClusterRole** with the minimal permissions derived from your Katalog
+- **ClusterRoleBinding**
+- **ConfigMap** embedding the Katalog itself
+
+```bash
+ork generate bundle --file katalog.yaml -o bundle.yaml
+kubectl apply -f bundle.yaml
+```
+
+The ClusterRole is derived, not hand-written: only the API groups declared in your Katalog, only the verbs those resources actually need. If your operator creates no Deployments, the runtime has no `apps/deployments` permission.
+
+**Re-run it every time the Katalog changes.** Adding a CRD, a new resource type, or a new API group makes the deployed bundle stale — the runtime will lack the permissions it now needs. Run it in CI alongside `ork validate`:
+
+```bash
+ork validate --full   # preview exact permissions per CRD per component
+ork generate bundle --file katalog.yaml -o bundle.yaml
+```
+
+Both commands run entirely offline. No cluster connection required.
+
+!!! tip "GitOps"
+    Commit `bundle.yaml` to your repository. A diff on the bundle in code review makes every RBAC change visible and reviewable before it reaches the cluster.
+
+---
+
 ## How do I debug a CRD in production?
 
 Use the **Control Center** — it gives you a full view of all CRDs, worker pools, queue depth, reconcile metrics, and dependency health without any additional tooling.
@@ -181,6 +211,39 @@ The most common issues:
 
 ---
 
+## What is the Control Center?
+
+The Control Center is a web UI that reads directly from the Orkestra runtime APIs — no instrumentation, no custom metrics, no extra cluster resources. Start it locally with:
+
+```bash
+ork control
+# Opens at http://localhost:8081
+```
+
+Five views, each a drill-down from the last:
+
+| View | What it shows |
+|---|---|
+| **Control Center** | All Katalogs from all configured runtimes on one page |
+| **Control Panel** | Per-Katalog: CRD cards, worker pools, queue pressure, error rates |
+| **CRD Detail** | Per-CRD: every worker's state, RBAC, dependencies, admission metrics |
+| **Resources** | Live CR list for that CRD — the actual objects being reconciled |
+| **CR Detail** | Single CR: status fields, conditions, and child Kubernetes resources (grouped by kind, each with ready state and replica counts) |
+
+To watch multiple clusters at once:
+
+```bash
+ork control --urls "http://cluster1:8080,http://cluster2:8080"
+```
+
+The Control Center holds no state of its own. It polls `/katalog`, `/katalog/{crd}`, and `/katalog/{crd}/health` on each runtime and renders the results. Refresh interval defaults to 10 seconds (`--refresh 5s` to tighten it).
+
+Default credentials are `orkestra` / `orkestra`. Set `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `SESSION_SECRET` environment variables before exposing it beyond localhost.
+
+→ [Control Center reference](../orkestra-core/03-controlcenter/)
+
+---
+
 ## Is Orkestra safe for production?
 
 Yes. Orkestra is designed for and demonstrated in production.
@@ -199,6 +262,22 @@ Yes. Orkestra is designed for and demonstrated in production.
 
 See [Trust and Failure Model](/publications/trust-and-failure-model/) for every
 failure mode, what it means, and how Orkestra handles it.
+
+---
+
+## Does the deletion protection webhook protect Orkestra itself?
+
+Yes — including the webhook itself.
+
+Every resource Orkestra deploys via Helm carries `orkestra.io/deletion-protection: "true"` from installation. The webhook intercepts every DELETE request and blocks any resource carrying that label — the runtime Deployment, the gateway Deployment, the control center, all Services.
+
+The self-protection loop: the webhook also blocks deletion of its own `ValidatingWebhookConfiguration`. You cannot delete the webhook while it is running, because the webhook intercepts its own deletion request.
+
+In full runtime mode, if the protection label is manually removed from a resource, the reconciler detects the drift on the next reconcile cycle and reapplies it. The label is treated as desired state, same as any other field in the Katalog.
+
+!!! note "Gateway-only mode"
+    Without `ork run`, the webhook still blocks deletions — but there is no reconciler to restore labels if they are manually removed. In gateway-only mode you are responsible for maintaining protection labels yourself.
+    You can enable `strictMode` in this case.
 
 ---
 

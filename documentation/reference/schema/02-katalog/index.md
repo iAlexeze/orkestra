@@ -89,4 +89,4 @@ This scaffolds the simplest Katalog — a single CRD that creates a Deployment a
 - [Motif schema](../01-motif/index.md) — reusable resource blocks imported by Katalogs
 - [Komposer schema](../03-komposer/index.md) — composing multiple Katalogs
 - [E2E schema](../04-e2e/index.md) — testing a Katalog
-- [Orkestra Registry](../../../orkestra-registry.md) — publishing and consuming Katalogs
+- [Orkestra Registry](../../../orkestra-registry/index.md) — publishing and consuming Katalogs

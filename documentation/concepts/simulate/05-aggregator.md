@@ -82,7 +82,3 @@ Use `--skip` to exclude directories or filename patterns:
 ```bash
 ork simulate ./... --skip vendor,testdata
 ```
-
----
-
-→ Next: [Limitations](06-limitations.md)

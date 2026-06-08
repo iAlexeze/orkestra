@@ -17,6 +17,8 @@ Open [http://localhost:8081](http://localhost:8081).
 - **Control Center** — the global view. All Katalogs from all configured runtimes on one page.
 - **Control Panel** — per-Katalog drill-down. CRD cards, worker pools, queue pressure, error rates.
 - **CRD Detail** — per-CRD deep dive. Every worker's state, RBAC permissions, dependencies, admission metrics.
+- **Resources** — live CR list for that CRD. The actual objects being reconciled.
+- **CR Detail** — single CR view. Status fields, conditions, and child Kubernetes resources created by the reconciler, grouped by kind with ready state and replica counts.
 
 ---
 
@@ -50,8 +52,8 @@ ork control --ignore-default
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ADMIN_USERNAME` | Login username | `admin` |
-| `ADMIN_PASSWORD` | Login password | `admin` |
+| `ADMIN_USERNAME` | Login username | `orkestra` |
+| `ADMIN_PASSWORD` | Login password | `orkestra` |
 | `SESSION_SECRET` | Cookie signing secret | `dev-secret` |
 | `ORK_CC_PORT` | Override port | `8081` |
 | `ORK_CC_REFRESH` | Override refresh interval | `10s` |
