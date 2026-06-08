@@ -101,6 +101,7 @@ ork e2e -f e2e.yaml
 - [Writing a test](02-writing-a-test.md) — quick-reference for spec fields with annotated examples
 - [Suites and imports](03-suite-and-imports.md) — composing multiple E2E files, cluster strategy, pure aggregators
 - [Best practices](04-best-practices.md) — focused tests, naming, `count: 0`, CI integration
+- [Scaffolding tests](05-init.md) — `ork e2e init` and `--suite` to generate e2e.yaml from a Katalog
 
 ---
 

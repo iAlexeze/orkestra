@@ -13,6 +13,8 @@ ork simulate ./... --skip vendor               # skip patterns during discovery
 ork simulate --skip-external                   # stub external: HTTP calls
 ork simulate --debug-ops                       # print all recorded ops with cycle numbers
 ork simulate --dev-server                      # start mock dev server for external: examples
+ork simulate init                              # generate simulate.yaml from observed cycle-1 ops
+ork simulate init --suite                      # write a suite aggregator from discovered leaf files
 ```
 
 ## What works

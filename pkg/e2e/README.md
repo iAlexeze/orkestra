@@ -6,6 +6,8 @@
 ork e2e -f e2e.yaml
 ork e2e ./...                    # discover and run all *e2e.yaml files recursively
 ork e2e ./examples/beginner/...  # scoped discovery
+ork e2e init                     # scaffold e2e.yaml from the current Katalog
+ork e2e init --suite             # write a suite aggregator from discovered leaf files
 ```
 
 ## Developer documentation
