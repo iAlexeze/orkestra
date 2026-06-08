@@ -35,6 +35,7 @@ type Katalog struct {
 	// Internal — enabledCRDs is enriched and validated; Spec.CRDs holds all (including disabled)
 	metadata           orktypes.KatalogMeta         `yaml:"-" json:"-"`
 	enabledCRDs        map[string]orktypes.CRDEntry `yaml:"-" json:"-"`
+	withCRDFiles       []string                     `yaml:"-" json:"-"` // CRD names that declared crdFile, captured before the field is cleared
 	katalogDir         string                       `yaml:"-" json:"-"`
 	conversionRegistry *InMemoryConversionRegistry
 	admissionRegistry  *InMemoryAdmissionRegistry
@@ -51,6 +52,14 @@ func (k *Katalog) EnabledCRDs() map[string]orktypes.CRDEntry {
 // AllCRDs returns all CRDs including disabled ones (from Spec).
 func (k *Katalog) AllCRDs() map[string]orktypes.CRDEntry {
 	return k.Spec.CRDs
+}
+
+// WithCRDFiles returns the names of CRDs that declared a crdFile.
+// Populated during KomposeRuntimeKatalog before the field is cleared,
+// so callers can inspect which CRDs used the local-file shortcut even
+// after apiTypes have been resolved and CRDFile wiped.
+func (k *Katalog) WithCRDFiles() []string {
+	return k.withCRDFiles
 }
 
 func (k *Katalog) Metadata() orktypes.KatalogMeta {
