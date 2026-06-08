@@ -78,6 +78,14 @@ The [Operator of Operators](operator-of-operators/) pattern lets one Orkestra op
 
 ---
 
+## Schema Evolution
+
+[Schema Evolution](conversion/) is how Orkestra handles CRD field changes over time — without breaking stored objects, without manual caBundle management, and without a separate conversion webhook deployment. Two approaches: `normalize:` for single-version input tolerance, `conversion.paths:` for multi-version APIs.
+
+→ [Read: Schema Evolution](conversion/)
+
+---
+
 ## Typed Operators
 
 [Typed Operators](typed-operators/) are the escape hatch for cases that genuinely need Go code: hooks that run alongside declarative templates, constructors that replace the reconciler entirely, and operator-as-library for full control.
