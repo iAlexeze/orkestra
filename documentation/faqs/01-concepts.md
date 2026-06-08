@@ -67,7 +67,7 @@ conditional logic not covered by the `when:` and `anyOf:` blocks. But hooks are 
 declarative layer handles everything else.
 
 !!! note "When Go becomes necessary"
-    The 20% of operator logic that genuinely requires code — creating a user
+    The 10-20% of operator logic that genuinely requires code — creating a user
     inside PostgreSQL, reading another cluster's state
     — is handled by hooks. Hooks coexist with declarative templates. You do not
     choose one or the other.
@@ -162,6 +162,134 @@ The `spec.crds` inline block always wins on name conflict — it is the override
 mechanism. Platform teams publish Katalogs; application teams compose and override.
 
 See the [Komposer Schema](../reference/schema/03-komposer/index.md) for all options.
+
+---
+
+## Are Katalog, Komposer, Motif, E2E, and Simulate Kubernetes CRDs?
+
+No. None of them are registered as `CustomResourceDefinition` objects in the cluster.
+
+They are plain YAML files loaded from the local filesystem or OCI registry at startup. A `Katalog` struct in Go has no `metav1.TypeMeta`, no `metav1.ObjectMeta`, no `DeepCopyObject()`. The Katalog loader calls `os.ReadFile()` and `yaml.Unmarshal()` — no Kubernetes client, no API server call.
+
+The same applies to Komposer, Motif, E2E, and Simulate. They are instruction sets for the runtime. They live on disk and in OCI artifacts, not in etcd.
+
+!!! note "The Artifact Hub display metadata"
+    `charts/orkestra/Chart.yaml` lists these types under `artifacthub.io/crds` — that is Artifact Hub display metadata only. The Helm chart deploys no CRD YAML for any of them.
+
+→ [Why Katalog and Komposer are not CRDs](./05-why-not-crds.md) — the full design reasoning
+
+---
+
+## What is a Motif?
+
+A Motif is a reusable operatorBox fragment. It packages everything one pattern of operator behavior needs — resources, status fields, validation rules, mutation rules — under a named, parameterized declaration. Katalogs import Motifs instead of repeating those declarations.
+
+A Motif can declare:
+
+- **`resources:`** — Kubernetes and custom resources to create (`deployments`, `statefulSets`, `services`, `custom`, and more), split into `onCreate` and `onReconcile` phases
+- **`status:`** — status fields merged into the importing CRD's status layer
+- **`admission:`** — validation and mutation rules contributed alongside the Katalog's own rules
+
+```yaml
+apiVersion: orkestra.orkspace.io/v1
+kind: Motif
+metadata:
+  name: postgres
+  version: v1
+
+inputs:
+  - name: image
+    required: true
+  - name: volumeSize
+    default: "10Gi"
+
+resources:
+  statefulSets:
+    - name: "{{ .metadata.name }}-db"
+      image: "{{ index .inputs \"image\" }}"
+      storageSize: "{{ index .inputs \"volumeSize\" }}"
+
+status:
+  fields:
+    - path: dbEndpoint
+      value: "{{ .metadata.name }}-db.{{ .metadata.namespace }}.svc.cluster.local"
+
+admission:
+  validation:
+    rules:
+      - field: spec.image
+        operator: exists
+        message: "spec.image is required"
+        action: deny
+```
+
+A Katalog imports it with `with:` bindings:
+
+```yaml
+operatorBox:
+  imports:
+    - motif: postgres
+      with:
+        image: "{{ .spec.dbImage }}"
+        volumeSize: "{{ .spec.storage }}"
+```
+
+Orkestra expands the Motif at Katalog load time — bindings resolved, resources and rules merged into the operatorBox as if declared inline.
+
+Publish a Motif by pushing its directory to the registry:
+
+```bash
+ork registry push postgres:v1 ./motifs/postgres/
+```
+
+Import it in a Katalog by OCI address, or by bare name if `ORK_MOTIFS_REGISTRY` is set:
+
+```yaml
+operatorBox:
+  imports:
+    - motif: ghcr.io/myorg/motifs/postgres:v1   # full OCI ref
+    - motif: postgres                            # bare name — resolved via ORK_MOTIFS_REGISTRY
+```
+
+Motifs can share the same registry address as Katalogs — separate them with folders (`/katalogs/`, `/motifs/`) rather than separate registries.
+
+→ [Motif schema reference](../reference/schema/01-motif/index.md)
+
+---
+
+## What is the note expression language?
+
+Notes are the pure transformation functions available inside every `{{ }}` expression in a Katalog — `onCreate`, `onReconcile`, `status.fields`, `when:` conditions, `normalize:`, `mutation:`, `conversion.paths:`.
+
+```yaml
+status:
+  fields:
+    - path: phase
+      value: '{{ boolTernary .spec.suspend "Suspended" "Active" }}'
+    - path: endpoint
+      value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+
+onCreate:
+  secrets:
+    - name: "{{ .metadata.name }}-creds"
+      once: true
+      data:
+        password: "{{ randomAlphanumeric 32 }}"
+```
+
+Notes are **pure** (same input → same output), **safe** (nil/empty input never panics), and **stateless** (no I/O, no external calls). They are not Go `text/template` — they are a separate vocabulary built on top of it.
+
+There are over 100 notes across domains: strings, math, conditionals, type coercion, cron expressions, random generation, Kubernetes object navigation, replica state, Job lifecycle, Service networking, and more.
+
+Discover them from the terminal:
+
+```bash
+ork notes                      # list all notes
+ork notes search job           # search by keyword
+ork notes show jobSucceeded    # full detail and example
+```
+
+→ [Notes reference](../reference/orkestra-notes/index.md)
 
 ---
 
