@@ -1,3 +1,23 @@
+## v0.7.4 — pkg/resources rename
+
+`pkg/orkestra-registry` is renamed to `pkg/resources`.
+
+**Who is affected:** typed-mode operators only — Go code that writes custom hooks or constructors and imports from `pkg/orkestra-registry`. Dynamic-mode operators (pure YAML) are unaffected.
+
+**What to change:** update import paths from `pkg/orkestra-registry/<kind>` to `pkg/resources/<kind>`:
+
+```go
+// before
+"github.com/orkspace/orkestra/pkg/orkestra-registry/deployments"
+
+// after
+"github.com/orkspace/orkestra/pkg/resources/deployments"
+```
+
+**Why:** `pkg/orkestra-registry` and `pkg/registry` (the OCI distribution layer) both carried the word "registry" with no relation to each other. The resource library — idempotent Create/Update/Delete/Resolve implementations for every Kubernetes resource type — is not a registry. `pkg/resources` is accurate and removes the collision. No logic changes, no API changes, no behavioral differences.
+
+---
+
 ## v0.7.3 Simulate: standalone operation
 
 `ork simulate` is now a self-contained command. Key changes:
