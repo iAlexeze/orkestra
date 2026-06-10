@@ -123,8 +123,8 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"  # includes 'v', used for release title and changelog section
           IMAGE_TAG="${{ inputs.image_tag }}"
-          if grep -q "## Changelog – Orkestra ${TAG}" CHANGELOG.md 2>/dev/null; then
-            awk "/## Changelog – Orkestra ${TAG}/{found=1; next} /## Changelog – Orkestra v/{if(found) exit} found{print}" CHANGELOG.md > release_notes.txt
+          if grep -q "## ${TAG}" CHANGELOG.md 2>/dev/null; then
+            awk "/## ${TAG}/{found=1; next} /## v[0-9]/{if(found) exit} found{print}" CHANGELOG.md > release_notes.txt
           else
             echo "Release ${TAG}" > release_notes.txt
           fi
