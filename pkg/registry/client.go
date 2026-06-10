@@ -26,6 +26,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/content/memory"
+
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/credentials"
@@ -50,9 +51,10 @@ func NewClient() (*Client, error) {
 
 // Push validates the directory, auto-detects the pattern kind, and pushes all
 // files to the registry. Returns the manifest digest on success.
-// e2eMeta is optional; when non-nil its fields are embedded as io.orkestra.e2e.*
-// OCI annotations on the published artifact.
-func (c *Client) Push(ctx context.Context, ref *Ref, dir string, e2eMeta *PatternE2E, simulateMeta *PatternSimulate, progress func(file string, size int64)) (string, error) {
+// e2eMeta and simulateMeta are optional; when non-nil their fields are embedded
+// as OCI annotations on the published artifact.
+// typedMeta is optional; when non-nil it is written as typed-operator annotations.
+func (c *Client) Push(ctx context.Context, ref *Ref, dir string, e2eMeta *PatternE2E, simulateMeta *PatternSimulate, typedMeta *PatternTyped, progress func(file string, size int64)) (string, error) {
 	patternKind, spec, files, err := ValidatePatternDirectory(dir)
 	if err != nil {
 		return "", fmt.Errorf("validation failed: %w", err)
@@ -68,6 +70,9 @@ func (c *Client) Push(ctx context.Context, ref *Ref, dir string, e2eMeta *Patter
 	}
 	if simulateMeta != nil {
 		meta.Simulate = simulateMeta
+	}
+	if typedMeta != nil {
+		meta.Typed = typedMeta
 	}
 
 	store := memory.New()
@@ -127,6 +132,9 @@ func (c *Client) Push(ctx context.Context, ref *Ref, dir string, e2eMeta *Patter
 	}
 	if meta.Simulate != nil {
 		entry.SimulateStatus = meta.Simulate.Status
+	}
+	if meta.Deprecated != nil {
+		entry.Deprecated = true
 	}
 	if err := c.updateIndex(ctx, ref, entry); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: index update failed: %v\n", err)
@@ -394,6 +402,26 @@ func artifactMetaToAnnotations(meta *PatternMeta, ref *Ref) map[string]string {
 			ann["io.orkestra.simulate.tested_at"] = meta.Simulate.TestedAt
 		}
 	}
+	if meta.Typed != nil {
+		if meta.Typed.HasHooks {
+			ann["io.orkestra.katalog.has_hooks"] = "true"
+		}
+		if meta.Typed.HasConstructor {
+			ann["io.orkestra.katalog.has_constructor"] = "true"
+		}
+		if meta.Typed.HasHooks || meta.Typed.HasConstructor {
+			ann["io.orkestra.katalog.typed"] = "true"
+		}
+	}
+	if meta.Deprecated != nil {
+		ann["io.orkestra.katalog.deprecated"] = "true"
+		if meta.Deprecated.MigratedTo != "" {
+			ann["io.orkestra.katalog.deprecated.migrated_to"] = meta.Deprecated.MigratedTo
+		}
+		if meta.Deprecated.Message != "" {
+			ann["io.orkestra.katalog.deprecated.message"] = meta.Deprecated.Message
+		}
+	}
 	return ann
 }
 
@@ -445,6 +473,18 @@ func annotationsToMeta(ann map[string]string) *PatternMeta {
 			Status:   status,
 			Duration: ann["io.orkestra.simulate.duration"],
 			TestedAt: ann["io.orkestra.simulate.tested_at"],
+		}
+	}
+	if ann["io.orkestra.katalog.typed"] == "true" {
+		meta.Typed = &PatternTyped{
+			HasHooks:       ann["io.orkestra.katalog.has_hooks"] == "true",
+			HasConstructor: ann["io.orkestra.katalog.has_constructor"] == "true",
+		}
+	}
+	if ann["io.orkestra.katalog.deprecated"] == "true" {
+		meta.Deprecated = &PatternDeprecated{
+			MigratedTo: ann["io.orkestra.katalog.deprecated.migrated_to"],
+			Message:    ann["io.orkestra.katalog.deprecated.message"],
 		}
 	}
 	return meta

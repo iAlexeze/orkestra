@@ -225,6 +225,12 @@ var registryPushCmd = &cobra.Command{
 			}
 		}
 
+		// Detect typed annotations for katalog patterns.
+		var typedMeta *registry.PatternTyped
+		if patternKind == registry.KatalogKind {
+			typedMeta = detectTypedKatalog(filepath.Join(dir, registry.FileKatalog))
+		}
+
 		client, err := registry.NewClient()
 		if err != nil {
 			return fmt.Errorf("initializing client: %w", err)
@@ -234,7 +240,7 @@ var registryPushCmd = &cobra.Command{
 			fmt.Printf("  → %-20s (%s)\n", file, formatSize(size))
 		}
 
-		digest, err := client.Push(cmd.Context(), ref, dir, e2eMeta, simulateMeta, progress)
+		digest, err := client.Push(cmd.Context(), ref, dir, e2eMeta, simulateMeta, typedMeta, progress)
 		if err != nil {
 			return fmt.Errorf("push failed: %w", err)
 		}
@@ -250,7 +256,7 @@ var registryPushCmd = &cobra.Command{
 				motifRef, err := registry.ResolveForKind(fmt.Sprintf("%s:%s", meta.Name, meta.Version), registry.MotifKind)
 				if err == nil {
 					fmt.Printf("\nAlso pushing %s to %s...\n", registry.FileMotif, motifRef.Registry)
-					if mDigest, err := client.Push(cmd.Context(), motifRef, dir, nil, nil, progress); err != nil {
+					if mDigest, err := client.Push(cmd.Context(), motifRef, dir, nil, nil, nil, progress); err != nil {
 						fmt.Fprintf(os.Stderr, "warning: motif push failed: %v\n", err)
 					} else {
 						fmt.Printf("%s Pushed motif: %s\n", successMark(), motifRef.String())
@@ -273,6 +279,32 @@ var registryPushCmd = &cobra.Command{
 		_ = meta
 		return nil
 	},
+}
+
+// detectTypedKatalog parses a katalog.yaml and returns a PatternTyped if any
+// CRD declares customHooks or customConstructor. Returns nil on parse error.
+func detectTypedKatalog(katalogPath string) *registry.PatternTyped {
+	k, err := katalog.ParseFile(katalogPath)
+	if err != nil {
+		return nil
+	}
+	var t registry.PatternTyped
+	for _, name := range k.CRDNames() {
+		entry, ok := k.CRDEntry(name)
+		if !ok {
+			continue
+		}
+		if entry.CustomHooksEnabled() {
+			t.HasHooks = true
+		}
+		if entry.ConstructorEnabled() {
+			t.HasConstructor = true
+		}
+	}
+	if !t.HasHooks && !t.HasConstructor {
+		return nil
+	}
+	return &t
 }
 
 // simulateFileHasAssertions returns true when simulate.yaml contains an

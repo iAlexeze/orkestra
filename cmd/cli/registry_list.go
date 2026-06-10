@@ -116,7 +116,11 @@ var registryListCmd = &cobra.Command{
 			case "skipped":
 				e2eBadge = "~"
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", e.Name, e.LatestVersion, k, e2eBadge, tags, desc)
+			name := e.Name
+			if e.Deprecated {
+				name = yellow("⚠") + " " + name
+			}
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", name, e.LatestVersion, k, e2eBadge, tags, desc)
 			count++
 		}
 		w.Flush()
