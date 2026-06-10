@@ -119,5 +119,5 @@ type HookTemplates struct {
 }
 
 // Placeholder for resources yet to be added to orkestra internal registry
-// pkg/orkestra-registry
+// pkg/resources
 type PlaceholderSource struct{}

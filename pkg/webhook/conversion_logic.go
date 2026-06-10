@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/orkspace/orkestra/pkg/note"
-	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 

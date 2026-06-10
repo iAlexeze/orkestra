@@ -27,8 +27,8 @@ import (
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
-	orksecrets "github.com/orkspace/orkestra/pkg/orkestra-registry/secrets"
-	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+	orksecrets "github.com/orkspace/orkestra/pkg/resources/secrets"
+	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 

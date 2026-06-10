@@ -34,7 +34,7 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/children"
 	"github.com/orkspace/orkestra/pkg/logger"
-	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 )
 
 // patchStatusWithChildren is the top-level status entry point called from

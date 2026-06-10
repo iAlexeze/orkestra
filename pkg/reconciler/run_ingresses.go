@@ -9,8 +9,8 @@ import (
 	"github.com/orkspace/orkestra/pkg/certmanager"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
-	orkingress "github.com/orkspace/orkestra/pkg/orkestra-registry/ingresses"
-	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+	orkingress "github.com/orkspace/orkestra/pkg/resources/ingresses"
+	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
