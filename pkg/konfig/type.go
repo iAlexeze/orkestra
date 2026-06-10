@@ -197,7 +197,11 @@ func NewDefaultKonfig() *Konfig {
 			writeTimeout: 5 * time.Second,
 		},
 		katalog: katalogKonfig{
-			paths: []string{"katalog.yaml"},
+			paths:                   []string{"katalog.yaml"},
+			defaultWorkers:          GetIntEnv("DEFAULT_WORKERS", 3),
+			defaultResync:           GetDurEnvSeconds("DEFAULT_RESYNC", 15),
+			defaultQueueDepth:       GetIntEnv("QUEUE_DEPTH", 100),
+			defaultFailureThreshold: GetIntEnv("FAILURE_THRESHOLD", 5),
 		},
 	}
 }
