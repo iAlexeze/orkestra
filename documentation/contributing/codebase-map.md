@@ -20,7 +20,7 @@ The reconciliation engine. Watches Kubernetes resources, runs operatorBox logic,
 | `pkg/children` | Fetches and enriches child resources (`_pods`, `_replicaSets`, `_owner`, etc.) and builds the `.children` map available in status templates. |
 | `pkg/informer` | Shared index informers and factory lifecycle. |
 | `pkg/kubeclient` | Core, dynamic, and apiextensions clients; REST mapper. |
-| `pkg/orkestra-registry` | Built-in resource handlers: deployments, services, configMaps, jobs, etc. |
+| `pkg/resources` | Built-in resource handlers: deployments, services, configMaps, jobs, etc. |
 | `pkg/merger` | Komposer — multi-source Katalog merging. |
 | `pkg/motif` | Motif expansion — assembles reusable resource building blocks at load time. |
 | `pkg/webhook` | Admission and conversion webhook server. |

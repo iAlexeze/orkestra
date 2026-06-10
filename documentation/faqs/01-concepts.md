@@ -293,20 +293,16 @@ ork notes show jobSucceeded    # full detail and example
 
 ---
 
-## What is the OrkestraRegistry?
+## What is the Orkestra Registry?
 
-The OrkestraRegistry is two things:
+The Orkestra Registry is the distribution layer for operator patterns. Where traditional
+ecosystems distribute binaries, the registry distributes **behavior** — Katalogs, Motifs,
+and Komposers published as OCI artifacts that any Orkestra runtime can pull and interpret.
 
-**1. The internal resource library** (`pkg/orkestra-registry/`) — Go implementations
-of Create, Update, Delete, and Resolve for every common Kubernetes resource type:
-Deployments, Services, Secrets, ConfigMaps, Jobs, CronJobs, Pods, ServiceAccounts.
-These are called by the reconciler when it processes declarative templates.
+Pull a Postgres operator pattern with one line in a Komposer. No binary. No deployment.
+Just a Katalog.
 
-**2. The public pattern registry** (`orkspace/orkestra-registry`) — versioned
-operator patterns distributed as OCI artifacts. Pull a Postgres operator pattern
-with one line in a Komposer. No binary. No deployment. Just a Katalog.
-
-The default registry is `orkspace/orkestra-registry`. Point Orkestra at your own
+The default registry is `ghcr.io/orkspace/orkestra-registry`. Point Orkestra at your own
 registry — for internal patterns, air-gapped environments, or private Motif libraries:
 
 ```bash
@@ -315,7 +311,7 @@ ORK_MOTIFS_REGISTRY=ghcr.io/myorg/motifs    # Motif registry
 ```
 
 !!! tip "The npm analogy"
-    The OrkestraRegistry is Orkestra's package manager for operator behavior.
+    The Orkestra Registry is Orkestra's package manager for operator behavior.
     Patterns are versioned, composable, and overridable. You import them like
     dependencies, not like binaries.
 

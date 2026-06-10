@@ -35,7 +35,7 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
-	orkjobs "github.com/orkspace/orkestra/pkg/orkestra-registry/jobs"
+	orkjobs "github.com/orkspace/orkestra/pkg/resources/jobs"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"

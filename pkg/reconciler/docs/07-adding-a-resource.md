@@ -3,8 +3,8 @@
 This document walks through every file that must change to add a new resource type. The worked example is `run_ingress.go`. Every step is labelled so you can use the checklist at the bottom to track progress.
 
 **Recent additions you can use as further reference:**
-- `run_roles.go` + `pkg/orkestra-registry/roles/role.go` — namespaced Role (RBAC)
-- `run_rolebindings.go` + `pkg/orkestra-registry/rolebindings/rolebinding.go` — RoleBinding; demonstrates the immutable `roleRef` delete-recreate pattern in `Update`
+- `run_roles.go` + `pkg/resources/roles/role.go` — namespaced Role (RBAC)
+- `run_rolebindings.go` + `pkg/resources/rolebindings/rolebinding.go` — RoleBinding; demonstrates the immutable `roleRef` delete-recreate pattern in `Update`
 
 ## Overview of files to touch
 
@@ -13,12 +13,12 @@ pkg/types/
     katalog_spec_hooks.go       — add IngressTemplateSource field to HookTemplates
     ingress.go                  — declare IngressTemplateSource (new file)
 
-pkg/orkestra-registry/
+pkg/resources/
     ingresses/
         types.go                — ResolvedIngressSpec (new file)
         ingress.go              — Create, Update, Delete, DeleteIfOwned, Resolve (new file)
 
-pkg/orkestra-registry/template/
+pkg/resources/template/
     resolver.go                 — add ResolveIngressTemplate method
 
 pkg/reconciler/
@@ -87,7 +87,7 @@ The YAML key (`ingresses`) is what operators write in their Katalog files.
 
 ## Step 3 — Create the registry package
 
-Create `pkg/orkestra-registry/ingresses/types.go`:
+Create `pkg/resources/ingresses/types.go`:
 
 ```go
 package ingresses
@@ -107,7 +107,7 @@ type ResolvedIngressSpec struct {
 }
 ```
 
-Create `pkg/orkestra-registry/ingresses/ingress.go`:
+Create `pkg/resources/ingresses/ingress.go`:
 
 ```go
 package ingresses
@@ -307,7 +307,7 @@ func buildIngress(owner domain.Object, spec ResolvedIngressSpec, ns string) *net
 
 ## Step 4 — Add ResolveIngressTemplate to the resolver
 
-In `pkg/orkestra-registry/template/resolver.go`, add:
+In `pkg/resources/template/resolver.go`, add:
 
 ```go
 // ResolveIngressTemplate evaluates all template expressions in an IngressTemplateSource.
@@ -353,8 +353,8 @@ import (
     "github.com/orkspace/orkestra/domain"
     "github.com/orkspace/orkestra/pkg/kubeclient"
     "github.com/orkspace/orkestra/pkg/logger"
-    orkingress "github.com/orkspace/orkestra/pkg/orkestra-registry/ingresses"
-    orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+    orkingress "github.com/orkspace/orkestra/pkg/resources/ingresses"
+    orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
     orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
@@ -503,9 +503,9 @@ A clean build is the acceptance criterion. No new tests are required for the run
 
 - [ ] `pkg/types/ingress.go` — `IngressTemplateSource` with `Conditions`, `AnyOf`, `Reconcile`, `ForEach`
 - [ ] `pkg/types/katalog_spec_hooks.go` — `Ingresses []IngressTemplateSource` field on `HookTemplates`
-- [ ] `pkg/orkestra-registry/ingresses/types.go` — `ResolvedIngressSpec`
-- [ ] `pkg/orkestra-registry/ingresses/ingress.go` — `Create`, `Update`, `DeleteIfOwned`, `Resolve`
-- [ ] `pkg/orkestra-registry/template/resolver.go` — `ResolveIngressTemplate`
+- [ ] `pkg/resources/ingresses/types.go` — `ResolvedIngressSpec`
+- [ ] `pkg/resources/ingresses/ingress.go` — `Create`, `Update`, `DeleteIfOwned`, `Resolve`
+- [ ] `pkg/resources/template/resolver.go` — `ResolveIngressTemplate`
 - [ ] `pkg/reconciler/run_ingress.go` — `runIngresses` with activeNames pre-pass
 - [ ] `pkg/reconciler/run_foreach.go` — `expandForEachIngresses`
 - [ ] `pkg/reconciler/run_template_reconcile.go` — call `runIngresses` in `runResourceGroup`

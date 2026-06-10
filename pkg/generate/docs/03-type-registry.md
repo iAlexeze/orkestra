@@ -43,7 +43,7 @@ orktypes.ObjectRegistry["myorg/v1/MyApp"] = func() runtime.Object { return &type
 orktypes.ListRegistry["myorg/v1/MyApp"]   = func() client.ObjectList { return &types.MyAppList{} }
 ```
 
-Also generates `RegisterScheme()` which calls each package's `AddToScheme` — required for controller-runtime to decode CRs by GVK.
+Also generates `RegisterScheme()` which calls each package's `AddToScheme` — required for the runtime to decode CRs by GVK.
 
 ### 2. Go hooks (`reconciler.hooks` is declared)
 
