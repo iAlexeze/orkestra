@@ -241,11 +241,11 @@ Key components:
   `HasStatus *bool` controls whether child status is read back into the parent resolver context.
   `BuildGVK()` and `ResolveGVR()` methods provide GVK/GVR resolution from the declarative spec.
 
-- **Custom resource registry package (`pkg/orkestra-registry/customresources/`)**
+- **Custom resource registry package (`pkg/resources/customresources/`)**
   New package exposing `Create`, `Update`, `DeleteIfOwned`, `Resolve`, and `ResolvedCustomResourceSpec`.
   Owner references are set automatically — deleting the parent cascades to all child custom resources without requiring any `onDelete` hook.
 
-- **Template resolution (`pkg/orkestra-registry/template/resolve_customresources.go`)**
+- **Template resolution (`pkg/resources/template/resolve_customresources.go`)**
   Added `ResolveCustomResourceTemplate` on the Resolver to expand motif templates and inject resolved values into the custom resource spec before apply.
 
 - **Katalog validation (`pkg/katalog/validate_custom_resource.go`)**
@@ -269,7 +269,7 @@ Key components:
   `hasStatus` is a `*bool` pointer: `nil` = auto-detect, `true` = read child status into parent resolver context, `false` = skip.
   Orkestra does NOT write status to child CRs — Layer 1 (Ready) is only written to the owner CRD by the generic reconciler.
 
-- **Unified replica parsing (`pkg/orkestra-registry/common/parse.go`)**
+- **Unified replica parsing (`pkg/resources/common/parse.go`)**
   Added `ParseReplicas(s string) int32` to unify replica string-to-int32 parsing across deployments, statefulsets, replicasets, pods, jobs, and cronjobs.
 
 - **Motif input quoting fix (`pkg/motif/expander.go`)**

@@ -1,4 +1,4 @@
-# Contributing to pkg/orkestra-registry
+# Contributing to pkg/resources
 
 The registry is the library of built-in Kubernetes resource handlers Orkestra knows how to create, update, and delete on behalf of an operator. Each resource type lives in its own subdirectory.
 
@@ -79,7 +79,7 @@ Follow the pattern of any complete resource (e.g., `deployments/`):
 ### 1. Create the directory
 
 ```text
-pkg/orkestra-registry/<resourcename>/
+pkg/resources/<resourcename>/
   <resourcename>.go   — Create, Update, Delete, Resolve functions
   types.go            — ResolvedSpec struct
 ```

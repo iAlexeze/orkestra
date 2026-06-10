@@ -14,7 +14,7 @@ Full contribution guides live in [`documentation/contributing/`](documentation/c
 |-------|---------------|
 | [index](documentation/contributing/index.md) | Overview and where to go |
 | [Codebase map](documentation/contributing/codebase-map.md) | Which packages belong to which binary; how to navigate the code |
-| [Registry](documentation/contributing/contributing-registry.md) | Add or improve resource types in `pkg/orkestra-registry` |
+| [Registry](documentation/contributing/contributing-registry.md) | Add or improve resource types in `pkg/resources` |
 | [Control Center](documentation/contributing/contributing-controlcenter.md) | Improve the web UI — metrics, CR status, multi-instance views |
 | [Providers](documentation/contributing/contributing-providers.md) | Add or extend cloud and database providers |
 | [Rollback](documentation/contributing/contributing-rollback.md) | Complete the rollback implementation |
