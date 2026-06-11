@@ -36,6 +36,15 @@ var registryInfoCmd = &cobra.Command{
 		}
 
 		m := info.Meta
+		if m.Deprecated != nil {
+			fmt.Printf("\n%s  This pattern is deprecated.\n", yellow("⚠"))
+			if m.Deprecated.MigratedTo != "" {
+				fmt.Printf("  Migrate to:  %s\n", bold(m.Deprecated.MigratedTo))
+			}
+			if m.Deprecated.Message != "" {
+				fmt.Printf("  Note:        %s\n", m.Deprecated.Message)
+			}
+		}
 		fmt.Printf("\n%s:%s\n", m.Name, m.Version)
 		fmt.Printf("  Registry:    %s\n", ref.Registry)
 		if m.Kind != "" {
@@ -93,6 +102,19 @@ var registryInfoCmd = &cobra.Command{
 			}
 		} else {
 			fmt.Printf("  E2E:         %s\n", e2eNotVerified())
+		}
+		if m.Typed != nil {
+			parts := []string{}
+			if m.Typed.HasHooks {
+				parts = append(parts, "hooks")
+			}
+			if m.Typed.HasConstructor {
+				parts = append(parts, "constructor")
+			}
+			fmt.Printf("  Typed:       %s · %s\n",
+				green("✓ "+strings.Join(parts, ", ")),
+				yellow("requires custom runtime image"),
+			)
 		}
 		fmt.Printf("\nTo pull:\n")
 		fmt.Printf("  ork registry pull %s:%s\n", m.Name, m.Version)

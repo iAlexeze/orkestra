@@ -125,6 +125,16 @@ type KatalogMeta struct {
 	// time. The operator and runtime ignore this field — it is purely for
 	// persona-aware tooling and Control Center UI.
 	Projects map[string]interface{} `yaml:"projects,omitempty" json:"projects,omitempty"`
+
+	// Deprecation marks this pattern as deprecated. When set, consumers
+	// (ork validate, ork registry info, ork registry list) display a warning.
+	Deprecation *KatalogDeprecation `yaml:"deprecation,omitempty" json:"deprecation,omitempty"`
+}
+
+// KatalogDeprecation carries deprecation guidance for registry consumers.
+type KatalogDeprecation struct {
+	MigratedTo string `yaml:"migratedTo,omitempty" json:"migratedTo,omitempty"`
+	Message    string `yaml:"message,omitempty"    json:"message,omitempty"`
 }
 
 // KatalogSources declares where to load CRD definitions from.

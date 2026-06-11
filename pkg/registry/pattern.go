@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"gopkg.in/yaml.v3"
 )
 
@@ -107,12 +108,13 @@ func LoadPatternMeta(dir string, spec *PatternSpec) (*PatternMeta, error) {
 	var raw struct {
 		Kind     string `yaml:"kind"`
 		Metadata struct {
-			Name        string   `yaml:"name"`
-			Version     string   `yaml:"version"`
-			Description string   `yaml:"description"`
-			Author      string   `yaml:"author"`
-			License     string   `yaml:"license"`
-			Tags        []string `yaml:"tags"`
+			Name        string                       `yaml:"name"`
+			Version     string                       `yaml:"version"`
+			Description string                       `yaml:"description"`
+			Author      string                       `yaml:"author"`
+			License     string                       `yaml:"license"`
+			Tags        []string                     `yaml:"tags"`
+			Deprecation *orktypes.KatalogDeprecation `yaml:"deprecation"`
 		} `yaml:"metadata"`
 	}
 	if err := yaml.Unmarshal(data, &raw); err != nil {
@@ -129,6 +131,12 @@ func LoadPatternMeta(dir string, spec *PatternSpec) (*PatternMeta, error) {
 		Author:      raw.Metadata.Author,
 		License:     raw.Metadata.License,
 		Tags:        raw.Metadata.Tags,
+	}
+	if d := raw.Metadata.Deprecation; d != nil {
+		meta.Deprecated = &PatternDeprecated{
+			MigratedTo: d.MigratedTo,
+			Message:    d.Message,
+		}
 	}
 	if meta.Version == "" {
 		meta.Version = "latest"

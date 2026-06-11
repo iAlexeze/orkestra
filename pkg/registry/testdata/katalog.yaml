@@ -1,0 +1,24 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: registry-pack-probe
+  version: v0.1.0
+  description: Minimal fixture for typed annotations and deprecation detection
+  deprecation:
+    migratedTo: ghcr.io/orkspace/orkestra-registry/registry-pack-probe:v0.2.0
+    message: "Upgrade to v0.2.0"
+
+spec:
+  crds:
+    probe:
+      workers: 1
+      resync: 15s
+
+      operatorBox:
+        default: true
+
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}-probe"
+              image: "busybox:latest"
+              replicas: "1"

@@ -24,8 +24,22 @@ type PatternMeta struct {
 	Author      string
 	License     string
 	Tags        []string
-	E2E         *PatternE2E      // populated at push time from running ork e2e; nil when absent
-	Simulate    *PatternSimulate // populated at push time from running simulate gate; nil when absent
+	E2E         *PatternE2E        // populated at push time from running ork e2e; nil when absent
+	Simulate    *PatternSimulate   // populated at push time from running simulate gate; nil when absent
+	Typed       *PatternTyped      // populated at push time from inspecting katalog CRDs; nil for motifs or non-typed katalogs
+	Deprecated  *PatternDeprecated // populated from metadata.deprecation in the source YAML; nil when absent
+}
+
+// PatternTyped carries the typed-operator annotation flags for a katalog.
+type PatternTyped struct {
+	HasHooks       bool // one or more CRDs declare customHooks
+	HasConstructor bool // one or more CRDs declare customConstructor
+}
+
+// PatternDeprecated carries the deprecation metadata declared in the source YAML.
+type PatternDeprecated struct {
+	MigratedTo string // full OCI ref of the replacement version
+	Message    string // human-readable migration guidance
 }
 
 // PatternE2E holds E2E verification metadata embedded in OCI annotations at push time.
@@ -57,6 +71,7 @@ type PatternEntry struct {
 	Kind           string   `json:"kind,omitempty"`           // "Katalog" or "Motif"
 	E2EStatus      string   `json:"e2eStatus,omitempty"`      // "passed", "skipped", or ""
 	SimulateStatus string   `json:"simulateStatus,omitempty"` // "passed", "skipped", "no-assertion", or ""
+	Deprecated     bool     `json:"deprecated,omitempty"`
 }
 
 // PatternIndex is the top-level index stored at registry/index:latest.

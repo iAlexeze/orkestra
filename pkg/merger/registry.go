@@ -35,6 +35,7 @@ var knownPatternFiles = []string{
 	pkgregistry.FileReadme,
 	pkgregistry.FileCR,
 	pkgregistry.FileE2E,
+	pkgregistry.FileSimulate,
 }
 
 // loadRegistrySource loads a single registry pattern entry.
@@ -90,6 +91,17 @@ func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) (map[string]ork
 			"registry %q@%s: %s is not a valid Katalog or Komposer document",
 			cleanURL, version, src.SourceFile(),
 		)
+	}
+
+	if dep := doc.Metadata.Deprecation; dep != nil {
+		msg := fmt.Sprintf("warning: registry pattern %q@%s is deprecated", cleanURL, version)
+		if dep.MigratedTo != "" {
+			msg += fmt.Sprintf(" — migrate to: %s", dep.MigratedTo)
+		}
+		if dep.Message != "" {
+			msg += fmt.Sprintf(" (%s)", dep.Message)
+		}
+		fmt.Fprintln(os.Stderr, msg)
 	}
 
 	switch doc.Kind {
