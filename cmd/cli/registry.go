@@ -39,6 +39,7 @@ func init() {
 	registryPullCmd.Flags().StringP("out", "o", "", "Extract pulled pattern to this directory")
 	registryPullCmd.Flags().StringP("file", "f", "", "Pull all OCI imports from a katalog or komposer file")
 
+	registryInfoCmd.Flags().BoolVarP(&registryInfoMotif, "motif", "m", false, "Resolve as a motif (uses ORK_MOTIFS_REGISTRY)")
 	registryListCmd.Flags().StringP("tag", "t", "", "Filter by tag (e.g. database, stateful, security)")
 	registryListCmd.Flags().BoolP("katalogs", "k", false, "Show only katalogs (kind: Katalog)")
 	registryListCmd.Flags().BoolP("motifs", "m", false, "Show only motifs (kind: Motif)")
