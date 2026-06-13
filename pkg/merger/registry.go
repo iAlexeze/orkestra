@@ -53,7 +53,7 @@ func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) (map[string]ork
 	logger.Info().
 		Str("url", cleanURL).
 		Str("version", version).
-		Bool("oci", src.OCI).
+		Bool("oci", src.IsOCI()).
 		Str("loads", src.SourceFile()).
 		Msg("merger: pulling registry source")
 
@@ -62,7 +62,7 @@ func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) (map[string]ork
 		return nil, fmt.Errorf("registry %q: auth: %w", cleanURL, err)
 	}
 
-	tmpDir, cleanup, err := m.pullPattern(cleanURL, version, src.OCI, auth)
+	tmpDir, cleanup, err := m.pullPattern(cleanURL, version, src.IsOCI(), auth)
 	if err != nil {
 		return nil, fmt.Errorf("registry %q@%s: pull failed: %w", cleanURL, version, err)
 	}
