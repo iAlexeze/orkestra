@@ -80,6 +80,12 @@ func looksLikeFull(ref string) bool {
 
 // parseRef splits a full reference into its components.
 func parseRef(full string) (*Ref, error) {
+	// Catch @ usage early — @ is for digest references (sha256:...), not tags.
+	if atIdx := strings.LastIndex(full, "@"); atIdx > strings.LastIndex(full, "/") {
+		tag := full[atIdx+1:]
+		return nil, fmt.Errorf("use ':' not '@' for version tags (e.g. ...:%s) — '@' is for digest references like @sha256:...", tag)
+	}
+
 	// Separate tag
 	tag := "latest"
 	name := full
