@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -392,6 +393,9 @@ func artifactMetaToAnnotations(meta *PatternMeta, ref *Ref) map[string]string {
 		if meta.E2E.Runner != "" {
 			ann["io.orkestra.e2e.runner"] = meta.E2E.Runner
 		}
+		if meta.E2E.Assertions > 0 {
+			ann["io.orkestra.e2e.assertions"] = strconv.Itoa(meta.E2E.Assertions)
+		}
 	}
 	if meta.Simulate != nil {
 		ann["io.orkestra.simulate.status"] = meta.Simulate.Status
@@ -400,6 +404,9 @@ func artifactMetaToAnnotations(meta *PatternMeta, ref *Ref) map[string]string {
 		}
 		if meta.Simulate.TestedAt != "" {
 			ann["io.orkestra.simulate.tested_at"] = meta.Simulate.TestedAt
+		}
+		if meta.Simulate.Assertions > 0 {
+			ann["io.orkestra.simulate.assertions"] = strconv.Itoa(meta.Simulate.Assertions)
 		}
 	}
 	if meta.Typed != nil {
@@ -426,7 +433,6 @@ func artifactMetaToAnnotations(meta *PatternMeta, ref *Ref) map[string]string {
 }
 
 // annotationsToMeta reconstructs PatternMeta from OCI manifest annotations.
-// Reads both current "io.orkestra.pattern.*" and legacy "io.orkestra.pattern.*" keys.
 func annotationsToMeta(ann map[string]string) *PatternMeta {
 	tags := []string{}
 	name := ann["io.orkestra.pattern.name"]
@@ -461,18 +467,22 @@ func annotationsToMeta(ann map[string]string) *PatternMeta {
 		Tags:        tags,
 	}
 	if status := ann["io.orkestra.e2e.status"]; status != "" {
+		n, _ := strconv.Atoi(ann["io.orkestra.e2e.assertions"])
 		meta.E2E = &PatternE2E{
-			Status:   status,
-			Duration: ann["io.orkestra.e2e.duration"],
-			TestedAt: ann["io.orkestra.e2e.tested_at"],
-			Runner:   ann["io.orkestra.e2e.runner"],
+			Status:     status,
+			Duration:   ann["io.orkestra.e2e.duration"],
+			TestedAt:   ann["io.orkestra.e2e.tested_at"],
+			Runner:     ann["io.orkestra.e2e.runner"],
+			Assertions: n,
 		}
 	}
 	if status := ann["io.orkestra.simulate.status"]; status != "" {
+		n, _ := strconv.Atoi(ann["io.orkestra.simulate.assertions"])
 		meta.Simulate = &PatternSimulate{
-			Status:   status,
-			Duration: ann["io.orkestra.simulate.duration"],
-			TestedAt: ann["io.orkestra.simulate.tested_at"],
+			Status:     status,
+			Duration:   ann["io.orkestra.simulate.duration"],
+			TestedAt:   ann["io.orkestra.simulate.tested_at"],
+			Assertions: n,
 		}
 	}
 	if ann["io.orkestra.katalog.typed"] == "true" {
