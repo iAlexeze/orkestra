@@ -41,9 +41,6 @@ const (
 	// DefaultPatternRegistry is an alias for DefaultKatalogRegistry.
 	DefaultPatternRegistry = DefaultKatalogRegistry
 
-	// DefaultRegistry is an alias for DefaultKatalogRegistry.
-	DefaultRegistry = DefaultKatalogRegistry
-
 	// EnvPatternRegistry overrides the default katalog registry path.
 	EnvPatternRegistry = "ORK_REGISTRY"
 

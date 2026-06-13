@@ -39,6 +39,14 @@ var registryInfoCmd = &cobra.Command{
 
 		info, err := client.Info(cmd.Context(), ref)
 		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, "401") || strings.Contains(errStr, "unauthorized") {
+				hint := fmt.Sprintf("\n\nhint: authenticate first:\n  docker login %s", ref.Registry)
+				if !registryInfoMotif {
+					hint += "\nhint: if this is a motif, re-run with --motif"
+				}
+				return fmt.Errorf("fetching info: %w%s", err, hint)
+			}
 			return fmt.Errorf("fetching info: %w", err)
 		}
 

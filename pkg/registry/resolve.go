@@ -59,12 +59,17 @@ func Resolve(input string) (*Ref, error) {
 	// Use ORK_REGISTRY env var or default
 	base := os.Getenv(EnvRegistry)
 	if base == "" {
-		base = DefaultRegistry
+		base = DefaultPatternRegistry
 	}
 	base = strings.TrimPrefix(base, "oci://")
 	base = strings.TrimSuffix(base, "/")
 
 	return parseRef(base + "/" + raw)
+}
+
+// looksLikeDigest returns true when s is a valid OCI digest (e.g. "sha256:abc123...").
+func looksLikeDigest(s string) bool {
+	return strings.HasPrefix(s, "sha256:") || strings.HasPrefix(s, "sha512:") || strings.HasPrefix(s, "sha384:")
 }
 
 // looksLikeFull returns true when the reference appears to already contain
@@ -80,10 +85,25 @@ func looksLikeFull(ref string) bool {
 
 // parseRef splits a full reference into its components.
 func parseRef(full string) (*Ref, error) {
-	// Catch @ usage early — @ is for digest references (sha256:...), not tags.
+	// Catch @ used as a tag separator — reject only when it's not a valid digest.
+	// Valid digest: @sha256:<hex>, @sha512:<hex>, etc.
+	// Invalid: @v1.0.0, @latest, @stable (these should use ':')
 	if atIdx := strings.LastIndex(full, "@"); atIdx > strings.LastIndex(full, "/") {
-		tag := full[atIdx+1:]
-		return nil, fmt.Errorf("use ':' not '@' for version tags (e.g. ...:%s) — '@' is for digest references like @sha256:...", tag)
+		after := full[atIdx+1:]
+		if !looksLikeDigest(after) {
+			return nil, fmt.Errorf("use ':' not '@' for version tags (e.g. ...:%s) — '@' is for digest references like @sha256:...", after)
+		}
+		// Valid digest reference — pass through as-is (ORAS handles @sha256: natively)
+		slashIdx := strings.Index(full, "/")
+		if slashIdx < 0 {
+			return nil, fmt.Errorf("invalid reference %q: missing repository path", full)
+		}
+		return &Ref{
+			Registry:   full[:slashIdx],
+			Repository: full[slashIdx+1 : atIdx],
+			Tag:        after, // store digest in Tag field for cache path use
+			Full:       full,
+		}, nil
 	}
 
 	// Separate tag
