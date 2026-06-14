@@ -199,6 +199,10 @@ func (c *Client) Info(ctx context.Context, ref *Ref) (*PatternInfo, error) {
 
 	var manifest struct {
 		Annotations map[string]string `json:"annotations"`
+		Layers      []struct {
+			Size        int64             `json:"size"`
+			Annotations map[string]string `json:"annotations"`
+		} `json:"layers"`
 	}
 	if err := json.NewDecoder(rc).Decode(&manifest); err != nil {
 		return nil, fmt.Errorf("decoding manifest: %w", err)
@@ -211,6 +215,12 @@ func (c *Client) Info(ctx context.Context, ref *Ref) (*PatternInfo, error) {
 		Digest: desc.Digest.String(),
 		Size:   desc.Size,
 		Meta:   meta,
+	}
+
+	for _, layer := range manifest.Layers {
+		if name := layer.Annotations["org.opencontainers.image.title"]; name != "" {
+			info.Files = append(info.Files, FileEntry{Name: name, Size: layer.Size})
+		}
 	}
 
 	if ts, ok := manifest.Annotations["org.opencontainers.image.created"]; ok {

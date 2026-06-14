@@ -82,6 +82,12 @@ type PatternIndex struct {
 	Entries   []PatternEntry `json:"entries"`
 }
 
+// FileEntry is one file published in an OCI artifact layer.
+type FileEntry struct {
+	Name string
+	Size int64
+}
+
 // PatternInfo holds the metadata returned by Info.
 type PatternInfo struct {
 	Ref      *Ref
@@ -89,4 +95,5 @@ type PatternInfo struct {
 	Size     int64
 	PushedAt time.Time
 	Meta     *PatternMeta
+	Files    []FileEntry
 }

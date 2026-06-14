@@ -155,6 +155,12 @@ var registryInfoCmd = &cobra.Command{
 				yellow("requires custom runtime image"),
 			)
 		}
+		if len(info.Files) > 0 {
+			fmt.Printf("\n  Files:\n")
+			for _, f := range info.Files {
+				fmt.Printf("    %-30s %s\n", f.Name, formatSize(f.Size))
+			}
+		}
 		fmt.Printf("\nTo pull:\n")
 		fmt.Printf("  ork registry pull %s:%s\n", m.Name, m.Version)
 		fmt.Println()
