@@ -93,7 +93,7 @@ var inspectCmd = &cobra.Command{
 		if m.Kind != "" {
 			fmt.Printf("  Kind:        %s\n", m.Kind)
 		}
-		fmt.Printf("  Digest:      %s\n", info.Digest[:19]+"...")
+		fmt.Printf("  Digest:      %s\n", info.Digest)
 		if !info.PushedAt.IsZero() {
 			fmt.Printf("  Pushed:      %s\n", info.PushedAt.Format(time.RFC3339))
 		}
@@ -190,7 +190,20 @@ var inspectCmd = &cobra.Command{
 			}
 		}
 		fmt.Printf("\nTo pull:\n")
-		fmt.Printf("  ork pull %s:%s\n", m.Name, m.Version)
+		if m.Kind == registry.MotifKind {
+			fmt.Printf("  ork pull %s:%s --motif\n", m.Name, m.Version)
+		} else {
+			fmt.Printf("  ork pull %s:%s\n", m.Name, m.Version)
+		}
+		fmt.Printf("\nTo import:\n")
+		if m.Kind == registry.MotifKind {
+			fmt.Printf("  imports:\n")
+			fmt.Printf("    - motif: %s\n", ref.String())
+		} else {
+			fmt.Printf("  imports:\n")
+			fmt.Printf("    registry:\n")
+			fmt.Printf("      - %s\n", ref.String())
+		}
 		fmt.Println()
 		return nil
 	},
