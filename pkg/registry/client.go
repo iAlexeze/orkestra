@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	godigest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -200,6 +201,7 @@ func (c *Client) Info(ctx context.Context, ref *Ref) (*PatternInfo, error) {
 	var manifest struct {
 		Annotations map[string]string `json:"annotations"`
 		Layers      []struct {
+			Digest      string            `json:"digest"`
 			Size        int64             `json:"size"`
 			Annotations map[string]string `json:"annotations"`
 		} `json:"layers"`
@@ -219,7 +221,7 @@ func (c *Client) Info(ctx context.Context, ref *Ref) (*PatternInfo, error) {
 
 	for _, layer := range manifest.Layers {
 		if name := layer.Annotations["org.opencontainers.image.title"]; name != "" {
-			info.Files = append(info.Files, FileEntry{Name: name, Size: layer.Size})
+			info.Files = append(info.Files, FileEntry{Name: name, Size: layer.Size, Digest: layer.Digest})
 		}
 	}
 
@@ -230,6 +232,30 @@ func (c *Client) Info(ctx context.Context, ref *Ref) (*PatternInfo, error) {
 	}
 
 	return info, nil
+}
+
+// ViewFile fetches the raw content of a single OCI layer blob.
+// Use a FileEntry from PatternInfo.Files — both Digest and Size are required
+// so the registry can validate the Content-Length on the response.
+func (c *Client) ViewFile(ctx context.Context, ref *Ref, f FileEntry) ([]byte, error) {
+	repo, err := c.remoteRepo(ref)
+	if err != nil {
+		return nil, err
+	}
+	desc := ocispec.Descriptor{
+		Digest: godigest.Digest(f.Digest),
+		Size:   f.Size,
+	}
+	rc, err := repo.Blobs().Fetch(ctx, desc)
+	if err != nil {
+		return nil, fmt.Errorf("fetching blob: %w", err)
+	}
+	defer rc.Close()
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(rc); err != nil {
+		return nil, fmt.Errorf("reading blob: %w", err)
+	}
+	return buf.Bytes(), nil
 }
 
 // List fetches the pattern index from the given registry URL.

@@ -41,6 +41,7 @@ func init() {
 	registryPullCmd.Flags().BoolP("motif", "m", false, "Resolve as a motif (uses ORK_MOTIFS_REGISTRY)")
 
 	registryInfoCmd.Flags().BoolVarP(&registryInfoMotif, "motif", "m", false, "Resolve as a motif (uses ORK_MOTIFS_REGISTRY)")
+	registryInfoCmd.Flags().StringP("view", "v", "", "Comma-separated list of files to print before pulling (e.g. katalog.yaml,cr.yaml)")
 	registryListCmd.Flags().StringP("tag", "t", "", "Filter by tag (e.g. database, stateful, security)")
 	registryListCmd.Flags().BoolP("katalogs", "k", false, "Show only katalogs (kind: Katalog)")
 	registryListCmd.Flags().BoolP("motifs", "m", false, "Show only motifs (kind: Motif)")

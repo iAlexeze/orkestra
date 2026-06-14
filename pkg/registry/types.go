@@ -84,8 +84,9 @@ type PatternIndex struct {
 
 // FileEntry is one file published in an OCI artifact layer.
 type FileEntry struct {
-	Name string
-	Size int64
+	Name   string
+	Size   int64
+	Digest string // OCI layer digest — used to fetch blob content via ViewFile
 }
 
 // PatternInfo holds the metadata returned by Info.

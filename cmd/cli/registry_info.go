@@ -50,6 +50,33 @@ var registryInfoCmd = &cobra.Command{
 			return fmt.Errorf("fetching info: %w", err)
 		}
 
+		// --view: skip the metadata block, just fetch and print requested files.
+		viewArg, _ := cmd.Flags().GetString("view")
+		if viewArg != "" {
+			fileMap := make(map[string]registry.FileEntry, len(info.Files))
+			available := make([]string, 0, len(info.Files))
+			for _, f := range info.Files {
+				fileMap[f.Name] = f
+				available = append(available, f.Name)
+			}
+			for _, name := range strings.Split(viewArg, ",") {
+				name = strings.TrimSpace(name)
+				f, ok := fileMap[name]
+				if !ok {
+					fmt.Printf("  %s %q not in artifact (available: %s)\n", warningMark(), name, strings.Join(available, ", "))
+					continue
+				}
+				fmt.Printf("── %s ──\n", name)
+				data, err := client.ViewFile(cmd.Context(), ref, f)
+				if err != nil {
+					fmt.Printf("  error: %v\n", err)
+					continue
+				}
+				fmt.Println(string(data))
+			}
+			return nil
+		}
+
 		m := info.Meta
 		if m.Deprecated != nil {
 			fmt.Printf("\n%s  This pattern is deprecated.\n", yellow("⚠"))
