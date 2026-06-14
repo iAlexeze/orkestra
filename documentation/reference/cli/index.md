@@ -8,11 +8,11 @@ Select a command to view its full documentation.
 ---
 
 !!! tip Default file resolution
-Commands that accept a Katalog or Komposer (`ork run`, `ork validate`, `ork plan`, `ork simulate`, `ork template`) look for `katalog.yaml` first, then `komposer.yaml`. If neither exists the command errors. To use a file with a different name, pass it explicitly: `ork run -f my-katalog.yaml`.
+    Commands that accept a Katalog or Komposer (`ork run`, `ork validate`, `ork plan`, `ork simulate`, `ork template`) look for `katalog.yaml` first, then `komposer.yaml`. If neither exists the command errors. To use a file with a different name, pass it explicitly: `ork run -f my-katalog.yaml`.
 
-`ork e2e` follows the same logic but looks for `e2e.yaml` instead.
-:::
+    `ork e2e` follows the same logic but looks for `e2e.yaml` instead.
 
+---
 ## Operator Commands Overview
 
 | Command | Description |

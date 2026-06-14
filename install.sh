@@ -287,7 +287,7 @@ print_summary() {
     echo -e "    ork init my-operator             Scaffold a new operator"
     echo -e "    ork validate     Validate a Katalog"
     echo -e "    ork run           Start the operator runtime"
-    echo -e "    ork registry push name:v1 ./dir  Push a pattern to the registry"
+    echo -e "    ork push name:v1 ./dir  Push a pattern to the registry"
     echo
     echo -e "  ${BOLD}Control Center:${RESET}"
     echo -e "    ork control                Start the web UI (port 8081)"

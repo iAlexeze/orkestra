@@ -2,7 +2,7 @@
 
 `simulate.yaml` is unit testing for your reconciler — without writing Go. It runs the same reconcile loop that executes in production against a fake in-memory cluster, asserts which resources were created and in which cycle, and produces a pass or fail in under a second. No cluster, no Helm, no Docker.
 
-When `simulate.yaml` is present in a pattern directory, `ork registry push` runs it automatically before the E2E gate and blocks publication if any assertion fails.
+When `simulate.yaml` is present in a pattern directory, `ork push` runs it automatically before the E2E gate and blocks publication if any assertion fails.
 
 > For the complete field reference — `spec`, `expect`, `ops`, `crds` — see **[Simulate schema](../concepts/simulate/02-simulate-kind.md)**.
 
@@ -12,13 +12,13 @@ When `simulate.yaml` is present in a pattern directory, `ork registry push` runs
 
 ```bash
 # Simulate runs automatically if simulate.yaml is present — before E2E
-ork registry push postgres:v14 ./patterns/postgres/
+ork push postgres:v14 ./patterns/postgres/
 
 # Skip the gate
-ork registry push postgres:v14 ./patterns/postgres/ --no-simulate
+ork push postgres:v14 ./patterns/postgres/ --no-simulate
 
 # Skip both gates
-ork registry push postgres:v14 ./patterns/postgres/ --force
+ork push postgres:v14 ./patterns/postgres/ --force
 ```
 
 The result is baked into the OCI artifact as annotations:
@@ -29,14 +29,14 @@ io.orkestra.simulate.duration   4ms
 io.orkestra.simulate.tested_at  2026-05-24T10:00:00Z
 ```
 
-`ork registry info` shows this alongside the E2E status. Consumers can see at a glance what guarantees a pattern carries before importing it.
+`ork inspect` shows this alongside the E2E status. Consumers can see at a glance what guarantees a pattern carries before importing it.
 
 ---
 
-## Simulate status in `ork registry info`
+## Simulate status in `ork inspect`
 
 ```text
-ork registry info postgres:v14
+ork inspect postgres:v14
 
 postgres:v14
   Registry:    ghcr.io/orkspace/orkestra-registry/patterns/katalogs
@@ -59,7 +59,7 @@ Three possible simulate statuses:
 | `⚠ No assertions` | `simulate.yaml` present but no `expect:` — ran clean, nothing asserted |
 | `~ Skipped` | `--no-simulate` or `--force` used at push time |
 
-Simulate status is not shown in `ork registry list` — it appears in `ork registry info` only, alongside E2E.
+Simulate status is not shown in `ork patterns` — it appears in `ork inspect` only, alongside E2E.
 
 ---
 
@@ -151,7 +151,7 @@ The push order reflects this: simulate runs first (instant feedback), E2E runs a
 Because simulate requires no cluster or Docker, it runs anywhere — including CI runners without Docker-in-Docker access. Use `--no-e2e` to skip the cluster gate in environments that can't provision kind, while still enforcing reconciler correctness via simulate:
 
 ```bash
-ork registry push postgres:v14 ./patterns/postgres/ --no-e2e
+ork push postgres:v14 ./patterns/postgres/ --no-e2e
 ```
 
 The artifact carries `io.orkestra.simulate.status=passed` — consumers know the reconciler was verified even if the full cluster test was deferred.
@@ -185,7 +185,7 @@ imports:
   - ./02-cross-access-control/simulate.yaml
 ```
 
-`ork registry push` discovers `simulate.yaml` at the pattern root and runs it. Each sub-simulation runs independently; one failure stops the push.
+`ork push` discovers `simulate.yaml` at the pattern root and runs it. Each sub-simulation runs independently; one failure stops the push.
 
 `ork validate -f simulate.yaml` checks the spec and confirms all imported files exist on disk before any simulation runs:
 

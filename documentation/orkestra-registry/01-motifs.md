@@ -23,10 +23,10 @@ See full description in [Writing your first Motif](../getting-started/03-writing
 Motifs publish to `ORK_MOTIFS_REGISTRY` (default: `ghcr.io/orkspace/orkestra-registry/patterns/motifs`):
 
 ```bash
-ork registry push postgres:v16 ./motifs/postgres/
+ork push postgres:v16 ./motifs/postgres/
 ```
 
-If a Katalog pattern directory contains a `motif.yaml`, `ork registry push` pushes both — the Katalog to the katalog registry and the Motif to the motif registry — in a single command.
+If a Katalog pattern directory contains a `motif.yaml`, `ork push` pushes both — the Katalog to the katalog registry and the Motif to the motif registry — in a single command.
 
 ## Importing into a Katalog
 

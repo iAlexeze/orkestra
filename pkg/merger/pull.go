@@ -7,7 +7,7 @@
 // artifacts: ~/.orkestra/registry/<host>/<repo>/<version>/ is checked for a
 // sentinel file (katalog.yaml or motif.yaml) before any network call is made.
 // This avoids redundant pulls and removes the need for Docker credential
-// forwarding inside the process — callers should use `ork registry pull`
+// forwarding inside the process — callers should use `ork pull`
 // to populate the cache, then rely on these helpers to read from it.
 package merger
 

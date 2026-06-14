@@ -18,7 +18,7 @@ postgres/
 ```
 
 ```bash
-ork registry push postgres:v14 ./patterns/postgres/
+ork push postgres:v14 ./patterns/postgres/
 ```
 
 The `komposer.yaml` is not a separate publish step — it travels with the Katalog. Consumers who want to load it instead of `katalog.yaml` set `useKomposer: true` in their import entry.

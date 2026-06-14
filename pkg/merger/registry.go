@@ -170,7 +170,7 @@ func (m *Merger) pullOCIPattern(url, version, tmpDir string, auth *utils.FileAut
 	ociRef = fmt.Sprintf("%s:%s", ociRef, version)
 
 	// Serve from local cache when available — avoids a network round-trip on
-	// every ork validate/template/simulate after ork registry pull.
+	// every ork validate/template/simulate after ork pull.
 	if pkgRef, err := pkgregistry.Resolve(ociRef); err == nil {
 		if cacheDir, err := pkgRef.CachePath(); err == nil && pkgRef.IsCached() {
 			logger.Debug().
@@ -258,8 +258,8 @@ func orasPull(ref, dst string, auth *utils.FileAuth) error {
 		}
 	} else {
 		// No explicit auth — fall back to Docker credential store (~/.docker/config.json).
-		// This mirrors pkg/registry.Client.remoteRepo so `ork registry pull -f`
-		// and `ork registry pull <url>` use the same credential source.
+		// This mirrors pkg/registry.Client.remoteRepo so `ork pull -f`
+		// and `ork pull <url>` use the same credential source.
 		if store, err := credentials.NewStoreFromDocker(credentials.StoreOptions{}); err == nil {
 			repo.Client = &orasauth.Client{
 				ClientID:   "orkestra",

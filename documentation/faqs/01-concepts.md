@@ -239,7 +239,7 @@ Orkestra expands the Motif at Katalog load time — bindings resolved, resources
 Publish a Motif by pushing its directory to the registry:
 
 ```bash
-ork registry push postgres:v1 ./motifs/postgres/
+ork push postgres:v1 ./motifs/postgres/
 ```
 
 Import it in a Katalog by OCI address, or by bare name if `ORK_MOTIFS_REGISTRY` is set:

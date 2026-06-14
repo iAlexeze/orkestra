@@ -91,7 +91,7 @@ Use it to understand what your operator does before writing assertions. The inte
 ork simulate --debug-ops     # see every op across all cycles
 ork simulate init            # capture cycle-1 creates as assertions automatically
 # edit simulate.yaml         # add absent: blocks, later cycles, edge cases
-ork registry push            # simulate gate runs these assertions before publish
+ork push            # simulate gate runs these assertions before publish
 ```
 
 `--debug-ops` works in all three invocation modes: direct flags, a `simulate.yaml` file, and `./...` discovery.

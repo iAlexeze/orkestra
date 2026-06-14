@@ -209,7 +209,7 @@ type E2ESpec struct {
 	// installation during e2e. Paths are relative to the e2e.yaml file.
 	// Use this to configure custom runtime images or any other Helm values
 	// without requiring --values flags on the command line — useful when e2e
-	// runs automatically during ork registry push.
+	// runs automatically during ork push.
 	ValuesFiles []string `yaml:"valuesFiles,omitempty"`
 
 	// Expect is the list of expectations to check after each lifecycle event.

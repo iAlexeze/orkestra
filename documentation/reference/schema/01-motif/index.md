@@ -111,7 +111,7 @@ At reconcile time, Orkestra:
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | yes | Motif identifier. Used as the registry artifact name. |
-| `version` | no | Semver tag shown in `ork registry list`. |
+| `version` | no | Semver tag shown in `ork patterns`. |
 | `description` | no | Short description shown in the registry UI. |
 | `author` | no | Author or org name. |
 | `license` | no | SPDX identifier (e.g. `Apache-2.0`). |
@@ -154,7 +154,7 @@ Orkestra resolves `platform-motif.yaml`, evaluates the `with:` bindings, and cre
 To browse the production-ready Motifs in the Orkestra Registry:
 
 ```bash
-ork registry list --kind Motif
+ork patterns --kind Motif
 ```
 
 ---

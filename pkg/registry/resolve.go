@@ -1,6 +1,6 @@
 // pkg/registry/resolve.go
 //
-// Reference resolution for ork registry commands.
+// Reference resolution for ork push, ork pull, ork inspect, and ork patterns.
 //
 // A bare reference like "postgres:v14" is resolved to a full OCI reference
 // using the following priority:

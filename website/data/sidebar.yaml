@@ -2,6 +2,9 @@ nav:
   - title: Getting Started
     section: getting-started
     url: /docs/getting-started/
+  - title: Orkestra Foundations
+    section: foundations
+    url: /docs/foundations/
   - title: Orkestra Core
     section: orkestra-core
     url: /docs/orkestra-core/

@@ -107,7 +107,7 @@ type KatalogMeta struct {
 
 	// Tags are optional keywords for categorising the Katalog in the Orkestra Registry.
 	// They aid discovery (e.g., "database", "stateful", "security") when using
-	// `ork registry list --tag <tag>` and for indexing in Artifact Hub.
+	// `ork patterns --tag <tag>` and for indexing in Artifact Hub.
 	// Tags have no effect on runtime behaviour.
 	Tags []string `yaml:"tags,omitempty" json:"tags,omitempty"`
 
@@ -127,7 +127,7 @@ type KatalogMeta struct {
 	Projects map[string]interface{} `yaml:"projects,omitempty" json:"projects,omitempty"`
 
 	// Deprecation marks this pattern as deprecated. When set, consumers
-	// (ork validate, ork registry info, ork registry list) display a warning.
+	// (ork validate, ork inspect, ork patterns) display a warning.
 	Deprecation *KatalogDeprecation `yaml:"deprecation,omitempty" json:"deprecation,omitempty"`
 }
 

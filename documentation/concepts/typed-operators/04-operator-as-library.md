@@ -60,7 +60,7 @@ Importing and calling `cli.Execute(kfg, ctx)` gives you the complete Orkestra fe
 - `ork gate` — gateway, webhooks, TLS
 - `ork control` — Control Center
 - `ork validate`, `ork simulate`, `ork template`, `ork plan` — all CLI commands
-- `ork registry` — OCI pattern management
+- `ork push`, `ork pull`, `ork inspect`, `ork patterns` — OCI pattern management
 
 Nothing is removed or locked. You own the binary.
 
