@@ -50,11 +50,11 @@ Four layers run before any bytes are sent to the registry:
 docker login ghcr.io
 
 # 2. Push — validation runs automatically before any network call
-ork registry push my-operator:v1.0.0 ./my-operator/
+ork push my-operator:v1.0.0 ./my-operator/
 
 # 3. Verify
-ork registry info my-operator:v1.0.0
-ork registry list
+ork inspect my-operator:v1.0.0
+ork patterns
 ```
 
 The index at `ghcr.io/orkspace/orkestra-registry/patterns/index:latest` is updated automatically after each push.
@@ -62,9 +62,9 @@ The index at `ghcr.io/orkspace/orkestra-registry/patterns/index:latest` is updat
 To push to a custom registry:
 
 ```bash
-ork registry push oci://ghcr.io/myorg/patterns/my-operator:v1.0.0 ./my-operator/
+ork push oci://ghcr.io/myorg/patterns/my-operator:v1.0.0 ./my-operator/
 # or via env var
-ORK_REGISTRY=ghcr.io/myorg/patterns ork registry push my-operator:v1.0.0 ./my-operator/
+ORK_REGISTRY=ghcr.io/myorg/patterns ork push my-operator:v1.0.0 ./my-operator/
 ```
 
 For the official `ghcr.io/orkspace/orkestra-registry` registry, patterns are published by opening a PR against `github.com/orkspace/orkestra-registry`. CI validates the pattern against a live kind cluster and pushes on merge.
@@ -112,11 +112,11 @@ metadata:
 docker login ghcr.io
 
 # 2. Push
-ork registry push redis:v7.2.0 ./redis/
+ork push redis:v7.2.0 ./redis/
 
 # 3. Verify
-ork registry info redis:v7.2.0
-ork registry list
+ork inspect redis:v7.2.0
+ork patterns
 ```
 
 The default motif registry is `ghcr.io/orkspace/orkestra-motifs`. The index at `ghcr.io/orkspace/orkestra-motifs/index:latest` is updated automatically.
@@ -124,9 +124,9 @@ The default motif registry is `ghcr.io/orkspace/orkestra-motifs`. The index at `
 To push to a custom motif registry:
 
 ```bash
-ork registry push oci://ghcr.io/myorg/motifs/redis:v7.2.0 ./redis/
+ork push oci://ghcr.io/myorg/motifs/redis:v7.2.0 ./redis/
 # or via env var
-ORK_MOTIFS_REGISTRY=ghcr.io/myorg/motifs ork registry push redis:v7.2.0 ./redis/
+ORK_MOTIFS_REGISTRY=ghcr.io/myorg/motifs ork push redis:v7.2.0 ./redis/
 ```
 
 ---

@@ -33,7 +33,7 @@ Orkestra is a complete declarative operator runtime for Kubernetes. The core is 
 
 - Gateway (`ork gate`) — admission webhooks, TLS, conversion webhooks, notifications
 - Control Center (`ork control`) — live operator dashboard, multi-runtime support
-- Registry (`ork registry`) — publish and pull operator patterns as OCI artifacts
+- Registry (`ork push`, `ork pull`, `ork inspect`, `ork patterns`) — publish, pull, and inspect OCI patterns
 - Simulate (`ork simulate`) — declarative reconciler assertions, zero-cluster, `simulate.yaml` kind with assert mode and registry gate
 - E2E (`ork e2e`) — declarative end-to-end testing that gates registry publication
 
@@ -46,7 +46,7 @@ Orkestra is a complete declarative operator runtime for Kubernetes. The core is 
 
 **CLI**
 
-`ork init`, `ork run`, `ork gate`, `ork validate`, `ork template`, `ork simulate`, `ork plan`, `ork diff`, `ork generate`, `ork registry`, `ork control`, `ork notes`, `ork e2e`, `ork version`
+`ork init`, `ork run`, `ork gate`, `ork validate`, `ork template`, `ork simulate`, `ork plan`, `ork diff`, `ork generate`, `ork push`, `ork pull`, `ork inspect`, `ork patterns`, `ork control`, `ork notes`, `ork e2e`, `ork version`
 
 **Distribution**
 
@@ -151,6 +151,37 @@ Today, when a simulation does not reach steady state, the output shows which ops
 
 This makes it immediately clear which resource is preventing convergence and why — without reading ten cycles of output.
 
+### Policy
+
+`Policy` is a first-class Orkestra pattern kind — authored as `policy.yaml`, versioned, and published to an OCI registry like any other artifact. It defines the rules that `ork lint` enforces and travels with the patterns it governs.
+
+```yaml
+apiVersion: orkestra.orkspace.io/v1
+kind: Policy
+metadata:
+  name: myorg-standards
+  version: v1.0.0
+
+linting:
+  rules:
+    - id: no-missing-resource-requests
+      severity: error
+    - id: secret-rotation-required
+      severity: warning
+
+registry:
+  allowedRegistries:
+    - ghcr.io/myorg/prod
+    - name: ghcr.io/myorg/staging
+      actions:
+        push: false
+        pull: true
+```
+
+A policy can import other published policies. If two imported policies conflict on the same rule, the aggregation fails — no silent merge, no last-one-wins. Policies attached to a Komposer are authoritative: built-in rules can be overridden by the policy author, but org-wide policy rules cannot be overridden downstream.
+
+If `policy.yaml` is present when a pattern is pushed, it is embedded in the OCI artifact and enforced automatically when consumers run `ork lint` against that pattern — no `--policy` flag required.
+
 ### ork lint
 
 `ork validate` checks schema correctness — the document is well-formed. `ork lint` checks semantic correctness — the document is safe and sound for your deployment context.
@@ -168,6 +199,8 @@ Examples of what lint catches that validate cannot:
 - A CRD with `condition: healthy` on a dependency that has a history of degradation
 
 Lint runs at CI time, not author time. It is a different gate — closer to `golangci-lint` than to `go vet`.
+
+Lint rules are defined in a `Policy` pattern — the same publishable, versioned artifact as a Katalog or Motif. Run `ork lint --policy oci://ghcr.io/myorg/policies/myorg-standards:v1.0.0` to apply your organisation's published standards, or attach `policy:` in a Komposer to enforce them automatically at validate time without a separate lint step in CI.
 
 ### Namespaced katalogs
 

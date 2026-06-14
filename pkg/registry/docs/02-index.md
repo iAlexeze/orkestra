@@ -2,7 +2,7 @@
 
 ## The index artifact
 
-`ork registry list` does not crawl the registry (GHCR does not expose a usable `_catalog` API for arbitrary namespaces). Instead it reads a single index artifact:
+`ork patterns` does not crawl the registry (GHCR does not expose a usable `_catalog` API for arbitrary namespaces). Instead it reads a single index artifact:
 
 ```
 ghcr.io/orkspace/orkestra-registry/patterns/index:latest
@@ -79,8 +79,8 @@ Any OCI-compliant registry works. The index artifact lives at `<base>/index:late
 
 ```bash
 export ORK_REGISTRY=oci://myregistry.internal/patterns
-ork registry push my-operator:v1.0.0 ./my-operator/
-ork registry list   # reads myregistry.internal/patterns/index:latest
+ork push my-operator:v1.0.0 ./my-operator/
+ork patterns   # reads myregistry.internal/patterns/index:latest
 ```
 
 → Next: [03-resolve-cache.md](03-resolve-cache.md)

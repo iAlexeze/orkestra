@@ -1,6 +1,6 @@
 # pkg/registry — stability contract
 
-This package is the single implementation of OCI registry logic for the Orkestra toolchain. Both the CLI (`ork registry push/pull/info`) and the Marketplace (`store/memory/oci_client.go`) depend on it. Changes here affect both consumers.
+This package is the single implementation of OCI registry logic for the Orkestra toolchain. Both the CLI (`ork push/pull/info`) and the Marketplace (`store/memory/oci_client.go`) depend on it. Changes here affect both consumers.
 
 ## What is stable
 
@@ -12,7 +12,7 @@ This package is the single implementation of OCI registry logic for the Orkestra
 
 ## E2E trust model
 
-`E2EResult.Status` is written by `ork registry push`, not by the publisher manually. The push command detects `e2e.yaml` in the pattern, runs the tests, and bakes the outcome (`passed`, `skipped`, or `failed`) into the OCI annotation before the push completes. The Marketplace reads this annotation and surfaces it as a verified signal — it is not self-reported.
+`E2EResult.Status` is written by `ork push`, not by the publisher manually. The push command detects `e2e.yaml` in the pattern, runs the tests, and bakes the outcome (`passed`, `skipped`, or `failed`) into the OCI annotation before the push completes. The Marketplace reads this annotation and surfaces it as a verified signal — it is not self-reported.
 
 ## What is not stable yet
 

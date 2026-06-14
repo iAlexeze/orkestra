@@ -119,9 +119,30 @@ func printKatalogReference(ref *registry.Ref, cacheDir string) {
 	fmt.Printf("      - url: %s\n", ref.String())
 }
 
+// printCachedFiles lists the files in cacheDir so the user knows what was pulled.
+func printCachedFiles(cacheDir string) {
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil {
+		return
+	}
+	fmt.Printf("\n  Files:\n")
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		info, _ := e.Info()
+		size := int64(0)
+		if info != nil {
+			size = info.Size()
+		}
+		fmt.Printf("    %-30s %s\n", e.Name(), formatSize(size))
+	}
+}
+
 // printPullSuggestions orchestrates the helpers and handles errors gracefully.
 func printPullSuggestions(ref *registry.Ref, cacheDir string) {
 	isMotif, isKatalog, patternFile := detectCacheType(cacheDir)
+	printCachedFiles(cacheDir)
 	printValidationHint(patternFile)
 
 	if isMotif {

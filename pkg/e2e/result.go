@@ -7,7 +7,7 @@ import (
 )
 
 // Result holds the outcome of a complete E2E run.
-// It is returned by Run and consumed by ork registry push to embed
+// It is returned by Run and consumed by ork push to embed
 // verification metadata into OCI annotations.
 type Result struct {
 	Name    string

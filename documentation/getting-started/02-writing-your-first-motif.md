@@ -162,7 +162,7 @@ CR spec                              Motif
 Once the Motif works locally, push it:
 
 ```bash
-ork registry push ./<motif-dir> --registry oci://ghcr.io/myorg/patterns/redis
+ork push ./<motif-dir> --registry oci://ghcr.io/myorg/patterns/redis
 ```
 
 Other Katalogs can then import it by OCI reference:

@@ -5,7 +5,7 @@
 Create a pattern directory with a `katalog.yaml` and push it:
 
 ```bash
-ork registry push postgres:v14 ./patterns/postgres/
+ork push postgres:v14 ./patterns/postgres/
 ```
 
 The minimal directory is just `katalog.yaml`. In practice, include a `simulate.yaml` and `e2e.yaml` — they gate the push automatically and bake a quality signal into the artifact that consumers can see before importing.
@@ -29,7 +29,7 @@ postgres/
 Same command — Motifs push to `ORK_MOTIFS_REGISTRY` instead of `ORK_REGISTRY`:
 
 ```bash
-ork registry push security-baseline:v1 ./motifs/security-baseline/
+ork push security-baseline:v1 ./motifs/security-baseline/
 ```
 
 If a pattern directory contains both a `katalog.yaml` and a `motif.yaml`, one push publishes both — the Katalog to the Katalog registry and the Motif to the Motif registry.
@@ -40,10 +40,10 @@ If a pattern directory contains both a `katalog.yaml` and a `motif.yaml`, one pu
 
 ## How do simulate and e2e gate publication?
 
-When `simulate.yaml` and `e2e.yaml` are present in a pattern directory, `ork registry push` runs them automatically — simulate first, then e2e — and blocks publication if either fails.
+When `simulate.yaml` and `e2e.yaml` are present in a pattern directory, `ork push` runs them automatically — simulate first, then e2e — and blocks publication if either fails.
 
 ```text
-ork registry push postgres:v14 ./patterns/postgres/
+ork push postgres:v14 ./patterns/postgres/
   → simulate runs  (< 1s, no cluster)
   → e2e runs       (kind cluster, 2–5 min)
   → artifact pushed with quality annotations
@@ -58,14 +58,14 @@ io.orkestra.simulate.status   passed | no-assertion | skipped
 io.orkestra.e2e.status        passed | skipped | forced
 ```
 
-`ork registry list` shows an `E2E` column. `ork registry info` shows both simulate and e2e status. Consumers can see what quality guarantees a pattern carries before they import it.
+`ork patterns` shows an `E2E` column. `ork inspect` shows both simulate and e2e status. Consumers can see what quality guarantees a pattern carries before they import it.
 
 To skip individual gates:
 
 ```bash
-ork registry push postgres:v14 ./patterns/postgres/ --no-simulate   # skip simulate only
-ork registry push postgres:v14 ./patterns/postgres/ --no-e2e        # skip e2e only
-ork registry push postgres:v14 ./patterns/postgres/ --force         # skip both
+ork push postgres:v14 ./patterns/postgres/ --no-simulate   # skip simulate only
+ork push postgres:v14 ./patterns/postgres/ --no-e2e        # skip e2e only
+ork push postgres:v14 ./patterns/postgres/ --force         # skip both
 ```
 
 Skipping is recorded in the annotations — consumers can see it.

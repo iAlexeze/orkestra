@@ -19,36 +19,32 @@ import (
 // ── push ──────────────────────────────────────────────────────────────────────
 
 var (
-	registryPushForce      bool
-	registryPushUpdateMeta bool
-	registryPushE2EFile    string
-	registryPushNoE2E      bool
-	registryPushNoSimulate bool
+	pushForce      bool
+	pushUpdateMeta bool
+	pushE2EFile    string
+	pushNoE2E      bool
+	pushNoSimulate bool
 )
 
-var registryPushCmd = &cobra.Command{
+var pushCmd = &cobra.Command{
 	Use:   "push <name>:<version> <dir>  OR  push <dir>",
 	Short: "Push a pattern or motif directory to the registry",
 	Args:  cobra.RangeArgs(1, 2),
-	Example: `  ork registry push postgres:v14 ./patterns/postgres/
-  ork registry push redis:v7 ./motifs/redis/
-  ORK_REGISTRY=oci://myregistry.io/patterns ork registry push payments:v1.0 ./payments/
-  ork registry push ./patterns/postgres/   # use metadata.name:metadata.version from the pattern`,
+	Example: `  ork push postgres:v14 ./patterns/postgres/
+  ork push redis:v7 ./motifs/redis/
+  ORK_REGISTRY=oci://myregistry.io/patterns ork push payments:v1.0 ./payments/
+  ork push .   # use metadata.name:metadata.version from the pattern`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
 			refArg string
 			dirArg string
 		)
 
-		// Two forms:
-		// 1) push <ref> <dir>
-		// 2) push <dir>   (use metadata.name:metadata.version)
 		if len(args) == 2 {
 			refArg = args[0]
 			dirArg = args[1]
 		} else {
-			// single arg: treat as directory
-			refArg = "" // will be derived from metadata
+			refArg = ""
 			dirArg = args[0]
 		}
 
@@ -57,27 +53,21 @@ var registryPushCmd = &cobra.Command{
 			return err
 		}
 
-		// Auto-detect pattern kind before resolving the registry URL.
 		patternKind, spec, files, err := registry.ValidatePatternDirectory(dir)
 		if err != nil {
 			return fmt.Errorf("\n  ✗ %w", err)
 		}
 
-		// Load metadata from the primary file
 		meta, err := registry.LoadPatternMeta(dir, spec)
 		if err != nil {
 			return fmt.Errorf("reading metadata: %w", err)
 		}
 
-		// If user provided a ref, extract tag and validate against metadata.version
 		var providedTag string
 		if refArg != "" {
 			providedTag = registry.ExtractTagVersion(refArg)
-			// If providedTag is empty, user may have passed a registry path without tag.
-			// We'll still resolve the ref below; but only validate if a tag was present.
 		}
 
-		// If user did not provide a ref, build one from metadata.name:metadata.version
 		if refArg == "" {
 			if meta.Name == "" {
 				return fmt.Errorf("metadata.name is required in %s", spec.PrimaryFile)
@@ -88,33 +78,26 @@ var registryPushCmd = &cobra.Command{
 			refArg = fmt.Sprintf("%s:%s", meta.Name, meta.Version)
 			providedTag = meta.Version
 		} else {
-			// If user provided a tag and metadata has a non-empty version, ensure they match.
 			if providedTag != "" && meta.Version != "" && meta.Version != providedTag {
 				msg := fmt.Errorf("%s: metadata.version %q does not match provided tag %q; use '--force' to override", spec.PrimaryFile, meta.Version, providedTag)
-
-				if registryPushForce {
+				if pushForce {
 					fmt.Fprintf(cmd.ErrOrStderr(), "%s: %v (continuing due to --force)\n", yellow("Warning"), msg)
-
-					// persist if requested
-					if registryPushUpdateMeta {
+					if pushUpdateMeta {
 						if err := registry.PersistMetadataVersion(dir, spec.PrimaryFile, providedTag); err != nil {
 							return fmt.Errorf("failed to update metadata in %s: %w", spec.PrimaryFile, err)
 						}
 						fmt.Fprintf(cmd.OutOrStdout(), "updated %s: metadata.version -> %q\n", spec.PrimaryFile, providedTag)
 					}
-
 					meta.Version = providedTag
 				} else {
 					return msg
 				}
 			}
-			// If metadata.version is empty but user provided a tag, populate meta.Version so we remain consistent.
 			if meta.Version == "" && providedTag != "" {
 				meta.Version = providedTag
 			}
 		}
 
-		// Resolve against the kind-specific default registry.
 		ref, err := registry.ResolveForKind(refArg, patternKind)
 		if err != nil {
 			return fmt.Errorf("invalid reference: %w", err)
@@ -123,7 +106,6 @@ var registryPushCmd = &cobra.Command{
 		printBanner()
 		fmt.Printf("Pushing %s (%s) to %s...\n", refArg, patternKind, ref.Registry)
 
-		// Kind-specific validation.
 		if patternKind == registry.KatalogKind {
 			m := merger.New(filepath.Join(dir, registry.FileKatalog))
 			if err := m.Merge(); err != nil {
@@ -142,19 +124,17 @@ var registryPushCmd = &cobra.Command{
 
 		for _, f := range files {
 			if f == registry.FileKatalog || f == registry.FileCRD {
-				continue // already printed above
+				continue
 			}
 			info, _ := os.Stat(filepath.Join(dir, f))
 			fmt.Printf("  %s %-20s (%s)\n", successMark(), f, formatSize(info.Size()))
 		}
 
-		// Simulate gate: runs before E2E — instant, no cluster required.
-		// Skip with --force or --no-simulate.
 		var simulateMeta *registry.PatternSimulate
 		if patternKind == registry.KatalogKind {
 			simFile := filepath.Join(dir, registry.FileSimulate)
 			if _, err := os.Stat(simFile); err == nil {
-				if registryPushForce || registryPushNoSimulate {
+				if pushForce || pushNoSimulate {
 					fmt.Printf("  ~ Simulate skipped\n")
 					simulateMeta = &registry.PatternSimulate{
 						Status:   "skipped",
@@ -187,18 +167,16 @@ var registryPushCmd = &cobra.Command{
 			}
 		}
 
-		// E2E gate: run e2e.yaml before pushing if it exists (Katalog only).
-		// Skip with --force or --no-e2e.
 		var e2eMeta *registry.PatternE2E
 		if patternKind == registry.KatalogKind {
-			e2eFile := registryPushE2EFile
+			e2eFile := pushE2EFile
 			if e2eFile == "" {
 				e2eFile = filepath.Join(dir, registry.FileE2E)
 			} else if !filepath.IsAbs(e2eFile) {
 				e2eFile = filepath.Join(dir, e2eFile)
 			}
 			if _, err := os.Stat(e2eFile); err == nil {
-				if registryPushForce || registryPushNoE2E {
+				if pushForce || pushNoE2E {
 					fmt.Printf("  ~ E2E skipped\n")
 					e2eMeta = &registry.PatternE2E{
 						Status:   "skipped",
@@ -227,7 +205,6 @@ var registryPushCmd = &cobra.Command{
 			}
 		}
 
-		// Detect typed annotations for katalog patterns.
 		var typedMeta *registry.PatternTyped
 		if patternKind == registry.KatalogKind {
 			typedMeta = detectTypedKatalog(filepath.Join(dir, registry.FileKatalog))
@@ -250,8 +227,6 @@ var registryPushCmd = &cobra.Command{
 		fmt.Printf("\n%s Pushed: %s\n", successMark(), ref.String())
 		fmt.Printf("  Digest: %s\n", digest[:19]+"...")
 
-		// If a pattern directory also contains motif.yaml, push it separately
-		// to the motif registry so it can be imported standalone.
 		if patternKind == registry.KatalogKind {
 			motifYAML := filepath.Join(dir, registry.FileMotif)
 			if _, err := os.Stat(motifYAML); err == nil {
@@ -281,6 +256,15 @@ var registryPushCmd = &cobra.Command{
 		_ = meta
 		return nil
 	},
+}
+
+func init() {
+	pushCmd.Flags().BoolVar(&pushForce, "force", false, "Force push even if metadata.version differs from tag or e2e fails")
+	pushCmd.Flags().BoolVar(&pushUpdateMeta, "update-meta", false, "Persist overridden metadata.version back to the primary file")
+	pushCmd.Flags().StringVar(&pushE2EFile, "e2e", "", "Path to e2e spec file (default: e2e.yaml in pattern dir)")
+	pushCmd.Flags().BoolVar(&pushNoE2E, "no-e2e", false, "Skip the e2e gate even if e2e.yaml is present")
+	pushCmd.Flags().BoolVar(&pushNoSimulate, "no-simulate", false, "Skip the simulate gate even if simulate.yaml is present")
+	rootCmd.AddCommand(pushCmd)
 }
 
 // detectTypedKatalog parses a katalog.yaml and returns a PatternTyped if any

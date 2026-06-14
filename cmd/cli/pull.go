@@ -4,6 +4,8 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/orkspace/orkestra/pkg/motif"
@@ -13,21 +15,20 @@ import (
 
 // ── pull ──────────────────────────────────────────────────────────────────────
 
-var registryPullCmd = &cobra.Command{
+var pullCmd = &cobra.Command{
 	Use:   "pull [<name>:<version>]",
 	Short: "Pull a pattern to the local cache",
 	Args:  cobra.RangeArgs(0, 1),
-	Example: `  ork registry pull postgres:v14
-  ork registry pull oci://ghcr.io/myorg/patterns/redis:v7
-  ork registry pull -f katalog.yaml
-  ork registry pull -f komposer.yaml
-  ork registry pull postgres:v14 --refresh`,
+	Example: `  ork pull postgres:v14
+  ork pull oci://ghcr.io/myorg/patterns/redis:v7
+  ork pull -f katalog.yaml
+  ork pull -f komposer.yaml
+  ork pull postgres:v14 --refresh`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		refresh, _ := cmd.Flags().GetBool("refresh")
 		outDir, _ := cmd.Flags().GetString("out")
 		filePath, _ := cmd.Flags().GetString("file")
 
-		// ── -f mode: pull all OCI imports from a katalog or komposer file ──────
 		if filePath != "" {
 			return pullFromFile(cmd, filePath, refresh)
 		}
@@ -36,8 +37,12 @@ var registryPullCmd = &cobra.Command{
 			return fmt.Errorf("provide a reference (e.g. postgres:v14) or --file <katalog.yaml>")
 		}
 
-		// ── single ref mode ────────────────────────────────────────────────────
-		ref, err := registry.Resolve(args[0])
+		isMotif, _ := cmd.Flags().GetBool("motif")
+		kind := registry.KatalogKind
+		if isMotif {
+			kind = registry.MotifKind
+		}
+		ref, err := registry.ResolveForKind(args[0], kind)
 		if err != nil {
 			return fmt.Errorf("invalid reference: %w", err)
 		}
@@ -72,8 +77,47 @@ var registryPullCmd = &cobra.Command{
 
 		fmt.Printf("  %s Cached at %s\n", successMark(), cacheDir)
 		printPullSuggestions(ref, cacheDir)
+
+		if !isMotif {
+			pullMotifDeps(cacheDir)
+		}
 		return nil
 	},
+}
+
+func init() {
+	pullCmd.Flags().Bool("refresh", false, "Bypass local cache and re-pull from registry")
+	pullCmd.Flags().StringP("out", "o", "", "Extract pulled pattern to this directory")
+	pullCmd.Flags().StringP("file", "f", "", "Pull all OCI imports from a katalog or komposer file")
+	pullCmd.Flags().BoolP("motif", "m", false, "Resolve as a motif (uses ORK_MOTIFS_REGISTRY)")
+	rootCmd.AddCommand(pullCmd)
+}
+
+// pullMotifDeps reads the katalog.yaml in cacheDir and pulls any OCI motif
+// imports it declares. Warnings are printed but do not fail the main pull.
+func pullMotifDeps(katalogCacheDir string) {
+	katalogFile := filepath.Join(katalogCacheDir, registry.FileKatalog)
+	if _, err := os.Stat(katalogFile); err != nil {
+		return
+	}
+
+	imports, err := registry.ExtractOCIImports(katalogFile)
+	if err != nil || len(imports.MotifImports) == 0 {
+		return
+	}
+
+	if imports.Empty() {
+		return
+	}
+
+	fmt.Printf("\nPulling motif dependencies...\n")
+	for _, imp := range imports.MotifImports {
+		if motif.PullImport(&imp) == nil {
+			fmt.Printf("  %s %s\n", successMark(), imp.Motif)
+		} else {
+			fmt.Printf("  %s %s (pull failed — will retry on next use)\n", warningMark(), imp.Motif)
+		}
+	}
 }
 
 // pullFromFile extracts all OCI refs from a katalog or komposer file and pulls
@@ -96,7 +140,6 @@ func pullFromFile(cmd *cobra.Command, filePath string, refresh bool) error {
 
 	var errs []string
 
-	// Pull motif imports
 	for _, imp := range imports.MotifImports {
 		fmt.Printf("Pulling motif %s...\n", imp.Motif)
 		if err := motif.PullImport(&imp); err != nil {
@@ -107,10 +150,8 @@ func pullFromFile(cmd *cobra.Command, filePath string, refresh bool) error {
 		}
 	}
 
-	// Pull registry imports (Komposer)
 	for _, src := range imports.RegistrySources {
 		cleanURL, version := src.ResolvedURL()
-		// Strip oci:// prefix for Resolve
 		cleanURL = strings.TrimPrefix(cleanURL, "oci://")
 		ref, err := registry.Resolve(cleanURL + ":" + version)
 		if err != nil {

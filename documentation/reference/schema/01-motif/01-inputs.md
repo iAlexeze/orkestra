@@ -32,7 +32,7 @@ inputs:
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | yes | Input identifier. Referenced as `{{ .inputs.<name> }}` inside resource templates. |
-| `description` | no | Shown in `ork registry list` and registry UI. |
+| `description` | no | Shown in `ork patterns` and registry UI. |
 | `required` | no | When `true`, the importer must supply this input in `with:`. Missing required inputs fail at startup — not at reconcile time. |
 | `default` | no | Value used when `with:` does not supply this input. Only valid when `required` is `false` or omitted. |
 | `type` | no | Type hint: `string`, `int`, `bool`. Reserved for future enforcement; not validated today. |
