@@ -100,6 +100,7 @@ func pullMotifDeps(katalogCacheDir string) {
 		return
 	}
 
+	// Check if imports is empty
 	if imports.Empty() {
 		fmt.Printf("  %s No OCI imports found in %s\n", successMark(), katalogFile)
 		return
