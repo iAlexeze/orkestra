@@ -215,14 +215,17 @@ var pushCmd = &cobra.Command{
 			return fmt.Errorf("initializing client: %w", err)
 		}
 
+		spin := StartSpinner(fmt.Sprintf("Pushing %s...", refArg))
 		progress := func(file string, size int64) {
-			fmt.Printf("  → %-20s (%s)\n", file, formatSize(size))
+			spin.Update(fmt.Sprintf("Uploading %s (%s)", file, formatSize(size)))
 		}
 
 		digest, err := client.Push(cmd.Context(), ref, dir, e2eMeta, simulateMeta, typedMeta, progress)
 		if err != nil {
+			spin.Failure()
 			return fmt.Errorf("push failed: %w", err)
 		}
+		spin.Stop()
 
 		fmt.Printf("\n%s Pushed: %s\n", successMark(), ref.String())
 		fmt.Printf("  Digest: %s\n", digest[:19]+"...")
@@ -233,9 +236,12 @@ var pushCmd = &cobra.Command{
 				motifRef, err := registry.ResolveForKind(fmt.Sprintf("%s:%s", meta.Name, meta.Version), registry.MotifKind)
 				if err == nil {
 					fmt.Printf("\nAlso pushing %s to %s...\n", registry.FileMotif, motifRef.Registry)
-					if mDigest, err := client.Push(cmd.Context(), motifRef, dir, nil, nil, nil, progress); err != nil {
+					spinMotif := StartSpinner(fmt.Sprintf("Pushing %s...", registry.FileMotif))
+					if mDigest, err := client.Push(cmd.Context(), motifRef, dir, nil, nil, nil, nil); err != nil {
+						spinMotif.Failure()
 						fmt.Fprintf(os.Stderr, "warning: motif push failed: %v\n", err)
 					} else {
+						spinMotif.Stop()
 						fmt.Printf("%s Pushed motif: %s\n", successMark(), motifRef.String())
 						fmt.Printf("  Digest: %s\n", mDigest[:19]+"...")
 					}

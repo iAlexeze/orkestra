@@ -60,12 +60,14 @@ var pullCmd = &cobra.Command{
 			return nil
 		}
 
-		fmt.Printf("Pulling %s...\n  → %s\n", ref.ShortName(), ref.String())
-
+		fmt.Printf("Pulling %s\n  → %s\n", ref.ShortName(), ref.String())
+		spin := StartSpinner("Downloading...")
 		cacheDir, err := client.Pull(cmd.Context(), ref, refresh)
 		if err != nil {
+			spin.Failure()
 			return fmt.Errorf("pull failed: %w", err)
 		}
+		spin.Stop()
 
 		if outDir != "" {
 			if err := copyDir(cacheDir, outDir); err != nil {
@@ -163,11 +165,13 @@ func pullFromFile(cmd *cobra.Command, filePath string, refresh bool) error {
 			fmt.Printf("  %s Already cached: %s\n", successMark(), ref.ShortName())
 			continue
 		}
-		fmt.Printf("Pulling %s...\n  → %s\n", ref.ShortName(), ref.String())
+		fmt.Printf("Pulling %s\n  → %s\n", ref.ShortName(), ref.String())
+		spinRef := StartSpinner("Downloading...")
 		if _, err := client.Pull(cmd.Context(), ref, refresh); err != nil {
-			fmt.Printf("  %s %v\n", failureMark(), err)
+			spinRef.Failure()
 			errs = append(errs, err.Error())
 		} else {
+			spinRef.Stop()
 			fmt.Printf("  %s %s\n", successMark(), ref.ShortName())
 		}
 	}

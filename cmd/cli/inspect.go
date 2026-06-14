@@ -67,7 +67,7 @@ var inspectCmd = &cobra.Command{
 					fmt.Printf("  %s %q not in artifact (available: %s)\n", warningMark(), name, strings.Join(available, ", "))
 					continue
 				}
-				fmt.Printf("── %s ──\n", name)
+				fmt.Printf("# ── %s ──\n", name)
 				data, err := client.ViewFile(cmd.Context(), ref, f)
 				if err != nil {
 					fmt.Printf("  error: %v\n", err)
