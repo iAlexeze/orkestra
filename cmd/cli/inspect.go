@@ -198,6 +198,6 @@ var inspectCmd = &cobra.Command{
 
 func init() {
 	inspectCmd.Flags().BoolVarP(&inspectMotif, "motif", "m", false, "Resolve as a motif (uses ORK_MOTIFS_REGISTRY)")
-	inspectCmd.Flags().StringP("view", "v", "", "Comma-separated list of files to print before pulling (e.g. katalog.yaml,cr.yaml)")
+	inspectCmd.Flags().String("view", "", "Comma-separated list of files to print before pulling (e.g. katalog.yaml,cr.yaml)")
 	rootCmd.AddCommand(inspectCmd)
 }
