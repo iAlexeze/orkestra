@@ -11,20 +11,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ── info ──────────────────────────────────────────────────────────────────────
+// ── inspect ───────────────────────────────────────────────────────────────────
 
-var registryInfoMotif bool
+var inspectMotif bool
 
-var registryInfoCmd = &cobra.Command{
-	Use:   "info <name>:<version>",
+var inspectCmd = &cobra.Command{
+	Use:   "inspect <name>:<version>",
 	Short: "Show metadata for a pattern version",
 	Args:  cobra.ExactArgs(1),
-	Example: `  ork registry info postgres:v14
-  ork registry info web-service:v1.0.0 --motif
-  ork registry info oci://ghcr.io/myorg/patterns/redis:v7`,
+	Example: `  ork inspect postgres:v14
+  ork inspect web-service:v1.0.0 --motif
+  ork inspect oci://ghcr.io/myorg/patterns/redis:v7
+  ork inspect redis:v1.0.0 --view katalog.yaml,simulate.yaml`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		kind := registry.KatalogKind
-		if registryInfoMotif {
+		if inspectMotif {
 			kind = registry.MotifKind
 		}
 		ref, err := registry.ResolveForKind(args[0], kind)
@@ -42,7 +43,7 @@ var registryInfoCmd = &cobra.Command{
 			errStr := err.Error()
 			if strings.Contains(errStr, "401") || strings.Contains(errStr, "unauthorized") {
 				hint := fmt.Sprintf("\n\nhint: authenticate first:\n  docker login %s", ref.Registry)
-				if !registryInfoMotif {
+				if !inspectMotif {
 					hint += "\nhint: if this is a motif, re-run with --motif"
 				}
 				return fmt.Errorf("fetching info: %w%s", err, hint)
@@ -189,8 +190,14 @@ var registryInfoCmd = &cobra.Command{
 			}
 		}
 		fmt.Printf("\nTo pull:\n")
-		fmt.Printf("  ork registry pull %s:%s\n", m.Name, m.Version)
+		fmt.Printf("  ork pull %s:%s\n", m.Name, m.Version)
 		fmt.Println()
 		return nil
 	},
+}
+
+func init() {
+	inspectCmd.Flags().BoolVarP(&inspectMotif, "motif", "m", false, "Resolve as a motif (uses ORK_MOTIFS_REGISTRY)")
+	inspectCmd.Flags().StringP("view", "v", "", "Comma-separated list of files to print before pulling (e.g. katalog.yaml,cr.yaml)")
+	rootCmd.AddCommand(inspectCmd)
 }

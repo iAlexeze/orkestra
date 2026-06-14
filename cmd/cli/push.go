@@ -2,24 +2,379 @@
 
 package cli
 
-import "github.com/spf13/cobra"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
 
-// pushCmd is a root-level alias for ork registry push — mirrors docker push UX.
+	"github.com/orkspace/orkestra/pkg/e2e"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/merger"
+	"github.com/orkspace/orkestra/pkg/registry"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+)
+
+// ── push ──────────────────────────────────────────────────────────────────────
+
+var (
+	pushForce      bool
+	pushUpdateMeta bool
+	pushE2EFile    string
+	pushNoE2E      bool
+	pushNoSimulate bool
+)
+
 var pushCmd = &cobra.Command{
 	Use:   "push <name>:<version> <dir>  OR  push <dir>",
-	Short: "Push a pattern or motif to the registry (alias for ork registry push)",
+	Short: "Push a pattern or motif directory to the registry",
 	Args:  cobra.RangeArgs(1, 2),
 	Example: `  ork push postgres:v14 ./patterns/postgres/
   ork push redis:v7 ./motifs/redis/
-  ork push .`,
-	RunE: registryPushCmd.RunE,
+  ORK_REGISTRY=oci://myregistry.io/patterns ork push payments:v1.0 ./payments/
+  ork push .   # use metadata.name:metadata.version from the pattern`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var (
+			refArg string
+			dirArg string
+		)
+
+		if len(args) == 2 {
+			refArg = args[0]
+			dirArg = args[1]
+		} else {
+			refArg = ""
+			dirArg = args[0]
+		}
+
+		dir, err := filepath.Abs(dirArg)
+		if err != nil {
+			return err
+		}
+
+		patternKind, spec, files, err := registry.ValidatePatternDirectory(dir)
+		if err != nil {
+			return fmt.Errorf("\n  ✗ %w", err)
+		}
+
+		meta, err := registry.LoadPatternMeta(dir, spec)
+		if err != nil {
+			return fmt.Errorf("reading metadata: %w", err)
+		}
+
+		var providedTag string
+		if refArg != "" {
+			providedTag = registry.ExtractTagVersion(refArg)
+		}
+
+		if refArg == "" {
+			if meta.Name == "" {
+				return fmt.Errorf("metadata.name is required in %s", spec.PrimaryFile)
+			}
+			if meta.Version == "" {
+				meta.Version = "latest"
+			}
+			refArg = fmt.Sprintf("%s:%s", meta.Name, meta.Version)
+			providedTag = meta.Version
+		} else {
+			if providedTag != "" && meta.Version != "" && meta.Version != providedTag {
+				msg := fmt.Errorf("%s: metadata.version %q does not match provided tag %q; use '--force' to override", spec.PrimaryFile, meta.Version, providedTag)
+				if pushForce {
+					fmt.Fprintf(cmd.ErrOrStderr(), "%s: %v (continuing due to --force)\n", yellow("Warning"), msg)
+					if pushUpdateMeta {
+						if err := registry.PersistMetadataVersion(dir, spec.PrimaryFile, providedTag); err != nil {
+							return fmt.Errorf("failed to update metadata in %s: %w", spec.PrimaryFile, err)
+						}
+						fmt.Fprintf(cmd.OutOrStdout(), "updated %s: metadata.version -> %q\n", spec.PrimaryFile, providedTag)
+					}
+					meta.Version = providedTag
+				} else {
+					return msg
+				}
+			}
+			if meta.Version == "" && providedTag != "" {
+				meta.Version = providedTag
+			}
+		}
+
+		ref, err := registry.ResolveForKind(refArg, patternKind)
+		if err != nil {
+			return fmt.Errorf("invalid reference: %w", err)
+		}
+
+		printBanner()
+		fmt.Printf("Pushing %s (%s) to %s...\n", refArg, patternKind, ref.Registry)
+
+		if patternKind == registry.KatalogKind {
+			m := merger.New(filepath.Join(dir, registry.FileKatalog))
+			if err := m.Merge(); err != nil {
+				return fmt.Errorf("  ✗ %s: %w", registry.FileKatalog, err)
+			}
+			if _, err := katalog.BuildExpanded(kfg, m); err != nil {
+				return fmt.Errorf("  ✗ %s: %w", registry.FileKatalog, err)
+			}
+			fmt.Printf("  %s %-20s valid\n", successMark(), registry.FileKatalog)
+
+			if err := validateCRDFile(filepath.Join(dir, registry.FileCRD)); err != nil {
+				return fmt.Errorf("  ✗ %s: %w", registry.FileCRD, err)
+			}
+			fmt.Printf("  %s %-20s valid\n", successMark(), registry.FileCRD)
+		}
+
+		for _, f := range files {
+			if f == registry.FileKatalog || f == registry.FileCRD {
+				continue
+			}
+			info, _ := os.Stat(filepath.Join(dir, f))
+			fmt.Printf("  %s %-20s (%s)\n", successMark(), f, formatSize(info.Size()))
+		}
+
+		var simulateMeta *registry.PatternSimulate
+		if patternKind == registry.KatalogKind {
+			simFile := filepath.Join(dir, registry.FileSimulate)
+			if _, err := os.Stat(simFile); err == nil {
+				if pushForce || pushNoSimulate {
+					fmt.Printf("  ~ Simulate skipped\n")
+					simulateMeta = &registry.PatternSimulate{
+						Status:   "skipped",
+						TestedAt: time.Now().UTC().Format(time.RFC3339),
+					}
+				} else {
+					hasAssertions := simulateFileHasAssertions(simFile)
+					if !hasAssertions {
+						fmt.Printf("  %s simulate.yaml has no assertions — add expect: to enforce behavior\n", yellow("⚠"))
+						simulateMeta = &registry.PatternSimulate{
+							Status:   "no-assertion",
+							TestedAt: time.Now().UTC().Format(time.RFC3339),
+						}
+					} else {
+						fmt.Printf("\nRunning simulate gate (%s)...\n", registry.FileSimulate)
+						start := time.Now()
+						if err := runSimulateFromSpec(cmd.Context(), simFile, "", 10, false); err != nil {
+							return fmt.Errorf("simulate gate failed: %w\n\nFix the assertions or use --force to push anyway", err)
+						}
+						dur := time.Since(start).Round(time.Millisecond).String()
+						fmt.Printf("  %s Simulate passed (%s)\n", successMark(), dur)
+						simulateMeta = &registry.PatternSimulate{
+							Status:     "passed",
+							Duration:   dur,
+							TestedAt:   time.Now().UTC().Format(time.RFC3339),
+							Assertions: countSimulateAssertions(simFile),
+						}
+					}
+				}
+			}
+		}
+
+		var e2eMeta *registry.PatternE2E
+		if patternKind == registry.KatalogKind {
+			e2eFile := pushE2EFile
+			if e2eFile == "" {
+				e2eFile = filepath.Join(dir, registry.FileE2E)
+			} else if !filepath.IsAbs(e2eFile) {
+				e2eFile = filepath.Join(dir, e2eFile)
+			}
+			if _, err := os.Stat(e2eFile); err == nil {
+				if pushForce || pushNoE2E {
+					fmt.Printf("  ~ E2E skipped\n")
+					e2eMeta = &registry.PatternE2E{
+						Status:   "skipped",
+						TestedAt: time.Now().UTC().Format(time.RFC3339),
+						Runner:   detectRunner(),
+					}
+				} else {
+					fmt.Printf("\nRunning E2E gate (%s)...\n", registry.FileE2E)
+					runner, err := e2e.New(e2eFile, "", false, false, false, "", nil)
+					if err != nil {
+						return fmt.Errorf("e2e gate: %w\n\nUse --force or --no-e2e to skip", err)
+					}
+					result, err := runner.Run(cmd.Context())
+					if err != nil {
+						return fmt.Errorf("e2e gate failed: %w\n\nFix the test or use --force to push anyway", err)
+					}
+					fmt.Printf("  %s E2E passed (%s)\n", successMark(), result.Duration())
+					e2eMeta = &registry.PatternE2E{
+						Status:     "passed",
+						Duration:   result.Duration(),
+						TestedAt:   time.Now().UTC().Format(time.RFC3339),
+						Runner:     detectRunner(),
+						Assertions: result.Total(),
+					}
+				}
+			}
+		}
+
+		var typedMeta *registry.PatternTyped
+		if patternKind == registry.KatalogKind {
+			typedMeta = detectTypedKatalog(filepath.Join(dir, registry.FileKatalog))
+		}
+
+		client, err := registry.NewClient()
+		if err != nil {
+			return fmt.Errorf("initializing client: %w", err)
+		}
+
+		progress := func(file string, size int64) {
+			fmt.Printf("  → %-20s (%s)\n", file, formatSize(size))
+		}
+
+		digest, err := client.Push(cmd.Context(), ref, dir, e2eMeta, simulateMeta, typedMeta, progress)
+		if err != nil {
+			return fmt.Errorf("push failed: %w", err)
+		}
+
+		fmt.Printf("\n%s Pushed: %s\n", successMark(), ref.String())
+		fmt.Printf("  Digest: %s\n", digest[:19]+"...")
+
+		if patternKind == registry.KatalogKind {
+			motifYAML := filepath.Join(dir, registry.FileMotif)
+			if _, err := os.Stat(motifYAML); err == nil {
+				motifRef, err := registry.ResolveForKind(fmt.Sprintf("%s:%s", meta.Name, meta.Version), registry.MotifKind)
+				if err == nil {
+					fmt.Printf("\nAlso pushing %s to %s...\n", registry.FileMotif, motifRef.Registry)
+					if mDigest, err := client.Push(cmd.Context(), motifRef, dir, nil, nil, nil, progress); err != nil {
+						fmt.Fprintf(os.Stderr, "warning: motif push failed: %v\n", err)
+					} else {
+						fmt.Printf("%s Pushed motif: %s\n", successMark(), motifRef.String())
+						fmt.Printf("  Digest: %s\n", mDigest[:19]+"...")
+					}
+				}
+			}
+		}
+
+		fmt.Printf("\nTo import in a Katalog:\n")
+		if patternKind == registry.MotifKind {
+			fmt.Printf("  imports:\n")
+			fmt.Printf("    - motif: %s\n", ref.String())
+		} else {
+			fmt.Printf("  imports:\n")
+			fmt.Printf("    registry:\n")
+			fmt.Printf("      - url: %s\n", ref.String())
+		}
+
+		_ = meta
+		return nil
+	},
 }
 
 func init() {
-	pushCmd.Flags().BoolVar(&registryPushForce, "force", false, "Force push even if metadata.version differs from tag or e2e fails")
-	pushCmd.Flags().BoolVar(&registryPushUpdateMeta, "update-meta", false, "Persist overridden metadata.version back to the primary file")
-	pushCmd.Flags().StringVar(&registryPushE2EFile, "e2e", "", "Path to e2e spec file (default: e2e.yaml in pattern dir)")
-	pushCmd.Flags().BoolVar(&registryPushNoE2E, "no-e2e", false, "Skip the e2e gate even if e2e.yaml is present")
-	pushCmd.Flags().BoolVar(&registryPushNoSimulate, "no-simulate", false, "Skip the simulate gate even if simulate.yaml is present")
+	pushCmd.Flags().BoolVar(&pushForce, "force", false, "Force push even if metadata.version differs from tag or e2e fails")
+	pushCmd.Flags().BoolVar(&pushUpdateMeta, "update-meta", false, "Persist overridden metadata.version back to the primary file")
+	pushCmd.Flags().StringVar(&pushE2EFile, "e2e", "", "Path to e2e spec file (default: e2e.yaml in pattern dir)")
+	pushCmd.Flags().BoolVar(&pushNoE2E, "no-e2e", false, "Skip the e2e gate even if e2e.yaml is present")
+	pushCmd.Flags().BoolVar(&pushNoSimulate, "no-simulate", false, "Skip the simulate gate even if simulate.yaml is present")
 	rootCmd.AddCommand(pushCmd)
+}
+
+// detectTypedKatalog parses a katalog.yaml and returns a PatternTyped if any
+// CRD declares customHooks or customConstructor. Returns nil on parse error.
+func detectTypedKatalog(katalogPath string) *registry.PatternTyped {
+	k, err := katalog.ParseFile(katalogPath)
+	if err != nil {
+		return nil
+	}
+	var t registry.PatternTyped
+	for _, name := range k.CRDNames() {
+		entry, ok := k.CRDEntry(name)
+		if !ok {
+			continue
+		}
+		if entry.CustomHooksEnabled() {
+			t.HasHooks = true
+		}
+		if entry.ConstructorEnabled() {
+			t.HasConstructor = true
+		}
+	}
+	if !t.HasHooks && !t.HasConstructor {
+		return nil
+	}
+	return &t
+}
+
+// simulateFileHasAssertions returns true when simulate.yaml contains an
+// expect: block — meaning the simulate gate will actually assert something.
+func simulateFileHasAssertions(path string) bool {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	var doc struct {
+		Spec *struct {
+			Expect *struct{} `yaml:"expect"`
+		} `yaml:"spec"`
+	}
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return false
+	}
+	return doc.Spec != nil && doc.Spec.Expect != nil
+}
+
+// countSimulateAssertions counts the total number of discrete assertions in
+// simulate.yaml: each ops/absent rule counts as one, plus one each for
+// steady, steadyAt, and noErrors when set. Recurses into crds: sub-expects.
+func countSimulateAssertions(path string) int {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0
+	}
+	type expectBlock struct {
+		Steady   *bool                   `yaml:"steady"`
+		SteadyAt *int                    `yaml:"steadyAt"`
+		NoErrors bool                    `yaml:"noErrors"`
+		Ops      []struct{}              `yaml:"ops"`
+		Absent   []struct{}              `yaml:"absent"`
+		CRDs     map[string]*expectBlock `yaml:"crds"`
+	}
+	var doc struct {
+		Spec *struct {
+			Expect *expectBlock `yaml:"expect"`
+		} `yaml:"spec"`
+	}
+	if err := yaml.Unmarshal(data, &doc); err != nil || doc.Spec == nil || doc.Spec.Expect == nil {
+		return 0
+	}
+	var count func(e *expectBlock) int
+	count = func(e *expectBlock) int {
+		if e == nil {
+			return 0
+		}
+		n := len(e.Ops) + len(e.Absent)
+		if e.Steady != nil {
+			n++
+		}
+		if e.SteadyAt != nil {
+			n++
+		}
+		if e.NoErrors {
+			n++
+		}
+		for _, crd := range e.CRDs {
+			n += count(crd)
+		}
+		return n
+	}
+	return count(doc.Spec.Expect)
+}
+
+func detectRunner() string {
+	switch {
+	case os.Getenv("GITHUB_ACTIONS") == "true":
+		return "github-actions"
+	case os.Getenv("GITLAB_CI") == "true":
+		return "gitlab-ci"
+	case os.Getenv("CIRCLECI") == "true":
+		return "circleci"
+	case os.Getenv("JENKINS_URL") != "":
+		return "jenkins"
+	case os.Getenv("BUILDKITE") == "true":
+		return "buildkite"
+	case os.Getenv("DRONE") == "true":
+		return "drone"
+	case os.Getenv("CI") == "true":
+		return "ci"
+	default:
+		return "local"
+	}
 }

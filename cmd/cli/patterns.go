@@ -13,17 +13,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ── list ──────────────────────────────────────────────────────────────────────
+// ── patterns ──────────────────────────────────────────────────────────────────
 
-var registryListCmd = &cobra.Command{
-	Use:   "list [registry-url]",
+var patternsCmd = &cobra.Command{
+	Use:   "patterns [registry-url]",
 	Short: "List available patterns in the registry",
 	Args:  cobra.MaximumNArgs(1),
-	Example: `  ork registry list
-  ork registry list --motifs
-  ork registry list --katalogs
-  ork registry list oci://ghcr.io/mycompany/patterns
-  ork registry list --tag database`,
+	Example: `  ork patterns
+  ork patterns --motifs
+  ork patterns --katalogs
+  ork patterns oci://ghcr.io/mycompany/patterns
+  ork patterns --tag database`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		tag, _ := cmd.Flags().GetString("tag")
 		onlyKatalogs, _ := cmd.Flags().GetBool("katalogs")
@@ -38,15 +38,13 @@ var registryListCmd = &cobra.Command{
 		var latestUpdatedAt string
 
 		if len(args) > 0 {
-			// Explicit registry URL — fetch only that one.
 			idx, err := client.List(cmd.Context(), args[0])
 			if err != nil {
-				return fmt.Errorf("listing katalogs: %w", err)
+				return fmt.Errorf("listing patterns: %w", err)
 			}
 			entries = idx.Entries
 			latestUpdatedAt = idx.UpdatedAt
 		} else {
-			// Fetch katalogs unless --motifs only.
 			if !onlyMotifs {
 				patURL := os.Getenv(registry.EnvPatternRegistry)
 				if patURL == "" {
@@ -60,7 +58,6 @@ var registryListCmd = &cobra.Command{
 					}
 				}
 			}
-			// Fetch motifs unless --katalogs only.
 			if !onlyKatalogs {
 				motifURL := os.Getenv(registry.EnvMotifRegistry)
 				if motifURL == "" {
@@ -137,9 +134,16 @@ var registryListCmd = &cobra.Command{
 		}
 		fmt.Printf("\n%d %s%s\n", count, noun, updatedAt)
 
-		fmt.Printf("\nTo pull:\n  ork registry pull <name>:<version>\n")
-		fmt.Printf("\nTo filter:\n  ork registry list --katalogs\n  ork registry list --motifs\n")
+		fmt.Printf("\nTo pull:\n  ork pull <name>:<version>\n")
+		fmt.Printf("\nTo filter:\n  ork patterns --katalogs\n  ork patterns --motifs\n")
 		fmt.Println()
 		return nil
 	},
+}
+
+func init() {
+	patternsCmd.Flags().StringP("tag", "t", "", "Filter by tag (e.g. database, stateful, security)")
+	patternsCmd.Flags().BoolP("katalogs", "k", false, "Show only katalogs (kind: Katalog)")
+	patternsCmd.Flags().BoolP("motifs", "m", false, "Show only motifs (kind: Motif)")
+	rootCmd.AddCommand(patternsCmd)
 }
