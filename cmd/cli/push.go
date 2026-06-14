@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/orkspace/orkestra/pkg/e2e"
@@ -107,6 +108,27 @@ var pushCmd = &cobra.Command{
 		fmt.Printf("Pushing %s (%s) to %s...\n", refArg, patternKind, ref.Registry)
 
 		if patternKind == registry.KatalogKind {
+			localImports, err := registry.ExtractLocalMotifImports(filepath.Join(dir, registry.FileKatalog))
+			if err == nil && len(localImports) > 0 {
+				var lines []string
+				for _, li := range localImports {
+					lines = append(lines, fmt.Sprintf("  spec.crds.%s.imports[%d]: %q", li.CRDName, li.Index, li.Path))
+				}
+				return fmt.Errorf(
+					"✗ Push blocked: local file imports in %s\n\n%s\n\n"+
+						"  Local imports work for ork simulate and ork template, but cannot\n"+
+						"  be resolved by consumers after the katalog is published.\n\n"+
+						"  Before publishing:\n"+
+						"    1. Push the motif:  ork push <motif-dir>/\n"+
+						"    2. Replace the local path with the OCI ref:\n"+
+						"       motif: oci://<your-registry>/motifs/<name>:<version>",
+					registry.FileKatalog,
+					strings.Join(lines, "\n"),
+				)
+			}
+		}
+
+		if patternKind == registry.KatalogKind {
 			m := merger.New(filepath.Join(dir, registry.FileKatalog))
 			if err := m.Merge(); err != nil {
 				return fmt.Errorf("  ✗ %s: %w", registry.FileKatalog, err)
@@ -152,7 +174,7 @@ var pushCmd = &cobra.Command{
 						fmt.Printf("\nRunning simulate gate (%s)...\n", registry.FileSimulate)
 						start := time.Now()
 						if err := runSimulateFromSpec(cmd.Context(), simFile, "", 10, false); err != nil {
-							return fmt.Errorf("simulate gate failed: %w\n\nFix the assertions or use --force to push anyway", err)
+							return fmt.Errorf("✗ Simulate gate failed — push blocked\n  Run 'ork simulate' to see the failures\n  Use --force to override (recorded in the artifact)\n\n%w", err)
 						}
 						dur := time.Since(start).Round(time.Millisecond).String()
 						fmt.Printf("  %s Simulate passed (%s)\n", successMark(), dur)
@@ -191,7 +213,7 @@ var pushCmd = &cobra.Command{
 					}
 					result, err := runner.Run(cmd.Context())
 					if err != nil {
-						return fmt.Errorf("e2e gate failed: %w\n\nFix the test or use --force to push anyway", err)
+						return fmt.Errorf("✗ E2E gate failed — push blocked\n  Run 'ork e2e' to see the failures\n  Use --force to override (recorded in the artifact)\n\n%w", err)
 					}
 					fmt.Printf("  %s E2E passed (%s)\n", successMark(), result.Duration())
 					e2eMeta = &registry.PatternE2E{
@@ -201,6 +223,16 @@ var pushCmd = &cobra.Command{
 						Runner:     detectRunner(),
 						Assertions: result.Total(),
 					}
+				}
+			}
+			// --no-e2e was explicitly passed but no e2e.yaml exists; record as skipped
+			// so ork inspect shows ⊘ Skipped rather than - Not verified.
+			if pushNoE2E && e2eMeta == nil {
+				fmt.Printf("  ~ E2E skipped\n")
+				e2eMeta = &registry.PatternE2E{
+					Status:   "skipped",
+					TestedAt: time.Now().UTC().Format(time.RFC3339),
+					Runner:   detectRunner(),
 				}
 			}
 		}
@@ -228,7 +260,7 @@ var pushCmd = &cobra.Command{
 		spin.Stop()
 
 		fmt.Printf("\n%s Pushed: %s\n", successMark(), ref.String())
-		fmt.Printf("  Digest: %s\n", digest[:19]+"...")
+		fmt.Printf("  Digest: %s\n", digest)
 
 		if patternKind == registry.KatalogKind {
 			motifYAML := filepath.Join(dir, registry.FileMotif)

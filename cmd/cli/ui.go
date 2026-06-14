@@ -13,7 +13,7 @@ func e2eVerified(suffix string) string {
 }
 
 func e2eSkipped() string {
-	return yellow("~ Skipped") + " (pushed with --force or --no-e2e)"
+	return yellow("⊘ Skipped") + " (pushed with --force or --no-e2e)"
 }
 
 func e2eNotVerified() string {
@@ -29,7 +29,7 @@ func simulateVerified(suffix string) string {
 }
 
 func simulateSkipped() string {
-	return yellow("~ Skipped") + " (pushed with --force or --no-simulate)"
+	return yellow("⊘ Skipped") + " (pushed with --force or --no-simulate)"
 }
 
 func simulateNoAssertion() string {
