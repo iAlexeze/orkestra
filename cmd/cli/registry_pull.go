@@ -4,6 +4,8 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/orkspace/orkestra/pkg/motif"
@@ -37,7 +39,12 @@ var registryPullCmd = &cobra.Command{
 		}
 
 		// ── single ref mode ────────────────────────────────────────────────────
-		ref, err := registry.Resolve(args[0])
+		isMotif, _ := cmd.Flags().GetBool("motif")
+		kind := registry.KatalogKind
+		if isMotif {
+			kind = registry.MotifKind
+		}
+		ref, err := registry.ResolveForKind(args[0], kind)
 		if err != nil {
 			return fmt.Errorf("invalid reference: %w", err)
 		}
@@ -72,8 +79,40 @@ var registryPullCmd = &cobra.Command{
 
 		fmt.Printf("  %s Cached at %s\n", successMark(), cacheDir)
 		printPullSuggestions(ref, cacheDir)
+
+		if !isMotif {
+			pullMotifDeps(cacheDir)
+		}
 		return nil
 	},
+}
+
+// pullMotifDeps reads the katalog.yaml in cacheDir and pulls any OCI motif
+// imports it declares. Warnings are printed but do not fail the main pull.
+func pullMotifDeps(katalogCacheDir string) {
+	katalogFile := filepath.Join(katalogCacheDir, registry.FileKatalog)
+	if _, err := os.Stat(katalogFile); err != nil {
+		return // not a katalog or no katalog.yaml — nothing to do
+	}
+
+	imports, err := registry.ExtractOCIImports(katalogFile)
+	if err != nil || len(imports.MotifImports) == 0 {
+		return
+	}
+
+	if imports.Empty() {
+		fmt.Printf("  %s No OCI imports found in %s\n", successMark(), katalogFile)
+		return
+	}
+
+	fmt.Printf("\nPulling motif dependencies...\n")
+	for _, imp := range imports.MotifImports {
+		if motif.PullImport(&imp) == nil {
+			fmt.Printf("  %s %s\n", successMark(), imp.Motif)
+		} else {
+			fmt.Printf("  %s %s (pull failed — will retry on next use)\n", warningMark(), imp.Motif)
+		}
+	}
 }
 
 // pullFromFile extracts all OCI refs from a katalog or komposer file and pulls

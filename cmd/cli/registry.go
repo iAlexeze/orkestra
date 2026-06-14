@@ -38,6 +38,7 @@ func init() {
 	registryPullCmd.Flags().Bool("refresh", false, "Bypass local cache and re-pull from registry")
 	registryPullCmd.Flags().StringP("out", "o", "", "Extract pulled pattern to this directory")
 	registryPullCmd.Flags().StringP("file", "f", "", "Pull all OCI imports from a katalog or komposer file")
+	registryPullCmd.Flags().BoolP("motif", "m", false, "Resolve as a motif (uses ORK_MOTIFS_REGISTRY)")
 
 	registryInfoCmd.Flags().BoolVarP(&registryInfoMotif, "motif", "m", false, "Resolve as a motif (uses ORK_MOTIFS_REGISTRY)")
 	registryListCmd.Flags().StringP("tag", "t", "", "Filter by tag (e.g. database, stateful, security)")
