@@ -90,6 +90,29 @@ func TestRegistrySource_ResolvedURL_GitWithAt(t *testing.T) {
 	assert.Equal(t, "main", ver)
 }
 
+func TestRegistrySource_ResolvedURL_OCIColonTag(t *testing.T) {
+	// ork pull tells users to write oci://host/repo:tag — this must not produce host/repo:tag:latest
+	s := orktypes.RegistrySource{URL: "oci://ghcr.io/myorg/katalogs/webapp-operator:v1.0.0"}
+	clean, ver := s.ResolvedURL()
+	assert.Equal(t, "ghcr.io/myorg/katalogs/webapp-operator", clean)
+	assert.Equal(t, "v1.0.0", ver)
+}
+
+func TestRegistrySource_ResolvedURL_OCIColonTagNoScheme(t *testing.T) {
+	s := orktypes.RegistrySource{URL: "ghcr.io/myorg/katalogs/postgres:v14", OCI: true}
+	clean, ver := s.ResolvedURL()
+	assert.Equal(t, "ghcr.io/myorg/katalogs/postgres", clean)
+	assert.Equal(t, "v14", ver)
+}
+
+func TestRegistrySource_ResolvedURL_OCIColonTagDoesNotSplitOnPort(t *testing.T) {
+	// localhost:5000/repo:v1.0.0 — port should not be split; tag after last / should
+	s := orktypes.RegistrySource{URL: "oci://localhost:5000/myorg/webapp:v1.0.0"}
+	clean, ver := s.ResolvedURL()
+	assert.Equal(t, "localhost:5000/myorg/webapp", clean)
+	assert.Equal(t, "v1.0.0", ver)
+}
+
 // ── RegistrySource.SourceFile ─────────────────────────────────────────────────
 
 func TestRegistrySource_SourceFile_DefaultKatalog(t *testing.T) {
