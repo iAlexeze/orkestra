@@ -13,14 +13,21 @@ import (
 
 // ── info ──────────────────────────────────────────────────────────────────────
 
+var registryInfoMotif bool
+
 var registryInfoCmd = &cobra.Command{
 	Use:   "info <name>:<version>",
 	Short: "Show metadata for a pattern version",
 	Args:  cobra.ExactArgs(1),
 	Example: `  ork registry info postgres:v14
+  ork registry info web-service:v1.0.0 --motif
   ork registry info oci://ghcr.io/myorg/patterns/redis:v7`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ref, err := registry.Resolve(args[0])
+		kind := registry.KatalogKind
+		if registryInfoMotif {
+			kind = registry.MotifKind
+		}
+		ref, err := registry.ResolveForKind(args[0], kind)
 		if err != nil {
 			return fmt.Errorf("invalid reference: %w", err)
 		}
@@ -32,6 +39,14 @@ var registryInfoCmd = &cobra.Command{
 
 		info, err := client.Info(cmd.Context(), ref)
 		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, "401") || strings.Contains(errStr, "unauthorized") {
+				hint := fmt.Sprintf("\n\nhint: authenticate first:\n  docker login %s", ref.Registry)
+				if !registryInfoMotif {
+					hint += "\nhint: if this is a motif, re-run with --motif"
+				}
+				return fmt.Errorf("fetching info: %w%s", err, hint)
+			}
 			return fmt.Errorf("fetching info: %w", err)
 		}
 
@@ -68,7 +83,18 @@ var registryInfoCmd = &cobra.Command{
 		if m.Simulate != nil {
 			switch m.Simulate.Status {
 			case "passed":
-				suffix := m.Simulate.Duration
+				var suffix string
+				if m.Simulate.Assertions == 1 {
+					suffix = "1 assertion"
+				} else if m.Simulate.Assertions > 1 {
+					suffix = fmt.Sprintf("%d assertions", m.Simulate.Assertions)
+				}
+				if m.Simulate.Duration != "" {
+					if suffix != "" {
+						suffix += " · "
+					}
+					suffix += m.Simulate.Duration
+				}
 				if m.Simulate.TestedAt != "" {
 					if t, err := time.Parse(time.RFC3339, m.Simulate.TestedAt); err == nil {
 						if suffix != "" {
@@ -84,24 +110,37 @@ var registryInfoCmd = &cobra.Command{
 				fmt.Printf("  Simulate:    %s\n", simulateNoAssertion())
 			}
 		}
-		if m.E2E != nil {
-			switch m.E2E.Status {
-			case "passed":
-				suffix := m.E2E.Duration
-				if m.E2E.TestedAt != "" {
-					if t, err := time.Parse(time.RFC3339, m.E2E.TestedAt); err == nil {
+		if m.Kind != registry.MotifKind {
+			if m.E2E != nil {
+				switch m.E2E.Status {
+				case "passed":
+					var suffix string
+					if m.E2E.Assertions == 1 {
+						suffix = "1 assertion"
+					} else if m.E2E.Assertions > 1 {
+						suffix = fmt.Sprintf("%d assertions", m.E2E.Assertions)
+					}
+					if m.E2E.Duration != "" {
 						if suffix != "" {
 							suffix += " · "
 						}
-						suffix += "tested " + humanDuration(time.Since(t)) + " ago"
+						suffix += m.E2E.Duration
 					}
+					if m.E2E.TestedAt != "" {
+						if t, err := time.Parse(time.RFC3339, m.E2E.TestedAt); err == nil {
+							if suffix != "" {
+								suffix += " · "
+							}
+							suffix += "tested " + humanDuration(time.Since(t)) + " ago"
+						}
+					}
+					fmt.Printf("  E2E:         %s\n", e2eVerified(suffix))
+				case "skipped":
+					fmt.Printf("  E2E:         %s\n", e2eSkipped())
 				}
-				fmt.Printf("  E2E:         %s\n", e2eVerified(suffix))
-			case "skipped":
-				fmt.Printf("  E2E:         %s\n", e2eSkipped())
+			} else {
+				fmt.Printf("  E2E:         %s\n", e2eNotVerified())
 			}
-		} else {
-			fmt.Printf("  E2E:         %s\n", e2eNotVerified())
 		}
 		if m.Typed != nil {
 			parts := []string{}

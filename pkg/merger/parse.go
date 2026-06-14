@@ -45,7 +45,7 @@ func parseKatalogDoc(doc []byte, source string) (*orktypes.KatalogFile, error) {
 
 	// Kind must be Katalog or Komposer — anything else is silently skipped.
 	// This handles YAML files that happen to contain the word "Katalog" in a comment.
-	if !konfig.IsValidDocumentKind(katalog.Kind) {
+	if !konfig.IsValidPatternKind(katalog.Kind) {
 		return nil, nil
 	}
 

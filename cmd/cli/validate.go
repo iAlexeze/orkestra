@@ -21,10 +21,10 @@ import (
 
 var validateCmd = &cobra.Command{
 	Use:   "validate",
-	Short: "Validate an Orkestra document (Katalog, Komposer, Motif, E2E, Simulate)",
-	Long: `Validates any Orkestra document and reports errors.
+	Short: "Validate an Orkestra pattern (Katalog, Komposer, Motif, E2E, Simulate)",
+	Long: `Validates any Orkestra pattern and reports errors.
 
-The document kind is detected automatically from the 'kind' field:
+The pattern kind is detected automatically from the 'kind' field:
   Katalog   — operator definition with CRD declarations
   Komposer  — multi-source katalog composer
   Motif     — reusable operator pattern
@@ -57,15 +57,15 @@ Examples:
 			}
 
 			// Validate document type
-			if !konfig.IsValidDocumentKind(kind) {
+			if !konfig.IsValidPatternKind(kind) {
 				if kind == "" {
 					return fmt.Errorf(
-						"not an Orkestra document — expected a 'kind' field (allowed kinds: %s)",
+						"not an Orkestra pattern — expected a 'kind' field (allowed kinds: %s)",
 						konfig.ValidKindsString(),
 					)
 				}
 				return fmt.Errorf(
-					"invalid Orkestra document kind %q (allowed kinds: %s)",
+					"invalid Orkestra pattern kind %q (allowed kinds: %s)",
 					kind, konfig.ValidKindsString(),
 				)
 			}
@@ -458,7 +458,7 @@ func validateMotifFile(path string) error {
 func init() {
 	rootCmd.AddCommand(validateCmd)
 
-	validateCmd.Flags().StringSliceP("file", "f", nil, "Path to an Orkestra document (repeatable or comma-separated)")
+	validateCmd.Flags().StringSliceP("file", "f", nil, "Path to an Orkestra pattern (repeatable or comma-separated)")
 	validateCmd.Flags().Bool("full", false, "Show per-CRD permissions, dependency graph, and system-level RBAC")
 
 	// Shadow global flags so they don't appear under `ork validate`

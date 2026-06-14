@@ -12,16 +12,17 @@ import "strings"
 // non-empty. It then loads either katalog.yaml (default) or komposer.yaml
 // based on useKomposer. Exactly one is loaded — not both.
 //
-// URL shorthand — version inline with @:
+// Plain string — URL is the entire entry, OCI scheme detected from prefix:
+//
+//   - oci://ghcr.io/orkspace/orkestra-registry/postgres@v14
+//   - https://github.com/myorg/registry@main
+//
+// Struct with url field — same URL forms, required when auth or other fields are set:
+//
+//   - url: oci://ghcr.io/orkspace/orkestra-registry/postgres@v14
 //
 //   - url: ghcr.io/orkspace/orkestra-registry/postgres@v14
-//     oci: true
-//
-// Explicit form:
-//
-//   - url: ghcr.io/orkspace/orkestra-registry/postgres
-//     version: v14
-//     oci: true
+//     oci: true                                              # equivalent to oci:// prefix
 //
 // Git form:
 //
@@ -157,14 +158,56 @@ func (r RegistryRef) IsDefault() bool {
 	return r.SHA == "" && r.Version == "" && r.Branch == ""
 }
 
+// UnmarshalYAML allows RegistrySource to be declared as a plain string or a struct.
+//
+// Plain string — URL only, no auth, no overrides:
+//
+//	registry:
+//	  - oci://ghcr.io/myorg/postgres@v14
+//	  - https://github.com/myorg/registry@main
+//
+// Struct — when auth, useKomposer, or other fields are needed:
+//
+//	registry:
+//	  - url: registry.myorg.com/operators/postgres@v14
+//	    auth:
+//	      type: basic
+//	      usernameFromEnv: REGISTRY_USER
+//	      passwordFromEnv: REGISTRY_PASSWORD
+func (r *RegistrySource) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var plain string
+	if err := unmarshal(&plain); err == nil {
+		r.URL = plain
+		return nil
+	}
+	type registrySourceAlias RegistrySource
+	var alias registrySourceAlias
+	if err := unmarshal(&alias); err != nil {
+		return err
+	}
+	*r = RegistrySource(alias)
+	return nil
+}
+
+// IsOCI returns true when this source should be pulled as an OCI artifact.
+// Either the oci field is explicitly set, or the URL uses the oci:// scheme:
+//
+//	oci: true  +  url: ghcr.io/myorg/postgres@v14
+//	url: oci://ghcr.io/myorg/postgres@v14          (no oci: true needed)
+func (r RegistrySource) IsOCI() bool {
+	return r.OCI || strings.HasPrefix(strings.TrimSpace(r.URL), "oci://")
+}
+
 // ResolvedURL returns the effective URL with the version extracted.
 // Handles both the @ shorthand and the explicit Version field.
+// Strips the oci:// scheme when present — IsOCI() carries that signal instead.
 //
 // Returns (cleanURL, version).
-// cleanURL is the URL without the @ suffix.
+// cleanURL is the URL without scheme or @ suffix.
 // version is the resolved version string (never empty).
 func (r RegistrySource) ResolvedURL() (cleanURL, version string) {
 	url := strings.TrimSpace(r.URL)
+	url = strings.TrimPrefix(url, "oci://")
 
 	if idx := strings.LastIndex(url, "@"); idx != -1 {
 		// @ shorthand — split on last @
@@ -185,7 +228,7 @@ func (r RegistrySource) ResolvedURL() (cleanURL, version string) {
 
 // defaultVersion returns the default version when none is declared.
 func (r RegistrySource) defaultVersion() string {
-	if r.OCI {
+	if r.IsOCI() {
 		return "latest"
 	}
 	return "main"

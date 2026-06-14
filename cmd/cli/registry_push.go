@@ -177,9 +177,10 @@ var registryPushCmd = &cobra.Command{
 						dur := time.Since(start).Round(time.Millisecond).String()
 						fmt.Printf("  %s Simulate passed (%s)\n", successMark(), dur)
 						simulateMeta = &registry.PatternSimulate{
-							Status:   "passed",
-							Duration: dur,
-							TestedAt: time.Now().UTC().Format(time.RFC3339),
+							Status:     "passed",
+							Duration:   dur,
+							TestedAt:   time.Now().UTC().Format(time.RFC3339),
+							Assertions: countSimulateAssertions(simFile),
 						}
 					}
 				}
@@ -216,10 +217,11 @@ var registryPushCmd = &cobra.Command{
 					}
 					fmt.Printf("  %s E2E passed (%s)\n", successMark(), result.Duration())
 					e2eMeta = &registry.PatternE2E{
-						Status:   "passed",
-						Duration: result.Duration(),
-						TestedAt: time.Now().UTC().Format(time.RFC3339),
-						Runner:   detectRunner(),
+						Status:     "passed",
+						Duration:   result.Duration(),
+						TestedAt:   time.Now().UTC().Format(time.RFC3339),
+						Runner:     detectRunner(),
+						Assertions: result.Total(),
 					}
 				}
 			}
@@ -323,6 +325,53 @@ func simulateFileHasAssertions(path string) bool {
 		return false
 	}
 	return doc.Spec != nil && doc.Spec.Expect != nil
+}
+
+// countSimulateAssertions counts the total number of discrete assertions in
+// simulate.yaml: each ops/absent rule counts as one, plus one each for
+// steady, steadyAt, and noErrors when set. Recurses into crds: sub-expects.
+func countSimulateAssertions(path string) int {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0
+	}
+	type expectBlock struct {
+		Steady   *bool                   `yaml:"steady"`
+		SteadyAt *int                    `yaml:"steadyAt"`
+		NoErrors bool                    `yaml:"noErrors"`
+		Ops      []struct{}              `yaml:"ops"`
+		Absent   []struct{}              `yaml:"absent"`
+		CRDs     map[string]*expectBlock `yaml:"crds"`
+	}
+	var doc struct {
+		Spec *struct {
+			Expect *expectBlock `yaml:"expect"`
+		} `yaml:"spec"`
+	}
+	if err := yaml.Unmarshal(data, &doc); err != nil || doc.Spec == nil || doc.Spec.Expect == nil {
+		return 0
+	}
+	var count func(e *expectBlock) int
+	count = func(e *expectBlock) int {
+		if e == nil {
+			return 0
+		}
+		n := len(e.Ops) + len(e.Absent)
+		if e.Steady != nil {
+			n++
+		}
+		if e.SteadyAt != nil {
+			n++
+		}
+		if e.NoErrors {
+			n++
+		}
+		for _, crd := range e.CRDs {
+			n += count(crd)
+		}
+		return n
+	}
+	return count(doc.Spec.Expect)
 }
 
 func detectRunner() string {

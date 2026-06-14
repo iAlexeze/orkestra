@@ -16,7 +16,7 @@
 //	ork run          Start the Orkestra runtime with a Katalog or Komposer
 //	ork simulate     Run the reconciler in memory — no cluster required
 //	ork e2e          Declarative end-to-end tests against a real cluster
-//	ork validate     Validate any Orkestra document (Katalog, Komposer, Motif, E2E, Simulate)
+//	ork validate     Validate any Orkestra pattern (Katalog, Komposer, Motif, E2E, Simulate)
 //	ork registry     Publish and pull operator patterns as OCI artifacts
 //	ork control      Launch the live control center
 //	ork gate         Start the admission and conversion webhook server

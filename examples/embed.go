@@ -9,5 +9,5 @@ import "embed"
 //
 // developer
 //
-//go:embed beginner intermediate advanced security use-cases
+//go:embed beginner intermediate advanced security use-cases registry-guide
 var FS embed.FS

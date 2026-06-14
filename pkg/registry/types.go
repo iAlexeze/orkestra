@@ -44,10 +44,11 @@ type PatternDeprecated struct {
 
 // PatternE2E holds E2E verification metadata embedded in OCI annotations at push time.
 type PatternE2E struct {
-	Status   string // "passed", "skipped"
-	Duration string // e.g. "45s"
-	TestedAt string // RFC3339
-	Runner   string // "local" or "github-actions"
+	Status     string // "passed", "skipped"
+	Duration   string // e.g. "45s"
+	TestedAt   string // RFC3339
+	Runner     string // "local" or "github-actions"
+	Assertions int    // total number of expectations run; 0 when skipped
 }
 
 // PatternSimulate holds simulate gate metadata embedded in OCI annotations at push time.
@@ -56,9 +57,10 @@ type PatternE2E struct {
 //   - "no-assertion" — simulate.yaml present but no expect: block; ran clean, nothing asserted
 //   - "skipped"      — --no-simulate or --force used
 type PatternSimulate struct {
-	Status   string // "passed", "no-assertion", "skipped"
-	Duration string // e.g. "4ms"; empty for skipped/no-assertion
-	TestedAt string // RFC3339
+	Status     string // "passed", "no-assertion", "skipped"
+	Duration   string // e.g. "4ms"; empty for skipped/no-assertion
+	TestedAt   string // RFC3339
+	Assertions int    // number of assertions declared in simulate.yaml; 0 when skipped or no-assertion
 }
 
 // PatternEntry is one row in the pattern index.
