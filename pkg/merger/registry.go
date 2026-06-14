@@ -50,7 +50,7 @@ var knownPatternFiles = []string{
 func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) (map[string]orktypes.CRDEntry, error) {
 	cleanURL, version := src.ResolvedURL()
 
-	logger.Info().
+	logger.Debug().
 		Str("url", cleanURL).
 		Str("version", version).
 		Bool("oci", src.IsOCI()).
@@ -165,24 +165,58 @@ func (m *Merger) pullPattern(
 // ── OCI pull ──────────────────────────────────────────────────────────────────
 
 func (m *Merger) pullOCIPattern(url, version, tmpDir string, auth *utils.FileAuth) error {
-	ref := strings.TrimPrefix(strings.TrimPrefix(url, "https://"), "http://")
-	ref = strings.TrimSuffix(ref, "/")
-	ref = fmt.Sprintf("%s:%s", ref, version)
+	ociRef := strings.TrimPrefix(strings.TrimPrefix(url, "https://"), "http://")
+	ociRef = strings.TrimSuffix(ociRef, "/")
+	ociRef = fmt.Sprintf("%s:%s", ociRef, version)
 
-	logger.Debug().
-		Str("ref", ref).
-		Str("dst", tmpDir).
-		Msg("registry: pulling OCI artifact with ORAS Go library")
-
-	if err := orasPull(ref, tmpDir, auth); err != nil {
-		return fmt.Errorf("OCI pull %q: %w", ref, err)
+	// Serve from local cache when available — avoids a network round-trip on
+	// every ork validate/template/simulate after ork registry pull.
+	if pkgRef, err := pkgregistry.Resolve(ociRef); err == nil {
+		if cacheDir, err := pkgRef.CachePath(); err == nil && pkgRef.IsCached() {
+			logger.Debug().
+				Str("ref", ociRef).
+				Str("cache", cacheDir).
+				Msg("registry: serving OCI artifact from local cache")
+			return copyPatternFilesFromCache(cacheDir, tmpDir)
+		}
 	}
 
 	logger.Debug().
-		Str("ref", ref).
+		Str("ref", ociRef).
+		Str("dst", tmpDir).
+		Msg("registry: pulling OCI artifact with ORAS Go library")
+
+	if err := orasPull(ociRef, tmpDir, auth); err != nil {
+		return fmt.Errorf("OCI pull %q: %w", ociRef, err)
+	}
+
+	logger.Debug().
+		Str("ref", ociRef).
 		Str("dst", tmpDir).
 		Msg("registry: OCI artifact pulled successfully")
 
+	return nil
+}
+
+// copyPatternFilesFromCache copies the known pattern files from a cache
+// directory into a temp directory for the merger to process.
+func copyPatternFilesFromCache(cacheDir, tmpDir string) error {
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil {
+		return fmt.Errorf("reading cache dir %s: %w", cacheDir, err)
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(cacheDir, e.Name()))
+		if err != nil {
+			return fmt.Errorf("reading cached file %s: %w", e.Name(), err)
+		}
+		if err := os.WriteFile(filepath.Join(tmpDir, e.Name()), data, 0644); err != nil {
+			return fmt.Errorf("writing %s to temp dir: %w", e.Name(), err)
+		}
+	}
 	return nil
 }
 
