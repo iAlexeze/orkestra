@@ -218,6 +218,18 @@ func (r RegistrySource) ResolvedURL() (cleanURL, version string) {
 		return
 	}
 
+	// Standard OCI colon tag — split on the last : that appears after the last /
+	// handles: oci://ghcr.io/myorg/postgres:v1.0.0
+	// avoids splitting on port numbers: localhost:5000/repo (no slash after the colon)
+	if lastSlash := strings.LastIndex(url, "/"); lastSlash != -1 {
+		afterSlash := url[lastSlash+1:]
+		if colonIdx := strings.LastIndex(afterSlash, ":"); colonIdx != -1 {
+			cleanURL = url[:lastSlash+1+colonIdx]
+			version = afterSlash[colonIdx+1:]
+			return
+		}
+	}
+
 	cleanURL = url
 	version = strings.TrimSpace(r.Version)
 	if version == "" {
