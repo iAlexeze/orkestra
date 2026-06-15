@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -138,10 +139,12 @@ var pushCmd = &cobra.Command{
 			}
 			fmt.Printf("  %s %-20s valid\n", successMark(), registry.FileKatalog)
 
-			if err := validateCRDFile(filepath.Join(dir, registry.FileCRD)); err != nil {
-				return fmt.Errorf("  ✗ %s: %w", registry.FileCRD, err)
+			if slices.Contains(files, registry.FileCRD) {
+				if err := validateCRDFile(filepath.Join(dir, registry.FileCRD)); err != nil {
+					return fmt.Errorf("  ✗ %s: %w", registry.FileCRD, err)
+				}
+				fmt.Printf("  %s %-20s valid\n", successMark(), registry.FileCRD)
 			}
-			fmt.Printf("  %s %-20s valid\n", successMark(), registry.FileCRD)
 		}
 
 		for _, f := range files {
