@@ -98,3 +98,11 @@ type PatternInfo struct {
 	Meta     *PatternMeta
 	Files    []FileEntry
 }
+
+// VersionInfo is a lightweight entry returned by ListVersions.
+type VersionInfo struct {
+	Tag      string
+	PushedAt time.Time
+	Meta     *PatternMeta
+	Digest   string
+}

@@ -51,11 +51,19 @@ var inspectCmd = &cobra.Command{
 			if idx := strings.LastIndex(name, ":"); idx != -1 {
 				name = name[:idx]
 			}
-			fmt.Printf("\n%s  (%d version(s))\n\n", bold(name), len(versions))
+			versionWord := "versions"
+			if len(versions) == 1 {
+				versionWord = "version"
+			}
+			fmt.Printf("\n%s  (%d %s)\n\n", bold(name), len(versions), versionWord)
 			for i, v := range versions {
 				latest := ""
 				if i == 0 {
 					latest = "  ← latest"
+				}
+				if inspectMotif {
+					fmt.Printf("  %-12s%s\n", v.Tag, latest)
+					continue
 				}
 				var simCol, e2eCol string
 				if v.Meta.Simulate != nil {

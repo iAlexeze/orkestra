@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -385,6 +386,83 @@ func (c *Client) updateIndex(ctx context.Context, ref *Ref, entry PatternEntry) 
 	index.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
 
 	return c.pushIndex(ctx, idxRef, index)
+}
+
+// ListVersions lists up to maxN most recent versions of a pattern by listing
+// OCI tags and fetching metadata for each. Results are sorted newest-first by
+// semantic version. Tags that cannot be fetched are silently skipped.
+func (c *Client) ListVersions(ctx context.Context, ref *Ref, maxN int) ([]*VersionInfo, error) {
+	repo, err := c.remoteRepo(ref)
+	if err != nil {
+		return nil, err
+	}
+
+	var tags []string
+	if err := repo.Tags(ctx, "", func(batch []string) error {
+		tags = append(tags, batch...)
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("listing tags: %w", err)
+	}
+
+	// Deduplicate by digest: floating tags (latest, stable) that point to the
+	// same manifest as a versioned tag don't appear twice. Versioned tags win.
+	seen := map[string]string{} // digest → winning tag
+	infoByDigest := map[string]*PatternInfo{}
+
+	for _, tag := range tags {
+		tagRef := &Ref{
+			Registry:   ref.Registry,
+			Repository: ref.Repository,
+			Tag:        tag,
+			Full:       ref.Registry + "/" + ref.Repository + ":" + tag,
+		}
+		info, err := c.Info(ctx, tagRef)
+		if err != nil {
+			continue
+		}
+		existing, collision := seen[info.Digest]
+		if collision {
+			// Replace the existing tag only if the new one looks like a real version.
+			if looksLikeVersion(tag) && !looksLikeVersion(existing) {
+				seen[info.Digest] = tag
+				info.Meta.Version = tag
+				infoByDigest[info.Digest] = info
+			}
+			continue
+		}
+		seen[info.Digest] = tag
+		infoByDigest[info.Digest] = info
+	}
+
+	versions := make([]*VersionInfo, 0, len(infoByDigest))
+	for digest, info := range infoByDigest {
+		versions = append(versions, &VersionInfo{
+			Tag:      seen[digest],
+			PushedAt: info.PushedAt,
+			Meta:     info.Meta,
+			Digest:   digest,
+		})
+	}
+	// Mirrors the index table: most recently pushed = latest.
+	slices.SortFunc(versions, func(a, b *VersionInfo) int {
+		return b.PushedAt.Compare(a.PushedAt) // descending
+	})
+
+	if maxN > 0 && len(versions) > maxN {
+		versions = versions[:maxN]
+	}
+
+	return versions, nil
+}
+
+// looksLikeVersion returns true when a tag appears to be a pinned version
+// (starts with 'v' or a digit) rather than a floating label like "latest".
+func looksLikeVersion(tag string) bool {
+	if len(tag) == 0 {
+		return false
+	}
+	return tag[0] == 'v' || (tag[0] >= '0' && tag[0] <= '9')
 }
 
 // remoteRepo returns an authenticated ORAS remote.Repository for the ref.
