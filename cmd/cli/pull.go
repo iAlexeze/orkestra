@@ -114,9 +114,12 @@ func pullMotifDeps(katalogCacheDir string) {
 
 	fmt.Printf("\nPulling motif dependencies...\n")
 	for _, imp := range imports.MotifImports {
+		spin := StartSpinner(imp.Motif)
 		if motif.PullImport(&imp) == nil {
+			spin.Stop()
 			fmt.Printf("  %s %s\n", successMark(), imp.Motif)
 		} else {
+			spin.Failure()
 			fmt.Printf("  %s %s (pull failed — will retry on next use)\n", warningMark(), imp.Motif)
 		}
 	}

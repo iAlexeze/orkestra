@@ -38,6 +38,62 @@ var inspectCmd = &cobra.Command{
 			return fmt.Errorf("initializing client: %w", err)
 		}
 
+		if versionsFlag, _ := cmd.Flags().GetBool("versions"); versionsFlag {
+			spin := StartSpinner("Fetching version history...")
+			versions, err := client.ListVersions(cmd.Context(), ref, 10)
+			if err != nil {
+				spin.Failure()
+				return fmt.Errorf("listing versions: %w", err)
+			}
+			spin.Stop()
+
+			name := ref.ShortName()
+			if idx := strings.LastIndex(name, ":"); idx != -1 {
+				name = name[:idx]
+			}
+			fmt.Printf("\n%s  (%d version(s))\n\n", bold(name), len(versions))
+			for i, v := range versions {
+				latest := ""
+				if i == 0 {
+					latest = "  ← latest"
+				}
+				var simCol, e2eCol string
+				if v.Meta.Simulate != nil {
+					switch v.Meta.Simulate.Status {
+					case "passed":
+						suffix := ""
+						if v.Meta.Simulate.Assertions > 0 {
+							suffix = fmt.Sprintf("%d assertions", v.Meta.Simulate.Assertions)
+						}
+						simCol = simulateVerified(suffix)
+					case "skipped":
+						simCol = simulateSkipped()
+					case "no-assertion":
+						simCol = simulateNoAssertion()
+					}
+				} else {
+					simCol = gray("- Simulate")
+				}
+				if v.Meta.E2E != nil {
+					switch v.Meta.E2E.Status {
+					case "passed":
+						suffix := ""
+						if v.Meta.E2E.Duration != "" {
+							suffix = v.Meta.E2E.Duration
+						}
+						e2eCol = e2eVerified(suffix)
+					case "skipped":
+						e2eCol = e2eSkipped()
+					}
+				} else {
+					e2eCol = e2eNotVerified()
+				}
+				fmt.Printf("  %-12s  %-35s  %-35s%s\n", v.Tag, simCol, e2eCol, latest)
+			}
+			fmt.Println()
+			return nil
+		}
+
 		info, err := client.Info(cmd.Context(), ref)
 		if err != nil {
 			errStr := err.Error()
@@ -212,5 +268,6 @@ var inspectCmd = &cobra.Command{
 func init() {
 	inspectCmd.Flags().BoolVarP(&inspectMotif, "motif", "m", false, "Resolve as a motif (uses ORK_MOTIFS_REGISTRY)")
 	inspectCmd.Flags().String("view", "", "Comma-separated list of files to print before pulling (e.g. katalog.yaml,cr.yaml)")
+	inspectCmd.Flags().Bool("versions", false, "List up to 10 tracked versions with simulate and E2E status")
 	rootCmd.AddCommand(inspectCmd)
 }
