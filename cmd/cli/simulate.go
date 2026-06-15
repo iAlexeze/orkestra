@@ -172,11 +172,14 @@ func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *
 	}
 	fmt.Println()
 
+	spin := StartSpinner(fmt.Sprintf("Running %d cycles...", maxCycles))
 	start := time.Now()
 	result, err := simulate.Run(ctx, kat, crdName, cr, maxCycles, opts)
 	if err != nil {
+		spin.Failure()
 		return err
 	}
+	spin.Stop()
 	elapsed := time.Since(start)
 
 	if debugOps {

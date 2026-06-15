@@ -86,10 +86,13 @@ Examples:
 		}
 
 		// Default path: Katalog / Komposer validation
+		spin := StartSpinner("Resolving imports...")
 		m, err := generateKatalog(cmd)
 		if err != nil {
+			spin.Failure()
 			return err
 		}
+		spin.Stop()
 
 		k, err := katalog.BuildExpanded(kfg, m.m)
 		if err != nil {

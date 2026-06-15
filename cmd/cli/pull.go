@@ -162,17 +162,21 @@ func pullFromFile(cmd *cobra.Command, filePath string, refresh bool) error {
 			continue
 		}
 		if ref.IsCached() && !refresh {
+			cacheDir, _ := ref.CachePath()
 			fmt.Printf("  %s Already cached: %s\n", successMark(), ref.ShortName())
+			pullMotifDeps(cacheDir)
 			continue
 		}
 		fmt.Printf("Pulling %s\n  → %s\n", ref.ShortName(), ref.String())
 		spinRef := StartSpinner("Downloading...")
-		if _, err := client.Pull(cmd.Context(), ref, refresh); err != nil {
+		cacheDir, err := client.Pull(cmd.Context(), ref, refresh)
+		if err != nil {
 			spinRef.Failure()
 			errs = append(errs, err.Error())
 		} else {
 			spinRef.Stop()
 			fmt.Printf("  %s %s\n", successMark(), ref.ShortName())
+			pullMotifDeps(cacheDir)
 		}
 	}
 
