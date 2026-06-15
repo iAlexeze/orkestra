@@ -149,6 +149,36 @@ func (r *Resolver) resolveResourceRequirements(src *orktypes.ResourceRequirement
 	return &out, nil
 }
 
+func (r *Resolver) resolveProbeConfig(src *orktypes.ProbeConfig) (*orktypes.ProbeConfig, error) {
+	if src == nil {
+		return nil, nil
+	}
+	out := *src
+	var err error
+	if out.Path, err = r.Resolve(src.Path); err != nil {
+		return nil, fmt.Errorf("probe.path: %w", err)
+	}
+	return &out, nil
+}
+
+func (r *Resolver) resolveProbes(src *orktypes.ProbesConfig) (*orktypes.ProbesConfig, error) {
+	if src == nil {
+		return nil, nil
+	}
+	out := &orktypes.ProbesConfig{}
+	var err error
+	if out.Startup, err = r.resolveProbeConfig(src.Startup); err != nil {
+		return nil, fmt.Errorf("probes.startup: %w", err)
+	}
+	if out.Liveness, err = r.resolveProbeConfig(src.Liveness); err != nil {
+		return nil, fmt.Errorf("probes.liveness: %w", err)
+	}
+	if out.Readiness, err = r.resolveProbeConfig(src.Readiness); err != nil {
+		return nil, fmt.Errorf("probes.readiness: %w", err)
+	}
+	return out, nil
+}
+
 // ResolvePodTemplate resolves all template expressions in a PodTemplateSource.
 // Returns a new PodTemplateSource with all expressions evaluated — safe to pass
 // directly to pods.Resolve().
@@ -160,11 +190,13 @@ func (r *Resolver) resolveResourceRequirements(src *orktypes.ResourceRequirement
 func (r *Resolver) ResolvePodTemplate(src orktypes.PodTemplateSource) (orktypes.PodTemplateSource, error) {
 	resolved := orktypes.PodTemplateSource{
 		Version: src.Version,
-		Probes:  src.Probes, // static — passed through
 	}
 
 	var err error
 
+	if resolved.Probes, err = r.resolveProbes(src.Probes); err != nil {
+		return resolved, fmt.Errorf("pod.probes: %w", err)
+	}
 	if resolved.Resources, err = r.resolveResourceRequirements(src.Resources); err != nil {
 		return resolved, fmt.Errorf("pod.resources: %w", err)
 	}
@@ -219,11 +251,13 @@ func (r *Resolver) ResolvePodTemplate(src orktypes.PodTemplateSource) (orktypes.
 func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSource) (orktypes.DeploymentTemplateSource, error) {
 	resolved := orktypes.DeploymentTemplateSource{
 		Version: src.Version,
-		Probes:  src.Probes, // static — passed through
 	}
 
 	var err error
 
+	if resolved.Probes, err = r.resolveProbes(src.Probes); err != nil {
+		return resolved, fmt.Errorf("deployment.probes: %w", err)
+	}
 	if resolved.Resources, err = r.resolveResourceRequirements(src.Resources); err != nil {
 		return resolved, fmt.Errorf("deployment.resources: %w", err)
 	}
@@ -339,10 +373,13 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSource) (orktypes.ReplicaSetTemplateSource, error) {
 	resolved := orktypes.ReplicaSetTemplateSource{
 		Version: src.Version,
-		Probes:  src.Probes, // static — passed through
 	}
 
 	var err error
+
+	if resolved.Probes, err = r.resolveProbes(src.Probes); err != nil {
+		return resolved, fmt.Errorf("replicaset.probes: %w", err)
+	}
 
 	if resolved.Resources, err = r.resolveResourceRequirements(src.Resources); err != nil {
 		return resolved, fmt.Errorf("replicaset.resources: %w", err)
@@ -1156,11 +1193,13 @@ func (r *Resolver) ResolvePDBTemplate(src orktypes.PDBTemplateSource) (orktypes.
 func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSource) (orktypes.StatefulSetTemplateSource, error) {
 	resolved := orktypes.StatefulSetTemplateSource{
 		Version: src.Version,
-		Probes:  src.Probes, // static — passed through
 	}
 
 	var err error
 
+	if resolved.Probes, err = r.resolveProbes(src.Probes); err != nil {
+		return resolved, fmt.Errorf("statefulset.probes: %w", err)
+	}
 	if resolved.Resources, err = r.resolveResourceRequirements(src.Resources); err != nil {
 		return resolved, fmt.Errorf("statefulset.resources: %w", err)
 	}
