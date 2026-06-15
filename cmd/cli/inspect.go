@@ -56,13 +56,23 @@ var inspectCmd = &cobra.Command{
 				versionWord = "version"
 			}
 			fmt.Printf("\n%s  (%d %s)\n\n", bold(name), len(versions), versionWord)
+			const (
+				tagW = 12
+				simW = 27
+			)
+			if !inspectMotif {
+				fmt.Printf("  %s  %s  %s\n",
+					gray(fmt.Sprintf("%-*s", tagW, "VERSION")),
+					padRight(gray("SIMULATE"), simW),
+					gray("E2E"))
+			}
 			for i, v := range versions {
 				latest := ""
 				if i == 0 {
 					latest = "  ← latest"
 				}
 				if inspectMotif {
-					fmt.Printf("  %-12s%s\n", v.Tag, latest)
+					fmt.Printf("  %-*s%s\n", tagW, v.Tag, latest)
 					continue
 				}
 				var simCol, e2eCol string
@@ -80,7 +90,7 @@ var inspectCmd = &cobra.Command{
 						simCol = simulateNoAssertion()
 					}
 				} else {
-					simCol = gray("- Simulate")
+					simCol = gray("- Not verified")
 				}
 				if v.Meta.E2E != nil {
 					switch v.Meta.E2E.Status {
@@ -96,7 +106,7 @@ var inspectCmd = &cobra.Command{
 				} else {
 					e2eCol = e2eNotVerified()
 				}
-				fmt.Printf("  %-12s  %-35s  %-35s%s\n", v.Tag, simCol, e2eCol, latest)
+				fmt.Printf("  %-*s  %s  %s%s\n", tagW, v.Tag, padRight(simCol, simW), e2eCol, latest)
 			}
 			fmt.Println()
 			return nil
