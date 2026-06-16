@@ -622,6 +622,30 @@ func nameOrFallback(name, fallback string) string {
 	return fmt.Sprintf("<%s>", fallback)
 }
 
+// ── printTypedOperatorHint ────────────────────────────────────────────────────
+
+// printTypedBuildSteps prints the build steps for a custom runtime.
+// hasMakefile=true shows the make path; false shows ork generate + go build.
+func printTypedBuildSteps(hasMakefile bool) {
+	if hasMakefile {
+		fmt.Printf("    make registry && make build\n")
+	} else {
+		fmt.Printf("    ork generate registry\n")
+		fmt.Printf("    go build .\n")
+	}
+}
+
+// printTypedOperatorHint is called when a registry-sourced typed operator fails
+// validation or simulate. Tells the user to pull the pattern, build the custom
+// runtime, then re-run the same command.
+func printTypedOperatorHint(err *katalog.TypedOperatorError, command string) {
+	fmt.Printf("\n%s  This operator is typed — requires a custom runtime.\n\n", yellow("⚠"))
+	fmt.Printf("  Pull and build, then re-run:\n")
+	fmt.Printf("    ork pull %s -o .\n", err.Ref)
+	printTypedBuildSteps(false) // Makefile presence unknown until pulled
+	fmt.Printf("    %s\n\n", command)
+}
+
 // ── crdModeLabel ──────────────────────────────────────────────────────────────
 
 func crdModeLabel(crd orktypes.CRDEntry) string {

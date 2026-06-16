@@ -82,6 +82,7 @@ var pullCmd = &cobra.Command{
 
 		if !isMotif {
 			pullMotifDeps(cacheDir)
+			notifyTypedPull(cacheDir)
 		}
 		return nil
 	},
@@ -93,6 +94,16 @@ func init() {
 	pullCmd.Flags().StringP("file", "f", "", "Pull all OCI imports from a katalog or komposer file")
 	pullCmd.Flags().BoolP("motif", "m", false, "Resolve as a motif (uses ORK_MOTIFS_REGISTRY)")
 	rootCmd.AddCommand(pullCmd)
+}
+
+// notifyTypedPull prints a build note when the pulled artifact is a typed operator.
+func notifyTypedPull(cacheDir string) {
+	if _, err := os.Stat(filepath.Join(cacheDir, registry.FileGoMod)); err != nil {
+		return
+	}
+	_, hasMakefile := os.Stat(filepath.Join(cacheDir, registry.FileMakefile))
+	fmt.Printf("  ↳ Typed operator — requires a custom runtime\n")
+	printTypedBuildSteps(hasMakefile == nil)
 }
 
 // pullMotifDeps reads the katalog.yaml in cacheDir and pulls any OCI motif

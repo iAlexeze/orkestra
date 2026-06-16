@@ -3,6 +3,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -96,6 +97,10 @@ Examples:
 
 		k, err := katalog.BuildExpanded(kfg, m.m)
 		if err != nil {
+			var typedErr *katalog.TypedOperatorError
+			if errors.As(err, &typedErr) {
+				printTypedOperatorHint(typedErr, "ork validate")
+			}
 			return err
 		}
 		entries := k.EnabledCRDs()

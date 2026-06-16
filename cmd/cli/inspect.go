@@ -38,20 +38,6 @@ var inspectCmd = &cobra.Command{
 			return fmt.Errorf("initializing client: %w", err)
 		}
 
-		info, err := client.Info(cmd.Context(), ref)
-		if err != nil {
-			errStr := err.Error()
-			if strings.Contains(errStr, "401") || strings.Contains(errStr, "unauthorized") {
-				hint := fmt.Sprintf("\n\nhint: authenticate first:\n  docker login %s", ref.Registry)
-				if !inspectMotif {
-					hint += "\nhint: if this is a motif, re-run with --motif"
-				}
-				return fmt.Errorf("fetching info: %w%s", err, hint)
-			}
-			return fmt.Errorf("fetching info: %w", err)
-		}
-		m := info.Meta
-
 		if versionsFlag, _ := cmd.Flags().GetBool("versions"); versionsFlag {
 			spin := StartSpinner("Fetching version history...")
 			versions, err := client.ListVersions(cmd.Context(), ref, 10)
@@ -87,7 +73,7 @@ var inspectCmd = &cobra.Command{
 					latest = "  ← latest"
 				}
 				if v.Meta.Deprecated != nil {
-					deprecated = yellow("⚠")
+					deprecated = yellow(" ⚠ ") + v.Meta.Deprecated.Message
 				}
 				if inspectMotif {
 					fmt.Printf("  %-*s%s\n", tagW, v.Tag, latest)
@@ -124,11 +110,25 @@ var inspectCmd = &cobra.Command{
 				} else {
 					e2eCol = e2eNotVerified()
 				}
-				fmt.Printf("  %-*s  %s  %s%s\n", tagW, v.Tag, padRight(simCol, simW), e2eCol, deprecated, latest)
+				fmt.Printf("  %-*s  %s  %s%s%s\n", tagW, v.Tag, padRight(simCol, simW), e2eCol, latest, deprecated)
 			}
 			fmt.Println()
 			return nil
 		}
+
+		info, err := client.Info(cmd.Context(), ref)
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, "401") || strings.Contains(errStr, "unauthorized") {
+				hint := fmt.Sprintf("\n\nhint: authenticate first:\n  docker login %s", ref.Registry)
+				if !inspectMotif {
+					hint += "\nhint: if this is a motif, re-run with --motif"
+				}
+				return fmt.Errorf("fetching info: %w%s", err, hint)
+			}
+			return fmt.Errorf("fetching info: %w", err)
+		}
+		m := info.Meta
 
 		// --view: skip the metadata block, just fetch and print requested files.
 		viewArg, _ := cmd.Flags().GetString("view")
@@ -260,6 +260,9 @@ var inspectCmd = &cobra.Command{
 				green("✓ "+strings.Join(parts, ", ")),
 				yellow("requires custom runtime image"),
 			)
+		}
+		if m.RuntimeVersion != "" {
+			fmt.Printf("  Runtime:     %s\n", m.RuntimeVersion)
 		}
 		if len(info.Files) > 0 {
 			fmt.Printf("\n  Files:\n")

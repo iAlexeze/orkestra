@@ -3,6 +3,7 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/registry"
+	"github.com/orkspace/orkestra/pkg/version"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -245,6 +247,13 @@ var pushCmd = &cobra.Command{
 			typedMeta = detectTypedKatalog(filepath.Join(dir, registry.FileKatalog))
 		}
 
+		runtimeVersion := version.Short()
+		if typedMeta != nil {
+			if v := extractRuntimeVersionFromGoMod(dir); v != "" {
+				runtimeVersion = v
+			}
+		}
+
 		client, err := registry.NewClient()
 		if err != nil {
 			return fmt.Errorf("initializing client: %w", err)
@@ -255,7 +264,7 @@ var pushCmd = &cobra.Command{
 			spin.Update(fmt.Sprintf("Uploading %s (%s)", file, formatSize(size)))
 		}
 
-		digest, err := client.Push(cmd.Context(), ref, dir, e2eMeta, simulateMeta, typedMeta, progress)
+		digest, err := client.Push(cmd.Context(), ref, dir, e2eMeta, simulateMeta, typedMeta, runtimeVersion, progress)
 		if err != nil {
 			spin.Failure()
 			return fmt.Errorf("push failed: %w", err)
@@ -272,7 +281,7 @@ var pushCmd = &cobra.Command{
 				if err == nil {
 					fmt.Printf("\nAlso pushing %s to %s...\n", registry.FileMotif, motifRef.Registry)
 					spinMotif := StartSpinner(fmt.Sprintf("Pushing %s...", registry.FileMotif))
-					if mDigest, err := client.Push(cmd.Context(), motifRef, dir, nil, nil, nil, nil); err != nil {
+					if mDigest, err := client.Push(cmd.Context(), motifRef, dir, nil, nil, nil, version.Short(), nil); err != nil {
 						spinMotif.Failure()
 						fmt.Fprintf(os.Stderr, "warning: motif push failed: %v\n", err)
 					} else {
@@ -310,6 +319,36 @@ func init() {
 
 // detectTypedKatalog parses a katalog.yaml and returns a PatternTyped if any
 // CRD declares customHooks or customConstructor. Returns nil on parse error.
+// extractRuntimeVersionFromGoMod scans go.mod for the orkestra runtime dependency
+// and returns its version (e.g. "v0.7.6"). Returns "" if go.mod is absent or the
+// dependency is not declared.
+func extractRuntimeVersionFromGoMod(dir string) string {
+	f, err := os.Open(filepath.Join(dir, registry.FileGoMod))
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		// inline form:  require github.com/orkspace/orkestra vX.Y.Z
+		if strings.HasPrefix(line, "require github.com/orkspace/orkestra ") {
+			parts := strings.Fields(line)
+			if len(parts) >= 3 {
+				return parts[2]
+			}
+		}
+		// block form (inside require (...)):  github.com/orkspace/orkestra vX.Y.Z
+		if strings.HasPrefix(line, "github.com/orkspace/orkestra ") {
+			parts := strings.Fields(line)
+			if len(parts) >= 2 {
+				return parts[1]
+			}
+		}
+	}
+	return ""
+}
+
 func detectTypedKatalog(katalogPath string) *registry.PatternTyped {
 	k, err := katalog.ParseFile(katalogPath)
 	if err != nil {
