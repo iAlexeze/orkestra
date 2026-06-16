@@ -196,6 +196,11 @@ type CRDEntry struct {
 	// watch all objects permitted by LabelSelector and namespace restrictions.
 	FieldSelector SelectorMap `yaml:"fieldSelector,omitempty"`
 
+	// RegistryRef is the OCI or Git reference this CRD entry was loaded from.
+	// Set by the merger after loadRegistrySource resolves the pattern.
+	// Empty for CRDs loaded from local file sources.
+	RegistryRef string `yaml:"-" json:"-"`
+
 	// IsBuiltIn is set to true when this CRD entry was enriched from the
 	// built-in Kubernetes resource registry. Used for ork validate output
 	// and informational logging only — does not affect runtime behavior.

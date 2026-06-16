@@ -14,7 +14,25 @@ my-operator/
   crd.yaml       ← CRD schema                   (required)
   README.md      ← human documentation          (optional)
   cr.yaml        ← example CR for the CRD       (optional)
+  e2e.yaml       ← E2E test definition          (optional)
+  simulate.yaml  ← simulate gate spec           (optional)
 ```
+
+Typed operators (those declaring `operatorBox.hooks` or `operatorBox.constructor`)
+additionally include the Go build files so a consumer can rebuild the custom runtime image:
+
+```
+my-typed-operator/
+  katalog.yaml   ← operator declaration         (required)
+  crd.yaml       ← CRD schema                   (required)
+  go.mod         ← Go module — declares orkestra runtime version  (typed only)
+  go.sum         ← Go checksum database          (typed only)
+  Makefile       ← build targets (docker-build, push, etc.)       (typed only)
+```
+
+These files are included automatically when present — no extra flags needed on `ork push`.
+`ork pull` prints `↳ Typed operator — go.mod, Makefile included` and warns when the
+pattern's declared runtime version does not match the local `ork` binary.
 
 ### Metadata derivation
 
@@ -136,14 +154,15 @@ ORK_MOTIFS_REGISTRY=ghcr.io/myorg/motifs ork push redis:v7.2.0 ./redis/
 ### Adding a new file type to an existing kind
 
 1. Add a `FileXxx` constant to `constant.go`.
-2. Add a case to `mediaTypeForArtifactFile` in `artifact.go`.
-3. Add the filename to `OptionalFiles` (or `RequiredFiles`) in the relevant `ArtifactSpec` in `artifactSpecs`.
+2. Add a case to `mediaTypeForPatternFile` in `pattern.go`.
+3. Add the filename to `OptionalFiles` (or `RequiredFiles`) in the relevant `PatternSpec` in `patternSpecs`.
+4. Add the filename to `knownPatternFiles` in `pkg/merger/registry.go` so Git-sourced pulls attempt to fetch it.
 
-The file will be pushed as a layer with the appropriate media type and an `org.opencontainers.image.title` annotation set to the filename. ORAS uses this annotation on pull to write the file to the correct path in the cache directory.
+The file is pushed as an OCI layer with the appropriate media type and an `org.opencontainers.image.title` annotation set to the filename. ORAS uses this annotation on pull to write the file to the correct path in the cache directory.
 
-### Adding a new artifact kind
+### Adding a new pattern kind
 
-Add one entry to `artifactSpecs` in `artifact.go`:
+Add one entry to `patternSpecs` in `pattern.go`:
 
 ```go
 KindFoo: {
@@ -155,4 +174,4 @@ KindFoo: {
 },
 ```
 
-No other changes are required. `DetectKind`, `ValidateArtifactDirectory`, `LoadArtifactMeta`, and the push/pull pipeline all work from `artifactSpecs` automatically.
+No other changes are required. `DetectKind`, `ValidatePatternDirectory`, `LoadPatternMeta`, and the push/pull pipeline all work from `patternSpecs` automatically.

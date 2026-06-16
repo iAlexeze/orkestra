@@ -17,17 +17,18 @@ type PatternSpec struct {
 // PatternMeta holds metadata for an pattern — read from its primary YAML on
 // push, and reconstructed from OCI annotations on info/list.
 type PatternMeta struct {
-	Kind        PatternKind
-	Name        string
-	Version     string
-	Description string
-	Author      string
-	License     string
-	Tags        []string
-	E2E         *PatternE2E        // populated at push time from running ork e2e; nil when absent
-	Simulate    *PatternSimulate   // populated at push time from running simulate gate; nil when absent
-	Typed       *PatternTyped      // populated at push time from inspecting katalog CRDs; nil for motifs or non-typed katalogs
-	Deprecated  *PatternDeprecated // populated from metadata.deprecation in the source YAML; nil when absent
+	Kind           PatternKind
+	Name           string
+	Version        string
+	Description    string
+	Author         string
+	License        string
+	Tags           []string
+	RuntimeVersion string             // ork version (declarative) or go.mod orkestra version (typed)
+	E2E            *PatternE2E        // populated at push time from running ork e2e; nil when absent
+	Simulate       *PatternSimulate   // populated at push time from running simulate gate; nil when absent
+	Typed          *PatternTyped      // populated at push time from inspecting katalog CRDs; nil for motifs or non-typed katalogs
+	Deprecated     *PatternDeprecated // populated from metadata.deprecation in the source YAML; nil when absent
 }
 
 // PatternTyped carries the typed-operator annotation flags for a katalog.

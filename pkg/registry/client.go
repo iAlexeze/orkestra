@@ -57,7 +57,7 @@ func NewClient() (*Client, error) {
 // e2eMeta and simulateMeta are optional; when non-nil their fields are embedded
 // as OCI annotations on the published artifact.
 // typedMeta is optional; when non-nil it is written as typed-operator annotations.
-func (c *Client) Push(ctx context.Context, ref *Ref, dir string, e2eMeta *PatternE2E, simulateMeta *PatternSimulate, typedMeta *PatternTyped, progress func(file string, size int64)) (string, error) {
+func (c *Client) Push(ctx context.Context, ref *Ref, dir string, e2eMeta *PatternE2E, simulateMeta *PatternSimulate, typedMeta *PatternTyped, runtimeVersion string, progress func(file string, size int64)) (string, error) {
 	patternKind, spec, files, err := ValidatePatternDirectory(dir)
 	if err != nil {
 		return "", fmt.Errorf("validation failed: %w", err)
@@ -76,6 +76,9 @@ func (c *Client) Push(ctx context.Context, ref *Ref, dir string, e2eMeta *Patter
 	}
 	if typedMeta != nil {
 		meta.Typed = typedMeta
+	}
+	if runtimeVersion != "" {
+		meta.RuntimeVersion = runtimeVersion
 	}
 
 	store := memory.New()
@@ -543,6 +546,9 @@ func artifactMetaToAnnotations(meta *PatternMeta, ref *Ref) map[string]string {
 			ann["io.orkestra.katalog.deprecated.message"] = meta.Deprecated.Message
 		}
 	}
+	if meta.RuntimeVersion != "" {
+		ann["io.orkestra.katalog.runtime_version"] = meta.RuntimeVersion
+	}
 	return ann
 }
 
@@ -611,5 +617,6 @@ func annotationsToMeta(ann map[string]string) *PatternMeta {
 			Message:    ann["io.orkestra.katalog.deprecated.message"],
 		}
 	}
+	meta.RuntimeVersion = ann["io.orkestra.katalog.runtime_version"]
 	return meta
 }
