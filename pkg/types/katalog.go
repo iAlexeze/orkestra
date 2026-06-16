@@ -137,6 +137,33 @@ type KatalogDeprecation struct {
 	Message    string `yaml:"message,omitempty"    json:"message,omitempty"`
 }
 
+// IsDeprecated indicates that this katalog is deprecated and should surface
+// warnings in ork validate, ork inspect, and registry consumers.
+func (d *KatalogDeprecation) IsDeprecated() bool {
+	if d == nil {
+		return false
+	}
+	return d.MigratedTo != "" || d.Message != ""
+}
+
+// MigrationTarget returns the value of the MigratedTo field.
+// If the deprecation block is nil or empty, it returns an empty string.
+func (d *KatalogDeprecation) MigrationTarget() string {
+	if d == nil {
+		return ""
+	}
+	return d.MigratedTo
+}
+
+// Message returns the deprecation message.
+// If the deprecation block is nil or empty, it returns an empty string.
+func (d *KatalogDeprecation) MigrationMessage() string {
+	if d == nil {
+		return ""
+	}
+	return d.Message
+}
+
 // KatalogSources declares where to load CRD definitions from.
 // Sources are loaded before spec.crds — inline CRDs are merged last
 // and win on name conflict (allowing local overrides of remote definitions).

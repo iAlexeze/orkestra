@@ -18,6 +18,10 @@ func e2eSkipped() string {
 	return yellow("⊘ Skipped") + " (pushed with --force or --no-e2e)"
 }
 
+func skippedShort() string {
+	return yellow("⊘ Skipped")
+}
+
 func e2eNotVerified() string {
 	return gray("- Not verified")
 }
@@ -36,6 +40,10 @@ func simulateSkipped() string {
 
 func simulateNoAssertion() string {
 	return yellow("⚠ No assertions") + " (add expect: to simulate.yaml to enforce behavior)"
+}
+
+func noAssertion() string {
+	return yellow("⚠ No assertions")
 }
 
 // Diff change icons used in simulate output.

@@ -38,6 +38,20 @@ var inspectCmd = &cobra.Command{
 			return fmt.Errorf("initializing client: %w", err)
 		}
 
+		info, err := client.Info(cmd.Context(), ref)
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, "401") || strings.Contains(errStr, "unauthorized") {
+				hint := fmt.Sprintf("\n\nhint: authenticate first:\n  docker login %s", ref.Registry)
+				if !inspectMotif {
+					hint += "\nhint: if this is a motif, re-run with --motif"
+				}
+				return fmt.Errorf("fetching info: %w%s", err, hint)
+			}
+			return fmt.Errorf("fetching info: %w", err)
+		}
+		m := info.Meta
+
 		if versionsFlag, _ := cmd.Flags().GetBool("versions"); versionsFlag {
 			spin := StartSpinner("Fetching version history...")
 			versions, err := client.ListVersions(cmd.Context(), ref, 10)
@@ -68,8 +82,12 @@ var inspectCmd = &cobra.Command{
 			}
 			for i, v := range versions {
 				latest := ""
+				deprecated := ""
 				if i == 0 {
 					latest = "  ← latest"
+				}
+				if v.Meta.Deprecated != nil {
+					deprecated = yellow("⚠")
 				}
 				if inspectMotif {
 					fmt.Printf("  %-*s%s\n", tagW, v.Tag, latest)
@@ -85,9 +103,9 @@ var inspectCmd = &cobra.Command{
 						}
 						simCol = simulateVerified(suffix)
 					case "skipped":
-						simCol = simulateSkipped()
+						simCol = skippedShort()
 					case "no-assertion":
-						simCol = simulateNoAssertion()
+						simCol = noAssertion()
 					}
 				} else {
 					simCol = gray("- Not verified")
@@ -101,28 +119,15 @@ var inspectCmd = &cobra.Command{
 						}
 						e2eCol = e2eVerified(suffix)
 					case "skipped":
-						e2eCol = e2eSkipped()
+						e2eCol = skippedShort()
 					}
 				} else {
 					e2eCol = e2eNotVerified()
 				}
-				fmt.Printf("  %-*s  %s  %s%s\n", tagW, v.Tag, padRight(simCol, simW), e2eCol, latest)
+				fmt.Printf("  %-*s  %s  %s%s\n", tagW, v.Tag, padRight(simCol, simW), e2eCol, deprecated, latest)
 			}
 			fmt.Println()
 			return nil
-		}
-
-		info, err := client.Info(cmd.Context(), ref)
-		if err != nil {
-			errStr := err.Error()
-			if strings.Contains(errStr, "401") || strings.Contains(errStr, "unauthorized") {
-				hint := fmt.Sprintf("\n\nhint: authenticate first:\n  docker login %s", ref.Registry)
-				if !inspectMotif {
-					hint += "\nhint: if this is a motif, re-run with --motif"
-				}
-				return fmt.Errorf("fetching info: %w%s", err, hint)
-			}
-			return fmt.Errorf("fetching info: %w", err)
 		}
 
 		// --view: skip the metadata block, just fetch and print requested files.
@@ -152,7 +157,6 @@ var inspectCmd = &cobra.Command{
 			return nil
 		}
 
-		m := info.Meta
 		if m.Deprecated != nil {
 			fmt.Printf("\n%s  This pattern is deprecated.\n", yellow("⚠"))
 			if m.Deprecated.MigratedTo != "" {

@@ -132,6 +132,16 @@ Examples:
 		builtIn := 0
 		custom := 0
 
+		if k.IsDeprecated() {
+			fmt.Printf("%s  This pattern %s is deprecated.\n", bold(k.Metadata().Name), yellow("⚠"))
+			if target := k.MigrationTarget(); target != "" {
+				fmt.Printf("  Migrate to:  %s\n", bold(target))
+			}
+			if msg := k.MigrationMessage(); msg != "" {
+				fmt.Printf("  Message:     %s\n", msg)
+			}
+		}
+
 		// Print each CRD entry with enrichment info
 		for _, entry := range sortedEntries {
 			printCRDValidationLine(entry, k.IsDeletionProtectionEnabled(), k.IsStrictModeEnabled())
