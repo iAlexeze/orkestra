@@ -51,7 +51,7 @@ No code changes are needed for examples within an existing pack.
 
 Adding a new pack (a new top-level directory under `examples/`) requires changes in four places. Miss any of them and CI fails.
 
-See [Publishing a new pack](../publishing-a-new-pack.md) for the exact checklist.
+See [Publishing a new pack](publishing-a-new-pack.md) for the exact checklist.
 
 ---
 

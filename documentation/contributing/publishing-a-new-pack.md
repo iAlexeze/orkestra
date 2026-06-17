@@ -41,14 +41,14 @@ examples/new-pack/
 Add the new pack name to the `//go:embed` directive. The current line is:
 
 ```go
-//go:embed beginner intermediate advanced security use-cases developer Makefile setup-kind.sh load.sh
+//go:embed beginner intermediate advanced security use-cases registry-guide
 var FS embed.FS
 ```
 
-Add your pack name alongside the others. Keep `Makefile`, `setup-kind.sh`, and `load.sh` — they are not packs but must stay embedded:
+Add your pack name alongside the others:
 
 ```go
-//go:embed beginner intermediate advanced security use-cases developer new-pack Makefile setup-kind.sh load.sh
+//go:embed beginner intermediate advanced security use-cases registry-guide new-pack
 var FS embed.FS
 ```
 
