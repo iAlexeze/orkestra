@@ -5,7 +5,7 @@
 A structured, zero-to-production walkthrough of the Orkestra registry — 13 self-contained steps from consuming a published pattern on day one to automated CI publishing with GitHub Actions. Covers declarative operators, typed Go operators with hooks, multi-katalog Komposers, CRD API evolution, deprecation workflows, and the full `ork push` gate pipeline.
 
 ```bash
-ork init --pack registry-guide --example 10-hooks-katalog
+ork init --pack registry-guide
 ```
 
 ### CLI UX polish

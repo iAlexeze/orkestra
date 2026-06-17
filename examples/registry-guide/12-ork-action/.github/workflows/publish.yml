@@ -13,6 +13,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set lowercase owner
+        run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Publish to registry
         uses: orkspace/orkestra-action@v1
         with:
@@ -20,7 +23,7 @@ jobs:
           validate: "true"
           simulate: "true"
           registry-push: "webapp-operator:${{ github.ref_name }} ."
-          registry-url: "ghcr.io/${{ github.repository_owner }}/katalogs"
+          registry-url: "ghcr.io/${{ env.OWNER }}/katalogs"
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
           working-directory: ./webapp-operator

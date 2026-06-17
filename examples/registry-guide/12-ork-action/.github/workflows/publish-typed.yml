@@ -18,6 +18,9 @@ jobs:
         with:
           go-version-file: ./database-operator/go.mod
 
+      - name: Set lowercase owner
+        run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       # 1. Generate pkg/typeregistry/zz_generated_typeregistry.go from katalog.yaml.
       #    Uses the standard ork installed by the action — only needs ork generate registry.
       - name: Generate runtime registry
@@ -61,7 +64,7 @@ jobs:
         with:
           context: ./database-operator
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/database-operator:${{ github.ref_name }}
+          tags: ghcr.io/${{ env.OWNER }}/database-operator:${{ github.ref_name }}
 
       # 4. Same publish step as the declarative workflow — validate, simulate, push.
       #    The custom ork from step 2 is in PATH; the action uses it automatically.
@@ -73,7 +76,7 @@ jobs:
           validate: "true"
           simulate: "true"
           registry-push: "database-operator:${{ github.ref_name }} ."
-          registry-url: "ghcr.io/${{ github.repository_owner }}/katalogs"
+          registry-url: "ghcr.io/${{ env.OWNER }}/katalogs"
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
           working-directory: ./database-operator
