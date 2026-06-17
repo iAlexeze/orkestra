@@ -319,6 +319,14 @@ func init() {
 	pushCmd.Flags().StringVar(&pushE2ECluster, "cluster", "", "Reuse an existing kind cluster context for the e2e gate (skips cluster creation)")
 	pushCmd.Flags().BoolVar(&pushE2EUseCurrent, "use-current", false, "Use the current kubeconfig context for the e2e gate (skips cluster creation)")
 	rootCmd.AddCommand(pushCmd)
+
+	// Shadow global flags
+	pushCmd.Flags().Bool("debug", false, "")
+	pushCmd.Flags().String("kubeconfig", "", "")
+	pushCmd.Flags().Bool("verbose", false, "")
+	pushCmd.Flags().MarkHidden("debug")
+	pushCmd.Flags().MarkHidden("kubeconfig")
+	pushCmd.Flags().MarkHidden("verbose")
 }
 
 // detectTypedKatalog parses a katalog.yaml and returns a PatternTyped if any

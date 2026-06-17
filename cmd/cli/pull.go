@@ -94,6 +94,14 @@ func init() {
 	pullCmd.Flags().StringP("file", "f", "", "Pull all OCI imports from a katalog or komposer file")
 	pullCmd.Flags().BoolP("motif", "m", false, "Resolve as a motif (uses ORK_MOTIFS_REGISTRY)")
 	rootCmd.AddCommand(pullCmd)
+
+	// Shadow global flags
+	pullCmd.Flags().Bool("debug", false, "")
+	pullCmd.Flags().String("kubeconfig", "", "")
+	pullCmd.Flags().Bool("verbose", false, "")
+	pullCmd.Flags().MarkHidden("debug")
+	pullCmd.Flags().MarkHidden("kubeconfig")
+	pullCmd.Flags().MarkHidden("verbose")
 }
 
 // notifyTypedPull prints a build note when the pulled artifact is a typed operator.

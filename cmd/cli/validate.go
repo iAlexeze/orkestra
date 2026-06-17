@@ -138,7 +138,7 @@ Examples:
 		custom := 0
 
 		if k.IsDeprecated() {
-			fmt.Printf("%s  This pattern %s is deprecated.\n", bold(k.Metadata().Name), yellow("⚠"))
+			fmt.Printf("%s  This pattern is deprecated.\n", yellow("⚠"))
 			if target := k.MigrationTarget(); target != "" {
 				fmt.Printf("  Migrate to:  %s\n", bold(target))
 			}

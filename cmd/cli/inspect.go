@@ -295,4 +295,12 @@ func init() {
 	inspectCmd.Flags().String("view", "", "Comma-separated list of files to print before pulling (e.g. katalog.yaml,cr.yaml)")
 	inspectCmd.Flags().Bool("versions", false, "List up to 10 tracked versions with simulate and E2E status")
 	rootCmd.AddCommand(inspectCmd)
+
+	// Shadow global flags
+	inspectCmd.Flags().Bool("debug", false, "")
+	inspectCmd.Flags().String("kubeconfig", "", "")
+	inspectCmd.Flags().Bool("verbose", false, "")
+	inspectCmd.Flags().MarkHidden("debug")
+	inspectCmd.Flags().MarkHidden("kubeconfig")
+	inspectCmd.Flags().MarkHidden("verbose")
 }
