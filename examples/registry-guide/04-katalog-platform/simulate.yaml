@@ -1,0 +1,24 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: platform-app-sim
+  description: >
+    Verify the compliant CR (image from allowed registry) creates Deployment + Service.
+
+spec:
+  katalog: ./katalog.yaml
+  cr: ./cr.yaml
+  cycles: 3
+
+  expect:
+    steady: true
+    noErrors: true
+    ops:
+      - cycle: 1
+        verb: create
+        resource: deployments
+        name: my-platform-app
+      - cycle: 1
+        verb: create
+        resource: services
+        name: my-platform-app-svc

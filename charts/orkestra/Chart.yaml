@@ -6,8 +6,8 @@ description: >-
   namespace protection with admission webhooks, and observe everything in the
   Control Center. Runtime and Gateway deploy independently.
 type: application
-version: 1.0.0
-appVersion: "v1.0.0"
+version: 1.7.6
+appVersion: "v0.7.6"
 
 keywords:
   - orkestra
@@ -86,49 +86,37 @@ annotations:
       description: Declarative end-to-end testing for Kubernetes operators
   artifacthub.io/changes: |
     - kind: added
-      description: "early access release — first public build of Orkestra v0.7.0"
+      description: "registry-guide pack — 13-step walkthrough from consuming a pattern to automated CI publishing with GitHub Actions"
     - kind: added
-      description: "e2e: wait: on import declarations, spec.customOperator, shared Orkestra across imports, ork e2e ./... discovery, --dry-run"
+      description: "ork push: --use-current and --cluster flags to reuse an existing cluster for the e2e gate"
     - kind: added
-      description: "advanced typed examples: 09-hooks, 10-constructor, 11-mixed-operator-pattern — now correctly embedded and extracted by ork init --pack advanced"
+      description: "ork push: RuntimeVersion read from go.mod for typed operators and recorded as OCI annotation"
     - kind: added
-      description: "ork init: restores go.mod and strips //go:build ignore from extracted typed example files"
-    - kind: fixed
-      description: "ork generate registry was always empty — enabledCRDs never seeded from merger; TypeRegistry iterated over nil"
-    - kind: fixed
-      description: "CustomHooksEnabled and ConstructorEnabled returned inverted logic (== nil instead of != nil)"
-    - kind: fixed
-      description: "crdFile, crFiles, setup.apply, and Komposer imports.files now resolve relative to the declaring file — ork run -f /abs/path works from any directory"
-    - kind: fixed
-      description: "go:embed skipped 09-hooks, 10-constructor, 11-mixed-operator-pattern — go.mod presence caused silent directory exclusion; fixed by renaming to go.mod.txt at embed time"
-    - kind: changed
-      description: "ork generate registry output: → / ✓ / ○ style; ensureMainGo only written when registry has content"
-    - kind: changed
-      description: "use-cases/full-stack-app: all six sub-katalogs switched to crdFile: — manual kubectl apply CRD pre-step eliminated"
+      description: "ork pull: warns on runtime version mismatch for typed operators"
     - kind: added
-      description: "deployments/public/: six-cluster public demo — 6 runtimes, 75 CRDs, 1 Control Center"
+      description: "ork inspect: shows Typed and Runtime fields for typed patterns"
     - kind: added
-      description: "webhook housekeeper: namespace labels and CRD conversion caBundle now reconciled continuously — previously applied once at startup, now watched and restored on drift"
+      description: "ork validate / ork simulate: TypedOperatorError with ork inspect hint for registry-sourced typed operators"
     - kind: added
-      description: "schema docs: Katalog index.md landing page; 01-katalog.md renamed to 01-top-level.md; admonitions on all four kind pages (Motif, Katalog, Komposer, E2E)"
-    - kind: added
-      description: "blog: 04-why-i-built-this.md — origin story and naming etymology"
+      description: "dev server: /ready and /started health endpoints"
     - kind: fixed
-      description: "CRD health oscillation — LastReconcile() side effect and SetStarted() resync reset removed"
+      description: "probe path templates ({{ .spec.probePath }}) now resolve correctly in Deployment, ReplicaSet, StatefulSet, and Pod specs"
     - kind: fixed
-      description: "crdExists() now distinguishes transient network errors from genuine CRD absence"
+      description: "Deployment no longer triggers a no-op update every reconcile when an HTTP probe is configured (missing Scheme on HTTPGetAction)"
     - kind: fixed
-      description: "postStartRetryInterval restored from 3s (debug) to 90s with 5-minute capped backoff"
+      description: "Helm bundle deploy correctly routes CRDs to their declared metadata.namespace — each team sees their own namespace panel in the Control Center"
     - kind: fixed
-      description: "ClusterRole/ClusterRoleBinding names scoped to orkestra-<namespace> — no more last-write-wins collision"
+      description: "ork inspect --versions table columns align correctly when version strings are colorized"
     - kind: fixed
-      description: "Docker builds write to /tmp/ instead of ~/.orkestra/bin/ — dev CLI no longer overwritten"
+      description: "ork inspect --versions works without a version tag in the argument"
     - kind: fixed
-      description: "once: true documentation corrected — check-before-generate semantics, not drift suppression"
-    - kind: changed
-      description: "Memory baseline updated to 79 MB RSS — measured from a live 10-CRD runtime"
-    - kind: changed
-      description: "publication 03 (the-function-that-waited) moved to private docs — two publications ship for v1"
+      description: "deprecated pattern row aligns correctly in ork patterns — warning marker moved to its own column"
+    - kind: fixed
+      description: "deprecation message shown even when no migration target is set"
+    - kind: fixed
+      description: "Control Center version labels no longer double the v prefix"
+    - kind: fixed
+      description: "Control Center katalog panel shows namespace-level description when a namespace filter is active"
   artifacthub.io/crdsExamples: |
     - apiVersion: orkestra.orkspace.io/v1
       kind: Katalog

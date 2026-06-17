@@ -215,6 +215,7 @@ jobs:
             dist/examples_advanced_${{ github.ref_name }}.tar.gz
             dist/examples_use-cases_${{ github.ref_name }}.tar.gz
             dist/examples_security_${{ github.ref_name }}.tar.gz
+            dist/examples_registry-guide_${{ github.ref_name }}.tar.gz
           fail_on_unmatched_files: true
       
       - name: Upload checksums as artifact
