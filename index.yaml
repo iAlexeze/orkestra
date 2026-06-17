@@ -4,6 +4,226 @@ entries:
   - annotations:
       artifacthub.io/changes: |
         - kind: added
+          description: "registry-guide pack — 13-step walkthrough from consuming a pattern to automated CI publishing with GitHub Actions"
+        - kind: added
+          description: "ork push: --use-current and --cluster flags to reuse an existing cluster for the e2e gate"
+        - kind: added
+          description: "ork push: RuntimeVersion read from go.mod for typed operators and recorded as OCI annotation"
+        - kind: added
+          description: "ork pull: warns on runtime version mismatch for typed operators"
+        - kind: added
+          description: "ork inspect: shows Typed and Runtime fields for typed patterns"
+        - kind: added
+          description: "ork validate / ork simulate: TypedOperatorError with ork inspect hint for registry-sourced typed operators"
+        - kind: added
+          description: "dev server: /ready and /started health endpoints"
+        - kind: fixed
+          description: "probe path templates ({{ .spec.probePath }}) now resolve correctly in Deployment, ReplicaSet, StatefulSet, and Pod specs"
+        - kind: fixed
+          description: "Deployment no longer triggers a no-op update every reconcile when an HTTP probe is configured (missing Scheme on HTTPGetAction)"
+        - kind: fixed
+          description: "Helm bundle deploy correctly routes CRDs to their declared metadata.namespace — each team sees their own namespace panel in the Control Center"
+        - kind: fixed
+          description: "ork inspect --versions table columns align correctly when version strings are colorized"
+        - kind: fixed
+          description: "ork inspect --versions works without a version tag in the argument"
+        - kind: fixed
+          description: "deprecated pattern row aligns correctly in ork patterns — warning marker moved to its own column"
+        - kind: fixed
+          description: "deprecation message shown even when no migration target is set"
+        - kind: fixed
+          description: "Control Center version labels no longer double the v prefix"
+        - kind: fixed
+          description: "Control Center katalog panel shows namespace-level description when a namespace filter is active"
+      artifacthub.io/crds: |
+        - kind: Katalog
+          version: v1
+          name: katalogs.orkestra.orkspace.io
+          displayName: Katalog
+          description: Declarative operator definition for one or more CRDs
+        - kind: Komposer
+          version: v1
+          name: komposers.orkestra.orkspace.io
+          displayName: Komposer
+          description: Compose multiple Katalogs from different sources
+        - kind: Motif
+          version: v1
+          name: motifs.orkestra.orkspace.io
+          displayName: Motif
+          description: A parameterized set of resource declarations. Write once, import from any Katalog.
+        - kind: E2E
+          version: v1
+          name: e2es.orkestra.orkspace.io
+          displayName: E2E
+          description: Declarative end-to-end testing for Kubernetes operators
+      artifacthub.io/crdsExamples: |
+        - apiVersion: orkestra.orkspace.io/v1
+          kind: Katalog
+          metadata:
+            name: hello-website
+          spec:
+            crds:
+              website:
+                crdFile: ./crd.yaml
+                crFiles:
+                  - ./cr.yaml
+                operatorBox:
+                  default: true
+                  onCreate:
+                    deployments:
+                      - name: "{{ .metadata.name }}"
+                        image: "{{ .spec.image }}"
+                        replicas: "{{ .spec.replicas }}"
+                        reconcile: true
+                    services:
+                      - name: "{{ .metadata.name }}-svc"
+                        port: "80"
+                        targetPort: "{{ .spec.port }}"
+                        reconcile: true
+        - apiVersion: orkestra.orkspace.io/v1
+          kind: Komposer
+          metadata:
+            name: platform
+          imports:
+            registry:
+              - url: ghcr.io/orkspace/patterns/postgres@v1.0.0
+                oci: true
+            files:
+              - ./website-katalog.yaml
+          spec:
+            crds:
+              postgres:
+                workers: 8
+                resync: 30s
+              website:
+                workers: 6
+                resync: 15s
+        - apiVersion: orkestra.orkspace.io/v1
+          kind: Motif
+          metadata:
+            name: postgres
+            version: v0.1.0
+            description: PostgreSQL StatefulSet with persistent storage and pgAdmin UI.
+            author: orkspace
+            license: Apache-2.0
+            tags:
+              - database
+              - statefulset
+          inputs:
+            - name: image
+              default: "postgres:latest"
+            - name: replicas
+              default: "1"
+            - name: volumeSize
+              default: "10Gi"
+          resources:
+            onCreate:
+              secrets:
+                - name: "{{ .metadata.name }}-creds"
+                  once: true
+                  data:
+                    password: "{{ randomAlphanumeric 16 }}"
+            statefulSets:
+              - name: "{{ .metadata.name }}-postgres"
+                image: "{{ .inputs.image }}"
+                replicas: "{{ .inputs.replicas }}"
+                volumeClaimTemplates:
+                  - name: data
+                    storageSize: "{{ .inputs.volumeSize }}"
+                    mountPath: /var/lib/postgresql/data
+            services:
+              - name: "{{ .metadata.name }}-postgres"
+                port: 5432
+          status:
+            fields:
+              - path: postgresReady
+                value: "{{ allReplicasReady .children.statefulset }}"
+              - path: connectionString
+                value: "postgresql://{{ .metadata.name }}-postgres.{{ .metadata.namespace }}.svc.cluster.local:5432"
+        - apiVersion: orkestra.orkspace.io/v1
+          kind: E2E
+          metadata:
+            name: hello-website-e2e
+          spec:
+            katalog: ./katalog.yaml
+            crd: ./crd.yaml
+            cr: ./cr.yaml
+            cluster:
+              provider: kind
+              name: ork-e2e
+            expect:
+              - name: Deployment created
+                after: cr-applied
+                timeout: 60s
+                resources:
+                  - kind: Deployment
+                    namespace: default
+                    ready: true
+      artifacthub.io/images: |
+        - name: runtime
+          image: ghcr.io/orkspace/orkestra
+        - name: gateway
+          image: ghcr.io/orkspace/orkestra-gateway
+        - name: control-center
+          image: ghcr.io/orkspace/orkestra-cc
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://orkestra.sh
+        - name: Why Orkestra?
+          url: https://orkestra.sh/blog/why-orkestra
+        - name: Control Center Dashboard
+          url: https://cc.orkestra.sh
+        - name: Orkestra Registry
+          url: https://orkestra.sh/docs/reference/orkestra-registry
+      artifacthub.io/operator: "true"
+      artifacthub.io/operatorCapabilities: Deep Insights
+      artifacthub.io/screenshots: |
+        - title: Orkestra Control Center
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-center-landing.png
+        - title: CRD Health View
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-panel-website.png
+        - title: Metrics Overview
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
+    apiVersion: v2
+    appVersion: 0.7.6
+    created: "2026-06-17T04:47:38.738163706Z"
+    description: Declarative Operator Runtime with a built-in Security Gateway. Define
+      operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
+      protection with admission webhooks, and observe everything in the Control Center.
+      Runtime and Gateway deploy independently.
+    digest: 185007fc2e3111657e938a5777ad1607256341b6e0989245a003735eaf8fe668
+    home: https://github.com/orkspace/orkestra
+    icon: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/logo.png
+    keywords:
+    - orkestra
+    - operator
+    - kubernetes
+    - crd
+    - declarative
+    - controller
+    - gateway
+    - webhook
+    - admission
+    - security
+    - deletion-protection
+    - controlcenter
+    - dashboard
+    - observability
+    maintainers:
+    - email: releases@orkspace.io
+      name: Orkspace
+      url: https://github.com/orkspace/orkestra
+    name: orkestra
+    sources:
+    - https://github.com/orkspace/orkestra
+    type: application
+    urls:
+    - https://orkspace.github.io/orkestra/orkestra-0.7.6.tgz
+    version: 0.7.6
+  - annotations:
+      artifacthub.io/changes: |
+        - kind: added
           description: "early access release — first public build of Orkestra v0.7.0"
         - kind: added
           description: "e2e: wait: on import declarations, spec.customOperator, shared Orkestra across imports, ork e2e ./... discovery, --dry-run"
@@ -199,7 +419,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
     apiVersion: v2
     appVersion: 0.7.5
-    created: "2026-06-10T02:47:52.268789509Z"
+    created: "2026-06-17T04:47:38.735914169Z"
     description: Declarative Operator Runtime with a built-in Security Gateway. Define
       operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
       protection with admission webhooks, and observe everything in the Control Center.
@@ -431,7 +651,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
     apiVersion: v2
     appVersion: 0.7.4
-    created: "2026-06-10T02:47:52.267484081Z"
+    created: "2026-06-17T04:47:38.734561708Z"
     description: Declarative Operator Runtime with a built-in Security Gateway. Define
       operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
       protection with admission webhooks, and observe everything in the Control Center.
@@ -663,7 +883,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
     apiVersion: v2
     appVersion: 0.7.3
-    created: "2026-06-10T02:47:52.266101528Z"
+    created: "2026-06-17T04:47:38.733177341Z"
     description: Declarative Operator Runtime with a built-in Security Gateway. Define
       operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
       protection with admission webhooks, and observe everything in the Control Center.
@@ -895,7 +1115,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
     apiVersion: v2
     appVersion: 0.7.2
-    created: "2026-06-10T02:47:52.2637201Z"
+    created: "2026-06-17T04:47:38.731786083Z"
     description: Declarative Operator Runtime with a built-in Security Gateway. Define
       operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
       protection with admission webhooks, and observe everything in the Control Center.
@@ -1127,7 +1347,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
     apiVersion: v2
     appVersion: 0.7.1
-    created: "2026-06-10T02:47:52.262393182Z"
+    created: "2026-06-17T04:47:38.730004258Z"
     description: Declarative Operator Runtime with a built-in Security Gateway. Define
       operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
       protection with admission webhooks, and observe everything in the Control Center.
@@ -1359,7 +1579,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
     apiVersion: v2
     appVersion: 0.7.0
-    created: "2026-06-10T02:47:52.261062797Z"
+    created: "2026-06-17T04:47:38.727993954Z"
     description: Declarative Operator Runtime with a built-in Security Gateway. Define
       operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
       protection with admission webhooks, and observe everything in the Control Center.
@@ -1571,7 +1791,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
     apiVersion: v2
     appVersion: 0.6.6
-    created: "2026-06-10T02:47:52.259726231Z"
+    created: "2026-06-17T04:47:38.726507586Z"
     description: Declarative Operator Runtime with a built-in Security Gateway. Define
       operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
       protection with admission webhooks, and observe everything in the Control Center.
@@ -1783,7 +2003,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
     apiVersion: v2
     appVersion: 0.6.5
-    created: "2026-06-10T02:47:52.257514961Z"
+    created: "2026-06-17T04:47:38.725176277Z"
     description: Declarative Operator Runtime with a built-in Security Gateway. Define
       operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
       protection with admission webhooks, and observe everything in the Control Center.
@@ -1995,7 +2215,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
     apiVersion: v2
     appVersion: 0.6.4
-    created: "2026-06-10T02:47:52.256214502Z"
+    created: "2026-06-17T04:47:38.723746943Z"
     description: Declarative Operator Runtime with a built-in Security Gateway. Define
       operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
       protection with admission webhooks, and observe everything in the Control Center.
@@ -2207,7 +2427,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
     apiVersion: v2
     appVersion: 0.6.3
-    created: "2026-06-10T02:47:52.254895639Z"
+    created: "2026-06-17T04:47:38.721378265Z"
     description: Declarative Operator Runtime with a built-in Security Gateway. Define
       operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
       protection with admission webhooks, and observe everything in the Control Center.
@@ -2419,7 +2639,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
     apiVersion: v2
     appVersion: 0.6.2
-    created: "2026-06-10T02:47:52.253441132Z"
+    created: "2026-06-17T04:47:38.720061367Z"
     description: Declarative Operator Runtime with a built-in Security Gateway. Define
       operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
       protection with admission webhooks, and observe everything in the Control Center.
@@ -2621,7 +2841,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
     apiVersion: v2
     appVersion: 0.6.1
-    created: "2026-06-10T02:47:52.25164762Z"
+    created: "2026-06-17T04:47:38.718725041Z"
     description: Declarative Operator Runtime with a built-in Security Gateway. Define
       operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
       protection with admission webhooks, and observe everything in the Control Center.
@@ -2782,7 +3002,7 @@ entries:
       artifacthub.io/signKey: "fingerprint: \nurl: https://orkspace.github.io/orkestra/orkestra-public-key.asc"
     apiVersion: v2
     appVersion: 0.6.1-alpha.1
-    created: "2026-06-10T02:47:52.249741119Z"
+    created: "2026-06-17T04:47:38.717357328Z"
     description: Declarative Operator Runtime with a built-in Security Gateway. Define
       operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
       protection with admission webhooks, and observe everything in the Control Center.
@@ -2984,7 +3204,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
     apiVersion: v2
     appVersion: 0.6.0
-    created: "2026-06-10T02:47:52.248458774Z"
+    created: "2026-06-17T04:47:38.715346158Z"
     description: Declarative Operator Runtime with a built-in Security Gateway. Define
       operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
       protection with admission webhooks, and observe everything in the Control Center.
@@ -3081,7 +3301,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
     apiVersion: v2
     appVersion: 0.5.4
-    created: "2026-06-10T02:47:52.247177671Z"
+    created: "2026-06-17T04:47:38.71381941Z"
     description: Declarative Operator Runtime with a built-in Security Gateway. Define
       operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
       protection with admission webhooks, and observe everything in the Control Center.
@@ -3178,7 +3398,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
     apiVersion: v2
     appVersion: 0.5.3
-    created: "2026-06-10T02:47:52.245936473Z"
+    created: "2026-06-17T04:47:38.712586947Z"
     description: Declarative Operator Runtime with a built-in Security Gateway. Define
       operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
       protection with admission webhooks, and observe everything in the Control Center.
@@ -3275,7 +3495,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
     apiVersion: v2
     appVersion: 0.5.2
-    created: "2026-06-10T02:47:52.243855749Z"
+    created: "2026-06-17T04:47:38.711326142Z"
     description: Declarative Operator Runtime with a built-in Security Gateway. Define
       operators in YAML, generate minimal RBAC, enforce deletion protection and namespace
       protection with admission webhooks, and observe everything in the Control Center.
@@ -3372,7 +3592,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
     apiVersion: v2
     appVersion: 0.5.1
-    created: "2026-06-10T02:47:52.242640529Z"
+    created: "2026-06-17T04:47:38.710045418Z"
     description: Declarative Kubernetes Operator Runtime with a built-in Security
       Gateway. Define operators in YAML, generate minimal RBAC, enforce deletion protection
       and namespace protection with admission webhooks, and observe everything in
@@ -3469,7 +3689,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
     apiVersion: v2
     appVersion: 0.5.0
-    created: "2026-06-10T02:47:52.241408719Z"
+    created: "2026-06-17T04:47:38.707796502Z"
     description: Declarative Kubernetes Operator Runtime with a built-in Security
       Gateway. Define operators in YAML, generate minimal RBAC, enforce deletion protection
       and namespace protection with admission webhooks, and observe everything in
@@ -3559,7 +3779,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.4.9
-    created: "2026-06-10T02:47:52.240176207Z"
+    created: "2026-06-17T04:47:38.706471412Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -3643,7 +3863,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.4.8
-    created: "2026-06-10T02:47:52.239003587Z"
+    created: "2026-06-17T04:47:38.705351575Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -3727,7 +3947,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.4.7
-    created: "2026-06-10T02:47:52.236925395Z"
+    created: "2026-06-17T04:47:38.704424925Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -3755,4 +3975,4 @@ entries:
     urls:
     - https://orkspace.github.io/orkestra/orkestra-0.4.7.tgz
     version: 0.4.7
-generated: "2026-06-10T02:47:52.235837944Z"
+generated: "2026-06-17T04:47:38.703308914Z"
