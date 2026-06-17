@@ -11,6 +11,9 @@ nav:
   - title: Orkestra Registry
     section: orkestra-registry
     url: /docs/orkestra-registry/
+  - title: Registry Guide
+    section: registry-guide
+    url: /docs/registry-guide/
   - title: Concepts
     section: concepts
     url: /docs/concepts/

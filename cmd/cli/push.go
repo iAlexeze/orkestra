@@ -3,15 +3,19 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/orkspace/orkestra/pkg/e2e"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/registry"
+	"github.com/orkspace/orkestra/pkg/version"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -19,11 +23,13 @@ import (
 // ── push ──────────────────────────────────────────────────────────────────────
 
 var (
-	pushForce      bool
-	pushUpdateMeta bool
-	pushE2EFile    string
-	pushNoE2E      bool
-	pushNoSimulate bool
+	pushForce         bool
+	pushUpdateMeta    bool
+	pushE2EFile       string
+	pushNoE2E         bool
+	pushNoSimulate    bool
+	pushE2ECluster    string
+	pushE2EUseCurrent bool
 )
 
 var pushCmd = &cobra.Command{
@@ -107,6 +113,27 @@ var pushCmd = &cobra.Command{
 		fmt.Printf("Pushing %s (%s) to %s...\n", refArg, patternKind, ref.Registry)
 
 		if patternKind == registry.KatalogKind {
+			localImports, err := registry.ExtractLocalMotifImports(filepath.Join(dir, registry.FileKatalog))
+			if err == nil && len(localImports) > 0 {
+				var lines []string
+				for _, li := range localImports {
+					lines = append(lines, fmt.Sprintf("  spec.crds.%s.imports[%d]: %q", li.CRDName, li.Index, li.Path))
+				}
+				return fmt.Errorf(
+					"✗ Push blocked: local file imports in %s\n\n%s\n\n"+
+						"  Local imports work for ork simulate and ork template, but cannot\n"+
+						"  be resolved by consumers after the katalog is published.\n\n"+
+						"  Before publishing:\n"+
+						"    1. Push the motif:  ork push <motif-dir>/\n"+
+						"    2. Replace the local path with the OCI ref:\n"+
+						"       motif: oci://<your-registry>/motifs/<name>:<version>",
+					registry.FileKatalog,
+					strings.Join(lines, "\n"),
+				)
+			}
+		}
+
+		if patternKind == registry.KatalogKind {
 			m := merger.New(filepath.Join(dir, registry.FileKatalog))
 			if err := m.Merge(); err != nil {
 				return fmt.Errorf("  ✗ %s: %w", registry.FileKatalog, err)
@@ -116,10 +143,12 @@ var pushCmd = &cobra.Command{
 			}
 			fmt.Printf("  %s %-20s valid\n", successMark(), registry.FileKatalog)
 
-			if err := validateCRDFile(filepath.Join(dir, registry.FileCRD)); err != nil {
-				return fmt.Errorf("  ✗ %s: %w", registry.FileCRD, err)
+			if slices.Contains(files, registry.FileCRD) {
+				if err := validateCRDFile(filepath.Join(dir, registry.FileCRD)); err != nil {
+					return fmt.Errorf("  ✗ %s: %w", registry.FileCRD, err)
+				}
+				fmt.Printf("  %s %-20s valid\n", successMark(), registry.FileCRD)
 			}
-			fmt.Printf("  %s %-20s valid\n", successMark(), registry.FileCRD)
 		}
 
 		for _, f := range files {
@@ -152,7 +181,7 @@ var pushCmd = &cobra.Command{
 						fmt.Printf("\nRunning simulate gate (%s)...\n", registry.FileSimulate)
 						start := time.Now()
 						if err := runSimulateFromSpec(cmd.Context(), simFile, "", 10, false); err != nil {
-							return fmt.Errorf("simulate gate failed: %w\n\nFix the assertions or use --force to push anyway", err)
+							return fmt.Errorf("✗ Simulate gate failed — push blocked\n  Run 'ork simulate' to see the failures\n  Use --force to override (recorded in the artifact)\n\n%w", err)
 						}
 						dur := time.Since(start).Round(time.Millisecond).String()
 						fmt.Printf("  %s Simulate passed (%s)\n", successMark(), dur)
@@ -185,13 +214,13 @@ var pushCmd = &cobra.Command{
 					}
 				} else {
 					fmt.Printf("\nRunning E2E gate (%s)...\n", registry.FileE2E)
-					runner, err := e2e.New(e2eFile, "", false, false, false, "", nil)
+					runner, err := e2e.New(e2eFile, pushE2ECluster, pushE2EUseCurrent, false, false, "", nil)
 					if err != nil {
 						return fmt.Errorf("e2e gate: %w\n\nUse --force or --no-e2e to skip", err)
 					}
 					result, err := runner.Run(cmd.Context())
 					if err != nil {
-						return fmt.Errorf("e2e gate failed: %w\n\nFix the test or use --force to push anyway", err)
+						return fmt.Errorf("✗ E2E gate failed — push blocked\n  Run 'ork e2e' to see the failures\n  Use --force to override (recorded in the artifact)\n\n%w", err)
 					}
 					fmt.Printf("  %s E2E passed (%s)\n", successMark(), result.Duration())
 					e2eMeta = &registry.PatternE2E{
@@ -203,6 +232,16 @@ var pushCmd = &cobra.Command{
 					}
 				}
 			}
+			// --no-e2e was explicitly passed but no e2e.yaml exists; record as skipped
+			// so ork inspect shows ⊘ Skipped rather than - Not verified.
+			if pushNoE2E && e2eMeta == nil {
+				fmt.Printf("  ~ E2E skipped\n")
+				e2eMeta = &registry.PatternE2E{
+					Status:   "skipped",
+					TestedAt: time.Now().UTC().Format(time.RFC3339),
+					Runner:   detectRunner(),
+				}
+			}
 		}
 
 		var typedMeta *registry.PatternTyped
@@ -210,22 +249,32 @@ var pushCmd = &cobra.Command{
 			typedMeta = detectTypedKatalog(filepath.Join(dir, registry.FileKatalog))
 		}
 
+		runtimeVersion := version.Short()
+		if typedMeta != nil {
+			if v := extractRuntimeVersionFromGoMod(dir); v != "" {
+				runtimeVersion = v
+			}
+		}
+
 		client, err := registry.NewClient()
 		if err != nil {
 			return fmt.Errorf("initializing client: %w", err)
 		}
 
+		spin := StartSpinner(fmt.Sprintf("Pushing %s...", refArg))
 		progress := func(file string, size int64) {
-			fmt.Printf("  → %-20s (%s)\n", file, formatSize(size))
+			spin.Update(fmt.Sprintf("Uploading %s (%s)", file, formatSize(size)))
 		}
 
-		digest, err := client.Push(cmd.Context(), ref, dir, e2eMeta, simulateMeta, typedMeta, progress)
+		digest, err := client.Push(cmd.Context(), ref, dir, e2eMeta, simulateMeta, typedMeta, runtimeVersion, progress)
 		if err != nil {
+			spin.Failure()
 			return fmt.Errorf("push failed: %w", err)
 		}
+		spin.Stop()
 
 		fmt.Printf("\n%s Pushed: %s\n", successMark(), ref.String())
-		fmt.Printf("  Digest: %s\n", digest[:19]+"...")
+		fmt.Printf("  Digest: %s\n", digest)
 
 		if patternKind == registry.KatalogKind {
 			motifYAML := filepath.Join(dir, registry.FileMotif)
@@ -233,9 +282,12 @@ var pushCmd = &cobra.Command{
 				motifRef, err := registry.ResolveForKind(fmt.Sprintf("%s:%s", meta.Name, meta.Version), registry.MotifKind)
 				if err == nil {
 					fmt.Printf("\nAlso pushing %s to %s...\n", registry.FileMotif, motifRef.Registry)
-					if mDigest, err := client.Push(cmd.Context(), motifRef, dir, nil, nil, nil, progress); err != nil {
+					spinMotif := StartSpinner(fmt.Sprintf("Pushing %s...", registry.FileMotif))
+					if mDigest, err := client.Push(cmd.Context(), motifRef, dir, nil, nil, nil, version.Short(), nil); err != nil {
+						spinMotif.Failure()
 						fmt.Fprintf(os.Stderr, "warning: motif push failed: %v\n", err)
 					} else {
+						spinMotif.Stop()
 						fmt.Printf("%s Pushed motif: %s\n", successMark(), motifRef.String())
 						fmt.Printf("  Digest: %s\n", mDigest[:19]+"...")
 					}
@@ -264,11 +316,51 @@ func init() {
 	pushCmd.Flags().StringVar(&pushE2EFile, "e2e", "", "Path to e2e spec file (default: e2e.yaml in pattern dir)")
 	pushCmd.Flags().BoolVar(&pushNoE2E, "no-e2e", false, "Skip the e2e gate even if e2e.yaml is present")
 	pushCmd.Flags().BoolVar(&pushNoSimulate, "no-simulate", false, "Skip the simulate gate even if simulate.yaml is present")
+	pushCmd.Flags().StringVar(&pushE2ECluster, "cluster", "", "Reuse an existing kind cluster context for the e2e gate (skips cluster creation)")
+	pushCmd.Flags().BoolVar(&pushE2EUseCurrent, "use-current", false, "Use the current kubeconfig context for the e2e gate (skips cluster creation)")
 	rootCmd.AddCommand(pushCmd)
+
+	// Shadow global flags
+	pushCmd.Flags().Bool("debug", false, "")
+	pushCmd.Flags().String("kubeconfig", "", "")
+	pushCmd.Flags().Bool("verbose", false, "")
+	pushCmd.Flags().MarkHidden("debug")
+	pushCmd.Flags().MarkHidden("kubeconfig")
+	pushCmd.Flags().MarkHidden("verbose")
 }
 
 // detectTypedKatalog parses a katalog.yaml and returns a PatternTyped if any
 // CRD declares customHooks or customConstructor. Returns nil on parse error.
+// extractRuntimeVersionFromGoMod scans go.mod for the orkestra runtime dependency
+// and returns its version (e.g. "v0.7.6"). Returns "" if go.mod is absent or the
+// dependency is not declared.
+func extractRuntimeVersionFromGoMod(dir string) string {
+	f, err := os.Open(filepath.Join(dir, registry.FileGoMod))
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		// inline form:  require github.com/orkspace/orkestra vX.Y.Z
+		if strings.HasPrefix(line, "require github.com/orkspace/orkestra ") {
+			parts := strings.Fields(line)
+			if len(parts) >= 3 {
+				return parts[2]
+			}
+		}
+		// block form (inside require (...)):  github.com/orkspace/orkestra vX.Y.Z
+		if strings.HasPrefix(line, "github.com/orkspace/orkestra ") {
+			parts := strings.Fields(line)
+			if len(parts) >= 2 {
+				return parts[1]
+			}
+		}
+	}
+	return ""
+}
+
 func detectTypedKatalog(katalogPath string) *registry.PatternTyped {
 	k, err := katalog.ParseFile(katalogPath)
 	if err != nil {

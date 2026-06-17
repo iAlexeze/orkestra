@@ -60,12 +60,14 @@ var pullCmd = &cobra.Command{
 			return nil
 		}
 
-		fmt.Printf("Pulling %s...\n  → %s\n", ref.ShortName(), ref.String())
-
+		fmt.Printf("Pulling %s\n  → %s\n", ref.ShortName(), ref.String())
+		spin := StartSpinner("Downloading...")
 		cacheDir, err := client.Pull(cmd.Context(), ref, refresh)
 		if err != nil {
+			spin.Failure()
 			return fmt.Errorf("pull failed: %w", err)
 		}
+		spin.Stop()
 
 		if outDir != "" {
 			if err := copyDir(cacheDir, outDir); err != nil {
@@ -80,6 +82,7 @@ var pullCmd = &cobra.Command{
 
 		if !isMotif {
 			pullMotifDeps(cacheDir)
+			notifyTypedPull(cacheDir)
 		}
 		return nil
 	},
@@ -91,6 +94,24 @@ func init() {
 	pullCmd.Flags().StringP("file", "f", "", "Pull all OCI imports from a katalog or komposer file")
 	pullCmd.Flags().BoolP("motif", "m", false, "Resolve as a motif (uses ORK_MOTIFS_REGISTRY)")
 	rootCmd.AddCommand(pullCmd)
+
+	// Shadow global flags
+	pullCmd.Flags().Bool("debug", false, "")
+	pullCmd.Flags().String("kubeconfig", "", "")
+	pullCmd.Flags().Bool("verbose", false, "")
+	pullCmd.Flags().MarkHidden("debug")
+	pullCmd.Flags().MarkHidden("kubeconfig")
+	pullCmd.Flags().MarkHidden("verbose")
+}
+
+// notifyTypedPull prints a build note when the pulled artifact is a typed operator.
+func notifyTypedPull(cacheDir string) {
+	if _, err := os.Stat(filepath.Join(cacheDir, registry.FileGoMod)); err != nil {
+		return
+	}
+	_, hasMakefile := os.Stat(filepath.Join(cacheDir, registry.FileMakefile))
+	fmt.Printf("  ↳ Typed operator — requires a custom runtime\n")
+	printTypedBuildSteps(hasMakefile == nil)
 }
 
 // pullMotifDeps reads the katalog.yaml in cacheDir and pulls any OCI motif
@@ -112,9 +133,12 @@ func pullMotifDeps(katalogCacheDir string) {
 
 	fmt.Printf("\nPulling motif dependencies...\n")
 	for _, imp := range imports.MotifImports {
+		spin := StartSpinner(imp.Motif)
 		if motif.PullImport(&imp) == nil {
+			spin.Stop()
 			fmt.Printf("  %s %s\n", successMark(), imp.Motif)
 		} else {
+			spin.Failure()
 			fmt.Printf("  %s %s (pull failed — will retry on next use)\n", warningMark(), imp.Motif)
 		}
 	}
@@ -160,15 +184,21 @@ func pullFromFile(cmd *cobra.Command, filePath string, refresh bool) error {
 			continue
 		}
 		if ref.IsCached() && !refresh {
+			cacheDir, _ := ref.CachePath()
 			fmt.Printf("  %s Already cached: %s\n", successMark(), ref.ShortName())
+			pullMotifDeps(cacheDir)
 			continue
 		}
-		fmt.Printf("Pulling %s...\n  → %s\n", ref.ShortName(), ref.String())
-		if _, err := client.Pull(cmd.Context(), ref, refresh); err != nil {
-			fmt.Printf("  %s %v\n", failureMark(), err)
+		fmt.Printf("Pulling %s\n  → %s\n", ref.ShortName(), ref.String())
+		spinRef := StartSpinner("Downloading...")
+		cacheDir, err := client.Pull(cmd.Context(), ref, refresh)
+		if err != nil {
+			spinRef.Failure()
 			errs = append(errs, err.Error())
 		} else {
+			spinRef.Stop()
 			fmt.Printf("  %s %s\n", successMark(), ref.ShortName())
+			pullMotifDeps(cacheDir)
 		}
 	}
 

@@ -4,6 +4,7 @@ package katalog
 import (
 	"fmt"
 
+	"github.com/orkspace/orkestra/pkg/konfig"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"gopkg.in/yaml.v3"
 )
@@ -12,7 +13,7 @@ import (
 //
 // The output is a valid Katalog YAML with fully expanded CRDs (all motif
 // imports already inlined, imports: field absent). This is what the bundle's
-// ConfigMap should embed — the runtime can load it without any OCI pulls.
+// ConfigMap embeds — the runtime can load it without any OCI pulls.
 //
 // Must be called after KomposeRuntimeKatalog; returns an error if no CRDs
 // are present (indicates expansion hasn't been run yet).
@@ -22,10 +23,11 @@ func (k *Katalog) SerializeExpanded() ([]byte, error) {
 	}
 
 	// Reconstruct a KatalogFile from the fully expanded state.
-	// No Imports field — all motifs have been inlined into spec.crds.
+	// Always kind: Katalog — the bundle has no imports; Komposer sources become
+	// plain Katalogs after expansion so the runtime always takes the loadKatalog path.
 	kf := orktypes.KatalogFile{
 		APIVersion:   k.APIVersion,
-		Kind:         k.Kind,
+		Kind:         konfig.KatalogKind(),
 		Metadata:     k.metadata,
 		Spec:         orktypes.KatalogSpec{CRDs: k.enabledCRDs},
 		Security:     k.Security,

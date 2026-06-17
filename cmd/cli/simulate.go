@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/devserver"
 	orke2e "github.com/orkspace/orkestra/pkg/e2e"
 	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/simulate"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	orkutils "github.com/orkspace/orkestra/pkg/utils"
@@ -103,8 +105,16 @@ func runSimulate(ctx context.Context, katalogFile, crFile, crdName string, maxCy
 		maxCycles = 10
 	}
 
-	kat, err := katalog.ParseFile(katalogFile)
+	m := merger.New(katalogFile)
+	if err := m.Merge(); err != nil {
+		return fmt.Errorf("merging Katalog: %w", err)
+	}
+	kat, err := katalog.BuildExpanded(kfg, m)
 	if err != nil {
+		var typedErr *katalog.TypedOperatorError
+		if errors.As(err, &typedErr) {
+			printTypedOperatorHint(typedErr, "ork simulate")
+		}
 		return fmt.Errorf("parsing Katalog: %w", err)
 	}
 
@@ -172,11 +182,14 @@ func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *
 	}
 	fmt.Println()
 
+	spin := StartSpinner(fmt.Sprintf("Running %d cycles...", maxCycles))
 	start := time.Now()
 	result, err := simulate.Run(ctx, kat, crdName, cr, maxCycles, opts)
 	if err != nil {
+		spin.Failure()
 		return err
 	}
+	spin.Stop()
 	elapsed := time.Since(start)
 
 	if debugOps {
@@ -486,8 +499,16 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 	katalogPath := filepath.Join(dir, doc.Spec.Katalog)
 	crPath := filepath.Join(dir, doc.Spec.CR)
 
-	kat, err := katalog.ParseFile(katalogPath)
+	m := merger.New(katalogPath)
+	if err := m.Merge(); err != nil {
+		return fmt.Errorf("merging Katalog: %w", err)
+	}
+	kat, err := katalog.BuildExpanded(kfg, m)
 	if err != nil {
+		var typedErr *katalog.TypedOperatorError
+		if errors.As(err, &typedErr) {
+			printTypedOperatorHint(typedErr, "ork simulate")
+		}
 		return fmt.Errorf("parsing Katalog: %w", err)
 	}
 	crData, err := os.ReadFile(crPath)

@@ -61,8 +61,9 @@ func BuildProbe(cfg *orktypes.ProbeConfig, containerPort int32) *corev1.Probe {
 	if isHTTP {
 		probe.ProbeHandler = corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{
-				Path: cfg.Path,
-				Port: intstr.FromInt32(port),
+				Path:   cfg.Path,
+				Port:   intstr.FromInt32(port),
+				Scheme: corev1.URISchemeHTTP,
 			},
 		}
 	} else {

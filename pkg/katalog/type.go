@@ -2,7 +2,6 @@ package katalog
 
 import (
 	"reflect"
-	// "sync/atomic"
 
 	"github.com/orkspace/orkestra/pkg/konfig"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -62,8 +61,42 @@ func (k *Katalog) WithCRDFiles() []string {
 	return k.withCRDFiles
 }
 
+// Metadata returns the Katalog metadata.
 func (k *Katalog) Metadata() orktypes.KatalogMeta {
 	return k.metadata
+}
+
+// IsDeprecated returns true if the Katalog is deprecated.
+func (k *Katalog) IsDeprecated() bool {
+	if k.metadata.Deprecation == nil {
+		return false
+	}
+	return k.metadata.Deprecation.IsDeprecated()
+}
+
+// IsMigrated returns true if the Katalog is deprecated and has a migration target.
+func (k *Katalog) IsMigrated() bool {
+	if k.metadata.Deprecation == nil {
+		return false
+	}
+	return k.metadata.Deprecation.MigrationTarget() != ""
+}
+
+// MigrationTarget returns the value of the MigratedTo field.
+// If the deprecation block is nil or empty, it returns an empty string.
+func (k *Katalog) MigrationTarget() string {
+	if k.metadata.Deprecation == nil {
+		return ""
+	}
+	return k.metadata.Deprecation.MigrationTarget()
+}
+
+// MigrationMessage returns the deprecation message.
+func (k *Katalog) MigrationMessage() string {
+	if k.metadata.Deprecation == nil {
+		return ""
+	}
+	return k.metadata.Deprecation.MigrationMessage()
 }
 
 // CRDEntry returns the enabled CRD entry for the given name.

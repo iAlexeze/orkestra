@@ -38,6 +38,84 @@ var inspectCmd = &cobra.Command{
 			return fmt.Errorf("initializing client: %w", err)
 		}
 
+		if versionsFlag, _ := cmd.Flags().GetBool("versions"); versionsFlag {
+			spin := StartSpinner("Fetching version history...")
+			versions, err := client.ListVersions(cmd.Context(), ref, 10)
+			if err != nil {
+				spin.Failure()
+				return fmt.Errorf("listing versions: %w", err)
+			}
+			spin.Stop()
+
+			name := ref.ShortName()
+			if idx := strings.LastIndex(name, ":"); idx != -1 {
+				name = name[:idx]
+			}
+			versionWord := "versions"
+			if len(versions) == 1 {
+				versionWord = "version"
+			}
+			fmt.Printf("\n%s  (%d %s)\n\n", bold(name), len(versions), versionWord)
+			const (
+				tagW = 12
+				simW = 27
+			)
+			if !inspectMotif {
+				fmt.Printf("  %s  %s  %s\n",
+					gray(fmt.Sprintf("%-*s", tagW, "VERSION")),
+					padRight(gray("SIMULATE"), simW),
+					gray("E2E"))
+			}
+			for i, v := range versions {
+				latest := ""
+				deprecated := ""
+				if i == 0 {
+					latest = "  ← latest"
+				}
+				if v.Meta.Deprecated != nil {
+					deprecated = yellow(" ⚠ ") + v.Meta.Deprecated.Message
+				}
+				if inspectMotif {
+					fmt.Printf("  %-*s%s\n", tagW, v.Tag, latest)
+					continue
+				}
+				var simCol, e2eCol string
+				if v.Meta.Simulate != nil {
+					switch v.Meta.Simulate.Status {
+					case "passed":
+						suffix := ""
+						if v.Meta.Simulate.Assertions > 0 {
+							suffix = fmt.Sprintf("%d assertions", v.Meta.Simulate.Assertions)
+						}
+						simCol = simulateVerified(suffix)
+					case "skipped":
+						simCol = skippedShort()
+					case "no-assertion":
+						simCol = noAssertion()
+					}
+				} else {
+					simCol = gray("- Not verified")
+				}
+				if v.Meta.E2E != nil {
+					switch v.Meta.E2E.Status {
+					case "passed":
+						suffix := ""
+						if v.Meta.E2E.Duration != "" {
+							suffix = v.Meta.E2E.Duration
+						}
+						e2eCol = e2eVerified(suffix)
+					case "skipped":
+						e2eCol = skippedShort()
+					}
+				} else {
+					e2eCol = e2eNotVerified()
+				}
+				fmt.Printf("  %-*s  %s  %s%s%s\n", tagW, v.Tag, padRight(simCol, simW), e2eCol, latest, deprecated)
+			}
+			fmt.Println()
+			return nil
+		}
+
 		info, err := client.Info(cmd.Context(), ref)
 		if err != nil {
 			errStr := err.Error()
@@ -50,6 +128,7 @@ var inspectCmd = &cobra.Command{
 			}
 			return fmt.Errorf("fetching info: %w", err)
 		}
+		m := info.Meta
 
 		// --view: skip the metadata block, just fetch and print requested files.
 		viewArg, _ := cmd.Flags().GetString("view")
@@ -67,7 +146,7 @@ var inspectCmd = &cobra.Command{
 					fmt.Printf("  %s %q not in artifact (available: %s)\n", warningMark(), name, strings.Join(available, ", "))
 					continue
 				}
-				fmt.Printf("── %s ──\n", name)
+				fmt.Printf("# ── %s ──\n", name)
 				data, err := client.ViewFile(cmd.Context(), ref, f)
 				if err != nil {
 					fmt.Printf("  error: %v\n", err)
@@ -78,7 +157,6 @@ var inspectCmd = &cobra.Command{
 			return nil
 		}
 
-		m := info.Meta
 		if m.Deprecated != nil {
 			fmt.Printf("\n%s  This pattern is deprecated.\n", yellow("⚠"))
 			if m.Deprecated.MigratedTo != "" {
@@ -93,7 +171,7 @@ var inspectCmd = &cobra.Command{
 		if m.Kind != "" {
 			fmt.Printf("  Kind:        %s\n", m.Kind)
 		}
-		fmt.Printf("  Digest:      %s\n", info.Digest[:19]+"...")
+		fmt.Printf("  Digest:      %s\n", info.Digest)
 		if !info.PushedAt.IsZero() {
 			fmt.Printf("  Pushed:      %s\n", info.PushedAt.Format(time.RFC3339))
 		}
@@ -183,6 +261,9 @@ var inspectCmd = &cobra.Command{
 				yellow("requires custom runtime image"),
 			)
 		}
+		if m.RuntimeVersion != "" {
+			fmt.Printf("  Runtime:     %s\n", m.RuntimeVersion)
+		}
 		if len(info.Files) > 0 {
 			fmt.Printf("\n  Files:\n")
 			for _, f := range info.Files {
@@ -190,7 +271,20 @@ var inspectCmd = &cobra.Command{
 			}
 		}
 		fmt.Printf("\nTo pull:\n")
-		fmt.Printf("  ork pull %s:%s\n", m.Name, m.Version)
+		if m.Kind == registry.MotifKind {
+			fmt.Printf("  ork pull %s:%s --motif\n", m.Name, m.Version)
+		} else {
+			fmt.Printf("  ork pull %s:%s\n", m.Name, m.Version)
+		}
+		fmt.Printf("\nTo import:\n")
+		if m.Kind == registry.MotifKind {
+			fmt.Printf("  imports:\n")
+			fmt.Printf("    - motif: %s\n", ref.String())
+		} else {
+			fmt.Printf("  imports:\n")
+			fmt.Printf("    registry:\n")
+			fmt.Printf("      - %s\n", ref.String())
+		}
 		fmt.Println()
 		return nil
 	},
@@ -199,5 +293,14 @@ var inspectCmd = &cobra.Command{
 func init() {
 	inspectCmd.Flags().BoolVarP(&inspectMotif, "motif", "m", false, "Resolve as a motif (uses ORK_MOTIFS_REGISTRY)")
 	inspectCmd.Flags().String("view", "", "Comma-separated list of files to print before pulling (e.g. katalog.yaml,cr.yaml)")
+	inspectCmd.Flags().Bool("versions", false, "List up to 10 tracked versions with simulate and E2E status")
 	rootCmd.AddCommand(inspectCmd)
+
+	// Shadow global flags
+	inspectCmd.Flags().Bool("debug", false, "")
+	inspectCmd.Flags().String("kubeconfig", "", "")
+	inspectCmd.Flags().Bool("verbose", false, "")
+	inspectCmd.Flags().MarkHidden("debug")
+	inspectCmd.Flags().MarkHidden("kubeconfig")
+	inspectCmd.Flags().MarkHidden("verbose")
 }

@@ -25,20 +25,20 @@ type CRDEntry struct {
 	Name string `yaml:"-" json:"name" validate:"required,hostname_rfc1123"`
 
 	// KatalogName — unique identifier for the katalog in the runtime.
-	KatalogName string `yaml:"-" json:"katalogName,omitempty"`
+	KatalogName string `yaml:"katalogName,omitempty" json:"katalogName,omitempty"`
 
 	// KatalogNamespace — the namespace this CRD's Katalog belongs to.
 	// Defaults to "default" when not declared. Used by the Control Center to
 	// group CRDs by team/tenant within a single runtime.
-	KatalogNamespace string `yaml:"-" json:"katalogNamespace,omitempty"`
+	KatalogNamespace string `yaml:"katalogNamespace,omitempty" json:"katalogNamespace,omitempty"`
 
 	// KatalogDescription — the description from the source Katalog's metadata.
 	// Falls back to the Komposer's description when the sub-Katalog has none.
-	KatalogDescription string `yaml:"-" json:"katalogDescription,omitempty"`
+	KatalogDescription string `yaml:"katalogDescription,omitempty" json:"katalogDescription,omitempty"`
 
 	// KatalogVersion — the version from the source Katalog's metadata.
 	// Falls back to the Komposer's version when the sub-Katalog has none.
-	KatalogVersion string `yaml:"-" json:"katalogVersion,omitempty"`
+	KatalogVersion string `yaml:"katalogVersion,omitempty" json:"katalogVersion,omitempty"`
 
 	// CrossAccess controls whether other Katalogs can read this CRD's CR state
 	// via the cross: block. Defaults to true (readable). Set to false to opt
@@ -195,6 +195,11 @@ type CRDEntry struct {
 	// Field selectors are optional for all types. When omitted, Orkestra will
 	// watch all objects permitted by LabelSelector and namespace restrictions.
 	FieldSelector SelectorMap `yaml:"fieldSelector,omitempty"`
+
+	// RegistryRef is the OCI or Git reference this CRD entry was loaded from.
+	// Set by the merger after loadRegistrySource resolves the pattern.
+	// Empty for CRDs loaded from local file sources.
+	RegistryRef string `yaml:"-" json:"-"`
 
 	// IsBuiltIn is set to true when this CRD entry was enriched from the
 	// built-in Kubernetes resource registry. Used for ork validate output

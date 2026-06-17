@@ -84,7 +84,7 @@ var patternsCmd = &cobra.Command{
 		fmt.Printf("%s\n", strings.Repeat("─", 57))
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "NAME\tLATEST\tKIND\tE2E\tTAGS\tDESCRIPTION")
+		fmt.Fprintln(w, "\tNAME\tLATEST\tKIND\tE2E\tTAGS\tDESCRIPTION")
 
 		count := 0
 		for _, e := range entries {
@@ -113,11 +113,11 @@ var patternsCmd = &cobra.Command{
 			case "skipped":
 				e2eBadge = "~"
 			}
-			name := e.Name
+			marker := " "
 			if e.Deprecated {
-				name = yellow("⚠") + " " + name
+				marker = "⚠"
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", name, e.LatestVersion, k, e2eBadge, tags, desc)
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", marker, e.Name, e.LatestVersion, k, e2eBadge, tags, desc)
 			count++
 		}
 		w.Flush()

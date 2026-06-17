@@ -303,11 +303,19 @@ func (k *Katalog) addRuntimeObjects() error {
 		// Typed mode — look up from registry
 		objFn, ok := orktypes.ObjectRegistry[gvk]
 		if !ok {
-			return fmt.Errorf("addRuntimeObjects: no object constructor registered for %s", gvk)
+			err := fmt.Errorf("addRuntimeObjects: no object constructor registered for %s", gvk)
+			if crd.RegistryRef != "" {
+				return &TypedOperatorError{Ref: crd.RegistryRef, Err: err}
+			}
+			return err
 		}
 		listFn, ok := orktypes.ListRegistry[gvk]
 		if !ok {
-			return fmt.Errorf("addRuntimeObjects: no list constructor registered for %s", gvk)
+			err := fmt.Errorf("addRuntimeObjects: no list constructor registered for %s", gvk)
+			if crd.RegistryRef != "" {
+				return &TypedOperatorError{Ref: crd.RegistryRef, Err: err}
+			}
+			return err
 		}
 
 		crd.DynamicModeObject = objFn

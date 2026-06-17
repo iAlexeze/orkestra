@@ -3,6 +3,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -86,13 +87,20 @@ Examples:
 		}
 
 		// Default path: Katalog / Komposer validation
+		spin := StartSpinner("Resolving imports...")
 		m, err := generateKatalog(cmd)
 		if err != nil {
+			spin.Failure()
 			return err
 		}
+		spin.Stop()
 
 		k, err := katalog.BuildExpanded(kfg, m.m)
 		if err != nil {
+			var typedErr *katalog.TypedOperatorError
+			if errors.As(err, &typedErr) {
+				printTypedOperatorHint(typedErr, "ork validate")
+			}
 			return err
 		}
 		entries := k.EnabledCRDs()
@@ -128,6 +136,16 @@ Examples:
 
 		builtIn := 0
 		custom := 0
+
+		if k.IsDeprecated() {
+			fmt.Printf("%s  This pattern is deprecated.\n", yellow("⚠"))
+			if target := k.MigrationTarget(); target != "" {
+				fmt.Printf("  Migrate to:  %s\n", bold(target))
+			}
+			if msg := k.MigrationMessage(); msg != "" {
+				fmt.Printf("  Message:     %s\n", msg)
+			}
+		}
 
 		// Print each CRD entry with enrichment info
 		for _, entry := range sortedEntries {

@@ -652,6 +652,11 @@ func (cc *ControlCenter) handleKatalogPanel(w http.ResponseWriter, r *http.Reque
 		return sortedCRDs[i].Name < sortedCRDs[j].Name
 	})
 
+	// When viewing a specific namespace, use that namespace's description and
+	// version (set from each CRD's source Katalog metadata) rather than the
+	// top-level Komposer description which belongs to the whole bundle.
+	description := kat.Description
+	version := kat.Version
 	if ns != "" {
 		var filtered []CRDSummary
 		for _, crd := range sortedCRDs {
@@ -660,6 +665,14 @@ func (cc *ControlCenter) handleKatalogPanel(w http.ResponseWriter, r *http.Reque
 			}
 		}
 		sortedCRDs = filtered
+		if nsSummary, ok := kat.Namespaces[ns]; ok {
+			if nsSummary.Description != "" {
+				description = nsSummary.Description
+			}
+			if nsSummary.Version != "" {
+				version = nsSummary.Version
+			}
+		}
 	}
 
 	cc.renderTemplate(w, "katalog.html", KatalogData{
@@ -671,9 +684,9 @@ func (cc *ControlCenter) handleKatalogPanel(w http.ResponseWriter, r *http.Reque
 		TotalResources:     sumResources(sortedCRDs),
 		HealthyCount:       countHealthyCRDs(sortedCRDs),
 		KatalogName:        kat.Name,
-		KatalogDescription: kat.Description,
+		KatalogDescription: description,
 		KatalogHealthy:     kat.Healthy,
-		KatalogVersion:     kat.Version,
+		KatalogVersion:     version,
 		KatalogAuthor:      kat.Author,
 		KatalogLicense:     kat.License,
 		DegradedReason:     kat.DegradedReason,

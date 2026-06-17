@@ -68,6 +68,38 @@ func ExtractOCIImports(filePath string) (*OCIImports, error) {
 	return out, nil
 }
 
+// LocalMotifImport describes a motif import in a katalog that uses a local file path.
+// Local imports are valid for development (ork simulate, ork template) but cannot
+// be resolved by consumers after the katalog is published.
+type LocalMotifImport struct {
+	CRDName string
+	Index   int
+	Path    string
+}
+
+// ExtractLocalMotifImports parses a katalog.yaml and returns any motif imports
+// that reference local file paths. The caller should block ork push when the
+// result is non-empty and prompt the user to replace them with OCI refs.
+func ExtractLocalMotifImports(filePath string) ([]LocalMotifImport, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("reading %q: %w", filePath, err)
+	}
+	var kf orktypes.KatalogFile
+	if err := yaml.Unmarshal(data, &kf); err != nil {
+		return nil, fmt.Errorf("parsing %q: %w", filePath, err)
+	}
+	var out []LocalMotifImport
+	for crdName, crd := range kf.Spec.CRDs {
+		for i, imp := range crd.Imports {
+			if ref := strings.TrimSpace(imp.Motif); isMotifFilePath(ref) {
+				out = append(out, LocalMotifImport{CRDName: crdName, Index: i, Path: ref})
+			}
+		}
+	}
+	return out, nil
+}
+
 // isOCIMotifImport mirrors the resolution order in pkg/motif.LoadImport:
 //  1. File path → not OCI
 //  2. Git URL → not OCI

@@ -129,10 +129,17 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 			}
 		}
 
-		// Stamp the katalog namespace so the runtime and CC can group by team.
-		crd.KatalogNamespace = katalogNamespace
-		crd.KatalogDescription = doc.Metadata.Description
-		crd.KatalogVersion = doc.Metadata.Version
+		// Stamp katalog metadata — only when not already set so that values
+		// deserialized from an expanded ConfigMap YAML are preserved.
+		if crd.KatalogNamespace == "" {
+			crd.KatalogNamespace = katalogNamespace
+		}
+		if crd.KatalogDescription == "" {
+			crd.KatalogDescription = doc.Metadata.Description
+		}
+		if crd.KatalogVersion == "" {
+			crd.KatalogVersion = doc.Metadata.Version
+		}
 
 		// Apply katalog-level CrossAccess as the default for every CRD that
 		// does not declare its own crossAccess field.

@@ -11,6 +11,8 @@ import (
 
 func registerHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/health", handle(healthHandler))
+	mux.HandleFunc("/ready", handle(readyHandler))
+	mux.HandleFunc("/started", handle(startedHandler))
 	mux.HandleFunc("/status/", handle(statusHandler))
 	mux.HandleFunc("/config/", handle(configHandler))
 	mux.HandleFunc("/sign", handle(signHandler))
@@ -51,6 +53,16 @@ func writePlain(w http.ResponseWriter, status int, s string) {
 // GET /health → 200
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// GET /ready → 200
+func readyHandler(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
+}
+
+// GET /started → 200
+func startedHandler(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "started"})
 }
 
 // GET /status/200 → 200, GET /status/503 → 503

@@ -1,20 +1,21 @@
 // pkg/motif/pull.go
 //
-// PullImport fetches a motif OCI artifact to the local cache without expanding it.
+// PullImport fetches a motif OCI artifact to the local registry cache.
 // Used as the pre-pull step before validate, generate, or run commands.
 package motif
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
-	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/registry"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// PullImport fetches a motif artifact to the local cache.
-// Non-OCI refs (file paths, git URLs) are silently skipped — they don't need pulling.
+// PullImport fetches a motif artifact into the registry cache
+// (~/.orkestra/registry/...) so subsequent loads are served from disk.
+// Non-OCI refs (file paths, git URLs) are silently skipped.
 // Resolution mirrors LoadImport exactly, including bare-name → default registry expansion.
 func PullImport(imp *orktypes.MotifImport) error {
 	ref := strings.TrimSpace(imp.Motif)
@@ -30,30 +31,34 @@ func PullImport(imp *orktypes.MotifImport) error {
 	}
 
 	// Bare name → resolve against default motif registry.
+	var resolved *registry.Ref
 	if !oci && !looksLikeFullRef(ref) {
-		resolved, err := registry.ResolveForKind(ref, registry.MotifKind)
+		r, err := registry.ResolveForKind(ref, registry.MotifKind)
 		if err != nil {
 			return fmt.Errorf("motif %q: resolving reference: %w", imp.Motif, err)
 		}
-		ref = resolved.Full
-		oci = true
+		resolved = r
+	} else if oci {
+		cleanURL, version := resolveMotifRef(ref, imp.Version, true)
+		r, err := registry.Resolve(fmt.Sprintf("%s:%s", cleanURL, version))
+		if err != nil {
+			return fmt.Errorf("motif %q: resolving reference: %w", imp.Motif, err)
+		}
+		resolved = r
+	} else {
+		return nil // full ref without oci: true — not an OCI import
 	}
 
-	if !oci {
-		return nil // full ref without oci: true → not an OCI import
+	if resolved.IsCached() {
+		return nil
 	}
 
-	cleanURL, version := resolveMotifRef(ref, imp.Version, oci)
-
-	auth, err := imp.Auth.Resolve()
+	client, err := registry.NewClient()
 	if err != nil {
-		return fmt.Errorf("motif %q: auth: %w", imp.Motif, err)
+		return fmt.Errorf("motif %q: initializing client: %w", imp.Motif, err)
 	}
-
-	_, cleanup, err := merger.PullMotifToDir(cleanURL, version, true, auth)
-	if err != nil {
-		return fmt.Errorf("motif %q@%s: pull failed: %w", cleanURL, version, err)
+	if _, err := client.Pull(context.Background(), resolved, false); err != nil {
+		return fmt.Errorf("motif %q: pull failed: %w", imp.Motif, err)
 	}
-	cleanup()
 	return nil
 }

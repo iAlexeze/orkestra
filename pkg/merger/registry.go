@@ -36,6 +36,9 @@ var knownPatternFiles = []string{
 	pkgregistry.FileCR,
 	pkgregistry.FileE2E,
 	pkgregistry.FileSimulate,
+	pkgregistry.FileGoMod,
+	pkgregistry.FileGoSum,
+	pkgregistry.FileMakefile,
 }
 
 // loadRegistrySource loads a single registry pattern entry.
@@ -104,6 +107,8 @@ func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) (map[string]ork
 		fmt.Fprintln(os.Stderr, msg)
 	}
 
+	registryRef := fmt.Sprintf("%s@%s", cleanURL, version)
+
 	switch doc.Kind {
 	case konfig.KatalogKind():
 		if src.UseKomposer {
@@ -113,7 +118,12 @@ func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) (map[string]ork
 				cleanURL, version, doc.Kind,
 			)
 		}
-		return m.loadKatalog(sourcePath, doc)
+		entries, err := m.loadKatalog(sourcePath, doc)
+		if err != nil {
+			return nil, err
+		}
+		stampRegistryRef(entries, registryRef)
+		return entries, nil
 
 	case konfig.KomposerKind():
 		if !src.UseKomposer {
@@ -123,7 +133,12 @@ func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) (map[string]ork
 				cleanURL, version, doc.Kind,
 			)
 		}
-		return m.loadKomposer(sourcePath, doc)
+		entries, err := m.loadKomposer(sourcePath, doc)
+		if err != nil {
+			return nil, err
+		}
+		stampRegistryRef(entries, registryRef)
+		return entries, nil
 
 	default:
 		return nil, fmt.Errorf(
@@ -131,6 +146,14 @@ func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) (map[string]ork
 			cleanURL, version, src.SourceFile(), doc.Kind,
 			konfig.KatalogKind(), konfig.KomposerKind(),
 		)
+	}
+}
+
+// stampRegistryRef sets RegistryRef on every entry in the map.
+func stampRegistryRef(entries map[string]orktypes.CRDEntry, ref string) {
+	for name, entry := range entries {
+		entry.RegistryRef = ref
+		entries[name] = entry
 	}
 }
 
