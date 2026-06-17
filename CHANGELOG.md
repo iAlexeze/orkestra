@@ -1,3 +1,41 @@
+## v0.7.6 — Registry Guide pack, CLI UX polish, bug fixes
+
+### Registry Guide pack
+
+A structured, zero-to-production walkthrough of the Orkestra registry — 13 self-contained steps from consuming a published pattern on day one to automated CI publishing with GitHub Actions. Covers declarative operators, typed Go operators with hooks, multi-katalog Komposers, CRD API evolution, deprecation workflows, and the full `ork push` gate pipeline.
+
+```bash
+ork init --pack registry-guide --example 10-hooks-katalog
+```
+
+### CLI UX polish
+
+- **`ork push`** — `--use-current` and `--cluster` flags let you reuse an existing cluster for the e2e gate, skipping cluster provisioning for faster local iteration.
+- **`ork push`** on typed operators — `RuntimeVersion` is read from `go.mod` and recorded as an OCI annotation. Visible in `ork inspect` as `Runtime: vX.Y.Z`.
+- **`ork pull`** — warns when the pulled typed operator was built against a different Orkestra version than the current binary.
+- **`ork inspect`** — shows `Typed: ✓ hooks` and `Runtime: vX.Y.Z` for typed patterns.
+- **`ork validate` / `ork simulate`** — surface a clear `TypedOperatorError` with an actionable `ork inspect <ref>` hint when a Komposer sources a registry-based typed operator.
+
+### orkestra-action
+
+- `template: "true"` now auto-detects `katalog.yaml` in the working directory, consistent with `validate: "true"` and `simulate: "true"`.
+- Install step downloads directly from GitHub releases — no CDN redirect, resilient to network issues.
+- `/ready` and `/started` health endpoints added to the dev server image.
+
+### Bug fixes
+
+- Probe path templates (`{{ .spec.probePath }}`) now resolve correctly in Deployment, ReplicaSet, StatefulSet, and Pod specs.
+- Deployment no longer triggers a no-op update every reconcile when an HTTP probe is configured (missing `Scheme` field on `HTTPGetAction`).
+- Helm bundle deploy correctly routes CRDs to their declared `metadata.namespace` — each team sees their own namespace panel in the Control Center.
+- `ork inspect --versions` table columns align correctly when version strings are colorized.
+- `ork inspect --versions` works without a version tag in the argument.
+- Deprecated pattern row aligns correctly in `ork patterns` — `⚠` marker moved to its own column.
+- Deprecation message is shown even when no migration target is set.
+- Control Center version labels no longer double the `v` prefix.
+- Control Center katalog panel shows the namespace-level description when a namespace filter is active.
+
+---
+
 ## v0.7.4 — pkg/resources rename
 
 `pkg/orkestra-registry` is renamed to `pkg/resources`.
