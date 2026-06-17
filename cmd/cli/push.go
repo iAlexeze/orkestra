@@ -23,11 +23,13 @@ import (
 // ── push ──────────────────────────────────────────────────────────────────────
 
 var (
-	pushForce      bool
-	pushUpdateMeta bool
-	pushE2EFile    string
-	pushNoE2E      bool
-	pushNoSimulate bool
+	pushForce         bool
+	pushUpdateMeta    bool
+	pushE2EFile       string
+	pushNoE2E         bool
+	pushNoSimulate    bool
+	pushE2ECluster    string
+	pushE2EUseCurrent bool
 )
 
 var pushCmd = &cobra.Command{
@@ -212,7 +214,7 @@ var pushCmd = &cobra.Command{
 					}
 				} else {
 					fmt.Printf("\nRunning E2E gate (%s)...\n", registry.FileE2E)
-					runner, err := e2e.New(e2eFile, "", false, false, false, "", nil)
+					runner, err := e2e.New(e2eFile, pushE2ECluster, pushE2EUseCurrent, false, false, "", nil)
 					if err != nil {
 						return fmt.Errorf("e2e gate: %w\n\nUse --force or --no-e2e to skip", err)
 					}
@@ -314,6 +316,8 @@ func init() {
 	pushCmd.Flags().StringVar(&pushE2EFile, "e2e", "", "Path to e2e spec file (default: e2e.yaml in pattern dir)")
 	pushCmd.Flags().BoolVar(&pushNoE2E, "no-e2e", false, "Skip the e2e gate even if e2e.yaml is present")
 	pushCmd.Flags().BoolVar(&pushNoSimulate, "no-simulate", false, "Skip the simulate gate even if simulate.yaml is present")
+	pushCmd.Flags().StringVar(&pushE2ECluster, "cluster", "", "Reuse an existing kind cluster context for the e2e gate (skips cluster creation)")
+	pushCmd.Flags().BoolVar(&pushE2EUseCurrent, "use-current", false, "Use the current kubeconfig context for the e2e gate (skips cluster creation)")
 	rootCmd.AddCommand(pushCmd)
 }
 
