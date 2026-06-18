@@ -1,5 +1,52 @@
 # Ecosystem
 
+## How does Orkestra compare to ArgoCD?
+
+ArgoCD does manage drift. That's a fair starting point.
+
+The real question is what you do when you need an operator — when drift correction of static manifests is not enough, when you need conditional resources, live state reactions, external API calls, cross-operator dependencies.
+
+At that point you drop into Go. And every team that does this builds the same machinery, from scratch, for every operator: informers, workqueues, leader election, worker pools, health endpoints, Prometheus metrics, retry logic, finalizers, status management, safe panic recovery, multi-version CRD handling, admission and deletion protection.
+
+**That machinery is not the reason the operator exists. It is the cost of entry.**
+
+Orkestra says: the machinery is the runtime's job. You focus on the reason the operator exists — your custom logic.
+
+| | Helm + ArgoCD | Orkestra |
+|---|---|---|
+| **Drift correction** | Yes — reconciles declared state | Yes — `reconcile: true` on any resource |
+| **Custom CR logic** | No | Yes — `when:`, `external:`, `status:`, hooks |
+| **Live state reactions** | No | Yes — reconciler re-runs on every change event |
+| **External API calls** | No | Yes — `external:` block, no client code |
+| **Admission control** | No | Yes — validation and mutation webhooks |
+| **Multi-version CRDs** | No | Yes — declarative conversion, no webhook code |
+| **Per-operator autoscaling** | No | Yes — workers, queue depth, resync period |
+| **Operator distribution** | Helm chart | OCI Katalog |
+
+Helm + ArgoCD is the right tool for managing static platform resources. Orkestra is the runtime for teams writing operators — so they write the part that matters and stop rebuilding the machinery every time.
+
+---
+
+## How does Orkestra compare to Kubebuilder and Operator SDK?
+
+Both Kubebuilder and Operator SDK are scaffolding frameworks. They generate the controller skeleton — informer setup, event handlers, reconcile loop stub — and reduce the boilerplate you write. You fill in the logic.
+
+You still own the machinery. Queue depth, worker count, leader election lease, health endpoints, Prometheus metrics, retry logic, panic recovery — all of it is yours to configure, test, and maintain. Kubebuilder scaffolds it. You own it.
+
+**Orkestra is a runtime. You do not write controllers. The machinery is the runtime's job.**
+
+| | Kubebuilder / Operator SDK | Orkestra |
+|---|---|---|
+| **Language** | Go | YAML (Go hooks optional) |
+| **Controller code** | Required — you fill in the reconciler | Not required — runtime executes your Katalog |
+| **Informer / queue / workers** | Yours to configure | Runtime-managed, per-CRD |
+| **Admission webhooks** | Write and deploy separately | Declared in Katalog, served by Gateway |
+| **Metrics** | Instrument yourself | Built-in per-CRD — queue depth, error rate, worker utilisation |
+| **Operator distribution** | Binary / Docker image | OCI Katalog |
+| **Testing** | Unit tests + envtest | `ork simulate` (in-memory) + `ork e2e` (real cluster) |
+
+The escape hatch: when the declarative layer genuinely is not enough — writing a row into PostgreSQL, calling a non-HTTP API — typed hooks let you drop back to Go without giving up the declarative layer. You write the part that requires code. The runtime handles the rest.
+
 ---
 
 ## How does Orkestra compare to kro?
@@ -17,13 +64,12 @@ The differences are significant:
 | **Multi-version CRDs** | No | Yes — declarative conversion paths |
 | **Registry/distribution** | No | Yes — OCI artifacts, Artifact Hub |
 | **Admission webhooks** | No | Yes — validation and mutation |
-| **Health API** | No | Yes — per-CRD endpoints and Prometheus |
-| **Observability** | No | Yes — Control Center, per-CRD health endpoints, Prometheus |
+| **Observability** | No | Yes — per-CRD health endpoints, Prometheus, Control Center |
 | **Hooks for external logic** | No | Yes — typed and dynamic Go hooks |
 
 kro is a composability layer. Orkestra is a runtime. The fact that three major cloud
-providers independently arrived at the same insight validates the direction. Orkestra
-is the complete version of what they were reaching for.
+providers independently arrived at the same insight validates the direction — Orkestra
+extends it into a complete operator runtime.
 
 ---
 
@@ -58,15 +104,14 @@ for the full argument.
 
 The short version: Orkestra is building toward CNCF Sandbox, then a Kubernetes
 Enhancement Proposal, then alpha/beta/GA integration into `kube-controller-manager`.
-The target timeline is five years. The prerequisite is production adoption at multiple
-organisations, with metrics.
+The prerequisite is production adoption at multiple organisations, with metrics. The
+timeline depends on that adoption curve.
 
 The Katalog and Komposer becoming native Kubernetes kinds — `kubectl get katalogs` —
 is the end state. At that point, every cluster ships with a meta-controller that
 understands declarative operator definitions. Platform teams write Katalogs. Kubernetes
 manages them.
 
----
 
 ## Next
 

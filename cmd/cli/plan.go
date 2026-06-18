@@ -33,14 +33,10 @@ Examples:
   ork plan -f katalog.yaml --bundle bundle.yaml
   ork plan -f katalog.yaml --cm orkestra-katalog --namespace orkestra-system`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		file, _ := cmd.Flags().GetString("file")
-		if file == "" {
-			if d := defaultFilePaths(); len(d) > 0 {
-				file = d[0]
-			}
-		}
-		if file == "" {
-			return fmt.Errorf(errNoKatalog)
+		rawFile, _ := cmd.Flags().GetString("file")
+		file, err := resolveKatalogFile(rawFile)
+		if err != nil {
+			return err
 		}
 		bundle, _ := cmd.Flags().GetString("bundle")
 		cm, _ := cmd.Flags().GetString("cm")

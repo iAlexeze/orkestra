@@ -19,6 +19,7 @@ func Init(filenames ...string) (*Konfig, error) {
 			name:        Orkestra,
 			shortName:   Ork,
 			environment: GetStrEnv("ORK_ENV", "development"),
+			logLevel:    GetStrEnv("LOG_LEVEL", "info"),
 		},
 		cluster: clusterKonfig{
 			kubekonfigPath: GetStrEnv("KUBEKONFIG", ""),

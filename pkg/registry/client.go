@@ -18,14 +18,18 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
+	godigest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/content/memory"
+
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/credentials"
@@ -50,9 +54,10 @@ func NewClient() (*Client, error) {
 
 // Push validates the directory, auto-detects the pattern kind, and pushes all
 // files to the registry. Returns the manifest digest on success.
-// e2eMeta is optional; when non-nil its fields are embedded as io.orkestra.e2e.*
-// OCI annotations on the published artifact.
-func (c *Client) Push(ctx context.Context, ref *Ref, dir string, e2eMeta *PatternE2E, simulateMeta *PatternSimulate, progress func(file string, size int64)) (string, error) {
+// e2eMeta and simulateMeta are optional; when non-nil their fields are embedded
+// as OCI annotations on the published artifact.
+// typedMeta is optional; when non-nil it is written as typed-operator annotations.
+func (c *Client) Push(ctx context.Context, ref *Ref, dir string, e2eMeta *PatternE2E, simulateMeta *PatternSimulate, typedMeta *PatternTyped, runtimeVersion string, progress func(file string, size int64)) (string, error) {
 	patternKind, spec, files, err := ValidatePatternDirectory(dir)
 	if err != nil {
 		return "", fmt.Errorf("validation failed: %w", err)
@@ -68,6 +73,12 @@ func (c *Client) Push(ctx context.Context, ref *Ref, dir string, e2eMeta *Patter
 	}
 	if simulateMeta != nil {
 		meta.Simulate = simulateMeta
+	}
+	if typedMeta != nil {
+		meta.Typed = typedMeta
+	}
+	if runtimeVersion != "" {
+		meta.RuntimeVersion = runtimeVersion
 	}
 
 	store := memory.New()
@@ -127,6 +138,9 @@ func (c *Client) Push(ctx context.Context, ref *Ref, dir string, e2eMeta *Patter
 	}
 	if meta.Simulate != nil {
 		entry.SimulateStatus = meta.Simulate.Status
+	}
+	if meta.Deprecated != nil {
+		entry.Deprecated = true
 	}
 	if err := c.updateIndex(ctx, ref, entry); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: index update failed: %v\n", err)
@@ -190,6 +204,11 @@ func (c *Client) Info(ctx context.Context, ref *Ref) (*PatternInfo, error) {
 
 	var manifest struct {
 		Annotations map[string]string `json:"annotations"`
+		Layers      []struct {
+			Digest      string            `json:"digest"`
+			Size        int64             `json:"size"`
+			Annotations map[string]string `json:"annotations"`
+		} `json:"layers"`
 	}
 	if err := json.NewDecoder(rc).Decode(&manifest); err != nil {
 		return nil, fmt.Errorf("decoding manifest: %w", err)
@@ -204,6 +223,12 @@ func (c *Client) Info(ctx context.Context, ref *Ref) (*PatternInfo, error) {
 		Meta:   meta,
 	}
 
+	for _, layer := range manifest.Layers {
+		if name := layer.Annotations["org.opencontainers.image.title"]; name != "" {
+			info.Files = append(info.Files, FileEntry{Name: name, Size: layer.Size, Digest: layer.Digest})
+		}
+	}
+
 	if ts, ok := manifest.Annotations["org.opencontainers.image.created"]; ok {
 		if t, err := time.Parse(time.RFC3339, ts); err == nil {
 			info.PushedAt = t
@@ -211,6 +236,30 @@ func (c *Client) Info(ctx context.Context, ref *Ref) (*PatternInfo, error) {
 	}
 
 	return info, nil
+}
+
+// ViewFile fetches the raw content of a single OCI layer blob.
+// Use a FileEntry from PatternInfo.Files — both Digest and Size are required
+// so the registry can validate the Content-Length on the response.
+func (c *Client) ViewFile(ctx context.Context, ref *Ref, f FileEntry) ([]byte, error) {
+	repo, err := c.remoteRepo(ref)
+	if err != nil {
+		return nil, err
+	}
+	desc := ocispec.Descriptor{
+		Digest: godigest.Digest(f.Digest),
+		Size:   f.Size,
+	}
+	rc, err := repo.Blobs().Fetch(ctx, desc)
+	if err != nil {
+		return nil, fmt.Errorf("fetching blob: %w", err)
+	}
+	defer rc.Close()
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(rc); err != nil {
+		return nil, fmt.Errorf("reading blob: %w", err)
+	}
+	return buf.Bytes(), nil
 }
 
 // List fetches the pattern index from the given registry URL.
@@ -342,6 +391,83 @@ func (c *Client) updateIndex(ctx context.Context, ref *Ref, entry PatternEntry) 
 	return c.pushIndex(ctx, idxRef, index)
 }
 
+// ListVersions lists up to maxN most recent versions of a pattern by listing
+// OCI tags and fetching metadata for each. Results are sorted newest-first by
+// semantic version. Tags that cannot be fetched are silently skipped.
+func (c *Client) ListVersions(ctx context.Context, ref *Ref, maxN int) ([]*VersionInfo, error) {
+	repo, err := c.remoteRepo(ref)
+	if err != nil {
+		return nil, err
+	}
+
+	var tags []string
+	if err := repo.Tags(ctx, "", func(batch []string) error {
+		tags = append(tags, batch...)
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("listing tags: %w", err)
+	}
+
+	// Deduplicate by digest: floating tags (latest, stable) that point to the
+	// same manifest as a versioned tag don't appear twice. Versioned tags win.
+	seen := map[string]string{} // digest → winning tag
+	infoByDigest := map[string]*PatternInfo{}
+
+	for _, tag := range tags {
+		tagRef := &Ref{
+			Registry:   ref.Registry,
+			Repository: ref.Repository,
+			Tag:        tag,
+			Full:       ref.Registry + "/" + ref.Repository + ":" + tag,
+		}
+		info, err := c.Info(ctx, tagRef)
+		if err != nil {
+			continue
+		}
+		existing, collision := seen[info.Digest]
+		if collision {
+			// Replace the existing tag only if the new one looks like a real version.
+			if looksLikeVersion(tag) && !looksLikeVersion(existing) {
+				seen[info.Digest] = tag
+				info.Meta.Version = tag
+				infoByDigest[info.Digest] = info
+			}
+			continue
+		}
+		seen[info.Digest] = tag
+		infoByDigest[info.Digest] = info
+	}
+
+	versions := make([]*VersionInfo, 0, len(infoByDigest))
+	for digest, info := range infoByDigest {
+		versions = append(versions, &VersionInfo{
+			Tag:      seen[digest],
+			PushedAt: info.PushedAt,
+			Meta:     info.Meta,
+			Digest:   digest,
+		})
+	}
+	// Mirrors the index table: most recently pushed = latest.
+	slices.SortFunc(versions, func(a, b *VersionInfo) int {
+		return b.PushedAt.Compare(a.PushedAt) // descending
+	})
+
+	if maxN > 0 && len(versions) > maxN {
+		versions = versions[:maxN]
+	}
+
+	return versions, nil
+}
+
+// looksLikeVersion returns true when a tag appears to be a pinned version
+// (starts with 'v' or a digit) rather than a floating label like "latest".
+func looksLikeVersion(tag string) bool {
+	if len(tag) == 0 {
+		return false
+	}
+	return tag[0] == 'v' || (tag[0] >= '0' && tag[0] <= '9')
+}
+
 // remoteRepo returns an authenticated ORAS remote.Repository for the ref.
 func (c *Client) remoteRepo(ref *Ref) (*remote.Repository, error) {
 	repo, err := remote.NewRepository(ref.Full)
@@ -384,6 +510,9 @@ func artifactMetaToAnnotations(meta *PatternMeta, ref *Ref) map[string]string {
 		if meta.E2E.Runner != "" {
 			ann["io.orkestra.e2e.runner"] = meta.E2E.Runner
 		}
+		if meta.E2E.Assertions > 0 {
+			ann["io.orkestra.e2e.assertions"] = strconv.Itoa(meta.E2E.Assertions)
+		}
 	}
 	if meta.Simulate != nil {
 		ann["io.orkestra.simulate.status"] = meta.Simulate.Status
@@ -393,12 +522,37 @@ func artifactMetaToAnnotations(meta *PatternMeta, ref *Ref) map[string]string {
 		if meta.Simulate.TestedAt != "" {
 			ann["io.orkestra.simulate.tested_at"] = meta.Simulate.TestedAt
 		}
+		if meta.Simulate.Assertions > 0 {
+			ann["io.orkestra.simulate.assertions"] = strconv.Itoa(meta.Simulate.Assertions)
+		}
+	}
+	if meta.Typed != nil {
+		if meta.Typed.HasHooks {
+			ann["io.orkestra.katalog.has_hooks"] = "true"
+		}
+		if meta.Typed.HasConstructor {
+			ann["io.orkestra.katalog.has_constructor"] = "true"
+		}
+		if meta.Typed.HasHooks || meta.Typed.HasConstructor {
+			ann["io.orkestra.katalog.typed"] = "true"
+		}
+	}
+	if meta.Deprecated != nil {
+		ann["io.orkestra.katalog.deprecated"] = "true"
+		if meta.Deprecated.MigratedTo != "" {
+			ann["io.orkestra.katalog.deprecated.migrated_to"] = meta.Deprecated.MigratedTo
+		}
+		if meta.Deprecated.Message != "" {
+			ann["io.orkestra.katalog.deprecated.message"] = meta.Deprecated.Message
+		}
+	}
+	if meta.RuntimeVersion != "" {
+		ann["io.orkestra.katalog.runtime_version"] = meta.RuntimeVersion
 	}
 	return ann
 }
 
 // annotationsToMeta reconstructs PatternMeta from OCI manifest annotations.
-// Reads both current "io.orkestra.pattern.*" and legacy "io.orkestra.pattern.*" keys.
 func annotationsToMeta(ann map[string]string) *PatternMeta {
 	tags := []string{}
 	name := ann["io.orkestra.pattern.name"]
@@ -433,19 +587,36 @@ func annotationsToMeta(ann map[string]string) *PatternMeta {
 		Tags:        tags,
 	}
 	if status := ann["io.orkestra.e2e.status"]; status != "" {
+		n, _ := strconv.Atoi(ann["io.orkestra.e2e.assertions"])
 		meta.E2E = &PatternE2E{
-			Status:   status,
-			Duration: ann["io.orkestra.e2e.duration"],
-			TestedAt: ann["io.orkestra.e2e.tested_at"],
-			Runner:   ann["io.orkestra.e2e.runner"],
+			Status:     status,
+			Duration:   ann["io.orkestra.e2e.duration"],
+			TestedAt:   ann["io.orkestra.e2e.tested_at"],
+			Runner:     ann["io.orkestra.e2e.runner"],
+			Assertions: n,
 		}
 	}
 	if status := ann["io.orkestra.simulate.status"]; status != "" {
+		n, _ := strconv.Atoi(ann["io.orkestra.simulate.assertions"])
 		meta.Simulate = &PatternSimulate{
-			Status:   status,
-			Duration: ann["io.orkestra.simulate.duration"],
-			TestedAt: ann["io.orkestra.simulate.tested_at"],
+			Status:     status,
+			Duration:   ann["io.orkestra.simulate.duration"],
+			TestedAt:   ann["io.orkestra.simulate.tested_at"],
+			Assertions: n,
 		}
 	}
+	if ann["io.orkestra.katalog.typed"] == "true" {
+		meta.Typed = &PatternTyped{
+			HasHooks:       ann["io.orkestra.katalog.has_hooks"] == "true",
+			HasConstructor: ann["io.orkestra.katalog.has_constructor"] == "true",
+		}
+	}
+	if ann["io.orkestra.katalog.deprecated"] == "true" {
+		meta.Deprecated = &PatternDeprecated{
+			MigratedTo: ann["io.orkestra.katalog.deprecated.migrated_to"],
+			Message:    ann["io.orkestra.katalog.deprecated.message"],
+		}
+	}
+	meta.RuntimeVersion = ann["io.orkestra.katalog.runtime_version"]
 	return meta
 }

@@ -1,7 +1,7 @@
 # Katalog
 
 !!! note "Katalog is not a Kubernetes CRD"
-    `kubectl apply` will not work. Orkestra kinds are consumed by the `ork` CLI and runtime — not by the Kubernetes API server. [Your CRD is enough](../../../blog/02-your-crd-is-enough.md).
+    `kubectl apply` will not work. Orkestra kinds are consumed by the `ork` CLI and runtime — not by the Kubernetes API server. [Your CRD is enough](/blog/your-crd-is-enough/).
 
 A Katalog declares one or more CRDs and defines how Orkestra manages them. It is the **unit of operator definition** — everything the runtime needs to run an operator from a single YAML file.
 
@@ -89,4 +89,4 @@ This scaffolds the simplest Katalog — a single CRD that creates a Deployment a
 - [Motif schema](../01-motif/index.md) — reusable resource blocks imported by Katalogs
 - [Komposer schema](../03-komposer/index.md) — composing multiple Katalogs
 - [E2E schema](../04-e2e/index.md) — testing a Katalog
-- [Orkestra Registry](../../../orkestra-registry.md) — publishing and consuming Katalogs
+- [Orkestra Registry](../../../orkestra-registry/index.md) — publishing and consuming Katalogs

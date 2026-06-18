@@ -171,33 +171,42 @@ type konductorElection struct {
 
 // Methods
 
+// NewDefaultKonfig returns a Konfig populated from environment variables with
+// sensible defaults. Used by CLI commands that do not go through the full
+// Init() path (e.g. ork validate, ork template, ork simulate). All fields
+// follow the same GetStrEnv/GetIntEnv/GetDurEnvSeconds pattern as Init().
 func NewDefaultKonfig() *Konfig {
+	ns := resolveNamespace()
 	return &Konfig{
 		ork: orkKonfig{
-			name:        "orkestra",
-			shortName:   "ork",
-			environment: "development",
-			logLevel:    "info",
+			name:        Orkestra,
+			shortName:   Ork,
+			environment: GetStrEnv("ORK_ENV", "development"),
+			logLevel:    GetStrEnv("LOG_LEVEL", "info"),
 		},
 		cluster: clusterKonfig{
-			kubekonfigPath: "",
-			masterURL:      "",
-			name:           "orkestra",
-			namespace:      "orkestra",
+			kubekonfigPath: GetStrEnv("KUBEKONFIG", ""),
+			masterURL:      GetStrEnv("MASTER_URL", ""),
+			name:           GetStrEnv("CLUSTER_NAME", ""),
+			namespace:      ns,
 		},
 		konductor: konductorElection{
-			namespace:     "orkestra",
-			leaseDuration: 15 * time.Second,
-			renewDeadline: 10 * time.Second,
-			retryPeriod:   2 * time.Second,
+			namespace:     ns,
+			leaseDuration: GetDurEnvSeconds("LEASE_DURATION", 60),
+			renewDeadline: GetDurEnvSeconds("RENEW_DEADLINE", 40),
+			retryPeriod:   GetDurEnvSeconds("RETRY_PERIOD", 10),
 		},
 		healthServer: healthServer{
-			port:         "8080",
-			readTimeout:  5 * time.Second,
-			writeTimeout: 5 * time.Second,
+			port:         GetStrEnv("ORK_PORT", "8080"),
+			readTimeout:  GetDurEnvSeconds("SRV_READ_TIMEOUT", 5),
+			writeTimeout: GetDurEnvSeconds("SRV_WRITE_TIMEOUT", 20),
 		},
 		katalog: katalogKonfig{
-			paths: []string{"katalog.yaml"},
+			paths:                   GetStrSliceEnv("KATALOG_PATH", []string{"katalog.yaml"}),
+			defaultWorkers:          GetIntEnv("DEFAULT_WORKERS", 3),
+			defaultResync:           GetDurEnvSeconds("DEFAULT_RESYNC", 15),
+			defaultQueueDepth:       GetIntEnv("QUEUE_DEPTH", 100),
+			defaultFailureThreshold: GetIntEnv("FAILURE_THRESHOLD", 5),
 		},
 	}
 }

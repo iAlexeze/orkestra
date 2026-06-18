@@ -4,6 +4,19 @@ Notes are the template function library available in every Orkestra template exp
 
 A note is a **pure, named transformation function**. Notes receive values and return transformed values. They cannot perform I/O, call external APIs, or produce side effects.
 
+## This directory is the source of truth
+
+The files here drive two generated outputs — run `make generate-notes` to refresh both:
+
+| Output | What it does |
+|--------|--------------|
+| `pkg/note/catalog_generated.go` | Note registry used by the Orkestra runtime and the `ork notes` CLI command |
+| `documentation/reference/orkestra-notes/<domain>.md` | User-facing reference pages on the documentation site |
+
+Add documentation here first. The generator handles the rest. **Do not hand-edit the generated outputs.**
+
+Files containing an `## In Development` heading are excluded from both outputs until the feature is ready.
+
 ## How notes are used
 
 In any Katalog template expression:
@@ -55,5 +68,10 @@ when:
 | [13-job.md](13-job.md) | `jobSucceeded` `jobFailed` `jobActive` |
 | [14-service.md](14-service.md) | `serviceClusterIP` `serviceNodePort` `serviceLoadBalancerIP` `serviceLoadBalancerHost` `endpointsReady` |
 | [15-fields.md](15-fields.md) | `resourceName` `resourceNamespace` `resourceUID` `resourceVersion` `creationTimestamp` |
+| [25-semver.md](25-semver.md) | `semverMajor` `semverMinor` `semverPatch` `semverValid` `semverCompare` `semverBump` `semverConstraint` |
+| [26-time.md](26-time.md) | `timeAgo` `timeSince` `isExpired` `timeFormat` `durationSeconds` `durationAdd` `durationValid` |
+| [27-data.md](27-data.md) | `toBase64` `fromBase64` `toJSON` `sha256sum` `truncateName` `slugify` |
+| [28-git.md](28-git.md) *(in development)* | `gitShortCommit` `gitIsCommit` `repoName` `repoOrg` `repoHost` `repoSSHToHTTPS` `repoHTTPSToSSH` `gitDefaultBranch` `gitRefShort` `gitChanged` |
+| [29-docker.md](29-docker.md) *(in development)* | `dockerRegistry` `dockerRepo` `dockerTag` `dockerNoTag` `dockerName` `dockerWithTag` `dockerWithDigest` `dockerCommitTag` `dockerBuildSucceeded` `dockerHasDigest` |
 
 Read the docs for the category you need. For a quick lookup of a specific function name, use the table above as an index.

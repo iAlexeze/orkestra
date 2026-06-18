@@ -35,6 +35,10 @@ var knownPatternFiles = []string{
 	pkgregistry.FileReadme,
 	pkgregistry.FileCR,
 	pkgregistry.FileE2E,
+	pkgregistry.FileSimulate,
+	pkgregistry.FileGoMod,
+	pkgregistry.FileGoSum,
+	pkgregistry.FileMakefile,
 }
 
 // loadRegistrySource loads a single registry pattern entry.
@@ -49,10 +53,10 @@ var knownPatternFiles = []string{
 func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) (map[string]orktypes.CRDEntry, error) {
 	cleanURL, version := src.ResolvedURL()
 
-	logger.Info().
+	logger.Debug().
 		Str("url", cleanURL).
 		Str("version", version).
-		Bool("oci", src.OCI).
+		Bool("oci", src.IsOCI()).
 		Str("loads", src.SourceFile()).
 		Msg("merger: pulling registry source")
 
@@ -61,7 +65,7 @@ func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) (map[string]ork
 		return nil, fmt.Errorf("registry %q: auth: %w", cleanURL, err)
 	}
 
-	tmpDir, cleanup, err := m.pullPattern(cleanURL, version, src.OCI, auth)
+	tmpDir, cleanup, err := m.pullPattern(cleanURL, version, src.IsOCI(), auth)
 	if err != nil {
 		return nil, fmt.Errorf("registry %q@%s: pull failed: %w", cleanURL, version, err)
 	}
@@ -92,6 +96,19 @@ func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) (map[string]ork
 		)
 	}
 
+	if dep := doc.Metadata.Deprecation; dep != nil {
+		msg := fmt.Sprintf("warning: registry pattern %q@%s is deprecated", cleanURL, version)
+		if dep.MigratedTo != "" {
+			msg += fmt.Sprintf(" — migrate to: %s", dep.MigratedTo)
+		}
+		if dep.Message != "" {
+			msg += fmt.Sprintf(" (%s)", dep.Message)
+		}
+		fmt.Fprintln(os.Stderr, msg)
+	}
+
+	registryRef := fmt.Sprintf("%s@%s", cleanURL, version)
+
 	switch doc.Kind {
 	case konfig.KatalogKind():
 		if src.UseKomposer {
@@ -101,7 +118,12 @@ func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) (map[string]ork
 				cleanURL, version, doc.Kind,
 			)
 		}
-		return m.loadKatalog(sourcePath, doc)
+		entries, err := m.loadKatalog(sourcePath, doc)
+		if err != nil {
+			return nil, err
+		}
+		stampRegistryRef(entries, registryRef)
+		return entries, nil
 
 	case konfig.KomposerKind():
 		if !src.UseKomposer {
@@ -111,7 +133,12 @@ func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) (map[string]ork
 				cleanURL, version, doc.Kind,
 			)
 		}
-		return m.loadKomposer(sourcePath, doc)
+		entries, err := m.loadKomposer(sourcePath, doc)
+		if err != nil {
+			return nil, err
+		}
+		stampRegistryRef(entries, registryRef)
+		return entries, nil
 
 	default:
 		return nil, fmt.Errorf(
@@ -119,6 +146,14 @@ func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) (map[string]ork
 			cleanURL, version, src.SourceFile(), doc.Kind,
 			konfig.KatalogKind(), konfig.KomposerKind(),
 		)
+	}
+}
+
+// stampRegistryRef sets RegistryRef on every entry in the map.
+func stampRegistryRef(entries map[string]orktypes.CRDEntry, ref string) {
+	for name, entry := range entries {
+		entry.RegistryRef = ref
+		entries[name] = entry
 	}
 }
 
@@ -153,24 +188,58 @@ func (m *Merger) pullPattern(
 // ── OCI pull ──────────────────────────────────────────────────────────────────
 
 func (m *Merger) pullOCIPattern(url, version, tmpDir string, auth *utils.FileAuth) error {
-	ref := strings.TrimPrefix(strings.TrimPrefix(url, "https://"), "http://")
-	ref = strings.TrimSuffix(ref, "/")
-	ref = fmt.Sprintf("%s:%s", ref, version)
+	ociRef := strings.TrimPrefix(strings.TrimPrefix(url, "https://"), "http://")
+	ociRef = strings.TrimSuffix(ociRef, "/")
+	ociRef = fmt.Sprintf("%s:%s", ociRef, version)
 
-	logger.Debug().
-		Str("ref", ref).
-		Str("dst", tmpDir).
-		Msg("registry: pulling OCI artifact with ORAS Go library")
-
-	if err := orasPull(ref, tmpDir, auth); err != nil {
-		return fmt.Errorf("OCI pull %q: %w", ref, err)
+	// Serve from local cache when available — avoids a network round-trip on
+	// every ork validate/template/simulate after ork pull.
+	if pkgRef, err := pkgregistry.Resolve(ociRef); err == nil {
+		if cacheDir, err := pkgRef.CachePath(); err == nil && pkgRef.IsCached() {
+			logger.Debug().
+				Str("ref", ociRef).
+				Str("cache", cacheDir).
+				Msg("registry: serving OCI artifact from local cache")
+			return copyPatternFilesFromCache(cacheDir, tmpDir)
+		}
 	}
 
 	logger.Debug().
-		Str("ref", ref).
+		Str("ref", ociRef).
+		Str("dst", tmpDir).
+		Msg("registry: pulling OCI artifact with ORAS Go library")
+
+	if err := orasPull(ociRef, tmpDir, auth); err != nil {
+		return fmt.Errorf("OCI pull %q: %w", ociRef, err)
+	}
+
+	logger.Debug().
+		Str("ref", ociRef).
 		Str("dst", tmpDir).
 		Msg("registry: OCI artifact pulled successfully")
 
+	return nil
+}
+
+// copyPatternFilesFromCache copies the known pattern files from a cache
+// directory into a temp directory for the merger to process.
+func copyPatternFilesFromCache(cacheDir, tmpDir string) error {
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil {
+		return fmt.Errorf("reading cache dir %s: %w", cacheDir, err)
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(cacheDir, e.Name()))
+		if err != nil {
+			return fmt.Errorf("reading cached file %s: %w", e.Name(), err)
+		}
+		if err := os.WriteFile(filepath.Join(tmpDir, e.Name()), data, 0644); err != nil {
+			return fmt.Errorf("writing %s to temp dir: %w", e.Name(), err)
+		}
+	}
 	return nil
 }
 
@@ -212,8 +281,8 @@ func orasPull(ref, dst string, auth *utils.FileAuth) error {
 		}
 	} else {
 		// No explicit auth — fall back to Docker credential store (~/.docker/config.json).
-		// This mirrors pkg/registry.Client.remoteRepo so `ork registry pull -f`
-		// and `ork registry pull <url>` use the same credential source.
+		// This mirrors pkg/registry.Client.remoteRepo so `ork pull -f`
+		// and `ork pull <url>` use the same credential source.
 		if store, err := credentials.NewStoreFromDocker(credentials.StoreOptions{}); err == nil {
 			repo.Client = &orasauth.Client{
 				ClientID:   "orkestra",

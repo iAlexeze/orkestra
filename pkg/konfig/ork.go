@@ -159,9 +159,9 @@ func IsSimulateKind(kind string) bool {
 	return kind == kindSimulate
 }
 
-// IsValidDocumentKind reports whether the given kind is one of the supported
-// Orkestra document kinds.
-func IsValidDocumentKind(kind string) bool {
+// IsValidPatternKind reports whether the given kind is one of the supported
+// Orkestra pattern kinds.
+func IsValidPatternKind(kind string) bool {
 	return kind == kindKatalog ||
 		kind == kindKomposer ||
 		kind == kindMotif ||

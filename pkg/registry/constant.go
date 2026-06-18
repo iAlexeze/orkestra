@@ -32,6 +32,12 @@ const (
 	// FileSimulate is the simulate spec file for a Katalog pattern.
 	FileSimulate = "simulate.yaml"
 
+	// FileGoMod, FileGoSum, and FileMakefile are the typed operator build files.
+	// Present only in typed (hooks/constructor) patterns.
+	FileGoMod    = "go.mod"
+	FileGoSum    = "go.sum"
+	FileMakefile = "Makefile"
+
 	// DefaultKatalogRegistry is the official OCI path for Katalog patterns.
 	DefaultKatalogRegistry = "ghcr.io/orkspace/orkestra-registry/patterns/katalogs"
 
@@ -40,9 +46,6 @@ const (
 
 	// DefaultPatternRegistry is an alias for DefaultKatalogRegistry.
 	DefaultPatternRegistry = DefaultKatalogRegistry
-
-	// DefaultRegistry is an alias for DefaultKatalogRegistry.
-	DefaultRegistry = DefaultKatalogRegistry
 
 	// EnvPatternRegistry overrides the default katalog registry path.
 	EnvPatternRegistry = "ORK_REGISTRY"

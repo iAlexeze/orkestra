@@ -1,87 +1,139 @@
 # Cron Notes
 
-Parse, convert, and reconstruct cron schedule expressions. Handles five-field expressions and `@`-macros (`@hourly`, `@daily`, `@weekly`, `@monthly`, `@yearly`).
+Cron notes work with cron schedule expressions. They cover three problems: extracting individual fields from a string expression, converting between string and structured-map shapes, and producing human-readable descriptions.
 
-## The three conversion notes
+## Reference
 
-| Note | Input | Output | Use in |
-|------|-------|--------|--------|
-| `cronToMap` | `string` | `map` (via sentinel) | conversion path spec — produces nested object |
-| `cronFromMap` | `map` only | `string` — errors on string | `onReconcile` behind `typeOf: map` gate |
-| `cronFromAny` | `map` or `string` | `string` | normalize, status, conversion — unknown shape |
+| Note | Description |
+|------|-------------|
+| `cronFromMap` | Convert a schedule **map** to a five-field cron string. |
+| `cronFromAny` | Convert a schedule value to a five-field cron string. |
+| `cronToMap` | Convert a cron string to the structured map shape. |
+| `cronNormalize` | Normalize a cron string: expand `@`-macros, trim whitespace, ensure exactly five fields. |
+| `cronDescribe` | Return a human-readable description of a cron expression. |
+| `cronValid` | Return `true` when the expression is structurally valid (five fields present after macro expansion). |
+| `cronExpr` | Build a five-field cron expression from five explicit string parts. |
+| `cronMinute` | Extract a single field by position from a cron string. |
+| `cronHour` | Extract a single field by position from a cron string. |
+| `cronDom` | Extract a single field by position from a cron string. |
+| `cronMonth` | Extract a single field by position from a cron string. |
+| `cronDow` | Extract a single field by position from a cron string. |
+| `cronField` | Extract a field by index (0–4). |
+
+## Examples
 
 ```yaml
-# v1 (cron string) → v2 (structured map)
-- from: v1
-  to: v2
-  spec:
-    schedule: "{{ cronToMap .spec.schedule }}"
-
-# v2 → v1: input may be map or legacy flat string
-- from: v2
-  to: v1
-  spec:
-    schedule: "{{ cronFromAny .spec.schedule }}"
-
-# normalize block: collapse either shape to canonical string
-normalize:
-  spec:
-    schedule: "{{ cronFromAny .spec.schedule }}"
-
-# onReconcile Path B — input guaranteed a map by the when: gate
+# cronFromMap
+# onReconcile Path B — input is guaranteed a map by the when: gate
 - name: "{{ .metadata.name }}"
   schedule: "{{ cronFromMap .spec.schedule }}"
   when:
     - field: spec.schedule
       operator: typeOf
       value: map
-```
+{minute: "*/5", hour: "0", dayOfMonth: "*", month: "*", dayOfWeek: "1"}
+→ "*/5 0 * * 1"
 
-## Validation and normalization
+# cronFromAny
+# normalize block — user input may be either shape
+normalize:
+  spec:
+    schedule: "{{ cronFromAny .spec.schedule }}"
 
-| Note | Signature | Returns |
-|------|-----------|---------|
-| `cronValid` | `string` | `bool` — structurally valid (five fields present) |
-| `cronNormalize` | `string` | `string` — expanded macros, exactly five fields |
-| `cronDescribe` | `string` | `string` — human-readable ("Every 5 minutes") |
+# v2 → v1 conversion — legacy v2 objects may have a flat string
+- from: v2
+  to: v1
+  spec:
+    schedule: "{{ cronFromAny .spec.schedule }}"
 
-```yaml
-- field: spec.schedule
-  value: "{{ cronValid .spec.schedule }}"
-  message: "spec.schedule must be a valid cron expression"
-  action: deny
+# status field — safe regardless of stored shape
+- path: scheduleExpression
+  value: "{{ cronFromAny .spec.schedule }}"
+{minute: "*/5", hour: "0", dayOfMonth: "*", month: "*", dayOfWeek: "1"}
+→ "*/5 0 * * 1"
 
+"*/5 0 * * 1"
+→ "*/5 0 * * 1"   (string passthrough, normalised)
+# Old:
+schedule: >
+  {{ if typeMap .spec.schedule }}{{ cronFromMap .spec.schedule }}
+  {{ else }}{{ cronNormalize .spec.schedule }}{{ end }}
+
+# New:
+schedule: "{{ cronFromAny .spec.schedule }}"
+
+# cronToMap
+# v1 → v2 conversion path
+- from: v1
+  to: v2
+  spec:
+    schedule: "{{ cronToMap .spec.schedule }}"
+"*/5 0 * * 1"
+→ {minute:"*/5", hour:"0", dayOfMonth:"*", month:"*", dayOfWeek:"1"}
+
+"@hourly"
+→ {minute:"0", hour:"*", dayOfMonth:"*", month:"*", dayOfWeek:"*"}
+
+# cronNormalize
+# value: "{{ cronNormalize .spec.schedule }}"
+# "@daily"      → "0 0 * * *"
+# "@hourly"     → "0 * * * *"
+# "*/5 * * * *" → "*/5 * * * *"  (unchanged, already valid)
+# ""            → "* * * * *"
+
+# cronDescribe
 - path: scheduleDescription
   value: "{{ cronDescribe .spec.schedule }}"
+
+# cronValid
+validation:
+  rules:
+    - field: spec.schedule
+      operator: custom
+      value: "{{ cronValid .spec.schedule }}"
+      message: "spec.schedule must be a valid cron expression"
+      action: deny
+
+# cronExpr
+# value: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
+# minute="*/1", hour="*", dom="*", month="*", dow="*" → "*/1 * * * *"
+
+# cronMinute
+# value: "{{ cronMinute \"*/5 2 * * 1\" }}"   → "*/5"
+# value: "{{ cronHour   \"*/5 2 * * 1\" }}"   → "2"
+# value: "{{ cronDom    \"0 0 15 * *\" }}"    → "15"
+# value: "{{ cronMonth  \"0 0 1 6 *\" }}"     → "6"
+# value: "{{ cronDow    \"0 0 * * 1\" }}"     → "1"
+
+# cronHour
+# value: "{{ cronMinute \"*/5 2 * * 1\" }}"   → "*/5"
+# value: "{{ cronHour   \"*/5 2 * * 1\" }}"   → "2"
+# value: "{{ cronDom    \"0 0 15 * *\" }}"    → "15"
+# value: "{{ cronMonth  \"0 0 1 6 *\" }}"     → "6"
+# value: "{{ cronDow    \"0 0 * * 1\" }}"     → "1"
+
+# cronDom
+# value: "{{ cronMinute \"*/5 2 * * 1\" }}"   → "*/5"
+# value: "{{ cronHour   \"*/5 2 * * 1\" }}"   → "2"
+# value: "{{ cronDom    \"0 0 15 * *\" }}"    → "15"
+# value: "{{ cronMonth  \"0 0 1 6 *\" }}"     → "6"
+# value: "{{ cronDow    \"0 0 * * 1\" }}"     → "1"
+
+# cronMonth
+# value: "{{ cronMinute \"*/5 2 * * 1\" }}"   → "*/5"
+# value: "{{ cronHour   \"*/5 2 * * 1\" }}"   → "2"
+# value: "{{ cronDom    \"0 0 15 * *\" }}"    → "15"
+# value: "{{ cronMonth  \"0 0 1 6 *\" }}"     → "6"
+# value: "{{ cronDow    \"0 0 * * 1\" }}"     → "1"
+
+# cronDow
+# value: "{{ cronMinute \"*/5 2 * * 1\" }}"   → "*/5"
+# value: "{{ cronHour   \"*/5 2 * * 1\" }}"   → "2"
+# value: "{{ cronDom    \"0 0 15 * *\" }}"    → "15"
+# value: "{{ cronMonth  \"0 0 1 6 *\" }}"     → "6"
+# value: "{{ cronDow    \"0 0 * * 1\" }}"     → "1"
+
+# cronField
+# value: "{{ cronField .spec.schedule 0 }}"   → minute field
+# value: "{{ cronField .spec.schedule 3 }}"   → month field
 ```
-
-## Field extraction
-
-| Note | Signature | Returns |
-|------|-----------|---------|
-| `cronMinute` | `string` | minute field |
-| `cronHour` | `string` | hour field |
-| `cronDom` | `string` | day-of-month field |
-| `cronMonth` | `string` | month field |
-| `cronDow` | `string` | day-of-week field |
-| `cronField` | `string, int` | field at position 0–4 |
-| `cronExpr` | `min hr dom mon dow string` | canonical five-field string |
-
-```yaml
-# Extract a single field
-- path: scheduleMinute
-  value: "{{ cronMinute .spec.schedule }}"
-
-# Build from five explicit parts
-schedule: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
-```
-
-## Supported @-macros
-
-| Macro | Expands to | Meaning |
-|-------|-----------|---------|
-| `@yearly` / `@annually` | `0 0 1 1 *` | Once a year, Jan 1 at midnight |
-| `@monthly` | `0 0 1 * *` | Once a month, 1st at midnight |
-| `@weekly` | `0 0 * * 0` | Once a week, Sunday at midnight |
-| `@daily` / `@midnight` | `0 0 * * *` | Once a day at midnight |
-| `@hourly` | `0 * * * *` | Once an hour at minute 0 |

@@ -4,6 +4,22 @@ Concepts are the building blocks that make Orkestra expressive without being ver
 
 ---
 
+## Orkestra Patterns
+
+Every file you write in Orkestra — `katalog.yaml`, `simulate.yaml`, `komposer.yaml` — is an **Orkestra Pattern**: a versioned, distributable artifact with a specific kind and a specific job. The name reflects something real: these files don't just describe resources, they encode solutions to recurring problems in the operator world.
+
+→ [Read: Orkestra Patterns](patterns/)
+
+---
+
+## Lifecycle
+
+The [Lifecycle](lifecycle/) of an Orkestra pattern is not managed by a separate system — it is a built-in property of the artifact. From creation to deprecation, each stage follows the same production model: write YAML, validate offline, gate with simulate and e2e, push with proof attached. OLM exists because operators were binaries. Orkestra patterns are data.
+
+→ [Read: Lifecycle](lifecycle/)
+
+---
+
 ## Profiles
 
 [Profiles](profiles/) are named presets that expand into fully-formed configuration at Katalog load time. They cover resources, autoscaling, probes, and security. A profile is a decision made once by someone who thought it through, shared with everyone who shouldn't have to.
@@ -70,6 +86,14 @@ The [Operator of Operators](operator-of-operators/) pattern lets one Orkestra op
 
 ---
 
+## Schema Evolution
+
+[Schema Evolution](conversion/) is how Orkestra handles CRD field changes over time — without breaking stored objects, without manual caBundle management, and without a separate conversion webhook deployment. Two approaches: `normalize:` for single-version input tolerance, `conversion.paths:` for multi-version APIs.
+
+→ [Read: Schema Evolution](conversion/)
+
+---
+
 ## Typed Operators
 
 [Typed Operators](typed-operators/) are the escape hatch for cases that genuinely need Go code: hooks that run alongside declarative templates, constructors that replace the reconciler entirely, and operator-as-library for full control.
@@ -99,6 +123,14 @@ The [Health Subsystem](health-subsystem/) is Orkestra's liveness, readiness, and
 [ONCOP](oncop/) (Orkestra Native Cross-Operator Protocol) is the cross-binary observation layer. One operator reads another's typed state — health, metrics, or full CR — without hard-coded URLs, with built-in caching, and with the same template surface as same-binary cross: reads.
 
 → [Read: ONCOP](oncop/)
+
+---
+
+## Declarative Unit Testing
+
+[Declarative Unit Testing](simulate/) is how Orkestra verifies reconciler behavior without a cluster — one `simulate.yaml`, no Kubernetes, no Docker, sub-second. Declare which resources should appear in which cycle. The same reconciler that runs in production runs here.
+
+→ [Read: Declarative Unit Testing](simulate/)
 
 ---
 

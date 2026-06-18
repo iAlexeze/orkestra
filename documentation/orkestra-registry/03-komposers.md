@@ -1,6 +1,6 @@
 # Komposers
 
-A Komposer is the **composition plane**: it declares where to pull operator patterns from and how to compose them into a running platform. Komposers are the only document type with a top-level `imports` block (registry, file, and Helm sources). Katalogs import only Motifs, and only at the CRD level — they cannot pull other Katalogs or Komposers.
+A Komposer is the **composition plane**: it declares where to pull operator patterns from and how to compose them into a running platform. Komposers are the only Pattern with a top-level `imports` block (registry, file, and Helm sources). Katalogs import only Motifs, and only at the CRD level — they cannot pull other Katalogs or Komposers.
 
 ---
 
@@ -18,7 +18,7 @@ postgres/
 ```
 
 ```bash
-ork registry push postgres:v14 ./patterns/postgres/
+ork push postgres:v14 ./patterns/postgres/
 ```
 
 The `komposer.yaml` is not a separate publish step — it travels with the Katalog. Consumers who want to load it instead of `katalog.yaml` set `useKomposer: true` in their import entry.

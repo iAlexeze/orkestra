@@ -21,7 +21,7 @@ resources:
     memory: 1Gi
 ```
 
-The runtime (`pkg/orkestra-registry`) and all downstream builders only ever receive fully-expanded structs. A profile name never reaches a resource builder.
+The runtime (`pkg/resources`) and all downstream builders only ever receive fully-expanded structs. A profile name never reaches a resource builder.
 
 ## Lifetime of a profile
 
@@ -38,7 +38,7 @@ pkg/katalog enrichment                    ← other profiles expanded via Resolv
                                               ResolveContainerSecurityContext, etc.
        │
        ▼
-pkg/orkestra-registry: builders           ← receive only expanded structs, no profile names
+pkg/resources: builders           ← receive only expanded structs, no profile names
        │
        ▼
 Kubernetes API                            ← resource, security context, probe timings set
@@ -49,10 +49,10 @@ Kubernetes API                            ← resource, security context, probe 
 ```
 pkg/types      ←── pkg/profiles ←── pkg/katalog
                          │
-                         └──────────── pkg/orkestra-registry/common
+                         └──────────── pkg/resources/common
 ```
 
-`pkg/profiles` imports only `pkg/types` and `pkg/utils`. Both `pkg/katalog` and `pkg/orkestra-registry` import `pkg/profiles`. Neither imports the other — `pkg/profiles` is the clean meeting point.
+`pkg/profiles` imports only `pkg/types` and `pkg/utils`. Both `pkg/katalog` and `pkg/resources` import `pkg/profiles`. Neither imports the other — `pkg/profiles` is the clean meeting point.
 
 ## Template expressions
 

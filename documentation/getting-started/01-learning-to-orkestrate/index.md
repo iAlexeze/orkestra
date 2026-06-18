@@ -26,6 +26,7 @@ Examples are grouped into packs. Pull any pack with `ork init --pack <name>`.
 | [Advanced](./03-advanced.md) | Admission, composition, escape hatches, autoscaling, cross-operator |
 | [Use-cases](./04-use-cases.md) | Normalize, enrich, profiles, full-stack patterns, external calls, motif composition |
 | [Security](./05-security.md) | Admission, deletion protection, namespace isolation |
+| [Registry Guide](./06-registry-guide.md) | Distribution — publish, version, gate, consume, and automate the full pattern lifecycle |
 
 ---
 
@@ -96,6 +97,15 @@ Each example has its own `README.md`. Follow it — it tells you exactly what to
 
 **Autoscaling workers**
 - [`advanced/12-autoscale/02-based-on-own-metrics`](./03-advanced.md)
+
+**Publishing and distributing operators**
+- Start with [`registry-guide/00-consume`](./06-registry-guide.md) — pull a proven pattern and deploy it before building your own
+- Then [`registry-guide/02-katalog-api`](./06-registry-guide.md) through [`04-katalog-platform`](./06-registry-guide.md) to build the publish → gate → distribute pipeline
+- [`registry-guide/05-komposer`](./06-registry-guide.md) for production deployment with admission and deletion protection
+- [`registry-guide/12-ork-action`](./06-registry-guide.md) to automate everything in CI
+
+**Supply chain verification**
+- [`registry-guide/08-bad-actor`](./06-registry-guide.md) — simulate passed, `ork plan` caught what the assertions missed
 
 ---
 

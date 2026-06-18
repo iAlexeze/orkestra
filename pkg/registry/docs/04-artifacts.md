@@ -14,7 +14,25 @@ my-operator/
   crd.yaml       ← CRD schema                   (required)
   README.md      ← human documentation          (optional)
   cr.yaml        ← example CR for the CRD       (optional)
+  e2e.yaml       ← E2E test definition          (optional)
+  simulate.yaml  ← simulate gate spec           (optional)
 ```
+
+Typed operators (those declaring `operatorBox.hooks` or `operatorBox.constructor`)
+additionally include the Go build files so a consumer can rebuild the custom runtime image:
+
+```
+my-typed-operator/
+  katalog.yaml   ← operator declaration         (required)
+  crd.yaml       ← CRD schema                   (required)
+  go.mod         ← Go module — declares orkestra runtime version  (typed only)
+  go.sum         ← Go checksum database          (typed only)
+  Makefile       ← build targets (docker-build, push, etc.)       (typed only)
+```
+
+These files are included automatically when present — no extra flags needed on `ork push`.
+`ork pull` prints `↳ Typed operator — go.mod, Makefile included` and warns when the
+pattern's declared runtime version does not match the local `ork` binary.
 
 ### Metadata derivation
 
@@ -50,11 +68,11 @@ Four layers run before any bytes are sent to the registry:
 docker login ghcr.io
 
 # 2. Push — validation runs automatically before any network call
-ork registry push my-operator:v1.0.0 ./my-operator/
+ork push my-operator:v1.0.0 ./my-operator/
 
 # 3. Verify
-ork registry info my-operator:v1.0.0
-ork registry list
+ork inspect my-operator:v1.0.0
+ork patterns
 ```
 
 The index at `ghcr.io/orkspace/orkestra-registry/patterns/index:latest` is updated automatically after each push.
@@ -62,9 +80,9 @@ The index at `ghcr.io/orkspace/orkestra-registry/patterns/index:latest` is updat
 To push to a custom registry:
 
 ```bash
-ork registry push oci://ghcr.io/myorg/patterns/my-operator:v1.0.0 ./my-operator/
+ork push oci://ghcr.io/myorg/patterns/my-operator:v1.0.0 ./my-operator/
 # or via env var
-ORK_REGISTRY=ghcr.io/myorg/patterns ork registry push my-operator:v1.0.0 ./my-operator/
+ORK_REGISTRY=ghcr.io/myorg/patterns ork push my-operator:v1.0.0 ./my-operator/
 ```
 
 For the official `ghcr.io/orkspace/orkestra-registry` registry, patterns are published by opening a PR against `github.com/orkspace/orkestra-registry`. CI validates the pattern against a live kind cluster and pushes on merge.
@@ -112,11 +130,11 @@ metadata:
 docker login ghcr.io
 
 # 2. Push
-ork registry push redis:v7.2.0 ./redis/
+ork push redis:v7.2.0 ./redis/
 
 # 3. Verify
-ork registry info redis:v7.2.0
-ork registry list
+ork inspect redis:v7.2.0
+ork patterns
 ```
 
 The default motif registry is `ghcr.io/orkspace/orkestra-motifs`. The index at `ghcr.io/orkspace/orkestra-motifs/index:latest` is updated automatically.
@@ -124,9 +142,9 @@ The default motif registry is `ghcr.io/orkspace/orkestra-motifs`. The index at `
 To push to a custom motif registry:
 
 ```bash
-ork registry push oci://ghcr.io/myorg/motifs/redis:v7.2.0 ./redis/
+ork push oci://ghcr.io/myorg/motifs/redis:v7.2.0 ./redis/
 # or via env var
-ORK_MOTIFS_REGISTRY=ghcr.io/myorg/motifs ork registry push redis:v7.2.0 ./redis/
+ORK_MOTIFS_REGISTRY=ghcr.io/myorg/motifs ork push redis:v7.2.0 ./redis/
 ```
 
 ---
@@ -136,14 +154,15 @@ ORK_MOTIFS_REGISTRY=ghcr.io/myorg/motifs ork registry push redis:v7.2.0 ./redis/
 ### Adding a new file type to an existing kind
 
 1. Add a `FileXxx` constant to `constant.go`.
-2. Add a case to `mediaTypeForArtifactFile` in `artifact.go`.
-3. Add the filename to `OptionalFiles` (or `RequiredFiles`) in the relevant `ArtifactSpec` in `artifactSpecs`.
+2. Add a case to `mediaTypeForPatternFile` in `pattern.go`.
+3. Add the filename to `OptionalFiles` (or `RequiredFiles`) in the relevant `PatternSpec` in `patternSpecs`.
+4. Add the filename to `knownPatternFiles` in `pkg/merger/registry.go` so Git-sourced pulls attempt to fetch it.
 
-The file will be pushed as a layer with the appropriate media type and an `org.opencontainers.image.title` annotation set to the filename. ORAS uses this annotation on pull to write the file to the correct path in the cache directory.
+The file is pushed as an OCI layer with the appropriate media type and an `org.opencontainers.image.title` annotation set to the filename. ORAS uses this annotation on pull to write the file to the correct path in the cache directory.
 
-### Adding a new artifact kind
+### Adding a new pattern kind
 
-Add one entry to `artifactSpecs` in `artifact.go`:
+Add one entry to `patternSpecs` in `pattern.go`:
 
 ```go
 KindFoo: {
@@ -155,4 +174,4 @@ KindFoo: {
 },
 ```
 
-No other changes are required. `DetectKind`, `ValidateArtifactDirectory`, `LoadArtifactMeta`, and the push/pull pipeline all work from `artifactSpecs` automatically.
+No other changes are required. `DetectKind`, `ValidatePatternDirectory`, `LoadPatternMeta`, and the push/pull pipeline all work from `patternSpecs` automatically.

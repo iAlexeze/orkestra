@@ -124,4 +124,4 @@ operatorBox:
         value: "{{ .external.healthCheck.status }}"
 ```
 
-See the [External concept doc](../../concepts/operatorbox/07-external/index.md) for patterns and best practices.
+See the [External concept doc](../../../concepts/operatorbox/07-external/index.md) for patterns and best practices.

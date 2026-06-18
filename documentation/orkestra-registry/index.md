@@ -10,10 +10,10 @@ Patterns are versioned, immutable, and discoverable. A Katalog pattern pulled at
 
 | Command | Description |
 |---------|-------------|
-| `ork registry list` | Browse available patterns in the registry |
-| `ork registry pull <name>:<version>` | Pull a pattern to the local cache |
-| `ork registry info <name>:<version>` | Show metadata without downloading files |
-| `ork registry push <name>:<version> <dir>` | Publish a pattern directory |
+| `ork patterns` | Browse available patterns in the registry |
+| `ork pull <name>:<version>` | Pull a pattern to the local cache |
+| `ork inspect <name>:<version>` | Show metadata without downloading files |
+| `ork push <name>:<version> <dir>` | Publish a pattern directory |
 
 Override the default registries:
 

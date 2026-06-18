@@ -1,7 +1,5 @@
 # Concepts
 
----
-
 ## What is Orkestra?
 
 Orkestra is a declarative operator runtime for Kubernetes. It turns CRDs into
@@ -16,6 +14,34 @@ The code you would have written does not exist.
     Orkestra removes the need to write code at all.
 
 See [Your CRD Is Enough](/blog/your-crd-is-enough/) for the full picture.
+
+---
+
+## Is Orkestra an operator?
+
+Not in the way the term is usually meant.
+
+Orkestra runs in a cluster, watches resources, and reacts to events — so by the loose definition, yes. But that framing misses what it actually is. The closer analogy is `kube-controller-manager`: it runs as a pod, it watches CRDs, but no one calls it an operator. It is the thing that makes controllers run.
+
+Orkestra is the same shape. It does not reconcile your CRD. It produces a complete, isolated operator for your CRD from a Katalog declaration — its own informer, queue, worker pool, health state, metrics. At runtime you have an operator for your CRD. At the source level you have a YAML file, not a controller.
+
+The tell is [cmd/orkestra/main.go](https://github.com/orkspace/orkestra/blob/main/cmd/orkestra/main.go). There is no `Reconcile`, no `ctrl.SetupWithManager`, no scheme registration for your types. Those are not missing — they are generated at startup from the Katalog per CRD.
+Traditionally, operators have that boilerplate in the code — the reconciler, the controller setup, the scheme registration. Orkestra puts it in the runtime.
+
+
+→ [Declarative Operators whitepaper](/publications/declarative-operators-whitepaper/) — the super-operator model in full
+
+---
+
+## Does Orkestra install my CRDs?
+
+No — and that is the point.
+
+Orkestra is built on the premise that your CRD already has everything needed to manage it. It does not need another CRD to manage it. You bring the CRD. Orkestra turns it into an operator.
+
+Install your CRD the same way you always have — `kubectl apply`, Helm, GitOps. Once it exists in the cluster, point a Katalog at it and Orkestra starts managing it.
+
+→ [Why Katalog and Komposer are not CRDs](./05-why-not-crds.md) — the full reasoning, and what it means for your cluster
 
 ---
 
@@ -41,7 +67,7 @@ conditional logic not covered by the `when:` and `anyOf:` blocks. But hooks are 
 declarative layer handles everything else.
 
 !!! note "When Go becomes necessary"
-    The 20% of operator logic that genuinely requires code — creating a user
+    The 10-20% of operator logic that genuinely requires code — creating a user
     inside PostgreSQL, reading another cluster's state
     — is handled by hooks. Hooks coexist with declarative templates. You do not
     choose one or the other.
@@ -139,21 +165,153 @@ See the [Komposer Schema](../reference/schema/03-komposer/index.md) for all opti
 
 ---
 
-## What is the OrkestraRegistry?
+## Are Katalog, Komposer, Motif, E2E, and Simulate Kubernetes CRDs?
 
-The OrkestraRegistry is two things:
+No. None of them are registered as `CustomResourceDefinition` objects in the cluster.
 
-**1. The internal resource library** (`pkg/orkestra-registry/`) — Go implementations
-of Create, Update, Delete, and Resolve for every common Kubernetes resource type:
-Deployments, Services, Secrets, ConfigMaps, Jobs, CronJobs, Pods, ServiceAccounts.
-These are called by the reconciler when it processes declarative templates.
+They are plain YAML files loaded from the local filesystem or OCI registry at startup. A `Katalog` struct in Go has no `metav1.TypeMeta`, no `metav1.ObjectMeta`, no `DeepCopyObject()`. The Katalog loader calls `os.ReadFile()` and `yaml.Unmarshal()` — no Kubernetes client, no API server call.
 
-**2. The public pattern registry** (`orkspace/orkestra-registry`) — versioned
-operator patterns distributed as OCI artifacts. Pull a Postgres operator pattern
-with one line in a Komposer. No binary. No deployment. Just a Katalog.
+The same applies to Komposer, Motif, E2E, and Simulate. They are instruction sets for the runtime. They live on disk and in OCI artifacts, not in etcd.
+
+!!! note "The Artifact Hub display metadata"
+    `charts/orkestra/Chart.yaml` lists these types under `artifacthub.io/crds` — that is Artifact Hub display metadata only. The Helm chart deploys no CRD YAML for any of them.
+
+→ [Why Katalog and Komposer are not CRDs](./05-why-not-crds.md) — the full design reasoning
+
+---
+
+## What is a Motif?
+
+A Motif is a reusable operatorBox fragment. It packages everything one pattern of operator behavior needs — resources, status fields, validation rules, mutation rules — under a named, parameterized declaration. Katalogs import Motifs instead of repeating those declarations.
+
+A Motif can declare:
+
+- **`resources:`** — Kubernetes and custom resources to create (`deployments`, `statefulSets`, `services`, `custom`, and more), split into `onCreate` and `onReconcile` phases
+- **`status:`** — status fields merged into the importing CRD's status layer
+- **`admission:`** — validation and mutation rules contributed alongside the Katalog's own rules
+
+```yaml
+apiVersion: orkestra.orkspace.io/v1
+kind: Motif
+metadata:
+  name: postgres
+  version: v1
+
+inputs:
+  - name: image
+    required: true
+  - name: volumeSize
+    default: "10Gi"
+
+resources:
+  statefulSets:
+    - name: "{{ .metadata.name }}-db"
+      image: "{{ index .inputs \"image\" }}"
+      storageSize: "{{ index .inputs \"volumeSize\" }}"
+
+status:
+  fields:
+    - path: dbEndpoint
+      value: "{{ .metadata.name }}-db.{{ .metadata.namespace }}.svc.cluster.local"
+
+admission:
+  validation:
+    rules:
+      - field: spec.image
+        operator: exists
+        message: "spec.image is required"
+        action: deny
+```
+
+A Katalog imports it with `with:` bindings:
+
+```yaml
+operatorBox:
+  imports:
+    - motif: postgres
+      with:
+        image: "{{ .spec.dbImage }}"
+        volumeSize: "{{ .spec.storage }}"
+```
+
+Orkestra expands the Motif at Katalog load time — bindings resolved, resources and rules merged into the operatorBox as if declared inline.
+
+Publish a Motif by pushing its directory to the registry:
+
+```bash
+ork push postgres:v1 ./motifs/postgres/
+```
+
+Import it in a Katalog by OCI address, or by bare name if `ORK_MOTIFS_REGISTRY` is set:
+
+```yaml
+operatorBox:
+  imports:
+    - motif: ghcr.io/myorg/motifs/postgres:v1   # full OCI ref
+    - motif: postgres                            # bare name — resolved via ORK_MOTIFS_REGISTRY
+```
+
+Motifs can share the same registry address as Katalogs — separate them with folders (`/katalogs/`, `/motifs/`) rather than separate registries.
+
+→ [Motif schema reference](../reference/schema/01-motif/index.md)
+
+---
+
+## What is the note expression language?
+
+Notes are the pure transformation functions available inside every `{{ }}` expression in a Katalog — `onCreate`, `onReconcile`, `status.fields`, `when:` conditions, `normalize:`, `mutation:`, `conversion.paths:`.
+
+```yaml
+status:
+  fields:
+    - path: phase
+      value: '{{ boolTernary .spec.suspend "Suspended" "Active" }}'
+    - path: endpoint
+      value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+
+onCreate:
+  secrets:
+    - name: "{{ .metadata.name }}-creds"
+      once: true
+      data:
+        password: "{{ randomAlphanumeric 32 }}"
+```
+
+Notes are **pure** (same input → same output), **safe** (nil/empty input never panics), and **stateless** (no I/O, no external calls). They are not Go `text/template` — they are a separate vocabulary built on top of it.
+
+There are over 100 notes across domains: strings, math, conditionals, type coercion, cron expressions, random generation, Kubernetes object navigation, replica state, Job lifecycle, Service networking, and more.
+
+Discover them from the terminal:
+
+```bash
+ork notes                      # list all notes
+ork notes search job           # search by keyword
+ork notes show jobSucceeded    # full detail and example
+```
+
+→ [Notes reference](../reference/orkestra-notes/index.md)
+
+---
+
+## What is the Orkestra Registry?
+
+The Orkestra Registry is the distribution layer for operator patterns. Where traditional
+ecosystems distribute binaries, the registry distributes **behavior** — Katalogs, Motifs,
+and Komposers published as OCI artifacts that any Orkestra runtime can pull and interpret.
+
+Pull a Postgres operator pattern with one line in a Komposer. No binary. No deployment.
+Just a Katalog.
+
+The default registry is `ghcr.io/orkspace/orkestra-registry`. Point Orkestra at your own
+registry — for internal patterns, air-gapped environments, or private Motif libraries:
+
+```bash
+ORK_REGISTRY=ghcr.io/myorg/katalogs         # Katalog registry
+ORK_MOTIFS_REGISTRY=ghcr.io/myorg/motifs    # Motif registry
+```
 
 !!! tip "The npm analogy"
-    The OrkestraRegistry is Orkestra's package manager for operator behavior.
+    The Orkestra Registry is Orkestra's package manager for operator behavior.
     Patterns are versioned, composable, and overridable. You import them like
     dependencies, not like binaries.
 
@@ -218,5 +376,5 @@ declared alongside reconcile templates:
 ## Next
 
 - **[Running](./02-running.md)** — setup, configuration, and operations
-- **[Patterns](./03-patterns.md)** — validation, mutation, built-in kinds
+- **[Usage](./03-usage.md)** — validation, mutation, built-in kinds
 - **[Ecosystem](./04-ecosystem.md)** — comparisons and the Kubernetes roadmap

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/devserver"
 	orke2e "github.com/orkspace/orkestra/pkg/e2e"
 	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/simulate"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	orkutils "github.com/orkspace/orkestra/pkg/utils"
@@ -103,8 +105,16 @@ func runSimulate(ctx context.Context, katalogFile, crFile, crdName string, maxCy
 		maxCycles = 10
 	}
 
-	kat, err := katalog.ParseFile(katalogFile)
+	m := merger.New(katalogFile)
+	if err := m.Merge(); err != nil {
+		return fmt.Errorf("merging Katalog: %w", err)
+	}
+	kat, err := katalog.BuildExpanded(kfg, m)
 	if err != nil {
+		var typedErr *katalog.TypedOperatorError
+		if errors.As(err, &typedErr) {
+			printTypedOperatorHint(typedErr, "ork simulate")
+		}
 		return fmt.Errorf("parsing Katalog: %w", err)
 	}
 
@@ -172,11 +182,14 @@ func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *
 	}
 	fmt.Println()
 
+	spin := StartSpinner(fmt.Sprintf("Running %d cycles...", maxCycles))
 	start := time.Now()
 	result, err := simulate.Run(ctx, kat, crdName, cr, maxCycles, opts)
 	if err != nil {
+		spin.Failure()
 		return err
 	}
+	spin.Stop()
 	elapsed := time.Since(start)
 
 	if debugOps {
@@ -486,8 +499,16 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 	katalogPath := filepath.Join(dir, doc.Spec.Katalog)
 	crPath := filepath.Join(dir, doc.Spec.CR)
 
-	kat, err := katalog.ParseFile(katalogPath)
+	m := merger.New(katalogPath)
+	if err := m.Merge(); err != nil {
+		return fmt.Errorf("merging Katalog: %w", err)
+	}
+	kat, err := katalog.BuildExpanded(kfg, m)
 	if err != nil {
+		var typedErr *katalog.TypedOperatorError
+		if errors.As(err, &typedErr) {
+			printTypedOperatorHint(typedErr, "ork simulate")
+		}
 		return fmt.Errorf("parsing Katalog: %w", err)
 	}
 	crData, err := os.ReadFile(crPath)
@@ -653,23 +674,23 @@ observed cycle-1 create operations as expect: rules. Edit and refine from there.
 
   ork simulate init
   ork simulate init -f katalog.yaml --cr cr.yaml
-  ork simulate init --force    # overwrite existing simulate.yaml`,
+  ork simulate init --force              # overwrite existing simulate.yaml
+  ork simulate init --suite              # aggregate all simulate.yaml files under .
+  ork simulate init --suite ./examples/  # aggregate under a specific dir`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if suite, _ := cmd.Flags().GetBool("suite"); suite {
+			return simulateInitSuite(cmd, args)
+		}
+
 		katalogFile, _ := cmd.Flags().GetString("file")
 		crFile, _ := cmd.Flags().GetString("cr")
 		force, _ := cmd.Flags().GetBool("force")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 
-		if katalogFile == "" {
-			if d := defaultFilePaths(); len(d) > 0 {
-				katalogFile = d[0]
-			}
-		}
-		if katalogFile == "" {
-			return fmt.Errorf(errNoKatalog)
-		}
-		if abs, err := filepath.Abs(katalogFile); err == nil {
-			katalogFile = abs
+		var err error
+		katalogFile, err = resolveKatalogFile(katalogFile)
+		if err != nil {
+			return err
 		}
 		if crFile == "" {
 			crFile = filepath.Join(filepath.Dir(katalogFile), fileCr)
@@ -752,6 +773,7 @@ observed cycle-1 create operations as expect: rules. Edit and refine from there.
 		}
 
 		output := injectAbsentComment(buf.Bytes(), results)
+		output = append([]byte("# Schema reference: "+SchemaRefSimulate+"\n"), output...)
 
 		if dryRun {
 			fmt.Print(string(output))
@@ -767,6 +789,107 @@ observed cycle-1 create operations as expect: rules. Edit and refine from there.
 		fmt.Printf("\n  Run %s to verify.\n", bold("ork simulate"))
 		return nil
 	},
+}
+
+// simulateInitSuite discovers all simulate.yaml leaf files under root, builds a
+// pure aggregator, and writes (or prints) simulate.yaml in the current directory.
+func simulateInitSuite(cmd *cobra.Command, args []string) error {
+	force, _ := cmd.Flags().GetBool("force")
+	dryRun, _ := cmd.Flags().GetBool("dry-run")
+	skipRaw, _ := cmd.Flags().GetStringSlice("skip")
+
+	root := "."
+	if len(args) > 0 {
+		root = args[0]
+	}
+
+	var patterns []string
+	for _, s := range skipRaw {
+		for _, p := range strings.Split(s, ",") {
+			if p = strings.TrimSpace(p); p != "" {
+				patterns = append(patterns, p)
+			}
+		}
+	}
+
+	paths, err := orke2e.DiscoverSimulateFiles(root, patterns)
+	if err != nil {
+		return fmt.Errorf("discovery: %w", err)
+	}
+	if len(paths) == 0 {
+		fmt.Printf("No simulate.yaml files found under %s\n", root)
+		return nil
+	}
+
+	cwd, _ := os.Getwd()
+	relPaths := make([]string, 0, len(paths))
+	for _, p := range paths {
+		rel, err := filepath.Rel(cwd, p)
+		if err != nil {
+			rel = p
+		}
+		relPaths = append(relPaths, "./"+rel)
+	}
+
+	outPath := fileSimulate
+	if !dryRun && !force {
+		if fileExists(outPath) {
+			return fmt.Errorf("%s already exists — use --force to overwrite", outPath)
+		}
+	}
+
+	type suiteMeta struct {
+		Name        string `yaml:"name"`
+		Description string `yaml:"description,omitempty"`
+	}
+	type suiteDoc struct {
+		APIVersion string    `yaml:"apiVersion"`
+		Kind       string    `yaml:"kind"`
+		Metadata   suiteMeta `yaml:"metadata"`
+		Imports    []string  `yaml:"imports"`
+	}
+
+	doc := suiteDoc{
+		APIVersion: "orkestra.orkspace.io/v1",
+		Kind:       "Simulate",
+		Metadata: suiteMeta{
+			Name:        "suite",
+			Description: fmt.Sprintf("Generated by ork simulate init --suite — %d file(s) discovered", len(relPaths)),
+		},
+		Imports: relPaths,
+	}
+
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(doc); err != nil {
+		return fmt.Errorf("encoding suite: %w", err)
+	}
+
+	output := append([]byte("# Schema reference: "+SchemaRefSimulateSuite+"\n"), buf.Bytes()...)
+
+	if dryRun {
+		fmt.Print(string(output))
+		return nil
+	}
+
+	if err := os.WriteFile(outPath, output, 0644); err != nil {
+		return fmt.Errorf("writing %s: %w", outPath, err)
+	}
+
+	absRoot, _ := filepath.Abs(root)
+	fmt.Printf("%s Generated %s\n", successMark(), outPath)
+	fmt.Printf("  %d file(s) discovered under %s\n", len(relPaths), absRoot)
+	const maxShow = 10
+	for i, p := range relPaths {
+		if i >= maxShow {
+			fmt.Printf("  ... %d more\n", len(relPaths)-maxShow)
+			break
+		}
+		fmt.Printf("    %s\n", dim(p))
+	}
+	fmt.Printf("\n  Run %s to verify.\n", bold("ork simulate"))
+	return nil
 }
 
 // generateSimulateDoc builds a Simulate document from observed cycle-1 creates.
@@ -895,6 +1018,8 @@ func init() {
 	simulateInitCmd.Flags().String("cr", "", "Path to the CR YAML file")
 	simulateInitCmd.Flags().Bool("force", false, "Overwrite existing simulate.yaml")
 	simulateInitCmd.Flags().Bool("dry-run", false, "Print the generated simulate.yaml to stdout instead of writing the file")
+	simulateInitCmd.Flags().Bool("suite", false, "Aggregate all simulate.yaml leaf files found under the given dir (default: .)")
+	simulateInitCmd.Flags().StringSlice("skip", []string{}, "Comma-separated path patterns to exclude from suite discovery")
 
 	simulateCmd.Flags().StringP("file", "f", "", "Path to katalog.yaml")
 	simulateCmd.Flags().String("cr", "", "Path to the CR YAML file to simulate")

@@ -1,44 +1,68 @@
 # Data Notes
 
-Encoding, hashing, and naming utilities.
+Data encoding, hashing, and name-safety utilities. Used for Secret data encoding, content-addressed naming, JSON embedding, and generating Kubernetes-safe resource name segments from arbitrary string inputs.
 
 ## Reference
 
-| Note | Signature | Returns |
-|------|-----------|---------|
-| `toBase64` | `string` | `string` |
-| `fromBase64` | `string` | `string` — `""` on error |
-| `toJSON` | `interface{}` | `string` — `"{}"` on error |
-| `sha256sum` | `string` | `string` (8 hex chars) |
-| `slugify` | `string` | `string` — lowercase, spaces/symbols → dashes, DNS-safe |
-| `truncateName` | `s string, n int` | `string` — hard cut, no suffix (for resource names) |
+| Note | Description |
+|------|-------------|
+| `toBase64` | Base64-encode a string using standard encoding. |
+| `fromBase64` | Decode a base64 string. |
+| `toJSON` | Marshal any value to a JSON string. |
+| `sha256sum` | Return the first 8 hex characters of the SHA256 hash of a string. |
+| `truncateName` | Hard-truncate a string to at most `maxLen` characters with no suffix. |
+| `slugify` | Convert a string to a Kubernetes-safe name segment: lowercase, non-alphanumeric characters replaced with dashes, consecutive dashes collapsed, leading and trailing dashes trimmed. |
 
 ## Examples
 
 ```yaml
-# Secret data: encode value to base64 for Secret.data
-data:
-  password: "{{ toBase64 .spec.password }}"
+# toBase64
+onCreate:
+  secrets:
+    - name: "{{ .metadata.name }}-config"
+      data:
+        endpoint: "{{ toBase64 .spec.endpoint }}"
+        token: "{{ toBase64 .spec.token }}"
 
-# Read a base64-encoded value from a child Secret
-- path: dbPassword
-  value: "{{ fromBase64 .children.secret.data.password }}"
+# fromBase64
+status:
+  fields:
+    - path: endpoint
+      value: "{{ fromBase64 (index .children.secret.data \"endpoint\") }}"
 
-# Content-addressed resource name — changes when config changes
-name: "config-{{ sha256sum .spec.config }}"
+# toJSON
+onCreate:
+  configMaps:
+    - name: "{{ .metadata.name }}-config"
+      data:
+        settings: "{{ toJSON .spec.settings }}"
+        labels: "{{ toJSON .metadata.labels }}"
 
-# DNS-safe name from user input ("My App / Service" → "my-app-service")
-name: "{{ slugify .spec.teamName }}-operator"
+# sha256sum
+# Content-addressed ConfigMap name — changes when content changes
+onCreate:
+  configMaps:
+    - name: "config-{{ sha256sum .spec.config }}"
+      data:
+        content: "{{ .spec.config }}"
 
-# Hard-truncate for k8s resource names (no "..." suffix)
+# Change-detection annotation
+metadata:
+  annotations:
+    myorg.io/config-hash: "{{ sha256sum .spec.config }}"
+
+# truncateName
+# Keep the name under 50 chars before appending a fixed suffix
 name: "{{ truncateName .spec.projectName 50 }}-deployment"
 
-# Embed structured spec in an annotation
-annotations:
-  orkestra.io/config: "{{ toJSON .spec.config }}"
+# Combine with slugify for safe, length-bounded names
+name: "{{ truncateName (slugify .spec.teamName) 40 }}-operator"
+
+# slugify
+# Derive a safe resource name from a human-readable field
+name: "{{ slugify .spec.teamName }}-operator"
+# "My Team / Platform" → "my-team-platform-operator"
+
+# Use with truncateName for long values
+name: "{{ truncateName (slugify .spec.projectName) 52 }}-svc"
 ```
-
-## `truncateName` vs `truncate`
-
-- `truncate` (from [string notes](string.md)) appends `...` — for human-readable display.
-- `truncateName` hard-cuts — for Kubernetes resource names where `...` is not a valid character.

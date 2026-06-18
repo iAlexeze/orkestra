@@ -24,7 +24,7 @@ See full description in [Writing your first Katalog](../getting-started/02-writi
 ## Publishing
 
 ```bash
-ork registry push postgres:v14 ./patterns/postgres/
+ork push postgres:v14 ./patterns/postgres/
 ```
 
 If `e2e.yaml` exists, the push runs it first. The pattern is only published if all expectations pass. See [E2E](04-e2e.md) for how this works.
@@ -32,10 +32,10 @@ If `e2e.yaml` exists, the push runs it first. The pattern is only published if a
 To skip the gate:
 
 ```bash
-ork registry push postgres:v14 ./patterns/postgres/ --force
+ork push postgres:v14 ./patterns/postgres/ --force
 ```
 
-The E2E result — whether it passed, was skipped, or was force-overridden — is baked into the OCI artifact as annotations. `ork registry info` and `ork registry list` show this status for every pattern.
+The E2E result — whether it passed, was skipped, or was force-overridden — is baked into the OCI artifact as annotations. `ork inspect` and `ork patterns` show this status for every pattern.
 
 ## Importing
 

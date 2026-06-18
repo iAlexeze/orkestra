@@ -47,6 +47,10 @@ jobs:
           tar -czf "dist/examples_security_${TAG}.tar.gz" \
             -C examples/security .
 
+          # Registry Guide
+          tar -czf "dist/examples_registry-guide_${TAG}.tar.gz" \
+            -C examples/registry-guide .
+
           echo "📦 Example packs packaged"
 
       - name: Upload example packs
@@ -70,6 +74,7 @@ jobs:
           echo "| Advanced | Custom resources & controllers | \`examples_advanced_${TAG}.tar.gz\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Use Cases | Real‑world scenarios | \`examples_use-cases_${TAG}.tar.gz\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Security | Admission, Deletion, and Namespace protection | \`examples_security_${TAG}.tar.gz\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Registry Guide | End-to-end registry workflow: consume, build, publish, compose, upgrade | \`examples_registry-guide_${TAG}.tar.gz\` |" >> "$GITHUB_STEP_SUMMARY"
           # echo "| Developer | Local to production in minutes | \`examples_developer_${TAG}.tar.gz\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "**Download from the release assets or run:**" >> "$GITHUB_STEP_SUMMARY"

@@ -1,6 +1,6 @@
 # pkg/registry
 
-The registry package implements the Orkestra artifact registry — an OCI-based store for **patterns** (Katalog-based operators) and **motifs** (reusable resource primitives) that can be pushed, pulled, and listed by the `ork registry` CLI commands.
+The registry package implements the Orkestra artifact registry — an OCI-based store for **patterns** (Katalog-based operators) and **motifs** (reusable resource primitives) that can be pushed, pulled, and inspected by `ork push`, `ork pull`, `ork inspect`, and `ork patterns`.
 
 Artifact kind is detected automatically from the primary YAML file (`kind: Katalog` → pattern, `kind: Motif` → motif). No separate code path per kind is needed — adding a new artifact kind is a one-line entry in `artifactSpecs` in `artifact.go`.
 
@@ -87,7 +87,7 @@ Every manifest carries standard OCI annotations derived from the artifact's prim
 
 ## Index artifact
 
-`ork registry list` reads a single `index:latest` artifact from the registry namespace root. Each registry has its own index:
+`ork patterns` reads a single `index:latest` artifact from the registry namespace root. Each registry has its own index:
 
 - Patterns: `ghcr.io/orkspace/orkestra-registry/patterns/index:latest`
 - Motifs: `ghcr.io/orkspace/orkestra-motifs/index:latest`
@@ -114,7 +114,7 @@ ref, err := registry.ResolveForKind("oci://ghcr.io/myorg/motifs/redis:v7", regis
 
 ## Authentication
 
-Reads `~/.docker/config.json` via `credentials.NewStoreFromDocker`. Run `docker login ghcr.io` before pushing. No separate `ork registry login` command.
+Reads `~/.docker/config.json` via `credentials.NewStoreFromDocker`. Run `docker login ghcr.io` before pushing. No separate `ork login` command — use `docker login`.
 
 ## Developer documentation
 

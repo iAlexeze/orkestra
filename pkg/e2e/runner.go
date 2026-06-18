@@ -89,15 +89,25 @@ func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster, devServer bool,
 		return nil, fmt.Errorf("%s: expected kind E2E, got %q", e2eFile, e2e.Kind)
 	}
 
+	e2eDir := filepath.Dir(e2eFile)
+	allValueFiles := make([]string, 0, len(e2e.Spec.ValuesFiles)+len(valueFiles))
+	for _, f := range e2e.Spec.ValuesFiles {
+		if !filepath.IsAbs(f) {
+			f = filepath.Join(e2eDir, f)
+		}
+		allValueFiles = append(allValueFiles, f)
+	}
+	allValueFiles = append(allValueFiles, valueFiles...)
+
 	r := &Runner{
 		e2e:             e2e,
-		e2eDir:          filepath.Dir(e2eFile),
+		e2eDir:          e2eDir,
 		keepCluster:     keepCluster,
 		clusterCtx:      clusterCtx,
 		useCurrentCtx:   useCurrentCtx,
 		devServer:       devServer,
 		orkestraVersion: orkestraVersion,
-		valueFiles:      valueFiles,
+		valueFiles:      allValueFiles,
 		helmArgs:        helmArgs,
 		customOperator:  e2e.Spec.CustomOperator,
 	}

@@ -117,7 +117,7 @@ domain: '{{ domainBare .spec.domain }}'
 
 The equivalent long-form chain (for reference):
 
-```
+```text
 {{ trimSuffix (trimPrefix (trimPrefix (trimSpace .spec.domain) "https://") "http://") "/" }}
 ```
 

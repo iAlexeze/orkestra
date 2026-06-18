@@ -105,6 +105,7 @@ func (k *Katalog) KomposeRuntimeKatalog(
 		// Clear CRDFile afterwards: the runtime (and any serialized bundle) must not
 		// reference local filesystem paths that don't exist inside a container.
 		if entry.CRDFile != "" {
+			k.withCRDFiles = append(k.withCRDFiles, name)
 			if err := populateAPITypesFromCRDFile(&entry, k.katalogDir); err != nil {
 				return nil, fmt.Errorf("CRD %q: %w", name, err)
 			}

@@ -7,8 +7,8 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
-	orkcust "github.com/orkspace/orkestra/pkg/orkestra-registry/customresources"
-	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+	orkcust "github.com/orkspace/orkestra/pkg/resources/customresources"
+	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 

@@ -1,57 +1,86 @@
 # Time Notes
 
-Timestamp inspection and duration arithmetic.
+Parse timestamps, measure elapsed time, and validate duration strings in Katalog templates. Primarily used in `status.fields` to surface human-readable time values and in `when:` conditions to drive time-based rotation and expiry logic.
 
-> Timestamp notes (`timeAgo`, `timeSince`, `isExpired`) depend on wall-clock time — they are pure with respect to their inputs but produce different output at different times. Safe to use in status fields; do not use in conversion paths.
+All timestamp notes accept RFC3339, RFC3339Nano, `2006-01-02T15:04:05Z`, and `YYYY-MM-DD` formats. Safe zero values are returned for unparseable input.
 
-## Timestamp notes
+## Reference
 
-| Note | Signature | Returns |
-|------|-----------|---------|
-| `timeAgo` | `string` | `string` — "5m ago", "2h ago", "3d ago" |
-| `timeSince` | `string` | `int64` — seconds elapsed since timestamp |
-| `timeFormat` | `timestamp, layout string` | `string` — reformatted timestamp |
-| `isExpired` | `timestamp, duration string` | `bool` — true when timestamp + duration is in the past |
-
-Timestamps are parsed from RFC3339 / RFC3339Nano / `"2006-01-02T15:04:05Z"` / `"2006-01-02"`. Empty or invalid input returns a safe zero value (`""`, `0`, or `false`).
-
-`timeFormat` uses Go's time layout convention: `"Jan 2, 2006"`, `"15:04"`, `"2006-01-02"`.
-
-## Duration notes
-
-| Note | Signature | Returns |
-|------|-----------|---------|
-| `durationSeconds` | `string` | `int64` — total seconds, `0` on invalid |
-| `durationAdd` | `a, b string` | `string` — sum as Go duration string, `"0s"` on invalid |
-| `durationValid` | `string` | `bool` |
-
-Duration strings follow Go's `time.ParseDuration` format: `"300ms"`, `"5m"`, `"1h30m"`, `"24h"`. Note: Go does not support `"d"` for days — use `"168h"` for 7 days.
+| Note | Description |
+|------|-------------|
+| `timeAgo` | Return a human-readable elapsed-time string from a timestamp. |
+| `timeSince` | Return the number of seconds elapsed since a timestamp as an integer. |
+| `isExpired` | Return `true` when a timestamp plus a duration is in the past. |
+| `timeFormat` | Reformat a timestamp string using Go's time format layout. |
+| `durationSeconds` | Parse a Go duration string and return the total number of seconds as an integer. |
+| `durationAdd` | Add two Go duration strings and return the result as a canonical duration string. |
+| `durationValid` | Return `true` when the string is a valid Go duration. |
 
 ## Examples
 
 ```yaml
-# Age of the CR in human-readable form
-- path: age
-  value: "{{ timeAgo .metadata.creationTimestamp }}"
+# timeAgo
+status:
+  fields:
+    - path: lastSyncAgo
+      value: "{{ timeAgo .children.cronjob.status.lastScheduleTime }}"
+      # → "5s ago" / "12m ago" / "3h ago" / "2d ago"
 
-# Formatted creation date
-- path: createdAt
-  value: "{{ timeFormat .metadata.creationTimestamp \"Jan 2, 2006\" }}"
+    - path: createdAgo
+      value: "{{ timeAgo .metadata.creationTimestamp }}"
 
-# Trigger secret rotation after 30 days
-- path: rotationNeeded
-  value: "{{ isExpired (index .metadata.annotations \"orkestra.io/generated-at\") \"720h\" }}"
+# timeSince
+# Gate rotation on time elapsed (30 days = 2592000 seconds)
+when:
+  - field: "{{ timeSince (index .metadata.annotations \"myorg.io/last-rotated\") }}"
+    operator: gte
+    value: "2592000"
 
-# Convert a spec duration field to seconds for a child resource
-timeoutSeconds: "{{ durationSeconds .spec.timeout }}"
+# isExpired
+# Recreate the secret when the rotation annotation says it is due
+onCreate:
+  secrets:
+    - name: "{{ .metadata.name }}-token"
+      once: true
+      rotateAfter: 720h
 
-# Combine two durations
-totalTimeout: "{{ durationAdd .spec.connectTimeout .spec.readTimeout }}"
+# Gate a resource on whether a timestamp annotation is past its TTL
+when:
+  - field: "{{ isExpired (index .metadata.annotations \"myorg.io/generated-at\") \"720h\" }}"
+    equals: "true"
 
-# Validate a duration field
-- field: spec.timeout
-  operator: custom
-  value: "{{ durationValid .spec.timeout }}"
-  message: "spec.timeout must be a valid Go duration (e.g. 30s, 5m, 1h)"
-  action: deny
+# timeFormat
+status:
+  fields:
+    - path: createdDate
+      value: "{{ timeFormat .metadata.creationTimestamp \"Jan 2, 2006\" }}"
+      # → "Apr 13, 2026"
+
+    - path: expiresAt
+      value: "{{ timeFormat .status.expirationTime \"2006-01-02\" }}"
+
+# durationSeconds
+status:
+  fields:
+    - path: resyncIntervalSeconds
+      value: "{{ durationSeconds .spec.resyncInterval }}"
+      # "5m" → 300  |  "1h30m" → 5400
+
+# durationAdd
+# Compute the total window from base + buffer
+status:
+  fields:
+    - path: totalWindow
+      value: "{{ durationAdd .spec.baseWindow .spec.buffer }}"
+      # "5m" + "30s" → "5m30s"
+
+# durationValid
+spec:
+  crds:
+    myApp:
+      validate:
+        - message: "spec.rotationPeriod must be a valid Go duration (e.g. 720h, 30m)"
+          deny:
+            - field: "{{ durationValid .spec.rotationPeriod }}"
+              equals: "false"
 ```

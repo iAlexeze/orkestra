@@ -17,23 +17,39 @@ type PatternSpec struct {
 // PatternMeta holds metadata for an pattern — read from its primary YAML on
 // push, and reconstructed from OCI annotations on info/list.
 type PatternMeta struct {
-	Kind        PatternKind
-	Name        string
-	Version     string
-	Description string
-	Author      string
-	License     string
-	Tags        []string
-	E2E         *PatternE2E      // populated at push time from running ork e2e; nil when absent
-	Simulate    *PatternSimulate // populated at push time from running simulate gate; nil when absent
+	Kind           PatternKind
+	Name           string
+	Version        string
+	Description    string
+	Author         string
+	License        string
+	Tags           []string
+	RuntimeVersion string             // ork version (declarative) or go.mod orkestra version (typed)
+	E2E            *PatternE2E        // populated at push time from running ork e2e; nil when absent
+	Simulate       *PatternSimulate   // populated at push time from running simulate gate; nil when absent
+	Typed          *PatternTyped      // populated at push time from inspecting katalog CRDs; nil for motifs or non-typed katalogs
+	Deprecated     *PatternDeprecated // populated from metadata.deprecation in the source YAML; nil when absent
+}
+
+// PatternTyped carries the typed-operator annotation flags for a katalog.
+type PatternTyped struct {
+	HasHooks       bool // one or more CRDs declare customHooks
+	HasConstructor bool // one or more CRDs declare customConstructor
+}
+
+// PatternDeprecated carries the deprecation metadata declared in the source YAML.
+type PatternDeprecated struct {
+	MigratedTo string // full OCI ref of the replacement version
+	Message    string // human-readable migration guidance
 }
 
 // PatternE2E holds E2E verification metadata embedded in OCI annotations at push time.
 type PatternE2E struct {
-	Status   string // "passed", "skipped"
-	Duration string // e.g. "45s"
-	TestedAt string // RFC3339
-	Runner   string // "local" or "github-actions"
+	Status     string // "passed", "skipped"
+	Duration   string // e.g. "45s"
+	TestedAt   string // RFC3339
+	Runner     string // "local" or "github-actions"
+	Assertions int    // total number of expectations run; 0 when skipped
 }
 
 // PatternSimulate holds simulate gate metadata embedded in OCI annotations at push time.
@@ -42,9 +58,10 @@ type PatternE2E struct {
 //   - "no-assertion" — simulate.yaml present but no expect: block; ran clean, nothing asserted
 //   - "skipped"      — --no-simulate or --force used
 type PatternSimulate struct {
-	Status   string // "passed", "no-assertion", "skipped"
-	Duration string // e.g. "4ms"; empty for skipped/no-assertion
-	TestedAt string // RFC3339
+	Status     string // "passed", "no-assertion", "skipped"
+	Duration   string // e.g. "4ms"; empty for skipped/no-assertion
+	TestedAt   string // RFC3339
+	Assertions int    // number of assertions declared in simulate.yaml; 0 when skipped or no-assertion
 }
 
 // PatternEntry is one row in the pattern index.
@@ -57,12 +74,20 @@ type PatternEntry struct {
 	Kind           string   `json:"kind,omitempty"`           // "Katalog" or "Motif"
 	E2EStatus      string   `json:"e2eStatus,omitempty"`      // "passed", "skipped", or ""
 	SimulateStatus string   `json:"simulateStatus,omitempty"` // "passed", "skipped", "no-assertion", or ""
+	Deprecated     bool     `json:"deprecated,omitempty"`
 }
 
 // PatternIndex is the top-level index stored at registry/index:latest.
 type PatternIndex struct {
 	UpdatedAt string         `json:"updatedAt"`
 	Entries   []PatternEntry `json:"entries"`
+}
+
+// FileEntry is one file published in an OCI artifact layer.
+type FileEntry struct {
+	Name   string
+	Size   int64
+	Digest string // OCI layer digest — used to fetch blob content via ViewFile
 }
 
 // PatternInfo holds the metadata returned by Info.
@@ -72,4 +97,13 @@ type PatternInfo struct {
 	Size     int64
 	PushedAt time.Time
 	Meta     *PatternMeta
+	Files    []FileEntry
+}
+
+// VersionInfo is a lightweight entry returned by ListVersions.
+type VersionInfo struct {
+	Tag      string
+	PushedAt time.Time
+	Meta     *PatternMeta
+	Digest   string
 }

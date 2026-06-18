@@ -55,7 +55,7 @@ YAML is strictly marshalled. Unknown keys are rejected at parse time — there i
 
 The security story is not about what the Runtime is configured to do — it is about what was compiled into it.
 
-The Runtime image is built with a single Go build tag: `runtime`. This means only one CLI file is included: `run.go`. The entire developer toolchain — `ork init`, `ork notes`, `ork generate`, `ork registry`, `ork validate`, `ork template`, `ork diff`, `ork simulate` — is never compiled in. Not disabled. Not stripped. Never compiled.
+The Runtime image is built with a single Go build tag: `runtime`. This means only one CLI file is included: `run.go`. The entire developer toolchain — `ork init`, `ork notes`, `ork generate`, `ork push`, `ork pull`, `ork inspect`, `ork patterns`, `ork validate`, `ork template`, `ork diff`, `ork simulate` — is never compiled in. Not disabled. Not stripped. Never compiled.
 
 The binary knows two things: how to run, and what version it is.
 

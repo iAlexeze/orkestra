@@ -167,7 +167,7 @@ spec:
 
 Expectations are polled until they pass or the timeout expires. Each
 `resources` entry can check field values, existence, and command exit codes.
-Results are returned as a `*Result` with per-case timings — `ork registry push`
+Results are returned as a `*Result` with per-case timings — `ork push`
 embeds them as OCI annotations.
 
 E2E specs live alongside the Katalog they test, not under `tests/`.

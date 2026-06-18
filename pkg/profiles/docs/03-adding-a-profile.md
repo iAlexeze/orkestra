@@ -82,7 +82,7 @@ Export only `Apply*Profile` and `IsValid*Profile`. Keep internal config types un
 
 **4. Wire validation** into `pkg/katalog` — add `validate_pdb_profile.go` with a `validatePDBBehaviorProfiles()` method on `*Katalog`, call it from `ValidateConfig()`.
 
-**5. Wire resolution** into `pkg/orkestra-registry/pdbs/` — expand the profile in `Resolve()`, convert to the Kubernetes type in the builder.
+**5. Wire resolution** into `pkg/resources/pdbs/` — expand the profile in `Resolve()`, convert to the Kubernetes type in the builder.
 
 **6. Add tests** in `pkg/profiles/pdb_test.go`.
 

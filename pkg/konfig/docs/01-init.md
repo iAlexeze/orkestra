@@ -67,7 +67,7 @@ All accessors return pointers to the embedded struct — mutations reflect back 
 konfig.IsKatalogKind(kind)   // "Katalog"
 konfig.IsKomposerKind(kind)  // "Komposer"
 konfig.IsMotifKind(kind)     // "Motif"
-konfig.IsValidDocumentKind(kind)
+konfig.IsValidPatternKind(kind)
 konfig.ValidKindsString()    // "Katalog, Komposer, Motif, E2E"
 konfig.IsValidApiVersion(v)  // checks against apiVersions slice
 ```

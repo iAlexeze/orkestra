@@ -14,8 +14,7 @@ Security fixes will be applied to the latest minor release.
 
 If you discover a security vulnerability, please report it privately.
 
-Email: **security@orkestra.io**  
-(If this address is not yet active, use GitHub private security advisories.)
+Use [GitHub private security advisories](https://github.com/orkspace/orkestra/security/advisories/new) to report privately.
 
 Please include:
 

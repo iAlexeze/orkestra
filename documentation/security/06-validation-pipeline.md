@@ -1,6 +1,6 @@
 # Validation pipeline
 
-Every Orkestra document goes through a strict validation pipeline before anything runs. The whole pipeline runs entirely offline — no cluster required.
+Every Orkestra Pattern goes through a strict validation pipeline before anything runs. The whole pipeline runs entirely offline — no cluster required.
 
 ---
 
@@ -12,13 +12,13 @@ Orkestra uses strict YAML unmarshaling. Unknown fields produce an immediate erro
 error: unknown field "reconcileMode" in operatorBox — did you mean "reconcile"?
 ```
 
-This applies to every document type: Katalog, Komposer, Motif, E2E spec.
+This applies to every Pattern: Katalog, Komposer, Motif, E2E, Simulate.
 
 ---
 
 ## `ork validate`
 
-Validates an Orkestra document fully without touching a cluster.
+Validates an Orkestra Pattern fully without touching a cluster.
 
 ```bash
 ork validate
@@ -100,7 +100,7 @@ The following commands require no cluster connection:
 | Command | What it does |
 |---------|-------------|
 | `ork init` | Scaffold a new operator project |
-| `ork validate` | Full document validation |
+| `ork validate` | Full Pattern validation |
 | `ork template` | Render the merged, resolved Katalog |
 | `ork simulate` | Reconcile against a fake in-memory cluster |
 | `ork notes` | Browse and search template expression library |
@@ -132,7 +132,7 @@ Validation runs at multiple points independently:
 4. **Admission webhooks** — the Gateway rejects invalid CRs at CREATE/UPDATE time, before etcd storage
 5. **Reconcile time** — the runtime re-checks rules on every reconcile as a backstop
 
-A document that passes `ork validate` and `ork simulate` is very unlikely to fail at runtime — the same validation logic runs in all five stages.
+A Pattern that passes `ork validate` and `ork simulate` is very unlikely to fail at runtime — the same validation logic runs in all five stages.
 
 ---
 

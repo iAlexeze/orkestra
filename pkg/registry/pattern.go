@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"gopkg.in/yaml.v3"
 )
 
@@ -25,7 +26,7 @@ var patternSpecs = map[PatternKind]*PatternSpec{
 		MediaType:     "application/vnd.orkestra.pattern.v1+tar+gzip",
 		PrimaryFile:   FileKatalog,
 		RequiredFiles: []string{FileKatalog},
-		OptionalFiles: []string{FileCRD, FileReadme, FileCR, FileE2E, FileSimulate},
+		OptionalFiles: []string{FileCRD, FileReadme, FileCR, FileE2E, FileSimulate, FileGoMod, FileGoSum, FileMakefile},
 	},
 	MotifKind: {
 		Kind:          MotifKind,
@@ -107,12 +108,13 @@ func LoadPatternMeta(dir string, spec *PatternSpec) (*PatternMeta, error) {
 	var raw struct {
 		Kind     string `yaml:"kind"`
 		Metadata struct {
-			Name        string   `yaml:"name"`
-			Version     string   `yaml:"version"`
-			Description string   `yaml:"description"`
-			Author      string   `yaml:"author"`
-			License     string   `yaml:"license"`
-			Tags        []string `yaml:"tags"`
+			Name        string                       `yaml:"name"`
+			Version     string                       `yaml:"version"`
+			Description string                       `yaml:"description"`
+			Author      string                       `yaml:"author"`
+			License     string                       `yaml:"license"`
+			Tags        []string                     `yaml:"tags"`
+			Deprecation *orktypes.KatalogDeprecation `yaml:"deprecation"`
 		} `yaml:"metadata"`
 	}
 	if err := yaml.Unmarshal(data, &raw); err != nil {
@@ -129,6 +131,12 @@ func LoadPatternMeta(dir string, spec *PatternSpec) (*PatternMeta, error) {
 		Author:      raw.Metadata.Author,
 		License:     raw.Metadata.License,
 		Tags:        raw.Metadata.Tags,
+	}
+	if d := raw.Metadata.Deprecation; d != nil {
+		meta.Deprecated = &PatternDeprecated{
+			MigratedTo: d.MigratedTo,
+			Message:    d.Message,
+		}
 	}
 	if meta.Version == "" {
 		meta.Version = "latest"
@@ -169,6 +177,10 @@ func mediaTypeForPatternFile(name string, k PatternKind) string {
 		return "application/vnd.orkestra.e2e.v1+yaml"
 	case FileSimulate:
 		return "application/vnd.orkestra.simulate.v1+yaml"
+	case FileGoMod, FileGoSum:
+		return "text/plain"
+	case FileMakefile:
+		return "text/x-makefile"
 	default:
 		return "application/octet-stream"
 	}

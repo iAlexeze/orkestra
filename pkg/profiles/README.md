@@ -2,7 +2,7 @@
 
 `profiles` is the single source of truth for all named presets in Orkestra. Resource, security, probe, and autoscaler profiles each expand into fully-formed types at katalog load time — the runtime never sees a profile name.
 
-Both `pkg/katalog` (validation and expansion) and `pkg/orkestra-registry` (runtime resolution) import this package. It imports only `pkg/types` and `pkg/utils`, keeping the dependency graph clean.
+Both `pkg/katalog` (validation and expansion) and `pkg/resources` (runtime resolution) import this package. It imports only `pkg/types` and `pkg/utils`, keeping the dependency graph clean.
 
 ## Developer documentation
 

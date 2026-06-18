@@ -2,12 +2,18 @@ nav:
   - title: Getting Started
     section: getting-started
     url: /docs/getting-started/
+  - title: Orkestra Foundations
+    section: foundations
+    url: /docs/foundations/
   - title: Orkestra Core
     section: orkestra-core
     url: /docs/orkestra-core/
   - title: Orkestra Registry
     section: orkestra-registry
     url: /docs/orkestra-registry/
+  - title: Registry Guide
+    section: registry-guide
+    url: /docs/registry-guide/
   - title: Concepts
     section: concepts
     url: /docs/concepts/

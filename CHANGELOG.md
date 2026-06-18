@@ -1,3 +1,61 @@
+## v0.7.6 — Registry Guide pack, CLI UX polish, bug fixes
+
+### Registry Guide pack
+
+A structured, zero-to-production walkthrough of the Orkestra registry — 13 self-contained steps from consuming a published pattern on day one to automated CI publishing with GitHub Actions. Covers declarative operators, typed Go operators with hooks, multi-katalog Komposers, CRD API evolution, deprecation workflows, and the full `ork push` gate pipeline.
+
+```bash
+ork init --pack registry-guide
+```
+
+### CLI UX polish
+
+- **`ork push`** — `--use-current` and `--cluster` flags let you reuse an existing cluster for the e2e gate, skipping cluster provisioning for faster local iteration.
+- **`ork push`** on typed operators — `RuntimeVersion` is read from `go.mod` and recorded as an OCI annotation. Visible in `ork inspect` as `Runtime: vX.Y.Z`.
+- **`ork pull`** — warns when the pulled typed operator was built against a different Orkestra version than the current binary.
+- **`ork inspect`** — shows `Typed: ✓ hooks` and `Runtime: vX.Y.Z` for typed patterns.
+- **`ork validate` / `ork simulate`** — surface a clear `TypedOperatorError` with an actionable `ork inspect <ref>` hint when a Komposer sources a registry-based typed operator.
+
+### orkestra-action
+
+- `template: "true"` now auto-detects `katalog.yaml` in the working directory, consistent with `validate: "true"` and `simulate: "true"`.
+- Install step downloads directly from GitHub releases — no CDN redirect, resilient to network issues.
+- `/ready` and `/started` health endpoints added to the dev server image.
+
+### Bug fixes
+
+- Probe path templates (`{{ .spec.probePath }}`) now resolve correctly in Deployment, ReplicaSet, StatefulSet, and Pod specs.
+- Deployment no longer triggers a no-op update every reconcile when an HTTP probe is configured (missing `Scheme` field on `HTTPGetAction`).
+- Helm bundle deploy correctly routes CRDs to their declared `metadata.namespace` — each team sees their own namespace panel in the Control Center.
+- `ork inspect --versions` table columns align correctly when version strings are colorized.
+- `ork inspect --versions` works without a version tag in the argument.
+- Deprecated pattern row aligns correctly in `ork patterns` — `⚠` marker moved to its own column.
+- Deprecation message is shown even when no migration target is set.
+- Control Center version labels no longer double the `v` prefix.
+- Control Center katalog panel shows the namespace-level description when a namespace filter is active.
+
+---
+
+## v0.7.4 — pkg/resources rename
+
+`pkg/orkestra-registry` is renamed to `pkg/resources`.
+
+**Who is affected:** typed-mode operators only — Go code that writes custom hooks or constructors and imports from `pkg/orkestra-registry`. Dynamic-mode operators (pure YAML) are unaffected.
+
+**What to change:** update import paths from `pkg/orkestra-registry/<kind>` to `pkg/resources/<kind>`:
+
+```go
+// before
+"github.com/orkspace/orkestra/pkg/orkestra-registry/deployments"
+
+// after
+"github.com/orkspace/orkestra/pkg/resources/deployments"
+```
+
+**Why:** `pkg/orkestra-registry` and `pkg/registry` (the OCI distribution layer) both carried the word "registry" with no relation to each other. The resource library — idempotent Create/Update/Delete/Resolve implementations for every Kubernetes resource type — is not a registry. `pkg/resources` is accurate and removes the collision. No logic changes, no API changes, no behavioral differences.
+
+---
+
 ## v0.7.3 Simulate: standalone operation
 
 `ork simulate` is now a self-contained command. Key changes:
@@ -241,11 +299,11 @@ Key components:
   `HasStatus *bool` controls whether child status is read back into the parent resolver context.
   `BuildGVK()` and `ResolveGVR()` methods provide GVK/GVR resolution from the declarative spec.
 
-- **Custom resource registry package (`pkg/orkestra-registry/customresources/`)**
+- **Custom resource registry package (`pkg/resources/customresources/`)**
   New package exposing `Create`, `Update`, `DeleteIfOwned`, `Resolve`, and `ResolvedCustomResourceSpec`.
   Owner references are set automatically — deleting the parent cascades to all child custom resources without requiring any `onDelete` hook.
 
-- **Template resolution (`pkg/orkestra-registry/template/resolve_customresources.go`)**
+- **Template resolution (`pkg/resources/template/resolve_customresources.go`)**
   Added `ResolveCustomResourceTemplate` on the Resolver to expand motif templates and inject resolved values into the custom resource spec before apply.
 
 - **Katalog validation (`pkg/katalog/validate_custom_resource.go`)**
@@ -269,7 +327,7 @@ Key components:
   `hasStatus` is a `*bool` pointer: `nil` = auto-detect, `true` = read child status into parent resolver context, `false` = skip.
   Orkestra does NOT write status to child CRs — Layer 1 (Ready) is only written to the owner CRD by the generic reconciler.
 
-- **Unified replica parsing (`pkg/orkestra-registry/common/parse.go`)**
+- **Unified replica parsing (`pkg/resources/common/parse.go`)**
   Added `ParseReplicas(s string) int32` to unify replica string-to-int32 parsing across deployments, statefulsets, replicasets, pods, jobs, and cronjobs.
 
 - **Motif input quoting fix (`pkg/motif/expander.go`)**

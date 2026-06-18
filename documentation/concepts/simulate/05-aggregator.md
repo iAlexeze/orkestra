@@ -46,6 +46,17 @@ ork simulate init      # generate simulate.yaml in each sub-directory first
 ork simulate -f simulate.yaml
 ```
 
+**Scaffold it:**
+
+`ork simulate init --suite` discovers all `simulate.yaml` leaf files under the given directory and writes the aggregator for you:
+
+```bash
+ork simulate init --suite               # discover under .
+ork simulate init --suite ./examples/   # scoped to a subdirectory
+```
+
+See [Scaffolding Tests](03-init.md#scaffolding-a-suite) for full details.
+
 ---
 
 ## Discovery: `ork simulate ./...`
@@ -82,7 +93,3 @@ Use `--skip` to exclude directories or filename patterns:
 ```bash
 ork simulate ./... --skip vendor,testdata
 ```
-
----
-
-→ Next: [Limitations](06-limitations.md)

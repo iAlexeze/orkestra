@@ -1,7 +1,15 @@
 // hack/generate-notes/main.go
 //
-// Generates pkg/note/catalog_generated.go from the markdown doc files in
-// pkg/note/docs/.
+// Generates two outputs from the markdown doc files in pkg/note/docs/:
+//
+//  1. pkg/note/catalog_generated.go — note registry for the Orkestra runtime and CLI
+//  2. documentation/reference/orkestra-notes/<domain>.md — user-facing reference pages
+//
+// pkg/note/docs/ is the single source of truth. Run `make generate-notes` after
+// adding or updating a doc file — both outputs are refreshed automatically.
+//
+// Files containing an "## In Development" heading are excluded from both outputs
+// until the feature is ready.
 //
 // Usage:
 //
@@ -30,6 +38,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 )
 
 type noteEntry struct {
@@ -40,6 +49,12 @@ type noteEntry struct {
 	Keywords    []string
 }
 
+type domainInfo struct {
+	title   string
+	intro   string
+	entries []noteEntry
+}
+
 var (
 	headingRe  = regexp.MustCompile("^###\\s+(.+)$")
 	backtickRe = regexp.MustCompile("`([^`]+)`")
@@ -48,6 +63,7 @@ var (
 func main() {
 	docsDir := "pkg/note/docs"
 	outFile := "pkg/note/catalog_generated.go"
+	userDocsDir := "documentation/reference/orkestra-notes"
 
 	files, err := filepath.Glob(filepath.Join(docsDir, "*.md"))
 	if err != nil || len(files) == 0 {
@@ -56,14 +72,26 @@ func main() {
 	sort.Strings(files)
 
 	var entries []noteEntry
+	domainDocs := map[string]*domainInfo{}
+
 	for _, f := range files {
 		domain := domainFromFilename(filepath.Base(f))
 		if domain == "" || domain == "readme" || domain == "_template" {
 			continue
 		}
+		if isInDevelopment(f) {
+			fmt.Printf("skipping %s (## In Development)\n", filepath.Base(f))
+			continue
+		}
 		parsed, err := parseDoc(f, domain)
 		if err != nil {
 			fatalf("parsing %s: %v", f, err)
+		}
+		title, intro := readDomainMeta(f)
+		domainDocs[domain] = &domainInfo{
+			title:   title,
+			intro:   intro,
+			entries: parsed,
 		}
 		entries = append(entries, parsed...)
 	}
@@ -76,10 +104,10 @@ func main() {
 		return entries[i].Name < entries[j].Name
 	})
 
+	// Write catalog
 	src := renderGoFile(entries)
 	formatted, err := format.Source([]byte(src))
 	if err != nil {
-		// Write unformatted for debugging
 		_ = os.WriteFile(outFile, []byte(src), 0644)
 		fatalf("formatting generated source: %v\n\nsource written to %s for inspection", err, outFile)
 	}
@@ -87,6 +115,23 @@ func main() {
 		fatalf("writing %s: %v", outFile, err)
 	}
 	fmt.Printf("generated %s (%d notes)\n", outFile, len(entries))
+
+	// Write user-facing docs
+	domains := make([]string, 0, len(domainDocs))
+	for d := range domainDocs {
+		domains = append(domains, d)
+	}
+	sort.Strings(domains)
+
+	for _, domain := range domains {
+		info := domainDocs[domain]
+		page := renderUserFacingPage(info.title, info.intro, info.entries)
+		outPath := filepath.Join(userDocsDir, domain+".md")
+		if err := os.WriteFile(outPath, []byte(page), 0644); err != nil {
+			fatalf("writing %s: %v", outPath, err)
+		}
+		fmt.Printf("generated %s (%d notes)\n", outPath, len(info.entries))
+	}
 }
 
 // domainFromFilename converts "01-strings.md" → "strings".
@@ -103,6 +148,121 @@ func domainFromFilename(name string) string {
 	// Normalise separators: "safe-access" → "safeaccess"
 	name = strings.ReplaceAll(name, "-", "")
 	return name
+}
+
+// isInDevelopment reports whether the file contains an "## In Development" heading.
+func isInDevelopment(path string) bool {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.TrimSpace(line) == "## In Development" {
+			return true
+		}
+	}
+	return false
+}
+
+// readDomainMeta extracts the domain title and intro text from the doc file.
+// The title is taken from "# NN — Domain Title" (words after the em-dash).
+// The intro is all content between the title line and the first ## section.
+func readDomainMeta(path string) (title, intro string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", ""
+	}
+	lines := strings.Split(string(data), "\n")
+	pastTitle := false
+	var introLines []string
+	for _, line := range lines {
+		if strings.HasPrefix(line, "# ") && !pastTitle {
+			h := strings.TrimPrefix(line, "# ")
+			if idx := strings.Index(h, "—"); idx >= 0 {
+				title = strings.TrimSpace(h[idx+len("—"):])
+			} else {
+				// Strip leading digits and spaces: "01 Strings" → "Strings"
+				title = strings.TrimLeftFunc(strings.TrimSpace(h), func(r rune) bool {
+					return unicode.IsDigit(r) || r == ' '
+				})
+			}
+			pastTitle = true
+			continue
+		}
+		if !pastTitle {
+			continue
+		}
+		// Stop at first ## section
+		if strings.HasPrefix(line, "## ") {
+			break
+		}
+		introLines = append(introLines, line)
+	}
+	// Trim leading/trailing blank lines
+	for len(introLines) > 0 && strings.TrimSpace(introLines[0]) == "" {
+		introLines = introLines[1:]
+	}
+	for len(introLines) > 0 && strings.TrimSpace(introLines[len(introLines)-1]) == "" {
+		introLines = introLines[:len(introLines)-1]
+	}
+	intro = strings.Join(introLines, "\n")
+	if title == "" {
+		d := domainFromFilename(filepath.Base(path))
+		if len(d) > 0 {
+			title = strings.ToUpper(d[:1]) + d[1:]
+		}
+	}
+	return title, intro
+}
+
+// renderUserFacingPage generates a user-facing markdown reference page.
+func renderUserFacingPage(title, intro string, entries []noteEntry) string {
+	var b strings.Builder
+
+	fmt.Fprintf(&b, "# %s\n\n", title)
+
+	if intro != "" {
+		b.WriteString(intro)
+		b.WriteString("\n\n")
+	}
+
+	// Reference table
+	b.WriteString("## Reference\n\n")
+	b.WriteString("| Note | Description |\n")
+	b.WriteString("|------|-------------|\n")
+	for _, e := range entries {
+		desc := firstSentence(e.Description)
+		fmt.Fprintf(&b, "| `%s` | %s |\n", e.Name, desc)
+	}
+	b.WriteString("\n")
+
+	// Examples — one combined yaml block with per-note comments
+	b.WriteString("## Examples\n\n")
+	b.WriteString("```yaml\n")
+	first := true
+	for _, e := range entries {
+		if e.Example == "" {
+			continue
+		}
+		if !first {
+			b.WriteString("\n")
+		}
+		fmt.Fprintf(&b, "# %s\n", e.Name)
+		b.WriteString(e.Example)
+		b.WriteString("\n")
+		first = false
+	}
+	b.WriteString("```\n")
+
+	return b.String()
+}
+
+// firstSentence returns the first sentence of s (up to and including the first ".").
+func firstSentence(s string) string {
+	if idx := strings.IndexByte(s, '.'); idx >= 0 {
+		return s[:idx+1]
+	}
+	return s
 }
 
 // parseDoc parses one markdown file and returns a slice of note entries.

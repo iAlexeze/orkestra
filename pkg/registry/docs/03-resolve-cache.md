@@ -34,7 +34,7 @@ ref.ShortName() // "postgres:v14"
 
 ### Default tag
 
-If no tag is specified (e.g. `postgres` with no colon), `parseRef` defaults the tag to `latest`. The `ork registry push` command uses the tag from the command-line argument (`push postgres:v14`), not from the pattern metadata — so users control the tag explicitly.
+If no tag is specified (e.g. `postgres` with no colon), `parseRef` defaults the tag to `latest`. The `ork push` command uses the tag from the command-line argument (`push postgres:v14`), not from the pattern metadata — so users control the tag explicitly.
 
 ## Local cache
 
@@ -76,6 +76,6 @@ if ref.IsCached() {
 
 ### Bypassing the cache
 
-`client.Pull(ctx, ref, true)` re-pulls even when the cache is warm. The CLI exposes this as `ork registry pull postgres:v14 --refresh`.
+`client.Pull(ctx, ref, true)` re-pulls even when the cache is warm. The CLI exposes this as `ork pull postgres:v14 --refresh`.
 
 → Next: [04-artifacts.md](04-artifacts.md)

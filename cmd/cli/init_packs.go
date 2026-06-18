@@ -42,6 +42,11 @@ var Packs = map[string]Pack{
 		Description: "Full-stack, cross-CRD, external gates, once-secrets.",
 		Path:        "use-cases",
 	},
+	"registry-guide": {
+		Name:        "registry-guide",
+		Description: "End-to-end registry workflow: consume, build motifs, publish, compose, upgrade, deprecate, typed operators, CI.",
+		Path:        "registry-guide",
+	},
 }
 
 func GetPack(name string) (Pack, bool) {
@@ -66,14 +71,15 @@ func ListPacks() []Pack {
 }
 
 // Helpers
-func (p Pack) isBeginnerPack() bool     { return p.Name == "beginner" }
-func (p Pack) isCanonicalPack() bool    { return p.Name == "." }
-func (p Pack) isIntermediatePack() bool { return p.Name == "intermediate" }
-func (p Pack) isAdvancedPack() bool     { return p.Name == "advanced" }
-func (p Pack) isSecurityPack() bool     { return p.Name == "security" }
-func (p Pack) isUseCasesPack() bool     { return p.Name == "use-cases" }
-func (p Pack) isRollbackPack() bool     { return p.Name == "rollback" }
-func (p Pack) isDeveloperPack() bool    { return p.Name == "developer" }
+func (p Pack) isBeginnerPack() bool      { return p.Name == "beginner" }
+func (p Pack) isCanonicalPack() bool     { return p.Name == "." }
+func (p Pack) isIntermediatePack() bool  { return p.Name == "intermediate" }
+func (p Pack) isAdvancedPack() bool      { return p.Name == "advanced" }
+func (p Pack) isSecurityPack() bool      { return p.Name == "security" }
+func (p Pack) isUseCasesPack() bool      { return p.Name == "use-cases" }
+func (p Pack) isRollbackPack() bool      { return p.Name == "rollback" }
+func (p Pack) isDeveloperPack() bool     { return p.Name == "developer" }
+func (p Pack) isRegistryGuidePack() bool { return p.Name == "registry-guide" }
 
 func (p Pack) firstExample() string {
 	switch {
@@ -91,6 +97,8 @@ func (p Pack) firstExample() string {
 		return "rollback"
 	case p.isDeveloperPack():
 		return "01-one-project"
+	case p.isRegistryGuidePack():
+		return "00-consume"
 	default:
 		return ""
 	}

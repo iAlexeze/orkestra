@@ -1,11 +1,11 @@
 # 03 — The Registry Layer
 
-Each resource type has a dedicated package under `pkg/orkestra-registry/<kind>/`. The registry package is the only place that touches the Kubernetes API for that resource type. The `run_*.go` file orchestrates; the registry package executes.
+Each resource type has a dedicated package under `pkg/resources/<kind>/`. The registry package is the only place that touches the Kubernetes API for that resource type. The `run_*.go` file orchestrates; the registry package executes.
 
 ## Package structure
 
 ```
-pkg/orkestra-registry/
+pkg/resources/
     deployments/
         types.go       — DeploymentTemplateSource, ResolvedDeploymentSpec
         deployment.go  — Create, Update, Delete, DeleteIfOwned, Resolve
@@ -149,7 +149,7 @@ Template source types live in `pkg/types/`, not in the registry package. The reg
 
 ```
 pkg/types             ← source structs, condition types
-pkg/orkestra-registry ← imports pkg/types
+pkg/resources ← imports pkg/types
 pkg/reconciler        ← imports both
 ```
 

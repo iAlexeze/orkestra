@@ -1,7 +1,7 @@
 # Motif
 
 !!! note "Motif is not a Kubernetes CRD"
-    `kubectl apply` will not work. Orkestra kinds are consumed by the `ork` CLI and runtime — not by the Kubernetes API server. [Your CRD is enough](../../../blog/02-your-crd-is-enough.md).
+    `kubectl apply` will not work. Orkestra kinds are consumed by the `ork` CLI and runtime — not by the Kubernetes API server. [Your CRD is enough](/blog/your-crd-is-enough/).
 
 A Motif is the smallest reusable unit in Orkestra's composition model. It declares named inputs and contributes resource blocks to a Katalog CRD entry. It cannot run alone — it must be imported by a Katalog.
 
@@ -111,7 +111,7 @@ At reconcile time, Orkestra:
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | yes | Motif identifier. Used as the registry artifact name. |
-| `version` | no | Semver tag shown in `ork registry list`. |
+| `version` | no | Semver tag shown in `ork patterns`. |
 | `description` | no | Short description shown in the registry UI. |
 | `author` | no | Author or org name. |
 | `license` | no | SPDX identifier (e.g. `Apache-2.0`). |
@@ -154,7 +154,7 @@ Orkestra resolves `platform-motif.yaml`, evaluates the `with:` bindings, and cre
 To browse the production-ready Motifs in the Orkestra Registry:
 
 ```bash
-ork registry list --kind Motif
+ork patterns --kind Motif
 ```
 
 ---
@@ -174,4 +174,4 @@ ork registry list --kind Motif
 - [Katalog schema](../02-katalog/01-top-level.md) — where `imports:` lives on the CRD entry
 - [operatorBox](../02-katalog/04-operatorbox.md) — the Katalog's own resources, merged alongside Motif resources
 - [Komposer schema](../03-komposer/index.md) — composing multiple Katalogs
-- [Orkestra Registry](../../../orkestra-registry.md) — publishing and consuming Motifs
+- [Orkestra Registry](../../../orkestra-registry/index.md) — publishing and consuming Motifs

@@ -73,7 +73,7 @@ securityContext:
 
 **Unknown profiles fail fast.** An unrecognized name is a Katalog load error.
 
-**Capability names are validated.** When declaring explicit capabilities, every name in `capabilities.add` and `capabilities.drop` is checked against the known Linux capability set. The special value `ALL` is always accepted. See [Pod Security — validation](../security/07-pod-security.md#validation) for the full capability list.
+**Capability names are validated.** When declaring explicit capabilities, every name in `capabilities.add` and `capabilities.drop` is checked against the known Linux capability set. The special value `ALL` is always accepted. See [Pod Security — validation](../../security/07-pod-security.md#validation) for the full capability list.
 
 ---
 

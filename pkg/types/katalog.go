@@ -107,7 +107,7 @@ type KatalogMeta struct {
 
 	// Tags are optional keywords for categorising the Katalog in the Orkestra Registry.
 	// They aid discovery (e.g., "database", "stateful", "security") when using
-	// `ork registry list --tag <tag>` and for indexing in Artifact Hub.
+	// `ork patterns --tag <tag>` and for indexing in Artifact Hub.
 	// Tags have no effect on runtime behaviour.
 	Tags []string `yaml:"tags,omitempty" json:"tags,omitempty"`
 
@@ -125,6 +125,43 @@ type KatalogMeta struct {
 	// time. The operator and runtime ignore this field — it is purely for
 	// persona-aware tooling and Control Center UI.
 	Projects map[string]interface{} `yaml:"projects,omitempty" json:"projects,omitempty"`
+
+	// Deprecation marks this pattern as deprecated. When set, consumers
+	// (ork validate, ork inspect, ork patterns) display a warning.
+	Deprecation *KatalogDeprecation `yaml:"deprecation,omitempty" json:"deprecation,omitempty"`
+}
+
+// KatalogDeprecation carries deprecation guidance for registry consumers.
+type KatalogDeprecation struct {
+	MigratedTo string `yaml:"migratedTo,omitempty" json:"migratedTo,omitempty"`
+	Message    string `yaml:"message,omitempty"    json:"message,omitempty"`
+}
+
+// IsDeprecated indicates that this katalog is deprecated and should surface
+// warnings in ork validate, ork inspect, and registry consumers.
+func (d *KatalogDeprecation) IsDeprecated() bool {
+	if d == nil {
+		return false
+	}
+	return d.MigratedTo != "" || d.Message != ""
+}
+
+// MigrationTarget returns the value of the MigratedTo field.
+// If the deprecation block is nil or empty, it returns an empty string.
+func (d *KatalogDeprecation) MigrationTarget() string {
+	if d == nil {
+		return ""
+	}
+	return d.MigratedTo
+}
+
+// Message returns the deprecation message.
+// If the deprecation block is nil or empty, it returns an empty string.
+func (d *KatalogDeprecation) MigrationMessage() string {
+	if d == nil {
+		return ""
+	}
+	return d.Message
 }
 
 // KatalogSources declares where to load CRD definitions from.

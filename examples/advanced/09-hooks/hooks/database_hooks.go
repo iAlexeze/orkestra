@@ -26,9 +26,9 @@ import (
 	apiv1 "github.com/orkspace/orkestra-hooks-demo/api/v1alpha1"
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
-	orkcron "github.com/orkspace/orkestra/pkg/orkestra-registry/cronjobs"
-	orksvc "github.com/orkspace/orkestra/pkg/orkestra-registry/services"
-	orkstatefulset "github.com/orkspace/orkestra/pkg/orkestra-registry/statefulsets"
+	orkcron "github.com/orkspace/orkestra/pkg/resources/cronjobs"
+	orksvc "github.com/orkspace/orkestra/pkg/resources/services"
+	orkstatefulset "github.com/orkspace/orkestra/pkg/resources/statefulsets"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
