@@ -131,13 +131,7 @@ Review `ork plan` output for patterns from external sources before importing the
 ork init --pack registry-guide
 cd 04-katalog-platform
 
-ork simulate           # simulate passes — platform-admission rules wired
-ork e2e                # e2e catches: image policy rejected the CR
-
-# See what a bad-actor pattern hides from simulate
-cd ../08-bad-actor
-ork simulate           # passes — only asserts on the Deployment
-ork plan               # reveals the ClusterRoleBinding simulate didn't assert
+# Follow the steps in the README
 ```
 
 → Next: [Deprecation](10-deprecation.md)

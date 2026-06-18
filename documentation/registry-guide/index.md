@@ -10,7 +10,7 @@ This is what changes about operator distribution. You don't ship a controller im
 
 Traditional operator distribution looks like this:
 
-```
+```text
 author writes Go → builds image → pushes to registry → consumer deploys image → writes CRDs manually
 ```
 

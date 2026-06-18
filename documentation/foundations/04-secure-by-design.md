@@ -62,7 +62,7 @@ ork generate bundle    # produce the bundle containing those permissions
 kubectl apply -f bundle.yaml
 ```
 
-The generated bundle contains three separate ClusterRoles — one for the Runtime, one for the Gateway, one for the Control Center. They do not overlap. Gateway permissions are only generated if the features that require them are declared: no validation rules means no `admissionregistration.k8s.io` entries in the bundle at all.
+The generated bundle contains two separate ClusterRoles — one for the Runtime and one for the Gateway. The Control Center does not need them. They do not overlap. Gateway permissions are only generated if the features that require them are declared: no validation rules means no `admissionregistration.k8s.io` entries in the bundle at all.
 
 Traditional operators often ship with:
 

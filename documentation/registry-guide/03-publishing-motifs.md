@@ -43,20 +43,20 @@ inputs:
 
 resources:
   deployments:
-    - name: "{{ .metadata.name }}"
+    - name: "{{ .inputs.name }}"
       image: "{{ .inputs.image }}"
       port: "{{ .inputs.port }}"
       replicas: "{{ .inputs.replicas }}"
       reconcile: true
 
   services:
-    - name: "{{ .metadata.name }}-svc"
+    - name: "{{ .inputs.name }}-svc"
       port: "80"
       targetPort: "{{ .inputs.port }}"
       reconcile: true
 
   ingresses:
-    - name: "{{ .metadata.name }}-ingress"
+    - name: "{{ .inputs.name }}-ingress"
       host: "{{ .inputs.host }}"
       when:
         - field: "{{ .inputs.host }}"
@@ -65,7 +65,6 @@ resources:
 ```
 
 **Design rules:**
-- Use `.metadata.name` as a prefix on all resource names — avoids collisions when two Motifs are imported into the same CRD.
 - All inputs are strings. Defaults make every input optional at import time.
 - `required: true` inputs without a `default` are a startup error if the Katalog omits them from `with:` — caught before any CR is applied.
 - Resources with `reconcile: true` are re-applied on every reconcile cycle. Without it, they are created once and not corrected if something external changes them.

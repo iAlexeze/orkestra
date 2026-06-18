@@ -20,7 +20,7 @@ ork push [<name>:<version>] [<dir>]
 | `--e2e <file>` | `e2e.yaml` | Path to an alternative E2E spec file. |
 | `--update-meta` | `false` | Persist the overridden version tag back into the primary file. |
 | `--use-current` | `false` | Use the current kubeconfig context for the E2E gate. Skips cluster creation — significantly faster for local iteration. |
-| `--cluster <ctx>` | _(none)_ | Reuse an existing kind cluster context for the E2E gate. Skips cluster creation. |
+| `--cluster <ctx>` | _(none)_ | Reuse an existing cluster context for the E2E gate. Skips cluster creation. |
 
 > **Note:** `--use-current` and `--cluster` skip cluster provisioning and accept whatever state the cluster is in. Use them only for local iteration — `ork push` is intended for production publishing against a clean cluster.
 

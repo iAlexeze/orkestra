@@ -157,6 +157,7 @@ var inspectCmd = &cobra.Command{
 			return nil
 		}
 
+		deprecated := ""
 		if m.Deprecated != nil {
 			fmt.Printf("\n%s  This pattern is deprecated.\n", yellow("⚠"))
 			if m.Deprecated.MigratedTo != "" {
@@ -165,6 +166,7 @@ var inspectCmd = &cobra.Command{
 			if m.Deprecated.Message != "" {
 				fmt.Printf("  Note:        %s\n", m.Deprecated.Message)
 			}
+			deprecated = " ← " + yellow("⚠") + " deprecated"
 		}
 		fmt.Printf("\n%s:%s\n", m.Name, m.Version)
 		fmt.Printf("  Registry:    %s\n", ref.Registry)
@@ -272,18 +274,18 @@ var inspectCmd = &cobra.Command{
 		}
 		fmt.Printf("\nTo pull:\n")
 		if m.Kind == registry.MotifKind {
-			fmt.Printf("  ork pull %s:%s --motif\n", m.Name, m.Version)
+			fmt.Printf("  ork pull %s:%s --motif %s\n", m.Name, m.Version, deprecated)
 		} else {
-			fmt.Printf("  ork pull %s:%s\n", m.Name, m.Version)
+			fmt.Printf("  ork pull %s:%s %s\n", m.Name, m.Version, deprecated)
 		}
 		fmt.Printf("\nTo import:\n")
 		if m.Kind == registry.MotifKind {
 			fmt.Printf("  imports:\n")
-			fmt.Printf("    - motif: %s\n", ref.String())
+			fmt.Printf("    - motif: %s %s\n", ref.String(), deprecated)
 		} else {
 			fmt.Printf("  imports:\n")
 			fmt.Printf("    registry:\n")
-			fmt.Printf("      - %s\n", ref.String())
+			fmt.Printf("      - %s %s\n", ref.String(), deprecated)
 		}
 		fmt.Println()
 		return nil

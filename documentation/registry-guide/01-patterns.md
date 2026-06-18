@@ -8,7 +8,7 @@ A **pattern** is any artifact published to the Orkestra Registry. There are thre
 
 A Motif is a **reusable resource primitive**. It declares named inputs and contributes resources — Deployments, StatefulSets, Services, PVCs, Secrets — to any CRD that imports it. A Motif has no CRD of its own. It is a composable building block.
 
-```
+```text
 01-motifs/web-service/
   motif.yaml      ← required
   README.md       ← optional, shown in ork patterns
@@ -26,7 +26,7 @@ Reference: [motifs](../orkestra-registry/01-motifs.md)
 
 A Katalog is a **complete operator declaration**. It binds a CRD to reconcile logic — either inline or by importing Motifs — and adds admission rules, status fields, and gates. A Katalog published to the registry is a full operator someone else can pull and run without writing Go.
 
-```
+```text
 02-katalog-api/
   katalog.yaml    ← required
   crd.yaml        ← CRD manifest consumers apply before the operator starts
@@ -48,7 +48,7 @@ Reference: [katalogs](../orkestra-registry/02-katalogs.md)
 
 A Komposer is the **composition plane**. It imports multiple patterns — from the registry, from local files, or from Helm — and declares how to run them together as one Orkestra runtime. Komposers are what platform teams ship to production.
 
-```
+```text
 05-komposer/
   komposer.yaml   ← required
   cr-valid.yaml   ← example CRs exercising the composed operators
@@ -65,7 +65,7 @@ Reference: [komposers](../orkestra-registry/03-komposers.md)
 
 ## How they relate
 
-```
+```text
 Motif               ← imported by Katalog at spec.crds[*].imports
   └── Katalog       ← imported by Komposer at imports.registry
         └── Komposer  ← deployed as one Orkestra runtime binary
