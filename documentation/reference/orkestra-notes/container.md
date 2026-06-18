@@ -1,45 +1,40 @@
 # Container Notes
 
-Inspect containers within a Deployment, StatefulSet, or DaemonSet pod spec (`.spec.template.spec.containers`).
+Container notes extract information from Kubernetes Deployment or Pod objects — specifically from the `spec.template.spec.containers` array. They are designed to read data from child resources available under `.children.*`.
 
 ## Reference
 
-| Note | Signature | Returns |
-|------|-----------|---------|
-| `containerImage` | `obj, index int` | `string` — image of containers[index] |
-| `containerEnv` | `obj, index int, key string` | `string` — env var value, `""` if not found |
-| `containerPort` | `obj, index int, port int` | `bool` — true if port is declared |
-| `containerPortByName` | `obj, index int, name string` | `int` — port number, `0` if not found |
-| `containerPorts` | `obj, index int` | `string` — comma-separated port numbers |
-| `containerCount` | `obj` | `int` — total container count |
-
-All notes use index 0 for the primary (first) container.
+| Note | Description |
+|------|-------------|
+| `containerImage` | Return the container image at the given index. |
+| `containerEnv` | Return the value of a named environment variable from the container at the given index. |
+| `containerPort` | Return `true` when the container at the given index exposes the specified port number. |
 
 ## Examples
 
 ```yaml
-# Expose the primary container's image in status
-- path: currentImage
-  value: "{{ containerImage .children.deployment 0 }}"
+# containerImage
+# value: "{{ containerImage .children.deployment 0 }}"
+# → "nginx:1.25"  (image of the first container)
+status:
+  fields:
+    - path: runningImage
+      value: "{{ containerImage .children.deployment 0 }}"
 
-# Read an env var from the running container
-- path: appEnv
-  value: "{{ containerEnv .children.deployment 0 \"APP_ENV\" }}"
+# containerEnv
+# value: "{{ containerEnv .children.deployment 0 \"APP_ENV\" }}"
+# → "production"
+status:
+  fields:
+    - path: deployedEnvironment
+      value: "{{ containerEnv .children.deployment 0 \"APP_ENV\" }}"
 
-# Named port lookup — for Ingress or NetworkPolicy construction
-- path: httpPort
-  value: "{{ containerPortByName .children.deployment 0 \"http\" }}"
-
-# Gate on port presence
-when:
-  - field: "{{ containerPort .children.deployment 0 8080 }}"
-    equals: "true"
-
-# Surface all exposed ports
-- path: exposedPorts
-  value: "{{ containerPorts .children.deployment 0 }}"
-
-# Multi-container: count sidecar containers
-- path: sidecarCount
-  value: "{{ sub (containerCount .children.deployment) 1 }}"
+# containerPort
+# value: "{{ containerPort .children.deployment 0 8080 }}"
+# → true   (if container[0].ports contains containerPort: 8080)
+# → false  (otherwise)
+status:
+  fields:
+    - path: port8080Exposed
+      value: "{{ containerPort .children.deployment 0 8080 }}"
 ```

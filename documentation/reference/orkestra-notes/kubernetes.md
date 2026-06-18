@@ -1,99 +1,136 @@
 # Kubernetes Notes
 
-Safe traversal and inspection of Kubernetes objects. All notes accept `map[string]interface{}` — the unstructured form that Orkestra injects for child resources via `.children.*`.
+Kubernetes notes safely navigate the unstructured objects that Orkestra exposes through the template context — especially child resources available under `.children.*` and cross-CRD observations under `.cross.*`.
 
----
+## Reference
 
-## Navigation
+| Note | Description |
+|------|-------------|
+| `meta` | Return the `metadata` map of a Kubernetes object. |
+| `labels` | Return the `metadata. |
+| `annotations` | Return the `metadata. |
+| `spec` | Return the `spec` map of a Kubernetes object. |
+| `status` | Return the `status` map of a Kubernetes object. |
+| `phase` | Return `status. |
+| `get` | Navigate a nested path through a Kubernetes object using variadic string segments. |
+| `ownerKind` | Return the `kind` of the first `ownerReference`. |
+| `ownerName` | Return the `name` of the first `ownerReference`. |
+| `hasCondition` | Return `true` if `status. |
+| `conditionReason` | Return the `reason` field of a named condition. |
+| `conditionMessage` | Return the `message` field of a named condition. |
+| `resourceExists` | Return `true` when the object is a non-nil `map[string]interface{}`. |
+| `isTerminating` | Return `true` when `metadata. |
+| `generation` | Return `metadata. |
+| `observedGeneration` | Return `status. |
+| `isSynced` | Return `true` when `metadata. |
+| `resourceCPU` | Return `spec. |
+| `resourceMemory` | Return `spec. |
 
-| Note | Signature | Returns |
-|------|-----------|---------|
-| `get` | `obj interface{}, keys ...string` | `interface{}` — safe deep traversal |
-| `meta` | `obj` | `map[string]interface{}` — metadata block |
-| `name` | `obj` | `string` |
-| `namespace` | `obj` | `string` |
-| `labels` | `obj` | `map[string]interface{}` |
-| `annotations` | `obj` | `map[string]interface{}` |
-| `spec` | `obj` | `map[string]interface{}` |
-| `status` | `obj` | `map[string]interface{}` |
-| `phase` | `obj` | `string` |
-
-```yaml
-- path: lastScheduleTime
-  value: "{{ get .children.cronjob \"status\" \"lastScheduleTime\" }}"
-
-- path: childLabels
-  value: "{{ labels .children.deployment }}"
-```
-
----
-
-## Metadata fields
-
-Direct accessors for the most common metadata fields.
-
-| Note | Signature | Returns |
-|------|-----------|---------|
-| `resourceName` | `obj` | `string` |
-| `resourceNamespace` | `obj` | `string` |
-| `resourceUID` | `obj` | `string` |
-| `resourceVersion` | `obj` | `string` (etcd revision) |
-| `creationTimestamp` | `obj` | `string` (RFC3339) |
+## Examples
 
 ```yaml
-- path: childUID
-  value: "{{ resourceUID .children.deployment }}"
-```
+# meta
+# value: "{{ meta .children.cronjob }}"
+# Useful as an intermediate value when chaining with mapGet:
+# value: "{{ mapGet (meta .children.cronjob) \"resourceVersion\" }}"
 
----
+# labels
+# value: "{{ mapGet (labels .children.deployment) \"app\" }}"
+# {app: frontend, tier: web} → "frontend"
 
-## Owner references
+# annotations
+# value: "{{ mapGet (annotations .children.deployment) \"orkestra.io/phase\" }}"
 
-| Note | Signature | Returns |
-|------|-----------|---------|
-| `ownerKind` | `obj` | `string` — kind of the first owner |
-| `ownerName` | `obj` | `string` — name of the first owner |
+# spec
+# value: "{{ mapGet (spec .children.cronjob) \"schedule\" }}"
+# Equivalent to: .children.cronjob.spec.schedule
 
----
+# status
+# value: "{{ mapGet (status .children.deployment) \"readyReplicas\" }}"
+# Equivalent to: .children.deployment.status.readyReplicas
 
-## Conditions
+# phase
+# value: "{{ phase .children.pod }}"
+# → "Running", "Pending", "Succeeded", "Failed", or ""
 
-Kubernetes conditions follow the standard `type`/`status`/`reason`/`message` structure.
+# when:
+#   - field: "{{ phase .children.pod }}"
+#     equals: "Running"
 
-| Note | Signature | Returns |
-|------|-----------|---------|
-| `hasCondition` | `obj, type string` | `bool` — condition exists with `status: "True"` |
-| `conditionReason` | `obj, type string` | `string` |
-| `conditionMessage` | `obj, type string` | `string` |
+# get
+# value: "{{ get .children.cronjob \"status\" \"lastScheduleTime\" }}"
+# value: "{{ get .children.deployment \"spec\" \"template\" \"spec\" \"containers\" }}"
 
-```yaml
-- path: deploymentReady
-  value: "{{ hasCondition .children.deployment \"Available\" }}"
+# ownerKind
+# value: "{{ ownerKind .children.replicaset }}"
+# → "Deployment"
 
-- path: deploymentMessage
-  value: "{{ conditionMessage .children.deployment \"Progressing\" }}"
+# ownerName
+# value: "{{ ownerName .children.replicaset }}"
+# → "my-app"
 
-when:
-  - field: "{{ hasCondition .children.deployment \"Available\" }}"
-    equals: "true"
-```
+# hasCondition
+# value: "{{ hasCondition .children.deployment \"Available\" }}"
+# Standard types: Available, Progressing, Degraded, Ready, Complete
 
----
+# conditionReason
+# value: "{{ conditionReason .children.deployment \"Available\" }}"
+# → "MinimumReplicasAvailable" or ""
 
-## Lifecycle
+# conditionMessage
+# value: "{{ conditionMessage .children.deployment \"Progressing\" }}"
+# → "ReplicaSet has successfully progressed." or ""
 
-| Note | Signature | Returns |
-|------|-----------|---------|
-| `resourceExists` | `obj` | `bool` — object has been created |
-| `isTerminating` | `obj` | `bool` — deletion timestamp is set |
-| `generation` | `obj` | `int64` |
-| `observedGeneration` | `obj` | `int64` |
-| `isSynced` | `obj` | `bool` — `generation == observedGeneration` |
+# resourceExists
+# value: "{{ resourceExists .children.deployment }}"
 
-```yaml
+# Gate dependent resources on child existence:
+# when:
+#   - field: "{{ resourceExists .children.secret }}"
+#     equals: "true"
+
+# isTerminating
+# Gate traffic routing away from terminating pods:
+# when:
+#   - field: "{{ isTerminating .children.deployment }}"
+#     equals: "false"
+
+# generation
+# value: "{{ generation .children.deployment }}"
+# → 3
+
+# observedGeneration
+# value: "{{ observedGeneration .children.deployment }}"
+# → 3
+
+# isSynced
+# Gate dependent resources on rollout completion:
+# when:
+#   - field: "{{ isSynced .children.deployment }}"
+#     equals: "true"
+status:
+  fields:
+    - path: lastScheduleTime
+      value: "{{ get .children.cronjob \"status\" \"lastScheduleTime\" }}"
+    - path: deploymentReady
+      value: "{{ hasCondition .children.deployment \"Available\" }}"
+    - path: phase
+      value: "{{ phase .children.pod }}"
+
 when:
   - field: "{{ isSynced .children.deployment }}"
     equals: "true"
-  - field: "{{ isTerminating .children.deployment }}"
-    equals: "false"
+  - field: "{{ resourceExists .children.secret }}"
+    equals: "true"
+
+# resourceCPU
+# normalize block — default resource requests without nil pointer panics
+normalize:
+  spec:
+    resources.requests.cpu:    '{{ resourceCPU . | default "100m" }}'
+    resources.requests.memory: '{{ resourceMemory . | default "128Mi" }}'
+
+# resourceMemory
+- path: memoryRequest
+  value: "{{ resourceMemory .children.deployment }}"
 ```

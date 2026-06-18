@@ -12,6 +12,14 @@ Every file you write in Orkestra — `katalog.yaml`, `simulate.yaml`, `komposer.
 
 ---
 
+## Lifecycle
+
+The [Lifecycle](lifecycle/) of an Orkestra pattern is not managed by a separate system — it is a built-in property of the artifact. From creation to deprecation, each stage follows the same production model: write YAML, validate offline, gate with simulate and e2e, push with proof attached. OLM exists because operators were binaries. Orkestra patterns are data.
+
+→ [Read: Lifecycle](lifecycle/)
+
+---
+
 ## Profiles
 
 [Profiles](profiles/) are named presets that expand into fully-formed configuration at Katalog load time. They cover resources, autoscaling, probes, and security. A profile is a decision made once by someone who thought it through, shared with everyone who shouldn't have to.

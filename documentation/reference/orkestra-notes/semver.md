@@ -1,52 +1,105 @@
 # Semver Notes
 
-Parse and compare semantic version strings. Uses [Masterminds/semver v3](https://github.com/Masterminds/semver) — supports `v`-prefix, pre-release tags, and build metadata.
+Parse, compare, and manipulate semantic version strings in Katalog templates. Useful for conditional logic based on operator image versions, library versions in CR specs, or version fields propagated through status.
+
+All notes return a safe zero value (`""`, `0`, `false`) for invalid input — never an error.
 
 ## Reference
 
-| Note | Signature | Returns |
-|------|-----------|---------|
-| `semverMajor` | `string` | `string` — major component, `""` on invalid |
-| `semverMinor` | `string` | `string` — minor component, `""` on invalid |
-| `semverPatch` | `string` | `string` — patch component, `""` on invalid |
-| `semverValid` | `string` | `bool` |
-| `semverCompare` | `a, b string` | `int` (-1 when a < b, 0 equal, 1 when a > b) |
-| `semverBump` | `version, component string` | `string` — bumped version |
-| `semverConstraint` | `version, constraint string` | `bool` |
+| Note | Description |
+|------|-------------|
+| `semverMajor` | Extract a single version component from a semver string. |
+| `semverMinor` | Extract a single version component from a semver string. |
+| `semverPatch` | Extract a single version component from a semver string. |
+| `semverValid` | Return `true` when the string is a valid semantic version. |
+| `semverCompare` | Compare two semver strings. |
+| `semverBump` | Increment a version component (`"major"`, `"minor"`, or `"patch"`) and return the new version string. |
+| `semverConstraint` | Return `true` when a version satisfies a constraint expression. |
 
 ## Examples
 
 ```yaml
-# Gate upgrade on version constraint
-- path: upgradeReady
-  value: "{{ semverConstraint .spec.version \">=1.0.0,<2.0.0\" }}"
+# semverMajor
+# Extract components for display or comparison
+status:
+  fields:
+    - path: majorVersion
+      value: "{{ semverMajor .spec.version }}"   # "1.2.3" → "1"
+    - path: minorVersion
+      value: "{{ semverMinor .spec.version }}"   # "1.2.3" → "2"
+    - path: patchVersion
+      value: "{{ semverPatch .spec.version }}"   # "1.2.3" → "3"
 
-# Expose version components in status
-- path: majorVersion
-  value: "{{ semverMajor .spec.version }}"
+# Gate a resource on the major version
+when:
+  - field: "{{ semverMajor .spec.version }}"
+    equals: "2"
 
-- path: minorVersion
-  value: "{{ semverMinor .spec.version }}"
+# semverMinor
+# Extract components for display or comparison
+status:
+  fields:
+    - path: majorVersion
+      value: "{{ semverMajor .spec.version }}"   # "1.2.3" → "1"
+    - path: minorVersion
+      value: "{{ semverMinor .spec.version }}"   # "1.2.3" → "2"
+    - path: patchVersion
+      value: "{{ semverPatch .spec.version }}"   # "1.2.3" → "3"
 
-# Validate image tag is a semver
-- field: spec.version
-  value: "{{ semverValid .spec.version }}"
-  message: "spec.version must be a valid semver string (e.g. 1.2.3)"
-  action: deny
+# Gate a resource on the major version
+when:
+  - field: "{{ semverMajor .spec.version }}"
+    equals: "2"
 
-# Auto-bump patch version
-version: "{{ semverBump .spec.currentVersion \"patch\" }}"
+# semverPatch
+# Extract components for display or comparison
+status:
+  fields:
+    - path: majorVersion
+      value: "{{ semverMajor .spec.version }}"   # "1.2.3" → "1"
+    - path: minorVersion
+      value: "{{ semverMinor .spec.version }}"   # "1.2.3" → "2"
+    - path: patchVersion
+      value: "{{ semverPatch .spec.version }}"   # "1.2.3" → "3"
+
+# Gate a resource on the major version
+when:
+  - field: "{{ semverMajor .spec.version }}"
+    equals: "2"
+
+# semverValid
+# Validation rule — deny CR if version is not a valid semver
+spec:
+  crds:
+    myApp:
+      validate:
+        - message: "spec.version must be a valid semantic version (e.g. v1.2.3)"
+          deny:
+            - field: "{{ semverValid .spec.version }}"
+              equals: "false"
+
+# semverCompare
+# Gate upgrade resource on version bump
+when:
+  - field: "{{ semverCompare .spec.version .status.runningVersion }}"
+    equals: "1"   # spec.version is newer than running version
+
+# semverBump
+# Derive the next patch version for an upgrade annotation
+metadata:
+  annotations:
+    myorg.io/next-version: "{{ semverBump .spec.version \"patch\" }}"
+    # "1.2.3" → "1.2.4"
+    # "2.1.0-rc1" → "2.1.1"  (prerelease dropped, patch bumped)
+
+# semverConstraint
+# Only create the legacy-compat resource for v1.x operators
+when:
+  - field: "{{ semverConstraint .spec.version \"^1.0\" }}"
+    equals: "true"
+
+# Gate on a range
+when:
+  - field: "{{ semverConstraint .spec.version \">=1.2.0,<2.0.0\" }}"
+    equals: "true"
 ```
-
-## Constraint syntax
-
-The `semverConstraint` note accepts Masterminds semver constraint expressions:
-
-| Expression | Meaning |
-|-----------|---------|
-| `>=1.0.0` | 1.0.0 or later |
-| `<2.0.0` | before 2.0.0 |
-| `>=1.0.0,<2.0.0` | range (AND) |
-| `^1.2.0` | compatible with 1.2.0 (>=1.2.0, <2.0.0) |
-| `~1.2.0` | patch-level compatible (>=1.2.0, <1.3.0) |
-| `1.x` | any 1.x version |

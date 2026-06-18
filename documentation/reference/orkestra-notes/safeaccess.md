@@ -1,34 +1,46 @@
 # Safe Access Notes
 
-Type-safe field access with defaults. Use when navigating paths where intermediate keys may be absent or the value may arrive in an unexpected type.
+Safe access notes return a typed value with a fallback default. They remove the need to combine `typeOf` + `default` + type conversion for the common pattern of "get this field or use a default if it's absent or the wrong type".
 
 ## Reference
 
-| Note | Signature | Returns |
-|------|-----------|---------|
-| `getOr` | `val, def interface{}` | `val` if non-empty, else `def` |
-| `getStringOr` | `val interface{}, def string` | `string` or `def` |
-| `getIntOr` | `val interface{}, def int` | `int` or `def` |
-| `getBoolOr` | `val interface{}, def bool` | `bool` or `def` |
+| Note | Description |
+|------|-------------|
+| `getOr` | Return `val` if non-empty, otherwise `def`. |
+| `getStringOr` | Return `val` as a string if it is a non-empty string, otherwise return `def`. |
+| `getIntOr` | Return `val` as `int` if it is a numeric type (`int`, `int64`, `float64`), otherwise return `def`. |
+| `getBoolOr` | Return `val` as `bool` if it is a `bool`, otherwise return `def`. |
 
 ## Examples
 
 ```yaml
-# Replicas with default — handles absent key and non-int types
-replicas: "{{ getIntOr (get . \"spec\" \"replicas\") 1 }}"
+# getOr
+# value: "{{ getOr .spec.replicas 1 }}"
+# replicas=3       → 3
+# replicas absent  → 1
 
-# Image with fallback
-image: "{{ getStringOr (get . \"spec\" \"image\") \"nginx:latest\" }}"
+# getStringOr
+# value: "{{ getStringOr .spec.image \"nginx:latest\" }}"
+# spec.image="busybox:1.35" → "busybox:1.35"
+# spec.image absent         → "nginx:latest"
+# spec.image=3 (number)     → "nginx:latest"  (not a string — use def)
 
-# Feature flag with safe default
-enabled: "{{ getBoolOr (get . \"spec\" \"monitoring\") false }}"
+# getIntOr
+# value: "{{ getIntOr .spec.replicas 1 }}"
+# spec.replicas=3      → 3
+# spec.replicas=3.0    → 3  (float64 → int)
+# spec.replicas absent → 1
+# spec.replicas="3"    → 1  (string not accepted — use def)
 
-# Any value with fallback
-value: "{{ getOr .spec.config \"{}\" }}"
+# getBoolOr
+# value: "{{ getBoolOr .spec.enabled false }}"
+# spec.enabled=true   → true
+# spec.enabled=false  → false
+# spec.enabled absent → false
+# spec.enabled="true" → false  (string not accepted — use boolDefault)
+# Clamp replicas to [1, 20] with a default of 2
+# value: "{{ clamp (getIntOr .spec.replicas 2) 1 20 }}"
+
+# Use replicas or a field-based default
+# value: "{{ getIntOr .spec.replicas (getIntOr .spec.defaultReplicas 1) }}"
 ```
-
-## Difference from `default`
-
-`default val def` returns `def` when `val` is empty (nil, `""`, 0, false). It does not do type coercion.
-
-`getStringOr`, `getIntOr`, `getBoolOr` additionally coerce the value to the target type — useful when a field may arrive as a string `"3"` but you need an `int`, or when navigating deep paths with `get` that may return `nil`.
