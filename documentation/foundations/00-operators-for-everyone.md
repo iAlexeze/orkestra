@@ -4,7 +4,7 @@ Most engineers who have tried to write a Kubernetes operator hit the same wall. 
 
 That wall is what Orkestra removes.
 
-The full story is in the blog: [Why I Built This](/docs/blog/04-why-i-built-this). But the mission underneath all of it is this: make accessible what was once inaccessible — including to the person who built it.
+The full story is in the blog: [Why I Built This](/blog/why-i-built-this). But the mission underneath all of it is this: make accessible what was once inaccessible — including to the person who built it.
 
 ---
 
@@ -34,7 +34,7 @@ Every Motif pushed to a registry, every Katalog gated and published, every simul
 
 The same principle applies to learning. Documentation that lives separately from the system it describes will drift. Tutorials that are not versioned will mislead. Examples that require cloning a repository before you can run them add friction that should not exist.
 
-**[Learning to Orkestrate](/docs/getting-started/01-learning-to-orkestrate/)** is a set of versioned, progressive learning packs — runnable examples that grow with you from your first operator through production patterns, security, and registry distribution. Every capability Orkestra has is demonstrated in a pack you can pull and run:
+**[Learning to Orkestrate](../getting-started/01-learning-to-orkestrate/index.md)** is a set of versioned, progressive learning packs — runnable examples that grow with you from your first operator through production patterns, security, and registry distribution. Every capability Orkestra has is demonstrated in a pack you can pull and run:
 
 ```bash
 ork init --pack beginner

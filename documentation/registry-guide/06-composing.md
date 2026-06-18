@@ -22,7 +22,7 @@ To use the upstream `komposer.yaml` instead (resolves its own imports recursivel
 ```yaml
 imports:
   registry:
-    - oci://ghcr.io/myorg/patterns/postgres:v1.0.0
+    - url: oci://ghcr.io/myorg/patterns/postgres:v1.0.0
       useKomposer: true
 ```
 
@@ -88,16 +88,14 @@ helm upgrade --install orkestra orkestra/orkestra \
 
 ## Orkestra does not auto-sync
 
-After `kubectl apply -f bundle.yaml`, Orkestra is not yet running the new composition. The runtime reads the ConfigMap at startup. A rollout restart is the explicit signal: "I am ready to serve the new contract."
+Assuming you update your `komposer.yaml`, you regenerate and apply the bundle. After `kubectl apply -f bundle.yaml`, Orkestra is not yet running the new composition. The runtime reads the ConfigMap at startup. A rollout restart is the explicit signal: "I am ready to serve the new contract."
 
 ```bash
 kubectl rollout restart deployment/orkestra-runtime -n orkestra-system
 kubectl rollout status deployment/orkestra-runtime -n orkestra-system
 ```
 
-This is intentional. Auto-sync in a distributed operator platform creates split-brain scenarios — two runtime pods running different pattern versions simultaneously during a rolling update, both reconciling the same CRs with different logic.
-
-The explicit restart makes upgrades auditable and reversible. See: [Orkestra Doesn't Auto-Sync — By Design](https://orkestra.sh/docs/foundations/no-autosync)
+This is intentional. The explicit restart makes upgrades auditable and reversible. See: [Orkestra Doesn't Auto-Sync — By Design](https://orkestra.sh/docs/foundations/no-autosync)
 
 ---
 

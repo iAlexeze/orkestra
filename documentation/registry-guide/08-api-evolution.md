@@ -52,7 +52,7 @@ spec:
             to: v2
             spec:
               expose:
-                port: "{{ toString .spec.port }}"
+                port: "{{ .spec.port }}"
                 host: '{{ default "" .spec.host }}'
                 protocol: HTTP
 
@@ -60,7 +60,7 @@ spec:
           - from: v2
             to: v1
             spec:
-              port: "{{ int .spec.expose.port }}"
+              port: "{{ .spec.expose.port }}"
               host: '{{ default "" .spec.expose.host }}'
 ```
 
@@ -108,12 +108,15 @@ No multi-version CRD. No webhook. No TLS. One version, one CRD, one normalize bl
 ```yaml
 normalize:
   spec:
-    expose:
-      port: '{{ coalesce .spec.expose.port (toString .spec.port) }}'
-      host: '{{ coalesce .spec.expose.host .spec.host "" }}'
+    # v2: spec.expose present → use expose.port directly
+    # v1: spec.expose absent  → lift spec.port
+    expose.port: '{{ if .spec.expose }}{{ .spec.expose.port }}{{ else }}{{ .spec.port }}{{ end }}'
+    # v2: spec.expose present → use expose.host directly
+    # v1: spec.expose absent  → lift spec.host
+    expose.host: '{{ if .spec.expose }}{{ .spec.expose.host | default "" }}{{ else }}{{ .spec.host | default "" }}{{ end }}'
 ```
 
-`coalesce` returns the first non-empty value. Before any mutation, validation, or template rendering:
+Before any mutation, validation, or template rendering:
 - If the CR has `spec.expose.port` → use it.
 - If the CR has `spec.port` → use that (converted to string).
 - Downstream logic always sees `spec.expose.port` — no branching anywhere.
@@ -154,39 +157,13 @@ No webhook to remove. No cert to rotate. No stored object migration.
 
 ---
 
-## What Kubebuilder would require vs Orkestra
-
-| Component | Kubebuilder | Orkestra |
-|---|---|---|
-| Type definitions (v1 + v2) | ~160 lines Go | CRD schema in `crd.yaml` |
-| DeepCopy generation | ~120 lines generated | Not needed |
-| Conversion logic | ~60 lines Go | Template expressions |
-| Webhook server | Separate pod + TLS + cert rotation | Orkestra Gateway `/convert` |
-| Certificate management | cert-manager or manual | Same cert Orkestra already has |
-| **Total** | **~700 lines + 2 extra deployments** | **1 Katalog** |
-
----
-
 ## Try it
 
 ```bash
 ork init --pack registry-guide
-cd 07-upgrade/with-webhooks
+cd 07-upgrade/api-evolution
 
-kubectl apply -f crd.yaml
-ork generate bundle -f komposer.yaml -o bundle.yaml
-kubectl apply -f bundle.yaml
-helm upgrade --install orkestra orkestra/orkestra \
-  --namespace orkestra-system --set gateway.enabled=true --wait
-
-kubectl apply -f cr-v1.yaml
-kubectl apply -f cr-v2.yaml
-kubectl get webapps.v1.rkguide.demo my-webapp-v1 -o yaml | grep port
-kubectl get webapps.v2.rkguide.demo my-webapp-v1 -o yaml | grep -A4 expose:
-
-# Compare: no webhooks needed
-cd ../without-webhooks
-cat katalog.yaml   # look at the normalize block
+# Follow the steps in the README
 ```
 
 → Next: [Policy](09-policy.md)

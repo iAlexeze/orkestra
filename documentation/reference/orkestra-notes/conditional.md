@@ -1,47 +1,72 @@
 # Conditional Notes
 
-Value selection and truthiness helpers. Replace `{{ if }}...{{ else }}...{{ end }}` blocks with inline expressions.
+Conditional notes express branching logic inside a single template expression, removing the need for `{{ if }}...{{ else }}...{{ end }}` blocks in field values.
 
 ## Reference
 
-| Note | Signature | Returns |
-|------|-----------|---------|
-| `ternary` | `cond, trueVal, falseVal interface{}` | `trueVal` if cond is truthy, else `falseVal` |
-| `boolTernary` | `cond bool, trueVal, falseVal interface{}` | `trueVal` if cond is true |
-| `boolDefault` | `v interface{}, def bool` | `bool` — use when field may be absent |
-| `coalesce` | `vals ...interface{}` | first non-empty value |
-| `default` | `val, def interface{}` | `val` if non-empty, else `def` |
-| `empty` | `v interface{}` | `bool` — true for nil, `""`, 0, false, empty slice/map |
-| `notEmpty` | `v interface{}` | `bool` — inverse of `empty` |
-
-## `ternary` vs `boolTernary`
-
-`ternary` uses Orkestra's truthiness rules — a non-empty string, non-zero number, or non-nil map is truthy. Use it for general conditions.
-
-`boolTernary` requires a strict Go `bool`. Use it when the field is a typed boolean (e.g. `spec.suspend`, `spec.enabled`) to avoid truthiness surprises with string representations of `"false"`.
-
-```yaml
-# General condition
-value: "{{ ternary .spec.debug \"debug\" \"info\" }}"
-
-# Typed bool field — spec.suspend is a bool, not a string
-value: "{{ boolTernary .spec.suspend \"Suspended\" \"Active\" }}"
-
-# Boolean field that may be absent
-value: "{{ boolTernary (boolDefault .spec.suspend false) \"Suspended\" \"Active\" }}"
-```
+| Note | Description |
+|------|-------------|
+| `ternary` | Return `trueVal` when `condition` is truthy, `falseVal` otherwise. |
+| `boolTernary` | Like `ternary` but requires a strict `bool` argument. |
+| `boolDefault` | Return the field's boolean value if it is a `bool`, otherwise return `def`. |
+| `eqTernary` | Return `trueVal` when `val` equals `target` (string comparison), `falseVal` otherwise. |
+| `default` | Return `val` if non-empty, otherwise return `def`. |
+| `coalesce` | Return the first non-empty value from a variadic list. |
+| `empty` | Return `true` when the value is empty (nil, `""`, `0`, `false`, empty slice, empty map, or `"<no value>"`). |
+| `notEmpty` | Return `true` when the value is non-empty. |
 
 ## Examples
 
 ```yaml
-# First non-empty image source
-image: "{{ coalesce .spec.image .spec.defaultImage \"nginx:latest\" }}"
+# ternary
+# value: "{{ ternary .spec.debug \"debug\" \"info\" }}"
+# spec.debug=true  → "debug"
+# spec.debug=false → "info"
 
-# Default replicas when not specified
-replicas: "{{ default .spec.replicas 2 }}"
+# value: "{{ ternary .spec.image \"custom\" \"default\" }}"
+# spec.image set   → "custom"
+# spec.image empty → "default"
 
-# Conditional resource creation
-when:
-  - field: spec.monitoring
-    operator: notExists
+# boolTernary
+# value: "{{ boolTernary .spec.suspend \"Suspended\" \"Active\" }}"
+# spec.suspend=true  → "Suspended"
+# spec.suspend=false → "Active"
+
+# boolDefault
+# value: "{{ boolTernary (boolDefault .spec.suspend false) \"Suspended\" \"Active\" }}"
+# spec.suspend absent → boolDefault returns false → "Active"
+# spec.suspend=true   → boolDefault returns true  → "Suspended"
+
+# eqTernary
+# value: '{{ eqTernary .cross.db.found "true" "ready" "waiting" }}'
+# found="true"  → "ready"
+# found="false" → "waiting"
+
+# value: '{{ eqTernary .spec.mode "production" "strict" "permissive" }}'
+# mode="production" → "strict"
+# mode="staging"    → "permissive"
+
+# default
+# value: "{{ default .spec.replicas 2 }}"
+# spec.replicas absent  → 2
+# spec.replicas=0       → 2   (zero is empty)
+# spec.replicas=5       → 5
+
+# value: "{{ default .spec.logLevel \"info\" }}"
+# spec.logLevel absent  → "info"
+# spec.logLevel="debug" → "debug"
+
+# coalesce
+# value: "{{ coalesce .spec.image .spec.defaultImage \"nginx:latest\" }}"
+# spec.image set        → spec.image
+# spec.image absent, spec.defaultImage set → spec.defaultImage
+# both absent           → "nginx:latest"
+
+# empty
+# Use in a conditional:
+# value: "{{ if empty .spec.image }}nginx:latest{{ else }}{{ .spec.image }}{{ end }}"
+
+# notEmpty
+# Use in when: conditions via template expression:
+# value: "{{ notEmpty .spec.image }}"
 ```

@@ -24,7 +24,7 @@ ork push web-service:v1.1.0 ./01-motifs/web-service/
 ```
 
 ```bash
-ork patterns --motifs
+ork inspect web-service:v1.1.0 --motifs
 # web-service  v1.1.0  Motif   ← new
 # web-service  v1.0.0  Motif   ← still there, unchanged
 ```
@@ -42,7 +42,7 @@ The Katalog bumps one import line — `web-service:v1.0.0` → `web-service:v1.1
 imports:
   - motif: oci://ghcr.io/myorg/motifs/web-service:v1.1.0
     with:
-      probeProfile: "{{ .spec.probeProfile }}"   # new optional field
+      probeProfile: "{{ .spec.probeProfile }}"    # new optional field
       probePath: "{{ .spec.probePath }}"          # new optional field
 ```
 
@@ -109,7 +109,7 @@ v1.1.0 is still in the registry. Untouched. Rollback doesn't delete it.
 
 Platform teams choose their upgrade schedule. One team may stay on `v1.0.0` while another runs `v1.1.0` — in the same Orkestra runtime, managing the same CRD.
 
-```
+```text
 webapp-operator:v1.0.0  → web-service:v1.0.0  (platform team — pinned)
 webapp-operator:v1.1.0  → web-service:v1.1.0  (your team — upgraded)
 ```
@@ -125,7 +125,7 @@ This is the distribution model: the registry stores both versions permanently. U
 Before upgrading in production, `ork plan` shows what would change:
 
 ```bash
-ork plan -f komposer.yaml
+ork plan -f komposer.yaml --bundle bundle-v1.1.0.yaml
 # ~ deployment/my-webapp: readinessProbe added (http /health profile standard)
 # No deletions. No CRD schema changes.
 ```
@@ -140,25 +140,7 @@ Non-destructive changes (adding probes, updating images) are safe to apply witho
 ork init --pack registry-guide
 cd 07-upgrade
 
-# Step 1: Publish the motif upgrade
-cd 01-motif-v1.1.0
-ork validate -f motif.yaml
-ork push web-service:v1.1.0 ./
-
-# Step 2: Katalog follows
-cd ../02-katalog-upgrades
-ork simulate
-ork e2e
-ork push webapp-operator:v1.1.0 ./
-
-# Step 3: Deploy via Komposer
-cd ../..
-# bump webapp-operator version in 05-komposer/komposer.yaml
-ork generate bundle -f 05-komposer/komposer.yaml -o bundle-v1.1.0.yaml
-kubectl apply -f bundle-v1.1.0.yaml
-kubectl rollout restart deployment/orkestra-runtime -n orkestra-system
-
-# See: 07-upgrade/03-katalog-pins for version isolation
+# Follow the steps in the README
 ```
 
 → Next: [API Evolution](08-api-evolution.md)

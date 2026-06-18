@@ -6,7 +6,7 @@ Gates are the mechanism that turns a YAML file into a trusted artifact. Every pa
 
 ## The gate sequence
 
-```
+```text
 ork push ./
   │
   ├─ 1. Validate   — schema, types, required fields, no local imports

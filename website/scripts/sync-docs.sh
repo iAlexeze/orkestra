@@ -160,8 +160,8 @@ content = open(path).read()
 def rewrite_url(url):
     if not url:
         return url
-    # Leave absolute URLs, root-relative, and fragment-only links alone
-    if url.startswith('http') or url.startswith('/') or url.startswith('#'):
+    # Leave absolute URLs (any scheme), root-relative, and fragment-only links alone
+    if '://' in url or url.startswith('/') or url.startswith('#'):
         return url
     # Skip prose in parentheses (contains spaces or newlines)
     if ' ' in url or '\n' in url:

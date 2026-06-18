@@ -9,17 +9,18 @@ Patterns in the registry are immutable at a version — `v1.0.0` cannot be modif
 Add `deprecated: true` and a `deprecationMessage` to `metadata`:
 
 ```yaml
-# motif.yaml — web-service v1.0.0 (deprecated)
+# katalog.yaml — web-service v1.0.0 (deprecated)
 apiVersion: orkestra.orkspace.io/v1
-kind: Motif
+kind: Katalog
 metadata:
   name: web-service
   version: v1.0.0
-  deprecated: true
-  deprecationMessage: >
-    Use web-service:v1.1.0 — adds configurable probe path and profile.
-    Migration: add probeProfile and probePath to your Katalog's with: block.
-    Both default to the v1.0.0 behavior.
+  deprecation:
+    migrateTo: oci://ghcr.io/myorg/katalog/stateless-app:v1.0.0
+    message: >
+      web-service is superseded by stateless-app:v1.0.0, which adds
+      multi-port support and structured health check configuration.
+      See: ork inspect stateless-app:v1.0.0
 ```
 
 Push the deprecation annotation:
@@ -37,25 +38,22 @@ This creates a new artifact at `v1.0.0` with the deprecation metadata. The previ
 Consumers who inspect the deprecated version see the warning immediately:
 
 ```bash
-ork inspect web-service:v1.0.0 --motif
+ork inspect web-service:v1.0.0
 ```
 
 ```text
-web-service:v1.0.0  ⚠ Deprecated
-  Kind:       Motif
-  Deprecated: true
-
-  ⚠ Deprecation notice:
-    Use web-service:v1.1.0 — adds configurable probe path and profile.
-    Migration: add probeProfile and probePath to your Katalog's with: block.
-    Both default to the v1.0.0 behavior.
+⚠  This pattern is deprecated.
+  Migrate to:  ghcr.io/myorg/katalogs/webapp@v2.0.0
+  Note:        v1.0.0 is end-of-life. Migrate to v2.0.0: add spec.healthPath to your CRs
+web-service:v1.0.0
+  Kind:       Katalog
 
 To import:
   imports:
-    - motif: oci://ghcr.io/myorg/motifs/web-service:v1.0.0   ← deprecated
+    - motif: oci://ghcr.io/myorg/motifs/web-service:v1.0.0   ← ⚠ deprecated
 ```
 
-Katalogs that import a deprecated Motif will surface the warning at `ork validate` and `ork simulate` time — before any CR is applied.
+Komposers that import a deprecated Katalog will surface the warning at `ork validate` and `ork simulate` time — before any CR is applied.
 
 ---
 
@@ -66,7 +64,7 @@ v1.0.0  ← active
           │
           │  v1.1.0 ships (backwards-compatible)
           ▼
-v1.0.0  ← deprecated ("use v1.1.0")
+v1.0.0  ← ⚠ deprecated ("use v1.1.0")
 v1.1.0  ← active
           │
           │  migration complete — all consumers on v1.1.0
@@ -87,11 +85,12 @@ When a pattern is replaced by something conceptually different — not just a ne
 metadata:
   name: web-service
   version: v1.0.0
-  deprecated: true
-  deprecationMessage: >
-    web-service is superseded by stateless-app:v1.0.0, which adds
-    multi-port support and structured health check configuration.
-    See: ork inspect stateless-app:v1.0.0
+  deprecation:
+    migrateTo: oci://ghcr.io/myorg/motifs/stateless-app:v1.0.0
+    message: >
+      web-service is superseded by stateless-app:v1.0.0, which adds
+      multi-port support and structured health check configuration.
+      See: ork inspect stateless-app:v1.0.0
 ```
 
 ---
@@ -119,9 +118,5 @@ ork push web-service:v1.0.0 ./deprecated/
 ork init --pack registry-guide
 cd 09-deprecation
 
-cat web-service-deprecated/motif.yaml    # deprecated annotation
-ork push web-service:v1.0.0 ./web-service-deprecated/
-
-ork inspect web-service:v1.0.0 --motif  # see the deprecation notice
-ork patterns --motifs                    # deprecated patterns shown with ⚠
+# Follow the steps in the README
 ```

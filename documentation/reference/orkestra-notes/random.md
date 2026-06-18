@@ -1,32 +1,35 @@
 # Random Notes
 
-Cryptographically random generation for secrets.
-
-> **Required:** always use with `once: true` on secret templates. Without it, a new value is generated on every reconcile cycle — passwords change every 30 seconds, breaking every application that uses them.
+Random notes generate cryptographically secure random values. They are designed for one use case: generating secrets that should be created once and never changed.
 
 ## Reference
 
-| Note | Signature | Returns |
-|------|-----------|---------|
-| `randomAlphanumeric` | `n int` | `string` of exactly n characters (a-z, A-Z, 0-9) |
-| `randomHex` | `n int` | `string` of 2n hex characters (n random bytes) |
-| `randomBase64` | `n int` | URL-safe base64 from n random bytes |
+| Note | Description |
+|------|-------------|
+| `randomAlphanumeric` | Generate a cryptographically random alphanumeric string of exactly `n` characters. |
+| `randomHex` | Generate `n` random bytes and return them as a hex-encoded string. |
+| `randomBase64` | Generate `n` random bytes and return them as a URL-safe base64 string. |
 
-## Example
+## Examples
 
 ```yaml
+# randomAlphanumeric
+# value: "{{ randomAlphanumeric 32 }}"
+# → "k7Xm3pQs9vR2nTwY8cL1jF6bH0dE4gA5"
+
+# randomHex
+# value: "{{ randomHex 16 }}"
+# 16 bytes → 32 hex chars
+# → "a3f8b2c1d4e5f6a7b8c9d0e1f2a3b4c5"
+
+# randomBase64
+# value: "{{ randomBase64 32 }}"
+# 32 bytes → ~43 base64 chars
+# → "k7Xm3pQs9vR2nTwY8cL1jF6bH0dE4gA5zP..."
 secrets:
-  - name: "{{ .metadata.name }}-credentials"
-    once: true                              # required — evaluated once, on creation only
+  - name: "{{ .metadata.name }}-api-key"
+    once: true
+    rotateAfter: "90d"
     data:
-      password: "{{ randomAlphanumeric 32 }}"
-      apiKey:   "{{ randomHex 16 }}"
-      jwtSecret: "{{ randomBase64 32 }}"
+      apiKey: "{{ randomHex 32 }}"
 ```
-
-## Why `once: true` is required
-
-Notes are pure by contract — same input, same output. Random notes are the exception: they produce different output on every call. `once: true` is the semantic safeguard: Orkestra evaluates the template only when the Secret does not yet exist. On subsequent reconciles, the existing Secret is left untouched.
-
-Using random notes without `once: true` is not blocked at the language level, but it will cause credentials to rotate on every reconcile cycle.
-Use `rotateAfer` for automatic secret rotation.
