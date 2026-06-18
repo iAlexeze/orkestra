@@ -38,25 +38,13 @@ metadata:
 spec:
   crds:
     database:
-      crdFile: ./crds/database.yaml
-      operatorBox:
-        onCreate:
-          deployments:
-            - name: "{{ .metadata.name }}"
-              image: "{{ .spec.image }}"
-        status:
-          fields:
-            - path: phase
-              value: "{{ phase .children.deployment }}"
+      apiTypes:
+      ...
     app:
-      crdFile: ./crds/app.yaml
+      apiTypes:
+      ...
       dependsOn:
         database: healthy   # app does not reconcile until database is healthy
-      operatorBox:
-        onCreate:
-          deployments:
-            - name: "{{ .metadata.name }}"
-              image: "{{ .spec.image }}"
 ```
 
 Complex Katalogs can import Motifs — reusable resource blueprints for security posture, probes, retry policy, and RBAC. Motifs are themselves versioned OCI artifacts.
