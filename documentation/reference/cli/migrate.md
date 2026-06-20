@@ -1,6 +1,6 @@
 # ork migrate
 
-Rewrite a controller-runtime `Reconcile` method to the Orkestra constructor signature and generate the full operator scaffolding — `katalog.yaml`, `simulate.yaml`, `e2e.yaml`, and `go.mod` — as a starting point.
+Rewrite a controller-runtime `Reconcile` method to the Orkestra constructor signature and generate the full operator scaffolding — `katalog.yaml`, `simulate.yaml`, `e2e.yaml`, `go.mod`, `Makefile`, and `Dockerfile` — as a starting point.
 
 ```bash
 ork migrate <file> [flags]
@@ -54,6 +54,8 @@ my-operator/
   simulate.yaml          simulation stub
   e2e.yaml               end-to-end test stub
   go.mod                 module file with Orkestra pinned to this CLI version
+  Makefile               registry, build, build-runtime, docker, release targets
+  Dockerfile             distroless production image
 ```
 
 ## After migration

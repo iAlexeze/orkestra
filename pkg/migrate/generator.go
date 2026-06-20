@@ -14,10 +14,12 @@ import (
 
 // Files holds all generated file contents keyed by filename.
 type Files struct {
-	Katalog  string
-	Simulate string
-	E2E      string
-	GoMod    string
+	Katalog    string
+	Simulate   string
+	E2E        string
+	GoMod      string
+	Makefile   string
+	Dockerfile string
 }
 
 // Options controls what the generator emits.
@@ -49,10 +51,12 @@ func Generate(res *Result, opts Options) Files {
 	constructorFn := "New" + res.ReceiverType
 
 	return Files{
-		Katalog:  generateKatalog(res, opts, crdName, constructorFn),
-		Simulate: generateSimulate(opts, crdName),
-		E2E:      generateE2E(opts, crdName),
-		GoMod:    generateGoMod(opts),
+		Katalog:    generateKatalog(res, opts, crdName, constructorFn),
+		Simulate:   generateSimulate(opts, crdName),
+		E2E:        generateE2E(opts, crdName),
+		GoMod:      generateGoMod(opts),
+		Makefile:   generateMakefile(opts),
+		Dockerfile: generateDockerfile(),
 	}
 }
 
@@ -205,6 +209,107 @@ require (
 // Run: go mod tidy
 // to resolve all indirect dependencies.
 `, opts.ModulePath, orkVer)
+}
+
+func generateMakefile(opts Options) string {
+	return fmt.Sprintf(`# ── Typed Orkestra Operator ───────────────────────────────────────────────────
+BINARY_NAME ?= ork
+DEV_OUTPUT_DIR  ?= $(HOME)/.orkestra/bin
+PROD_OUTPUT_DIR ?= $(HOME)/.orkestra/bin/runtime
+KATALOG     ?= katalog.yaml
+
+IMAGE_REPO  ?= myorg/%s
+IMAGE_TAG   ?= latest
+IMAGE       ?= $(IMAGE_REPO):$(IMAGE_TAG)
+
+GOOS        ?= linux
+GOARCH      ?= amd64
+CGO_ENABLED  = 0
+
+ORK_LDFLAGS := -X github.com/orkspace/orkestra/pkg/version.Version=$(GIT_VERSION) \
+               -X github.com/orkspace/orkestra/pkg/version.Commit=$(GIT_COMMIT) \
+               -X github.com/orkspace/orkestra/pkg/version.Date=$(GIT_DATE)
+
+.PHONY: registry
+registry:
+	@[ -f go.mod.txt ] && mv go.mod.txt go.mod || true
+	@[ -f go.sum.txt ] && mv go.sum.txt go.sum || true
+	@find . -name "*.go" | xargs grep -l "^//go:build ignore$$" 2>/dev/null | while read f; do tail -n +3 "$$f" > "$$f.tmp" && mv "$$f.tmp" "$$f"; done || true
+	ork generate registry --file $(KATALOG)
+
+.PHONY: build
+build:
+	@[ -f go.mod.txt ] && mv go.mod.txt go.mod || true
+	@[ -f go.sum.txt ] && mv go.sum.txt go.sum || true
+	@find . -name "*.go" | xargs grep -l "^//go:build ignore$$" 2>/dev/null | while read f; do tail -n +3 "$$f" > "$$f.tmp" && mv "$$f.tmp" "$$f"; done || true
+	@mkdir -p $(DEV_OUTPUT_DIR)
+	go mod tidy
+	gofmt -w .
+	go build \
+		-ldflags "$(ORK_LDFLAGS)" \
+		-o $(DEV_OUTPUT_DIR)/$(BINARY_NAME) ./cmd/orkestra
+	@echo "✅ Development build: $(DEV_OUTPUT_DIR)/$(BINARY_NAME)"
+
+.PHONY: build-runtime
+build-runtime:
+	@[ -f go.mod.txt ] && mv go.mod.txt go.mod || true
+	@[ -f go.sum.txt ] && mv go.sum.txt go.sum || true
+	@find . -name "*.go" | xargs grep -l "^//go:build ignore$$" 2>/dev/null | while read f; do tail -n +3 "$$f" > "$$f.tmp" && mv "$$f.tmp" "$$f"; done || true
+	@mkdir -p $(PROD_OUTPUT_DIR)
+	go mod tidy
+	gofmt -w .
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
+		-tags "runtime" \
+		-ldflags "$(ORK_LDFLAGS)" \
+		-o $(PROD_OUTPUT_DIR)/$(BINARY_NAME) ./cmd/orkestra
+
+.PHONY: validate
+validate:
+	$(DEV_OUTPUT_DIR)/$(BINARY_NAME) validate -f $(KATALOG)
+
+.PHONY: e2e
+e2e:
+	$(DEV_OUTPUT_DIR)/$(BINARY_NAME) e2e
+
+.PHONY: docker
+docker:
+	@cp $(PROD_OUTPUT_DIR)/$(BINARY_NAME) ./$(BINARY_NAME)
+	docker build -t $(IMAGE) .
+	@rm -f ./$(BINARY_NAME)
+	@if [ -f $(DEV_OUTPUT_DIR)/$(BINARY_NAME) ]; then cp $(DEV_OUTPUT_DIR)/$(BINARY_NAME) ./$(BINARY_NAME); fi
+
+.PHONY: push
+push:
+	docker push $(IMAGE)
+
+.PHONY: release
+release: docker push
+
+.PHONY: clean
+clean:
+	@rm -f $(DEV_OUTPUT_DIR)/$(BINARY_NAME)
+	@rm -rf $(PROD_OUTPUT_DIR)
+
+.PHONY: help
+help:
+	@echo "  registry       generate type registry from Katalog"
+	@echo "  build          compile full development CLI"
+	@echo "  build-runtime  compile production binary (only 'ork run')"
+	@echo "  validate       run katalog validation"
+	@echo "  e2e            run end-to-end tests"
+	@echo "  docker         build-runtime + Docker image"
+	@echo "  push           push Docker image"
+	@echo "  release        docker + push"
+	@echo "  clean          remove all local builds"
+`, opts.OperatorName)
+}
+
+func generateDockerfile() string {
+	return `FROM gcr.io/distroless/static-debian12:nonroot
+COPY ork /usr/local/bin/ork
+USER 65532:65532
+ENTRYPOINT ["/usr/local/bin/ork"]
+`
 }
 
 // toKebab converts a PascalCase type name to kebab-case.

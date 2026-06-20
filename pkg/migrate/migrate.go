@@ -392,7 +392,7 @@ func rewriteImports(src []byte, addStrings bool) []byte {
 				end++
 			}
 			reps = append(reps, replacement{start: start, end: end, text: ""})
-case "strings":
+		case "strings":
 			hasStrings = true
 		}
 	}

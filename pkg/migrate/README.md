@@ -1,6 +1,6 @@
 # pkg/migrate
 
-`migrate` rewrites a controller-runtime `Reconcile` method to the Orkestra constructor signature. It is invoked by `ork migrate` and produces a rewritten Go file plus the full Orkestra scaffolding — `katalog.yaml`, `simulate.yaml`, `e2e.yaml`, and `go.mod` — as a starting point.
+`migrate` rewrites a controller-runtime `Reconcile` method to the Orkestra constructor signature. It is invoked by `ork migrate` and produces a rewritten Go file plus the full Orkestra scaffolding — `katalog.yaml`, `simulate.yaml`, `e2e.yaml`, `go.mod`, `Makefile`, and `Dockerfile` — as a starting point.
 
 ```sh
 ork migrate ./controller/webapp_controller.go -o ./my-operator
@@ -21,7 +21,7 @@ ork migrate ./controller/webapp_controller.go   # prompts before replacing in pl
 | `ctrl.Result{RequeueAfter: X}` | flagged with `// TODO(ork migrate):` |
 | `SetupWithManager` | removed with explanation comment |
 | `ctrl` import | removed |
-| `ctrl/pkg/log` import | removed |
+| logging imports | left untouched — users keep their logger |
 
 ## What it generates
 
@@ -32,6 +32,8 @@ ork migrate ./controller/webapp_controller.go   # prompts before replacing in pl
 | `simulate.yaml` | Simulation stub — fill in expected resource kinds |
 | `e2e.yaml` | E2E test stub — fill in CR name, resource assertions |
 | `go.mod` | Module file with Orkestra dependency pinned to the CLI version |
+| `Makefile` | Standard typed operator Makefile — registry, build, build-runtime, docker, release |
+| `Dockerfile` | Distroless production image — same as all typed examples |
 
 ## Review checklist
 
