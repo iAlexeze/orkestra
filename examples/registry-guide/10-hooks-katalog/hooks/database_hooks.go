@@ -67,11 +67,12 @@ func onDatabaseReconcile(ctx context.Context, obj *rkguidev1alpha1.Database) err
 	// OrkestraRegistry handles: owner references, idempotency, system labels.
 	spec := orkstatefulset.Resolve(
 		orktypes.StatefulSetTemplateSource{
-			Name:      obj.Name,
-			Namespace: obj.Namespace,
-			Image:     image,
-			Replicas:  defaultReplicas,
-			Port:      dbPort(engine),
+			Name:               obj.Name,
+			Namespace:          obj.Namespace,
+			Image:              image,
+			Replicas:           defaultReplicas,
+			Port:               dbPort(engine),
+			ServiceAccountName: obj.Name + "-sa", // declared in the Katalog onCreate
 			Env: []orktypes.EnvVar{
 				{Name: "POSTGRES_USER", Value: postgresUser},
 				{Name: "POSTGRES_PASSWORD", Value: postgresPassword},

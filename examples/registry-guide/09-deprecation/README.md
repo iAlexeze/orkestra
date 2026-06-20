@@ -51,7 +51,7 @@ changes to their Komposer.
 ```bash
 ork validate
 # webapp-operator  This pattern ⚠ is deprecated.
-#   Migrate to:  ghcr.io/ialexeze/katalogs/webapp@v2.0.0
+#   Migrate to:  ghcr.io/myorg/katalogs/webapp@v2.0.0
 #   Message:     v1.0.0 is end-of-life. Migrate to v2.0.0: add spec.healthPath to your CRs.
 ```
 

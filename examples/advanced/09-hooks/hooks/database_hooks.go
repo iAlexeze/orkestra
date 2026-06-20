@@ -69,11 +69,12 @@ func onDatabaseReconcile(ctx context.Context, obj *apiv1.Database) error {
 	// The hook only provides the resolved spec.
 	spec := orkstatefulset.Resolve(
 		orktypes.StatefulSetTemplateSource{
-			Name:      obj.Name,
-			Namespace: obj.Namespace,
-			Image:     image,
-			Replicas:  defaultReplicas,
-			Port:      dbPort(engine),
+			Name:               obj.Name,
+			Namespace:          obj.Namespace,
+			Image:              image,
+			Replicas:           defaultReplicas,
+			Port:               dbPort(engine),
+			ServiceAccountName: obj.Name + "-sa", // declared in the Katalog onCreate
 			Env: []orktypes.EnvVar{
 				{Name: "POSTGRES_USER", Value: postgresUser},
 				{Name: "POSTGRES_PASSWORD", Value: postgresPassword},

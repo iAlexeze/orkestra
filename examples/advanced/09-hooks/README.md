@@ -14,6 +14,22 @@ declarative equivalent — you write a typed extension. You bring the logic.
 Orkestra brings everything else: the informer, the workqueue, the worker pool,
 the finalizer, status management, events, metrics, and the full security layer.
 
+Hooks are **additive** — the Katalog still owns what it can. In this example the `ServiceAccount` is declared in the Katalog and Orkestra creates it before the hook runs. The hook references it by the same naming convention:
+
+```yaml
+# katalog.yaml — Orkestra handles this
+onCreate:
+  serviceAccounts:
+    - name: "{{ .metadata.name }}-sa"
+```
+
+```go
+// hooks/database_hooks.go — hook references it by convention
+ServiceAccountName: obj.Name + "-sa",
+```
+
+Declare in YAML what Orkestra handles well. Write Go for what it can't.
+
 **What you learn:** how to build, validate, and ship a typed Orkestra extension
 — your own operator binary with your business logic compiled in.
 
