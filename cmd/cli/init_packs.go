@@ -47,6 +47,16 @@ var Packs = map[string]Pack{
 		Description: "End-to-end registry workflow: consume, build motifs, publish, compose, upgrade, deprecate, typed operators, CI.",
 		Path:        "registry-guide",
 	},
+	"from-controller-runtime": {
+		Name:        "from-controller-runtime",
+		Description: "Migrate an existing controller-runtime operator to Orkestra: declarative, hooks, or constructor.",
+		Path:        "from-controller-runtime",
+	},
+	"ecosystem-composition": {
+		Name:        "ecosystem-composition",
+		Description: "Wrap ArgoCD, cert-manager, Prometheus Operator, and Crossplane behind internal CRDs. One CR per tool. Platform policy in one Komposer.",
+		Path:        "ecosystem-composition",
+	},
 }
 
 func GetPack(name string) (Pack, bool) {
@@ -71,15 +81,17 @@ func ListPacks() []Pack {
 }
 
 // Helpers
-func (p Pack) isBeginnerPack() bool      { return p.Name == "beginner" }
-func (p Pack) isCanonicalPack() bool     { return p.Name == "." }
-func (p Pack) isIntermediatePack() bool  { return p.Name == "intermediate" }
-func (p Pack) isAdvancedPack() bool      { return p.Name == "advanced" }
-func (p Pack) isSecurityPack() bool      { return p.Name == "security" }
-func (p Pack) isUseCasesPack() bool      { return p.Name == "use-cases" }
-func (p Pack) isRollbackPack() bool      { return p.Name == "rollback" }
-func (p Pack) isDeveloperPack() bool     { return p.Name == "developer" }
-func (p Pack) isRegistryGuidePack() bool { return p.Name == "registry-guide" }
+func (p Pack) isBeginnerPack() bool              { return p.Name == "beginner" }
+func (p Pack) isCanonicalPack() bool             { return p.Name == "." }
+func (p Pack) isIntermediatePack() bool          { return p.Name == "intermediate" }
+func (p Pack) isAdvancedPack() bool              { return p.Name == "advanced" }
+func (p Pack) isSecurityPack() bool              { return p.Name == "security" }
+func (p Pack) isUseCasesPack() bool              { return p.Name == "use-cases" }
+func (p Pack) isRollbackPack() bool              { return p.Name == "rollback" }
+func (p Pack) isDeveloperPack() bool             { return p.Name == "developer" }
+func (p Pack) isRegistryGuidePack() bool         { return p.Name == "registry-guide" }
+func (p Pack) isFromControllerRuntimePack() bool { return p.Name == "from-controller-runtime" }
+func (p Pack) isEcosystemCompositionPack() bool  { return p.Name == "ecosystem-composition" }
 
 func (p Pack) firstExample() string {
 	switch {
@@ -99,6 +111,10 @@ func (p Pack) firstExample() string {
 		return "01-one-project"
 	case p.isRegistryGuidePack():
 		return "00-consume"
+	case p.isFromControllerRuntimePack():
+		return "00-controller-runtime-baseline"
+	case p.isEcosystemCompositionPack():
+		return "00-argocd"
 	default:
 		return ""
 	}
