@@ -36,15 +36,25 @@ Install Ork CLI:
 curl get.orkestra.sh | bash
 ```
 
-Create a Kind cluster and run the first runtime:
+Create the Namespaces:
 
 ```bash
-ORK_NAMESPACE=loader-system ork run -f katalog-loader.yml --dev
+kubectl create namespace loader-system
+kubectl create namespace processor-system
+```
+
+---
+
+## Runtimes
+
+Run the first runtime:
+
+```bash
+ORK_NAMESPACE=loader-system ork run -f katalog-loader.yaml
 ```
 
 This:
 
-- creates a Kind cluster named `orkestra-playground`
 - runs Orkestra in namespace `loader-system`
 - exposes Control Center on port `8080`
 
@@ -167,6 +177,36 @@ This is **cross‑runtime dependency scaling**:
 - No external metrics  
 - No custom code  
 - Just declarative autoscaling  
+
+---
+
+## Cross entry types and autoscaling
+
+A katalog can declare multiple `cross:` entries for the same CRD — one for CR data, one for health, one for metrics. Only the entry with `type: metrics` (or a raw `endpoint`) is used to resolve autoscale conditions. The other types are for status templates and are ignored by the autoscaler.
+
+```yaml
+cross:
+  - crd: loader
+    source:
+      host: "http://localhost:8080"
+      type: cr        # CR fields and children — used in status templates
+    as: loaderCRInfo
+
+  - crd: loader
+    source:
+      host: "http://localhost:8080"
+      type: health    # operator health — used in status templates
+    as: loaderHealth
+
+  - crd: loader
+    source:
+      host: "http://localhost:8080"
+      type: metrics   # queue depth and worker metrics — used by autoscaler
+      cacheFor: 30s
+    as: loaderCRDInfo
+```
+
+The autoscale condition `field: cross.loader.metrics.queueDepth` resolves from the `type: metrics` entry. Without it, the autoscaler has no source and the condition is silently skipped.
 
 ---
 

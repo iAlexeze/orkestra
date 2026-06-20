@@ -60,6 +60,7 @@ spec:
           - crd: loader
             source:
               host: "http://localhost:8080"
+              type: metrics
               cacheFor: 30s
             as: loaderCRDInfo
 

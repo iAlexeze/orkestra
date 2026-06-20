@@ -25,10 +25,10 @@ Install Ork CLI:
 curl get.orkestra.sh | bash
 ```
 
-Create a Kind cluster and run this example:
+Create a Kind cluster to run this example:
 
 ```bash
-ork run -f katalog --dev
+ork create cluster
 ```
 
 Start the Control Center:
