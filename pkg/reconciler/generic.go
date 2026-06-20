@@ -208,6 +208,7 @@ func NewGenericReconciler[PTR domain.Object](
 			baseline,
 			r,
 			autoMet,
+			crd.OperatorBox.Cross,
 		)
 	}
 
