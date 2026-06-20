@@ -4,6 +4,7 @@ package cli
 
 import (
 	"path/filepath"
+	"sort"
 
 	"github.com/orkspace/orkestra/examples"
 )
@@ -14,6 +15,7 @@ type Pack struct {
 	Name        string
 	Description string
 	Path        string
+	Order       int // for sorting in --list
 }
 
 var Packs = map[string]Pack{
@@ -21,41 +23,49 @@ var Packs = map[string]Pack{
 		Name:        "beginner",
 		Description: "Start here. Simple CRDs, Deployments, Services.",
 		Path:        "beginner",
+		Order:       1,
 	},
 	"intermediate": {
 		Name:        "intermediate",
 		Description: "Multi-resource patterns, when/anyOf, Komposer basics.",
 		Path:        "intermediate",
+		Order:       2,
 	},
 	"advanced": {
 		Name:        "advanced",
 		Description: "Hooks, constructors, validation/mutation, registries.",
 		Path:        "advanced",
+		Order:       3,
 	},
 	"security": {
 		Name:        "security",
 		Description: "Deletion protection, namespace protection, admission webhooks.",
 		Path:        "security",
+		Order:       4,
 	},
 	"use-cases": {
 		Name:        "use-cases",
 		Description: "Full-stack, cross-CRD, external gates, once-secrets.",
 		Path:        "use-cases",
+		Order:       5,
 	},
 	"registry-guide": {
 		Name:        "registry-guide",
 		Description: "End-to-end registry workflow: consume, build motifs, publish, compose, upgrade, deprecate, typed operators, CI.",
 		Path:        "registry-guide",
+		Order:       6,
+	},
+	"ecosystem-composition": {
+		Name:        "ecosystem-composition",
+		Description: "Wrap ArgoCD, cert-manager, Prometheus Operator, and Crossplane behind internal CRDs.",
+		Path:        "ecosystem-composition",
+		Order:       7,
 	},
 	"from-controller-runtime": {
 		Name:        "from-controller-runtime",
 		Description: "Migrate an existing controller-runtime operator to Orkestra: declarative, hooks, or constructor.",
 		Path:        "from-controller-runtime",
-	},
-	"ecosystem-composition": {
-		Name:        "ecosystem-composition",
-		Description: "Wrap ArgoCD, cert-manager, Prometheus Operator, and Crossplane behind internal CRDs. One CR per tool. Platform policy in one Komposer.",
-		Path:        "ecosystem-composition",
+		Order:       8,
 	},
 }
 
@@ -77,6 +87,12 @@ func ListPacks() []Pack {
 	for _, p := range Packs {
 		out = append(out, p)
 	}
+
+	// Sort
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].Order < out[j].Order
+	})
+
 	return out
 }
 
