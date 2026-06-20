@@ -170,6 +170,26 @@ This is **cross‑runtime dependency scaling**:
 
 ---
 
+## Cross-cluster
+
+This is the same pattern when the sibling runs in a different cluster entirely. Deploy Orkestra there and expose its API via an ingress — then point `host` at that URL instead of localhost.
+
+```yaml
+cross:
+  - crd: loader
+    selector:
+      name: production-loader
+      namespace: loader-system
+    source:
+      host: "https://orkestra-prod.my-company-internal.com"
+      cacheFor: 10s
+    as: prodLoader
+```
+
+No code change. No special configuration. The host is just a URL.
+
+---
+
 ## Cleanup
 
 ```bash
