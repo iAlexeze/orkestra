@@ -164,4 +164,4 @@ Useful for reading the simulate assertions (the behavioral contract), the sample
 
 - [`ork pull`](./10-pull.md) — download the full artifact
 - [`ork patterns`](./12-patterns.md) — browse what's in the registry
-- [Consuming Patterns](../../registry-guide/02-consuming.md)
+- [Consuming Patterns](../../guides/registry/02-consuming.md)

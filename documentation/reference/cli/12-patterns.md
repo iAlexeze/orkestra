@@ -95,4 +95,4 @@ ork pull postgres:v1.0.0
 
 - [`ork inspect`](./11-inspect.md) — full metadata and quality signals for one version
 - [`ork pull`](./10-pull.md) — download a pattern
-- [Consuming Patterns](../../registry-guide/02-consuming.md)
+- [Consuming Patterns](../../guides/registry/02-consuming.md)

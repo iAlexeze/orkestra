@@ -2,7 +2,12 @@
 
 A constructor replaces the GenericReconciler entirely. Your Go code owns the full reconcile loop — declarative templates are not applied when `default: false`.
 
-Use a constructor when you are integrating an existing operator: pass Orkestra's `Kubeclient` and informer to the existing controller and it works without `controller-runtime`.
+Use a constructor when:
+
+- **Migrating an existing controller-runtime operator** — change the `Reconcile` signature from `(ctx, req) (Result, error)` to `(ctx, key string) error`, remove the manager setup, and register the constructor in the Katalog. The informer, workqueue, worker pool, leader election, metrics, and panic recovery are all provided by Orkestra. Your reconcile logic is unchanged.
+- **Running a custom state machine** — when the reconcile loop itself is stateful and not easily expressed as declarative templates with `when:` conditions.
+
+For new operators, prefer [hooks in hybrid mode](./01-hooks.md#hybrid). Only reach for a constructor when you need to own the full loop.
 
 ---
 
@@ -81,6 +86,87 @@ func NewPipelineReconciler(
 ```
 
 Orkestra calls this function once at startup and uses the returned `domain.Reconciler` for all reconcile events on this CRD.
+
+---
+
+## Two styles of reconcile implementation
+
+### Lift and change signature
+
+The minimal migration from controller-runtime. Change the `Reconcile` signature and remove the manager setup. Your resource management logic stays exactly as it was.
+
+**Before (controller-runtime)**:
+```go
+func (r *WebAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    existing := &appsv1.Deployment{}
+    err := r.Get(ctx, req.NamespacedName, existing)
+    if errors.IsNotFound(err) {
+        return ctrl.Result{}, r.Create(ctx, desired)
+    }
+    patch := client.MergeFrom(existing.DeepCopy())
+    existing.Spec = desired.Spec
+    return ctrl.Result{}, r.Patch(ctx, existing, patch)
+}
+```
+
+**After (Orkestra constructor)**:
+```go
+func (r *WebAppReconciler) Reconcile(ctx context.Context, key string) error {
+    // key == req.String() — same content, no other change to this method
+    existing := &appsv1.Deployment{}
+    err := r.kube.Get(ctx, namespace, name, existing)
+    if errors.IsNotFound(err) {
+        return r.kube.Create(ctx, desired)
+    }
+    patch := client.MergeFrom(existing.DeepCopy())
+    existing.Spec = desired.Spec
+    return r.kube.Patch(ctx, existing, patch)
+}
+```
+
+What you removed: `ctrl.NewManager`, `SetupWithManager`, scheme registration in `main.go`. Orkestra provides the informer, workqueue, worker pool, leader election, metrics, and panic recovery. You kept all the business logic.
+
+---
+
+### With Orkestra resources
+
+Replace the manual Get / IsNotFound / Create / Patch pattern with the `pkg/resources` library. Each resource type exports four functions: `Create`, `Update`, `Delete`, `DeleteIfOwned`.
+
+**Before (manual)**:
+```go
+existing := &appsv1.Deployment{}
+err := r.kube.Get(ctx, namespace, name, existing)
+if errors.IsNotFound(err) {
+    return r.kube.Create(ctx, desired)
+}
+patch := client.MergeFrom(existing.DeepCopy())
+existing.Spec = desired.Spec
+return r.kube.Patch(ctx, existing, patch)
+```
+
+**After (Orkestra resources)**:
+```go
+import orkdeploy "github.com/orkspace/orkestra/pkg/resources/deployments"
+
+spec := orkdeploy.Resolve(orktypes.DeploymentTemplateSource{
+    Name:      obj.GetName(),
+    Namespace: obj.GetNamespace(),
+    Image:     typedObj.Spec.Image,
+    Replicas:  fmt.Sprintf("%d", typedObj.Spec.Replicas),
+}, obj.GetName())
+
+return orkdeploy.Update(ctx, kube, obj, spec)
+```
+
+`Update` handles: create if absent, patch if drifted, owner references, system labels (`managed-by: orkestra`, `orkestra-owner: <cr-name>`). No conditional logic in your reconciler.
+
+To remove a resource only if this CR owns it:
+
+```go
+orkdeploy.DeleteIfOwned(ctx, kube, obj, name, namespace)
+```
+
+`DeleteIfOwned` is a no-op if the resource does not exist or is owned by a different CR.
 
 ---
 

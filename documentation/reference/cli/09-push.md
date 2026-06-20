@@ -142,4 +142,4 @@ To import:
 
 - [`ork inspect`](./11-inspect.md) — read quality annotations after push
 - [`ork patterns`](./12-patterns.md) — browse the registry
-- [Gate Mechanics](../../registry-guide/05-gate-mechanics.md) — full gate story
+- [Gate Mechanics](../../guides/registry/05-gate-mechanics.md) — full gate story

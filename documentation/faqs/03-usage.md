@@ -238,7 +238,7 @@ cd 09-hooks
 # Follow the steps in README
 ```
 
-→ [Typed Operators — Hooks](../concepts/typed-operators/01-hooks.md)
+→ [Typed Operators — Hooks](../concepts/typed-operators/01-hooks.md) · [Migration Guide — Hybrid](../guides/migration/03-hybrid.md) · [Migration Guide — Hooks Only](../guides/migration/04-hooks-only.md)
 
 ---
 
@@ -261,7 +261,7 @@ cd 10-constructor
 # Follow the steps in README
 ```
 
-→ [Typed Operators — Constructor](../concepts/typed-operators/02-constructor.md)
+→ [Typed Operators — Constructor](../concepts/typed-operators/02-constructor.md) · [Migration Guide — Constructor](../guides/migration/05-constructor.md) · [ork migrate](../guides/migration/07-ork-migrate.md)
 
 ---
 

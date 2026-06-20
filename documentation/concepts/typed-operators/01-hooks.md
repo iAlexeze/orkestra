@@ -1,10 +1,71 @@
 # Hooks
 
-Hooks run Go code during reconciliation alongside declarative templates. The hook runs first, then Orkestra applies any `onCreate`/`onReconcile` templates.
+Hooks run Go code during reconciliation alongside declarative templates.
+
+There are two ways to use hooks. The hybrid pattern is recommended.
 
 ---
 
-## Katalog
+## Hybrid (recommended) {#hybrid}
+
+Declare everything Orkestra handles well in the Katalog. Write Go only for what templates cannot express. Orkestra runs declared templates first, then the hook adds what's missing.
+
+A common example: declare the `ServiceAccount` in the Katalog so Orkestra creates and drift-corrects it. The hook references it by the same naming convention — no coordination needed.
+
+```yaml
+operatorBox:
+  default: true
+
+  onCreate:
+    serviceAccounts:
+      - name: "{{ .metadata.name }}-sa"   # Orkestra owns this
+
+  hooks:
+    location: github.com/myorg/database-operator/hooks
+    function: DatabaseHooks
+    resources:
+      - kind: StatefulSet
+      - kind: Service
+```
+
+```go
+func onReconcile(ctx context.Context, obj *apiv1.Database) error {
+    // SA was declared in the Katalog — reference it by the same convention
+    spec := orkstatefulset.Resolve(orktypes.StatefulSetTemplateSource{
+        Name:               obj.Name,
+        ServiceAccountName: obj.Name + "-sa",
+        // ... rest of spec
+    }, obj.Name)
+    return orkstatefulset.Update(ctx, kube, obj, spec)
+}
+```
+
+To run the hook before declared templates instead of after, set `runHooksFirst: true` in the hooks block. The default is `false` — declared templates run first.
+
+---
+
+## Hooks only {#hooks-only}
+
+The hook manages all child resources in Go. No declared templates alongside it. Use when type-safe control over every resource is more important than keeping declarations in YAML, or when all resources depend on computed values that templates cannot express.
+
+```yaml
+operatorBox:
+  default: true
+
+  hooks:
+    location: github.com/myorg/database-operator/hooks
+    function: DatabaseHooks
+    resources:
+      - kind: StatefulSet
+      - kind: Service
+      - kind: CronJob
+```
+
+The hook creates, updates, and deletes all child resources directly via the `pkg/resources` library.
+
+---
+
+## Katalog reference
 
 ```yaml
 spec:

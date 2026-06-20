@@ -104,4 +104,4 @@ The pulled artifact includes `simulate.yaml`. Running it locally verifies the be
 
 - [`ork inspect`](./11-inspect.md) — read metadata without downloading files
 - [`ork push`](./09-push.md) — publish a pattern
-- [Consuming Patterns](../../registry-guide/02-consuming.md)
+- [Consuming Patterns](../../guides/registry/02-consuming.md)
