@@ -505,11 +505,23 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 				Msg("reconcile mutation failed — continuing")
 		}
 	}
+	hasTemplates := r.operatorBox.OnCreate != nil || r.operatorBox.OnReconcile != nil
 	switch {
 	case r.hooks.OnReconcile != nil:
 		// Go hooks — user-provided, full type-safe access.
 		// Requires: ork generate registry to register in HookRegistry.
-		err = r.hooks.OnReconcile(ctx, obj)
+		//
+		// Order: by default declared templates run first (hybrid 90/10 pattern).
+		// Set hooks.runHooksFirst: true in the Katalog to run the hook first.
+		if !r.crd.RunHooksFirst() && hasTemplates {
+			resolver, err = r.runTemplateReconcile(ctx, resolver, obj)
+		}
+		if err == nil {
+			err = r.hooks.OnReconcile(ctx, obj)
+		}
+		if err == nil && r.crd.RunHooksFirst() && hasTemplates {
+			resolver, err = r.runTemplateReconcile(ctx, resolver, obj)
+		}
 
 	case r.operatorBox.OnCreate != nil || r.operatorBox.OnReconcile != nil:
 		// Declarative templates — interpreted at runtime.
