@@ -161,6 +161,22 @@ Keywords: string, case, camel, kebab, transform, naming, kubernetes
 
 ---
 
+### `concat`
+
+Join any number of strings together with no separator. Useful for building domain names, resource name prefixes, or any value assembled from multiple parts.
+
+Keywords: string, concat, join, combine, build, prefix, suffix, append
+
+```yaml
+# value: "{{ concat \"*.\" .spec.domain }}"
+# spec.domain: "api.example.com" → "*.api.example.com"
+
+# value: "{{ concat .metadata.name \"-\" .spec.tier }}"
+# name: "webapp", tier: "prod" → "webapp-prod"
+```
+
+---
+
 ### `truncate`
 
 Truncate a string to at most `n` characters. Appends `...` when truncated. Kubernetes labels have a 63-character limit — use this to stay within it.
@@ -194,6 +210,7 @@ Keywords: string, truncate, limit, length, kubernetes, label
 | `repeat` | `(s string, n int)` | `string` |
 | `camelToKebab` | `(s string)` | `string` |
 | `truncate` | `(s string, n int)` | `string` |
+| `concat` | `(parts ...string)` | `string` |
 
 ---
 
