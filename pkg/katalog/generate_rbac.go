@@ -309,6 +309,10 @@ func (k *Katalog) GenerateRuntimeRBACRules() []rbacv1.PolicyRule {
 // GenerateGatewayRBACRules returns the RBAC rules required by the gateway process
 // (webhook server, certificate management, namespace labeling).
 func (k *Katalog) GenerateGatewayRBACRules() []rbacv1.PolicyRule {
+	if !k.IsGatewayEnabled() {
+		return nil
+	}
+
 	var rules []rbacv1.PolicyRule
 
 	// ───────────────────────────────────────────────
