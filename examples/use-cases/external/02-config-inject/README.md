@@ -68,6 +68,13 @@ status:
   configFresh: "true"
 ```
 
+> **If a CR is missing `spec.image` or `spec.configUrl`:** reconcile halts before the config fetch runs. The `ValidationFailed` condition is written to the CR and visible in the Control Center **Conditions** tab:
+> ```bash
+> kubectl get webapp my-app -o yaml | grep -A6 "conditions:"
+> # - type: ValidationFailed  status: "True"  reason: DenyRuleViolation
+> #   message: "validation denied: field \"spec.image\": spec.image is required"
+> ```
+
 Inspect the ConfigMap:
 
 ```bash
