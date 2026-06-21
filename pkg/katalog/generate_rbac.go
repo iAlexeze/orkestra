@@ -162,6 +162,13 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 		}
 	}
 
+	// ───────────────────────────────────────────────
+	// Custom resource RBAC — derived from onCreate/onReconcile custom: entries.
+	// Built-in kinds are covered above; third-party CRDs (cert-manager, ArgoCD,
+	// Crossplane, etc.) are not in the built-in registry and must be emitted here.
+	// ───────────────────────────────────────────────
+	rules = append(rules, k.customResourceRBACRules()...)
+
 	return rules
 }
 
@@ -290,6 +297,11 @@ func (k *Katalog) GenerateRuntimeRBACRules() []rbacv1.PolicyRule {
 			})
 		}
 	}
+
+	// ───────────────────────────────────────────────
+	// Custom resource RBAC
+	// ───────────────────────────────────────────────
+	rules = append(rules, k.customResourceRBACRules()...)
 
 	return rules
 }
@@ -517,8 +529,68 @@ func (k *Katalog) GeneratePerCRDRBACRules() map[string][]rbacv1.PolicyRule {
 			}
 		}
 
+		for _, rule := range customRBACRulesForCRD(crd) {
+			rules = append(rules, rule)
+		}
+
 		result[name] = rules
 	}
 
 	return result
+}
+
+// customResourceRBACRules collects RBAC rules for all third-party CRDs declared
+// in onCreate/onReconcile custom: blocks across every enabled CRD.
+// Built-in Kubernetes kinds are already covered by the builtInRegistry loop;
+// this handles everything else (cert-manager, ArgoCD, Crossplane, etc.).
+func (k *Katalog) customResourceRBACRules() []rbacv1.PolicyRule {
+	var rules []rbacv1.PolicyRule
+	seen := make(map[string]bool)
+	for _, crd := range k.Enabled() {
+		for _, rule := range customRBACRulesForCRD(crd) {
+			key := strings.Join(rule.APIGroups, ",") + "/" + strings.Join(rule.Resources, ",")
+			if !seen[key] {
+				seen[key] = true
+				rules = append(rules, rule)
+			}
+		}
+	}
+	return rules
+}
+
+// customRBACRulesForCRD derives RBAC rules from the custom: entries of one CRD's
+// onCreate and onReconcile blocks. Each entry's apiVersion + kind is resolved into
+// a group + plural via ParseGroupVersion and lowercase+s inference.
+func customRBACRulesForCRD(crd orktypes.CRDEntry) []rbacv1.PolicyRule {
+	var entries []orktypes.CustomResourceTemplateSource
+	if crd.OperatorBox.OnCreate != nil {
+		entries = append(entries, crd.OperatorBox.OnCreate.CustomResource...)
+	}
+	if crd.OperatorBox.OnReconcile != nil {
+		entries = append(entries, crd.OperatorBox.OnReconcile.CustomResource...)
+	}
+
+	seen := make(map[string]bool)
+	var rules []rbacv1.PolicyRule
+	for _, entry := range entries {
+		if entry.APIVersion == "" || entry.Kind == "" {
+			continue
+		}
+		gv, err := schema.ParseGroupVersion(entry.APIVersion)
+		if err != nil {
+			continue
+		}
+		plural := strings.ToLower(entry.Kind) + "s"
+		key := gv.Group + "/" + plural
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		rules = append(rules, rbacv1.PolicyRule{
+			APIGroups: []string{gv.Group},
+			Resources: []string{plural},
+			Verbs:     defaultVerbs,
+		})
+	}
+	return rules
 }

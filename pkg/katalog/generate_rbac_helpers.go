@@ -30,15 +30,6 @@ func (k *Katalog) HasConversionPaths() bool {
 	return false
 }
 
-// activeCRDs returns the processed CRD map when available, falling back to the
-// raw spec map.
-func (k *Katalog) activeCRDs() map[string]orktypes.CRDEntry {
-	if len(k.enabledCRDs) > 0 {
-		return k.enabledCRDs
-	}
-	return k.Spec.CRDs
-}
-
 // HasValidationRules returns true if admission is enabled and at least one CRD
 // declares validation rules.
 func (k *Katalog) HasValidationRules() bool {
@@ -49,7 +40,7 @@ func (k *Katalog) HasValidationRules() bool {
 		logger.Debug().Msg("admission is disabled")
 		return false
 	}
-	for _, crd := range k.activeCRDs() {
+	for _, crd := range k.Enabled() {
 		if crd.Validation == nil {
 			continue
 		}
@@ -71,7 +62,7 @@ func (k *Katalog) HasMutationRules() bool {
 		logger.Debug().Msg("admission is disabled")
 		return false
 	}
-	for _, crd := range k.activeCRDs() {
+	for _, crd := range k.Enabled() {
 		if crd.Mutation == nil {
 			continue
 		}
