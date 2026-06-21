@@ -13,7 +13,7 @@
 //     for owned clusters only when --keep-cluster is absent
 //
 // Teardown reverses every applied resource in the correct order:
-// CR delete → helm uninstall → bundle delete → setup (reverse) → CRDs.
+// CR delete → helm uninstall → bundle delete → setup helm (reverse) → setup files (reverse) → CRDs.
 // This keeps borrowed clusters clean regardless of pass/fail.
 //
 // Run returns a *Result with per-case timings that callers (e.g. registry push)
@@ -795,6 +795,20 @@ func (r *Runner) teardown(ctx context.Context, crdPaths []string, bundlePath str
 			}
 		}
 		os.Remove(bundlePath)
+	}
+
+	// Setup helm releases in reverse order.
+	if r.e2e.Spec.Setup != nil {
+		helms := r.e2e.Spec.Setup.Helm
+		for i := len(helms) - 1; i >= 0; i-- {
+			h := helms[i]
+			fmt.Printf("  → Uninstalling setup helm %s...\n", h.ReleaseName())
+			if err := ork.HelmUninstall(ctx, h); err != nil {
+				fmt.Printf("  ! setup helm uninstall failed (%s): %v\n", h.ReleaseName(), err)
+			} else {
+				fmt.Printf("  ✓ %s uninstalled\n", h.ReleaseName())
+			}
+		}
 	}
 
 	// Setup files in reverse order.
