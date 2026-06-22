@@ -116,10 +116,9 @@ This is expected. The stock binary cannot run the new `typed` extensions.
 ```bash
 make clean
 make build
-cp ~/.orkestra/bin/ork ./ork
 ```
 
-Now `./ork` knows about:
+This replaces the default `ork` binary in `~/.orkestra/bin/ork`, which is already on your PATH from the initial install. `ork` now knows about:
 
 - Database typed hooks
 - Pipeline typed constructor
@@ -130,7 +129,7 @@ Now `./ork` knows about:
 ## Step 5 — Validate with your custom binary
 
 ```bash
-./ork validate
+ork validate
 ```
 
 You should now see:
@@ -148,7 +147,7 @@ All valid.
 Run Orkestra against the Komposer:
 
 ```bash
-./ork run --dev
+ork run --dev
 ```
 
 This:
@@ -162,7 +161,7 @@ This:
 Start the Control Center:
 
 ```bash
-./ork control
+ork control
 # username:password → orkestra
 # → http://localhost:8081
 ```
@@ -321,8 +320,6 @@ make docker push IMAGE_REPO=yourregistry/mixed-operator IMAGE_TAG=latest
 
 - `make docker` builds a production‑only binary (tags `runtime`) – it cannot run developer commands like `validate` or `e2e`
 - The binary is copied from `~/.orkestra/bin/runtime/ork` into the current directory for `docker build`, then removed
-- Your local `./ork` (development CLI) is restored after the build – it remains unchanged and fully featured
-- This round‑trip ensures your container image contains only the secure runtime, while your local environment keeps all developer tools
 
 #### Try running a developer command
 It will fail (as intended), only `ork run` succeeds.

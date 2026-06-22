@@ -114,7 +114,7 @@ ork push .
 ## Step 5 — Inspect
 
 ```bash
-ork inspect webapp-declarative:0.1.0
+ork inspect webapp-declarative:1.0.0
 ```
 
 ---
@@ -178,4 +178,4 @@ chmod +x cleanup.sh && ./cleanup.sh
 
 ## Next
 
-[02 — hooks](../02-hooks/README.md) — keep the Deployment declarative, write the Service in Go.
+[02 — hooks](../02-hybrid/README.md) — keep the Deployment declarative, write the Service in Go.

@@ -1,4 +1,3 @@
-
 //go:build ignore
 
 // api/v1alpha1/webapp_types.go

@@ -7,7 +7,6 @@ require (
 	k8s.io/apimachinery v0.36.1
 )
 
-replace github.com/orkspace/orkestra => ../../../
 
 require (
 	cel.dev/expr v0.25.1 // indirect

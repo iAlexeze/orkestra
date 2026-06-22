@@ -15,7 +15,7 @@ metadata:
 
 spec:
   crds:
-    webapp:
+    hybridApp:
       apiTypes:
         group: migration.demo.orkestra.io
         version: v1alpha1

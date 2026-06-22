@@ -130,13 +130,14 @@ Now build your own binary:
 ```bash
 make clean
 make build
-cp ~/.orkestra/bin/ork ./ork
 ```
 
-Validate with your binary:
+This replaces the default `ork` binary in `~/.orkestra/bin/ork`, which is already on your PATH from the initial install.
+
+Validate:
 
 ```bash
-./ork validate   # passes
+ork validate   # passes
 ```
 
 ---
@@ -144,7 +145,7 @@ Validate with your binary:
 ## Step 3 – Run locally
 
 ```bash
-./ork run --dev     # creates a local kind cluster
+ork run --dev     # creates a local kind cluster
 
 kubectl apply -f crd.yaml
 ```
@@ -165,7 +166,7 @@ You’ll see the state machine step through `build` → `test` → `notify`.
 
 ```bash
 # Generate Bundle
-./ork generate bundle -f katalog.yaml -o bundle.yaml
+ork generate bundle -f katalog.yaml -o bundle.yaml
 
 # Build and push your custom image
 make release IMAGE=yourregistry/pipeline-operator:v1
@@ -203,8 +204,6 @@ make docker push IMAGE_REPO=yourregistry/pipeline-operator IMAGE_TAG=latest
 
 - `make docker` builds a production‑only binary (tags `runtime`) – it cannot run developer commands like `validate` or `e2e`
 - The binary is copied from `~/.orkestra/bin/runtime/ork` into the current directory for `docker build`, then removed
-- Your local `./ork` (development CLI) is restored after the build – it remains unchanged and fully featured
-- This round‑trip ensures your container image contains only the secure runtime, while your local environment keeps all developer tools
 
 #### Try running a developer command
 It will fail (as intended), only `ork run` succeeds.

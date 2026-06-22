@@ -50,18 +50,14 @@ Build your operator binary:
 make build
 ```
 
-The binary is placed in `~/.orkestra/bin/ork`. Copy it locally for convenience:
-
-```bash
-cp ~/.orkestra/bin/ork ./ork
-```
+This replaces the default `ork` binary in `~/.orkestra/bin/ork`, which is already on your PATH from the initial install.
 
 ---
 
 ## Step 2 — Simulate
 
 ```bash
-./ork simulate
+ork simulate
 ```
 
 Both the Deployment (declarative) and the Service (hook) appear in cycle 1.
@@ -77,7 +73,7 @@ kubectl apply -f crd.yaml
 ```
 
 ```bash
-./ork run
+ork run
 ```
 
 In another terminal, apply the CR:

@@ -104,27 +104,14 @@ Now build a binary that includes your generated registry:
 make build
 ```
 
-The binary is placed in `~/.orkestra/bin/ork` (the default `OUTPUT_DIR`). You will
-use this binary for the rest of the tutorial. To make it easy, either:
-
-- Add `$HOME/.orkestra/bin` to your PATH (if not already), or
-- Call it directly as `~/.orkestra/bin/ork`.
-
-For brevity, this guide will use `./ork` – you can copy the binary to the current
-directory or adjust your PATH. Run `make build` again and then:
-
-```bash
-cp ~/.orkestra/bin/ork ./ork
-```
-
-Now you have a custom `./ork` binary that knows your CRD type.
+This replaces the default `ork` binary in `~/.orkestra/bin/ork`, which is already on your PATH from the initial install. `ork` now knows your CRD type.
 
 ---
 
 ## Step 5 — Validate with your own binary
 
 ```bash
-./ork validate
+ork validate
 ```
 
 It should pass without errors. The debug output (from the generated registry)
@@ -141,7 +128,7 @@ will confirm that `ObjectRegistry` is populated.
 Run your custom operator:
 
 ```bash
-./ork run --dev
+ork run --dev
 ```
 
 In another terminal, apply the custom resource:
@@ -182,7 +169,7 @@ make release IMAGE=yourregistry/your-operator:v1.0.0
 ### Generate the Orkestra bundle
 
 ```bash
-./ork generate bundle -f katalog.yaml -o bundle.yaml
+ork generate bundle -f katalog.yaml -o bundle.yaml
 ```
 
 This creates a single YAML with Namespace, ServiceAccount, ClusterRole,
@@ -263,8 +250,6 @@ make docker push IMAGE_REPO=yourregistry/database-operator IMAGE_TAG=latest
 
 - `make docker` builds a production‑only binary (tags `runtime`) – it cannot run developer commands like `validate` or `e2e`
 - The binary is copied from `~/.orkestra/bin/runtime/ork` into the current directory for `docker build`, then removed
-- Your local `./ork` (development CLI) is restored after the build – it remains unchanged and fully featured
-- This round‑trip ensures your container image contains only the secure runtime, while your local environment keeps all developer tools
 
 #### Try running a developer command
 It will fail (as intended), only `ork run` succeeds.

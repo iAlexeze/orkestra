@@ -1,0 +1,12 @@
+# Schema reference: https://orkestra.sh/docs/reference/schema/e2e/imports/
+apiVersion: orkestra.orkspace.io/v1
+kind: E2E
+metadata:
+  name: from-controller-runtime-suite
+  description: >
+    Suite for the from-controller-runtime pack — runs hooks and constructor
+    examples end-to-end in a kind cluster.
+
+imports:
+  - ./02-hooks/e2e.yaml
+  - ./03-constructor/e2e.yaml

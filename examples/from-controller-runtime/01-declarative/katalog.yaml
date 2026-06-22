@@ -4,7 +4,7 @@ kind: Katalog
 metadata:
   name: webapp-declarative
   author: myorg
-  version: 0.1.0
+  version: 1.0.0
   description: >
     The WebApp operator expressed fully declaratively. Zero Go.
     Same behaviour as the controller-runtime baseline — Deployment, Service, status.
@@ -15,7 +15,7 @@ metadata:
 
 spec:
   crds:
-    webapp:
+    declarativeApp:
       crdFile: ./crd.yaml
       crFiles:
         - ./cr.yaml
