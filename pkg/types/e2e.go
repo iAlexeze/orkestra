@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 
+	"github.com/orkspace/orkestra/pkg/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -57,7 +58,11 @@ func (s *SetupConfig) UnmarshalYAML(value *yaml.Node) error {
 		}
 	}
 	type plain SetupConfig
-	return value.Decode((*plain)(s))
+	raw, err := yaml.Marshal(value)
+	if err != nil {
+		return err
+	}
+	return utils.StrictUnmarshal(raw, (*plain)(s))
 }
 
 // SetupHelmInstall installs a Helm chart as a real release into the cluster.

@@ -45,13 +45,12 @@ func HelmInstall(ctx context.Context, h orktypes.SetupHelmInstall) error {
 	for k, v := range h.Values {
 		args = append(args, "--set", fmt.Sprintf("%s=%v", k, v))
 	}
+	args = append(args, "--wait", "--timeout", "5m")
 
-	fmt.Printf("  → Installing %s...\n", release)
 	cmd := exec.CommandContext(ctx, "helm", args...)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("helm install %s/%s: %w\n%s", h.Repo, h.Chart, err, out)
 	}
-	fmt.Printf("  ✓ %s installed\n", release)
 	return nil
 }
 
