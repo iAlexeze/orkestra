@@ -1,0 +1,52 @@
+# Schema reference: https://orkestra.sh/docs/reference/schema/e2e/
+apiVersion: orkestra.orkspace.io/v1
+kind: E2E
+metadata:
+  name: web-app-reconciler-e2e
+  description: >
+    End-to-end test for web-app-reconciler.
+    TODO(ork migrate): fill in your CRD kind, CR name, and assertions.
+
+spec:
+  katalog: ./katalog.yaml
+  crd: ./crd.yaml
+  cr: ./cr.yaml
+
+  cluster:
+    provider: kind
+    name: ork-e2e
+    reuse: false
+
+  expect:
+    - name: CR created
+      after: cr-applied
+      timeout: 30s
+      resources:
+        - kind: TODO  # TODO(ork migrate): set your CRD kind
+          name: TODO  # TODO(ork migrate): set your CR name from cr.yaml
+          namespace: default
+
+    - name: Status written
+      after: cr-applied
+      timeout: 60s
+      commands:
+        - run: kubectl get TODO my-cr -o jsonpath='{.status.phase}'  # TODO(ork migrate): adjust
+          outputContains: Running
+
+    - name: Resources created
+      after: cr-applied
+      timeout: 90s
+      resources:
+        - kind: TODO  # TODO(ork migrate): e.g. Deployment
+          name: TODO
+          namespace: default
+          ready: true
+
+    - name: Cleanup verified
+      after: cr-deleted
+      timeout: 30s
+      resources:
+        - kind: TODO  # TODO(ork migrate): your managed resource
+          name: TODO
+          namespace: default
+          count: 0

@@ -1,0 +1,24 @@
+# Schema reference: https://orkestra.sh/docs/reference/schema/simulate/
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: web-app-reconciler-sim
+  description: >
+    Verify resources are created in cycle 1 — no cluster needed.
+    TODO(ork migrate): fill in the resource kinds your operator creates.
+
+spec:
+  katalog: ./katalog.yaml
+  cr: ./cr.yaml
+  cycles: 3
+
+  expect:
+    steady: true
+    noErrors: true
+    ops:
+      - cycle: 1
+        verb: create
+        resource: TODO  # TODO(ork migrate): e.g. deployments, services, configmaps
+      # - cycle: 1
+      #   verb: create
+      #   resource: services
