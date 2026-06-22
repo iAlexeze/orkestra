@@ -26,7 +26,9 @@ Examples are grouped into packs. Pull any pack with `ork init --pack <name>`.
 | [Advanced](./03-advanced.md) | Admission, composition, escape hatches, autoscaling, cross-operator |
 | [Use-cases](./04-use-cases.md) | Normalize, enrich, profiles, full-stack patterns, external calls, motif composition |
 | [Security](./05-security.md) | Admission, deletion protection, namespace isolation |
-| [Registry Guide](./06-registry-guide.md) | Distribution — publish, version, gate, consume, and automate the full pattern lifecycle |
+| [Registry Guide](./06-registry.md) | Distribution — publish, version, gate, consume, and automate the full pattern lifecycle |
+| [Migration Guide](./07-migration.md) | Migrating an existing controller-runtime operator to Orkestra — five options, zero lock-in |
+| [Ecosystem Guide](./08-ecosystem.md) | Wrapping ArgoCD, cert-manager, Prometheus, and Crossplane with Orkestra abstraction layers |
 
 ---
 
@@ -73,7 +75,9 @@ Each example has its own `README.md`. Follow it — it tells you exactly what to
 **Know Kubernetes, new to Orkestra**
 - [`beginner/01-hello-website`](./01-beginner.md), then [`intermediate/05-when-conditions`](./02-intermediate.md) and [`advanced/07-validation-mutation`](./03-advanced.md)
 
-**Migrating from Kubebuilder or Operator SDK**
+**Migrating from controller-runtime, Kubebuilder, or Operator SDK**
+- [Migration Guide](./07-migration.md) — the full migration pack; see all five options before choosing one
+- `ork migrate <file>` to automate the constructor path for an existing reconciler
 - [`advanced/09-hooks`](./03-advanced.md) to wrap existing Go logic
 - [`advanced/10-constructor`](./03-advanced.md) to bring a full reconciler across intact
 
@@ -99,13 +103,13 @@ Each example has its own `README.md`. Follow it — it tells you exactly what to
 - [`advanced/12-autoscale/02-based-on-own-metrics`](./03-advanced.md)
 
 **Publishing and distributing operators**
-- Start with [`registry-guide/00-consume`](./06-registry-guide.md) — pull a proven pattern and deploy it before building your own
-- Then [`registry-guide/02-katalog-api`](./06-registry-guide.md) through [`04-katalog-platform`](./06-registry-guide.md) to build the publish → gate → distribute pipeline
-- [`registry-guide/05-komposer`](./06-registry-guide.md) for production deployment with admission and deletion protection
-- [`registry-guide/12-ork-action`](./06-registry-guide.md) to automate everything in CI
+- Start with [`registry-guide/00-consume`](./06-registry.md) — pull a proven pattern and deploy it before building your own
+- Then [`registry-guide/02-katalog-api`](./06-registry.md) through [`04-katalog-platform`](./06-registry.md) to build the publish → gate → distribute pipeline
+- [`registry-guide/05-komposer`](./06-registry.md) for production deployment with admission and deletion protection
+- [`registry-guide/12-ork-action`](./06-registry.md) to automate everything in CI
 
 **Supply chain verification**
-- [`registry-guide/08-bad-actor`](./06-registry-guide.md) — simulate passed, `ork plan` caught what the assertions missed
+- [`registry-guide/08-bad-actor`](./06-registry.md) — simulate passed, `ork plan` caught what the assertions missed
 
 ---
 

@@ -64,7 +64,26 @@ func NewFakeKubeclient(scheme *runtime.Scheme) *FakeKubeclient {
 	})
 
 	f.clientset = cs
-	f.dynamic = fakedynamic.NewSimpleDynamicClient(scheme)
+
+	dyn := fakedynamic.NewSimpleDynamicClient(scheme) // For custom
+	// PrependReactor intercepts every operation and records it before the
+	// default object-tracker reactor handles it. AddReactor appends to the
+	// chain AFTER the tracker, so it is never reached — PrependReactor is
+	// required here.
+	dyn.Fake.PrependReactor("*", "*", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+		f.mu.Lock()
+		f.ops = append(f.ops, Op{
+			Cycle:     f.currentCycle,
+			Verb:      action.GetVerb(),
+			Resource:  action.GetResource().Resource,
+			Namespace: action.GetNamespace(),
+			Name:      nameFromAction(action),
+			At:        time.Now(),
+		})
+		f.mu.Unlock()
+		return false, nil, nil
+	})
+	f.dynamic = dyn
 	f.mapper = &fakeMapper{}
 
 	return f

@@ -29,35 +29,20 @@ jobs:
           generate-registry: "."
           working-directory: ./database-operator
 
-      # 2. Build the custom ork binary with the type registry compiled in.
-      #    Writes to ~/.orkestra/bin/ork — the same path install.sh uses — replacing
-      #    the standard binary the action installed in step 1. Subsequent action steps
-      #    pick up the custom binary automatically from the existing PATH entry.
-      - name: Build custom ork (full CLI)
-        working-directory: ./database-operator
-        run: |
-          go build \
-            -ldflags "-X github.com/orkspace/orkestra/pkg/version.Version=${{ github.ref_name }}" \
-            -o $HOME/.orkestra/bin/ork \
-            ./cmd/orkestra
-
-      # 3. Build the production runtime binary (tags: runtime — no validate/simulate/e2e commands).
+      # 2. Build the production runtime binary (tags: runtime — no validate/simulate/e2e commands).
       #    Placed in the Docker build context so the Dockerfile can COPY it in.
       - name: Build runtime binary for Docker image
-        working-directory: ./database-operator
+        working-directory: database-operator
         run: |
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-            -tags runtime \
-            -ldflags "-X github.com/orkspace/orkestra/pkg/version.Version=${{ github.ref_name }}" \
-            -o ./ork \
-            ./cmd/orkestra
+          make build-runtime
+          mv $HOME/.orkestra/bin/runtime/ork ./ork
 
       - name: Log in to ghcr.io
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.ORK_ACTION_TOKEN }}
 
       - name: Build and push runtime image
         uses: docker/build-push-action@v5
@@ -66,9 +51,16 @@ jobs:
           push: true
           tags: ghcr.io/${{ env.OWNER }}/database-operator:${{ github.ref_name }}
 
-      # 4. Same publish step as the declarative workflow — validate, simulate, push.
-      #    The custom ork from step 2 is in PATH; the action uses it automatically.
-      #    Katalog is published after the image — consumers pull both atomically.
+      # 3. Build the custom ork binary with the type registry compiled in.
+      #    Writes to ~/.orkestra/bin/ork, replacing the standard binary the action
+      #    installed in step 1. Subsequent action steps pick it up automatically.
+      - name: Build custom ork (full CLI)
+        working-directory: database-operator
+        run: make build
+
+      # 4. Validate, simulate, and push using the custom ork (type registry compiled in).
+      #    Image is already in the registry — katalog published last so consumers
+      #    always pull both atomically.
       - name: Publish to registry
         uses: orkspace/orkestra-action@v1
         with:
@@ -76,7 +68,7 @@ jobs:
           validate: "true"
           simulate: "true"
           registry-push: "database-operator:${{ github.ref_name }} ."
-          registry-url: "ghcr.io/${{ env.OWNER }}/katalogs"
+          registry-url: "ghcr.io/${{ github.repository_owner }}/katalogs"
           registry-username: ${{ github.actor }}
-          registry-password: ${{ secrets.GITHUB_TOKEN }}
+          registry-password: ${{ secrets.ORK_ACTION_TOKEN }}
           working-directory: ./database-operator

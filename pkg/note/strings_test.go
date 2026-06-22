@@ -206,3 +206,24 @@ func TestStringNotes(t *testing.T) {
 
 	// camelToKebab and truncate are tested separately.
 }
+
+func TestStrConcat(t *testing.T) {
+	tests := []struct {
+		name  string
+		parts []string
+		want  string
+	}{
+		{"no parts", []string{}, ""},
+		{"single part", []string{"hello"}, "hello"},
+		{"two parts", []string{"*.", "api.example.com"}, "*.api.example.com"},
+		{"three parts", []string{"webapp", "-", "prod"}, "webapp-prod"},
+		{"empty part in middle", []string{"a", "", "b"}, "ab"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := strConcat(tt.parts...); got != tt.want {
+				t.Errorf("strConcat(%v) = %q, want %q", tt.parts, got, tt.want)
+			}
+		})
+	}
+}

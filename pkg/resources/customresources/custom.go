@@ -346,9 +346,14 @@ func buildUnstructured(spec ResolvedCustomResourceSpec, owner domain.Object, gvk
 	}
 
 	// Owner reference — lets Kubernetes garbage-collect the resource when the
-	// Pipeline CR is deleted, without Orkestra needing an onDelete hook.
+	// owner CR is deleted. Skip when the owner is namespaced and the child is
+	// in a different namespace: Kubernetes rejects cross-namespace owner references
+	// and immediately GC-s the child. Cluster-scoped owners (namespace == "") can
+	// own resources in any namespace, so they are always allowed.
 	ownerGVK := owner.GetObjectKind().GroupVersionKind()
-	if !ownerGVK.Empty() {
+	ownerIsNamespaced := owner.GetNamespace() != ""
+	sameNamespace := !ownerIsNamespaced || namespace == "" || namespace == owner.GetNamespace()
+	if !ownerGVK.Empty() && sameNamespace {
 		u.SetOwnerReferences([]metav1.OwnerReference{{
 			APIVersion:         ownerGVK.GroupVersion().String(),
 			Kind:               ownerGVK.Kind,

@@ -1358,6 +1358,13 @@ var BuiltinNotes = []NoteInfo{
 		Keywords:    []string{"string", "case", "camel", "kebab", "transform", "naming", "kubernetes"},
 	},
 	{
+		Name:        "concat",
+		Domain:      "strings",
+		Description: "Join any number of strings together with no separator. Useful for building domain names, resource name prefixes, or any value assembled from multiple parts.",
+		Example:     "# value: \"{{ concat \\\"*.\\\" .spec.domain }}\"\n# spec.domain: \"api.example.com\" → \"*.api.example.com\"\n\n# value: \"{{ concat .metadata.name \\\"-\\\" .spec.tier }}\"\n# name: \"webapp\", tier: \"prod\" → \"webapp-prod\"",
+		Keywords:    []string{"string", "concat", "join", "combine", "build", "prefix", "suffix", "append"},
+	},
+	{
 		Name:        "contains",
 		Domain:      "strings",
 		Description: "Return `true` if the string contains the substring.",

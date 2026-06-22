@@ -95,6 +95,8 @@ spec:
 This is how governance patterns work — you apply Orkestra's validation and mutation
 model to CRDs you did not write and cannot modify.
 
+For the full wrapping pattern — internal CRD → ecosystem resource, admission enforcement, status propagation, and e2e testing against the real tool — see the [Ecosystem Composition Guide](../guides/ecosystem/index.md).
+
 ---
 
 ## What is the path to Kubernetes core?
@@ -115,5 +117,7 @@ manages them.
 
 ## Next
 
+- **[Ecosystem Composition Guide](../guides/ecosystem/index.md)** — wrap ArgoCD, cert-manager, Prometheus, and Crossplane with abstraction layers
+- **[Migration Guide](../guides/migration/index.md)** — move an existing controller-runtime operator to Orkestra
 - **[Roadmap](../roadmap.md)** — what is shipped and what is coming
 - **[Getting Started](../getting-started/index.md)** — your first operator in minutes

@@ -4,6 +4,7 @@ package cli
 
 import (
 	"path/filepath"
+	"sort"
 
 	"github.com/orkspace/orkestra/examples"
 )
@@ -14,6 +15,7 @@ type Pack struct {
 	Name        string
 	Description string
 	Path        string
+	Order       int // for sorting in --list
 }
 
 var Packs = map[string]Pack{
@@ -21,31 +23,49 @@ var Packs = map[string]Pack{
 		Name:        "beginner",
 		Description: "Start here. Simple CRDs, Deployments, Services.",
 		Path:        "beginner",
+		Order:       1,
 	},
 	"intermediate": {
 		Name:        "intermediate",
 		Description: "Multi-resource patterns, when/anyOf, Komposer basics.",
 		Path:        "intermediate",
+		Order:       2,
 	},
 	"advanced": {
 		Name:        "advanced",
 		Description: "Hooks, constructors, validation/mutation, registries.",
 		Path:        "advanced",
+		Order:       3,
 	},
 	"security": {
 		Name:        "security",
 		Description: "Deletion protection, namespace protection, admission webhooks.",
 		Path:        "security",
+		Order:       4,
 	},
 	"use-cases": {
 		Name:        "use-cases",
 		Description: "Full-stack, cross-CRD, external gates, once-secrets.",
 		Path:        "use-cases",
+		Order:       5,
 	},
 	"registry-guide": {
 		Name:        "registry-guide",
 		Description: "End-to-end registry workflow: consume, build motifs, publish, compose, upgrade, deprecate, typed operators, CI.",
 		Path:        "registry-guide",
+		Order:       6,
+	},
+	"ecosystem-composition": {
+		Name:        "ecosystem-composition",
+		Description: "Wrap ArgoCD, cert-manager, Prometheus Operator, and Crossplane behind internal CRDs.",
+		Path:        "ecosystem-composition",
+		Order:       7,
+	},
+	"from-controller-runtime": {
+		Name:        "from-controller-runtime",
+		Description: "Migrate an existing controller-runtime operator to Orkestra: declarative, hooks, or constructor.",
+		Path:        "from-controller-runtime",
+		Order:       8,
 	},
 }
 
@@ -67,19 +87,27 @@ func ListPacks() []Pack {
 	for _, p := range Packs {
 		out = append(out, p)
 	}
+
+	// Sort
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].Order < out[j].Order
+	})
+
 	return out
 }
 
 // Helpers
-func (p Pack) isBeginnerPack() bool      { return p.Name == "beginner" }
-func (p Pack) isCanonicalPack() bool     { return p.Name == "." }
-func (p Pack) isIntermediatePack() bool  { return p.Name == "intermediate" }
-func (p Pack) isAdvancedPack() bool      { return p.Name == "advanced" }
-func (p Pack) isSecurityPack() bool      { return p.Name == "security" }
-func (p Pack) isUseCasesPack() bool      { return p.Name == "use-cases" }
-func (p Pack) isRollbackPack() bool      { return p.Name == "rollback" }
-func (p Pack) isDeveloperPack() bool     { return p.Name == "developer" }
-func (p Pack) isRegistryGuidePack() bool { return p.Name == "registry-guide" }
+func (p Pack) isBeginnerPack() bool              { return p.Name == "beginner" }
+func (p Pack) isCanonicalPack() bool             { return p.Name == "." }
+func (p Pack) isIntermediatePack() bool          { return p.Name == "intermediate" }
+func (p Pack) isAdvancedPack() bool              { return p.Name == "advanced" }
+func (p Pack) isSecurityPack() bool              { return p.Name == "security" }
+func (p Pack) isUseCasesPack() bool              { return p.Name == "use-cases" }
+func (p Pack) isRollbackPack() bool              { return p.Name == "rollback" }
+func (p Pack) isDeveloperPack() bool             { return p.Name == "developer" }
+func (p Pack) isRegistryGuidePack() bool         { return p.Name == "registry-guide" }
+func (p Pack) isFromControllerRuntimePack() bool { return p.Name == "from-controller-runtime" }
+func (p Pack) isEcosystemCompositionPack() bool  { return p.Name == "ecosystem-composition" }
 
 func (p Pack) firstExample() string {
 	switch {
@@ -99,6 +127,10 @@ func (p Pack) firstExample() string {
 		return "01-one-project"
 	case p.isRegistryGuidePack():
 		return "00-consume"
+	case p.isFromControllerRuntimePack():
+		return "00-controller-runtime-baseline"
+	case p.isEcosystemCompositionPack():
+		return "00-argocd"
 	default:
 		return ""
 	}

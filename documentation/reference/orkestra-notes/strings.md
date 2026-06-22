@@ -20,6 +20,7 @@ String notes manipulate text values. They cover the cases that come up constantl
 | `join` | Join a slice of strings into a single string with a separator. |
 | `repeat` | Repeat a string n times. |
 | `camelToKebab` | Convert CamelCase or PascalCase to kebab-case. |
+| `concat` | Join any number of strings together with no separator. |
 | `truncate` | Truncate a string to at most `n` characters. |
 
 ## Examples
@@ -97,6 +98,13 @@ String notes manipulate text values. They cover the cases that come up constantl
 # value: "{{ camelToKebab .spec.controllerName }}"
 # "WebsiteOperator" → "website-operator"
 # "myAppName"       → "my-app-name"
+
+# concat
+# value: "{{ concat \"*.\" .spec.domain }}"
+# spec.domain: "api.example.com" → "*.api.example.com"
+
+# value: "{{ concat .metadata.name \"-\" .spec.tier }}"
+# name: "webapp", tier: "prod" → "webapp-prod"
 
 # truncate
 # value: "{{ truncate .metadata.name 63 }}"

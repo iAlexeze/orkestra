@@ -147,6 +147,8 @@ Security rules declared in a Katalog are not enforced once. They are enforced at
 
 A `deny` rule that catches a bad CR at admission time will also catch it if the CR somehow bypasses the webhook. The Runtime enforces rules independently of the Gateway. Both layers must fail independently before a rule is violated.
 
+Reconcile-time outcomes are observable without reading logs. When a `deny` rule fires, the Runtime writes `ValidationFailed=True` to the CR's status conditions. When a `warn` rule fires, it writes `ValidationWarning=True` with the message. Both are visible in the Control Center Conditions tab and via `kubectl get <cr> -o yaml`. Admission-time rejections surface at the terminal — the CR is never stored.
+
 Each enforcement point assumes the one before it may be absent or imperfect. This is not redundancy — it is how the system stays correct when parts of it fail.
 
 ---

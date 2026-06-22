@@ -268,6 +268,9 @@ Examples:
 			return err
 		}
 
+		if !k.IsGatewayEnabled() {
+			opts.IncludeGateway = false
+		}
 		runtimeRules := k.GenerateRuntimeRBACRules()
 		gatewayRules := k.GenerateGatewayRBACRules()
 
@@ -365,6 +368,9 @@ Examples:
 
 		log.Println("generating bundle...")
 
+		if !k.IsGatewayEnabled() {
+			opts.IncludeGateway = false
+		}
 		runtimeRules := k.GenerateRuntimeRBACRules()
 		gatewayRules := k.GenerateGatewayRBACRules()
 

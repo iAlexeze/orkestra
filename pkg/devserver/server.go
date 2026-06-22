@@ -29,6 +29,13 @@ var flagState sync.Map
 // key: cert name, value: true = issued, false = pending. Default is issued.
 var certState sync.Map
 
+// autoscaleFlipped tracks whether /autoscale-metrics is returning the
+// overloaded payload. Toggled via POST /autoscale-metrics/flip.
+var (
+	autoscaleFlipped bool
+	autoscaleMu      sync.Mutex
+)
+
 // certGet returns whether the cert is currently issued (true) or pending (false).
 func certGet(name string) bool {
 	if v, ok := certState.Load(name); ok {
@@ -109,5 +116,7 @@ func printDevBanner(port int) {
 	fmt.Printf("  POST /v1/data/:policy           → OPA decision (namespace=forbidden or name contains 'deny' → deny)\n")
 	fmt.Printf("  GET  /certs/:name/status        → cert status: issued (200) or pending (202)\n")
 	fmt.Printf("  POST /certs/:name/toggle        → flip cert between issued and pending\n")
+	fmt.Printf("  GET  /autoscale-metrics         → payment system metrics (baseline: low queueDepth)\n")
+	fmt.Printf("  POST /autoscale-metrics/flip    → toggle between baseline and overloaded payload\n")
 	fmt.Printf("──────────────────────────────────────────\n\n")
 }

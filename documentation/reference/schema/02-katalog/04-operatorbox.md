@@ -66,6 +66,7 @@ hooks:
   location: github.com/example/operator   # Go module path
   function: DatabaseHooks                  # exported function name
   alias: dbhooks                           # import alias (auto-derived if omitted)
+  runHooksFirst: false                     # see below
   resources:                              # RBAC verbs claimed for this hook
     - statefulsets
     - services
@@ -73,6 +74,23 @@ hooks:
 ```
 
 Requires typed mode (`apiTypes.location` set) and `ork generate registry`.
+
+### `hooks.runHooksFirst`
+
+Controls the order in which the hook and declared templates run within the same reconcile cycle.
+
+| Value | Order |
+|-------|-------|
+| `false` (default) | Declared templates run first, then the hook. Use when the hook is additive — the ServiceAccount or Deployment already exists when the hook runs. |
+| `true` | Hook runs first, then declared templates. Use when the hook creates resources that declared templates depend on. |
+
+```yaml
+hooks:
+  runHooksFirst: true   # hook → then declared templates
+                        # false (default): declared templates → then hook
+```
+
+The hybrid pattern (90/10) uses `runHooksFirst: false`: Orkestra declares what it can and the hook adds the 10% that templates cannot express. See [typed-operators/01-hooks.md](../../../concepts/typed-operators/01-hooks.md) for a full example.
 
 ## `constructor`
 

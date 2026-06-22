@@ -164,6 +164,11 @@ type HookDeclaration struct {
 
 	// Resources — Kubernetes resource types this hook manages (used for RBAC generation).
 	Resources []ManagedResource `json:"resources,omitempty" yaml:"resources,omitempty"`
+
+	// RunHooksFirst — when true, the hook runs before declarative templates.
+	// When false (default), declarative templates run first and the hook is
+	// additive — the 90/10 hybrid pattern.
+	RunHooksFirst bool `yaml:"runHooksFirst,omitempty" json:"runHooksFirst,omitempty"`
 }
 
 // ConstructorDeclaration declares where a custom reconciler constructor lives.

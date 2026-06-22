@@ -86,6 +86,13 @@ func NewSchemeRegistry(k *Katalog) (*runtime.Scheme, error) {
 		return nil, err
 	}
 
+	// 4. Register external GVKs from custom: blocks so the fake dynamic client's
+	// object tracker can create/get them during simulate (in-memory cluster).
+	// Without this, the tracker has no schema entry and Create calls fail silently.
+	if scheme, err = k.registerCustomResourceScheme(scheme); err != nil {
+		return nil, err
+	}
+
 	return scheme, nil
 }
 
@@ -104,6 +111,50 @@ func (k *Katalog) updateResourceMapAndReturn() (*Katalog, error) {
 	}
 
 	return k, nil
+}
+
+// registerCustomResourceScheme registers external GVKs declared in custom: blocks
+// (onCreate and onReconcile) into the scheme so the fake dynamic client's object
+// tracker can store and retrieve them during simulate. Deduplicates by GVK string.
+func (k *Katalog) registerCustomResourceScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
+	seen := make(map[string]bool)
+	for _, crd := range k.enabledCRDs {
+		if crd.HasOnCreate() && crd.OperatorBox.OnCreate.CustomResource != nil {
+			for i := range crd.OperatorBox.OnCreate.CustomResource {
+				cr := &crd.OperatorBox.OnCreate.CustomResource[i]
+				key := cr.APIVersion + "/" + cr.Kind
+				if seen[key] || cr.APIVersion == "" || cr.Kind == "" {
+					continue
+				}
+				seen[key] = true
+				gvk, err := cr.BuildGVK()
+				if err != nil {
+					continue
+				}
+				scheme.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
+				scheme.AddKnownTypeWithName(schema.GroupVersionKind{Group: gvk.Group, Version: gvk.Version, Kind: gvk.Kind + "List"}, &unstructured.UnstructuredList{})
+			}
+		}
+
+		if crd.HasOnReconcile() && crd.OperatorBox.OnReconcile.CustomResource != nil {
+			for i := range crd.OperatorBox.OnReconcile.CustomResource {
+				cr := &crd.OperatorBox.OnReconcile.CustomResource[i]
+				key := cr.APIVersion + "/" + cr.Kind
+				if seen[key] || cr.APIVersion == "" || cr.Kind == "" {
+					continue
+				}
+				seen[key] = true
+				gvk, err := cr.BuildGVK()
+				if err != nil {
+					continue
+				}
+				scheme.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
+				scheme.AddKnownTypeWithName(schema.GroupVersionKind{Group: gvk.Group, Version: gvk.Version, Kind: gvk.Kind + "List"}, &unstructured.UnstructuredList{})
+			}
+		}
+
+	}
+	return scheme, nil
 }
 
 // Register dynamic CRDs — tells the watch stream to decode

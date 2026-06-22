@@ -208,6 +208,7 @@ func NewGenericReconciler[PTR domain.Object](
 			baseline,
 			r,
 			autoMet,
+			crd.OperatorBox.Cross,
 		)
 	}
 
@@ -476,11 +477,13 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 		}
 	}
 
+	var lastValResult *ValidationResult
 	if r.crd.HasValidationRules() {
-		valResult := runValidation(obj, r.crd.Validation, r.crd.APITypes.Kind)
+		vr := runValidation(obj, r.crd.Validation, r.crd.APITypes.Kind)
+		lastValResult = vr
 
 		// Warn violations: log and emit events but do NOT halt
-		for _, w := range valResult.Warnings {
+		for _, w := range vr.Warnings {
 			logger.FromContext(ctx).Warn().
 				Str("name", obj.GetName()).
 				Str("crd", r.crd.GVKString()).
@@ -492,9 +495,11 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 				fmt.Sprintf("field %q: %s", w.Field, w.Message))
 		}
 
-		// Deny violations: halt reconcile
-		if valResult.Deny {
-			return valResult.DenialError()
+		// Deny violations: write condition and halt reconcile
+		if vr.Deny {
+			denialErr := vr.DenialError()
+			r.patchStatusWithChildren(ctx, obj, resolver, denialErr, vr)
+			return denialErr
 		}
 	}
 
@@ -505,11 +510,23 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 				Msg("reconcile mutation failed — continuing")
 		}
 	}
+	hasTemplates := r.operatorBox.OnCreate != nil || r.operatorBox.OnReconcile != nil
 	switch {
 	case r.hooks.OnReconcile != nil:
 		// Go hooks — user-provided, full type-safe access.
 		// Requires: ork generate registry to register in HookRegistry.
-		err = r.hooks.OnReconcile(ctx, obj)
+		//
+		// Order: by default declared templates run first (hybrid 90/10 pattern).
+		// Set hooks.runHooksFirst: true in the Katalog to run the hook first.
+		if !r.crd.RunHooksFirst() && hasTemplates {
+			resolver, err = r.runTemplateReconcile(ctx, resolver, obj)
+		}
+		if err == nil {
+			err = r.hooks.OnReconcile(ctx, obj)
+		}
+		if err == nil && r.crd.RunHooksFirst() && hasTemplates {
+			resolver, err = r.runTemplateReconcile(ctx, resolver, obj)
+		}
 
 	case r.operatorBox.OnCreate != nil || r.operatorBox.OnReconcile != nil:
 		// Declarative templates — interpreted at runtime.
@@ -590,7 +607,7 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 	// Always patch status — best-effort, never fails reconcile.
 	// Called with the outcome so Ready condition reflects reality.
 	// Must run before the error return so Ready=False is written on failure.
-	r.patchStatusWithChildren(ctx, obj, resolver, err)
+	r.patchStatusWithChildren(ctx, obj, resolver, err, lastValResult)
 
 	if err != nil {
 		logger.FromContext(ctx).Error().Err(err).

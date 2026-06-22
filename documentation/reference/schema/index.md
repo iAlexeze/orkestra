@@ -18,6 +18,7 @@ All fields that live inside a Katalog `spec.crds.<name>` entry:
 
 | Pattern | Covers |
 |----------|--------|
+| [00-metadata.md](02-katalog/00-metadata.md) | `metadata` — name, author, version, tags, deprecation |
 | [01-top-level.md](02-katalog/01-top-level.md) | Top-level Katalog structure |
 | [02-crd-entry.md](02-katalog/02-crd-entry.md) | Fields inside `spec.crds.<name>` |
 | [03-apitypes.md](02-katalog/03-apitypes.md) | `apiTypes` — group, kind, version, typed mode |

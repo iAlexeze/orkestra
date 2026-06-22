@@ -55,6 +55,18 @@ func HelmInstall(ctx context.Context, h orktypes.SetupHelmInstall) error {
 	return nil
 }
 
+// HelmUninstall removes a Helm release installed by HelmInstall.
+func HelmUninstall(ctx context.Context, h orktypes.SetupHelmInstall) error {
+	release := h.ReleaseName()
+	namespace := h.EffectiveNamespace()
+	cmd := exec.CommandContext(ctx, "helm", "uninstall", release,
+		"--namespace", namespace, "--ignore-not-found")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("helm uninstall %s: %w\n%s", release, err, out)
+	}
+	return nil
+}
+
 // WaitForResource polls until the described resource exists (and is ready when
 // w.Ready is true). Times out after w.Timeout (default 30s).
 func WaitForResource(ctx context.Context, w orktypes.SetupWait) error {

@@ -6,11 +6,11 @@ When you create or update a CR, Orkestra runs the full reconcile pipeline. Here 
 
 ## 1. Orkestra detects the change
 
-Orkestra's informer watches the API server for changes to every CRD it manages. When you create, update, or delete a CR, the change is placed in the operatorBox's workqueue immediately.
+Each CRD gets its own informer — a dedicated watch stream from the API server. When you create, update, or delete a CR, the watch event is placed into that CRD's workqueue immediately. CRDs do not share a queue or an informer.
 
 ## 2. A worker picks up the task
 
-Each operatorBox runs a fixed worker pool. Workers pull tasks from the queue concurrently. If one worker is busy, another picks up the next task.
+Each CRD runs its own worker pool. Workers pull items from that CRD's queue concurrently. The pool size is configurable per CRD via `workers:`. If one worker is busy, another picks up the next item.
 
 ## 3. Orkestra reads the CR from its cache
 

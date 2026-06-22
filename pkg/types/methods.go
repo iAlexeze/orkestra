@@ -170,6 +170,16 @@ func (c *CRDEntry) WithHooksDecl() bool {
 	return c.OperatorBox.Hooks != nil && c.OperatorBox.Hooks.Location != ""
 }
 
+// RunHooksFirst reports whether the hook should run before declarative templates.
+// Returns false by default — declared templates run first (the 90/10 hybrid pattern).
+// Set hooks.runHooksFirst: true in the Katalog to override.
+func (c *CRDEntry) RunHooksFirst() bool {
+	if c.OperatorBox.Hooks == nil {
+		return false
+	}
+	return c.OperatorBox.Hooks.RunHooksFirst
+}
+
 // WithConstructorDecl returns true if the CRD has a constructor declaration.
 // Required when Default: false in the Katalog. The generated registry will
 // emit a ReconcilerRegistry entry for this CRD.

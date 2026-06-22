@@ -10,3 +10,5 @@ imports:
   - ./01-pure-custom/e2e.yaml
   - path: ./02-side-by-side/e2e-orkestra.yaml
     wait: 10s
+  - path: ./02-side-by-side/e2e-custom.yaml
+    wait: 10s
