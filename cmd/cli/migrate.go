@@ -95,6 +95,7 @@ func writeOutputDir(dir, inputPath string, res *migrate.Result, files migrate.Fi
 		{"go.mod", files.GoMod},
 		{"Makefile", files.Makefile},
 		{"Dockerfile", files.Dockerfile},
+		{"README.md", files.README},
 	}
 	for _, f := range generated {
 		dest := filepath.Join(dir, f.name)
@@ -113,7 +114,7 @@ func replaceInPlace(inputPath string, res *migrate.Result, files migrate.Files) 
 	dir := filepath.Dir(inputPath)
 
 	fmt.Printf("This will replace %s and write %s alongside it.\n",
-		bold(inputPath), bold("katalog.yaml, simulate.yaml, e2e.yaml, go.mod, Makefile, Dockerfile"))
+		bold(inputPath), bold("katalog.yaml, simulate.yaml, e2e.yaml, go.mod, Makefile, Dockerfile, README.md"))
 	fmt.Printf("%s [y/N] ", yellow("Continue?"))
 
 	scanner := bufio.NewScanner(os.Stdin)

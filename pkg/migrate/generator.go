@@ -20,6 +20,7 @@ type Files struct {
 	GoMod      string
 	Makefile   string
 	Dockerfile string
+	README     string
 }
 
 // Options controls what the generator emits.
@@ -57,6 +58,7 @@ func Generate(res *Result, opts Options) Files {
 		GoMod:      generateGoMod(opts),
 		Makefile:   generateMakefile(opts),
 		Dockerfile: generateDockerfile(),
+		README:     generateREADME(),
 	}
 }
 
@@ -309,6 +311,100 @@ func generateDockerfile() string {
 COPY ork /usr/local/bin/ork
 USER 65532:65532
 ENTRYPOINT ["/usr/local/bin/ork"]
+`
+}
+
+func generateREADME() string {
+	bt := "```"
+	return `# Migration output
+
+` + bt + `bash
+grep -rn "TODO(ork migrate)" .
+` + bt + `
+
+Work through each TODO in order:
+
+1. Add the Orkestra imports flagged at the top of the reconciler file
+2. Replace ` + "`" + `r.Status().Update` + "`" + ` with ` + "`" + `r.kube.PatchStatus` + "`" + `
+3. Remove ` + "`" + `SetupWithManager` + "`" + ` and ` + "`" + `main.go` + "`" + ` — Orkestra provides the informer and workqueue
+
+---
+
+## Step 1 — Generate the type registry
+
+` + bt + `bash
+make registry
+` + bt + `
+
+---
+
+## Step 2 — Build
+
+` + bt + `bash
+make build
+` + bt + `
+
+---
+
+## Step 3 — Validate
+
+` + bt + `bash
+make validate
+` + bt + `
+
+---
+
+## Step 4 — Simulate
+
+` + bt + `bash
+ork simulate
+` + bt + `
+
+---
+
+## Step 5 — Release
+
+Build the production runtime binary, package it into a Docker image, and push:
+
+` + bt + `bash
+make release IMAGE=ghcr.io/myorg/my-operator:v0.1.0
+` + bt + `
+
+---
+
+## Step 6 — Push the Katalog
+
+` + bt + `bash
+ork push .
+` + bt + `
+
+---
+
+## Inspect
+
+` + bt + `bash
+ork inspect my-operator:v0.1.0
+` + bt + `
+
+---
+
+## Step 7 — Generate bundle and deploy
+
+` + bt + `bash
+ork generate bundle -o bundle.yaml
+kubectl apply -f bundle.yaml
+` + bt + `
+
+Install Orkestra with your custom runtime image:
+
+` + bt + `bash
+helm repo add orkestra https://orkspace.github.io/orkestra
+helm upgrade --install orkestra orkestra/orkestra \
+  --set runtime.image.repository=ghcr.io/myorg/my-operator \
+  --set runtime.image.tag=v0.1.0 \
+  --namespace orkestra-system --create-namespace \
+  --wait --timeout 120s
+` + bt + `
 `
 }
 
