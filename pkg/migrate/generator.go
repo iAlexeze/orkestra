@@ -278,7 +278,7 @@ docker:
 	@cp $(PROD_OUTPUT_DIR)/$(BINARY_NAME) ./$(BINARY_NAME)
 	docker build -t $(IMAGE) .
 	@rm -f ./$(BINARY_NAME)
-	@if [ -f $(DEV_OUTPUT_DIR)/$(BINARY_NAME) ]; then cp $(DEV_OUTPUT_DIR)/$(BINARY_NAME) ./$(BINARY_NAME); fi
+	@echo "✅ Docker image built: $(IMAGE)"
 
 .PHONY: push
 push:
