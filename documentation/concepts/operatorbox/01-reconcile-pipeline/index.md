@@ -42,3 +42,4 @@ Each step receives the output of the previous step. No step can see the output o
 
 - [Drift](01-drift.md) — what counts as drift, onCreate vs onReconcile, what gets corrected, condition semantics, once: and deletion behavior
 - [Error Behavior](02-error-behavior.md) — failure recording, backoff, degraded state, panic recovery
+- [Panic Recovery](03-panic-recovery.md) — how safeReconcile catches panics, what is logged, isolation guarantees, common causes

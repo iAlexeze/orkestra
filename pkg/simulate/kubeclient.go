@@ -2,12 +2,14 @@ package simulate
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,6 +19,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
+	sigs "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Op is one recorded cluster operation.
@@ -218,10 +221,68 @@ func (f fakescope) String() string           { return string(f) }
 // Compile check — *FakeKubeclient must satisfy kubeclient.KubeClient.
 var _ kubeclient.KubeClient = (*FakeKubeclient)(nil)
 
+// CRUD stubs — record operations. Get always returns NotFound so the reconciler
+// takes the Create path on every simulated cycle, producing visible create ops.
+
+func (f *FakeKubeclient) Get(_ context.Context, namespace, name string, into sigs.Object) error {
+	f.mu.Lock()
+	f.ops = append(f.ops, Op{
+		Cycle:     f.currentCycle,
+		Verb:      "get",
+		Resource:  resourceNameFromObject(into),
+		Namespace: namespace,
+		Name:      name,
+		At:        time.Now(),
+	})
+	f.mu.Unlock()
+	return fakeNotFound(name)
+}
+
+func (f *FakeKubeclient) Create(_ context.Context, obj sigs.Object) error {
+	f.mu.Lock()
+	f.ops = append(f.ops, Op{
+		Cycle:     f.currentCycle,
+		Verb:      "create",
+		Resource:  resourceNameFromObject(obj),
+		Namespace: obj.GetNamespace(),
+		Name:      obj.GetName(),
+		At:        time.Now(),
+	})
+	f.mu.Unlock()
+	return nil
+}
+
+func (f *FakeKubeclient) Patch(_ context.Context, obj sigs.Object, _ kubeclient.Patch) error {
+	f.mu.Lock()
+	f.ops = append(f.ops, Op{
+		Cycle:     f.currentCycle,
+		Verb:      "patch",
+		Resource:  resourceNameFromObject(obj),
+		Namespace: obj.GetNamespace(),
+		Name:      obj.GetName(),
+		At:        time.Now(),
+	})
+	f.mu.Unlock()
+	return nil
+}
+
+// fakeNotFound returns an error that satisfies k8s.io/apimachinery/pkg/api/errors.IsNotFound.
+func fakeNotFound(name string) error {
+	return k8serrors.NewNotFound(schema.GroupResource{}, name)
+}
+
+func resourceNameFromObject(obj runtime.Object) string {
+	t := fmt.Sprintf("%T", obj)
+	if idx := strings.LastIndex(t, "."); idx >= 0 {
+		t = t[idx+1:]
+	}
+	return strings.ToLower(t) + "s"
+}
+
 // Patch stubs — record operations but perform no real mutations.
 // The fake dynamic client handles the underlying object storage.
 
-func (f *FakeKubeclient) PatchFinalizers(_ context.Context, obj runtime.Object, _ schema.GroupVersionResource, finalizers []string) error {
+func (f *FakeKubeclient) PatchFinalizers(_ context.Context, obj runtime.Object, finalizers []string) error {
 	f.mu.Lock()
 	f.ops = append(f.ops, Op{
 		Cycle:    f.currentCycle,
@@ -234,7 +295,7 @@ func (f *FakeKubeclient) PatchFinalizers(_ context.Context, obj runtime.Object, 
 	return nil
 }
 
-func (f *FakeKubeclient) PatchLabels(_ context.Context, obj runtime.Object, _ schema.GroupVersionResource, base, desired map[string]string) error {
+func (f *FakeKubeclient) PatchLabels(_ context.Context, obj runtime.Object, base, desired map[string]string) error {
 	if stringMapsEqual(base, desired) {
 		return nil
 	}
@@ -253,7 +314,7 @@ func (f *FakeKubeclient) PatchLabels(_ context.Context, obj runtime.Object, _ sc
 	return nil
 }
 
-func (f *FakeKubeclient) PatchAnnotations(_ context.Context, obj runtime.Object, _ schema.GroupVersionResource, annotations map[string]string) error {
+func (f *FakeKubeclient) PatchAnnotations(_ context.Context, obj runtime.Object, annotations map[string]string) error {
 	f.mu.Lock()
 	f.ops = append(f.ops, Op{
 		Cycle:    f.currentCycle,
@@ -271,7 +332,7 @@ func (f *FakeKubeclient) PatchAnnotations(_ context.Context, obj runtime.Object,
 	return nil
 }
 
-func (f *FakeKubeclient) PatchStatus(_ context.Context, obj domain.Object, _ schema.GroupVersionResource, _ map[string]interface{}) error {
+func (f *FakeKubeclient) PatchStatus(_ context.Context, obj domain.Object, _ map[string]interface{}) error {
 	f.mu.Lock()
 	f.ops = append(f.ops, Op{
 		Cycle:    f.currentCycle,

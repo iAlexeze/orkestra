@@ -12,7 +12,6 @@ import (
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 const annotationLastCommit = "orkestra.orkspace.io/last-commit"
@@ -121,10 +120,9 @@ func patchLastCommitAnnotation(
 	ctx context.Context,
 	kube kubeclient.KubeClient,
 	obj domain.Object,
-	gvr schema.GroupVersionResource,
 	commit string,
 ) error {
-	return kube.PatchAnnotations(ctx, obj, gvr, map[string]string{
+	return kube.PatchAnnotations(ctx, obj, map[string]string{
 		annotationLastCommit: commit,
 	})
 }

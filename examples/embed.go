@@ -9,5 +9,5 @@ import "embed"
 //
 // developer
 //
-//go:embed beginner intermediate advanced security use-cases registry-guide from-controller-runtime ecosystem-composition
+//go:embed beginner intermediate advanced security resilience use-cases registry-guide from-controller-runtime ecosystem-composition
 var FS embed.FS

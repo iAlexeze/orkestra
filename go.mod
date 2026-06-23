@@ -34,8 +34,13 @@ require (
 	k8s.io/apimachinery v0.36.1
 	k8s.io/client-go v0.36.1
 	oras.land/oras-go/v2 v2.6.0
-	// controller-runtime is used exclusively by envtest in tests/integration/.
-	// v1 production code uses raw client-go only. Do not import it from pkg/.
+	// controller-runtime is used in two places:
+	//   - tests/integration/ (envtest)
+	//   - pkg/kubeclient (Patch type alias) so that developers can migrate their
+	//     controller-runtime reconcilers into the Orkestra constructor path with
+	//     minimal changes — existing MergeFrom, StrategicMergeFrom, and Apply
+	//     patch calls work as-is.
+	// The generic reconciler and all other runtime paths use raw client-go only.
 	sigs.k8s.io/controller-runtime v0.24.1
 )
 

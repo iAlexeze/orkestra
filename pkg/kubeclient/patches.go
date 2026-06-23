@@ -8,7 +8,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -19,9 +18,13 @@ import (
 func (k *Kubeclient) PatchFinalizers(
 	ctx context.Context,
 	obj runtime.Object,
-	gvr schema.GroupVersionResource,
 	finalizers []string,
 ) error {
+	mapping, err := k.gvrFor(obj)
+	if err != nil {
+		return err
+	}
+
 	accessor, err := meta.Accessor(obj)
 	if err != nil {
 		return fmt.Errorf("getting accessor: %w", err)
@@ -42,22 +45,12 @@ func (k *Kubeclient) PatchFinalizers(
 	name := accessor.GetName()
 
 	if namespace == "" {
-		// Cluster-scoped resource
-		_, err = k.dynamic.Resource(gvr).Patch(
-			ctx,
-			name,
-			types.MergePatchType,
-			body,
-			metav1.PatchOptions{},
+		_, err = k.dynamic.Resource(mapping.Resource).Patch(
+			ctx, name, types.MergePatchType, body, metav1.PatchOptions{},
 		)
 	} else {
-		// Namespace-scoped resource
-		_, err = k.dynamic.Resource(gvr).Namespace(namespace).Patch(
-			ctx,
-			name,
-			types.MergePatchType,
-			body,
-			metav1.PatchOptions{},
+		_, err = k.dynamic.Resource(mapping.Resource).Namespace(namespace).Patch(
+			ctx, name, types.MergePatchType, body, metav1.PatchOptions{},
 		)
 	}
 
@@ -75,18 +68,18 @@ func (k *Kubeclient) PatchFinalizers(
 func (k *Kubeclient) PatchLabels(
 	ctx context.Context,
 	obj runtime.Object,
-	gvr schema.GroupVersionResource,
 	base, desired map[string]string,
 ) error {
+	mapping, err := k.gvrFor(obj)
+	if err != nil {
+		return err
+	}
+
 	accessor, err := meta.Accessor(obj)
 	if err != nil {
 		return fmt.Errorf("getting accessor: %w", err)
 	}
 
-	// Build the label map for the merge patch body.
-	// null  → server deletes the key (keys present in base but removed from desired)
-	// value → server adds or updates the key
-	// omit  → server leaves the key unchanged
 	labelPatch := make(map[string]interface{})
 	for key := range base {
 		if _, ok := desired[key]; !ok {
@@ -113,11 +106,11 @@ func (k *Kubeclient) PatchLabels(
 	name := accessor.GetName()
 
 	if ns == "" {
-		_, err = k.dynamic.Resource(gvr).Patch(
+		_, err = k.dynamic.Resource(mapping.Resource).Patch(
 			ctx, name, types.MergePatchType, body, metav1.PatchOptions{},
 		)
 	} else {
-		_, err = k.dynamic.Resource(gvr).Namespace(ns).Patch(
+		_, err = k.dynamic.Resource(mapping.Resource).Namespace(ns).Patch(
 			ctx, name, types.MergePatchType, body, metav1.PatchOptions{},
 		)
 	}
@@ -137,9 +130,13 @@ func (k *Kubeclient) PatchLabels(
 func (k *Kubeclient) PatchAnnotations(
 	ctx context.Context,
 	obj runtime.Object,
-	gvr schema.GroupVersionResource,
 	annotations map[string]string,
 ) error {
+	mapping, err := k.gvrFor(obj)
+	if err != nil {
+		return err
+	}
+
 	accessor, err := meta.Accessor(obj)
 	if err != nil {
 		return fmt.Errorf("getting accessor: %w", err)
@@ -160,11 +157,11 @@ func (k *Kubeclient) PatchAnnotations(
 	name := accessor.GetName()
 
 	if ns == "" {
-		_, err = k.dynamic.Resource(gvr).Patch(
+		_, err = k.dynamic.Resource(mapping.Resource).Patch(
 			ctx, name, types.MergePatchType, body, metav1.PatchOptions{},
 		)
 	} else {
-		_, err = k.dynamic.Resource(gvr).Namespace(ns).Patch(
+		_, err = k.dynamic.Resource(mapping.Resource).Namespace(ns).Patch(
 			ctx, name, types.MergePatchType, body, metav1.PatchOptions{},
 		)
 	}

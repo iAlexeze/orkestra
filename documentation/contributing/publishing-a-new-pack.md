@@ -36,7 +36,7 @@ examples/new-pack/
     README.md
 ```
 
-### 2. Update `examples/embed.go`
+### 2. Update [examples/embed.go](../../examples/embed.go)
 
 Add the new pack name to the `//go:embed` directive. The current line is:
 
@@ -54,7 +54,7 @@ var FS embed.FS
 
 The CLI uses this embedded filesystem to serve examples for `ork init --pack`.
 
-### 3. Update `cmd/cli/init_packs.go`
+### 3. Update [cmd/cli/init_packs.go](../../cmd/cli/init_packs.go)
 
 Add the pack to the `Packs` map. The `Pack` struct requires `Name`, `Description`, and `Path`:
 
@@ -65,13 +65,25 @@ var Packs = map[string]Pack{
         Name:        "new-pack",
         Description: "One sentence describing what this pack covers.",
         Path:        "new-pack",
+        Order:       9, // controls position in --list-packs output; increment from the last entry
     },
 }
 ```
 
 `Path` is the directory name inside the embedded FS. For nested packs (like `rollback` which lives at `use-cases/rollback`), set `Path` to the full subdirectory path.
 
-### 4. Update `.github/workflows/package-examples.yml`
+Also add a helper and a `firstExample()` case so `ork init --list-packs` shows the right starting point:
+
+```go
+func (p Pack) isNewPackPack() bool { return p.Name == "new-pack" }
+```
+
+```go
+case p.isNewPackPack():
+    return "my-first-example"
+```
+
+### 4. Update [.github/workflows/package-examples.yml](../../.github/workflows/package-examples.yml)
 
 Add a `tar` command for the new pack in the packaging step:
 
@@ -86,12 +98,38 @@ Also add a line to the summary `echo` block so the pack appears in the CI build 
 echo "| New Pack | Description of the pack | \`examples_new-pack_${TAG}.tar.gz\` |" >> "$GITHUB_STEP_SUMMARY"
 ```
 
-### 5. Update `.github/workflows/sign-and-release.yml`
+### 5. Update [.github/workflows/sign-and-release.yml](../../.github/workflows/sign-and-release.yml)
 
 Add the artifact to the release upload list alongside the existing pack entries:
 
 ```yaml
 dist/examples_new-pack_${{ github.ref_name }}.tar.gz
+```
+
+### 6. Update [examples/README.md](../../examples/README.md)
+
+Add the pack to the `--pack` list and add a new section in the learning path:
+
+```markdown
+ork init my-operator --pack new-pack   # One sentence description
+```
+
+```markdown
+### New Pack — `--pack new-pack`
+
+One sentence describing what belongs here.
+
+| Example | What you learn |
+|---------|----------------|
+| [my-first-example](./new-pack/my-first-example/) | What this example teaches. |
+```
+
+### 7. Update [documentation/getting-started/01-learning-to-orkestrate/index.md](../getting-started/01-learning-to-orkestrate/index.md)
+
+Add a row to the packs table:
+
+```markdown
+| [New Pack](./09-new-pack.md) | One sentence focus description |
 ```
 
 ---
@@ -100,7 +138,10 @@ dist/examples_new-pack_${{ github.ref_name }}.tar.gz
 
 - [ ] `examples/<pack>/` created with all required files
 - [ ] `examples/embed.go` — pack name added to `//go:embed` (preserve existing entries)
-- [ ] `cmd/cli/init_packs.go` — `Pack` struct added to `Packs` map with `Name`, `Description`, `Path`
+- [ ] `cmd/cli/init_packs.go` — `Pack` struct added to `Packs` map with `Name`, `Description`, `Path`, `Order`
+- [ ] `cmd/cli/init_packs.go` — `isPack()` helper and `firstExample()` case added
 - [ ] `.github/workflows/package-examples.yml` — `tar` command added, summary `echo` added
 - [ ] `.github/workflows/sign-and-release.yml` — artifact path added to release upload list
+- [ ] `examples/README.md` — pack added to the `--pack` list and a new section in the learning path
+- [ ] `documentation/getting-started/01-learning-to-orkestrate/index.md` — row added to the packs table
 - [ ] E2E workflow added (optional but recommended)

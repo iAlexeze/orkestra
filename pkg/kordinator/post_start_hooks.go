@@ -82,8 +82,10 @@ func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 
 					// Health tracking
 					// 	CRD
-					k.crdHealthMap[gvkStr].SetMissingAtRuntime()
-					k.crdHealthMap[gvkStr].SetDegraded()
+					if h := k.crdHealthMap[gvkStr]; h != nil {
+						h.SetMissingAtRuntime()
+						h.SetDegraded()
+					}
 
 					// 	Katalog
 					k.allOnline.Store(false)
@@ -95,14 +97,18 @@ func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 					for _, dep := range deps {
 						crd := k.depGraph.GetNode(dep).CRD
 						if crd.DependsOn[entry.Name].Condition == string(orktypes.DependencyConditionHealthy) {
-							k.crdHealthMap[crd.GVKString()].SetDegraded()
+							if h := k.crdHealthMap[crd.GVKString()]; h != nil {
+								h.SetDegraded()
+							}
 						} else {
 							logger.Info().Str("gvk", gvkStr).Msgf("dependency %s is unhealthy", entry.Name)
 						}
 					}
 
 					if !k.deactivated[gvkStr] {
-						k.crdHealthMap[gvkStr].StartedAt()
+						if h := k.crdHealthMap[gvkStr]; h != nil {
+							h.StartedAt()
+						}
 						logger.Info().Str("gvk", gvkStr).Msg("stopping workers")
 						k.deactivateCRD(gvkStr)
 					}
@@ -136,11 +142,15 @@ func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 					if ok {
 						k.activateCRD(ctx, entry)
 						k.deactivated[gvkStr] = false
-						k.crdHealthMap[gvkStr].SetStarted()
+						if h := k.crdHealthMap[gvkStr]; h != nil {
+							h.SetStarted()
+						}
 					} else {
 						stillMissing[gvkStr] = entry
-						k.crdHealthMap[gvkStr].SetMissingAtRuntime()
-						k.crdHealthMap[gvkStr].SetDegraded()
+						if h := k.crdHealthMap[gvkStr]; h != nil {
+							h.SetMissingAtRuntime()
+							h.SetDegraded()
+						}
 						k.orkHealth.allOnline.Store(false)
 						k.orkHealth.SetKatalogDegraded()
 						logger.Debug().Msgf("retry loop: %s still not available", gvkStr)
