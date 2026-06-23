@@ -154,11 +154,11 @@ See [06-discovery.md](06-discovery.md).
 
 | Page | Covers |
 |------|--------|
-| [01-spec.md](01-spec.md) | `katalog`, `crd`, `cr`, `cluster`, `customOperator` |
+| [01-spec.md](01-spec.md) | `katalog`, `crd`, `cr`, `cluster`, `custom` |
 | [02-setup.md](02-setup.md) | `setup.apply`, `setup.helm`, `setup.wait` |
 | [03-expect.md](03-expect.md) | `expect` — resources, commands, after, timeout |
 | [04-imports.md](04-imports.md) | `imports` — test suites, `wait:`, cluster strategy, pure aggregators |
-| [05-custom-operator.md](05-custom-operator.md) | `customOperator: true` — test any operator without Orkestra |
+| [05-custom-target.md](05-custom-target.md) | `custom.target: kubernetes` — test any Kubernetes workload without Orkestra |
 | [06-discovery.md](06-discovery.md) | `./...` discovery, `--wait`, `--skip`, `--dry-run` |
 
 ---

@@ -10,11 +10,11 @@ metadata:
   description: What this test verifies
 
 spec:
-  katalog: ./katalog.yaml   # required (optional when customOperator: true)
+  katalog: ./katalog.yaml   # required (optional when custom.target: true)
   crd: ./crd.yaml           # required — the operator's CRD
   cr: ./cr.yaml             # required — the CR to apply
 
-  customOperator: false     # true = skip bundle + Orkestra install (see below)
+  custom.target: false     # true = skip bundle + Orkestra install (see below)
 
   cluster:
     provider: kind           # only "kind" is supported
@@ -59,7 +59,7 @@ spec:
 ### `spec.katalog`
 Path to the Katalog (or Komposer) file. The runner resolves `crdFile` entries in it and embeds them in the bundle so the in-cluster runtime doesn't need local file access.
 
-Optional when `spec.customOperator: true`.
+Optional when `spec.custom.target: true`.
 
 ### `spec.crd`
 Path to the CRD YAML to apply before the operator starts. If omitted, the runner falls back to `crdFile` entries in the Katalog.
@@ -67,10 +67,10 @@ Path to the CRD YAML to apply before the operator starts. If omitted, the runner
 ### `spec.cr`
 Path to the CR to apply. Applied when the first `after: cr-applied` expectation is reached, deleted when the first `after: cr-deleted` expectation is reached.
 
-### `spec.customOperator`
-When `true`, skips bundle generation and Orkestra helm install/uninstall. Use when your operator is installed via `setup.helm` or is already present in the cluster. `spec.katalog` is optional. Everything else (CRD apply, setup, CR apply, assertions, cleanup) runs unchanged.
+### `spec.custom.target`
+Declares the target runtime when Orkestra is not the operator under test. Supported value: `kubernetes`. Skips bundle generation and Orkestra helm install/uninstall. `spec.katalog` is optional. Everything else (CRD apply, setup, CR apply, assertions, cleanup) runs unchanged.
 
-See [05-custom-operator.md](05-custom-operator.md).
+See [07-custom-operator.md](07-custom-operator.md) (now covers `custom.target`).
 
 ### `spec.setup`
 Prerequisites applied after the cluster is ready but before the CR. Shorthand (plain list of strings) applies each file:

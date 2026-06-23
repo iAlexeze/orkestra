@@ -1,6 +1,8 @@
-# Custom Operator Mode
+# Custom Target Mode
 
-`spec.customOperator: true` declares that this test uses its own operator — not Orkestra's reconcile loop. Bundle generation and Orkestra helm install/uninstall are skipped. Everything else runs unchanged.
+`spec.custom.target` declares the runtime environment being tested when Orkestra is
+not the operator. Bundle generation and Orkestra helm install/uninstall are skipped.
+Everything else runs unchanged.
 
 ## Activation
 
@@ -8,7 +10,8 @@ Declare it in the spec file — the file is the source of truth, there is no CLI
 
 ```yaml
 spec:
-  customOperator: true
+  custom:
+    target: kubernetes
   crd: ./crd.yaml
   cr: ./cr.yaml
   setup:
@@ -19,17 +22,19 @@ spec:
         createNamespace: true
 ```
 
+Supported targets: `kubernetes`. `container` is coming soon.
+
 ## What is skipped
 
-| Step | Normal | `customOperator: true` |
-|------|--------|-----------------------|
+| Step | Normal | `custom.target: kubernetes` |
+|------|--------|-----------------------------|
 | Bundle generate + apply | ✓ | skipped |
 | OCI import pre-pull | ✓ | skipped |
 | Orkestra helm install | ✓ | skipped |
 | Orkestra helm uninstall | ✓ | skipped |
 | Everything else | ✓ | ✓ |
 
-`spec.katalog` is optional when `customOperator: true`. The spec only needs `spec.cr` at minimum.
+`spec.katalog` is optional when `custom.target` is set. The spec only needs `spec.cr` at minimum.
 
 ## Use cases
 
@@ -38,7 +43,8 @@ Install cert-manager, FluxCD, Crossplane via `setup.helm`, apply a CR, assert wh
 
 ```yaml
 spec:
-  customOperator: true
+  custom:
+    target: kubernetes
   cr: ./cr-certificate.yaml
   setup:
     helm:
@@ -55,16 +61,18 @@ spec:
 ```
 
 ### Migration parity testing
-Two e2e files, same CRD, same assertions — one via Orkestra katalog, one via `customOperator`. When both pass, the implementations are equivalent:
+Two e2e files, same CRD, same assertions — one via Orkestra katalog, one via `custom.target`. When both pass, the implementations are equivalent:
 
 ```
 my-operator/
 ├── e2e-orkestra.yaml   # spec.katalog: ./katalog.yaml
-└── e2e-custom.yaml     # spec.customOperator: true + setup.helm: my-old-operator
+└── e2e-custom.yaml     # spec.custom.target: kubernetes + setup.helm: my-old-operator
 ```
 
 ### Universal test harness
-`customOperator: true` exposes `ork e2e`'s assertion infrastructure — polling loops, count checks, command assertions, cleanup verification — to any operator framework: controller-runtime, Operator SDK, kube-rs, kopf.
+`custom.target: kubernetes` exposes `ork e2e`'s assertion infrastructure — polling loops,
+count checks, command assertions, cleanup verification — to any workload that runs on
+Kubernetes: controller-runtime operators, Helm charts, raw manifests, third-party tools.
 
 ## Example
 See [`examples/use-cases/custom-operator/`](../../../examples/use-cases/custom-operator/README.md) for two runnable examples.

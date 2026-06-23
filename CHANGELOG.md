@@ -1,4 +1,4 @@
-## v0.7.7 — New packs, typed group overrides, breaking: operatorBox.reconciler
+## v0.7.7 — New packs, typed group overrides, universal e2e, breaking: operatorBox.reconciler
 
 ### New pack: `from-controller-runtime`
 
@@ -101,6 +101,41 @@ Migration rules:
 - **Constructor katalogs**: wrap `default: false` and `constructor:` under `reconciler:`. Move both in by two spaces.
 
 `utils.StrictUnmarshal` rejects unknown fields, so an old katalog with top-level `default:` or `hooks:` under `operatorBox` will fail at parse time with a clear error before any validation runs.
+
+### `ork e2e` is now a universal Kubernetes test harness
+
+`spec.customOperator: true` is replaced by `spec.custom.target: kubernetes`. The new
+field names the thing being tested rather than describing what to skip.
+
+**Supported targets:**
+
+| Value | Status |
+|-------|--------|
+| `kubernetes` | Supported |
+| `container` | Coming soon |
+
+**Migration** — find and replace in all `e2e.yaml` files:
+
+```yaml
+# before
+spec:
+  customOperator: true
+
+# after
+spec:
+  custom:
+    target: kubernetes
+```
+
+`ork validate e2e` now fast-fails with a clear error on unknown target values. If
+`container` is specified, it exits with "coming soon" rather than silently doing nothing.
+
+The docs reframe `custom.target: kubernetes` as what it is: `ork e2e` with any
+workload that runs on Kubernetes — operators, Helm charts, raw manifests, third-party
+tools. The cluster lifecycle, assertion polling, and cleanup are Orkestra's. The
+workload is yours.
+
+New guide: `documentation/guides/e2e-universal.md` — "Test Anything That Runs in Kubernetes"
 
 ---
 

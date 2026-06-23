@@ -65,7 +65,7 @@ type Runner struct {
 	devServer bool
 
 	// customOperator skips bundle generation and Orkestra helm install/uninstall.
-	// Set from spec.customOperator — the file is the source of truth.
+	// Set when spec.custom.target == "kubernetes" — the file is the source of truth.
 	customOperator bool
 
 	// sharedOrkestra means Orkestra is managed by the parent runImports coordinator.
@@ -111,7 +111,11 @@ func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster, devServer bool,
 		orkestraVersion: orkestraVersion,
 		valueFiles:      allValueFiles,
 		helmArgs:        helmArgs,
-		customOperator:  e2e.Spec.CustomOperator,
+		customOperator:  e2e.Spec.Custom != nil && e2e.Spec.Custom.Target == orktypes.CustomTargetKubernetes,
+	}
+
+	if e2e.Spec.Custom != nil && e2e.Spec.Custom.Target == orktypes.CustomTargetContainer {
+		return nil, fmt.Errorf("spec.custom.target \"container\" is coming soon — not yet supported in this version")
 	}
 
 	if err := r.resolveSource(); err != nil {
@@ -145,8 +149,8 @@ func (r *Runner) resolveSource() error {
 		r.katalogFile = r.abs(spec.Katalog)
 		r.crFile = r.abs(spec.CR)
 
-	case spec.CR != "" && spec.CustomOperator:
-		// customOperator: katalog is optional — no bundle or Orkestra install.
+	case spec.CR != "" && spec.Custom != nil && spec.Custom.Target != "":
+		// custom.target: katalog is optional — no bundle or Orkestra install.
 		r.crFile = r.abs(spec.CR)
 
 	case len(r.e2e.Imports) > 0:
@@ -284,7 +288,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 
 		// ── 7. Install Orkestra ──────────────────────────────────────────
 		// ── 8. Wait for Orkestra ready ───────────────────────────────────
-		// Both steps skipped when customOperator: true.
+		// Both steps skipped when custom.target is set.
 		if !r.customOperator {
 			text := "..."
 

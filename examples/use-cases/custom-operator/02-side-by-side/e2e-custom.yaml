@@ -3,12 +3,13 @@ kind: E2E
 metadata:
   name: appcert-custom-e2e
   description: >
-    AppCert via customOperator: true — cert-manager manages the Certificate directly,
+    AppCert via custom.target: kubernetes — cert-manager manages the Certificate directly,
     no Orkestra. The AppCert CR is applied and deleted manually; cert-manager issues
     the TLS Secret. Assertions are identical to e2e-orkestra.yaml.
 
 spec:
-  customOperator: true
+  custom:
+    target: kubernetes
   crd: ./crd.yaml
   cr: ./cr.yaml
 

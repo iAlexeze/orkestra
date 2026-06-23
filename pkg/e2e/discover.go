@@ -162,14 +162,16 @@ func isPureAggregatorFile(path string) bool {
 	var doc struct {
 		Imports []interface{} `yaml:"imports"`
 		Spec    struct {
-			Katalog        string `yaml:"katalog"`
-			CR             string `yaml:"cr"`
-			CustomOperator bool   `yaml:"customOperator"`
+			Katalog string `yaml:"katalog"`
+			CR      string `yaml:"cr"`
+			Custom  *struct {
+				Target string `yaml:"target"`
+			} `yaml:"custom"`
 		} `yaml:"spec"`
 	}
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return false
 	}
-	hasSpec := doc.Spec.Katalog != "" || doc.Spec.CR != "" || doc.Spec.CustomOperator
+	hasSpec := doc.Spec.Katalog != "" || doc.Spec.CR != "" || (doc.Spec.Custom != nil && doc.Spec.Custom.Target != "")
 	return len(doc.Imports) > 0 && !hasSpec
 }

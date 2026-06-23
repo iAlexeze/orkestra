@@ -77,4 +77,4 @@ No cluster is created. No tests are run.
 
 ---
 
-→ Back: [05-custom-operator.md](05-custom-operator.md) | [Schema index](index.md)
+→ Back: [05-custom-target.md](05-custom-target.md) | [Schema index](index.md)
