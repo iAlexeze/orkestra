@@ -1,3 +1,109 @@
+## v0.7.7 — New packs, typed group overrides, breaking: operatorBox.reconciler
+
+### New pack: `from-controller-runtime`
+
+```bash
+ork init my-operator --pack from-controller-runtime
+```
+
+Eight examples tracing the migration path from an existing controller-runtime operator to Orkestra:
+
+| Example | What you get |
+|---------|-------------|
+| `00-baseline` | The controller-runtime starting point |
+| `01-declarative` | Zero Go. Same behaviour. Two CRDs including a Worker with `rotateAfter: 30d` token rotation |
+| `02-hybrid` | Declarative + one Go hook for what templates can't express |
+| `03-hooks-only` | All resources in Go, typed access to your CRD spec |
+| `04-constructor-migration` | Lift the existing reconcile loop into Orkestra's constructor |
+| `05-constructor-orkestra-resources` | Same constructor, Orkestra resource helpers replace manual Get/Create/Patch |
+| `06-ork-migrate` | `ork migrate` rewrites controller-runtime reconcilers automatically |
+| `07-all-options` | All five options in one binary via Komposer — `komposer-local.yaml` for local dev, `komposer.yaml` for OCI distribution |
+
+The step-by-step narrative lives in `documentation/guides/migration/`.
+
+### New pack: `ecosystem-composition`
+
+```bash
+ork init my-operator --pack ecosystem-composition
+```
+
+Seven examples building an internal developer platform on top of the tools you already run:
+
+| Example | What you get |
+|---------|-------------|
+| `00-argocd` | `App` CRD → ArgoCD Application. Admission. Status propagation |
+| `01-cert-manager` | `SecurityConfig` CRD → Certificate |
+| `02-prometheus` | `MonitoringConfig` CRD → ServiceMonitor + PrometheusRule |
+| `03-crossplane` | `Infra` CRD → Crossplane Composite Claim |
+| `04-platform-stack` | All four, composed with Komposer |
+| `05-policy-layer` | Shared admission motif across all CRDs. Deletion protection |
+| `06-all-in-one` | Single `PlatformResource` CRD with `workloadType` discriminator routing to the right tool |
+
+The `06-all-in-one` guide (`documentation/guides/ecosystem/07-all-in-one.md`) includes a full trade-off comparison between focused CRDs and a unified CRD.
+
+### New pack: `resilience`
+
+```bash
+ork init my-operator --pack resilience
+```
+
+Operators that stay running — through panics, cascading failures, and degraded dependencies:
+
+| Example | What you get |
+|---------|-------------|
+| `safe-reconcile` | Panic isolation in the worker pool. Nil pointer in a typed hook, caught by `safeReconcile`. Two declarative CRDs keep reconciling while the typed one degrades. |
+
+The deep-dive lives in `documentation/concepts/operatorbox/01-reconcile-pipeline/03-panic-recovery.md`.
+
+### Typed apiTypes group override (marketplace-ready patterns)
+
+Typed katalogs can now be published under one API group and consumed under another. Set `apiTypes.group` in your komposer override — the generated registry uses `AddKnownTypeWithName` to register the Go type under the override group rather than the package's compiled-in `GroupVersion` constant. `apiTypes.location` is now purely the import path for the Go structs, not an implicit API identity contract.
+
+This enables the marketplace model: pull a typed pattern from OCI, set your org's group, build, run. No source fork required.
+
+### Patch API simplified
+
+`PatchStatus`, `PatchFinalizers`, `PatchLabels`, `PatchAnnotations`, and `PatchSpec` no longer take an explicit `gvr schema.GroupVersionResource`. GVR is resolved internally from the object's Go type via the scheme and REST mapper — the same mechanism used by `Get`, `Create`, and `Patch`. Constructor reconcilers no longer need to reference `GroupVersionResource` constants at all.
+
+```go
+// before
+r.kube.PatchStatus(ctx, obj, apiv1.GroupVersionResource, fields)
+
+// after
+r.kube.PatchStatus(ctx, obj, fields)
+```
+
+### Breaking: `operatorBox.reconciler` sub-block
+
+`default`, `hooks`, and `constructor` have moved under an `operatorBox.reconciler:` key.
+
+**Before:**
+```yaml
+operatorBox:
+  default: true
+  hooks:
+    location: ...
+    function: ...
+```
+
+**After:**
+```yaml
+operatorBox:
+  reconciler:
+    hooks:
+      location: ...
+      function: ...
+```
+
+Migration rules:
+- **Declarative-only katalogs** (no `hooks:` or `constructor:`): delete `default: true` entirely. A nil `reconciler:` block means GenericReconciler — `default: true` is now implicit and redundant.
+- **Hook katalogs**: wrap `hooks:` (and `default: true` if present) under `reconciler:`. Move `default:` and `hooks:` in by two spaces; everything else (`onCreate:`, `status:`, etc.) stays at the `operatorBox:` level.
+- **Constructor katalogs**: wrap `default: false` and `constructor:` under `reconciler:`. Move both in by two spaces.
+
+`utils.StrictUnmarshal` rejects unknown fields, so an old katalog with top-level `default:` or `hooks:` under `operatorBox` will fail at parse time with a clear error before any validation runs.
+
+---
+
 ## v0.7.6 — Registry Guide pack, CLI UX polish, bug fixes
 
 ### Registry Guide pack
