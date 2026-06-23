@@ -31,7 +31,7 @@ operatorBox:
 
 Rollback adds two phases to `reconcileImpl`:
 
-```
+```text
 Phase 1 — Rollback gate
     isRollbackActive() → true:
         runRollback()     ← applies onRollback templates with .previous.*

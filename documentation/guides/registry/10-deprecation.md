@@ -59,7 +59,7 @@ Komposers that import a deprecated Katalog will surface the warning at `ork vali
 
 ## The deprecation lifecycle
 
-```
+```text
 v1.0.0  ← active
           │
           │  v1.1.0 ships (backwards-compatible)

@@ -4,7 +4,7 @@ Each resource type has a dedicated package under `pkg/resources/<kind>/`. The re
 
 ## Package structure
 
-```
+```text
 pkg/resources/
     deployments/
         types.go       — DeploymentTemplateSource, ResolvedDeploymentSpec
@@ -147,7 +147,7 @@ The `Namespace` field is optional — if empty, the registry functions fall back
 
 Template source types live in `pkg/types/`, not in the registry package. The registry package imports `orktypes` for the source type, and the template resolver package imports `orktypes` for the same type. This keeps the dependency graph acyclic:
 
-```
+```text
 pkg/types             ← source structs, condition types
 pkg/resources ← imports pkg/types
 pkg/reconciler        ← imports both

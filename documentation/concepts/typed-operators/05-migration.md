@@ -37,7 +37,7 @@ ork migrate ./controller/webapp_controller.go -o ./my-operator
 
 Output:
 
-```
+```text
 my-operator/
   webapp_controller.go   rewritten — signature changed, ctrl.Result collapsed
   katalog.yaml           constructor Katalog stub — fill in group, kind, location

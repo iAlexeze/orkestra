@@ -8,7 +8,7 @@ This document walks through every file that must change to add a new resource ty
 
 ## Overview of files to touch
 
-```
+```text
 pkg/types/
     katalog_spec_hooks.go       — add IngressTemplateSource field to HookTemplates
     ingress.go                  — declare IngressTemplateSource (new file)
