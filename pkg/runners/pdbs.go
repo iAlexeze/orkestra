@@ -1,5 +1,5 @@
-// pkg/reconciler/run_rolebindings.go
-package reconciler
+// pkg/reconciler/run_pdbs.go
+package runners
 
 import (
 	"context"
@@ -8,22 +8,18 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
-	orkrb "github.com/orkspace/orkestra/pkg/resources/rolebindings"
+	orkpdb "github.com/orkspace/orkestra/pkg/resources/pdbs"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// runRoleBindings resolves and applies RoleBinding template declarations.
-//
-// On onCreate: idempotent create only.
-// On onReconcile (update=true): creates or updates (or recreates when roleRef changed).
-// Owner references ensure cleanup when the CR is deleted.
-func runRoleBindings(
+// RunPDBs resolves and applies PodDisruptionBudget template declarations.
+func RunPDBs(
 	ctx context.Context,
 	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
-	srcs []orktypes.RoleBindingTemplateSource,
+	srcs []orktypes.PDBTemplateSource,
 	update bool,
 	guard func(ctx context.Context, obj domain.Object, ns string) bool,
 ) error {
@@ -56,32 +52,37 @@ func runRoleBindings(
 		if !conditionPassed {
 			if update || src.Reconcile {
 				if !activeNames[ns+"/"+name] {
-					if err := orkrb.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
-						return fmt.Errorf("roleBindings[%d]: conditional cleanup: %w", i, err)
+					if err := orkpdb.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
+						return fmt.Errorf("pdbs[%d]: conditional cleanup: %w", i, err)
 					}
 				}
 			}
 			logger.FromContext(ctx).Debug().
-				Str("resource", "RoleBinding").
+				Str("resource", "PodDisruptionBudget").
 				Int("index", i).
 				Msg("conditions not met — skipping resource")
 			continue
 		}
 
-		resolved, err := resolver.ResolveRoleBindingTemplate(src)
+		resolved, err := resolver.ResolvePDBTemplate(src)
 		if err != nil {
-			return fmt.Errorf("roleBindings[%d]: %w", i, err)
+			return fmt.Errorf("pdbs[%d]: %w", i, err)
 		}
 
-		spec := orkrb.Resolve(resolved, resolver.OwnerName())
+		spec := orkpdb.Resolve(resolved, resolver.OwnerName())
 
-		if update || src.Reconcile {
-			if err := orkrb.Update(ctx, kube, owner, spec); err != nil {
-				return fmt.Errorf("roleBindings[%d].update: %w", i, err)
+		if update {
+			if err := orkpdb.Update(ctx, kube, owner, spec); err != nil {
+				return fmt.Errorf("pdbs[%d].update: %w", i, err)
 			}
 		} else {
-			if err := orkrb.Create(ctx, kube, owner, spec); err != nil {
-				return fmt.Errorf("roleBindings[%d].create: %w", i, err)
+			if err := orkpdb.Create(ctx, kube, owner, spec); err != nil {
+				return fmt.Errorf("pdbs[%d].create: %w", i, err)
+			}
+			if src.Reconcile {
+				if err := orkpdb.Update(ctx, kube, owner, spec); err != nil {
+					return fmt.Errorf("pdbs[%d].reconcile: %w", i, err)
+				}
 			}
 		}
 	}

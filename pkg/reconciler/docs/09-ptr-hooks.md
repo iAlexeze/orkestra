@@ -7,7 +7,7 @@ conventions), but the runtime registry passes those hooks through a type-erased
 path that resolves the reconciler's type parameter to `domain.Object` (an
 interface). A direct type assertion fails at startup with a panic:
 
-```
+```text
 hooks type mismatch — got domain.ReconcileHooks[*Database]
 ```
 
@@ -111,7 +111,7 @@ If the wrong type somehow ends up in the store the assertion panics with a clear
 
 ## End-to-end call path
 
-```
+```text
 1. User writes DatabaseHooks() returning ReconcileHooks[*Database]
        │
 2. Generated registry puts it in HookRegistry[GVK]

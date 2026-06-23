@@ -1,5 +1,5 @@
 // pkg/reconciler/run_ingresses.go
-package reconciler
+package runners
 
 import (
 	"context"
@@ -15,10 +15,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// runIngresses resolves and applies Ingress template declarations.
+// RunIngresses resolves and applies Ingress template declarations.
 // When tls.enabled is true on an Ingress, a kubernetes.io/tls Secret is created
 // before the Ingress so the Ingress can reference it immediately.
-func runIngresses(
+func RunIngresses(
 	ctx context.Context,
 	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,
@@ -126,7 +126,7 @@ func ensureIngressTLSSecret(
 			Msg("ingress tls secret already exists — skipping")
 		return nil
 	}
-	if !isNotFoundErr(err) {
+	if !IsNotFoundErr(err) {
 		return fmt.Errorf("checking tls secret %q: %w", secretName, err)
 	}
 

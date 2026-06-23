@@ -16,7 +16,7 @@
 //  4. TLS generation (if tls: is set)      — generate CA + cert, skip data resolution
 //  5. Create/Update/CopyToNamespaces
 //  6. Annotate with generated-at           — only when rotateAfter is set
-package reconciler
+package runners
 
 import (
 	"context"
@@ -32,7 +32,7 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-func runSecrets(
+func RunSecrets(
 	ctx context.Context,
 	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,
@@ -152,7 +152,7 @@ func runSecrets(
 		// When tls: is declared, ignore the data: block entirely and generate
 		// a self-signed CA + signed certificate instead.
 		if src.TLS != nil {
-			if err := runTLSSecret(ctx, kube, resolver, owner, src, name, ns, update); err != nil {
+			if err := RunTLSSecret(ctx, kube, resolver, owner, src, name, ns, update); err != nil {
 				return fmt.Errorf("secrets[%d].tls: %w", i, err)
 			}
 			continue
@@ -225,9 +225,9 @@ func runSecrets(
 	return nil
 }
 
-// runTLSSecret handles the tls: path — generates a self-signed CA and server
+// RunTLSSecret handles the tls: path — generates a self-signed CA and server
 // certificate and creates/updates a kubernetes.io/tls Secret.
-func runTLSSecret(
+func RunTLSSecret(
 	ctx context.Context,
 	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,

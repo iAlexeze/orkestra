@@ -47,7 +47,7 @@ ork migrate ./controller/webapp_controller.go
 
 When `-o` is provided:
 
-```
+```text
 my-operator/
   webapp_controller.go   rewritten reconciler
   katalog.yaml           constructor Katalog stub

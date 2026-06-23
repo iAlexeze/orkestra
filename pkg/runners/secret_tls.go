@@ -23,7 +23,7 @@
 // The CA is unique per Secret — appropriate for self-signed operator webhooks.
 // For shared CAs across multiple services, store the CA in a separate Secret
 // and reference it (planned: ca.secretRef field).
-package reconciler
+package runners
 
 import (
 	"context"
@@ -56,7 +56,7 @@ func secretNeedsRotation(ctx context.Context, kube kubeclient.KubeClient, namesp
 		ResourceVersion: "0", // watch cache
 	})
 	if err != nil {
-		if isNotFoundErr(err) {
+		if IsNotFoundErr(err) {
 			return false, nil // does not exist — needs creation, not rotation
 		}
 		return false, fmt.Errorf("checking secret %s/%s for rotation: %w", namespace, name, err)
@@ -98,7 +98,7 @@ func annotateSecret(ctx context.Context, kube kubeclient.KubeClient, namespace, 
 // then generates new credentials and annotates with the current time.
 func deleteSecretForRotation(ctx context.Context, kube kubeclient.KubeClient, namespace, name string) error {
 	err := kube.Clientset().CoreV1().Secrets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
-	if err != nil && !isNotFoundErr(err) {
+	if err != nil && !IsNotFoundErr(err) {
 		return fmt.Errorf("deleting secret %s/%s for rotation: %w", namespace, name, err)
 	}
 	return nil

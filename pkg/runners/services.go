@@ -1,5 +1,5 @@
-// pkg/reconciler/run_serviceaccounts.go
-package reconciler
+// pkg/reconciler/run_services.go
+package runners
 
 import (
 	"context"
@@ -8,25 +8,19 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
-	orksa "github.com/orkspace/orkestra/pkg/resources/serviceaccounts"
+	orksvc "github.com/orkspace/orkestra/pkg/resources/services"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// runServiceAccounts resolves and applies ServiceAccount template declarations.
-//
-// ServiceAccounts are create-only — there is nothing meaningful to update
-// on a ServiceAccount after creation (no spec fields that drift). They are
-// therefore always idempotent creates regardless of whether this is called
-// from onCreate or onReconcile.
-//
-// Owner references ensure cleanup when the CR is deleted.
-func runServiceAccounts(
+// RunServices resolves and applies Service template declarations.
+// Same update/reconcile: true semantics as RunDeployments.
+func RunServices(
 	ctx context.Context,
 	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
-	srcs []orktypes.ServiceAccountTemplateSource,
+	srcs []orktypes.ServiceTemplateSource,
 	update bool,
 	guard func(ctx context.Context, obj domain.Object, ns string) bool,
 ) error {
@@ -47,14 +41,15 @@ func runServiceAccounts(
 		// 1. Evaluate conditions BEFORE resolving templates
 		conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf, resolver.TemplateEvaluator())
 
-		// Early name/ns resolution — needed for guard check and DeleteIfOwned cleanup.
 		name, _ := resolver.Resolve(src.Name)
 		ns, _ := resolver.Resolve(src.Namespace)
 		if ns == "" {
 			ns = owner.GetNamespace()
 		}
 
-		// ── Namespace guard ───────────────────────────────────────────────────
+		// ── Namespace guard ───────────────────────────────────────────────
+		// Called after namespace resolution so the actual target namespace
+		// is known. Before this point the namespace may be a template expression.
 		if guard != nil && !guard(ctx, owner, ns) {
 			continue // skipped — CheckNamespace already logged the reason
 		}
@@ -62,13 +57,13 @@ func runServiceAccounts(
 		if !conditionPassed {
 			if update || src.Reconcile {
 				if !activeNames[ns+"/"+name] {
-					if err := orksa.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
-						return fmt.Errorf("serviceAccounts[%d]: conditional cleanup: %w", i, err)
+					if err := orksvc.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
+						return fmt.Errorf("services[%d]: conditional cleanup: %w", i, err)
 					}
 				}
 			}
 			logger.FromContext(ctx).Debug().
-				Str("resource", "ServiceAccount").
+				Str("resource", "ConfigMap").
 				Int("index", i).
 				Msg("conditions not met — skipping resource")
 
@@ -76,17 +71,29 @@ func runServiceAccounts(
 		}
 
 		// 2. Resolve template expressions
-		resolved, err := resolver.ResolveServiceAccountTemplate(src)
+		resolved, err := resolver.ResolveServiceTemplate(src)
 		if err != nil {
-			return fmt.Errorf("serviceaccounts[%d]: %w", i, err)
+			return fmt.Errorf("services[%d]: %w", i, err)
 		}
 
 		// 3. Build registry spec and apply
-		spec := orksa.Resolve(resolved, resolver.OwnerName())
+		spec := orksvc.Resolve(resolved, resolver.OwnerName())
 
-		// Always create — ServiceAccounts have no meaningful drift to correct
-		if err := orksa.Create(ctx, kube, owner, spec); err != nil {
-			return fmt.Errorf("serviceaccounts[%d].create: %w", i, err)
+		if update {
+			if err := orksvc.Update(ctx, kube, owner, spec); err != nil {
+				return fmt.Errorf("services[%d].update: %w", i, err)
+			}
+		} else {
+			if err := orksvc.Create(ctx, kube, owner, spec); err != nil {
+				return fmt.Errorf("services[%d].create: %w", i, err)
+			}
+
+			// reconcile: true
+			if src.Reconcile {
+				if err := orksvc.Update(ctx, kube, owner, spec); err != nil {
+					return fmt.Errorf("services[%d].reconcile: %w", i, err)
+				}
+			}
 		}
 	}
 	return nil

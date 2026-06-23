@@ -1,5 +1,5 @@
 // pkg/reconciler/run_configmaps.go
-package reconciler
+package runners
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// runConfigMaps resolves and applies ConfigMap template declarations.
+// RunConfigMaps resolves and applies ConfigMap template declarations.
 //
 // ConfigMaps support the same fromConfigMap and toNamespaces patterns as Secrets:
 //
@@ -26,7 +26,7 @@ import (
 // reconcile: true — re-reads the source ConfigMap on every reconcile
 // and syncs any changes. When logLevel changes in the CR spec, the
 // ConfigMap in every namespace updates automatically.
-func runConfigMaps(
+func RunConfigMaps(
 	ctx context.Context,
 	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,

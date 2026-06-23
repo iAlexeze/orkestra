@@ -1,5 +1,5 @@
-// pkg/reconciler/run_roles.go
-package reconciler
+// pkg/reconciler/run_statefulsets.go
+package runners
 
 import (
 	"context"
@@ -8,22 +8,18 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
-	orkroles "github.com/orkspace/orkestra/pkg/resources/roles"
+	orksts "github.com/orkspace/orkestra/pkg/resources/statefulsets"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// runRoles resolves and applies Role template declarations.
-//
-// On onCreate: idempotent create only.
-// On onReconcile (update=true): creates or updates rules on existing Roles.
-// Owner references ensure cleanup when the CR is deleted.
-func runRoles(
+// RunStatefulSets resolves and applies StatefulSet template declarations.
+func RunStatefulSets(
 	ctx context.Context,
 	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
-	srcs []orktypes.RoleTemplateSource,
+	srcs []orktypes.StatefulSetTemplateSource,
 	update bool,
 	guard func(ctx context.Context, obj domain.Object, ns string) bool,
 ) error {
@@ -56,32 +52,37 @@ func runRoles(
 		if !conditionPassed {
 			if update || src.Reconcile {
 				if !activeNames[ns+"/"+name] {
-					if err := orkroles.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
-						return fmt.Errorf("roles[%d]: conditional cleanup: %w", i, err)
+					if err := orksts.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
+						return fmt.Errorf("statefulsets[%d]: conditional cleanup: %w", i, err)
 					}
 				}
 			}
 			logger.FromContext(ctx).Debug().
-				Str("resource", "Role").
+				Str("resource", "StatefulSet").
 				Int("index", i).
 				Msg("conditions not met — skipping resource")
 			continue
 		}
 
-		resolved, err := resolver.ResolveRoleTemplate(src)
+		resolved, err := resolver.ResolveStatefulSetTemplate(src)
 		if err != nil {
-			return fmt.Errorf("roles[%d]: %w", i, err)
+			return fmt.Errorf("statefulsets[%d]: %w", i, err)
 		}
 
-		spec := orkroles.Resolve(resolved, resolver.OwnerName())
+		spec := orksts.Resolve(resolved, resolver.OwnerName())
 
-		if update || src.Reconcile {
-			if err := orkroles.Update(ctx, kube, owner, spec); err != nil {
-				return fmt.Errorf("roles[%d].update: %w", i, err)
+		if update {
+			if err := orksts.Update(ctx, kube, owner, spec); err != nil {
+				return fmt.Errorf("statefulsets[%d].update: %w", i, err)
 			}
 		} else {
-			if err := orkroles.Create(ctx, kube, owner, spec); err != nil {
-				return fmt.Errorf("roles[%d].create: %w", i, err)
+			if err := orksts.Create(ctx, kube, owner, spec); err != nil {
+				return fmt.Errorf("statefulsets[%d].create: %w", i, err)
+			}
+			if src.Reconcile {
+				if err := orksts.Update(ctx, kube, owner, spec); err != nil {
+					return fmt.Errorf("statefulsets[%d].reconcile: %w", i, err)
+				}
 			}
 		}
 	}

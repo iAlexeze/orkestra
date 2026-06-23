@@ -1,5 +1,5 @@
 // pkg/reconciler/run_pvs.go
-package reconciler
+package runners
 
 import (
 	"context"
@@ -13,9 +13,9 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// runPVs resolves and applies PersistentVolume template declarations.
+// RunPVs resolves and applies PersistentVolume template declarations.
 // PVs are cluster-scoped; the namespace guard is intentionally not applied.
-func runPVs(
+func RunPVs(
 	ctx context.Context,
 	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,

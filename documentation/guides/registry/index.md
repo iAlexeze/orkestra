@@ -16,7 +16,7 @@ author writes Go → builds image → pushes to registry → consumer deploys im
 
 Orkestra's distribution model:
 
-```
+```text
 author writes YAML → simulate gate (no cluster) → e2e gate (real cluster) → push to OCI registry
 consumer inspects quality signal → pulls artifact → imports into Komposer → deploy
 ```

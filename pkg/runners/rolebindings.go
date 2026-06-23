@@ -1,5 +1,5 @@
-// pkg/reconciler/run_hpas.go
-package reconciler
+// pkg/reconciler/run_rolebindings.go
+package runners
 
 import (
 	"context"
@@ -8,18 +8,22 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
-	orkhpa "github.com/orkspace/orkestra/pkg/resources/hpas"
+	orkrb "github.com/orkspace/orkestra/pkg/resources/rolebindings"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// runHPAs resolves and applies HorizontalPodAutoscaler template declarations.
-func runHPAs(
+// RunRoleBindings resolves and applies RoleBinding template declarations.
+//
+// On onCreate: idempotent create only.
+// On onReconcile (update=true): creates or updates (or recreates when roleRef changed).
+// Owner references ensure cleanup when the CR is deleted.
+func RunRoleBindings(
 	ctx context.Context,
 	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
-	srcs []orktypes.HPATemplateSource,
+	srcs []orktypes.RoleBindingTemplateSource,
 	update bool,
 	guard func(ctx context.Context, obj domain.Object, ns string) bool,
 ) error {
@@ -52,37 +56,32 @@ func runHPAs(
 		if !conditionPassed {
 			if update || src.Reconcile {
 				if !activeNames[ns+"/"+name] {
-					if err := orkhpa.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
-						return fmt.Errorf("hpas[%d]: conditional cleanup: %w", i, err)
+					if err := orkrb.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
+						return fmt.Errorf("roleBindings[%d]: conditional cleanup: %w", i, err)
 					}
 				}
 			}
 			logger.FromContext(ctx).Debug().
-				Str("resource", "HorizontalPodAutoscaler").
+				Str("resource", "RoleBinding").
 				Int("index", i).
 				Msg("conditions not met — skipping resource")
 			continue
 		}
 
-		resolved, err := resolver.ResolveHPATemplate(src)
+		resolved, err := resolver.ResolveRoleBindingTemplate(src)
 		if err != nil {
-			return fmt.Errorf("hpas[%d]: %w", i, err)
+			return fmt.Errorf("roleBindings[%d]: %w", i, err)
 		}
 
-		spec := orkhpa.Resolve(resolved, resolver.OwnerName())
+		spec := orkrb.Resolve(resolved, resolver.OwnerName())
 
-		if update {
-			if err := orkhpa.Update(ctx, kube, owner, spec); err != nil {
-				return fmt.Errorf("hpas[%d].update: %w", i, err)
+		if update || src.Reconcile {
+			if err := orkrb.Update(ctx, kube, owner, spec); err != nil {
+				return fmt.Errorf("roleBindings[%d].update: %w", i, err)
 			}
 		} else {
-			if err := orkhpa.Create(ctx, kube, owner, spec); err != nil {
-				return fmt.Errorf("hpas[%d].create: %w", i, err)
-			}
-			if src.Reconcile {
-				if err := orkhpa.Update(ctx, kube, owner, spec); err != nil {
-					return fmt.Errorf("hpas[%d].reconcile: %w", i, err)
-				}
+			if err := orkrb.Create(ctx, kube, owner, spec); err != nil {
+				return fmt.Errorf("roleBindings[%d].create: %w", i, err)
 			}
 		}
 	}
