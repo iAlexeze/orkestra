@@ -215,6 +215,7 @@ jobs:
             dist/examples_advanced_${{ github.ref_name }}.tar.gz
             dist/examples_use-cases_${{ github.ref_name }}.tar.gz
             dist/examples_security_${{ github.ref_name }}.tar.gz
+            dist/examples_resilience_${{ github.ref_name }}.tar.gz
             dist/examples_registry-guide_${{ github.ref_name }}.tar.gz
             dist/examples_from-controller-runtime_${{ github.ref_name }}.tar.gz
             dist/examples_ecosystem-composition_${{ github.ref_name }}.tar.gz

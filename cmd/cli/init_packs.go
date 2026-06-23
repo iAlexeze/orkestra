@@ -43,29 +43,35 @@ var Packs = map[string]Pack{
 		Path:        "security",
 		Order:       4,
 	},
+	"resilience": {
+		Name:        "resilience",
+		Description: "Operators that stay running — panic recovery, degraded state, isolation.",
+		Path:        "resilience",
+		Order:       5,
+	},
 	"use-cases": {
 		Name:        "use-cases",
 		Description: "Full-stack, cross-CRD, external gates, once-secrets.",
 		Path:        "use-cases",
-		Order:       5,
+		Order:       6,
 	},
 	"registry-guide": {
 		Name:        "registry-guide",
 		Description: "End-to-end registry workflow: consume, build motifs, publish, compose, upgrade, deprecate, typed operators, CI.",
 		Path:        "registry-guide",
-		Order:       6,
+		Order:       7,
 	},
 	"ecosystem-composition": {
 		Name:        "ecosystem-composition",
 		Description: "Wrap ArgoCD, cert-manager, Prometheus Operator, and Crossplane behind internal CRDs.",
 		Path:        "ecosystem-composition",
-		Order:       7,
+		Order:       8,
 	},
 	"from-controller-runtime": {
 		Name:        "from-controller-runtime",
 		Description: "Migrate an existing controller-runtime operator to Orkestra: declarative, hooks, or constructor.",
 		Path:        "from-controller-runtime",
-		Order:       8,
+		Order:       9,
 	},
 }
 
@@ -108,6 +114,7 @@ func (p Pack) isDeveloperPack() bool             { return p.Name == "developer" 
 func (p Pack) isRegistryGuidePack() bool         { return p.Name == "registry-guide" }
 func (p Pack) isFromControllerRuntimePack() bool { return p.Name == "from-controller-runtime" }
 func (p Pack) isEcosystemCompositionPack() bool  { return p.Name == "ecosystem-composition" }
+func (p Pack) isResiliencePack() bool            { return p.Name == "resilience" }
 
 func (p Pack) firstExample() string {
 	switch {
@@ -131,6 +138,8 @@ func (p Pack) firstExample() string {
 		return "00-controller-runtime-baseline"
 	case p.isEcosystemCompositionPack():
 		return "00-argocd"
+	case p.isResiliencePack():
+		return "safe-reconcile"
 	default:
 		return ""
 	}

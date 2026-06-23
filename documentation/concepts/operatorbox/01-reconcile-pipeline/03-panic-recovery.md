@@ -45,7 +45,7 @@ When a panic occurs:
 4. The panic is logged at `ERROR` level with GVK, key, panic value, and stack trace.
 5. The consecutive-failure counter for this operatorBox increments.
 6. If the counter exceeds the failure threshold (default: 5), the operatorBox enters degraded state — see [Error Behavior](02-error-behavior.md#degraded-state).
-7. `ork_reconcile_total{result="error"}` increments.
+7. `controller_reconcile_total{result="error"}` increments.
 8. The workqueue re-queues the key with exponential backoff.
 
 The worker goroutine is unaffected. It dequeues the next item normally. Other operatorBoxes running their own workers on their own queues are completely isolated — they are not aware the panic happened.
@@ -69,15 +69,15 @@ The worker goroutine is unaffected. It dequeues the next item normally. Other op
 
 **Metrics:**
 
-```
-ork_reconcile_total{gvk="apps.safe.demo.orkestra.io",result="error"} 1
+```text
+controller_reconcile_total{crd="safe.demo.orkestra.io/v1alpha1, Kind=App",result="error"} 3
 ```
 
 Other operatorBoxes keep accumulating successes on their own label:
 
-```
-ork_reconcile_total{gvk="monitors.safe.demo.orkestra.io",result="success"} 4
-ork_reconcile_total{gvk="queues.safe.demo.orkestra.io",result="success"}   4
+```text
+controller_reconcile_total{crd="safe.demo.orkestra.io/v1alpha1, Kind=Monitor",result="success"} 9
+controller_reconcile_total{crd="safe.demo.orkestra.io/v1alpha1, Kind=Queue",result="success"} 11
 ```
 
 ---
@@ -113,7 +113,7 @@ All of these are caught by `safeReconcile`. None crash the operator.
 ## Try it
 
 ```bash
-ork init --pack security/safe-reconcile
+ork init --pack resilience/safe-reconcile
 cd safe-reconcile
 
 # Follow the steps in the README
