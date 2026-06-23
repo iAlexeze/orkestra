@@ -653,10 +653,10 @@ func crdModeLabel(crd orktypes.CRDEntry) string {
 		return "default"
 	}
 	if crd.CustomHooksEnabled() {
-		return fmt.Sprintf("hooks(%s)", crd.OperatorBox.Hooks.Function)
+		return fmt.Sprintf("hooks(%s)", crd.OperatorBox.Reconciler.Hooks.Function)
 	}
 	if crd.ConstructorEnabled() {
-		return fmt.Sprintf("constructor(%s)", crd.OperatorBox.ConstructorDecl.Function)
+		return fmt.Sprintf("constructor(%s)", crd.OperatorBox.Reconciler.ConstructorDecl.Function)
 	}
 	if crd.Mode != "" {
 		return string(crd.Mode)

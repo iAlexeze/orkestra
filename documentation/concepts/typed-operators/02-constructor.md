@@ -30,19 +30,20 @@ spec:
       resync: 10s
 
       operatorBox:
-        default: false   # disable GenericReconciler; constructor owns everything
+        reconciler:
+          default: false   # disable GenericReconciler; constructor owns everything
 
-        constructor:
-          location: github.com/myorg/pipeline-operator/reconciler@v2.0.0
-          function: NewPipelineReconciler
-          resources:
-            - kind: Job
-              group: batch
-              version: v1
-              plural: jobs
+          constructor:
+            location: github.com/myorg/pipeline-operator/reconciler@v2.0.0
+            function: NewPipelineReconciler
+            resources:
+              - kind: Job
+                group: batch
+                version: v1
+                plural: jobs
 ```
 
-`default: false` tells Orkestra not to use the GenericReconciler. The constructor at `location` provides the complete reconcile implementation.
+`reconciler.default: false` tells Orkestra not to use the GenericReconciler. The constructor at `location` provides the complete reconcile implementation.
 
 The `@version` suffix in `location` is shorthand for the `version:` field — `location: github.com/myorg/reconciler@v2.0.0` is equivalent to declaring `version: v2.0.0` separately. Both forms are accepted; the `@` shorthand keeps the declaration compact.
 

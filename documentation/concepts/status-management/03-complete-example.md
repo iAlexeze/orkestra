@@ -45,7 +45,6 @@ spec:
   crdFile: website-crd.yaml
 
   operatorBox:
-    default: true
 
     status:
       fields:

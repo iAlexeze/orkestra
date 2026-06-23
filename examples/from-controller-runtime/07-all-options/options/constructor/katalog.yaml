@@ -31,13 +31,13 @@ spec:
         - default
 
       operatorBox:
-        # default: false — the GenericReconciler is not used.
-        # The constructor below owns the full reconcile loop.
-        default: false
-
-        constructor:
-          location: github.com/orkspace/from-controller-runtime-all-options/options/constructor/reconciler
-          function: NewWebAppReconciler
-          resources:
-            - kind: Deployment
-            - kind: Service
+        reconciler:
+          # default: false — the GenericReconciler is not used.
+          # The constructor below owns the full reconcile loop.
+          default: false
+          constructor:
+            location: github.com/orkspace/from-controller-runtime-all-options/options/constructor/reconciler
+            function: NewWebAppReconciler
+            resources:
+              - kind: Deployment
+              - kind: Service

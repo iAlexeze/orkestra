@@ -76,7 +76,6 @@ spec:
         - default
 
       operatorBox:
-        default: true
 
         status:
           fields:

@@ -26,13 +26,12 @@ The ServiceAccount and Deployment stay declared in the Katalog. The Service move
 
 ```yaml
 operatorBox:
-  default: true
-
-  hooks:
-    location: github.com/myorg/webapp-operator/hooks
-    function: WebAppHooks
-    resources:
-      - kind: Service
+  reconciler:
+    hooks:
+      location: github.com/myorg/webapp-operator/hooks
+      function: WebAppHooks
+      resources:
+        - kind: Service
 ```
 
 The hook receives `obj *apiv1.WebApp` — the fully-typed CR. It creates the Service using `pkg/resources`, which handles drift detection, owner references, and system labels automatically.

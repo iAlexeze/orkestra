@@ -38,7 +38,6 @@ spec:
             probePath: "{{ .spec.probePath }}"                   # new in v1.1.0
 
       operatorBox:
-        default: true
         status:
           fields:
             - path: phase

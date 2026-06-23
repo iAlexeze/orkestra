@@ -115,11 +115,11 @@ func (k *Katalog) validateHooks(name string, crd *orktypes.CRDEntry) error {
 	}
 
 	// Required fields
-	if crd.OperatorBox.Hooks.Location == "" {
-		return fmt.Errorf("CRD %q: hooks.location is required", name)
+	if crd.OperatorBox.Reconciler.Hooks.Location == "" {
+		return fmt.Errorf("CRD %q: reconciler.hooks.location is required", name)
 	}
-	if crd.OperatorBox.Hooks.Function == "" {
-		return fmt.Errorf("CRD %q: hooks.function is required", name)
+	if crd.OperatorBox.Reconciler.Hooks.Function == "" {
+		return fmt.Errorf("CRD %q: reconciler.hooks.function is required", name)
 	}
 
 	return nil
@@ -151,11 +151,11 @@ func (k *Katalog) validateConstructor(name string, crd *orktypes.CRDEntry) error
 	}
 
 	// Required fields
-	if crd.OperatorBox.ConstructorDecl.Location == "" {
-		return fmt.Errorf("CRD %q: constructor.location is required", name)
+	if crd.OperatorBox.Reconciler.ConstructorDecl.Location == "" {
+		return fmt.Errorf("CRD %q: reconciler.constructor.location is required", name)
 	}
-	if crd.OperatorBox.ConstructorDecl.Function == "" {
-		return fmt.Errorf("CRD %q: constructor.function is required", name)
+	if crd.OperatorBox.Reconciler.ConstructorDecl.Function == "" {
+		return fmt.Errorf("CRD %q: reconciler.constructor.function is required", name)
 	}
 
 	return nil
@@ -180,8 +180,8 @@ func (k *Katalog) validateManagedResources(name string, crd *orktypes.CRDEntry) 
 				"      - kind: Pod\n"+
 				"      - kind: Deployment\n",
 			name,
-			crd.OperatorBox.Hooks.Location,
-			crd.OperatorBox.Hooks.Function,
+			crd.OperatorBox.Reconciler.Hooks.Location,
+			crd.OperatorBox.Reconciler.Hooks.Function,
 		)
 	}
 
@@ -199,8 +199,8 @@ func (k *Katalog) validateManagedResources(name string, crd *orktypes.CRDEntry) 
 				"      - kind: StatefulSet\n"+
 				"      - kind: Service\n",
 			name,
-			crd.OperatorBox.ConstructorDecl.Location,
-			crd.OperatorBox.ConstructorDecl.Function,
+			crd.OperatorBox.Reconciler.ConstructorDecl.Location,
+			crd.OperatorBox.Reconciler.ConstructorDecl.Function,
 		)
 	}
 

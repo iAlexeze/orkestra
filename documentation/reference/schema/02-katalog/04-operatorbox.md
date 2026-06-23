@@ -1,39 +1,42 @@
 # operatorBox
 
-Defines the reconciliation strategy for a CRD. Controls whether Orkestra uses the GenericReconciler with declarative templates, Go hooks, or a fully custom reconciler.
+Defines the reconciliation strategy and lifecycle configuration for a CRD. Controls which reconciler implementation runs and how resources, status, admission, autoscaling, and rollback behave.
 
 ```yaml
 operatorBox:
-  default: true              # use GenericReconciler (true) or custom reconciler (false)
+  # reconciler: determines which reconciler implementation runs.
+  # Omit entirely for declarative-only CRDs (GenericReconciler is the default).
+  reconciler:
+    default: true              # true → GenericReconciler | false → custom constructor
+
+    # Go hooks (default: true, typed mode)
+    hooks:
+      location: github.com/example/operator
+      function: DatabaseHooks
+      alias: dbhooks
+      resources:
+        - kind: StatefulSet
+        - kind: Service
+
+    # Custom reconciler (default: false)
+    constructor:
+      location: github.com/example/operator
+      function: NewDatabaseReconciler
+      alias: dbreconciler
+      resources:
+        - kind: StatefulSet
+        - kind: Service
 
   finalizers:
     - example.io/cleanup
 
-  # Declarative templates (default: true, dynamic mode)
+  # Declarative templates (GenericReconciler only)
   onCreate:
     ...
   onReconcile:
     ...
   onDelete:
     ...
-
-  # Go hooks (default: true, typed or dynamic)
-  hooks:
-    location: github.com/example/operator
-    function: DatabaseHooks
-    alias: dbhooks
-    resources:
-      - statefulsets
-      - services
-
-  # Custom reconciler (default: false only)
-  constructor:
-    location: github.com/example/operator
-    function: NewDatabaseReconciler
-    alias: dbreconciler
-    resources:
-      - statefulsets
-      - services
 
   status:
     ...               # → status.md
@@ -46,36 +49,38 @@ operatorBox:
     ...
 ```
 
-## `default`
+## `reconciler`
+
+Groups the reconciler identity fields. Omit for declarative-only CRDs — GenericReconciler is the default.
+
+### `reconciler.default`
 
 | Value | Behaviour |
 |-------|-----------|
-| `true` (default) | GenericReconciler handles reconciliation. Use `onCreate`, `onReconcile`, `onDelete` for declarative templates, and `hooks` for Go hooks. |
-| `false` | Fully custom reconciler. Set `constructor` to provide it. Templates and hooks are ignored. |
+| `true` (default) | GenericReconciler handles reconciliation. Use `onCreate`, `onReconcile`, `onDelete` for declarative templates, and `reconciler.hooks` for Go hooks. |
+| `false` | Fully custom reconciler. Set `reconciler.constructor` to provide it. Templates and hooks are ignored. |
 
-## `finalizers`
-
-Per-CRD finalizers. Overrides `spec.finalizers` for this CRD only.
-
-## `hooks`
+### `reconciler.hooks`
 
 A Go function invoked by the GenericReconciler. Implements typed reconcile hooks (`OnCreate`, `OnUpdate`, `OnDelete`). Used when you need Go logic that the GenericReconciler calls instead of declarative templates.
 
 ```yaml
-hooks:
-  location: github.com/example/operator   # Go module path
-  function: DatabaseHooks                  # exported function name
-  alias: dbhooks                           # import alias (auto-derived if omitted)
-  runHooksFirst: false                     # see below
-  resources:                              # RBAC verbs claimed for this hook
-    - statefulsets
-    - services
-    - cronjobs
+operatorBox:
+  reconciler:
+    hooks:
+      location: github.com/example/operator   # Go module path
+      function: DatabaseHooks                  # exported function name
+      alias: dbhooks                           # import alias (auto-derived if omitted)
+      runHooksFirst: false                     # see below
+      resources:                               # RBAC verbs claimed for this hook
+        - kind: StatefulSet
+        - kind: Service
+        - kind: CronJob
 ```
 
 Requires typed mode (`apiTypes.location` set) and `ork generate registry`.
 
-### `hooks.runHooksFirst`
+#### `reconciler.hooks.runHooksFirst`
 
 Controls the order in which the hook and declared templates run within the same reconcile cycle.
 
@@ -85,28 +90,32 @@ Controls the order in which the hook and declared templates run within the same 
 | `true` | Hook runs first, then declared templates. Use when the hook creates resources that declared templates depend on. |
 
 ```yaml
-hooks:
-  runHooksFirst: true   # hook → then declared templates
-                        # false (default): declared templates → then hook
+reconciler:
+  hooks:
+    runHooksFirst: true   # hook → then declared templates
+                          # false (default): declared templates → then hook
 ```
 
-The hybrid pattern (90/10) uses `runHooksFirst: false`: Orkestra declares what it can and the hook adds the 10% that templates cannot express. See [typed-operators/01-hooks.md](../../../concepts/typed-operators/01-hooks.md) for a full example.
+### `reconciler.constructor`
 
-## `constructor`
-
-Replaces the GenericReconciler entirely. Requires `default: false`.
+Replaces the GenericReconciler entirely. Requires `reconciler.default: false`.
 
 ```yaml
 operatorBox:
-  default: false
-  constructor:
-    location: github.com/example/operator
-    function: NewDatabaseReconciler
-    alias: dbreconciler
-    resources:
-      - statefulsets
-      - services
+  reconciler:
+    default: false
+    constructor:
+      location: github.com/example/operator
+      function: NewDatabaseReconciler
+      alias: dbreconciler
+      resources:
+        - kind: StatefulSet
+        - kind: Service
 ```
+
+## `finalizers`
+
+Per-CRD finalizers. Overrides `spec.finalizers` for this CRD only.
 
 ## `onCreate` / `onReconcile` / `onDelete`
 

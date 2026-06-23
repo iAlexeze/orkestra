@@ -45,7 +45,6 @@ spec:
             maxReplicas: "10"
 
       operatorBox:
-        default: true
         status:
           fields:
             - path: phase

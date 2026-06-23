@@ -17,7 +17,6 @@ spec:
         plural: appcerts
 
       operatorBox:
-        default: true
 
         status:
           fields:

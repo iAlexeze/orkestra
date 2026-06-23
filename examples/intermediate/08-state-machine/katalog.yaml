@@ -38,7 +38,6 @@ spec:
             action: deny
 
       operatorBox:
-        default: true
         # ── Phase-gated Jobs ─────────────────────────────────────────────
         # Each step is a separate Job.
         # The when: conditions gate creation based on current phase

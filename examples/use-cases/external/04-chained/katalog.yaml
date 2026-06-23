@@ -29,7 +29,6 @@ spec:
             action: deny
 
       operatorBox:
-        default: true
 
         onReconcile:
           # ── Call 1: fetch a short-lived token ─────────────────────────────

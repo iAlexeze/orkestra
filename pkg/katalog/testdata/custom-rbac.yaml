@@ -11,7 +11,6 @@ spec:
         kind: AppCert
         plural: appcerts
       operatorBox:
-        default: true
         onCreate:
           custom:
             - apiVersion: cert-manager.io/v1

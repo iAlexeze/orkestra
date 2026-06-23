@@ -657,7 +657,7 @@ func BuildKatalogHandler(
 				OperatorBox: OperatorBoxSummary{
 					Type:           "generic",
 					HasTemplates:   crd.OperatorBox.OnCreate != nil,
-					HasHooks:       crd.OperatorBox.Hooks != nil || crd.OperatorBox.HookFactory != nil,
+					HasHooks:       (crd.OperatorBox.Reconciler != nil && crd.OperatorBox.Reconciler.Hooks != nil) || crd.OperatorBox.HookFactory != nil,
 					HasConstructor: crd.OperatorBox.Constructor != nil,
 				},
 				Healthy:          isHealthy,
@@ -764,7 +764,7 @@ func isCRDProtected(protected map[string]struct{}, plural, group string) bool {
 
 // Helper function to convert to struct-based reconciler info
 func operatorBoxInfoStruct(crd orktypes.CRDEntry) OperatorBoxInfo {
-	op := crd.OperatorBox
+	box := crd.OperatorBox
 
 	reconcilerType := "generic"
 	if !crd.DefaultReconcile() {
@@ -775,20 +775,20 @@ func operatorBoxInfoStruct(crd orktypes.CRDEntry) OperatorBoxInfo {
 		Source: "default",
 		Values: []string{},
 	}
-	if len(op.Finalizers) > 0 {
+	if len(box.Finalizers) > 0 {
 		finalizersInfo.Source = "configured"
-		finalizersInfo.Values = op.Finalizers
+		finalizersInfo.Values = box.Finalizers
 	}
 
 	hooksInfo := HooksInfo{Configured: false}
-	if op.Hooks != nil {
+	if box.Reconciler != nil && box.Reconciler.Hooks != nil {
 		hooksInfo = HooksInfo{
 			Configured: true,
 			Source:     "yaml",
-			Location:   op.Hooks.Location,
-			Function:   op.Hooks.Function,
+			Location:   box.Reconciler.Hooks.Location,
+			Function:   box.Reconciler.Hooks.Function,
 		}
-	} else if op.HookFactory != nil {
+	} else if box.HookFactory != nil {
 		hooksInfo = HooksInfo{
 			Configured: true,
 			Source:     "go",
@@ -796,14 +796,14 @@ func operatorBoxInfoStruct(crd orktypes.CRDEntry) OperatorBoxInfo {
 	}
 
 	constructorInfo := ConstructorInfo{Configured: false}
-	if op.ConstructorDecl != nil {
+	if box.Reconciler != nil && box.Reconciler.ConstructorDecl != nil {
 		constructorInfo = ConstructorInfo{
 			Configured: true,
 			Source:     "yaml",
-			Location:   op.ConstructorDecl.Location,
-			Function:   op.ConstructorDecl.Function,
+			Location:   box.Reconciler.ConstructorDecl.Location,
+			Function:   box.Reconciler.ConstructorDecl.Function,
 		}
-	} else if op.Constructor != nil {
+	} else if box.Constructor != nil {
 		constructorInfo = ConstructorInfo{
 			Configured: true,
 			Source:     "go",
@@ -817,11 +817,11 @@ func operatorBoxInfoStruct(crd orktypes.CRDEntry) OperatorBoxInfo {
 		Constructor: constructorInfo,
 	}
 
-	if op.OnCreate != nil || op.OnReconcile != nil || op.OnDelete != nil {
+	if box.OnCreate != nil || box.OnReconcile != nil || box.OnDelete != nil {
 		result.Templates = make(map[string]interface{})
-		if op.OnCreate != nil {
-			onCreate := templateSummary(op.OnCreate)
-			if hasAutoReconcile(op.OnCreate) {
+		if box.OnCreate != nil {
+			onCreate := templateSummary(box.OnCreate)
+			if hasAutoReconcile(box.OnCreate) {
 				result.Templates["onReconcile"] = map[string]interface{}{
 					"source": "auto",
 					"from":   "onCreate[reconcile:true]",
@@ -829,11 +829,11 @@ func operatorBoxInfoStruct(crd orktypes.CRDEntry) OperatorBoxInfo {
 			}
 			result.Templates["onCreate"] = onCreate
 		}
-		if op.OnReconcile != nil {
-			result.Templates["onReconcile"] = templateSummary(op.OnReconcile)
+		if box.OnReconcile != nil {
+			result.Templates["onReconcile"] = templateSummary(box.OnReconcile)
 		}
-		if op.OnDelete != nil {
-			result.Templates["onDelete"] = templateSummary(op.OnDelete)
+		if box.OnDelete != nil {
+			result.Templates["onDelete"] = templateSummary(box.OnDelete)
 		}
 	}
 

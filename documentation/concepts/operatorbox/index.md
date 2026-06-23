@@ -49,7 +49,11 @@ spec:
           schedule: "{{ ... }}"
 
       operatorBox:
-        default: true          # use Orkestra's GenericReconciler
+        # reconciler: is optional — omit for declarative-only CRDs (GenericReconciler is the default)
+        # reconciler:
+        #   default: false     # set to use a custom constructor instead
+        #   constructor:
+        #     location: ...
         cross: [...]           # IPC declarations
         onCreate: [...]        # resource creation on first reconcile
         onReconcile: [...]     # drift correction on every reconcile
@@ -58,7 +62,7 @@ spec:
         providers: [...]       # external infra (AWS, MongoDB, etc.)
 ```
 
-`default: true` tells Orkestra to use the declarative reconciler — no Go code required. Set `default: false` with a `constructor:` when you need a typed Go reconciler.
+Omitting `reconciler:` uses the declarative GenericReconciler — no Go code required. Add `reconciler.constructor:` with `default: false` when you need a typed Go reconciler.
 
 ---
 

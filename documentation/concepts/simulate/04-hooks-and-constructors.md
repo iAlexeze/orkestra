@@ -20,7 +20,7 @@ var ReconcilerRegistry = map[schema.GroupVersionKind]NewReconcilerFunc{}
 
 ## Typed hooks
 
-For hook operators (`operatorBox.default: true` + `hooks:`), `HookRegistry` contains the hook function. Simulate wires it into `GenericReconciler` and calls it on every cycle against the fake cluster.
+For hook operators (`operatorBox.reconciler.hooks:`), `HookRegistry` contains the hook function. Simulate wires it into `GenericReconciler` and calls it on every cycle against the fake cluster.
 
 ```bash
 # From your operator directory, using your compiled binary
@@ -40,7 +40,7 @@ The hook runs its full body — `OrkestraRegistry.Create(...)` calls go to the f
 
 ## Custom constructors
 
-For constructor operators (`operatorBox.default: false`), `ReconcilerRegistry` contains the factory function. Simulate calls it with the fake kubeclient and informer, then uses the returned reconciler for all cycles.
+For constructor operators (`operatorBox.reconciler.default: false`), `ReconcilerRegistry` contains the factory function. Simulate calls it with the fake kubeclient and informer, then uses the returned reconciler for all cycles.
 
 ```bash
 10-constructor$ ork simulate --cr cr.yaml

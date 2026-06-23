@@ -36,7 +36,6 @@ The reconciler receives an object with a spec that declares desired state. It mu
 
 ```yaml
 operatorBox:
-  default: true
   onCreate:
     deployments:
       - image: "{{ .spec.image }}"

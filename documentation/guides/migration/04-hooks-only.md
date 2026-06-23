@@ -23,15 +23,14 @@ The Katalog declares the hook and resource kinds for RBAC, but no `onCreate` tem
 
 ```yaml
 operatorBox:
-  default: true
-
-  hooks:
-    location: github.com/myorg/webapp-operator/hooks
-    function: WebAppHooks
-    resources:
-      - kind: ServiceAccount
-      - kind: Deployment
-      - kind: Service
+  reconciler:
+    hooks:
+      location: github.com/myorg/webapp-operator/hooks
+      function: WebAppHooks
+      resources:
+        - kind: ServiceAccount
+        - kind: Deployment
+        - kind: Service
 ```
 
 `pkg/resources` handles create-if-absent, drift correction, owner references, and system labels in one call per resource. Compare with the baseline's manual Get / IsNotFound / Create / Patch — same outcome, a fraction of the code.
