@@ -63,7 +63,7 @@ The `recover()` call is inside a `defer`. This is the only place in Go where `re
 4. The stack trace is logged at `error` level alongside the GVK and key.
 5. `err` is set (via the named return) — the caller sees a non-nil error.
 6. `health.RecordFailure` increments the consecutive failure counter for this CRD. If it exceeds `failureThreshold`, the CRD's health state transitions to `Degraded`.
-7. `metrics.RecordReconcile(gvk, "error")` increments `ork_reconcile_total{result="error"}`.
+7. `metrics.RecordReconcile(gvk, "error")` increments `controller_reconcile_total{result="error"}`.
 8. The worker returns the error to `processItemForGVK`, which re-queues the key with rate-limit backoff.
 
 The worker goroutine is unaffected. The queue continues draining. Other CRDs running their own workers on their own queues are completely isolated.
@@ -98,7 +98,7 @@ The only thing affected is the specific reconcile cycle for the panicking key. I
 **Metrics:**
 
 ```
-ork_reconcile_total{gvk="apps.safe.demo.orkestra.io",result="error"} 1
+controller_reconcile_total{gvk="apps.safe.demo.orkestra.io",result="error"} 1
 ```
 
 **Health:** The CRD's consecutive failure counter increments. If it exceeds `failureThreshold` (default: 5), the CRD transitions to `Degraded` — visible in the Control Center and in the `/katalog/{crd}/health` endpoint response.
@@ -121,7 +121,7 @@ See [05 — Workers and drain](05-workers.md) for the full worker loop.
 ## Tryit
 
 ```bash
-ork init --pack security/safe-reconcile
+ork init --pack resilience/safe-reconcile
 cd safe-reconcile
 
 # Follow the steps in the README

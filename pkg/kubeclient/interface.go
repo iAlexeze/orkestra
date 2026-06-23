@@ -7,9 +7,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	sigs "sigs.k8s.io/controller-runtime/pkg/client"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	sigs "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // KubeClient is the interface every registry function depends on.

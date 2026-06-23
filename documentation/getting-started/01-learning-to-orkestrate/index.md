@@ -26,6 +26,7 @@ Examples are grouped into packs. Pull any pack with `ork init --pack <name>`.
 | [Advanced](./03-advanced.md) | Admission, composition, escape hatches, autoscaling, cross-operator |
 | [Use-cases](./04-use-cases.md) | Normalize, enrich, profiles, full-stack patterns, external calls, motif composition |
 | [Security](./05-security.md) | Admission, deletion protection, namespace isolation |
+| [Resilience](./09-resilience.md) | Panic recovery, degraded state, operator isolation |
 | [Registry Guide](./06-registry.md) | Distribution — publish, version, gate, consume, and automate the full pattern lifecycle |
 | [Migration Guide](./07-migration.md) | Migrating an existing controller-runtime operator to Orkestra — five options, zero lock-in |
 | [Ecosystem Guide](./08-ecosystem.md) | Wrapping ArgoCD, cert-manager, Prometheus, and Crossplane with Orkestra abstraction layers |

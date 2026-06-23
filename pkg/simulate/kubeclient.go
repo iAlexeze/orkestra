@@ -14,12 +14,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	sigs "sigs.k8s.io/controller-runtime/pkg/client"
 	"k8s.io/client-go/dynamic"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
+	sigs "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Op is one recorded cluster operation.
