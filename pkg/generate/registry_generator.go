@@ -169,13 +169,14 @@ func TypeRegistry(crds map[string]orktypes.CRDEntry, dryRun bool) (bool, error) 
 
 	// ── Render registry file ──────────────────────────────────────────────────
 	registryData := registryTemplateData{
-		Timestamp:        time.Now().UTC().Format(time.RFC3339),
-		Imports:          imports,
-		Entries:          entries,
-		HookEntries:      hookEntries,
-		RecEntries:       recEntries,
-		NeedsRecImports:  len(recEntries) > 0,
-		NeedsHookImports: len(hookEntries) > 0,
+		Timestamp:          time.Now().UTC().Format(time.RFC3339),
+		Imports:            imports,
+		Entries:            entries,
+		HookEntries:        hookEntries,
+		RecEntries:         recEntries,
+		NeedsRecImports:    len(recEntries) > 0,
+		NeedsHookImports:   len(hookEntries) > 0,
+		NeedsSchemeImports: len(entries) > 0,
 	}
 
 	outPath := filepath.Join(TypeRegistryPackage, RegistryFile)
