@@ -17,14 +17,14 @@ spec:
   crds:
     hybridApp:
       apiTypes:
-        group: migration.demo.orkestra.io
+        group: allopt.demo.orkestra.io
         version: v1alpha1
-        kind: WebApp
-        plural: webapps
-        object: WebApp
-        objectList: WebAppList
-        location: github.com/orkspace/from-controller-runtime-demo/api/v1alpha1
-        alias: demov1alpha1
+        kind: HybridApp
+        plural: hybridapps
+        object: HybridApp
+        objectList: HybridAppList
+        location: github.com/orkspace/from-controller-runtime-all-options/options/hybrid/api/v1alpha1
+        alias: hybridv1alpha1
 
       allowedNamespaces:
         - default
@@ -43,7 +43,7 @@ spec:
 
         # The hook creates the Service with type-safe access to obj.Spec.Port.
         hooks:
-          location: github.com/orkspace/from-controller-runtime-demo/hooks
+          location: github.com/orkspace/from-controller-runtime-all-options/options/hybrid/hooks
           function: WebAppHooks
           alias: webhooks
           runHooksFirst: true

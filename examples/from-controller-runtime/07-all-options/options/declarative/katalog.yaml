@@ -16,9 +16,11 @@ metadata:
 spec:
   crds:
     declarativeApp:
-      crdFile: ./crd.yaml
-      crFiles:
-        - ./cr.yaml
+      apiTypes:
+        group: allopt.demo.orkestra.io
+        version: v1alpha1
+        kind: DeclarativeApp
+        plural: declarativeapps
       allowedNamespaces:
         - default
 
@@ -47,38 +49,3 @@ spec:
               port: "80"
               targetPort: "{{ .spec.port }}"
               reconcile: true
-
-    # worker:
-    #   crdFile: ./crd-with-secret.yaml
-    #   crFiles:
-    #     - ./cr-with-secret.yaml
-    #   allowedNamespaces:
-    #     - default
-
-    #   operatorBox:
-    #     default: true
-
-    #     status:
-    #       fields:
-    #         - path: phase
-    #           value: "Running"
-
-    #     onCreate:
-    #       secrets:
-    #         - name: "{{ .metadata.name }}-token"
-    #           once: true
-    #           rotateAfter: 30d
-    #           data:
-    #             token: "{{ randomAlphanumeric 32 }}"
-
-    #       deployments:
-    #         - name: "{{ .metadata.name }}"
-    #           image: "{{ .spec.image }}"
-    #           replicas: "{{ .spec.replicas }}"
-    #           reconcile: true
-    #           env:
-    #             - name: WORKER_TOKEN
-    #               valueFrom:
-    #                 secretKeyRef:
-    #                   name: "{{ .metadata.name }}-token"
-    #                   key: token

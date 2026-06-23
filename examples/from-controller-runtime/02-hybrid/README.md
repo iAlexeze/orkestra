@@ -2,7 +2,7 @@
 
 Option two. Declarative and Go working together in the same reconcile loop.
 
-The ServiceAccount and Deployment are declared in the Katalog — Orkestra creates and drift-corrects them. The Service is created by a Go hook with type-safe access to `obj.Spec.Port`. Both run inside the same Orkestra reconcile cycle without you wiring anything together.
+The Deployment is declared in the Katalog — Orkestra creates and drift-corrects it. The Service is created by a Go hook with type-safe access to `obj.Spec.Port`. Both run inside the same Orkestra reconcile cycle without you wiring anything together.
 
 The hook runs *first* in this example — `runHooksFirst: true` in the Katalog. The Service is ready before Orkestra applies the declared templates. Omit `runHooksFirst` or set it to `false` to flip the order: declared templates run first, hook is additive after.
 
@@ -27,8 +27,7 @@ The runtime still provides the informer, workqueue, worker pool, finalizers, eve
 
 | | 01-declarative | 02-hybrid |
 |---|---|---|
-| ServiceAccount | not present | `operatorBox.onCreate.serviceAccounts` — declared |
-| Deployment | `operatorBox.onCreate.deployments` | unchanged, now uses SA |
+| Deployment | `operatorBox.onCreate.deployments` | unchanged — still declared |
 | Service | `operatorBox.onCreate.services` | Go hook (`hooks/webapp_hooks.go`) |
 | Go required | No | Yes — hook only |
 | Custom runtime | No | Yes — `make build` |
