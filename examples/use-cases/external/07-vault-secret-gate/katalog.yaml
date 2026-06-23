@@ -30,7 +30,6 @@ spec:
             action: deny
 
       operatorBox:
-        default: true
 
         onReconcile:
           # ── Vault secret read — runs every reconcile ───────────────────────

@@ -17,7 +17,6 @@ spec:
       workers: 2
       resync: 30s
       operatorBox:
-        default: true
         onReconcile:
 
           # Deployments — one per region.

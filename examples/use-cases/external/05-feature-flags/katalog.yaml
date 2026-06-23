@@ -30,7 +30,6 @@ spec:
             action: deny
 
       operatorBox:
-        default: true
 
         onCreate:
           # ── External call — every reconcile ────────────────────────────────

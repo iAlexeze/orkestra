@@ -37,7 +37,6 @@ spec:
         - production
 
       operatorBox:
-        default: true
 
         status:
           fields:
@@ -75,7 +74,6 @@ spec:
         - production
 
       operatorBox:
-        default: true
 
         status:
           fields:
@@ -107,7 +105,6 @@ spec:
         - kube-public
 
       operatorBox:
-        default: true
 
         status:
           fields:

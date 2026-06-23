@@ -14,18 +14,17 @@ A common example: declare the `ServiceAccount` in the Katalog so Orkestra create
 
 ```yaml
 operatorBox:
-  default: true
+  reconciler:
+    hooks:
+      location: github.com/myorg/database-operator/hooks
+      function: DatabaseHooks
+      resources:
+        - kind: StatefulSet
+        - kind: Service
 
   onCreate:
     serviceAccounts:
       - name: "{{ .metadata.name }}-sa"   # Orkestra owns this
-
-  hooks:
-    location: github.com/myorg/database-operator/hooks
-    function: DatabaseHooks
-    resources:
-      - kind: StatefulSet
-      - kind: Service
 ```
 
 ```go
@@ -50,15 +49,14 @@ The hook manages all child resources in Go. No declared templates alongside it. 
 
 ```yaml
 operatorBox:
-  default: true
-
-  hooks:
-    location: github.com/myorg/database-operator/hooks
-    function: DatabaseHooks
-    resources:
-      - kind: StatefulSet
-      - kind: Service
-      - kind: CronJob
+  reconciler:
+    hooks:
+      location: github.com/myorg/database-operator/hooks
+      function: DatabaseHooks
+      resources:
+        - kind: StatefulSet
+        - kind: Service
+        - kind: CronJob
 ```
 
 The hook creates, updates, and deletes all child resources directly via the `pkg/resources` library.
@@ -84,9 +82,8 @@ spec:
       resync: 30s
 
       operatorBox:
-        default: true   # keep the GenericReconciler; hooks are additive
-
-        hooks:
+        reconciler:
+          hooks:
           location: github.com/myorg/database-operator/hooks
           version: v1.3.0
           fetch: true

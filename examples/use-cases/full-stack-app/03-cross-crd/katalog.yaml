@@ -17,7 +17,6 @@ spec:
       resync: 30s
 
       operatorBox:
-        default: true
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}-postgres"

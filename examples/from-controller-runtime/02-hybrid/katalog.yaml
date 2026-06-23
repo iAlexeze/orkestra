@@ -30,7 +30,6 @@ spec:
         - default
 
       operatorBox:
-        default: true   # GenericReconciler still runs — hook is additive
 
         # Declared resources — Orkestra creates and drift-corrects these.
         onCreate:
@@ -42,13 +41,15 @@ spec:
               reconcile: true
 
         # The hook creates the Service with type-safe access to obj.Spec.Port.
-        hooks:
-          location: github.com/orkspace/from-controller-runtime-demo/hooks
-          function: WebAppHooks
-          alias: webhooks
-          runHooksFirst: true
-          resources:
-            - kind: Service
+        reconciler:
+          default: true   # GenericReconciler still runs — hook is additive
+          hooks:
+            location: github.com/orkspace/from-controller-runtime-demo/hooks
+            function: WebAppHooks
+            alias: webhooks
+            runHooksFirst: true
+            resources:
+              - kind: Service
 
         status:
           fields:

@@ -136,7 +136,6 @@ spec:
       crFiles:
         - ./cr.yaml
       operatorBox:
-        default: true
         onCreate:
           deployments:
             - image: "{{ .spec.image }}"

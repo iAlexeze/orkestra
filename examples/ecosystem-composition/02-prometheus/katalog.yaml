@@ -42,7 +42,6 @@ spec:
             action: warn
 
       operatorBox:
-        default: true
 
         status:
           fields:

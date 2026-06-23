@@ -42,7 +42,6 @@ spec:
         kind: Website
         plural: websites
       operatorBox:
-        default: true
         onCreate:
           deployments:
             - image: nginx

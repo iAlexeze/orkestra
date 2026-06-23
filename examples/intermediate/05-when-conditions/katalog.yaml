@@ -14,7 +14,6 @@ spec:
     platform:
       crdFile: ./crd.yaml
       operatorBox:
-        default: true
 
         status:
           fields:

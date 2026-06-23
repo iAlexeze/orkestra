@@ -96,15 +96,16 @@ spec:
         - default
 
       operatorBox:
-        # default: false — the GenericReconciler is not used.
-        # Your constructor owns the full reconcile loop.
-        default: false
+        reconciler:
+          # default: false — the GenericReconciler is not used.
+          # Your constructor owns the full reconcile loop.
+          default: false
 
-        constructor:
-          location: %s/%s  # TODO(ork migrate): adjust to your reconciler package
-          function: %s
-          resources:
-            - kind: TODO  # TODO(ork migrate): list every resource kind your operator manages
+          constructor:
+            location: %s/%s  # TODO(ork migrate): adjust to your reconciler package
+            function: %s
+            resources:
+              - kind: TODO  # TODO(ork migrate): list every resource kind your operator manages
 `, opts.OperatorName, res.PkgName, crdName, opts.ModulePath, opts.ModulePath, res.PkgName, constructorFn)
 }
 

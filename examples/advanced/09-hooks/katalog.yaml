@@ -29,7 +29,6 @@ spec:
       resync: 30s
 
       operatorBox:
-        default: true   # GenericReconciler is still used — hooks are additive
 
         # The ServiceAccount is declared here — Orkestra creates it before hooks run.
         # The hook references it by the same naming convention: obj.Name + "-sa".
@@ -37,14 +36,16 @@ spec:
           serviceAccounts:
             - name: "{{ .metadata.name }}-sa"
 
-        hooks:
-          location: github.com/orkspace/orkestra-hooks-demo/hooks
-          function: DatabaseHooks
-          alias: dbhooks
-          resources:          # A list of resources managed by this hook (required for RBAC)
-            - kind: StatefulSet
-            - kind: Service
-            - kind: CronJob
+        reconciler:
+          default: true   # GenericReconciler is still used — hooks are additive
+          hooks:
+            location: github.com/orkspace/orkestra-hooks-demo/hooks
+            function: DatabaseHooks
+            alias: dbhooks
+            resources:          # A list of resources managed by this hook (required for RBAC)
+              - kind: StatefulSet
+              - kind: Service
+              - kind: CronJob
 
         # Status Layer 1 (Ready condition) is always automatic.
         # Layer 2 fields are still written after the hook completes.

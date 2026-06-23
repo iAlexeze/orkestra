@@ -32,16 +32,17 @@ spec:
         - default
 
       operatorBox:
-        default: true   # GenericReconciler still runs — hook is additive
 
         # No declared templates. The hook manages both resources.
-        hooks:
-          location: github.com/orkspace/from-controller-runtime-demo/hooks
-          function: WebAppHooks
-          alias: webhooks
-          resources:
-            - kind: Deployment
-            - kind: Service
+        reconciler:
+          default: true   # GenericReconciler still runs — hook is additive
+          hooks:
+            location: github.com/orkspace/from-controller-runtime-demo/hooks
+            function: WebAppHooks
+            alias: webhooks
+            resources:
+              - kind: Deployment
+              - kind: Service
 
         status:
           fields:

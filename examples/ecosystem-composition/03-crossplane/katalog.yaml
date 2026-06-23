@@ -47,7 +47,6 @@ spec:
 
 
       operatorBox:
-        default: true
 
         status:
           fields:

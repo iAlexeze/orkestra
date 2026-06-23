@@ -21,7 +21,6 @@ spec:
       crFiles:
         - ./cr.yaml
       operatorBox:
-        default: true
 ```
 
 This tells Orkestra: read the CRD from `crd.yaml`, apply it to the cluster, and watch for `MyApp` CRs. No resources are created yet.
@@ -85,7 +84,6 @@ spec:
       crFiles:
         - ./cr.yaml
       operatorBox:
-        default: true
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}"
@@ -140,7 +138,6 @@ Write values back to the CR after every reconcile:
 
 ```yaml
 operatorBox:
-  default: true
   status:
     fields:
       - path: phase

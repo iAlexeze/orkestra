@@ -36,7 +36,6 @@ spec:
             resourceProfile: "{{ .spec.resourceProfile }}"
 
       operatorBox:
-        default: true
         status:
           fields:
             - path: phase

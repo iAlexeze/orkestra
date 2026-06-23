@@ -40,7 +40,6 @@ spec:
             action: deny
 
       operatorBox:
-        default: true
 
         status:
           fields:

@@ -18,7 +18,6 @@ spec:
       resync: 15s
 
       operatorBox:
-        default: true
 
         # ── Status ───────────────────────────────────────────────────────
         # Layer 1: Ready condition — automatic

@@ -79,9 +79,10 @@ spec:
       resync: 30s
 
       operatorBox:
-        hooks:
-          location: github.com/orkspace/safe-reconcile-demo/hooks
-          function: AppHooks
-          alias: safehooks
-          resources:
-            - kind: Deployment
+        reconciler:
+          hooks:
+            location: github.com/orkspace/safe-reconcile-demo/hooks
+            function: AppHooks
+            alias: safehooks
+            resources:
+              - kind: Deployment

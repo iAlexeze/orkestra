@@ -16,7 +16,6 @@ spec:
     workspace:
       crdFile: crd-workspace.yaml
       operatorBox:
-        default: true
         onCreate:
           custom:
             - apiVersion: platform.example.io/v1alpha1
@@ -33,7 +32,6 @@ spec:
     secretvault:
       crdFile: crd-secretvault.yaml
       operatorBox:
-        default: true
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}-api"

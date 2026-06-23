@@ -167,38 +167,41 @@ func (c *CRDEntry) IsDynamic() bool {
 // Does not imply anything about Default: true/false — a typed CRD can have hooks
 // even when Default: true (generic reconciler) or false (custom reconciler).
 func (c *CRDEntry) WithHooksDecl() bool {
-	return c.OperatorBox.Hooks != nil && c.OperatorBox.Hooks.Location != ""
+	r := c.OperatorBox.Reconciler
+	return r != nil && r.Hooks != nil && r.Hooks.Location != ""
 }
 
 // RunHooksFirst reports whether the hook should run before declarative templates.
 // Returns false by default — declared templates run first (the 90/10 hybrid pattern).
-// Set hooks.runHooksFirst: true in the Katalog to override.
+// Set reconciler.hooks.runHooksFirst: true in the Katalog to override.
 func (c *CRDEntry) RunHooksFirst() bool {
-	if c.OperatorBox.Hooks == nil {
+	r := c.OperatorBox.Reconciler
+	if r == nil || r.Hooks == nil {
 		return false
 	}
-	return c.OperatorBox.Hooks.RunHooksFirst
+	return r.Hooks.RunHooksFirst
 }
 
 // WithConstructorDecl returns true if the CRD has a constructor declaration.
-// Required when Default: false in the Katalog. The generated registry will
+// Required when reconciler.default: false in the Katalog. The generated registry will
 // emit a ReconcilerRegistry entry for this CRD.
 func (c *CRDEntry) WithConstructorDecl() bool {
-	return c.OperatorBox.ConstructorDecl != nil && c.OperatorBox.ConstructorDecl.Location != ""
+	r := c.OperatorBox.Reconciler
+	return r != nil && r.ConstructorDecl != nil && r.ConstructorDecl.Location != ""
 }
 
 // WithHookManagedResources reports whether this CRD has hooks that declare
 // managed resources for RBAC generation.
 func (c *CRDEntry) WithHookManagedResources() bool {
-	return c.WithHooksDecl() &&
-		len(c.OperatorBox.Hooks.Resources) > 0
+	r := c.OperatorBox.Reconciler
+	return c.WithHooksDecl() && r != nil && len(r.Hooks.Resources) > 0
 }
 
 // WithConstructorManagedResources reports whether this CRD has a constructor
 // that declares managed resources for RBAC generation.
 func (c *CRDEntry) WithConstructorManagedResources() bool {
-	return c.WithConstructorDecl() &&
-		len(c.OperatorBox.ConstructorDecl.Resources) > 0
+	r := c.OperatorBox.Reconciler
+	return c.WithConstructorDecl() && r != nil && len(r.ConstructorDecl.Resources) > 0
 }
 
 // WithAnyManagedResources reports whether hooks or constructor declare resources.
@@ -212,7 +215,7 @@ func (c *CRDEntry) HookManagedResources() []ManagedResource {
 	if !c.WithHooksDecl() {
 		return nil
 	}
-	return c.OperatorBox.Hooks.Resources
+	return c.OperatorBox.Reconciler.Hooks.Resources
 }
 
 // ConstructorManagedResources returns the list of managed resources declared
@@ -222,7 +225,7 @@ func (c *CRDEntry) ConstructorManagedResources() []ManagedResource {
 	if !c.WithConstructorDecl() {
 		return nil
 	}
-	return c.OperatorBox.ConstructorDecl.Resources
+	return c.OperatorBox.Reconciler.ConstructorDecl.Resources
 }
 
 // HasTemplates reports whether this CRD declares any declarative hook templates.
@@ -271,13 +274,14 @@ func (c *CRDEntry) IsNamespaced() bool {
 	return *c.Namespaced
 }
 
-// DefaultReconcile reports whether this CRD uses the default reconciler behavior.
-// Defaults to true unless explicitly enabled.
+// DefaultReconcile reports whether this CRD uses the default reconciler (GenericReconciler).
+// True when reconciler: is absent or reconciler.default: is omitted or true.
 func (c *CRDEntry) DefaultReconcile() bool {
-	if c.OperatorBox.Default == nil {
+	r := c.OperatorBox.Reconciler
+	if r == nil || r.Default == nil {
 		return true
 	}
-	return *c.OperatorBox.Default
+	return *r.Default
 }
 
 // SharedQueue reports whether this CRD uses the shared default workqueue.
@@ -292,13 +296,15 @@ func (c *CRDEntry) SharedQueue() bool {
 // CustomHooksEnabled reports whether the reconcile behaviour uses custom hooks.
 // Defaults to false when omitted.
 func (c *CRDEntry) CustomHooksEnabled() bool {
-	return c.OperatorBox.Hooks != nil
+	r := c.OperatorBox.Reconciler
+	return r != nil && r.Hooks != nil
 }
 
 // ConstructorEnabled reports whether the reconcile behaviour uses a constructor.
 // Defaults to false when omitted.
 func (c *CRDEntry) ConstructorEnabled() bool {
-	return c.OperatorBox.ConstructorDecl != nil
+	r := c.OperatorBox.Reconciler
+	return r != nil && r.ConstructorDecl != nil
 }
 
 // IsHealthEnabled reports whether the /health endpoint is enabled for this CRD.

@@ -84,7 +84,6 @@ spec:
             replicas: "{{ .spec.replicas }}"
 
       operatorBox:
-        default: true
         status:
           fields:
             - path: phase

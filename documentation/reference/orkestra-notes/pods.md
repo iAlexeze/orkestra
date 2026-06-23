@@ -160,7 +160,6 @@ spec:
     memcached:
       enrich: [pods]
       operatorBox:
-        default: true
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}"

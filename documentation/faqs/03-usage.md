@@ -223,11 +223,10 @@ Hooks are additive: the hook runs, then Orkestra applies `onCreate`/`onReconcile
 
 ```yaml
 operatorBox:
-  default: true   # GenericReconciler still runs; hooks are additive
-
-  hooks:
-    location: github.com/myorg/database-operator/hooks
-    function: DatabaseHooks
+  reconciler:
+    hooks:
+      location: github.com/myorg/database-operator/hooks
+      function: DatabaseHooks
 ```
 
 Try it:
@@ -248,10 +247,11 @@ When you need to own the full reconcile loop — typically when integrating an e
 
 ```yaml
 operatorBox:
-  default: false   # GenericReconciler is replaced; constructor owns everything
+  reconciler:
+    default: false   # GenericReconciler is replaced; constructor owns everything
 ```
 
-`default: false` is the one field change that replaces the entire reconciler. Your constructor receives Orkestra's `KubeClient` and informer — no `controller-runtime` required. Declarative templates (`onCreate`, `onReconcile`, `status.fields`) are not applied when `default: false`; the constructor is responsible for all state.
+`reconciler.default: false` is the one field change that replaces the entire reconciler. Your constructor receives Orkestra's `KubeClient` and informer — no `controller-runtime` required. Declarative templates (`onCreate`, `onReconcile`, `status.fields`) are not applied when `reconciler.default: false`; the constructor is responsible for all state.
 
 Try it:
 
@@ -285,7 +285,7 @@ spec:
           condition: started
 ```
 
-You promote along a single axis: start pure YAML, add `hooks:` when you need Go logic, flip `default: false` when you need full control. No project restructure. No framework switch.
+You promote along a single axis: start pure YAML, add `reconciler.hooks:` when you need Go logic, flip `reconciler.default: false` when you need full control. No project restructure. No framework switch.
 
 Try it:
 

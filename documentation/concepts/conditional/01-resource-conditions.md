@@ -9,7 +9,6 @@ Attach a `when:` or `anyOf:` block to any resource declaration under `onCreate`,
 ```yaml
 operatorBox:
   crdFile: my-operator-crd.yaml
-  default: true
 
   onCreate:
     services:
