@@ -20,6 +20,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
+	"github.com/orkspace/orkestra/pkg/runners"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -125,7 +126,7 @@ func (r *GenericReconciler[PTR]) submitGroupDeletion(
 				// Cluster-scoped
 				err = dc.Resource(rd.gvr).Delete(ctx, item.name, delOpts)
 			}
-			if err != nil && !isNotFoundErr(err) {
+			if err != nil && !runners.IsNotFoundErr(err) {
 				return nil, fmt.Errorf("delete %s/%s: %w", rd.gvr.Resource, item.name, err)
 			}
 			pending = append(pending, orderedDeleteEntry{
@@ -223,7 +224,7 @@ func waitForDeletion(ctx context.Context, kube kubeclient.KubeClient, pending []
 			}
 			if err == nil {
 				remaining = append(remaining, e) // still exists
-			} else if !isNotFoundErr(err) {
+			} else if !runners.IsNotFoundErr(err) {
 				return fmt.Errorf("polling %s/%s: %w", e.gvr.Resource, e.name, err)
 			}
 		}

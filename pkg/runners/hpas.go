@@ -1,5 +1,5 @@
-// pkg/reconciler/run_pvcs.go
-package reconciler
+// pkg/reconciler/run_hpas.go
+package runners
 
 import (
 	"context"
@@ -8,18 +8,18 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
-	orkpvc "github.com/orkspace/orkestra/pkg/resources/pvcs"
+	orkhpa "github.com/orkspace/orkestra/pkg/resources/hpas"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// runPVCs resolves and applies PersistentVolumeClaim template declarations.
-func runPVCs(
+// RunHPAs resolves and applies HorizontalPodAutoscaler template declarations.
+func RunHPAs(
 	ctx context.Context,
 	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
-	srcs []orktypes.PVCTemplateSource,
+	srcs []orktypes.HPATemplateSource,
 	update bool,
 	guard func(ctx context.Context, obj domain.Object, ns string) bool,
 ) error {
@@ -52,36 +52,36 @@ func runPVCs(
 		if !conditionPassed {
 			if update || src.Reconcile {
 				if !activeNames[ns+"/"+name] {
-					if err := orkpvc.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
-						return fmt.Errorf("pvcs[%d]: conditional cleanup: %w", i, err)
+					if err := orkhpa.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
+						return fmt.Errorf("hpas[%d]: conditional cleanup: %w", i, err)
 					}
 				}
 			}
 			logger.FromContext(ctx).Debug().
-				Str("resource", "PersistentVolumeClaim").
+				Str("resource", "HorizontalPodAutoscaler").
 				Int("index", i).
 				Msg("conditions not met — skipping resource")
 			continue
 		}
 
-		resolved, err := resolver.ResolvePVCTemplate(src)
+		resolved, err := resolver.ResolveHPATemplate(src)
 		if err != nil {
-			return fmt.Errorf("pvcs[%d]: %w", i, err)
+			return fmt.Errorf("hpas[%d]: %w", i, err)
 		}
 
-		spec := orkpvc.Resolve(resolved, resolver.OwnerName())
+		spec := orkhpa.Resolve(resolved, resolver.OwnerName())
 
 		if update {
-			if err := orkpvc.Update(ctx, kube, owner, spec); err != nil {
-				return fmt.Errorf("pvcs[%d].update: %w", i, err)
+			if err := orkhpa.Update(ctx, kube, owner, spec); err != nil {
+				return fmt.Errorf("hpas[%d].update: %w", i, err)
 			}
 		} else {
-			if err := orkpvc.Create(ctx, kube, owner, spec); err != nil {
-				return fmt.Errorf("pvcs[%d].create: %w", i, err)
+			if err := orkhpa.Create(ctx, kube, owner, spec); err != nil {
+				return fmt.Errorf("hpas[%d].create: %w", i, err)
 			}
 			if src.Reconcile {
-				if err := orkpvc.Update(ctx, kube, owner, spec); err != nil {
-					return fmt.Errorf("pvcs[%d].reconcile: %w", i, err)
+				if err := orkhpa.Update(ctx, kube, owner, spec); err != nil {
+					return fmt.Errorf("hpas[%d].reconcile: %w", i, err)
 				}
 			}
 		}

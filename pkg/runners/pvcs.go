@@ -1,5 +1,5 @@
-// pkg/reconciler/run_pdbs.go
-package reconciler
+// pkg/reconciler/run_pvcs.go
+package runners
 
 import (
 	"context"
@@ -8,18 +8,18 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
-	orkpdb "github.com/orkspace/orkestra/pkg/resources/pdbs"
+	orkpvc "github.com/orkspace/orkestra/pkg/resources/pvcs"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// runPDBs resolves and applies PodDisruptionBudget template declarations.
-func runPDBs(
+// RunPVCs resolves and applies PersistentVolumeClaim template declarations.
+func RunPVCs(
 	ctx context.Context,
 	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
-	srcs []orktypes.PDBTemplateSource,
+	srcs []orktypes.PVCTemplateSource,
 	update bool,
 	guard func(ctx context.Context, obj domain.Object, ns string) bool,
 ) error {
@@ -52,36 +52,36 @@ func runPDBs(
 		if !conditionPassed {
 			if update || src.Reconcile {
 				if !activeNames[ns+"/"+name] {
-					if err := orkpdb.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
-						return fmt.Errorf("pdbs[%d]: conditional cleanup: %w", i, err)
+					if err := orkpvc.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
+						return fmt.Errorf("pvcs[%d]: conditional cleanup: %w", i, err)
 					}
 				}
 			}
 			logger.FromContext(ctx).Debug().
-				Str("resource", "PodDisruptionBudget").
+				Str("resource", "PersistentVolumeClaim").
 				Int("index", i).
 				Msg("conditions not met — skipping resource")
 			continue
 		}
 
-		resolved, err := resolver.ResolvePDBTemplate(src)
+		resolved, err := resolver.ResolvePVCTemplate(src)
 		if err != nil {
-			return fmt.Errorf("pdbs[%d]: %w", i, err)
+			return fmt.Errorf("pvcs[%d]: %w", i, err)
 		}
 
-		spec := orkpdb.Resolve(resolved, resolver.OwnerName())
+		spec := orkpvc.Resolve(resolved, resolver.OwnerName())
 
 		if update {
-			if err := orkpdb.Update(ctx, kube, owner, spec); err != nil {
-				return fmt.Errorf("pdbs[%d].update: %w", i, err)
+			if err := orkpvc.Update(ctx, kube, owner, spec); err != nil {
+				return fmt.Errorf("pvcs[%d].update: %w", i, err)
 			}
 		} else {
-			if err := orkpdb.Create(ctx, kube, owner, spec); err != nil {
-				return fmt.Errorf("pdbs[%d].create: %w", i, err)
+			if err := orkpvc.Create(ctx, kube, owner, spec); err != nil {
+				return fmt.Errorf("pvcs[%d].create: %w", i, err)
 			}
 			if src.Reconcile {
-				if err := orkpdb.Update(ctx, kube, owner, spec); err != nil {
-					return fmt.Errorf("pdbs[%d].reconcile: %w", i, err)
+				if err := orkpvc.Update(ctx, kube, owner, spec); err != nil {
+					return fmt.Errorf("pvcs[%d].reconcile: %w", i, err)
 				}
 			}
 		}

@@ -1,5 +1,5 @@
 // pkg/reconciler/run_jobs.go
-package reconciler
+package runners
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// runJobs resolves and applies Job template declarations.
+// RunJobs resolves and applies Job template declarations.
 //
 // Jobs are fire-and-forget — they run once to completion and are not updated
 // after creation. They are therefore always idempotent creates.
@@ -29,7 +29,7 @@ import (
 //
 // Owner references are NOT set on onDelete Jobs because the owner CR is
 // being deleted — the Job must complete independently after the CR is gone.
-func runJobs(
+func RunJobs(
 	ctx context.Context,
 	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,

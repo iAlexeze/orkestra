@@ -1,5 +1,5 @@
 // pkg/reconciler/run_cronjobs.go
-package reconciler
+package runners
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// runCronJobs resolves and applies CronJob template declarations.
+// RunCronJobs resolves and applies CronJob template declarations.
 //
 // CronJobs are long-lived scheduled resources — created under onCreate and
 // drift-corrected under onReconcile (or reconcile: true).
@@ -29,7 +29,7 @@ import (
 //
 //	schedule: "0 * * * *"               static — every hour
 //	schedule: "{{ .spec.syncSchedule }}" dynamic — from CR spec
-func runCronJobs(
+func RunCronJobs(
 	ctx context.Context,
 	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,

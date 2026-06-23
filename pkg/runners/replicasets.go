@@ -1,5 +1,5 @@
 // pkg/reconciler/run_replicasets.go
-package reconciler
+package runners
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// runReplicaSets resolves and applies ReplicaSet template declarations.
+// RunReplicaSets resolves and applies ReplicaSet template declarations.
 //
 // update=false  onCreate path  — idempotent Create
 // update=true   onReconcile path — Update for drift correction
@@ -21,7 +21,7 @@ import (
 // reconcile: true on an onCreate entry means also call Update on that
 // same reconcile loop — the shorthand for "create it and keep it in sync"
 // without a separate onReconcile declaration.
-func runReplicaSets(
+func RunReplicaSets(
 	ctx context.Context,
 	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,

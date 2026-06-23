@@ -31,7 +31,7 @@
 // once: guard — the caller opted into continuous reconciliation.
 //
 // once: false (default): standard create/update behavior, unchanged.
-package reconciler
+package runners
 
 import (
 	"context"
@@ -50,7 +50,7 @@ func secretExists(ctx context.Context, kube kubeclient.KubeClient, namespace, na
 		ResourceVersion: "0", // watch cache — avoids etcd round-trip
 	})
 	if err != nil {
-		if isNotFoundErr(err) {
+		if IsNotFoundErr(err) {
 			return false, nil
 		}
 		return false, fmt.Errorf("checking secret %s/%s: %w", namespace, name, err)
@@ -58,8 +58,8 @@ func secretExists(ctx context.Context, kube kubeclient.KubeClient, namespace, na
 	return true, nil
 }
 
-// isNotFoundErr returns true when err is a Kubernetes 404 Not Found error.
-func isNotFoundErr(err error) bool {
+// IsNotFoundErr returns true when err is a Kubernetes 404 Not Found error.
+func IsNotFoundErr(err error) bool {
 	if err == nil {
 		return false
 	}
