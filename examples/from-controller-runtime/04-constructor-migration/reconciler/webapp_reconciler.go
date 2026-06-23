@@ -107,7 +107,7 @@ func (r *WebAppReconciler) Reconcile(ctx context.Context, key string) error {
 	r.ev.Eventf(webapp, corev1.EventTypeNormal, "WebAppReconciled",
 		"WebApp %s/%s reconciled", webapp.Namespace, webapp.Name)
 
-	return r.kube.PatchStatus(ctx, webapp, apiv1.GroupVersionResource, map[string]interface{}{
+	return r.kube.PatchStatus(ctx, webapp, map[string]interface{}{
 		"phase":    "Running",
 		"endpoint": fmt.Sprintf("%s-svc.%s.svc.cluster.local", webapp.Name, webapp.Namespace),
 		"replicas": webapp.Spec.Replicas,

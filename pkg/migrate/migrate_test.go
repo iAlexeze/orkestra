@@ -109,8 +109,8 @@ func TestRewrite_ReqNamespacedName(t *testing.T) {
 	if strings.Contains(src, "req.NamespacedName") {
 		t.Error("req.NamespacedName should be replaced")
 	}
-	if !strings.Contains(src, "client.ObjectKey{Namespace: namespace, Name: name}") {
-		t.Error("expected client.ObjectKey replacement")
+	if !strings.Contains(src, "r.kube.Get(ctx, namespace, name,") {
+		t.Error("expected r.kube.Get with extracted namespace and name args")
 	}
 }
 

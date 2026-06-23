@@ -282,7 +282,7 @@ func resourceNameFromObject(obj runtime.Object) string {
 // Patch stubs — record operations but perform no real mutations.
 // The fake dynamic client handles the underlying object storage.
 
-func (f *FakeKubeclient) PatchFinalizers(_ context.Context, obj runtime.Object, _ schema.GroupVersionResource, finalizers []string) error {
+func (f *FakeKubeclient) PatchFinalizers(_ context.Context, obj runtime.Object, finalizers []string) error {
 	f.mu.Lock()
 	f.ops = append(f.ops, Op{
 		Cycle:    f.currentCycle,
@@ -295,7 +295,7 @@ func (f *FakeKubeclient) PatchFinalizers(_ context.Context, obj runtime.Object, 
 	return nil
 }
 
-func (f *FakeKubeclient) PatchLabels(_ context.Context, obj runtime.Object, _ schema.GroupVersionResource, base, desired map[string]string) error {
+func (f *FakeKubeclient) PatchLabels(_ context.Context, obj runtime.Object, base, desired map[string]string) error {
 	if stringMapsEqual(base, desired) {
 		return nil
 	}
@@ -314,7 +314,7 @@ func (f *FakeKubeclient) PatchLabels(_ context.Context, obj runtime.Object, _ sc
 	return nil
 }
 
-func (f *FakeKubeclient) PatchAnnotations(_ context.Context, obj runtime.Object, _ schema.GroupVersionResource, annotations map[string]string) error {
+func (f *FakeKubeclient) PatchAnnotations(_ context.Context, obj runtime.Object, annotations map[string]string) error {
 	f.mu.Lock()
 	f.ops = append(f.ops, Op{
 		Cycle:    f.currentCycle,
@@ -332,7 +332,7 @@ func (f *FakeKubeclient) PatchAnnotations(_ context.Context, obj runtime.Object,
 	return nil
 }
 
-func (f *FakeKubeclient) PatchStatus(_ context.Context, obj domain.Object, _ schema.GroupVersionResource, _ map[string]interface{}) error {
+func (f *FakeKubeclient) PatchStatus(_ context.Context, obj domain.Object, _ map[string]interface{}) error {
 	f.mu.Lock()
 	f.ops = append(f.ops, Op{
 		Cycle:    f.currentCycle,

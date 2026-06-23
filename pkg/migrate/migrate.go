@@ -51,8 +51,12 @@ func Rewrite(src []byte) (*Result, error) {
 		return nil, fmt.Errorf("no Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) found")
 	}
 
+	receiverName := "r"
 	if len(fn.Recv.List) > 0 {
 		res.ReceiverType = typeName(fn.Recv.List[0].Type)
+		if len(fn.Recv.List[0].Names) > 0 {
+			receiverName = fn.Recv.List[0].Names[0].Name
+		}
 	}
 
 	ctxParam, reqParam := "ctx", "req"
@@ -154,7 +158,7 @@ func Rewrite(src []byte) (*Result, error) {
 			reps = append(reps, replacement{
 				start: off(fset, call.Pos()),
 				end:   off(fset, call.End()),
-				text:  "nil /* TODO(ork migrate): replace with r.kube.PatchStatus(ctx, obj, GroupVersionResource, map[string]interface{}{...}) */",
+				text:  "nil /* TODO(ork migrate): replace with r.kube.PatchStatus(ctx, obj, map[string]interface{}{...}) */",
 			})
 			res.Warnings = append(res.Warnings, "r.Status().Update() flagged — replace with r.kube.PatchStatus")
 		}
@@ -189,6 +193,9 @@ func Rewrite(src []byte) (*Result, error) {
 
 	result := applyReplacements(src, reps)
 
+	// Rewrite r.Get/Create/Patch → r.kube.* with kubeclient signatures.
+	result = rewriteKubeCalls(result, receiverName)
+
 	// Rewrite struct and inject constructor — parse fresh after replacements.
 	result, structFound := rewriteStruct(result, res.ReceiverType)
 	if !structFound {
@@ -206,6 +213,138 @@ func Rewrite(src []byte) (*Result, error) {
 	}
 
 	return res, nil
+}
+
+// rewriteKubeCalls rewrites r.Get/Create/Patch (and r.<field>.Get/Create/Patch)
+// to r.kube.* with kubeclient signatures:
+//
+//	Get(ctx, namespace, name, obj)   — splits the controller-runtime ObjectKey
+//	Create(ctx, obj)                 — drops variadic opts
+//	Patch(ctx, obj, patch)           — drops variadic opts
+func rewriteKubeCalls(src []byte, receiverName string) []byte {
+	if receiverName == "" {
+		return src
+	}
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "", src, parser.ParseComments)
+	if err != nil {
+		return src
+	}
+
+	var reps []replacement
+
+	ast.Inspect(f, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		op := sel.Sel.Name
+		if op != "Get" && op != "Create" && op != "Patch" {
+			return true
+		}
+
+		// Match r.Op(...) or r.<field>.Op(...)
+		isReceiver := false
+		if ident, ok2 := sel.X.(*ast.Ident); ok2 && ident.Name == receiverName {
+			isReceiver = true
+		} else if outer, ok2 := sel.X.(*ast.SelectorExpr); ok2 {
+			if ident, ok3 := outer.X.(*ast.Ident); ok3 && ident.Name == receiverName {
+				isReceiver = true
+			}
+		}
+		if !isReceiver {
+			return true
+		}
+
+		// Rewrite the function selector to r.kube.Op
+		reps = append(reps, replacement{
+			start: off(fset, call.Fun.Pos()),
+			end:   off(fset, call.Fun.End()),
+			text:  receiverName + ".kube." + op,
+		})
+
+		switch op {
+		case "Get":
+			// (ctx, ObjectKey{Namespace: X, Name: Y}, obj, opts...) → (ctx, X, Y, obj)
+			if len(call.Args) < 3 {
+				return true
+			}
+			ctxText := sliceSrc(src, fset, call.Args[0])
+			objText := sliceSrc(src, fset, call.Args[2])
+			ns, name := extractObjectKeyFields(src, fset, call.Args[1])
+			var newArgs string
+			if ns != "" && name != "" {
+				newArgs = ctxText + ", " + ns + ", " + name + ", " + objText
+			} else {
+				keyText := sliceSrc(src, fset, call.Args[1])
+				newArgs = ctxText + `, namespace, name, ` + objText +
+					` /* TODO(ork migrate): extract namespace+name from: ` + keyText + ` */`
+			}
+			reps = append(reps, replacement{
+				start: off(fset, call.Args[0].Pos()),
+				end:   off(fset, call.Args[len(call.Args)-1].End()),
+				text:  newArgs,
+			})
+
+		case "Create":
+			// (ctx, obj, opts...) → (ctx, obj)
+			if len(call.Args) > 2 {
+				ctxText := sliceSrc(src, fset, call.Args[0])
+				objText := sliceSrc(src, fset, call.Args[1])
+				reps = append(reps, replacement{
+					start: off(fset, call.Args[0].Pos()),
+					end:   off(fset, call.Args[len(call.Args)-1].End()),
+					text:  ctxText + ", " + objText,
+				})
+			}
+
+		case "Patch":
+			// (ctx, obj, patch, opts...) → (ctx, obj, patch)
+			if len(call.Args) > 3 {
+				ctxText := sliceSrc(src, fset, call.Args[0])
+				objText := sliceSrc(src, fset, call.Args[1])
+				patchText := sliceSrc(src, fset, call.Args[2])
+				reps = append(reps, replacement{
+					start: off(fset, call.Args[0].Pos()),
+					end:   off(fset, call.Args[len(call.Args)-1].End()),
+					text:  ctxText + ", " + objText + ", " + patchText,
+				})
+			}
+		}
+		return true
+	})
+
+	return applyReplacements(src, reps)
+}
+
+// extractObjectKeyFields extracts Namespace and Name text from a client.ObjectKey composite literal.
+func extractObjectKeyFields(src []byte, fset *token.FileSet, n ast.Node) (namespace, name string) {
+	lit, ok := n.(*ast.CompositeLit)
+	if !ok {
+		return "", ""
+	}
+	for _, elt := range lit.Elts {
+		kv, ok := elt.(*ast.KeyValueExpr)
+		if !ok {
+			continue
+		}
+		key, ok := kv.Key.(*ast.Ident)
+		if !ok {
+			continue
+		}
+		val := sliceSrc(src, fset, kv.Value)
+		switch key.Name {
+		case "Namespace":
+			namespace = val
+		case "Name":
+			name = val
+		}
+	}
+	return
 }
 
 // rewriteStruct finds the reconciler struct by name, replaces its fields with

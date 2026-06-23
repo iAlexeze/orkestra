@@ -136,7 +136,7 @@ func runStatusPatch[PTR domain.Object](
 		}
 	}
 
-	return r.kube.PatchStatus(ctx, obj, r.crd.GVR(), patch)
+	return r.kube.PatchStatus(ctx, obj, patch)
 }
 
 // buildReadyCondition constructs the standard Kubernetes Ready condition map.

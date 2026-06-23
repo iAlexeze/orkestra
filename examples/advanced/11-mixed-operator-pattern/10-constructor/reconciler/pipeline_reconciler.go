@@ -104,7 +104,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, key string) error {
 	// ── Finalizer ─────────────────────────────────────────────────────────
 	if !containsFinalizer(pipeline, finalizerName) {
 		pipeline.Finalizers = append(pipeline.Finalizers, finalizerName)
-		if err := r.kube.PatchFinalizers(ctx, pipeline, apiv1.GroupVersionResource, pipeline.Finalizers); err != nil {
+		if err := r.kube.PatchFinalizers(ctx, pipeline, pipeline.Finalizers); err != nil {
 			return fmt.Errorf("adding finalizer: %w", err)
 		}
 	}
@@ -245,7 +245,7 @@ func (r *PipelineReconciler) handleDeletion(ctx context.Context, p *apiv1.Pipeli
 			newFinalizers = append(newFinalizers, f)
 		}
 	}
-	return r.kube.PatchFinalizers(ctx, p, apiv1.GroupVersionResource, newFinalizers)
+	return r.kube.PatchFinalizers(ctx, p, newFinalizers)
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -268,7 +268,7 @@ func (r *PipelineReconciler) patchStatus(ctx context.Context, p *apiv1.Pipeline)
 	if p.Status.CompletionTime != nil {
 		patch["completionTime"] = p.Status.CompletionTime.Format(time.RFC3339)
 	}
-	return r.kube.PatchStatus(ctx, p, apiv1.GroupVersionResource, patch)
+	return r.kube.PatchStatus(ctx, p, patch)
 }
 
 func (r *PipelineReconciler) getJob(ctx context.Context, namespace, name string) (*batchv1.Job, error) {

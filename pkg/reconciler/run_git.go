@@ -152,7 +152,7 @@ func runGit(
 		// Patch annotation only when we have a new commit — avoids a write
 		// on every reconcile when nothing has changed.
 		if result.Commit != "" && result.Commit != lastCommit {
-			if patchErr := patchLastCommitAnnotation(ctx, kube, obj, gvr, result.Commit); patchErr != nil {
+			if patchErr := patchLastCommitAnnotation(ctx, kube, obj, result.Commit); patchErr != nil {
 				// Non-fatal: the annotation patch failing doesn't mean the Git
 				// operation failed. Log the warning but don't halt reconciliation.
 				log.Warn().

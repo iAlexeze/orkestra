@@ -106,7 +106,7 @@ func (r *GenericReconciler[PTR]) ensureFinalizers(ctx context.Context, obj PTR) 
 	r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.APITypes.Kind+"FinalizerAdded",
 		fmt.Sprintf("Added finalizers to %s/%s", obj.GetNamespace(), obj.GetName()))
 
-	return r.kube.PatchFinalizers(ctx, obj, r.crd.GVR(), newFinalizers)
+	return r.kube.PatchFinalizers(ctx, obj, newFinalizers)
 }
 
 func (r *GenericReconciler[PTR]) removeFinalizers(ctx context.Context, obj PTR) error {
@@ -129,7 +129,7 @@ func (r *GenericReconciler[PTR]) removeFinalizers(ctx context.Context, obj PTR) 
 		Str("name", obj.GetName()).
 		Msgf("removing finalizers: %v → %v", obj.GetFinalizers(), newFinalizers)
 
-	return r.kube.PatchFinalizers(ctx, obj, r.crd.GVR(), newFinalizers)
+	return r.kube.PatchFinalizers(ctx, obj, newFinalizers)
 }
 
 // ── Finalizer helpers — exported for custom reconcilers ───────────────────────

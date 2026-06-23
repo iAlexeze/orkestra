@@ -414,14 +414,14 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	}
 
 	// One atomic patch: diff serverLabels → desired. No-op if nothing changed.
-	if err := r.kube.PatchLabels(ctx, obj, r.crd.GVR(), serverLabels, obj.GetLabels()); err != nil {
+	if err := r.kube.PatchLabels(ctx, obj, serverLabels, obj.GetLabels()); err != nil {
 		return err
 	}
 
 	// Annotations only ever add keys (managed-by, managed-since are write-once),
 	// so a plain Merge Patch with the desired map is correct here.
 	if labelMgr.EnsureManagedAnnotations(obj, r.crd.KatalogName) {
-		if err := r.kube.PatchAnnotations(ctx, obj, r.crd.GVR(), obj.GetAnnotations()); err != nil {
+		if err := r.kube.PatchAnnotations(ctx, obj, obj.GetAnnotations()); err != nil {
 			return err
 		}
 	}

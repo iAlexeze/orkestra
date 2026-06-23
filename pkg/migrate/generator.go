@@ -343,7 +343,7 @@ Work through each marker in order:
 - [ ] Replace the embedded ` + "`" + `client.Client` + "`" + ` struct field with ` + "`" + `kube kubeclient.KubeClient` + "`" + `
 - [ ] Update your constructor to accept ` + "`" + `(kube kubeclient.KubeClient, informer cache.SharedIndexInformer, ev event.Recorder)` + "`" + `
 - [ ] Rename ` + "`" + `r.client` + "`" + ` → ` + "`" + `r.kube` + "`" + ` at all call sites (` + "`" + `Patch` + "`" + ` lines compile unchanged — only the receiver name changes)
-- [ ] Replace ` + "`" + `r.Status().Update()` + "`" + ` with ` + "`" + `r.kube.PatchStatus(ctx, obj, gvr, map[string]interface{}{...})` + "`" + `
+- [ ] Replace ` + "`" + `r.Status().Update()` + "`" + ` with ` + "`" + `r.kube.PatchStatus(ctx, obj, map[string]interface{}{...})` + "`" + `
 - [ ] Add ` + "`" + `github.com/orkspace/orkestra/domain` + "`" + ` and ` + "`" + `pkg/kubeclient` + "`" + ` imports
 - [ ] Fill in resource assertions in ` + "`" + `simulate.yaml` + "`" + ` and ` + "`" + `e2e.yaml` + "`" + `
 - [ ] Delete ` + "`" + `main.go` + "`" + `, scheme registration, and manager setup
@@ -447,7 +447,7 @@ Only the receiver changes: ` + "`" + `r.client` + "`" + ` → ` + "`" + `r.kube`
 
 **` + "`" + `r.Status().Update()` + "`" + ` must be replaced manually.**
 The tool flags it but cannot rewrite it — the status fields and GVR are
-specific to your CRD. Replace with ` + "`" + `r.kube.PatchStatus(ctx, obj, gvr, fields)` + "`" + `.
+specific to your CRD. Replace with ` + "`" + `r.kube.PatchStatus(ctx, obj, fields)` + "`" + `.
 
 **` + "`" + `ctrl.Result{RequeueAfter: X}` + "`" + ` has no direct equivalent.**
 A non-nil error requeues with exponential backoff. To requeue without

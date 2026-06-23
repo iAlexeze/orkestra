@@ -6,7 +6,6 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	sigs "sigs.k8s.io/controller-runtime/pkg/client"
@@ -31,10 +30,10 @@ type KubeClient interface {
 
 	// Patch helpers — used by the generic reconciler for finalizer, label,
 	// annotation, and status updates. Implementations must be idempotent.
-	PatchFinalizers(ctx context.Context, obj runtime.Object, gvr schema.GroupVersionResource, finalizers []string) error
-	PatchLabels(ctx context.Context, obj runtime.Object, gvr schema.GroupVersionResource, base, desired map[string]string) error
-	PatchAnnotations(ctx context.Context, obj runtime.Object, gvr schema.GroupVersionResource, annotations map[string]string) error
-	PatchStatus(ctx context.Context, obj domain.Object, gvr schema.GroupVersionResource, statusFields map[string]interface{}) error
+	PatchFinalizers(ctx context.Context, obj runtime.Object, finalizers []string) error
+	PatchLabels(ctx context.Context, obj runtime.Object, base, desired map[string]string) error
+	PatchAnnotations(ctx context.Context, obj runtime.Object, annotations map[string]string) error
+	PatchStatus(ctx context.Context, obj domain.Object, statusFields map[string]interface{}) error
 }
 
 // Compile check — *Kubeclient must satisfy this.
