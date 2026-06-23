@@ -386,7 +386,7 @@ func (k *Katalog) ConversionWindow() int {
 //   - endpoint is optional (runtime may populate it)
 //   - spec: must be present (CRDs required)
 func (k *Katalog) IsGatewayEnabled() bool {
-	return k.Gateway != nil && k.Gateway.Enabled
+	return k.Gateway != nil && (k.Gateway.Enabled || k.Gateway.Endpoint != "")
 }
 
 // IsStandaloneGateway reports whether this Katalog is deployed as a standalone

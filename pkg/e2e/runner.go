@@ -33,7 +33,9 @@ import (
 	"github.com/orkspace/orkestra/pkg/motif"
 	"github.com/orkspace/orkestra/pkg/ork"
 	"github.com/orkspace/orkestra/pkg/registry"
+	"github.com/orkspace/orkestra/pkg/spinner"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	orkutils "github.com/orkspace/orkestra/pkg/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -82,7 +84,7 @@ func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster, devServer bool,
 	}
 
 	var e2e orktypes.E2E
-	if err := yaml.Unmarshal(data, &e2e); err != nil {
+	if err := orkutils.StrictUnmarshal(data, &e2e); err != nil {
 		return nil, fmt.Errorf("parsing %s: %w", e2eFile, err)
 	}
 	if e2e.Kind != "E2E" {
@@ -300,12 +302,13 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 			}
 
 			if !ork.RuntimeInstalled() {
-				fmt.Printf("→ Installing Orkestra%s\n", text)
+				sp := spinner.Start("Installing Orkestra" + text)
 				if err := ork.InstallOrUpgradeOrkestra(r.orkestraVersion, r.valueFiles, r.helmArgs...); err != nil {
+					sp.Failure()
 					return nil, fmt.Errorf("helm install: %w", err)
 				}
+				sp.Success()
 				installedOrkestra = true
-				fmt.Printf("  ✓ Orkestra installed\n")
 			} else {
 				// Orkestra already running — sync bundle silently.
 				if err := ork.SyncRuntime(); err != nil {
@@ -317,12 +320,13 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 							return nil, fmt.Errorf("syncing Orkestra gateway: %w", err)
 						}
 					} else {
-						fmt.Printf("→ Upgrading Orkestra to enable gateway...\n")
+						sp := spinner.Start("Upgrading Orkestra to enable gateway...")
 						if err := ork.InstallOrUpgradeOrkestra(r.orkestraVersion, r.valueFiles, r.helmArgs...); err != nil {
+							sp.Failure()
 							return nil, fmt.Errorf("helm upgrade: %w", err)
 						}
+						sp.Success()
 						installedOrkestra = true
-						fmt.Printf("  ✓ Orkestra upgraded with gateway\n")
 					}
 				}
 				// Health check — silent, still blocks until ready.
@@ -337,20 +341,15 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 			}
 
 			if installedOrkestra {
-				fmt.Printf("→ Waiting for Orkestra to be ready...\n")
 				status := ork.CheckRuntimeHealth()
 				if !status.Running {
 					return nil, fmt.Errorf("Orkestra runtime not ready: %s", status.Reason)
 				}
-				fmt.Printf("  ✓ Orkestra runtime ready\n\n")
-
 				if gatewayEnabled {
-					fmt.Printf("→ Waiting for Orkestra gateway to be ready...\n")
 					status := ork.CheckGatewayHealth()
 					if !status.Running {
 						return nil, fmt.Errorf("Orkestra gateway not ready: %s", status.Reason)
 					}
-					fmt.Printf("  ✓ Orkestra gateway ready\n\n")
 				}
 			}
 		}
@@ -514,7 +513,6 @@ func (r *Runner) ensureCluster(ctx context.Context) error {
 		}
 	}
 
-	fmt.Printf("→ Ensuring cluster '%s'...\n", name)
 	return ork.EnsureKindCluster(name)
 }
 
@@ -683,11 +681,12 @@ func (r *Runner) applySetup(ctx context.Context) ([]string, error) {
 
 	// ── Phase 2: helm ─────────────────────────────────────────────────────────
 	for _, h := range s.Helm {
-		fmt.Printf("→ Installing %s/%s...\n", h.Repo, h.Chart)
+		sp := spinner.Start(fmt.Sprintf("Installing %s...", h.ReleaseName()))
 		if err := ork.HelmInstall(ctx, h); err != nil {
+			sp.Failure()
 			return applied, fmt.Errorf("setup helm %s/%s: %w", h.Repo, h.Chart, err)
 		}
-		fmt.Printf("  ✓ Installed %s\n", h.ReleaseName())
+		sp.Success()
 	}
 
 	// ── Phase 3: wait ─────────────────────────────────────────────────────────
@@ -696,11 +695,12 @@ func (r *Runner) applySetup(ctx context.Context) ([]string, error) {
 		if w.Namespace != "" {
 			loc += " (" + w.Namespace + ")"
 		}
-		fmt.Printf("→ Waiting for %s...\n", loc)
+		sp := spinner.Start(fmt.Sprintf("Waiting for %s...", loc))
 		if err := ork.WaitForResource(ctx, w); err != nil {
+			sp.Failure()
 			return applied, fmt.Errorf("setup wait: %w", err)
 		}
-		fmt.Printf("  ✓ Ready\n")
+		sp.Success()
 	}
 
 	return applied, nil

@@ -73,7 +73,7 @@ type ResolvedCustomResourceSpec struct {
 
 // Create creates the custom resource described by spec if it does not already exist.
 // Idempotent — skips if resource exists. Owner reference set for cascade deletion.
-func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedCustomResourceSpec) error {
+func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedCustomResourceSpec, labelMgr *orklabels.Manager, shouldProtect bool) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("custom.Create: %w", err)
 	}
@@ -116,11 +116,14 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	}
 	if err == nil {
 		// Resource already exists — enforce spec so OnCreate is idempotent.
-		return Update(ctx, kube, owner, spec)
+		return Update(ctx, kube, owner, spec, labelMgr, shouldProtect)
 	}
 
 	// Build unstructured object
 	obj := buildUnstructured(spec, owner, gvk, namespace)
+	if labelMgr != nil {
+		labelMgr.EnsureDeletionProtectionLabel(obj, shouldProtect)
+	}
 
 	// Create
 	_, err = resourceIfc.Create(ctx, obj, metav1.CreateOptions{})
@@ -139,7 +142,7 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 
 // Update reconciles an existing custom resource to match the resolved spec.
 // If the resource does not exist, it will be created.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedCustomResourceSpec) error {
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedCustomResourceSpec, labelMgr *orklabels.Manager, shouldProtect bool) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("custom.Update: %w", err)
 	}
@@ -179,7 +182,7 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 				Str("custom", name).
 				Str("namespace", namespace).
 				Msg("custom resource not found during reconcile — recreating")
-			return Create(ctx, kube, owner, spec)
+			return Create(ctx, kube, owner, spec, labelMgr, shouldProtect)
 		}
 		return fmt.Errorf("custom.Update: getting %q: %w", name, err)
 	}
@@ -216,6 +219,9 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		// Use direct map assignment (not SetNestedField) to avoid DeepCopyJSONValue
 		// panicking on non-JSON-safe types (int, int64) produced by YAML unmarshalling.
 		updated := existing.DeepCopy()
+		if labelMgr != nil {
+			labelMgr.EnsureDeletionProtectionLabel(updated, shouldProtect)
+		}
 		if desired.Object["spec"] != nil {
 			updated.Object["spec"] = orktmpl.ToJSONSafe(desired.Object["spec"])
 		}

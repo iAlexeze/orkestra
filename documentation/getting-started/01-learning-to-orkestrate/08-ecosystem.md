@@ -18,8 +18,8 @@ ork init --pack ecosystem-composition
 | `01-cert-manager` | `SecurityConfig` → cert-manager `Certificate` |
 | `02-prometheus` | `MonitoringConfig` → `ServiceMonitor` + `PrometheusRule` |
 | `03-crossplane` | `Infra` → Crossplane Composite Claim |
-| `04-platform-stack` | All four in one Komposer |
-| `05-policy-layer` | Shared admission motif across all four |
+| `04-platform-stack` | All four in one Komposer, gateway admission + deletion protection |
+| `05-all-in-one` | One `PlatformResource` CRD, `workloadType` discriminator |
 
 ---
 

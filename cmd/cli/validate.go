@@ -15,6 +15,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	orkutils "github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -207,7 +208,7 @@ func validateE2EFile(path string) error {
 	}
 
 	var doc orktypes.E2E
-	if err := yaml.Unmarshal(data, &doc); err != nil {
+	if err := orkutils.StrictUnmarshal(data, &doc); err != nil {
 		return fmt.Errorf("parsing %s: %w", path, err)
 	}
 

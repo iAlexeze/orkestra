@@ -22,9 +22,12 @@ package katalog
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/orkspace/orkestra/pkg/children"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // DeletionProtectionGVRs returns the list of GVRs that the deletion‑protection
@@ -117,7 +120,10 @@ func orkestraInternalGVRs() []GVREntry {
 // Those are protected separately by the first webhook (CRD protection) using
 // DeletionProtectedCRDNames(), which respects ShouldProtectCRD().
 func (k *Katalog) customResourceGVRs() []GVREntry {
+	seen := make(map[string]bool)
 	var gvrList []GVREntry
+
+	// Owner CRDs managed by this Katalog.
 	for _, crd := range k.enabledCRDs {
 		if !crd.ShouldProtectCRs() {
 			continue
@@ -126,15 +132,69 @@ func (k *Katalog) customResourceGVRs() []GVREntry {
 			continue
 		}
 		gvr := crd.GVR()
+		key := gvr.String()
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
 		gvrList = append(gvrList, GVREntry{
-			Key:        gvr.String(),
+			Key:        key,
 			Group:      gvr.Group,
 			Version:    gvr.Version,
 			Resource:   gvr.Resource,
 			Operations: []string{"DELETE"},
 		})
 	}
+
+	// Custom children declared in onCreate/onReconcile custom blocks.
+	// Respects the parent CRD's ShouldProtectCRs() — if the parent opts out,
+	// its children are not registered either.
+	for _, crd := range k.enabledCRDs {
+		if !crd.ShouldProtectCRs() {
+			continue
+		}
+		gvrList = append(gvrList, customChildGVRs(crd, seen)...)
+	}
+
 	return gvrList
+}
+
+// customChildGVRs derives GVREntries from the custom: blocks of one CRD's
+// onCreate and onReconcile, skipping any already in seen.
+func customChildGVRs(crd orktypes.CRDEntry, seen map[string]bool) []GVREntry {
+	var entries []orktypes.CustomResourceTemplateSource
+	if crd.OperatorBox.OnCreate != nil {
+		entries = append(entries, crd.OperatorBox.OnCreate.CustomResource...)
+	}
+	if crd.OperatorBox.OnReconcile != nil {
+		entries = append(entries, crd.OperatorBox.OnReconcile.CustomResource...)
+	}
+
+	var out []GVREntry
+	for _, entry := range entries {
+		if entry.APIVersion == "" || entry.Kind == "" {
+			continue
+		}
+		gv, err := schema.ParseGroupVersion(entry.APIVersion)
+		if err != nil {
+			continue
+		}
+		plural := strings.ToLower(entry.Kind) + "s"
+		gvr := schema.GroupVersionResource{Group: gv.Group, Version: gv.Version, Resource: plural}
+		key := gvr.String()
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, GVREntry{
+			Key:        key,
+			Group:      gv.Group,
+			Version:    gv.Version,
+			Resource:   plural,
+			Operations: []string{"DELETE"},
+		})
+	}
+	return out
 }
 
 // DeletionProtectedCRDNames returns the set of CRD full names (plural.group)
@@ -163,6 +223,8 @@ func (k *Katalog) DeletionProtectedCRDNames() map[string]struct{} {
 		return nil
 	}
 	names := make(map[string]struct{}, len(k.enabledCRDs))
+
+	// Owner CRDs managed by this Katalog.
 	for _, crd := range k.enabledCRDs {
 		if crd.IsBuiltIn {
 			continue
@@ -174,5 +236,35 @@ func (k *Katalog) DeletionProtectedCRDNames() map[string]struct{} {
 			names[crd.APITypes.Plural+"."+crd.APITypes.Group] = struct{}{}
 		}
 	}
+
+	// Custom children declared in onCreate/onReconcile custom blocks.
+	// Protecting CR instances without protecting the CRD type is incomplete —
+	// deleting the CRD cascades all instances regardless of instance-level protection.
+	// Respects the parent CRD's ShouldProtectCRD() — if the parent opts out,
+	// its children's CRD types are not protected either.
+	for _, crd := range k.enabledCRDs {
+		if !crd.ShouldProtectCRD() {
+			continue
+		}
+		var entries []orktypes.CustomResourceTemplateSource
+		if crd.OperatorBox.OnCreate != nil {
+			entries = append(entries, crd.OperatorBox.OnCreate.CustomResource...)
+		}
+		if crd.OperatorBox.OnReconcile != nil {
+			entries = append(entries, crd.OperatorBox.OnReconcile.CustomResource...)
+		}
+		for _, entry := range entries {
+			if entry.APIVersion == "" || entry.Kind == "" {
+				continue
+			}
+			gv, err := schema.ParseGroupVersion(entry.APIVersion)
+			if err != nil || gv.Group == "" {
+				continue
+			}
+			plural := strings.ToLower(entry.Kind) + "s"
+			names[plural+"."+gv.Group] = struct{}{}
+		}
+	}
+
 	return names
 }

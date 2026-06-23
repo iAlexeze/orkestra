@@ -69,6 +69,10 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 			Resources: []string{"namespaces"},
 			Verbs:     []string{"get", "patch"},
 		})
+
+		// Custom CRs registered in the deletion-protection webhook need GET so
+		// the gateway can read the instance and check its protection label/annotation.
+		rules = append(rules, k.customResourceDeletionProtectionRBACRules()...)
 	}
 
 	// ───────────────────────────────────────────────
@@ -595,6 +599,30 @@ func customRBACRulesForCRD(crd orktypes.CRDEntry) []rbacv1.PolicyRule {
 			Resources: []string{plural},
 			Verbs:     defaultVerbs,
 		})
+	}
+	return rules
+}
+
+// customResourceDeletionProtectionRBACRules returns gateway RBAC rules granting
+// GET on every custom child resource that the deletion-protection webhook
+// intercepts. Mirrors customRBACRulesForCRD but uses get-only verbs — the
+// gateway reads each object to check its protection label before allowing the DELETE.
+func (k *Katalog) customResourceDeletionProtectionRBACRules() []rbacv1.PolicyRule {
+	seen := make(map[string]bool)
+	var rules []rbacv1.PolicyRule
+	for _, crd := range k.Enabled() {
+		for _, rule := range customRBACRulesForCRD(crd) {
+			key := strings.Join(rule.APIGroups, ",") + "/" + strings.Join(rule.Resources, ",")
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			rules = append(rules, rbacv1.PolicyRule{
+				APIGroups: rule.APIGroups,
+				Resources: rule.Resources,
+				Verbs:     []string{"get"},
+			})
+		}
 	}
 	return rules
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/children"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -137,6 +138,11 @@ func (r *GenericReconciler[PTR]) runResourceGroup(
 	// nil-safe: if CRD has no restrictions, guard is a no-op.
 	guard := r.namespaceGuardFunc(ctx, obj)
 
+	labelMgr := orklabels.NewManager(orklabels.Config{
+		Standalone:                r.kat.IsStandaloneGateway(),
+		DeletionProtectionEnabled: r.kat.IsDeletionProtectionEnabled(),
+	})
+
 	// Create namespaces first
 	if err := runNamespaces(ctx, kube, resolver, obj,
 		children.ExpandForEachNamespaces(resolver, t.Namespaces), update); err != nil {
@@ -164,7 +170,8 @@ func (r *GenericReconciler[PTR]) runResourceGroup(
 		return err
 	}
 	if err := runCustomResources(ctx, kube, resolver, obj,
-		children.ExpandForEachCustomResources(resolver, t.CustomResource), update, guard); err != nil {
+		children.ExpandForEachCustomResources(resolver, t.CustomResource), update, guard, labelMgr,
+		r.kat.IsDeletionProtectionEnabled() && r.crd.ShouldProtectCRs()); err != nil {
 		return err
 	}
 	if err := runReplicaSets(ctx, kube, resolver, obj,
