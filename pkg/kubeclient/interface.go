@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	sigs "sigs.k8s.io/controller-runtime/pkg/client"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 )
@@ -19,7 +20,16 @@ type KubeClient interface {
 	DynamicClient() dynamic.Interface
 	Mapper() meta.RESTMapper
 
-	// Patch helpers — used by the reconciler for finalizer, label,
+	// CRUD — typed object operations for constructor reconcilers.
+	// Accepts sigs.k8s.io/controller-runtime/pkg/client.Object so reconcilers
+	// migrated from controller-runtime compile without changes to their call sites.
+	// GVR is derived from the Go type via the scheme and mapper; callers do not
+	// need to specify it explicitly.
+	Get(ctx context.Context, namespace, name string, into sigs.Object) error
+	Create(ctx context.Context, obj sigs.Object) error
+	Patch(ctx context.Context, obj sigs.Object, patch Patch) error
+
+	// Patch helpers — used by the generic reconciler for finalizer, label,
 	// annotation, and status updates. Implementations must be idempotent.
 	PatchFinalizers(ctx context.Context, obj runtime.Object, gvr schema.GroupVersionResource, finalizers []string) error
 	PatchLabels(ctx context.Context, obj runtime.Object, gvr schema.GroupVersionResource, base, desired map[string]string) error
