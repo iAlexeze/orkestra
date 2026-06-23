@@ -220,12 +220,26 @@ func validateE2EFile(path string) error {
 	if doc.Metadata.Name == "" {
 		errs = append(errs, "metadata.name is required")
 	}
-	if !isAggregator {
-		if doc.Spec.Katalog == "" && doc.Spec.Init == nil && !doc.Spec.CustomOperator {
-			errs = append(errs, "spec.katalog is required (or spec.init for example packs, spec.customOperator for custom operators, or imports)")
+	isCustom := doc.Spec.Custom != nil && doc.Spec.Custom.Target != ""
+	if isCustom {
+		switch doc.Spec.Custom.Target {
+		case orktypes.CustomTargetKubernetes:
+			// valid and supported
+		case orktypes.CustomTargetContainer:
+			return fmt.Errorf("spec.custom.target \"container\" is coming soon — not yet supported in this version")
+		default:
+			errs = append(errs, fmt.Sprintf(
+				"spec.custom.target %q is not supported — valid values: kubernetes, container",
+				doc.Spec.Custom.Target,
+			))
 		}
-		if doc.Spec.CRD == "" && doc.Spec.Init == nil && !doc.Spec.CustomOperator {
-			errs = append(errs, "spec.crd is required (or spec.init for example packs, spec.customOperator for custom operators, or imports)")
+	}
+	if !isAggregator {
+		if doc.Spec.Katalog == "" && doc.Spec.Init == nil && !isCustom {
+			errs = append(errs, "spec.katalog is required (or spec.init for example packs, spec.custom.target for custom targets, or imports)")
+		}
+		if doc.Spec.CRD == "" && doc.Spec.Init == nil && !isCustom {
+			errs = append(errs, "spec.crd is required (or spec.init for example packs, spec.custom.target for custom targets, or imports)")
 		}
 		if doc.Spec.CR == "" && doc.Spec.Init == nil {
 			errs = append(errs, "spec.cr is required (or spec.init for example packs, or imports)")
@@ -266,8 +280,8 @@ func validateE2EFile(path string) error {
 		fmt.Printf("    %s\n", gray(doc.Metadata.Description))
 	}
 	if !isAggregator {
-		if doc.Spec.CustomOperator {
-			fmt.Printf("    %s\n", gray("mode    : custom operator (Orkestra install skipped)"))
+		if isCustom {
+			fmt.Printf("    %s\n", gray(fmt.Sprintf("mode    : custom target (%s — Orkestra install skipped)", doc.Spec.Custom.Target)))
 		}
 		fmt.Printf("    %s\n",
 			gray(fmt.Sprintf("katalog : %s\n    crd     : %s\n    cr      : %s",

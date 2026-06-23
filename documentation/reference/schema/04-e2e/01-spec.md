@@ -13,7 +13,7 @@ spec:
   katalog: ./katalog.yaml
 ```
 
-Optional when `spec.customOperator: true` — see [05-custom-operator.md](05-custom-operator.md).
+Optional when `spec.custom.target` is set — see [05-custom-target.md](05-custom-target.md).
 
 ---
 
@@ -61,13 +61,14 @@ spec:
 
 ---
 
-## `spec.customOperator`
+## `spec.custom`
 
-Declares that this test uses its own operator. Skips bundle generation and Orkestra helm install/uninstall. Everything else runs unchanged.
+Declares the target runtime when Orkestra is not the operator under test. Bundle generation and Orkestra helm install/uninstall are skipped. Everything else runs unchanged.
 
 ```yaml
 spec:
-  customOperator: true
+  custom:
+    target: kubernetes
   crd: ./crd.yaml
   cr: ./cr.yaml
   setup:
@@ -76,7 +77,9 @@ spec:
         chart: my-operator
 ```
 
-See [05-custom-operator.md](05-custom-operator.md) for full documentation and use cases.
+`target` must be `kubernetes`. `container` is reserved and not yet supported.
+
+See [05-custom-target.md](05-custom-target.md) for full documentation and use cases.
 
 ---
 

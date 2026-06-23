@@ -3,12 +3,13 @@ kind: E2E
 metadata:
   name: cert-manager-e2e
   description: >
-    customOperator: true — cert-manager installed via setup.helm.
+    custom.target: kubernetes — cert-manager installed via setup.helm.
     Applies a self-signed Certificate CR and asserts the TLS Secret is created.
     No Orkestra bundle or helm install — ork e2e is the test harness only.
 
 spec:
-  customOperator: true
+  custom:
+    target: kubernetes
   cr: ./cr.yaml
 
   cluster:

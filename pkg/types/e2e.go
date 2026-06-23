@@ -178,11 +178,37 @@ type E2EMeta struct {
 	Description string `yaml:"description,omitempty"`
 }
 
+// CustomTarget identifies the runtime environment being tested when Orkestra
+// is not the operator. Validation rejects values outside the known set.
+type CustomTarget string
+
+const (
+	// CustomTargetKubernetes tests a workload that runs on Kubernetes — an operator,
+	// Helm chart, or raw manifests. Orkestra manages the cluster lifecycle and
+	// assertions; bundle generation and Orkestra helm install/uninstall are skipped.
+	CustomTargetKubernetes CustomTarget = "kubernetes"
+
+	// CustomTargetContainer tests a container image directly without a cluster.
+	// Future: build image → run container gate → embed OCI annotations → push.
+	// Not yet implemented; validation accepts the value but no runner path exists.
+	CustomTargetContainer CustomTarget = "container"
+)
+
+// String implements fmt.Stringer.
+func (t CustomTarget) String() string { return string(t) }
+
+// E2ECustomConfig declares the target runtime when testing non-Orkestra workloads.
+type E2ECustomConfig struct {
+	// Target is the runtime environment under test. Supported values: "kubernetes".
+	// "container" is reserved for future use.
+	Target CustomTarget `yaml:"target"`
+}
+
 type E2ESpec struct {
 	// Core operator spec — the three files that define every Orkestra operator.
 
 	// Katalog is the path to the katalog.yaml file.
-	// Optional when customOperator is true.
+	// Optional when spec.custom.target is set.
 	Katalog string `yaml:"katalog,omitempty"`
 	// CRD is the path to the CRD YAML file for this operator.
 	// Applied before the bundle and before Orkestra starts.
@@ -190,14 +216,15 @@ type E2ESpec struct {
 	// CR is the path to the CR YAML file to apply during the test.
 	CR string `yaml:"cr,omitempty"`
 
-	// CustomOperator declares that this test uses its own operator rather than
-	// Orkestra's reconcile loop. Bundle generation and Orkestra helm install/uninstall
-	// are skipped. Everything else runs unchanged: cluster setup, CRD apply, setup
-	// manifests, CR apply, assertions, and cleanup.
+	// Custom declares the target runtime for this e2e test when it is not an
+	// Orkestra-managed operator. Orkestra still owns the cluster lifecycle, setup,
+	// CR apply, assertions, and cleanup — only the bundle generation and
+	// Orkestra helm install/uninstall are skipped.
 	//
-	// Use this when your operator is installed via setup.helm or is already present
-	// in the cluster. See documentation/reference/schema/04-e2e/05-custom-operator.md.
-	CustomOperator bool `yaml:"customOperator,omitempty"`
+	// Use this when your operator, Helm chart, or any Kubernetes workload is
+	// installed via setup.helm or is already present in the cluster.
+	// See documentation/reference/schema/04-e2e/05-custom-target.md.
+	Custom *E2ECustomConfig `yaml:"custom,omitempty"`
 
 	// Init uses an example pack — for Orkestra's own CI.
 	Init *E2EInit `yaml:"init,omitempty"`
