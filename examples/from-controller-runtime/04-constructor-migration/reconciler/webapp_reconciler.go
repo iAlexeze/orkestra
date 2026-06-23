@@ -1,3 +1,5 @@
+//go:build ignore
+
 // reconciler/webapp_reconciler.go
 //
 // The WebApp reconciler lifted from controller-runtime into Orkestra.
@@ -113,7 +115,9 @@ func (r *WebAppReconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 // reconcileDeployment — same logic as the controller-runtime baseline.
-// Get → IsNotFound → Create, else MergeFrom → Patch. Unchanged.
+// StrategicMergeFrom is used here because Deployment's container list carries
+// patchMergeKey:"name" annotations — the API server merges containers by name
+// rather than replacing the list wholesale. sigs.StrategicMergeFrom works here too.
 func (r *WebAppReconciler) reconcileDeployment(ctx context.Context, webapp *apiv1.WebApp) error {
 	replicas := webapp.Spec.Replicas
 	desired := &appsv1.Deployment{
@@ -156,12 +160,15 @@ func (r *WebAppReconciler) reconcileDeployment(ctx context.Context, webapp *apiv
 	if err != nil {
 		return err
 	}
-	patch := sigs.MergeFrom(existing.DeepCopy())
+	patch := sigs.StrategicMergeFrom(existing.DeepCopy())
 	existing.Spec = desired.Spec
 	return r.kube.Patch(ctx, existing, patch)
 }
 
-// reconcileService — same logic as the controller-runtime baseline. Unchanged.
+// reconcileService — same logic as the controller-runtime baseline.
+// MergeFrom (JSON merge patch) is correct here — Service ports have no strategic
+// merge key, so replace semantics are what the API server applies anyway.
+// sigs.MergeFrom works here too.
 func (r *WebAppReconciler) reconcileService(ctx context.Context, webapp *apiv1.WebApp) error {
 	desired := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{

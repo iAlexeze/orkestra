@@ -1,0 +1,85 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Komposer
+metadata:
+  name: webapp-all-options
+  author: myorg
+  version: 1.0.0
+  description: >
+    All five WebApp migration options running in one Orkestra runtime.
+    Local development version — katalogs are imported from local paths.
+    See komposer.yaml for the OCI version after publishing.
+
+imports:
+  files:
+    - ../01-declarative/katalog.yaml
+    - ../02-hybrid/katalog.yaml
+    - ../03-hooks-only/katalog.yaml
+    - ../04-constructor-migration/katalog.yaml
+    - ../05-constructor-orkestra-resources/katalog.yaml
+
+spec:
+  crds:
+    declarativeApp:
+      apiTypes:
+        group: allopt.demo.orkestra.io
+        version: v1alpha1
+        kind: DeclarativeApp
+        plural: declarativeapps
+      crdFile: ./crds/declarativeapp.yaml
+      workers: 3
+
+    hybridApp:
+      apiTypes:
+        group: allopt.demo.orkestra.io
+        version: v1alpha1
+        kind: HybridApp
+        plural: hybridapps
+        object: WebApp
+        objectList: WebAppList
+        location: github.com/orkspace/from-controller-runtime-demo/api/v1alpha1
+        alias: demov1alpha1
+      crdFile: ./crds/hybridapp.yaml
+      dependsOn:
+        declarativeApp:
+          condition: started
+
+    hooksApp:
+      apiTypes:
+        group: allopt.demo.orkestra.io
+        version: v1alpha1
+        kind: HooksApp
+        plural: hooksapps
+        object: WebApp
+        objectList: WebAppList
+        location: github.com/orkspace/from-controller-runtime-demo/api/v1alpha1
+        alias: demov1alpha1
+      crdFile: ./crds/hooksapp.yaml
+      dependsOn:
+        declarativeApp:
+          condition: started
+
+    constructorApp:
+      apiTypes:
+        group: allopt.demo.orkestra.io
+        version: v1alpha1
+        kind: ConstructorApp
+        plural: constructorapps
+        object: WebApp
+        objectList: WebAppList
+        location: github.com/orkspace/from-controller-runtime-demo/api/v1alpha1
+        alias: demov1alpha1
+      crdFile: ./crds/constructorapp.yaml
+      workers: 3
+
+    orkApp:
+      apiTypes:
+        group: allopt.demo.orkestra.io
+        version: v1alpha1
+        kind: OrkApp
+        plural: orkapps
+        object: WebApp
+        objectList: WebAppList
+        location: github.com/orkspace/from-controller-runtime-demo/api/v1alpha1
+        alias: demov1alpha1
+      crdFile: ./crds/orkapp.yaml
+      workers: 3

@@ -17,7 +17,7 @@ metadata:
 
 spec:
   crds:
-    ooksAp:
+    hooksApp:
       apiTypes:
         group: migration.demo.orkestra.io
         version: v1alpha1

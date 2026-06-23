@@ -84,3 +84,31 @@ docker: build-runtime
 	docker build -t $(IMAGE) .
 	@rm -f ./$(BINARY_NAME)
 	@echo "✅ Docker image built: $(IMAGE)"
+
+.PHONY: push
+push:
+	docker push $(IMAGE)
+
+.PHONY: release
+release: docker push
+
+# ── clean ─────────────────────────────────────────────────────────────────────
+.PHONY: clean
+clean:
+	@rm -f $(DEV_OUTPUT_DIR)/$(BINARY_NAME)
+	@rm -rf $(PROD_OUTPUT_DIR)
+	@echo "✅ Removed all local builds"
+
+# ── help ──────────────────────────────────────────────────────────────────────
+.PHONY: help
+help:
+	@echo "  registry       generate type registry from Katalog"
+	@echo "  build          compile full development CLI (all commands)"
+	@echo "  build-runtime  compile production binary (only 'ork run')"
+	@echo "  validate       run katalog validation (using development binary)"
+	@echo "  e2e            run end‑to‑end tests (using development binary)"
+	@echo "  simulate       run simulation tests (using development binary)"
+	@echo "  docker         build-runtime + copy into Docker image"
+	@echo "  push           push Docker image to registry"
+	@echo "  release        docker + push"
+	@echo "  clean          remove all local builds"

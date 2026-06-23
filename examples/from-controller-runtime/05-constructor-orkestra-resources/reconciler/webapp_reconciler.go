@@ -1,3 +1,5 @@
+//go:build ignore
+
 // reconciler/webapp_reconciler.go
 //
 // The WebApp constructor using Orkestra's pkg/resources library.

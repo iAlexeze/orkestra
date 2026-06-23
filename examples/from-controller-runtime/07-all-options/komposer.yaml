@@ -2,7 +2,7 @@ apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: webapp-all-options
-  author: ialexeze
+  author: myorg
   version: 1.0.0
   description: >
     All five WebApp migration options running in one Orkestra runtime.
@@ -13,11 +13,11 @@ metadata:
     All five are available. Pick the one that fits your team.
 imports:
   registry:
-    - oci://ghcr.io/ialexeze/katalogs/webapp-declarative:1.0.0
-    - oci://ghcr.io/ialexeze/katalogs/webapp-hooks:1.0.0
-    - oci://ghcr.io/ialexeze/katalogs/webapp-hooks-only:1.0.0
-    # - oci://ghcr.io/ialexeze/katalogs/webapp-constructor:1.0.0
-    - oci://ghcr.io/ialexeze/katalogs/webapp-constructor-ork:1.0.0
+    - oci://ghcr.io/myorg/katalogs/webapp-declarative:1.0.0
+    - oci://ghcr.io/myorg/katalogs/webapp-hooks:1.0.0
+    - oci://ghcr.io/myorg/katalogs/webapp-hooks-only:1.0.0
+    - oci://ghcr.io/myorg/katalogs/webapp-constructor:1.0.0
+    - oci://ghcr.io/myorg/katalogs/webapp-constructor-ork:1.0.0
 spec:
   crds:
     declarativeApp:

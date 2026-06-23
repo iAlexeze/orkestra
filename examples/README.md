@@ -24,6 +24,7 @@ ork init my-operator --pack beginner                # Simple CRDs, Deployments, 
 ork init my-operator --pack intermediate            # Multi-resource, conditions, state machines, Komposer
 ork init my-operator --pack advanced                # Hooks, constructors, validation, registries, autoscale, custom resources
 ork init my-operator --pack security                # Deletion protection, namespace isolation, admission webhooks
+ork init my-operator --pack resilience              # Operators that stay running — panic recovery, degraded state
 ork init my-operator --pack use-cases               # Full-stack, cross-CRD, external gates, multi-region, and more
 ork init my-operator --pack from-controller-runtime # Migrate from controller-runtime: all 5 options in one pack
 ork init my-operator --pack ecosystem-composition   # Build an IDP: ArgoCD, cert-manager, Crossplane, Prometheus
@@ -103,6 +104,14 @@ Protect your cluster from accidental deletions, rogue workloads, and bad input.
 | [Deletion Protection](./security/deletion-protection/) | Block deletion of critical CRs via admission. |
 | [Namespace Protection](./security/namespace-protection/) | Restrict what namespaces operators can act on. |
 
+### Resilience — `--pack resilience`
+
+Operators that stay running when things go wrong.
+
+| Example | What you learn |
+|---------|----------------|
+| [Safe Reconcile](./resilience/safe-reconcile/) | Panic isolation in the worker pool. A nil pointer in a typed hook is caught and recovered — the operator keeps running and other CRDs are unaffected. |
+
 ### Use Cases — `--pack use-cases`
 
 Real-world patterns combining multiple Orkestra features.
@@ -162,6 +171,7 @@ cd beginner/01-hello-website && ork e2e
 ork e2e -f beginner/e2e.yaml
 ork e2e -f intermediate/e2e.yaml
 ork e2e -f security/e2e.yaml
+ork e2e -f resilience/e2e.yaml
 
 # Simulate the full pack (no cluster needed)
 ork simulate ./...

@@ -121,6 +121,18 @@ Run `ork migrate` against the `00-controller-runtime-baseline` controller and se
 
 ---
 
+### [07 — all options](../from-controller-runtime/07-all-options/README.md)
+
+All five patterns running in one binary via Komposer. Each CRD has its own reconcile loop, queue, and worker pool. `hybridApp` and `hooksApp` wait for `declarativeApp` before activating.
+
+Use this to compare patterns side by side, or as the starting point before distributing each katalog independently via OCI.
+
+```
+07-all-options/
+```
+
+---
+
 ## Choosing
 
 | | Go required | Custom binary | What you own |
@@ -131,6 +143,7 @@ Run `ork migrate` against the `00-controller-runtime-baseline` controller and se
 | **04 constructor migration** | Yes — full reconciler | Yes | Reconcile logic; manager removed |
 | **05 constructor resources** | Yes — full reconciler | Yes | Reconcile logic; resource ops simplified |
 | **06 ork migrate** | Yes — tool generates it | Yes | Starting from an existing operator |
+| **07 all options** | Depends on options used | Yes | All five patterns in one Komposer |
 
 Declarative runs on the standard Orkestra runtime. All typed options require a custom runtime binary — that is what the choice costs.
 

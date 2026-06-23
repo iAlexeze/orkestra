@@ -65,6 +65,11 @@ build-runtime:
 validate:
 	$(DEV_OUTPUT_DIR)/$(BINARY_NAME) validate -f $(KATALOG)
 
+# ── simulate ───────────────────────────────────────────────────────────────────────
+.PHONY: simulate
+simulate:
+	$(DEV_OUTPUT_DIR)/$(BINARY_NAME) simulate
+
 # ── e2e ───────────────────────────────────────────────────────────────────────
 .PHONY: e2e
 e2e:
@@ -102,6 +107,7 @@ help:
 	@echo "  build-runtime  compile production binary (only 'ork run')"
 	@echo "  validate       run katalog validation (using development binary)"
 	@echo "  e2e            run end‑to‑end tests (using development binary)"
+	@echo "  simulate       run simulation tests (using development binary)"
 	@echo "  docker         build-runtime + copy into Docker image"
 	@echo "  push           push Docker image to registry"
 	@echo "  release        docker + push"

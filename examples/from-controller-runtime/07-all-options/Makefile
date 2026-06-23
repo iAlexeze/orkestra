@@ -2,7 +2,7 @@
 BINARY_NAME ?= ork
 DEV_OUTPUT_DIR  ?= $(HOME)/.orkestra/bin
 PROD_OUTPUT_DIR ?= $(HOME)/.orkestra/bin/runtime
-KATALOG     ?= komposer.yaml
+KOMPOSER     ?= komposer.yaml
 
 IMAGE_REPO  ?= myorg/my-operator
 IMAGE_TAG   ?= latest
@@ -25,7 +25,7 @@ registry:
 	@[ -f go.mod.txt ] && mv go.mod.txt go.mod || true
 	@[ -f go.sum.txt ] && mv go.sum.txt go.sum || true
 	@find . -name "*.go" | xargs grep -l "^//go:build ignore$$" 2>/dev/null | while read f; do tail -n +3 "$$f" > "$$f.tmp" && mv "$$f.tmp" "$$f"; done || true
-	ork generate registry --file $(KATALOG)
+	ork generate registry --file $(KOMPOSER)
 
 # ── build (development) ───────────────────────────────────────────────────────
 # Builds the full CLI with all commands (validate, e2e, simulate, run, etc.)
@@ -63,7 +63,12 @@ build-runtime:
 # ── validate ──────────────────────────────────────────────────────────────────
 .PHONY: validate
 validate:
-	$(DEV_OUTPUT_DIR)/$(BINARY_NAME) validate -f $(KATALOG)
+	$(DEV_OUTPUT_DIR)/$(BINARY_NAME) validate -f $(KOMPOSER)
+
+# ── simulate ───────────────────────────────────────────────────────────────────────
+.PHONY: simulate
+simulate:
+	$(DEV_OUTPUT_DIR)/$(BINARY_NAME) simulate
 
 # ── e2e ───────────────────────────────────────────────────────────────────────
 .PHONY: e2e
@@ -102,6 +107,7 @@ help:
 	@echo "  build-runtime  compile production binary (only 'ork run')"
 	@echo "  validate       run katalog validation (using development binary)"
 	@echo "  e2e            run end‑to‑end tests (using development binary)"
+	@echo "  simulate       run simulation tests (using development binary)"
 	@echo "  docker         build-runtime + copy into Docker image"
 	@echo "  push           push Docker image to registry"
 	@echo "  release        docker + push"

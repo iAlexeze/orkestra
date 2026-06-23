@@ -167,7 +167,7 @@ That is the exact import block used in [11-typed-komposer](../11-typed-komposer/
 
 ```text
 Pushing webapp-operator:v1.0.0...
-push failed: pushing: failed to perform "Exists" on destination: HEAD "https://ghcr.io/v2/ialexeze/katalogs/webapp-operator/blobs/sha256:690f052c6781a039e2c3810eaf604e730e8f2634204039ceb0ad7bbae33034d5": response status code 403: Forbidden
+push failed: pushing: failed to perform "Exists" on destination: HEAD "https://ghcr.io/v2/myorg/katalogs/webapp-operator/blobs/sha256:690f052c6781a039e2c3810eaf604e730e8f2634204039ceb0ad7bbae33034d5": response status code 403: Forbidden
 Error: Process completed with exit code 1.
 ```
 
