@@ -1,10 +1,10 @@
 # 07 — Adding a New Resource Type
 
-This document walks through every file that must change to add a new resource type. The worked example is `run_ingress.go`. Every step is labelled so you can use the checklist at the bottom to track progress.
+This document walks through every file that must change to add a new resource type. The worked example is `ingresses.go`. Every step is labelled so you can use the checklist at the bottom to track progress.
 
 **Recent additions you can use as further reference:**
-- `run_roles.go` + `pkg/resources/roles/role.go` — namespaced Role (RBAC)
-- `run_rolebindings.go` + `pkg/resources/rolebindings/rolebinding.go` — RoleBinding; demonstrates the immutable `roleRef` delete-recreate pattern in `Update`
+- `pkg/runners/roles.go` + `pkg/resources/roles/role.go` — namespaced Role (RBAC)
+- `pkg/runners/rolebindings.go` + `pkg/resources/rolebindings/rolebinding.go` — RoleBinding; demonstrates the immutable `roleRef` delete-recreate pattern in `Update`
 
 ## Overview of files to touch
 
@@ -21,10 +21,12 @@ pkg/resources/
 pkg/resources/template/
     resolver.go                 — add ResolveIngressTemplate method
 
+pkg/runners/
+    ingresses.go                — RunIngresses function (new file)
+
 pkg/reconciler/
-    run_ingress.go              — runIngresses function (new file)
     run_foreach.go              — add expandForEachIngresses
-    run_template_reconcile.go   — wire runIngresses into runResourceGroup
+    run_template_reconcile.go   — wire runners.RunIngresses into runResourceGroup
 ```
 
 ---
@@ -338,13 +340,13 @@ Look at `ResolveDeploymentTemplate` or `ResolveServiceTemplate` in the same file
 
 ---
 
-## Step 5 — Write run_ingress.go
+## Step 5 — Write the runner
 
-Create `pkg/reconciler/run_ingress.go`:
+Create `pkg/runners/ingresses.go`. The canonical shape is in [pkg/runners/docs/01-runner-contract.md](../../runners/docs/01-runner-contract.md); apply it here with `Ingress` as the resource type:
 
 ```go
-// pkg/reconciler/run_ingress.go
-package reconciler
+// pkg/runners/ingresses.go
+package runners
 
 import (
     "context"
@@ -358,18 +360,18 @@ import (
     orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-func runIngresses(
-    ctx context.Context,
-    kube kubeclient.KubeClient,
+func RunIngresses(
+    ctx      context.Context,
+    kube     kubeclient.KubeClient,
     resolver *orktmpl.Resolver,
-    owner domain.Object,
-    srcs []orktypes.IngressTemplateSource,
-    update bool,
-    guard func(ctx context.Context, obj domain.Object, ns string) bool,
+    owner    domain.Object,
+    srcs     []orktypes.IngressTemplateSource,
+    update   bool,
+    guard    func(ctx context.Context, obj domain.Object, ns string) bool,
 ) error {
     activeNames := make(map[string]bool, len(srcs))
     for _, s := range srcs {
-        if !orktypes.EvaluateWhen(resolver.Data(), s.Conditions, s.AnyOf) {
+        if !orktypes.EvaluateWhen(resolver.Data(), s.Conditions, s.AnyOf, resolver.TemplateEvaluator()) {
             continue
         }
         n, _   := resolver.Resolve(s.Name)
@@ -381,7 +383,7 @@ func runIngresses(
     }
 
     for i, src := range srcs {
-        conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf)
+        conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf, resolver.TemplateEvaluator())
 
         name, _ := resolver.Resolve(src.Name)
         ns, _   := resolver.Resolve(src.Namespace)
@@ -476,10 +478,10 @@ func expandForEachIngresses(
 
 ## Step 7 — Wire into runResourceGroup
 
-In `pkg/reconciler/run_template_reconcile.go`, inside `runResourceGroup`, add the call after `runCronJobs`:
+In `pkg/reconciler/run_template_reconcile.go`, inside `runResourceGroup`, add the call after the CronJobs call:
 
 ```go
-if err := runIngresses(ctx, kube, resolver, obj,
+if err := runners.RunIngresses(ctx, kube, resolver, obj,
     expandForEachIngresses(resolver, t.Ingresses), update, guard); err != nil {
     return err
 }
@@ -506,9 +508,9 @@ A clean build is the acceptance criterion. No new tests are required for the run
 - [ ] `pkg/resources/ingresses/types.go` — `ResolvedIngressSpec`
 - [ ] `pkg/resources/ingresses/ingress.go` — `Create`, `Update`, `DeleteIfOwned`, `Resolve`
 - [ ] `pkg/resources/template/resolver.go` — `ResolveIngressTemplate`
-- [ ] `pkg/reconciler/run_ingress.go` — `runIngresses` with activeNames pre-pass
+- [ ] `pkg/runners/ingresses.go` — `RunIngresses` with activeNames pre-pass
 - [ ] `pkg/reconciler/run_foreach.go` — `expandForEachIngresses`
-- [ ] `pkg/reconciler/run_template_reconcile.go` — call `runIngresses` in `runResourceGroup`
+- [ ] `pkg/reconciler/run_template_reconcile.go` — call `runners.RunIngresses` in `runResourceGroup`
 - [ ] `go build ./...` passes
 
 ## Common mistakes

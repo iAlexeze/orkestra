@@ -102,9 +102,11 @@ func (r *Resolver) ResolveMyResourceTemplate(src *orktypes.MyResourceSource) (*m
 
 Use `r.Resolve(expr)` for any field that may contain a `{{ .spec.something }}` expression.
 
-### 4. Wire the runner in `pkg/reconciler/generic.go`
+### 4. Write the runner in `pkg/runners/`
 
-Find `runResources` and add your resource type alongside the existing ones.
+Create `pkg/runners/myresources.go` — see [pkg/runners/docs/01-runner-contract.md](../../pkg/runners/docs/01-runner-contract.md) for the canonical shape. Then wire it into `pkg/reconciler/run_template_reconcile.go` via `runners.RunMyResources(...)` and add `expandForEachMyResources` to `run_foreach.go`.
+
+The full end-to-end walkthrough is in [pkg/reconciler/docs/07-adding-a-resource.md](../../pkg/reconciler/docs/07-adding-a-resource.md).
 
 ### 5. Write tests
 

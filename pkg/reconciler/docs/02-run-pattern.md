@@ -1,6 +1,8 @@
-# 02 — The run_*.go Function Contract
+# 02 — The Runner Function Contract
 
-Every `run_<resource>.go` file follows the same structure. This document describes each section of the contract in the order it appears in the file.
+> **Note:** Per-resource runner functions have moved to [`pkg/runners/`](../../runners/README.md). The canonical shape and full reference documentation are in [pkg/runners/docs/01-runner-contract.md](../../runners/docs/01-runner-contract.md). This page remains as a quick reference for readers navigating the reconciler docs.
+
+Every runner file follows the same structure. This document describes each section in the order it appears.
 
 ## Canonical shape
 
