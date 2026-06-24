@@ -181,6 +181,7 @@ Six Runtimes. 75 CRDs. One Control Center.
 | | |
 |---|---|
 | [Why Orkestra](https://orkestra.sh/blog/why-orkestra) | What Orkestra is, how it works, and why it’s different |
+| [Foundations](https://orkestra.sh/docs/foundations) | The decisions that shaped the design — and why they hold |
 | [Trust and Failure Model](https://orkestra.sh/publications/trust-and-failure-model) | What happens when things go wrong |
 | [Getting Started](https://orkestra.sh/docs/getting-started) | First operator in under an hour |
 | [Learning to Orkestrate](https://orkestra.sh/docs/getting-started/learning-to-orkestrate) | Every capability, as a runnable example |

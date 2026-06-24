@@ -102,16 +102,16 @@ func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster, devServer bool,
 	allValueFiles = append(allValueFiles, valueFiles...)
 
 	r := &Runner{
-		e2e:             e2e,
-		e2eDir:          e2eDir,
-		keepCluster:     keepCluster,
-		clusterCtx:      clusterCtx,
-		useCurrentCtx:   useCurrentCtx,
-		devServer:       devServer,
-		orkestraVersion: orkestraVersion,
-		valueFiles:      allValueFiles,
-		helmArgs:        helmArgs,
-		kubernetesTarget:  e2e.Spec.Custom != nil && e2e.Spec.Custom.Target == orktypes.CustomTargetKubernetes,
+		e2e:              e2e,
+		e2eDir:           e2eDir,
+		keepCluster:      keepCluster,
+		clusterCtx:       clusterCtx,
+		useCurrentCtx:    useCurrentCtx,
+		devServer:        devServer,
+		orkestraVersion:  orkestraVersion,
+		valueFiles:       allValueFiles,
+		helmArgs:         helmArgs,
+		kubernetesTarget: e2e.Spec.Custom != nil && e2e.Spec.Custom.Target == orktypes.CustomTargetKubernetes,
 	}
 
 	if e2e.Spec.Custom != nil && e2e.Spec.Custom.Target == orktypes.CustomTargetContainer {

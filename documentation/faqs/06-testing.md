@@ -133,8 +133,48 @@ Yes. `ork simulate` uses the same reconciler pipeline that runs against a live c
 If a test passes in simulate, the reconciler logic is correct. What you cannot verify in simulate: admission webhook behavior end-to-end, network policies, actual pod scheduling, and anything that depends on Kubernetes controllers running (e.g. ReplicaSet → Pod creation). That is what `ork e2e` is for.
 
 
+## Can I use `ork e2e` to test any Kubernetes workload — not just Orkestra operators?
+
+Yes. `ork e2e` does not care what manages the resources it tests. Set `spec.custom.target: kubernetes` and Orkestra skips its own bundle generation and Helm install — the cluster lifecycle, `setup:` blocks, CR apply, assertions, and cleanup all run unchanged. The workload under test can be a Helm chart, a third-party operator, a raw manifest, or anything else that runs in Kubernetes.
+
+```yaml
+apiVersion: orkestra.orkspace.io/v1
+kind: E2E
+metadata:
+  name: my-helm-chart-test
+spec:
+  custom:
+    target: kubernetes
+  cr: ./cr.yaml
+  setup:
+    helm:
+      - release: my-app
+        chart: ./charts/my-app
+  expect:
+    - resource: deployments
+      name: my-app
+      namespace: default
+      present: true
+      ready: true
+```
+
+The cluster is created, the Helm chart is installed, the assertions run, and the cluster is torn down — without Orkestra involved in managing the workload itself. You get the full e2e harness against anything.
+
+→ [Testing anything in Kubernetes](../guides/e2e-universal.md)
+
+---
+
+## Can I use `ork e2e` to test an operator I didn't write?
+
+Yes — this is the same `custom.target: kubernetes` mode. cert-manager, FluxCD, Crossplane, ArgoCD, your own legacy controller-runtime operator — if it runs in Kubernetes, `ork e2e` can test it. Install the operator in `setup.helm`, apply your CR, assert the resources it should produce.
+
+→ [Testing anything in Kubernetes](../guides/e2e-universal.md) · [custom.target reference](../reference/schema/04-e2e/05-custom-target.md)
+
+---
+
 ## Next
 
 - **[simulate concept docs](../concepts/simulate/index.md)** — how simulate works in depth
 - **[E2E concept docs](../concepts/e2e/index.md)** — end-to-end testing
 - **[Simulate schema reference](../reference/schema/05-simulate/index.md)** — full field reference
+- **[Universal e2e guide](../guides/e2e-universal.md)** — test anything that runs in Kubernetes
