@@ -15,7 +15,7 @@ ork init my-operator --pack use-cases
 | [full-stack-app](./full-stack-app/) | Multi-feature composition | `forEach`, `external`, `cross`, `once`, `anyOf` in one CR |
 | [multi-region-map](./multi-region-map/) | Multi-target deployment | `forEach` over a map — deploy to N regions from one CR |
 | [crd-conversion](./crd-conversion/) | Schema evolution | Multi-version CRDs with and without a conversion webhook |
-| [custom-operator](./custom-operator/) | Third-party test harness | `spec.customOperator: true` — use `ork e2e` to test any operator |
+| [custom-operator](./custom-operator/) | Third-party test harness | `spec.custom.target: kubernetes` — use `ork e2e` to test any operator |
 | [external](./external/) | External gates | Gate resource creation on upstream health checks via `external:` |
 | [multi-tenancy](./multi-tenancy/) | Namespace isolation | Per-tenant configuration, `allowedNamespaces`, RBAC isolation |
 | [enrich](./enrich/) | Data injection | Inject data from external sources into CR status via `resolver:` |

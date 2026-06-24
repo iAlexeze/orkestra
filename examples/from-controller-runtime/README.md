@@ -44,7 +44,7 @@ Pick this when your operator only creates Kubernetes resources and applies rules
 
 ### [02 — hybrid (recommended if using hooks)](../from-controller-runtime/02-hybrid/README.md)
 
-The Deployment and ServiceAccount are declared in the Katalog. The Service is created in Go with type-safe access to `obj.Spec.Port`. Orkestra runs declared templates first, then the hook adds what templates cannot express.
+The Deployment is declared in the Katalog. The Service is created in Go with type-safe access to `obj.Spec.Port`. Orkestra runs declared templates first, then the hook adds what templates cannot express.
 
 This is the 90/10 pattern: declare what Orkestra handles well, write Go for the rest.
 
@@ -56,7 +56,7 @@ This is the 90/10 pattern: declare what Orkestra handles well, write Go for the 
 
 ### [03 — hooks only](../from-controller-runtime/03-hooks-only/README.md)
 
-All three resources — Deployment, Service, and ServiceAccount — are created in Go. No declared templates alongside the hook. Use when every resource requires computed logic that templates cannot express, or when type-safe control over the full spec matters more than keeping YAML declarations.
+Both resources — Deployment and Service — are created in Go. No declared templates alongside the hook. Use when every resource requires computed logic that templates cannot express, or when type-safe control over the full spec matters more than keeping YAML declarations.
 
 ```
 03-hooks-only/

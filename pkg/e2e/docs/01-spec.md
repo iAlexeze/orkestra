@@ -70,7 +70,7 @@ Path to the CR to apply. Applied when the first `after: cr-applied` expectation 
 ### `spec.custom.target`
 Declares the target runtime when Orkestra is not the operator under test. Supported value: `kubernetes`. Skips bundle generation and Orkestra helm install/uninstall. `spec.katalog` is optional. Everything else (CRD apply, setup, CR apply, assertions, cleanup) runs unchanged.
 
-See [07-custom-operator.md](07-custom-operator.md) (now covers `custom.target`).
+See [07-kubernetes-target.md](07-kubernetes-target.md).
 
 ### `spec.setup`
 Prerequisites applied after the cluster is ready but before the CR. Shorthand (plain list of strings) applies each file:

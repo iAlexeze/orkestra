@@ -1,6 +1,6 @@
-# 01 — Pure Custom Operator (cert-manager)
+# 01 — Pure Custom Target (cert-manager)
 
-`customOperator: true` with cert-manager installed via `setup.helm`.
+`custom.target: kubernetes` with cert-manager installed via `setup.helm`.
 `ork e2e` acts as a test harness only — no Orkestra bundle, no Orkestra install.
 
 **What you learn:** How to use `ork e2e` to test any Kubernetes operator. cert-manager
@@ -57,7 +57,7 @@ chmod +x cleanup.sh && ./cleanup.sh
 ork e2e
 ```
 
-The `e2e.yaml` uses `customOperator: true` — cert-manager is the operator under test.
+The `e2e.yaml` uses `custom.target: kubernetes` — cert-manager is the operator under test.
 
 | Expectation | What it checks |
 |-------------|----------------|
