@@ -1,6 +1,6 @@
 ---
 title: "Declarative Operators: A New Model for Kubernetes Extensibility"
-date: 2026-05-25
+date: 2026-06-23
 weight: 1
 ---
 
@@ -140,7 +140,6 @@ spec:
       crFiles:
         - ./cr.yaml
       operatorBox:
-        default: true
         onCreate:
           deployments:
             - image: "{{ .spec.image }}"

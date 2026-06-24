@@ -20,4 +20,4 @@ ork e2e init --suite             # write a suite aggregator from discovered leaf
 | Understand cluster lifecycle (kind, reuse, context restore, shared Orkestra) | [docs/04-cluster.md](docs/04-cluster.md) |
 | Compose test suites with imports and the `wait:` field | [docs/05-imports.md](docs/05-imports.md) |
 | Use `./...` discovery mode, `--wait`, `--skip`, `--dry-run` | [docs/06-discovery.md](docs/06-discovery.md) |
-| Test any Kubernetes workload without Orkestra (`custom.target: kubernetes`) | [docs/07-custom-operator.md](docs/07-custom-operator.md) |
+| Test any Kubernetes workload without Orkestra (`custom.target: kubernetes`) | [docs/07-kubernetes-target.md](docs/07-kubernetes-target.md) |

@@ -64,9 +64,9 @@ type Runner struct {
 	// devServer deploys the mock dev server into the cluster as part of setup.
 	devServer bool
 
-	// customOperator skips bundle generation and Orkestra helm install/uninstall.
+	// kubernetesTarget skips bundle generation and Orkestra helm install/uninstall.
 	// Set when spec.custom.target == "kubernetes" — the file is the source of truth.
-	customOperator bool
+	kubernetesTarget bool
 
 	// sharedOrkestra means Orkestra is managed by the parent runImports coordinator.
 	// The sub-runner must not delete the bundle from the cluster (the bundle contains
@@ -102,16 +102,16 @@ func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster, devServer bool,
 	allValueFiles = append(allValueFiles, valueFiles...)
 
 	r := &Runner{
-		e2e:             e2e,
-		e2eDir:          e2eDir,
-		keepCluster:     keepCluster,
-		clusterCtx:      clusterCtx,
-		useCurrentCtx:   useCurrentCtx,
-		devServer:       devServer,
-		orkestraVersion: orkestraVersion,
-		valueFiles:      allValueFiles,
-		helmArgs:        helmArgs,
-		customOperator:  e2e.Spec.Custom != nil && e2e.Spec.Custom.Target == orktypes.CustomTargetKubernetes,
+		e2e:              e2e,
+		e2eDir:           e2eDir,
+		keepCluster:      keepCluster,
+		clusterCtx:       clusterCtx,
+		useCurrentCtx:    useCurrentCtx,
+		devServer:        devServer,
+		orkestraVersion:  orkestraVersion,
+		valueFiles:       allValueFiles,
+		helmArgs:         helmArgs,
+		kubernetesTarget: e2e.Spec.Custom != nil && e2e.Spec.Custom.Target == orktypes.CustomTargetKubernetes,
 	}
 
 	if e2e.Spec.Custom != nil && e2e.Spec.Custom.Target == orktypes.CustomTargetContainer {
@@ -240,14 +240,14 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 		appliedCRDPaths = crdPaths
 
 		// ── 4. Pre-pull OCI imports ──────────────────────────────────────
-		if !r.customOperator {
+		if !r.kubernetesTarget {
 			if err := r.pullOCIImports(ctx); err != nil {
 				return nil, fmt.Errorf("pulling OCI imports: %w", err)
 			}
 		}
 
 		// ── 5. Generate and apply bundle ─────────────────────────────────
-		if !r.customOperator {
+		if !r.kubernetesTarget {
 			bundleFile, err := r.generateBundle(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("generate bundle: %w", err)
@@ -289,7 +289,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 		// ── 7. Install Orkestra ──────────────────────────────────────────
 		// ── 8. Wait for Orkestra ready ───────────────────────────────────
 		// Both steps skipped when custom.target is set.
-		if !r.customOperator {
+		if !r.kubernetesTarget {
 			text := "..."
 
 			// Control center is never needed in e2e — disable it unconditionally.
@@ -534,7 +534,7 @@ func (r *Runner) applyCRD(ctx context.Context) ([]string, error) {
 	}
 
 	// Fallback: read crdFile references from the katalog.
-	// When customOperator is true and no katalog is provided, there is nothing to fall back to.
+	// When kubernetesTarget is true and no katalog is provided, there is nothing to fall back to.
 	if r.katalogFile == "" {
 		return nil, nil
 	}
@@ -730,7 +730,7 @@ func (r *Runner) provider() string {
 
 // isPureAggregator returns true when this E2E has no spec of its own —
 // it exists only to run imported E2E files.
-// A customOperator spec with a cr but no katalog is NOT a pure aggregator.
+// A kubernetesTarget spec with a cr but no katalog is NOT a pure aggregator.
 func (r *Runner) isPureAggregator() bool {
 	return r.katalogFile == "" && r.crFile == ""
 }
@@ -887,7 +887,7 @@ func (r *Runner) runImports(ctx context.Context) []ImportResult {
 	// leaves installedOrkestra=false — so its teardown never uninstalls.
 	// We uninstall once here after all imports complete.
 	installedByCoordinator := false
-	if !r.customOperator {
+	if !r.kubernetesTarget {
 		sharedImportCount := 0
 		for _, imp := range r.e2e.Imports {
 			if !imp.FreshCluster {
@@ -943,7 +943,7 @@ func (r *Runner) runImports(ctx context.Context) []ImportResult {
 				sub.sharedOrkestra = true
 			}
 		}
-		// customOperator is declared in the sub-file itself; the parent's value
+		// kubernetesTarget is declared in the sub-file itself; the parent's value
 		// does not override it — each import is authoritative about its own mode.
 		if err != nil {
 			ir.Err = fmt.Errorf("loading import %s: %w", imp.Path, err)

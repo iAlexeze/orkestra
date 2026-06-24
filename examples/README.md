@@ -121,7 +121,7 @@ Real-world patterns combining multiple Orkestra features.
 | [Full-Stack App](./use-cases/full-stack-app/) | forEach + external + cross + once + anyOf in one CR. |
 | [Multi-Region Map](./use-cases/multi-region-map/) | Deploy across regions using `forEach` over a map. |
 | [CRD Conversion](./use-cases/crd-conversion/) | Multi-version CRDs with or without a conversion webhook. |
-| [Custom Operator](./use-cases/custom-operator/) | `spec.customOperator: true` — use `ork e2e` as a test harness for any operator. |
+| [Custom Target](./use-cases/custom-operator/) | `spec.custom.target: kubernetes` — use `ork e2e` as a test harness for any operator. |
 | [External](./use-cases/external/) | Gate resource creation on upstream health checks. |
 | [Multi-Tenancy](./use-cases/multi-tenancy/) | Namespace isolation, per-tenant configuration. |
 | [Enrich](./use-cases/enrich/) | Inject data from external sources into CR status. |

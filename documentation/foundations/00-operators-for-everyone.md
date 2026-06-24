@@ -85,4 +85,4 @@ Accessibility is not about simplifying the concepts. Kubernetes operators are no
 
 Orkestra removes the scaffolding wall by encoding the reconcile loop. It removes the learning wall by shipping examples with the CLI. It removes the distribution wall by building quality gates into the push workflow. It removes the repetition wall by letting teams share solutions through the registry.
 
-The goal is that you spend your time on the problem you actually want to solve.
+Your operator in two steps: declare, run.
