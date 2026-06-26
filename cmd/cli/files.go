@@ -7,12 +7,15 @@ import (
 )
 
 const (
-	fileKatalog  = "katalog.yaml"
-	fileKomposer = "komposer.yaml"
-	fileE2e      = "e2e.yaml"
-	fileSimulate = "simulate.yaml"
-	fileCrd      = "crd.yaml"
-	fileCr       = "cr.yaml"
+	fileKatalog    = "katalog.yaml"
+	fileKomposer   = "komposer.yaml"
+	fileE2e        = "e2e.yaml"
+	fileSimulate   = "simulate.yaml"
+	fileCrd        = "crd.yaml"
+	fileCr         = "cr.yaml"
+	fileReadMe     = "README.md"
+	fileMakeFile   = "Makefile"
+	fileDockerfile = "Dockerfile"
 )
 
 // resolveKatalogPaths resolves the katalog file paths in the following order:
