@@ -278,24 +278,25 @@ spec:
       queue:
         maxDepth: 100
       operatorBox:
-        default: {{ if .DefaultFalse }}false{{ else }}true{{ end }}
+        reconciler:
+          default: {{ if .DefaultFalse }}false{{ else }}true{{ end }}
 {{ if .ShowHooks }}
-        # hooks:
-        #   # Package exporting the hook factory function.
-        #   location: github.com/myorg/my-operator/hooks
-        #   # Function signature: func() domain.AnyReconcileHooks
-        #   # Return:             domain.ReconcileHooks[*MyKind]{OnReconcile: ...}
-        #   function: MyResourceHooks
-        #   alias: myhook
+          # hooks:
+          #   # Package exporting the hook factory function.
+          #   location: github.com/myorg/my-operator/hooks
+          #   # Function signature: func() domain.AnyReconcileHooks
+          #   # Return:             domain.ReconcileHooks[*MyKind]{OnReconcile: ...}
+          #   function: MyResourceHooks
+          #   alias: myhook
 {{ end -}}
 {{ if .ShowConstructor }}
-        # constructor:
-        #   # Package exporting the reconciler constructor.
-        #   location: github.com/myorg/my-operator/reconciler
-        #   # Function signature:
-        #   #   func(*kubeclient.Kubeclient, cache.SharedIndexInformer, *event.Event) domain.Reconciler
-        #   function: NewMyResourceReconciler
-        #   alias: myrec
+          # constructor:
+          #   # Package exporting the reconciler constructor.
+          #   location: github.com/myorg/my-operator/reconciler
+          #   # Function signature:
+          #   #   func(*kubeclient.Kubeclient, cache.SharedIndexInformer, *event.Event) domain.Reconciler
+          #   function: NewMyResourceReconciler
+          #   alias: myrec
 {{ end -}}
 {{ if not .IsTyped }}
         # Declarative template blocks — uncomment and fill in what you need.
