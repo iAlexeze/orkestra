@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/orkspace/orkestra/pkg/spinner"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 // DeploymentHealthChecker handles health checks for any deployment
@@ -64,7 +64,7 @@ func ResourceExists(resourceType, resourceName, namespace string) bool {
 // CheckHealth waits up to timeout for a deployment to have at least one ready replica.
 // Polls every 2 seconds. Returns immediately if a custom failure condition is detected.
 func (d DeploymentHealthChecker) CheckHealth(timeout time.Duration, checkFailure func(ctx context.Context) string) DeploymentStatus {
-	spin := spinner.Start(fmt.Sprintf("  → Checking %s health...", d.Name))
+	spin := utils.StartSpinner(fmt.Sprintf("  → Checking %s health...", d.Name))
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()

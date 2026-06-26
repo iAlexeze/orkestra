@@ -61,9 +61,9 @@ type GatewayKatalogResponse struct {
 
 	// Process-level stats for events not attributable to a single CRD:
 	// the webhook configuration itself and Orkestra infra resources.
-	InfraProtection   *DeletionProtectionStatsResponse `json:"infraProtection,omitempty"`
-	Housekeeper *HousekeeperStats          `json:"housekeeper,omitempty"`
-	GatewayVersion    string                           `json:"gatewayVersion"`
+	InfraProtection *DeletionProtectionStatsResponse `json:"infraProtection,omitempty"`
+	Housekeeper     *HousekeeperStats                `json:"housekeeper,omitempty"`
+	GatewayVersion  string                           `json:"gatewayVersion"`
 }
 
 // GatewayCRDStatsResponse holds the gateway-owned stats for one CRD.
