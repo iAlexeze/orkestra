@@ -202,6 +202,24 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// 30. Validate NetworkPolicy Profiles
+	// -------------------------------------------------------------------------
+	if err := k.validateNetworkPolicyProfiles(); err != nil {
+		return nil, err
+	}
+
+	// 31. Validate ResourceQuota Profiles
+	// -------------------------------------------------------------------------
+	if err := k.validateResourceQuotaProfiles(); err != nil {
+		return nil, err
+	}
+
+	// 32. Validate cross-namespace copy pairs (fromNamespace ↔ toNamespaces)
+	// -------------------------------------------------------------------------
+	if err := k.validateCrossNamespaceOps(); err != nil {
+		return nil, err
+	}
+
 	// -------------------------------------------------------------------------
 	// 29. Validate port protocols (Deployments, ReplicaSets, StatefulSets, Pods)
 	// -------------------------------------------------------------------------
