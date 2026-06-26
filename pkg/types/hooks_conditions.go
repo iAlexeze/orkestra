@@ -124,6 +124,36 @@ func (h HookTemplates) FilterResources(fn func(conditions, anyOf []Condition) (k
 			out.RoleBindings = append(out.RoleBindings, s)
 		}
 	}
+	for _, s := range h.ClusterRoles {
+		if keep, c, a := fn(s.Conditions, s.AnyOf); keep {
+			s.Conditions, s.AnyOf = c, a
+			out.ClusterRoles = append(out.ClusterRoles, s)
+		}
+	}
+	for _, s := range h.ClusterRoleBindings {
+		if keep, c, a := fn(s.Conditions, s.AnyOf); keep {
+			s.Conditions, s.AnyOf = c, a
+			out.ClusterRoleBindings = append(out.ClusterRoleBindings, s)
+		}
+	}
+	for _, s := range h.NetworkPolicies {
+		if keep, c, a := fn(s.Conditions, s.AnyOf); keep {
+			s.Conditions, s.AnyOf = c, a
+			out.NetworkPolicies = append(out.NetworkPolicies, s)
+		}
+	}
+	for _, s := range h.ResourceQuotas {
+		if keep, c, a := fn(s.Conditions, s.AnyOf); keep {
+			s.Conditions, s.AnyOf = c, a
+			out.ResourceQuotas = append(out.ResourceQuotas, s)
+		}
+	}
+	for _, s := range h.LimitRanges {
+		if keep, c, a := fn(s.Conditions, s.AnyOf); keep {
+			s.Conditions, s.AnyOf = c, a
+			out.LimitRanges = append(out.LimitRanges, s)
+		}
+	}
 	for _, s := range h.CustomResource {
 		if keep, c, a := fn(s.Conditions, s.AnyOf); keep {
 			s.Conditions, s.AnyOf = c, a
@@ -166,6 +196,9 @@ func (h *HookTemplates) MergeFrom(src *HookTemplates) {
 	h.RoleBindings = append(h.RoleBindings, src.RoleBindings...)
 	h.ClusterRoles = append(h.ClusterRoles, src.ClusterRoles...)
 	h.ClusterRoleBindings = append(h.ClusterRoleBindings, src.ClusterRoleBindings...)
+	h.NetworkPolicies = append(h.NetworkPolicies, src.NetworkPolicies...)
+	h.ResourceQuotas = append(h.ResourceQuotas, src.ResourceQuotas...)
+	h.LimitRanges = append(h.LimitRanges, src.LimitRanges...)
 	h.CustomResource = append(h.CustomResource, src.CustomResource...)
 	h.External = append(h.External, src.External...)
 }

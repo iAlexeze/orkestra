@@ -198,13 +198,19 @@ var builtInRegistry = map[string]BuiltInKind{
 	"resourcequota": {
 		Kind: "ResourceQuota", Group: "", Version: "v1", Plural: "resourcequotas",
 		Namespaced: true, APIPath: "/api",
-		SkipObservedGeneration: true,
+		SkipObservedGeneration: true, OrkestraInternal: true,
+		Detect: func(crd orktypes.CRDEntry) bool {
+			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.ResourceQuotaTemplateSource { return t.ResourceQuotas })
+		},
 	},
 
 	"limitrange": {
 		Kind: "LimitRange", Group: "", Version: "v1", Plural: "limitranges",
 		Namespaced: true, APIPath: "/api",
-		SkipObservedGeneration: true,
+		SkipObservedGeneration: true, OrkestraInternal: true,
+		Detect: func(crd orktypes.CRDEntry) bool {
+			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.LimitRangeTemplateSource { return t.LimitRanges })
+		},
 	},
 
 	"componentstatus": {
@@ -300,7 +306,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		Statusless: true, SkipStatusSubresource: true, OrkestraInternal: true,
 		Shorthands: []string{"np"},
 		Detect: func(crd orktypes.CRDEntry) bool {
-			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.PlaceholderSource { return t.NetworkPolicies })
+			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.NetworkPolicyTemplateSource { return t.NetworkPolicies })
 		},
 	},
 
@@ -348,7 +354,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		Statusless: true, SkipStatusSubresource: true, OrkestraInternal: true,
 		Shorthands: []string{"cr"},
 		Detect: func(crd orktypes.CRDEntry) bool {
-			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.PlaceholderSource { return t.ClusterRoles })
+			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.ClusterRoleTemplateSource { return t.ClusterRoles })
 		},
 	},
 
@@ -358,7 +364,9 @@ var builtInRegistry = map[string]BuiltInKind{
 		Statusless: true, SkipStatusSubresource: true, OrkestraInternal: true,
 		Shorthands: []string{"crb"},
 		Detect: func(crd orktypes.CRDEntry) bool {
-			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.PlaceholderSource { return t.ClusterRoleBindings })
+			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.ClusterRoleBindingTemplateSource {
+				return t.ClusterRoleBindings
+			})
 		},
 	},
 
