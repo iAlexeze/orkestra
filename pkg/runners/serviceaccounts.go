@@ -1,4 +1,4 @@
-// pkg/reconciler/run_serviceaccounts.go
+// pkg/runners/serviceaccounts.go
 package runners
 
 import (

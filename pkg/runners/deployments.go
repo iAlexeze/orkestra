@@ -1,4 +1,4 @@
-// pkg/reconciler/run_deployments.go
+// pkg/runners/deployments.go
 package runners
 
 import (

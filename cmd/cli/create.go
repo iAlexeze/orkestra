@@ -49,9 +49,13 @@ func init() {
 	createClusterCmd.Flags().String("provider", "kind", "Cluster provider (only 'kind' is supported)")
 
 	// Shadow global flags
+	createCmd.PersistentFlags().StringSlice("file", nil, "")
 	createCmd.PersistentFlags().Bool("debug", false, "")
 	createCmd.PersistentFlags().String("kubeconfig", "", "")
 	createCmd.PersistentFlags().Bool("verbose", false, "")
+
+	// Hide them from help output
+	createCmd.PersistentFlags().MarkHidden("file")
 	createCmd.PersistentFlags().MarkHidden("debug")
 	createCmd.PersistentFlags().MarkHidden("kubeconfig")
 	createCmd.PersistentFlags().MarkHidden("verbose")

@@ -1,4 +1,4 @@
-// pkg/reconciler/run_namespace.go
+// pkg/runners/namespaces.go
 package runners
 
 import (

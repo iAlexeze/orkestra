@@ -1,4 +1,4 @@
-// pkg/reconciler/run_hpas.go
+// pkg/runners/hpas.go
 package runners
 
 import (

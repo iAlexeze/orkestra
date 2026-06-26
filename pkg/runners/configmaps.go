@@ -1,4 +1,4 @@
-// pkg/reconciler/run_configmaps.go
+// pkg/runners/configmaps.go
 package runners
 
 import (

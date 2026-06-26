@@ -48,4 +48,14 @@ This is the same shift containers made for applications. Patterns make operator 
 
 YAML files are documents. Patterns are something more specific: they encode a solution to a named problem that recurs in the operator world. The name reflects intent — not format.
 
+---
+
+## Pages
+
+| Page | What it covers |
+|------|---------------|
+| [Scaffolding a pattern](scaffold.md) | `ork create pattern` — generate the full file set to build, test, and publish |
+
+---
+
 → See the [Pattern kinds in the registry](../../orkestra-registry/index.md) — examples of Katalogs, Motifs, and Komposers in practice.
