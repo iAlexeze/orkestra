@@ -148,9 +148,11 @@ func (r *Runner) resolveSource() error {
 		r.katalogFile = r.abs(spec.Katalog)
 		r.crFile = r.abs(spec.CR)
 
-	case spec.CR != "" && spec.Custom != nil && spec.Custom.Target != "":
-		// custom.target: katalog is optional — no bundle or Orkestra install.
-		r.crFile = r.abs(spec.CR)
+	case spec.Custom != nil && spec.Custom.Target != "":
+		// custom.target: both katalog and cr are optional.
+		if spec.CR != "" {
+			r.crFile = r.abs(spec.CR)
+		}
 
 	case len(r.e2e.Imports) > 0:
 		// Pure aggregator — no own katalog/CR, just orchestrates imports.
@@ -165,8 +167,10 @@ func (r *Runner) resolveSource() error {
 			return fmt.Errorf("katalog file not found: %s", r.katalogFile)
 		}
 	}
-	if _, err := os.Stat(r.crFile); err != nil {
-		return fmt.Errorf("CR file not found: %s", r.crFile)
+	if r.crFile != "" {
+		if _, err := os.Stat(r.crFile); err != nil {
+			return fmt.Errorf("CR file not found: %s", r.crFile)
+		}
 	}
 	return nil
 }
@@ -362,29 +366,36 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 		crDeleted := false
 
 		for _, exp := range r.e2e.Spec.Expect {
-			switch exp.After {
-			case "cr-applied":
+			after := exp.After
+			if after == "" {
+				after = orktypes.AfterSetupComplete
+			}
+			switch after {
+			case orktypes.AfterSetupComplete:
+				// Infrastructure assertions — no CR lifecycle action needed.
+
+			case orktypes.AfterCRApplied:
 				if !crApplied {
 					fmt.Printf("→ Applying CR...\n")
 					if out, err := kubectl(ctx, "apply", "-f", r.crFile); err != nil {
 						return nil, fmt.Errorf("apply CR: %w\n%s", err, out)
 					}
-					fmt.Printf("  ✓ CR applied\n\n")
+					fmt.Printf("  %s CR applied\n\n", orkutils.SuccessMark())
 					crApplied = true
 				}
 
-			case "cr-deleted":
+			case orktypes.AfterCRDeleted:
 				if !crDeleted {
 					fmt.Printf("→ Deleting CR...\n")
 					if out, err := kubectl(ctx, "delete", "-f", r.crFile, "--ignore-not-found"); err != nil {
 						return nil, fmt.Errorf("delete CR: %w\n%s", err, out)
 					}
-					fmt.Printf("  ✓ CR deleted\n\n")
+					fmt.Printf("  %s CR deleted\n\n", orkutils.SuccessMark())
 					crDeleted = true
 				}
 
 			default:
-				return nil, fmt.Errorf("unknown after: %q (must be cr-applied or cr-deleted)", exp.After)
+				return nil, fmt.Errorf("unknown after: %q — valid values: %v", after, orktypes.ValidAfterValues)
 			}
 
 			to := exp.Timeout
@@ -672,14 +683,19 @@ func (r *Runner) applySetup(ctx context.Context) ([]string, error) {
 	var applied []string
 
 	// ── Phase 1: apply ────────────────────────────────────────────────────────
-	for _, path := range s.Apply {
-		abs := r.abs(path)
-		fmt.Printf("→ Applying setup %s...\n", path)
+	for _, entry := range s.Apply {
+		abs := r.abs(entry.Path)
+		fmt.Printf("→ Applying setup %s...\n", entry.Path)
 		if out, err := kubectl(ctx, "apply", "-f", abs); err != nil {
-			return applied, fmt.Errorf("setup apply %s: %w\n%s", path, err, out)
+			return applied, fmt.Errorf("setup apply %s: %w\n%s", entry.Path, err, out)
 		}
-		fmt.Printf("  ✓ Applied\n")
+		fmt.Printf("  %s Applied\n", orkutils.SuccessMark())
 		applied = append(applied, abs)
+		for _, w := range entry.Wait {
+			if err := runSetupWait(ctx, w); err != nil {
+				return applied, fmt.Errorf("setup apply %s wait: %w", entry.Path, err)
+			}
+		}
 	}
 
 	// ── Phase 2: helm ─────────────────────────────────────────────────────────
@@ -687,26 +703,38 @@ func (r *Runner) applySetup(ctx context.Context) ([]string, error) {
 		sp := orkutils.StartSpinner(fmt.Sprintf("Installing %s...", h.ReleaseName()))
 		if err := ork.HelmInstall(ctx, h); err != nil {
 			sp.Failure()
-			return applied, fmt.Errorf("setup helm %s/%s: %w", h.Repo, h.Chart, err)
+			return applied, fmt.Errorf("setup helm %s: %w", h.Chart, err)
 		}
 		sp.Success()
+		for _, w := range h.Wait {
+			if err := runSetupWait(ctx, w); err != nil {
+				return applied, fmt.Errorf("setup helm %s wait: %w", h.ReleaseName(), err)
+			}
+		}
 	}
 
 	// ── Phase 3: wait ─────────────────────────────────────────────────────────
 	for _, w := range s.Wait {
-		loc := w.Kind + " " + w.Name
-		if w.Namespace != "" {
-			loc += " (" + w.Namespace + ")"
-		}
-		sp := orkutils.StartSpinner(fmt.Sprintf("Waiting for %s...", loc))
-		if err := ork.WaitForResource(ctx, w); err != nil {
-			sp.Failure()
+		if err := runSetupWait(ctx, w); err != nil {
 			return applied, fmt.Errorf("setup wait: %w", err)
 		}
-		sp.Success()
 	}
 
 	return applied, nil
+}
+
+func runSetupWait(ctx context.Context, w orktypes.SetupWait) error {
+	loc := w.Kind + " " + w.Name
+	if w.Namespace != "" {
+		loc += " (" + w.Namespace + ")"
+	}
+	sp := orkutils.StartSpinner(fmt.Sprintf("Waiting for %s...", loc))
+	if err := ork.WaitForResource(ctx, w); err != nil {
+		sp.Failure()
+		return err
+	}
+	sp.Success()
+	return nil
 }
 
 func (r *Runner) deleteCluster(ctx context.Context) error {
@@ -729,9 +757,9 @@ func (r *Runner) provider() string {
 
 // isPureAggregator returns true when this E2E has no spec of its own —
 // it exists only to run imported E2E files.
-// A kubernetesTarget spec with a cr but no katalog is NOT a pure aggregator.
+// A kubernetesTarget spec is never a pure aggregator even when cr and katalog are omitted.
 func (r *Runner) isPureAggregator() bool {
-	return r.katalogFile == "" && r.crFile == ""
+	return r.katalogFile == "" && r.crFile == "" && !r.kubernetesTarget
 }
 
 func (r *Runner) abs(path string) string {

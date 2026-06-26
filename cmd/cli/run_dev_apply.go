@@ -221,7 +221,7 @@ func applySetupIfNeeded(ctx context.Context, katalogPath string, m *merger.Merge
 		}
 
 		for _, setupFile := range entry.Setup.Apply {
-			path := setupFile
+			path := setupFile.Path
 			if !filepath.IsAbs(path) && !strings.HasPrefix(path, "http") {
 				path = filepath.Join(katalogDir, path)
 			}

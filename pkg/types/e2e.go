@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/orkspace/orkestra/pkg/utils"
 	"gopkg.in/yaml.v3"
@@ -14,32 +15,45 @@ import (
 //	setup:
 //	  - ./prereqs/secret.yaml
 //
-// Struct form:
+// Struct form with per-entry waits:
 //
 //	setup:
 //	  apply:
-//	    - ./prereqs/secret.yaml
+//	    - ./prereqs/namespace.yaml
+//	    - path: ./prereqs/secret.yaml
+//	      wait:
+//	        - kind: Secret
+//	          name: my-secret
+//	          namespace: default
+//	          timeout: 30s
 //	  helm:
 //	    - repo: https://charts.cert-manager.io
 //	      chart: cert-manager
 //	      version: v1.14.0
+//	      wait:
+//	        - kind: Deployment
+//	          name: cert-manager
+//	          namespace: cert-manager
+//	          ready: true
+//	          timeout: 120s
 //	  wait:
 //	    - kind: Deployment
-//	      name: cert-manager
+//	      name: cert-manager-webhook
 //	      namespace: cert-manager
 //	      ready: true
 //	      timeout: 120s
 type SetupConfig struct {
-	// Apply is an ordered list of YAML file paths to kubectl-apply.
+	// Apply is an ordered list of manifests to kubectl-apply.
+	// Each entry is either a plain path string or a {path, wait} struct.
 	// Applied first, before helm installs, after the CRD is installed.
-	Apply []string `yaml:"apply,omitempty"`
+	Apply []SetupApplyEntry `yaml:"apply,omitempty"`
 
 	// Helm is an ordered list of Helm charts to install before Orkestra starts.
 	// Executed as helm upgrade --install — not rendered for Katalog extraction.
 	Helm []SetupHelmInstall `yaml:"helm,omitempty"`
 
 	// Wait blocks until all listed resources exist and satisfy conditions.
-	// Runs last. If any wait times out, setup fails and the operator does not start.
+	// Runs after all apply and helm steps. Use per-entry wait for ordered checks.
 	Wait []SetupWait `yaml:"wait,omitempty"`
 }
 
@@ -51,7 +65,7 @@ func (s *SetupConfig) UnmarshalYAML(value *yaml.Node) error {
 			if item.Kind != yaml.ScalarNode {
 				break
 			}
-			s.Apply = append(s.Apply, item.Value)
+			s.Apply = append(s.Apply, SetupApplyEntry{Path: item.Value})
 		}
 		if len(s.Apply) > 0 {
 			return nil
@@ -65,19 +79,54 @@ func (s *SetupConfig) UnmarshalYAML(value *yaml.Node) error {
 	return utils.StrictUnmarshal(raw, (*plain)(s))
 }
 
+// SetupApplyEntry is a single manifest to kubectl-apply during setup.
+// It is either a plain path string or a struct with an optional per-entry wait.
+//
+//	# flat form
+//	- ./prereqs/secret.yaml
+//
+//	# structured form
+//	- path: ./prereqs/secret.yaml
+//	  wait:
+//	    - kind: Secret
+//	      name: my-secret
+//	      namespace: default
+//	      timeout: 30s
+type SetupApplyEntry struct {
+	// Path is the YAML file path to kubectl-apply.
+	Path string `yaml:"path"`
+	// Wait blocks after this apply until all listed resources satisfy their conditions.
+	Wait []SetupWait `yaml:"wait,omitempty"`
+}
+
+// UnmarshalYAML allows a SetupApplyEntry to be written as either a plain string
+// (the path) or a full {path, wait} struct.
+func (e *SetupApplyEntry) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		e.Path = value.Value
+		return nil
+	}
+	type plain SetupApplyEntry
+	raw, err := yaml.Marshal(value)
+	if err != nil {
+		return err
+	}
+	return utils.StrictUnmarshal(raw, (*plain)(e))
+}
+
 // SetupHelmInstall installs a Helm chart as a real release into the cluster.
 // Unlike HelmSource (which renders charts to extract Katalog documents),
 // this runs helm upgrade --install for a prerequisite chart.
 type SetupHelmInstall struct {
-	// Repo is the Helm repository URL.
-	Repo string `yaml:"repo"`
-	// Chart is the chart name within the repository.
+	// Repo is the Helm repository URL. Omit for local chart paths.
+	Repo string `yaml:"repo,omitempty"`
+	// Chart is the chart name within the repository, or a local path (e.g. ./).
 	Chart string `yaml:"chart"`
 	// Release is the Helm release name. Defaults to the chart name when empty.
 	Release string `yaml:"release,omitempty"`
 	// Namespace for the release. Defaults to "default".
 	Namespace string `yaml:"namespace,omitempty"`
-	// Version pins the chart version. Leave empty for latest.
+	// Version pins the chart version. Leave empty for latest or local charts.
 	Version string `yaml:"version,omitempty"`
 	// ValueFiles is an ordered list of values files (local paths or URLs).
 	ValueFiles []string `yaml:"valueFiles,omitempty"`
@@ -85,6 +134,8 @@ type SetupHelmInstall struct {
 	Values map[string]interface{} `yaml:"values,omitempty"`
 	// CreateNamespace passes --create-namespace to helm.
 	CreateNamespace bool `yaml:"createNamespace,omitempty"`
+	// Wait blocks after this helm install until all listed resources satisfy conditions.
+	Wait []SetupWait `yaml:"wait,omitempty"`
 }
 
 // ReleaseName returns the effective Helm release name.
@@ -103,13 +154,18 @@ func (h SetupHelmInstall) EffectiveNamespace() string {
 	return "default"
 }
 
+// IsLocalChart reports whether the chart field is a local filesystem path.
+func (h SetupHelmInstall) IsLocalChart() bool {
+	return strings.HasPrefix(h.Chart, "./") || strings.HasPrefix(h.Chart, "/") || h.Chart == "."
+}
+
 // Validate returns an error when required fields are missing.
 func (h SetupHelmInstall) Validate() error {
-	if h.Repo == "" {
-		return fmt.Errorf("setup.helm: repo is required")
-	}
 	if h.Chart == "" {
 		return fmt.Errorf("setup.helm: chart is required")
+	}
+	if !h.IsLocalChart() && h.Repo == "" {
+		return fmt.Errorf("setup.helm: repo is required for remote charts")
 	}
 	return nil
 }
@@ -266,12 +322,31 @@ type E2ECluster struct {
 	Reuse bool `yaml:"reuse"`
 }
 
+// E2EAfter is the lifecycle event that triggers an expectation block.
+type E2EAfter string
+
+const (
+	// AfterSetupComplete runs the expectation after all setup steps finish,
+	// before the CR is applied. Use for infrastructure assertions.
+	AfterSetupComplete E2EAfter = "setup-complete"
+
+	// AfterCRApplied runs the expectation after the CR is applied to the cluster.
+	AfterCRApplied E2EAfter = "cr-applied"
+
+	// AfterCRDeleted runs the expectation after the CR is deleted from the cluster.
+	AfterCRDeleted E2EAfter = "cr-deleted"
+)
+
+// ValidAfterValues is the set of valid values for E2EExpectation.After.
+var ValidAfterValues = []E2EAfter{AfterSetupComplete, AfterCRApplied, AfterCRDeleted}
+
 // E2EExpectation is one named assertion block.
 type E2EExpectation struct {
 	// Name is printed in the results table.
 	Name string `yaml:"name"`
-	// After triggers the expectation — "cr-applied" or "cr-deleted".
-	After string `yaml:"after"`
+	// After is the lifecycle event that triggers this expectation.
+	// Valid values: "setup-complete", "cr-applied", "cr-deleted".
+	After E2EAfter `yaml:"after"`
 	// Timeout is the maximum time to wait for the expectation to pass.
 	Timeout string `yaml:"timeout"` // e.g. "60s"
 
