@@ -201,7 +201,11 @@ Profile string `yaml:"profile,omitempty" json:"profile,omitempty"`
 
 **8. Add `pkg/katalog/validate_<resource>_profile.go`** — `validate<Resource>Profiles()` using `Collect<Resource>ProfileEntries()`. Call it from `ValidateConfig()` in `validate.go`.
 
-**9. Add `isUser<Resource>Profile()`** to `pkg/katalog/validate_user_profiles.go` for the shadowing-allowed logic.
+**9. Update `pkg/katalog/validate_user_profiles.go`** — three additions:
+
+- Add a `<resource>DefNames()` helper that extracts the `Name` field from a `[]<Resource>ProfileDef` slice (same pattern as `npDefNames`, `rqDefNames`, etc.).
+- Add an entry to the `checks` slice inside `validateUserProfiles()` for the new class, pointing to the new helper and (if the class has built-ins) `profiles.IsValid<Resource>Profile` as the `isBuiltin` func. Use `nil` for `isBuiltin` if the class has no built-ins (like LimitRange).
+- Add `isUser<Resource>Profile()` as a method on `*Katalog` that calls `k.Profiles.Lookup<Resource>(name)` — used by `validate_<resource>_profile.go` to check user profiles before rejecting an unknown name.
 
 **10. Wire the new class through the merger** so that `profiles:` declared in a Katalog YAML actually reaches `Katalog.Profiles` at validate and reconcile time. Without this step, all profile references will fail validation even when the name is correctly declared.
 
