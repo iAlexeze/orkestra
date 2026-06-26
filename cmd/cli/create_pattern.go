@@ -59,38 +59,38 @@ Examples:
 		fmt.Printf("generating pattern scaffold → %s/\n", outputDir)
 
 		if _, err := generate.KatalogScaffold(katalogOpts); err != nil {
-			return fmt.Errorf("generating katalog.yaml: %w", err)
+			return fmt.Errorf("generating %s: %w", fileKatalog, err)
 		}
 
 		if err := generate.WriteSimulateScaffold(filepath.Join(outputDir, fileSimulate)); err != nil {
-			return fmt.Errorf("generating simulate.yaml: %w", err)
+			return fmt.Errorf("generating %s: %w", fileSimulate, err)
 		}
 
 		if err := generate.WriteE2EScaffold(filepath.Join(outputDir, fileE2e)); err != nil {
-			return fmt.Errorf("generating e2e.yaml: %w", err)
+			return fmt.Errorf("generating %s: %w", fileE2e, err)
 		}
 
 		if err := generate.WriteREADME(filepath.Join(outputDir, fileReadMe), isTyped); err != nil {
-			return fmt.Errorf("generating README.md: %w", err)
+			return fmt.Errorf("generating %s: %w", fileReadMe, err)
 		}
 
 		if isTyped {
 			if err := generate.WriteMakefile(filepath.Join(outputDir, fileMakeFile)); err != nil {
-				return fmt.Errorf("generating Makefile: %w", err)
+				return fmt.Errorf("generating %s: %w", fileMakeFile, err)
 			}
 			if err := generate.WriteDockerfile(filepath.Join(outputDir, fileDockerfile)); err != nil {
-				return fmt.Errorf("generating Dockerfile: %w", err)
+				return fmt.Errorf("generating %s: %w", fileDockerfile, err)
 			}
 		}
 
-		fmt.Printf("\nPattern scaffold written to %s/\n\n", outputDir)
-		fmt.Printf("  katalog.yaml   — declare your CRD and resources\n")
-		fmt.Printf("  simulate.yaml  — ork simulate\n")
-		fmt.Printf("  e2e.yaml       — ork e2e\n")
-		fmt.Printf("  README.md      — start here\n")
+		fmt.Printf("\n→ pattern scaffold written to %s\n", bold(outputDir+"/"))
+		fmt.Printf("  %s %-16s %s\n", successMark(), fileKatalog, dim("declare your CRD(s) and resources"))
+		fmt.Printf("  %s %-16s %s\n", successMark(), fileSimulate, dim("ork simulate"))
+		fmt.Printf("  %s %-16s %s\n", successMark(), fileE2e, dim("ork e2e"))
+		fmt.Printf("  %s %-16s %s\n", successMark(), fileReadMe, dim("start here"))
 		if isTyped {
-			fmt.Printf("  Makefile       — make registry, make build, make release\n")
-			fmt.Printf("  Dockerfile     — production container image\n")
+			fmt.Printf("  %s %-16s %s\n", successMark(), fileMakeFile, dim("make registry, make build, make release"))
+			fmt.Printf("  %s %-16s %s\n", successMark(), fileDockerfile, dim("production container image"))
 		}
 		fmt.Println()
 		return nil
