@@ -28,12 +28,17 @@ import (
 
 // ExpandedMotif holds the result of expanding a motif.
 type ExpandedMotif struct {
+	// Name is the motif's metadata.name, used in conflict error messages.
+	Name string
 	// OnCreate contains resources from resources.onCreate: — merged into the CRD's OnCreate phase.
 	OnCreate *orktypes.HookTemplates
 	// OnReconcile contains resources from the flat resources: fields — merged into OnReconcile.
 	OnReconcile *orktypes.HookTemplates
 	Status      *orktypes.StatusConfig
 	Admission   *orktypes.Admission
+	// Profiles carries user-defined profiles declared in the motif.
+	// Merged into the katalog's ProfileRegistry during expandMotifImports.
+	Profiles orktypes.ProfileRegistry
 }
 
 // HasResources returns true when the motif produced any resource templates.
@@ -132,10 +137,12 @@ func Expand(m *orktypes.Motif, bindings map[string]string) (*ExpandedMotif, erro
 	}
 
 	return &ExpandedMotif{
+		Name:        m.Metadata.Name,
 		OnCreate:    onCreate,
 		OnReconcile: onReconcile,
 		Status:      status,
 		Admission:   admission,
+		Profiles:    m.Profiles,
 	}, nil
 }
 
