@@ -27,12 +27,26 @@ Orkestra reads the source ConfigMap and creates copies in each target namespace,
 
 ## Steps
 
-### 1. Verify CR and source ConfigMap (optional)
+### 1. Simulate (no cluster needed)
 
 ```bash
-kubectl get cd -n default
-kubectl get configmap app-config -n platform
+ork simulate
 ```
+
+Because the ConfigMap copy requires reading the source ConfigMap from a live cluster, Orkestra detects this automatically and skips it during simulation:
+
+```text
+note: configmaps/{{ .spec.configMapName }}: cross-namespace copy skipped in simulate — requires a live cluster
+
+  Cycle 1:
+    ~ status/db-creds
+
+  ~ Max cycles reached (1) in 245ms
+```
+
+No errors, no cluster, no guessing. Use `ork e2e` to exercise the copy against a real cluster.
+
+---
 
 ### 2. Start the runtime
 
@@ -40,18 +54,25 @@ kubectl get configmap app-config -n platform
 ork run       # add --dev if you don't have a cluster; Orkestra will create a kind cluster
 ```
 
-Orkestra reads `crdFile: ./crd.yaml`, applies the CRD, , setup file `./setup.yaml` and  `cr.yaml` to the cluster, and starts the operator.
+Orkestra applies the CRD, `setup.yaml` (which creates the source ConfigMap in the `platform` namespace), and `cr.yaml`, then starts the operator.
 
-### 3. Open the Control Center
+### 3. In a second terminal — verify and control
 
-In a second terminal:
+Confirm the source ConfigMap and CR are live:
+
+```bash
+kubectl get configmapdistribution app-config-distribution
+kubectl get configmap app-config -n platform
+```
+
+Then open the Control Center:
 
 ```bash
 ork control
 # username:password → orkestra
 ```
 
-Open [http://localhost:8081](http://localhost:8081) to see the live operator, and the resources created.
+Open [http://localhost:8081](http://localhost:8081) to see the live operator and the resources created.
 
 ### 4. Verify copies exist
 

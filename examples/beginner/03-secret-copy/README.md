@@ -32,31 +32,52 @@ namespace stays in sync automatically.
 
 ## Steps
 
-### 1. Start the runtime
+### 1. Simulate (no cluster needed)
+
+```bash
+ork simulate
+```
+
+Because the Secret copy requires reading the source Secret from a live cluster, Orkestra detects this automatically and skips it during simulation:
+
+```
+note: secrets/{{ .spec.secretName }}: cross-namespace copy skipped in simulate — requires a live cluster
+
+  Cycle 1:
+    ~ status/db-creds
+
+  ~ Max cycles reached (1) in 245ms
+```
+
+No errors, no cluster, no guessing. Use `ork e2e` to exercise the copy against a real cluster.
+
+---
+
+### 2. Start the runtime
 
 ```bash
 ork run       # add --dev if you don't have a cluster; Orkestra will create a kind cluster
 ```
 
-Orkestra reads `crdFile: ./crd.yaml`, applies the CRD, , setup file `./setup.yaml` and  `cr.yaml` to the cluster, and starts the operator.
+Orkestra applies the CRD, `setup.yaml` (which creates the source Secret in the `platform` namespace), and `cr.yaml`, then starts the operator.
 
-### 2. Verify CR and source Secret (optional)
+### 3. In a second terminal — verify and control
+
+Confirm the source Secret and CR are live:
 
 ```bash
-kubectl get sd -n default
+kubectl get secretdistribution db-creds
 kubectl get secret database-credentials -n platform
 ```
 
-### 3. Open the Control Center
-
-In a second terminal:
+Then open the Control Center:
 
 ```bash
 ork control
 # username:password → orkestra
 ```
 
-Open [http://localhost:8081](http://localhost:8081) to see the live operator, and the resources created.
+Open [http://localhost:8081](http://localhost:8081) to see the live operator and the resources created.
 
 ### 4. Verify copies exist
 

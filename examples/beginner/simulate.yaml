@@ -7,3 +7,5 @@ metadata:
 
 imports:
   - ./02-with-serviceaccount/simulate.yaml
+  - ./03-secret-copy/simulate.yaml
+  - ./03b-configmap-copy/simulate.yaml
