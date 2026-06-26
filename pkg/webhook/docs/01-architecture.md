@@ -28,7 +28,7 @@ gateway.go
       • registers HTTPS endpoints based on Katalog capabilities
       • starts HTTPS server in goroutine
       • registers webhook configurations in goroutine (best-effort)
-      • starts housekeeper goroutine (if IsWebhookControllerEnabled)
+      • starts housekeeper goroutine (if IsHousekeeperEnabled)
 ```
 
 `WebhookServer` starts after `HealthServer` so `/ready` is already live when webhook registration runs.

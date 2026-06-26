@@ -80,7 +80,7 @@ type admissionRegistryReader interface {
 
 // RegisterAdmissionWebhooks creates or updates the ValidatingWebhookConfiguration
 // and MutatingWebhookConfiguration based on the current admission registry.
-// Idempotent — safe to call on restart and from the webhook controller.
+// Idempotent — safe to call on restart and from the housekeeper.
 func RegisterAdmissionWebhooks(
 	ctx context.Context,
 	client kubernetes.Interface,

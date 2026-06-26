@@ -140,7 +140,7 @@ type CRDInfoResponse struct {
 	Admission              *AdmissionStatsResponse          `json:"admission,omitempty"`
 	DeletionProtection     *DeletionProtectionStatsResponse `json:"deletionProtection,omitempty"`
 	NamespaceProtection    *NamespaceProtectionResponse     `json:"namespaceProtection,omitempty"`
-	WebhookControllerStats *WebhookControllerStats          `json:"webhookControllerStats,omitempty"`
+	HousekeeperStats *HousekeeperStats          `json:"housekeeperStats,omitempty"`
 	Providers              []ProviderInfoResponse           `json:"providers,omitempty"`
 	RBAC                   RBACInfo                         `json:"rbac,omitempty"`
 	AutoscalerEnabled      bool                             `json:"autoscalerEnabled,omitempty"`
@@ -226,8 +226,8 @@ type NamespaceProtectionResponse struct {
 	RestrictedNamespaces []string `json:"restrictedNamespaces,omitempty"` // non-nil only when restrictedNamespaces: is declared
 }
 
-// WebhookControllerStats tracks reconciliation counters for the webhook controller.
-type WebhookControllerStats struct {
+// HousekeeperStats tracks reconciliation counters for the housekeeper.
+type HousekeeperStats struct {
 	Reconciled int64 // total successful reconciliation cycles
 	Failed     int64 // reconciliation attempts that encountered errors
 }
@@ -267,7 +267,7 @@ func BuildCRDInfoHandler(
 	convStats *health.ConversionStats,
 	admStats *health.AdmissionStats,
 	protStats *health.DeletionProtectionStats,
-	webhookControllerStats *health.WebhookStats,
+	housekeeperStats *health.WebhookStats,
 	provStats *health.ProviderStats,
 	nsStats *health.NamespaceProtectionStats,
 	isDeletionProtected bool,
@@ -427,10 +427,10 @@ func BuildCRDInfoHandler(
 			response.NamespaceProtection = nsr
 		}
 
-		// Webhook controller stats
-		if webhookControllerStats != nil {
-			snap := webhookControllerStats.GetStats()
-			response.WebhookControllerStats = &WebhookControllerStats{
+		// Housekeeper stats
+		if housekeeperStats != nil {
+			snap := housekeeperStats.GetStats()
+			response.HousekeeperStats = &HousekeeperStats{
 				Reconciled: snap.Reconciled,
 				Failed:     snap.Failed,
 			}

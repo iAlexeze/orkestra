@@ -34,7 +34,7 @@ type GatewayStatsProvider interface {
 	ProtectionStatsFor(gvrKey string) *health.DeletionProtectionStats
 	NamespaceStatsFor(gvrKey string) *health.NamespaceProtectionStats
 	InfraProtectionStats() *health.DeletionProtectionStats
-	WebhookControllerStats() *health.WebhookStats
+	HousekeeperStats() *health.WebhookStats
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ type GatewayKatalogResponse struct {
 	// Process-level stats for events not attributable to a single CRD:
 	// the webhook configuration itself and Orkestra infra resources.
 	InfraProtection   *DeletionProtectionStatsResponse `json:"infraProtection,omitempty"`
-	WebhookController *WebhookControllerStats          `json:"webhookController,omitempty"`
+	Housekeeper *HousekeeperStats          `json:"housekeeper,omitempty"`
 	GatewayVersion    string                           `json:"gatewayVersion"`
 }
 
@@ -112,9 +112,9 @@ func BuildGatewayKatalogHandler(kat *katalog.Katalog, ws GatewayStatsProvider) h
 			}
 		}
 
-		if wcs := ws.WebhookControllerStats(); wcs != nil {
+		if wcs := ws.HousekeeperStats(); wcs != nil {
 			snap := wcs.GetStats()
-			resp.WebhookController = &WebhookControllerStats{
+			resp.Housekeeper = &HousekeeperStats{
 				Reconciled: snap.Reconciled,
 				Failed:     snap.Failed,
 			}

@@ -35,8 +35,8 @@ func (k *Katalog) securityEnvDefaults() interface {
 	WebhooksPolicy() string
 	WebhookCleanup() bool
 	ConversionWindowVal() int
-	WebhookControllerEnabled() bool
-	WebhookControllerSyncInterval() time.Duration
+	HousekeeperEnabled() bool
+	HousekeeperSyncInterval() time.Duration
 	NamespaceProtectionEnabled() bool
 	NamespaceProtectionSvcName() string
 	NamespaceProtectionPolicy() string
@@ -138,17 +138,17 @@ func (r *envSecurityReader) ConversionWindowVal() int {
 	}
 	return r.k.konfig.Security().Conversion.ConversionWindow
 }
-func (r *envSecurityReader) WebhookControllerEnabled() bool {
+func (r *envSecurityReader) HousekeeperEnabled() bool {
 	if r.k.konfig == nil {
 		return false
 	}
-	return r.k.konfig.Security().Webhooks.Controller.Enabled
+	return r.k.konfig.Security().Webhooks.Housekeeper.Enabled
 }
-func (r *envSecurityReader) WebhookControllerSyncInterval() time.Duration {
+func (r *envSecurityReader) HousekeeperSyncInterval() time.Duration {
 	if r.k.konfig == nil {
 		return 30 * time.Second
 	}
-	return r.k.konfig.Security().Webhooks.Controller.SyncInterval
+	return r.k.konfig.Security().Webhooks.Housekeeper.SyncInterval
 }
 func (r *envSecurityReader) NamespaceProtectionEnabled() bool {
 	if r.k.konfig == nil {
@@ -460,14 +460,14 @@ func (k *Katalog) NeedsCertificates() bool {
 		k.HasConversionPaths()
 }
 
-// IsWebhookControllerEnabled reports whether the webhook controller is enabled.
-func (k *Katalog) IsWebhookControllerEnabled() bool {
-	return k.securityEnvDefaults().WebhookControllerEnabled()
+// IsHousekeeperEnabled reports whether the webhook housekeeper is enabled.
+func (k *Katalog) IsHousekeeperEnabled() bool {
+	return k.securityEnvDefaults().HousekeeperEnabled()
 }
 
-// WebhookControllerSyncInterval returns the webhook controller sync interval.
-func (k *Katalog) WebhookControllerSyncInterval() time.Duration {
-	return k.securityEnvDefaults().WebhookControllerSyncInterval()
+// HousekeeperSyncInterval returns the housekeeper sync interval.
+func (k *Katalog) HousekeeperSyncInterval() time.Duration {
+	return k.securityEnvDefaults().HousekeeperSyncInterval()
 }
 
 // ── Certificate manager ───────────────────────────────────────────────────────

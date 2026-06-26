@@ -58,7 +58,7 @@ Same pattern as `DeletionProtectionStats` — counters for `Blocked` and `Allowe
 
 ## WebhookStats
 
-Tracks webhook controller reconciliation cycles.
+Tracks housekeeper reconciliation cycles.
 
 ```go
 ws := health.NewWebhookStats()

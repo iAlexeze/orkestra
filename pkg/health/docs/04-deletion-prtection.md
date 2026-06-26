@@ -39,7 +39,7 @@ The result is a **self‑healing admission control plane**: the webhooks that pr
                                            │
                                            ▼
                          ┌───────────────────────────────────────────┐
-                         │        Webhook Controller (Leader)        │
+                         │        Housekeeper (Leader)        │
                          │-------------------------------------------│
                          │  • Reconciles admission webhooks          │
                          │  • Reconciles deletion-protection webhook │

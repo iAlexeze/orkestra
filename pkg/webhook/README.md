@@ -52,7 +52,7 @@ ws.Start(ctx)
     • registers HTTPS endpoints based on declared capabilities
     • starts HTTPS server (skipped if no capabilities declared)
     • registers ValidatingWebhookConfiguration / MutatingWebhookConfiguration (in-cluster only)
-    • starts webhook controller goroutine
+    • starts housekeeper goroutine
     ↓
 ws.Shutdown(ctx)
     • cancels controller goroutine
