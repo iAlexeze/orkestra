@@ -607,10 +607,14 @@ func roleNameList(srcs []orktypes.RoleTemplateSource) []string {
 	return out
 }
 
-func clusterRoleNameList(srcs []orktypes.PlaceholderSource) []string {
+func clusterRoleNameList(srcs []orktypes.ClusterRoleTemplateSource) []string {
 	out := make([]string, len(srcs))
-	for i := range srcs {
-		out[i] = fmt.Sprintf("<clusterrole-%d>", i+1)
+	for i, s := range srcs {
+		if s.Name != "" {
+			out[i] = s.Name
+		} else {
+			out[i] = fmt.Sprintf("<clusterrole-%d>", i+1)
+		}
 	}
 	return out
 }

@@ -122,18 +122,20 @@ func (t PodTemplateSource) GetSleep() string { return t.Sleep }
 func (t ServiceTemplateSource) GetSleep() string { return t.Sleep }
 func (t IngressTemplateSource) GetSleep() string { return t.Sleep }
 
-// func (t NetworkPolicyTemplateSource) GetSleep() string  { return t.Sleep }
+func (t NetworkPolicyTemplateSource) GetSleep() string { return t.Sleep }
 
 // Batch
 func (t JobTemplateSource) GetSleep() string     { return t.Sleep }
 func (t CronJobTemplateSource) GetSleep() string { return t.Sleep }
 
 // Config & identity
-func (t SecretTemplateSource) GetSleep() string         { return t.Sleep }
-func (t ConfigMapTemplateSource) GetSleep() string      { return t.Sleep }
-func (t ServiceAccountTemplateSource) GetSleep() string { return t.Sleep }
-func (t RoleTemplateSource) GetSleep() string           { return t.Sleep }
-func (t RoleBindingTemplateSource) GetSleep() string    { return t.Sleep }
+func (t SecretTemplateSource) GetSleep() string             { return t.Sleep }
+func (t ConfigMapTemplateSource) GetSleep() string          { return t.Sleep }
+func (t ServiceAccountTemplateSource) GetSleep() string     { return t.Sleep }
+func (t RoleTemplateSource) GetSleep() string               { return t.Sleep }
+func (t RoleBindingTemplateSource) GetSleep() string        { return t.Sleep }
+func (t ClusterRoleTemplateSource) GetSleep() string        { return t.Sleep }
+func (t ClusterRoleBindingTemplateSource) GetSleep() string { return t.Sleep }
 
 // Storage
 func (t PVTemplateSource) GetSleep() string  { return t.Sleep }
@@ -161,8 +163,9 @@ func (t CustomResourceTemplateSource) GetSleep() string { return t.Sleep }
 // // Scheduling / QoS
 // func (t PriorityClassTemplateSource) GetSleep() string  { return t.Sleep }
 // func (t RuntimeClassTemplateSource) GetSleep() string   { return t.Sleep }
-// func (t LimitRangeTemplateSource) GetSleep() string     { return t.Sleep }
-// func (t ResourceQuotaTemplateSource) GetSleep() string  { return t.Sleep }
+func (t LimitRangeTemplateSource) GetSleep() string    { return t.Sleep }
+func (t ResourceQuotaTemplateSource) GetSleep() string { return t.Sleep }
+
 // func (t PriorityLevelConfigurationTemplateSource) GetSleep() string {
 //     return t.Sleep
 // }
@@ -182,19 +185,21 @@ func (t StatefulSetTemplateSource) GetName() string { return t.Name }
 func (t ServiceTemplateSource) GetName() string { return t.Name }
 func (t IngressTemplateSource) GetName() string { return t.Name }
 
-// func (t NetworkPolicyTemplateSource) GetName() string  { return t.Name }
-func (t JobTemplateSource) GetName() string            { return t.Name }
-func (t CronJobTemplateSource) GetName() string        { return t.Name }
-func (t SecretTemplateSource) GetName() string         { return t.Name }
-func (t ConfigMapTemplateSource) GetName() string      { return t.Name }
-func (t ServiceAccountTemplateSource) GetName() string { return t.Name }
-func (t RoleTemplateSource) GetName() string           { return t.Name }
-func (t RoleBindingTemplateSource) GetName() string    { return t.Name }
-func (t PVTemplateSource) GetName() string             { return t.Name }
-func (t PVCTemplateSource) GetName() string            { return t.Name }
-func (t HPATemplateSource) GetName() string            { return t.Name }
-func (t PDBTemplateSource) GetName() string            { return t.Name }
-func (t NamespaceTemplateSource) GetName() string      { return t.Name }
+func (t NetworkPolicyTemplateSource) GetName() string      { return t.Name }
+func (t JobTemplateSource) GetName() string                { return t.Name }
+func (t CronJobTemplateSource) GetName() string            { return t.Name }
+func (t SecretTemplateSource) GetName() string             { return t.Name }
+func (t ConfigMapTemplateSource) GetName() string          { return t.Name }
+func (t ServiceAccountTemplateSource) GetName() string     { return t.Name }
+func (t RoleTemplateSource) GetName() string               { return t.Name }
+func (t RoleBindingTemplateSource) GetName() string        { return t.Name }
+func (t ClusterRoleTemplateSource) GetName() string        { return t.Name }
+func (t ClusterRoleBindingTemplateSource) GetName() string { return t.Name }
+func (t PVTemplateSource) GetName() string                 { return t.Name }
+func (t PVCTemplateSource) GetName() string                { return t.Name }
+func (t HPATemplateSource) GetName() string                { return t.Name }
+func (t PDBTemplateSource) GetName() string                { return t.Name }
+func (t NamespaceTemplateSource) GetName() string          { return t.Name }
 
 // Custom Resource
 func (t CustomResourceTemplateSource) GetName() string { return t.Sleep }
@@ -209,8 +214,9 @@ func (t CustomResourceTemplateSource) GetName() string { return t.Sleep }
 // func (t StorageVolumeTemplateSource) GetName() string  { return t.Name }
 // func (t PriorityClassTemplateSource) GetName() string  { return t.Name }
 // func (t RuntimeClassTemplateSource) GetName() string   { return t.Name }
-// func (t LimitRangeTemplateSource) GetName() string     { return t.Name }
-// func (t ResourceQuotaTemplateSource) GetName() string  { return t.Name }
+func (t LimitRangeTemplateSource) GetName() string    { return t.Name }
+func (t ResourceQuotaTemplateSource) GetName() string { return t.Name }
+
 // func (t PriorityLevelConfigurationTemplateSource) GetName() string { return t.Name }
 // func (t PodTemplatePlaceholderSource) GetName() string  { return t.Name }
 // func (t ServiceMonitorTemplateSource) GetName() string { return t.Name }
