@@ -31,6 +31,7 @@ ork: generate-notes
 	cd $(ORKESTRA_DIR) && gofmt -w .
 	cd $(ORKESTRA_DIR) && go build -ldflags "$(ORK_LDFLAGS)" -o $(OUTPUT_DIR)/ork ./cmd/orkestra
 	@echo "✅ Orkestra built successfully"
+	@python3 scripts/fix-bare-fences.py documentation/
 
 orkcc:
 	@echo "Building Orkestra Control Center..."
