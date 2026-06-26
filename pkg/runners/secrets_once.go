@@ -1,4 +1,4 @@
-// pkg/reconciler/run_secrets_once.go
+// pkg/runners/secrets_once.go
 //
 // once: true on secrets — idempotent random secret generation.
 //

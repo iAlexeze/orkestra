@@ -1,4 +1,4 @@
-// pkg/reconciler/run_secrets.go
+// pkg/runners/secrets.go
 //
 // Adds to the previous version:
 //   - orktypes.EvaluateWhen instead of evaluateConditions (fixes anyOf: being ignored)

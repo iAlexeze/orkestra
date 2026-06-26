@@ -1,4 +1,4 @@
-// pkg/reconciler/run_rolebindings.go
+// pkg/runners/rolebindings.go
 package runners
 
 import (

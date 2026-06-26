@@ -1,4 +1,4 @@
-// pkg/reconciler/run_replicasets.go
+// pkg/runners/replicasets.go
 package runners
 
 import (

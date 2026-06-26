@@ -1,4 +1,4 @@
-// pkg/reconciler/run_jobs.go
+// pkg/runners/jobs.go
 package runners
 
 import (

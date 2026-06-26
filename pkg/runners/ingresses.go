@@ -1,4 +1,4 @@
-// pkg/reconciler/run_ingresses.go
+// pkg/runners/ingresses.go
 package runners
 
 import (

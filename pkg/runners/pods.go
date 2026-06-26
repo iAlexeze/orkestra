@@ -1,4 +1,4 @@
-// pkg/reconciler/run_pods.go
+// pkg/runners/pods.go
 package runners
 
 import (

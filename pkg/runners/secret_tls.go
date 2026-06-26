@@ -1,4 +1,4 @@
-// pkg/reconciler/run_secrets_tls.go
+// pkg/runners/secret_tls.go
 //
 // TLS certificate generation and secret rotation for Orkestra secrets.
 //

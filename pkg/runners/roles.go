@@ -1,4 +1,4 @@
-// pkg/reconciler/run_roles.go
+// pkg/runners/roles.go
 package runners
 
 import (

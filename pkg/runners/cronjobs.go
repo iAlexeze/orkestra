@@ -1,4 +1,4 @@
-// pkg/reconciler/run_cronjobs.go
+// pkg/runners/cronjobs.go
 package runners
 
 import (

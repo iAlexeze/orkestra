@@ -1,4 +1,4 @@
-// pkg/reconciler/run_statefulsets.go
+// pkg/runners/statefulsets.go
 package runners
 
 import (

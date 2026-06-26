@@ -1,4 +1,4 @@
-// pkg/reconciler/run_pvcs.go
+// pkg/runners/pvcs.go
 package runners
 
 import (
