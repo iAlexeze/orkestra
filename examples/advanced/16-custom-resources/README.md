@@ -168,5 +168,5 @@ If a target CRD is not yet installed when Orkestra starts, it logs a warning and
 ## Prerequisites
 
 - Ork CLI: `curl get.orkestra.sh | bash`
-- A running Kubernetes cluster (`kind create cluster` works for all examples)
+- A running Kubernetes cluster (`ork create cluster` works for all examples)
 - `kubectl` pointed at the cluster

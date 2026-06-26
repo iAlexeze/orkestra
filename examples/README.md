@@ -183,7 +183,7 @@ ork simulate ./...
 
 All examples:
 - `ork` CLI — `curl get.orkestra.sh | bash`
-- A running Kubernetes cluster (`kind create cluster` works for every example here)
+- A running Kubernetes cluster (`ork create cluster` works for every example here)
 - `kubectl` configured
 
 Advanced typed examples (09, 10, 11) also require:
