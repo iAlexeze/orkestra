@@ -203,11 +203,20 @@ Profile string `yaml:"profile,omitempty" json:"profile,omitempty"`
 
 **9. Add `isUser<Resource>Profile()`** to `pkg/katalog/validate_user_profiles.go` for the shadowing-allowed logic.
 
-**10. Rebuild and validate** — `make ork && ork validate -f your-example.yaml`.
+**10. Wire the new class through the merger** so that `profiles:` declared in a Katalog YAML actually reaches `Katalog.Profiles` at validate and reconcile time. Without this step, all profile references will fail validation even when the name is correctly declared.
 
-**11. Add a test fixture** in `pkg/profiles/fixture/`.
+- `pkg/merger/merger.go` — add the class to the `profiles` field (it's a `ProfileRegistry`, so no change needed there — just make sure `ToProfiles()` exists).
+- `pkg/merger/file.go`, `loadKatalog` — no change needed; `m.profiles = doc.Profiles` already covers all classes via the shared `ProfileRegistry`.
+- `pkg/merger/file.go`, `loadKomposer` — add `accProfiles, _ = accProfiles.Merge(m.profiles, source)` alongside the existing `accSecurity`/`accProviders` lines at each import step, and `merged, _ := accProfiles.Merge(doc.Profiles, path); m.profiles = merged` at the final merge block.
+- `pkg/katalog/parser.go`, `KomposeRuntimeKatalog` — add `k.Profiles = m.ToProfiles()` alongside the existing `k.Security = m.ToSecurity()` calls.
 
-**12. Add to the use-case examples** under `examples/use-cases/profiles/` or `examples/use-cases/namespace-provisioner/`.
+This step is only needed when adding the *first* new class to `ProfileRegistry`. If `ProfileRegistry` already has a `ToProfiles()` path (it does as of LimitRange), the new class field is carried automatically.
+
+**11. Rebuild and validate** — `make ork && ork validate -f your-example.yaml`.
+
+**12. Add a test fixture** in `pkg/profiles/fixture/`.
+
+**13. Add to the use-case examples** under `examples/use-cases/profiles/` or `examples/use-cases/namespace-provisioner/`.
 
 ---
 
