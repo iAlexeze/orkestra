@@ -58,6 +58,12 @@ type KatalogFile struct {
 	// and the Komposer's own teams win on name conflict.
 	Notification *KatalogNotification `yaml:"notification,omitempty"`
 
+	// Profiles declares named profiles available to all CRDs in this Katalog.
+	// Profiles are resolved before built-in Orkestra profiles at both validate
+	// and reconcile time. Template expressions in profile field values are
+	// resolved at reconcile time; validation skips fields that contain {{ }}.
+	Profiles ProfileRegistry `yaml:"profiles,omitempty"`
+
 	// Providers declares which external provider libraries this Katalog requires.
 	// Top-level alongside spec: and security: — providers represent a distinct
 	// operational concern (infrastructure dependencies) separate from CRD definitions.
