@@ -4,6 +4,7 @@ package reconciler
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -178,13 +179,25 @@ func NewGenericReconciler[PTR domain.Object](
 	sem := autoscaler.NewResizableSemaphore(workers)
 	autoMet := autoscaler.NewAutoMetrics(sem)
 
+	box := crd.OperatorBox
+	// Auto-inject a system finalizer when namespaces are declared in any hook phase.
+	// Namespaces are cluster-scoped and are not garbage-collected via owner references,
+	// so explicit cleanup in handleDeletion is required. The finalizer ensures the
+	// CR is not deleted before the cleanup runs, even when the user does not declare
+	// any finalizers in the katalog.
+	if box.HasNamespaceDeclarations() {
+		if !slices.Contains(box.Finalizers, labels.NsCleanupFinalizer) {
+			box.Finalizers = append(box.Finalizers, labels.NsCleanupFinalizer)
+		}
+	}
+
 	r := &GenericReconciler[PTR]{
 		katalogRegistry:   katalogRegistry,
 		crdHealthRegistry: crdHealthRegistry,
 		providerRegistry:  providerRegistry,
 		providerStats:     providerStats,
 		crd:               crd,
-		operatorBox:       crd.OperatorBox,
+		operatorBox:       box,
 		informer:          informer,
 		event:             ev,
 		kube:              kube,
@@ -667,6 +680,18 @@ func (r *GenericReconciler[PTR]) handleDeletion(ctx context.Context, resolver *o
 			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"DeleteError",
 				fmt.Sprintf("Template deletion failed: %v", err))
 			return fmt.Errorf("template deletion: %w", err)
+		}
+	}
+
+	// Namespaces require explicit deletion regardless of whether an onDelete block exists:
+	// they are cluster-scoped and the GC does not cascade through owner references on them.
+	// runTemplateOnDelete already handles this when OnDelete is set; run it here for all
+	// other cases (no onDelete block, or Go hook path).
+	if r.operatorBox.OnDelete == nil {
+		if kube, ok := kubeclient.FromContext(ctx); ok {
+			if err := deleteOwnedNamespaces(ctx, kube, resolver, obj, r.operatorBox); err != nil {
+				return fmt.Errorf("namespace cleanup: %w", err)
+			}
 		}
 	}
 
