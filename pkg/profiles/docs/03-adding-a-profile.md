@@ -119,7 +119,7 @@ ork validate -f katalog.yaml
 
 **Profile names are validated at load time.** An unknown static name is a hard error. An unknown template expression is validated at reconcile time.
 
-See [../../documentation/concepts/profiles/10-user-defined-profiles.md] for the full reference.
+See [User-defined profiles](../../../documentation/concepts/profiles/10-user-defined-profiles.md) for the full reference.
 
 ---
 
