@@ -75,6 +75,7 @@ Static names are validated at load time. Template expressions are validated when
 | [Rolling Update](./07-rolling-update-profile.md) | Deployment/StatefulSet/ReplicaSet rollout strategy | `deployments[*].rollingUpdate`, `statefulSets[*].rollingUpdate`, `replicaSets[*].rollingUpdate` |
 | [ResourceQuota](./08-resourcequota-profile.md) | Namespace resource limits (pods, CPU, memory) | `resourceQuotas[*]` |
 | [NetworkPolicy](./09-networkpolicy-profile.md) | Traffic allow/deny rules for pods | `networkPolicies[*]` |
+| [User-defined](./10-user-defined-profiles.md) | Custom named profiles declared in your Katalog or Motif | All profile-supporting fields |
 
 ---
 
@@ -84,3 +85,4 @@ Static names are validated at load time. Template expressions are validated when
 - **Fail-fast** — an unknown profile name is a Katalog load error, not a runtime error.
 - **No mixing** — a profile and explicit fields of the same type cannot coexist on the same resource.
 - **Template-safe** — profile names can be template expressions. Static names are validated immediately; template expressions are validated at reconcile time.
+- **User-defined** — teams can declare custom named profiles in a Katalog or Motif `profiles:` block. They resolve before built-ins. See [User-defined profiles](./10-user-defined-profiles.md).
