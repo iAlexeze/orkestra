@@ -31,7 +31,7 @@ func (k *Katalog) validateNetworkPolicyProfiles() error {
 			if isTemplateExpr(e.Profile) {
 				continue
 			}
-			if !profiles.IsValidNetworkPolicyProfile(e.Profile) {
+			if !k.isUserNetworkPolicyProfile(e.Profile) && !profiles.IsValidNetworkPolicyProfile(e.Profile) {
 				return fmt.Errorf(
 					"crd %q: networkPolicy %q (phase %s) has unknown profile %q — "+
 						"allowed: deny-all, deny-all-ingress, deny-all-egress, allow-same-namespace, allow-dns-egress",
