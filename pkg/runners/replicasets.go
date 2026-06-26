@@ -89,7 +89,7 @@ func RunReplicaSets(
 			return fmt.Errorf("replicasets[%d]: %w", i, err)
 		}
 
-		spec := orkreplicaset.Resolve(resolved, resolver.OwnerName())
+		spec := orkreplicaset.Resolve(resolved, resolver.OwnerName(), resolver.Profiles())
 
 		if update {
 			if err := orkreplicaset.Update(ctx, kube, owner, spec); err != nil {

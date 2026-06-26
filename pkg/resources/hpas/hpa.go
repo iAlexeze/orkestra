@@ -179,7 +179,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 
 // Resolve builds a ResolvedHPASpec from an HPATemplateSource.
 // All template expressions must be evaluated before calling here.
-func Resolve(src orktypes.HPATemplateSource, ownerName string) ResolvedHPASpec {
+func Resolve(src orktypes.HPATemplateSource, ownerName string, reg orktypes.ProfileRegistry) ResolvedHPASpec {
 	spec := ResolvedHPASpec{
 		Name:           src.Name,
 		Namespace:      src.Namespace,
@@ -214,7 +214,7 @@ func Resolve(src orktypes.HPATemplateSource, ownerName string) ResolvedHPASpec {
 	}
 
 	if src.Behavior != nil && src.Behavior.Profile != "" {
-		expansion, err := profiles.ApplyHPAProfile(src.Behavior.Profile)
+		expansion, err := profiles.ApplyHPAProfile(src.Behavior.Profile, reg)
 		if err != nil {
 			logger.Warn().Str("profile", src.Behavior.Profile).Err(err).Msg("unknown hpa behavior profile — skipping")
 		} else {

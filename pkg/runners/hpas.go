@@ -69,7 +69,7 @@ func RunHPAs(
 			return fmt.Errorf("hpas[%d]: %w", i, err)
 		}
 
-		spec := orkhpa.Resolve(resolved, resolver.OwnerName())
+		spec := orkhpa.Resolve(resolved, resolver.OwnerName(), resolver.Profiles())
 
 		if update {
 			if err := orkhpa.Update(ctx, kube, owner, spec); err != nil {

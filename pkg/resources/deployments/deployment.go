@@ -200,7 +200,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 // Use pkg/orkestra-registry/template.Resolver to evaluate expressions first.
 //
 // The resolver already evaluated template expressions — here we just merge.
-func Resolve(src orktypes.DeploymentTemplateSource, ownerName string) ResolvedDeploymentSpec {
+func Resolve(src orktypes.DeploymentTemplateSource, ownerName string, reg orktypes.ProfileRegistry) ResolvedDeploymentSpec {
 	spec := ResolvedDeploymentSpec{
 		Name:            src.Name,
 		Image:           src.Image,
@@ -242,7 +242,7 @@ func Resolve(src orktypes.DeploymentTemplateSource, ownerName string) ResolvedDe
 	spec.Env = []orktypes.EnvVar(src.Env)
 
 	if src.RollingUpdate != nil && src.RollingUpdate.Profile != "" {
-		expansion, err := profiles.ApplyRollingUpdateProfile(src.RollingUpdate.Profile)
+		expansion, err := profiles.ApplyRollingUpdateProfile(src.RollingUpdate.Profile, reg)
 		if err != nil {
 			logger.Warn().Str("profile", src.RollingUpdate.Profile).Err(err).Msg("unknown rolling update profile — skipping")
 		} else {

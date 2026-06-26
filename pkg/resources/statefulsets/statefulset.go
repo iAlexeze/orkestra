@@ -159,7 +159,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient, owner domain
 }
 
 // Resolve builds a ResolvedStatefulSetSpec from a StatefulSetTemplateSource.
-func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedStatefulSetSpec {
+func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string, reg orktypes.ProfileRegistry) ResolvedStatefulSetSpec {
 	spec := ResolvedStatefulSetSpec{
 		Name:            src.Name,
 		Namespace:       src.Namespace,
@@ -222,7 +222,7 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedS
 	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	if src.RollingUpdate != nil && src.RollingUpdate.Profile != "" {
-		expansion, err := profiles.ApplyRollingUpdateProfile(src.RollingUpdate.Profile)
+		expansion, err := profiles.ApplyRollingUpdateProfile(src.RollingUpdate.Profile, reg)
 		if err != nil {
 			logger.Warn().Str("profile", src.RollingUpdate.Profile).Err(err).Msg("unknown rolling update profile — skipping")
 		} else {

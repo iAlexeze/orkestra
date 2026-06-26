@@ -218,13 +218,13 @@ func CopyToNamespaces(
 
 // Resolve builds a ResolvedNetworkPolicySpec from a NetworkPolicyTemplateSource.
 // Template expressions must already be evaluated by template.Resolver before calling.
-func Resolve(src orktypes.NetworkPolicyTemplateSource, ownerName string) ResolvedNetworkPolicySpec {
+func Resolve(src orktypes.NetworkPolicyTemplateSource, ownerName string, reg orktypes.ProfileRegistry) ResolvedNetworkPolicySpec {
 	ingress := src.Ingress
 	egress := src.Egress
 	policyTypes := src.PolicyTypes
 
 	if src.Profile != "" {
-		if expanded, err := profiles.ApplyNetworkPolicyProfile(src.Profile); err != nil {
+		if expanded, err := profiles.ApplyNetworkPolicyProfile(src.Profile, reg); err != nil {
 			logger.Warn().Str("profile", src.Profile).Err(err).Msg("unknown networkpolicy profile — skipping")
 		} else {
 			ingress = expanded.Ingress

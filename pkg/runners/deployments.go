@@ -87,7 +87,7 @@ func RunDeployments(
 			return fmt.Errorf("deployments[%d]: %w", i, err)
 		}
 
-		spec := orkdeploy.Resolve(resolved, resolver.OwnerName())
+		spec := orkdeploy.Resolve(resolved, resolver.OwnerName(), resolver.Profiles())
 
 		if update {
 			if err := orkdeploy.Update(ctx, kube, owner, spec); err != nil {

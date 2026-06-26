@@ -192,7 +192,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 }
 
 // Resolve builds a ResolvedReplicaSetSpec from a ReplicaSetTemplateSource.
-func Resolve(src orktypes.ReplicaSetTemplateSource, ownerName string) ResolvedReplicaSetSpec {
+func Resolve(src orktypes.ReplicaSetTemplateSource, ownerName string, reg orktypes.ProfileRegistry) ResolvedReplicaSetSpec {
 	spec := ResolvedReplicaSetSpec{
 		Name:            src.Name,
 		Image:           src.Image,
@@ -235,7 +235,7 @@ func Resolve(src orktypes.ReplicaSetTemplateSource, ownerName string) ResolvedRe
 	spec.Env = []orktypes.EnvVar(src.Env)
 
 	if src.RollingUpdate != nil && src.RollingUpdate.Profile != "" {
-		expansion, err := profiles.ApplyRollingUpdateProfile(src.RollingUpdate.Profile)
+		expansion, err := profiles.ApplyRollingUpdateProfile(src.RollingUpdate.Profile, reg)
 		if err != nil {
 			logger.Warn().Str("profile", src.RollingUpdate.Profile).Err(err).Msg("unknown rolling update profile — skipping")
 		} else {

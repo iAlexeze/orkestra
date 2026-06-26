@@ -304,6 +304,9 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	if len(normalizeChanges) > 0 {
 		resolver = resolver.WithNormalizeChanges(normalizeChanges)
 	}
+	if r.kat != nil && !r.kat.Profiles.IsEmpty() {
+		resolver = resolver.WithProfiles(r.kat.Profiles)
+	}
 
 	// ──────────────────────────────────────────────────────────────────────────────
 	// GVK FIX: typed objects from the informer cache may arrive without a valid
