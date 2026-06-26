@@ -100,7 +100,7 @@ spec:
 
 Run `ork validate` to confirm all profile references resolve:
 
-```
+```text
 ork validate -f katalog.yaml
 ```
 

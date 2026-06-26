@@ -40,7 +40,7 @@ ork simulate
 
 Because the Secret copy requires reading the source Secret from a live cluster, Orkestra detects this automatically and skips it during simulation:
 
-```
+```text
 note: secrets/{{ .spec.secretName }}: cross-namespace copy skipped in simulate — requires a live cluster
 
   Cycle 1:

@@ -148,7 +148,7 @@ resources:
 
 If the same profile name appears in the same class in both the Katalog and an imported Motif — or in two imported Motifs — it is a **hard error** at load time:
 
-```
+```text
 profile conflict: networkPolicies "allow-monitoring" defined in both motif "tenant-isolation" and the katalog
 ```
 
@@ -160,7 +160,7 @@ The same name in different classes is not a conflict — `resourceQuotas.medium`
 
 When a Motif declares profiles, `ork validate` shows them alongside resources:
 
-```
+```text
 ● tenant-isolation
   Reusable network isolation motif
   version  : v0.2.0
