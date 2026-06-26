@@ -72,6 +72,10 @@ type LimitRangeTemplateSource struct {
 	// Default: same namespace as the CR.
 	FromNamespace string `yaml:"fromNamespace,omitempty" json:"fromNamespace,omitempty"`
 
+	// Profile — named LimitRange preset. Expands into a Limits list at reconcile time.
+	// Mutually exclusive with Limits — set one or the other, not both.
+	Profile string `yaml:"profile,omitempty" json:"profile,omitempty"`
+
 	// Limits — the list of limit range items.
 	// Each item applies to one type: Container, Pod, or PersistentVolumeClaim.
 	Limits []LimitRangeItem `yaml:"limits,omitempty" json:"limits,omitempty"`

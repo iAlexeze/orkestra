@@ -91,6 +91,7 @@ func (k *Katalog) KomposeRuntimeKatalog(
 	k.Gateway = m.ToGateway()
 	k.Notification = m.ToNotification()
 	k.Providers = m.ToProviders()
+	k.Profiles = m.ToProfiles()
 	k.projectInfo = m.ToProjectInfo()
 	k.enabledCRDs = m.Enabled()           // Enabled CRDs for all operations
 	k.metadata = m.APIMetadata().Metadata // Metadata for CLI and health endpoints

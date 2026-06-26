@@ -10,6 +10,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/profiles"
 	"github.com/orkspace/orkestra/pkg/resources/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
@@ -218,11 +219,18 @@ func CopyToNamespaces(
 
 // Resolve builds a ResolvedLimitRangeSpec from a LimitRangeTemplateSource.
 // Template expressions must already be evaluated by template.Resolver before calling.
-func Resolve(src orktypes.LimitRangeTemplateSource, ownerName string) ResolvedLimitRangeSpec {
+func Resolve(src orktypes.LimitRangeTemplateSource, ownerName string, reg orktypes.ProfileRegistry) ResolvedLimitRangeSpec {
+	limits := src.Limits
+	if src.Profile != "" && len(limits) == 0 {
+		if expanded, err := profiles.ApplyLimitRangeProfile(src.Profile, reg); err == nil {
+			limits = expanded
+		}
+	}
+
 	spec := ResolvedLimitRangeSpec{
 		Name:           src.Name,
 		Namespace:      src.Namespace,
-		Limits:         src.Limits,
+		Limits:         limits,
 		FromLimitRange: src.FromLimitRange,
 		FromNamespace:  src.FromNamespace,
 		Labels:         make(map[string]string),

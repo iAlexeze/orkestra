@@ -183,6 +183,7 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 	m.notification = doc.Notification
 	m.providers = doc.Providers
 	m.gateway = doc.Gateway
+	m.profiles = doc.Profiles
 
 	return result, nil
 }
@@ -199,13 +200,14 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 	localSeen := map[string]string{}
 	allCRDs := make(map[string]orktypes.CRDEntry)
 
-	// accSecurity, accNotification, and accProviders accumulate top-level settings
-	// from all imported Katalogs. Each import that calls loadKatalog sets these
+	// accSecurity, accNotification, accProviders, and accProfiles accumulate top-level
+	// settings from all imported Katalogs. Each import that calls loadKatalog sets these
 	// as side-effects on m; we capture and merge here so they are not discarded
 	// when the Komposer's own (possibly empty) block is applied at the end.
 	var accSecurity orktypes.KatalogSecurity
 	var accNotification *orktypes.KatalogNotification
 	var accProviders []orktypes.KatalogProviderRequirement
+	var accProfiles orktypes.ProfileRegistry
 
 	// ── Step 1: registry imports ─────────────────────────────────────────────
 	if doc.Imports != nil {
@@ -227,10 +229,11 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 				allCRDs[name] = crd
 			}
 
-			// Accumulate security, notification, and providers from registry source Katalog.
+			// Accumulate security, notification, providers, and profiles from registry source Katalog.
 			accSecurity = mergeKatalogSecurity(accSecurity, m.security)
 			accNotification = mergeKatalogNotification(accNotification, m.notification)
 			accProviders = append(accProviders, m.providers...)
+			accProfiles, _ = accProfiles.Merge(m.profiles, fmt.Sprintf("registry:%d", i))
 			logger.Debug().
 				Str("import", fmt.Sprintf("registry:%d", i)).
 				Msg("merger: accumulated security, notification, and providers from registry import")
@@ -273,10 +276,11 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 				allCRDs[name] = crd
 			}
 
-			// Accumulate security, notification, and providers from this Katalog file import.
+			// Accumulate security, notification, providers, and profiles from this Katalog file import.
 			accSecurity = mergeKatalogSecurity(accSecurity, m.security)
 			accNotification = mergeKatalogNotification(accNotification, m.notification)
 			accProviders = append(accProviders, m.providers...)
+			accProfiles, _ = accProfiles.Merge(m.profiles, "file:"+resolved)
 			logger.Debug().
 				Str("import", "file:"+resolved).
 				Msg("merger: accumulated security, notification, and providers from file import")
@@ -297,10 +301,11 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 				allCRDs[name] = crd
 			}
 
-			// Accumulate security, notification, and providers from this Helm import.
+			// Accumulate security, notification, providers, and profiles from this Helm import.
 			accSecurity = mergeKatalogSecurity(accSecurity, m.security)
 			accNotification = mergeKatalogNotification(accNotification, m.notification)
 			accProviders = append(accProviders, m.providers...)
+			accProfiles, _ = accProfiles.Merge(m.profiles, srcName)
 			logger.Debug().
 				Str("import", srcName).
 				Msg("merger: accumulated security, notification, and providers from helm import")
@@ -399,6 +404,9 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 	if doc.Gateway != nil {
 		m.gateway = doc.Gateway
 	}
+
+	merged, _ := accProfiles.Merge(doc.Profiles, path)
+	m.profiles = merged
 
 	logger.Debug().
 		Str("path", path).

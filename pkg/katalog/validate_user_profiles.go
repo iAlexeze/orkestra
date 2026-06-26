@@ -21,40 +21,40 @@ func (k *Katalog) validateUserProfiles() error {
 	}
 
 	type check struct {
-		class    string
-		names    []string
+		class     string
+		names     []string
 		isBuiltin func(string) bool
 	}
 
 	checks := []check{
 		{
-			class: "networkPolicies",
-			names: npDefNames(reg.NetworkPolicies),
+			class:     "networkPolicies",
+			names:     npDefNames(reg.NetworkPolicies),
 			isBuiltin: profiles.IsValidNetworkPolicyProfile,
 		},
 		{
-			class: "resourceQuotas",
-			names: rqDefNames(reg.ResourceQuotas),
+			class:     "resourceQuotas",
+			names:     rqDefNames(reg.ResourceQuotas),
 			isBuiltin: profiles.IsValidResourceQuotaProfile,
 		},
 		{
-			class: "limitRanges",
-			names: lrDefNames(reg.LimitRanges),
+			class:     "limitRanges",
+			names:     lrDefNames(reg.LimitRanges),
 			isBuiltin: nil,
 		},
 		{
-			class: "hpa",
-			names: hpaDefNames(reg.HPA),
+			class:     "hpa",
+			names:     hpaDefNames(reg.HPA),
 			isBuiltin: profiles.IsValidHPAProfile,
 		},
 		{
-			class: "pdb",
-			names: pdbDefNames(reg.PDB),
+			class:     "pdb",
+			names:     pdbDefNames(reg.PDB),
 			isBuiltin: profiles.IsValidPDBProfile,
 		},
 		{
-			class: "rollingUpdate",
-			names: ruDefNames(reg.RollingUpdate),
+			class:     "rollingUpdate",
+			names:     ruDefNames(reg.RollingUpdate),
 			isBuiltin: profiles.IsValidRollingUpdateProfile,
 		},
 	}
@@ -87,6 +87,10 @@ func (k *Katalog) isUserNetworkPolicyProfile(name string) bool {
 }
 func (k *Katalog) isUserResourceQuotaProfile(name string) bool {
 	_, found := k.Profiles.LookupResourceQuota(name)
+	return found
+}
+func (k *Katalog) isUserLimitRangeProfile(name string) bool {
+	_, found := k.Profiles.LookupLimitRange(name)
 	return found
 }
 func (k *Katalog) isUserHPAProfile(name string) bool {

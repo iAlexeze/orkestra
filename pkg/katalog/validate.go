@@ -220,6 +220,10 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	if err := k.validateLimitRangeProfiles(); err != nil {
+		return nil, err
+	}
+
 	// 32. Validate cross-namespace copy pairs (fromNamespace ↔ toNamespaces)
 	// -------------------------------------------------------------------------
 	if err := k.validateCrossNamespaceOps(); err != nil {

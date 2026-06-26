@@ -74,7 +74,7 @@ func RunLimitRanges(
 			return fmt.Errorf("limitRanges[%d]: %w", i, err)
 		}
 
-		spec := orklr.Resolve(resolved, resolver.OwnerName())
+		spec := orklr.Resolve(resolved, resolver.OwnerName(), resolver.Profiles())
 
 		if len(resolved.ToNamespaces) > 0 {
 			namespaces, err := resolver.ResolveStringSlice(resolved.ToNamespaces)
