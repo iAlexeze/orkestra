@@ -15,8 +15,25 @@ func WriteSimulateScaffold(dest string) error {
 }
 
 // WriteE2EScaffold writes an e2e.yaml starter to dest.
-func WriteE2EScaffold(dest string) error {
-	return writeStaticTemplate("templates/pattern_e2e.tmpl", dest)
+// When typed is true, a valuesFiles entry referencing values.yaml is included.
+func WriteE2EScaffold(dest string, typed bool) error {
+	tmpl, err := template.ParseFS(templateFS, "templates/pattern_e2e.tmpl")
+	if err != nil {
+		return fmt.Errorf("parsing e2e template: %w", err)
+	}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, patternReadmeData{Typed: typed}); err != nil {
+		return fmt.Errorf("rendering e2e: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		return fmt.Errorf("creating directory for %q: %w", dest, err)
+	}
+	return os.WriteFile(dest, buf.Bytes(), 0o644)
+}
+
+// WriteValuesYAML writes a values.yaml with the runtime image placeholder to dest.
+func WriteValuesYAML(dest string) error {
+	return writeStaticTemplate("templates/pattern_values.tmpl", dest)
 }
 
 // WriteMakefile writes a clean Makefile (no example-pack workarounds) to dest.

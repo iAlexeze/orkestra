@@ -27,13 +27,26 @@ Re-run whenever you change `apiTypes` fields in `katalog.yaml`.
 
 Open the generated stub and implement the function body. The signature is generated — fill in the logic.
 
-## Step 4 — Build
+## Step 4 — Release the image
 
 ```bash
-make build
+make release IMAGE=ghcr.io/myorg/my-operator:v0.1.0
 ```
 
-## Step 5 — Validate
+## Step 5 — Set the image in values.yaml
+
+Update `values.yaml` to match the image you just released:
+
+```yaml
+runtime:
+  image:
+    repository: ghcr.io/myorg/my-operator
+    tag: v0.1.0
+```
+
+`ork e2e` passes this file to the Orkestra Helm chart so it deploys your operator image.
+
+## Step 6 — Validate
 
 ```bash
 make validate
@@ -45,7 +58,7 @@ make validate
 ork validate
 ```
 {{end}}
-## Step {{if .Typed}}6{{else}}3{{end}} — Simulate
+## Step {{if .Typed}}7{{else}}3{{end}} — Simulate
 
 ```bash
 ork simulate
@@ -57,7 +70,7 @@ Runs without a cluster. Edit `simulate.yaml` assertions first, or generate them 
 ork simulate init
 ```
 
-## Step {{if .Typed}}7{{else}}4{{end}} — Run locally
+## Step {{if .Typed}}8{{else}}4{{end}} — Run locally
 
 ```bash
 ork run --dev
@@ -65,13 +78,13 @@ ork run --dev
 
 `--dev` spins up a local kind cluster. Skip it if you already have one.
 
-## Step {{if .Typed}}8{{else}}5{{end}} — E2E test
+## Step {{if .Typed}}9{{else}}5{{end}} — E2E test
 
 ```bash
 ork e2e
 ```
 
-## Step {{if .Typed}}9{{else}}6{{end}} — Observe
+## Step {{if .Typed}}10{{else}}6{{end}} — Observe
 
 ```bash
 ork control
@@ -79,9 +92,9 @@ ork control
 
 Open http://localhost:8081. Login with username `orkestra`, password `orkestra`.
 {{if .Typed}}
-## Step 10 — Release
+## Step 11 — Push
 
 ```bash
-make release IMAGE=ghcr.io/myorg/my-operator:v0.1.0
+ork push
 ```
 {{end}}

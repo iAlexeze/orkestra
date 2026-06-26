@@ -22,6 +22,7 @@ Always written:
   README.md      — actionable steps from edit to release
 
 Also written when --typed, --add-hook, or --add-constructor:
+  values.yaml    — runtime image (set before ork e2e)
   Makefile       — registry, build, build-runtime, docker, push, release
   Dockerfile     — production container image (distroless, runtime binary only)
 
@@ -66,7 +67,7 @@ Examples:
 			return fmt.Errorf("generating %s: %w", fileSimulate, err)
 		}
 
-		if err := generate.WriteE2EScaffold(filepath.Join(outputDir, fileE2e)); err != nil {
+		if err := generate.WriteE2EScaffold(filepath.Join(outputDir, fileE2e), isTyped); err != nil {
 			return fmt.Errorf("generating %s: %w", fileE2e, err)
 		}
 
@@ -75,6 +76,9 @@ Examples:
 		}
 
 		if isTyped {
+			if err := generate.WriteValuesYAML(filepath.Join(outputDir, fileValues)); err != nil {
+				return fmt.Errorf("generating %s: %w", fileValues, err)
+			}
 			if err := generate.WriteMakefile(filepath.Join(outputDir, fileMakeFile)); err != nil {
 				return fmt.Errorf("generating %s: %w", fileMakeFile, err)
 			}
@@ -89,6 +93,7 @@ Examples:
 		fmt.Printf("  %s %-16s %s\n", successMark(), fileE2e, dim("ork e2e"))
 		fmt.Printf("  %s %-16s %s\n", successMark(), fileReadMe, dim("start here"))
 		if isTyped {
+			fmt.Printf("  %s %-16s %s\n", successMark(), fileValues, dim("set runtime.image before ork e2e"))
 			fmt.Printf("  %s %-16s %s\n", successMark(), fileMakeFile, dim("make registry, make build, make release"))
 			fmt.Printf("  %s %-16s %s\n", successMark(), fileDockerfile, dim("production container image"))
 		}

@@ -6,12 +6,20 @@ metadata:
   description: "End-to-end test for <operator>"
 spec:
   katalog: ./katalog.yaml
+  crd: ./crd.yaml
   cr: ./cr.yaml
+{{- if .Typed}}
+  valuesFiles:
+    - ./values.yaml
+{{- end}}
   # timeout: 120s
   expect:
     # TODO: add assertions
-    # - resource: deployments
-    #   name: "{{ .metadata.name }}"
-    #   namespace: "{{ .metadata.namespace }}"
-    #   present: true
-    #   ready: true
+    # - name: Deployment ready
+    #   after: cr-applied
+    #   timeout: 60s
+    #   resources:
+    #     - kind: Deployment
+    #       name: "{{ "{{" }} .metadata.name {{ "}}" }}"
+    #       namespace: "{{ "{{" }} .metadata.namespace {{ "}}" }}"
+    #       ready: true

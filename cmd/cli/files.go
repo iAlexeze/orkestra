@@ -16,6 +16,7 @@ const (
 	fileReadMe     = "README.md"
 	fileMakeFile   = "Makefile"
 	fileDockerfile = "Dockerfile"
+	fileValues     = "values.yaml"
 )
 
 // resolveKatalogPaths resolves the katalog file paths in the following order:
