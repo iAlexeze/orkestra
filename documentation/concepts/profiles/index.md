@@ -62,6 +62,46 @@ Static names are validated at load time. Template expressions are validated when
 
 ---
 
+## Built-ins versus user-defined profiles
+
+Orkestra ships with built-in profiles — `deny-all`, `small/medium/large/xlarge`, `safe`, `zero-downtime` — so the feature works immediately without any extra YAML. They cover common Kubernetes patterns.
+
+But the feature is designed for the profiles you write yourself.
+
+A team writing `profile: org-medium` is expressing an organizational contract: this namespace gets the capacity we agreed on for medium-sized teams. The numbers follow from that decision. Change the `org-medium` definition once and it propagates to every Katalog and Motif that references it — no grep, no PR chain, no drift.
+
+That is what built-ins cannot do. `medium` is Orkestra's guess at what medium means. `org-medium` is your team's actual answer.
+
+User-defined profiles are declared in a `profiles:` block at the root of any Katalog or Motif:
+
+```yaml
+profiles:
+  resourceQuotas:
+    - name: org-medium
+      description: Standard allocation for a medium-sized team namespace
+      hard:
+        pods: "25"
+        cpu: "4"
+        memory: "8Gi"
+
+  networkPolicies:
+    - name: org-deny-all
+      description: Block all traffic — start here and add policies for what you need
+      policyTypes: [Ingress, Egress]
+
+  rollingUpdate:
+    - name: org-safe
+      description: Never reduces capacity during a rollout
+      maxSurge: "1"
+      maxUnavailable: "0"
+```
+
+They resolve before built-ins. A profile named `deny-all` in your `profiles:` block shadows the built-in. A conflict between two imported Motifs declaring the same profile name in the same class is a hard error at load time.
+
+See [User-defined profiles](./10-user-defined-profiles.md) for the full reference.
+
+---
+
 ## Profile families
 
 | Family | What it controls | Applied to |
