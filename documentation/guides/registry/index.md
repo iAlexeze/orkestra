@@ -54,13 +54,15 @@ Each section in this guide references the relevant sub-example. Run them in orde
 
 ---
 
-!!! tip Environment variables
+## Environment variables
+Set these before any `ork push` or `ork pull` command. `docker login <registry>` must have been run first — Orkestra reads `~/.docker/config.json` for credentials.
+
+
+!!! tip "Environment variables"
     | Variable | Default | Purpose |
     |----------|---------|---------|
     | `ORK_REGISTRY` | `ghcr.io/orkspace/orkestra-registry/patterns/katalogs` | Where `ork push` and `ork pull` send/read katalogs |
     | `ORK_MOTIFS_REGISTRY` | `ghcr.io/orkspace/orkestra-registry/patterns/motifs` | Where `ork push` and `ork pull` send/read motifs |
-
-    Set these before any `ork push` or `ork pull` command. `docker login <registry>` must have been run first — Orkestra reads `~/.docker/config.json` for credentials.
 
 ---
 

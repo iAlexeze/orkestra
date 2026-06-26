@@ -71,7 +71,7 @@ type SecurityConfig struct {
 		TLSCert string
 		TLSKey  string
 
-		Controller struct {
+		Housekeeper struct {
 			Enabled      bool
 			SyncInterval time.Duration
 		}
@@ -92,7 +92,7 @@ type SecurityConfig struct {
 	// not enforced at apply time. If enabled, the webhook blocks CRs whose target
 	// namespace violates the CRD’s declared allowedNamespaces or restrictedNamespaces.
 	//
-	// The webhook is managed by the WebhookController and will be recreated if
+	// The webhook is managed by the housekeeper and will be recreated if
 	// deleted, ensuring continuous enforcement when enabled.
 	//
 	// Precedence: Katalog YAML > SecurityConfig (ENV) > hard default.

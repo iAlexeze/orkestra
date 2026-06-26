@@ -81,7 +81,7 @@ type certManagerIface interface {
 
 // WebhookServer is Orkestra's HTTPS admission and conversion webhook surface.
 // It owns the HTTPS server, all webhook handlers, registration, and the
-// webhook controller that reconciles configurations with the API server.
+// housekeeper that reconciles configurations with the API server.
 //
 // Created via NewWebhookServer and registered as a domain.Komponent in
 // cmd/internal/runtime_konstructor.go. It starts after the HealthServer so that
@@ -552,7 +552,7 @@ func (ws *WebhookServer) Start(ctx context.Context) error {
 	}
 
 	// Start the housekeeper to keep webhook configurations in sync.
-	if kat.IsWebhookControllerEnabled() {
+	if kat.IsHousekeeperEnabled() {
 		if err := ws.housekeeper(ws.ctx); err != nil {
 			logger.Error().Err(err).Msg("housekeeper failed to start")
 		}
@@ -674,8 +674,8 @@ func (ws *WebhookServer) InfraProtectionStats() *health.DeletionProtectionStats 
 	return ws.infraProtStats
 }
 
-// WebhookControllerStats returns the webhook reconciliation statistics.
-func (ws *WebhookServer) WebhookControllerStats() *health.WebhookStats { return ws.webhookStats }
+// HousekeeperStats returns the housekeeper reconciliation statistics.
+func (ws *WebhookServer) HousekeeperStats() *health.WebhookStats { return ws.webhookStats }
 
 // StrictModeStats returns the strict-mode-protection statistics (process-global).
 func (ws *WebhookServer) StrictModeStats() *health.DeletionProtectionStats {

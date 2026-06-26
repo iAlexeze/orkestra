@@ -295,7 +295,7 @@ Watch the operator logs:
 
 Both webhooks are back within milliseconds. Validation and mutation are restored without restarting the operator.
 
-A safety poll (`WEBHOOK_CONTROLLER_SYNC_INTERVAL`, default 30 s) continues in parallel as a backstop — it catches any drift the Watch stream might silently miss on some managed cluster distributions.
+A safety poll (`HOUSEKEEPER_SYNC_INTERVAL`, default 30 s) continues in parallel as a backstop — it catches any drift the Watch stream might silently miss on some managed cluster distributions.
 
 ---
 

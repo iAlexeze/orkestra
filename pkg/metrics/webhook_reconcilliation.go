@@ -8,7 +8,7 @@ import (
 
 // ─────────────────────────────────────────────────────────────────────────────
 // webhookReconciliations
-// Counts successful reconciliation cycles performed by the webhook controller.
+// Counts successful reconciliation cycles performed by the housekeeper.
 // Labeled by:
 //   - type: "validating", "mutating", "deletion-protection"
 //

@@ -150,7 +150,7 @@ Combined with `pdb.minAvailable: 1` in the Helm chart, the Gateway maintains at 
 
 ## Webhook self-healing
 
-Orkestra's webhook controller watches its own `ValidatingWebhookConfiguration` and `MutatingWebhookConfiguration` objects. If either is deleted — accidentally or by an attacker — Orkestra detects the change immediately via a Kubernetes Watch and recreates it:
+Orkestra's housekeeper watches its own `ValidatingWebhookConfiguration` and `MutatingWebhookConfiguration` objects. If either is deleted — accidentally or by an attacker — Orkestra detects the change immediately via a Kubernetes Watch and recreates it:
 
 ```bash
 kubectl delete validatingwebhookconfiguration orkestra-admission

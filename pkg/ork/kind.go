@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/orkspace/orkestra/pkg/spinner"
 	"github.com/orkspace/orkestra/pkg/utils"
 )
 
@@ -47,7 +46,7 @@ func EnsureKindCluster(name string) error {
 	}
 	fmt.Printf("  %s Cluster '%s' ready\n", utils.SuccessMark(), name)
 
-	spin := spinner.Start("   → Waiting for nodes to be ready...")
+	spin := utils.StartSpinner("   → Waiting for nodes to be ready...")
 	defer spin.Failure()
 	if err := waitForNodesReady(5 * time.Minute); err != nil {
 		return err

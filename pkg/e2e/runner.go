@@ -33,7 +33,6 @@ import (
 	"github.com/orkspace/orkestra/pkg/motif"
 	"github.com/orkspace/orkestra/pkg/ork"
 	"github.com/orkspace/orkestra/pkg/registry"
-	"github.com/orkspace/orkestra/pkg/spinner"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	orkutils "github.com/orkspace/orkestra/pkg/utils"
 	"gopkg.in/yaml.v3"
@@ -306,7 +305,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 			}
 
 			if !ork.RuntimeInstalled() {
-				sp := spinner.Start("Installing Orkestra" + text)
+				sp := orkutils.StartSpinner("Installing Orkestra" + text)
 				if err := ork.InstallOrUpgradeOrkestra(r.orkestraVersion, r.valueFiles, r.helmArgs...); err != nil {
 					sp.Failure()
 					return nil, fmt.Errorf("helm install: %w", err)
@@ -324,7 +323,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 							return nil, fmt.Errorf("syncing Orkestra gateway: %w", err)
 						}
 					} else {
-						sp := spinner.Start("Upgrading Orkestra to enable gateway...")
+						sp := orkutils.StartSpinner("Upgrading Orkestra to enable gateway...")
 						if err := ork.InstallOrUpgradeOrkestra(r.orkestraVersion, r.valueFiles, r.helmArgs...); err != nil {
 							sp.Failure()
 							return nil, fmt.Errorf("helm upgrade: %w", err)
@@ -685,7 +684,7 @@ func (r *Runner) applySetup(ctx context.Context) ([]string, error) {
 
 	// ── Phase 2: helm ─────────────────────────────────────────────────────────
 	for _, h := range s.Helm {
-		sp := spinner.Start(fmt.Sprintf("Installing %s...", h.ReleaseName()))
+		sp := orkutils.StartSpinner(fmt.Sprintf("Installing %s...", h.ReleaseName()))
 		if err := ork.HelmInstall(ctx, h); err != nil {
 			sp.Failure()
 			return applied, fmt.Errorf("setup helm %s/%s: %w", h.Repo, h.Chart, err)
@@ -699,7 +698,7 @@ func (r *Runner) applySetup(ctx context.Context) ([]string, error) {
 		if w.Namespace != "" {
 			loc += " (" + w.Namespace + ")"
 		}
-		sp := spinner.Start(fmt.Sprintf("Waiting for %s...", loc))
+		sp := orkutils.StartSpinner(fmt.Sprintf("Waiting for %s...", loc))
 		if err := ork.WaitForResource(ctx, w); err != nil {
 			sp.Failure()
 			return applied, fmt.Errorf("setup wait: %w", err)

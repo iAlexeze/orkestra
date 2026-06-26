@@ -1,15 +1,13 @@
-package spinner
+package utils
 
 import (
 	"fmt"
 	"os"
 	"sync"
 	"time"
-
-	"github.com/orkspace/orkestra/pkg/utils"
 )
 
-var frames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
 // Spinner animates a terminal progress indicator with a message.
 type Spinner struct {
@@ -20,8 +18,8 @@ type Spinner struct {
 	finalized bool
 }
 
-// Start begins the spinner; on non-TTY it prints once and finalizes.
-func Start(msg string) *Spinner {
+// StartSpinner begins the spinner; on non-TTY it prints once and finalizes.
+func StartSpinner(msg string) *Spinner {
 	if !isTerminal() {
 		fmt.Println(msg)
 		return &Spinner{finalized: true}
@@ -51,8 +49,8 @@ func (s *Spinner) run() {
 			}
 			msg := s.message
 			s.mu.Unlock()
-			fmt.Printf("\r\x1b[K%s %s", frames[i], msg)
-			i = (i + 1) % len(frames)
+			fmt.Printf("\r\x1b[K%s %s", spinnerFrames[i], msg)
+			i = (i + 1) % len(spinnerFrames)
 
 		case <-s.stop:
 			return
@@ -83,7 +81,7 @@ func (s *Spinner) Success() {
 	msg := s.message
 	s.mu.Unlock()
 	s.Stop()
-	fmt.Printf("  %s %s\n", utils.SuccessMark(), msg)
+	fmt.Printf("  %s %s\n", SuccessMark(), msg)
 }
 
 // Failure prints a red ✗ and finalizes the spinner.
@@ -97,7 +95,7 @@ func (s *Spinner) Failure() {
 	msg := s.message
 	s.mu.Unlock()
 	s.Stop()
-	fmt.Printf("  %s %s\n", utils.FailureMark(), msg)
+	fmt.Printf("  %s %s\n", FailureMark(), msg)
 }
 
 // Update changes the spinner's message while running.

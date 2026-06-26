@@ -222,7 +222,7 @@ Watch the operator logs:
 
 The webhook is back within milliseconds. Namespace rules are enforced again without restarting the operator.
 
-A safety poll (`WEBHOOK_CONTROLLER_SYNC_INTERVAL`, default 30 s) continues in parallel as a backstop — it catches any drift the Watch stream might silently miss on some managed cluster distributions.
+A safety poll (`HOUSEKEEPER_SYNC_INTERVAL`, default 30 s) continues in parallel as a backstop — it catches any drift the Watch stream might silently miss on some managed cluster distributions.
 
 ---
 

@@ -109,43 +109,43 @@ type WorkerStats struct {
 }
 
 type CRDInfoResponse struct {
-	Name                   string                           `json:"name"`
-	Description            string                           `json:"description"`
-	Mode                   string                           `json:"mode"`
-	GVK                    string                           `json:"gvk"`
-	GVR                    string                           `json:"gvr"`
-	Namespaced             bool                             `json:"namespaced"`
-	Namespace              string                           `json:"namespace"`
-	DependsOn              []string                         `json:"dependsOn,omitempty"`
-	IsKonductor            bool                             `json:"isKonductor"`
-	Workers                int                              `json:"workers"`
-	WorkersActive          int32                            `json:"workersActive"`
-	WorkersIdle            int32                            `json:"workersIdle"`
-	WorkersProcessing      int32                            `json:"workersProcessing"`
-	WorkerDetails          map[string]string                `json:"workerDetails,omitempty"`
-	WorkersSource          string                           `json:"workersSource"`
-	Resync                 string                           `json:"resync"`
-	ResyncSource           string                           `json:"resyncSource"`
-	QueueDepth             int                              `json:"queueDepth"`
-	MaxDepth               int                              `json:"maxDepth"`
-	MaxDepthSource         string                           `json:"maxDepthSource"`
-	ResourceCount          int                              `json:"resourceCount"`
-	TotalReconciles        int64                            `json:"totalReconciles"`
-	OperatorBox            OperatorBoxInfo                  `json:"operatorBox"`
-	Healthy                bool                             `json:"healthy"`
-	Started                bool                             `json:"started"`
-	Pending                bool                             `json:"pending"`
-	ErrorRate              float64                          `json:"errorRate"`
-	Conversion             *ConversionStatsResponse         `json:"conversion,omitempty"`
-	Admission              *AdmissionStatsResponse          `json:"admission,omitempty"`
-	DeletionProtection     *DeletionProtectionStatsResponse `json:"deletionProtection,omitempty"`
-	NamespaceProtection    *NamespaceProtectionResponse     `json:"namespaceProtection,omitempty"`
-	WebhookControllerStats *WebhookControllerStats          `json:"webhookControllerStats,omitempty"`
-	Providers              []ProviderInfoResponse           `json:"providers,omitempty"`
-	RBAC                   RBACInfo                         `json:"rbac,omitempty"`
-	AutoscalerEnabled      bool                             `json:"autoscalerEnabled,omitempty"`
-	AutoscalerWorkers      *ork_autoscaler.WorkerInfo       `json:"autoscalerWorkers,omitempty"`
-	Rollback               *RollbackStats                   `json:"rollback,omitempty"`
+	Name                string                           `json:"name"`
+	Description         string                           `json:"description"`
+	Mode                string                           `json:"mode"`
+	GVK                 string                           `json:"gvk"`
+	GVR                 string                           `json:"gvr"`
+	Namespaced          bool                             `json:"namespaced"`
+	Namespace           string                           `json:"namespace"`
+	DependsOn           []string                         `json:"dependsOn,omitempty"`
+	IsKonductor         bool                             `json:"isKonductor"`
+	Workers             int                              `json:"workers"`
+	WorkersActive       int32                            `json:"workersActive"`
+	WorkersIdle         int32                            `json:"workersIdle"`
+	WorkersProcessing   int32                            `json:"workersProcessing"`
+	WorkerDetails       map[string]string                `json:"workerDetails,omitempty"`
+	WorkersSource       string                           `json:"workersSource"`
+	Resync              string                           `json:"resync"`
+	ResyncSource        string                           `json:"resyncSource"`
+	QueueDepth          int                              `json:"queueDepth"`
+	MaxDepth            int                              `json:"maxDepth"`
+	MaxDepthSource      string                           `json:"maxDepthSource"`
+	ResourceCount       int                              `json:"resourceCount"`
+	TotalReconciles     int64                            `json:"totalReconciles"`
+	OperatorBox         OperatorBoxInfo                  `json:"operatorBox"`
+	Healthy             bool                             `json:"healthy"`
+	Started             bool                             `json:"started"`
+	Pending             bool                             `json:"pending"`
+	ErrorRate           float64                          `json:"errorRate"`
+	Conversion          *ConversionStatsResponse         `json:"conversion,omitempty"`
+	Admission           *AdmissionStatsResponse          `json:"admission,omitempty"`
+	DeletionProtection  *DeletionProtectionStatsResponse `json:"deletionProtection,omitempty"`
+	NamespaceProtection *NamespaceProtectionResponse     `json:"namespaceProtection,omitempty"`
+	HousekeeperStats    *HousekeeperStats                `json:"housekeeperStats,omitempty"`
+	Providers           []ProviderInfoResponse           `json:"providers,omitempty"`
+	RBAC                RBACInfo                         `json:"rbac,omitempty"`
+	AutoscalerEnabled   bool                             `json:"autoscalerEnabled,omitempty"`
+	AutoscalerWorkers   *ork_autoscaler.WorkerInfo       `json:"autoscalerWorkers,omitempty"`
+	Rollback            *RollbackStats                   `json:"rollback,omitempty"`
 	// Metrics is the live AutoMetrics map for this operatorbox.
 	// Populated only when autoscale: is declared. Used by cross-binary autoscale
 	// conditions via the source.endpoint HTTP fallback — the remote autoscaler
@@ -226,8 +226,8 @@ type NamespaceProtectionResponse struct {
 	RestrictedNamespaces []string `json:"restrictedNamespaces,omitempty"` // non-nil only when restrictedNamespaces: is declared
 }
 
-// WebhookControllerStats tracks reconciliation counters for the webhook controller.
-type WebhookControllerStats struct {
+// HousekeeperStats tracks reconciliation counters for the housekeeper.
+type HousekeeperStats struct {
 	Reconciled int64 // total successful reconciliation cycles
 	Failed     int64 // reconciliation attempts that encountered errors
 }
@@ -267,7 +267,7 @@ func BuildCRDInfoHandler(
 	convStats *health.ConversionStats,
 	admStats *health.AdmissionStats,
 	protStats *health.DeletionProtectionStats,
-	webhookControllerStats *health.WebhookStats,
+	housekeeperStats *health.WebhookStats,
 	provStats *health.ProviderStats,
 	nsStats *health.NamespaceProtectionStats,
 	isDeletionProtected bool,
@@ -427,10 +427,10 @@ func BuildCRDInfoHandler(
 			response.NamespaceProtection = nsr
 		}
 
-		// Webhook controller stats
-		if webhookControllerStats != nil {
-			snap := webhookControllerStats.GetStats()
-			response.WebhookControllerStats = &WebhookControllerStats{
+		// Housekeeper stats
+		if housekeeperStats != nil {
+			snap := housekeeperStats.GetStats()
+			response.HousekeeperStats = &HousekeeperStats{
 				Reconciled: snap.Reconciled,
 				Failed:     snap.Failed,
 			}

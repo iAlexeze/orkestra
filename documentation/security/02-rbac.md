@@ -128,7 +128,7 @@ If you declare no validation rules, the gateway ClusterRole has no `admissionreg
 
 ## Generating for specific components
 
-By default `ork generate bundle` includes all three components. Use `--for` to generate only what you need:
+By default `ork generate bundle` includes the runtime and the control center and gateway if enabled. Use `--for` to generate only what you need:
 
 ```bash
 # Runtime only
