@@ -1,103 +1,220 @@
 # 03 — Adding a profile
 
-## Adding a new name to an existing profile kind
+There are three ways to add a profile, in order of which you should reach for first.
 
-Example: adding `xlarge` to resource profiles.
+---
 
-**1. Add the constant** in `pkg/profiles/resource.go`:
+## 1. User-defined profiles (recommended — no Go code required)
 
-```go
-const (
-    // ...existing constants...
-    ResourceXLarge ResourceProfile = "xlarge"
-)
+For org-specific presets, declare the profile in the `profiles:` block of your Katalog or Motif. No Pull Request. No code review. No binary update.
+
+```yaml
+profiles:
+  resourceQuotas:
+    - name: org-medium
+      description: Standard allocation for a team namespace
+      hard:
+        pods: "25"
+        cpu: "4"
+        memory: "8Gi"
+        requests.cpu: "2"
+        requests.memory: "4Gi"
+
+  networkPolicies:
+    - name: org-allow-monitoring
+      description: Allow ingress from the platform monitoring namespace
+      ingress:
+        - from:
+            - namespaceSelector:
+                team: platform
+      policyTypes: [Ingress]
+
+  limitRanges:
+    - name: org-container-defaults
+      limits:
+        - type: Container
+          default:
+            cpu: 500m
+            memory: 512Mi
+          defaultRequest:
+            cpu: 100m
+            memory: 128Mi
+
+  hpa:
+    - name: org-conservative
+      targetCPUUtilizationPercentage: "70"
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300
+
+  pdb:
+    - name: org-at-least-one
+      minAvailable: "1"
+
+  rollingUpdate:
+    - name: org-safe
+      maxSurge: "1"
+      maxUnavailable: "0"
 ```
 
-**2. Add the expansion case** in `ApplyResourceProfile`:
+Reference the profile by name in your spec:
+
+```yaml
+spec:
+  crds:
+    namespaceclaim:
+      operatorBox:
+        onCreate:
+          resourceQuotas:
+            - name: "{{ .metadata.name }}-quota"
+              profile: org-medium
+          networkPolicies:
+            - name: "{{ .metadata.name }}-baseline"
+              podSelector: {}
+              profile: org-allow-monitoring
+          limitRanges:
+            - name: "{{ .metadata.name }}-limits"
+              profile: org-container-defaults
+          deployments:
+            - name: "{{ .metadata.name }}-agent"
+              image: myorg/agent:v1
+              rollingUpdate:
+                profile: org-safe
+          hpa:
+            - name: "{{ .metadata.name }}-agent-hpa"
+              scaleTargetRef:
+                apiVersion: apps/v1
+                kind: Deployment
+                name: "{{ .metadata.name }}-agent"
+              minReplicas: "1"
+              maxReplicas: "5"
+              behavior:
+                profile: org-conservative
+          pdb:
+            - name: "{{ .metadata.name }}-agent-pdb"
+              selector:
+                app: agent
+              behavior:
+                profile: org-at-least-one
+```
+
+Run `ork validate` to confirm all profile references resolve:
+
+```
+ork validate -f katalog.yaml
+```
+
+**Profile field placement by class:**
+
+| Class | Profile field location |
+|-------|----------------------|
+| `networkPolicies` | `profile:` on the entry (top-level) |
+| `resourceQuotas` | `profile:` on the entry (top-level) |
+| `limitRanges` | `profile:` on the entry (top-level) |
+| `hpa` | `behavior.profile:` on the HPA entry |
+| `pdb` | `behavior.profile:` on the PDB entry |
+| `rollingUpdate` | `rollingUpdate.profile:` on the Deployment/StatefulSet entry |
+
+**Template expressions are supported in profile field values.** Fields containing `{{` are resolved at reconcile time and skipped at `ork validate` time.
+
+**Profile names are validated at load time.** An unknown static name is a hard error. An unknown template expression is validated at reconcile time.
+
+See [../../documentation/concepts/profiles/10-user-defined-profiles.md] for the full reference.
+
+---
+
+## 2. Adding a name to an existing built-in class
+
+Only relevant for contributors adding presets to the Orkestra binary itself. If your preset is org-specific, use path 1 instead.
+
+**Example: adding `xlarge` to resource profiles.**
+
+**1.** Add the constant in `pkg/profiles/resource.go`:
+
+```go
+ResourceXLarge ResourceProfile = "xlarge"
+```
+
+**2.** Add the expansion case in `ApplyResourceProfile`:
 
 ```go
 case ResourceXLarge:
     return &orktypes.ResourceRequirements{
-        Requests: map[string]string{"cpu": "1", "memory": "1Gi"},
-        Limits:   map[string]string{"cpu": "4", "memory": "4Gi"},
+        Requests: map[string]string{"cpu": "2", "memory": "4Gi"},
+        Limits:   map[string]string{"cpu": "8", "memory": "8Gi"},
     }, nil
 ```
 
-**3. Add to `IsValidResourceProfile`**:
+**3.** Add to `IsValidResourceProfile`:
 
 ```go
 case ResourceTiny, ..., ResourceXLarge:
     return true
 ```
 
-**4. Update the error message** in `ApplyResourceProfile` to include `"xlarge"` in the allowed list.
+**4.** Update the error message in `ApplyResourceProfile` to list `"xlarge"` in the allowed names.
 
-**5. Add a test case** in `resource_test.go`:
+**5.** Add a test in `resource_test.go`.
 
-```go
-{"xlarge", "xlarge", false, "1", "1Gi", "4", "4Gi"},
-```
+**6.** Add a fixture entry in `pkg/profiles/fixture/katalog-resource.yaml`.
 
-**6. Add the profile to the fixture** in `pkg/profiles/fixture/katalog-resource.yaml` — add a deployment using `resources.profile: xlarge` and run `ork run` to verify it creates the Deployment with the correct resource requests.
-
-**7. Add a deployment to the use-case example** in `examples/use-cases/profiles/01-resource/katalog.yaml` — add a deployment with `resources.profile: xlarge` alongside the existing ones, and add a row to the README table.
-
-**8. Update the reference table** in `docs/01-profiles.md`.
-
-**9. Update the concept doc** in `documentation/concepts/operatorbox/06-profiles/index.md` — add a row to the resource profiles table.
+**7.** Update the reference table in `docs/01-profiles.md`.
 
 ---
 
-## Adding a new profile kind
+## 3. Adding a new profile class (new resource type)
 
-For a complete reference implementation, see `pkg/profiles/hpa.go` (HPA behavior profiles). The steps below use a hypothetical PDB profile kind as the example.
+Only needed when Orkestra adds support for a resource type that has no profile class yet. The LimitRange class is the most recent example.
 
-**1. Create `pkg/profiles/pdb.go`** following the same structure as the existing files:
+**1. Add the `*ProfileDef` type** to `pkg/types/types_profiles.go` — name, description, and the fields that the profile expands into:
 
 ```go
-package profiles
-
-import (
-    "fmt"
-    "strings"
-    orktypes "github.com/orkspace/orkestra/pkg/types"
-)
-
-type PDBProfile string
-
-const (
-    PDBStrict    PDBProfile = "strict"
-    PDBRelaxed   PDBProfile = "relaxed"
-)
-
-func ApplyPDBProfile(name string) (orktypes.PDBBehavior, error) { ... }
-func IsValidPDBProfile(name string) bool { ... }
+type LimitRangeProfileDef struct {
+    Name        string           `yaml:"name" json:"name"`
+    Description string           `yaml:"description,omitempty"`
+    Limits      []LimitRangeItem `yaml:"limits" json:"limits"`
+}
 ```
 
-Export only `Apply*Profile` and `IsValid*Profile`. Keep internal config types unexported.
+**2. Add the class** to `ProfileRegistry` and wire `IsEmpty`, `Lookup*`, and `Merge`:
 
-**2. Add the type** to `pkg/types/` (e.g., `pdb_behavior.go`) and add a `Behavior *PDBBehavior` field to `PDBTemplateSource` in `types.go`.
+```go
+type ProfileRegistry struct {
+    // ...existing fields...
+    LimitRanges []LimitRangeProfileDef `yaml:"limitRanges,omitempty"`
+}
+```
 
-**3. Add a `hooks_pdb.go`** to `pkg/types/` following the pattern in `hooks_hpa.go` — define `PDBProfileEntry`, implement `GetPDBBehavior()` on `PDBTemplateSource`, and add `CollectPDBProfileEntries()` to `CRDEntry`.
+**3. Add a `Profile` field** to the template source type in `pkg/types/types_<resource>.go`:
 
-**4. Wire validation** into `pkg/katalog` — add `validate_pdb_profile.go` with a `validatePDBBehaviorProfiles()` method on `*Katalog`, call it from `ValidateConfig()`.
+```go
+Profile string `yaml:"profile,omitempty" json:"profile,omitempty"`
+```
 
-**5. Wire resolution** into `pkg/resources/pdbs/` — expand the profile in `Resolve()`, convert to the Kubernetes type in the builder.
+**4. Add a profile entry collector** in `pkg/types/hooks_<resource>_profile.go` — define `<Resource>ProfileEntry`, add `Get<Resource>Profile()` interface and implement it on the template source, and add `Collect<Resource>ProfileEntries()` on `*CRDEntry` using `VisitResources`.
 
-**6. Add tests** in `pkg/profiles/pdb_test.go`.
+**5. Create `pkg/profiles/<resource>.go`** — `Apply<Resource>Profile(name, reg)` looks up user registry first, then built-ins (or returns an error if there are no built-ins for the class). Also export `IsValid<Resource>Profile`.
 
-**7. Add to the fixture** in `pkg/profiles/fixture/katalog-pdb.yaml`.
+**6. Update `pkg/resources/<resource>/<resource>.go`** — add `reg orktypes.ProfileRegistry` as a third parameter to `Resolve()` and apply the profile when `src.Profile != ""`.
 
-**8. Add a use-case example** in `examples/use-cases/profiles/` — create a new numbered directory following the existing pattern (katalog.yaml, README.md, cleanup.sh), add it to `examples/use-cases/profiles/README.md`, and add a Try it block to `documentation/concepts/operatorbox/06-profiles/index.md`.
+**7. Update `pkg/runners/<resource>.go`** — pass `resolver.Profiles()` to `Resolve()`.
 
-**9. Document** in `docs/01-profiles.md` and `documentation/concepts/operatorbox/06-profiles/index.md`.
+**8. Add `pkg/katalog/validate_<resource>_profile.go`** — `validate<Resource>Profiles()` using `Collect<Resource>ProfileEntries()`. Call it from `ValidateConfig()` in `validate.go`.
+
+**9. Add `isUser<Resource>Profile()`** to `pkg/katalog/validate_user_profiles.go` for the shadowing-allowed logic.
+
+**10. Rebuild and validate** — `make ork && ork validate -f your-example.yaml`.
+
+**11. Add a test fixture** in `pkg/profiles/fixture/`.
+
+**12. Add to the use-case examples** under `examples/use-cases/profiles/` or `examples/use-cases/namespace-provisioner/`.
 
 ---
 
 ## Rules
 
-- `Apply*Profile` must return an error for unknown names, never silently fall back.
-- `IsValid*Profile` must stay in sync with the `Apply*Profile` switch — add to both at the same time.
-- Profile names are case-insensitive: normalize with `strings.ToLower` at the top of the switch.
-- Template expressions (`{{`) are always skipped at load time — do not add validation for them in `pkg/profiles`.
-- Profile and explicit fields are mutually exclusive. Enforce this in `pkg/katalog` validation, not here.
+- `Apply*Profile` must check the user `ProfileRegistry` first, then fall back to built-ins. Return an error for unknown names — never silently fall back.
+- `IsValid*Profile` for built-in classes must stay in sync with the `Apply*Profile` switch. For user-only classes (like LimitRange), `IsValid*Profile` takes a registry argument.
+- Profile names are case-insensitive for built-in names: normalize with `strings.ToLower`. User-defined names are matched exactly.
+- Template expressions (`{{`) are always skipped at load time — do not add static validation for them in `pkg/profiles`.
+- Profile and explicit fields are mutually exclusive. Enforce this in `pkg/katalog` validation, not in `pkg/profiles` or `pkg/resources`.
