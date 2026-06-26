@@ -81,6 +81,7 @@ This scaffolds the simplest Katalog — a single CRD that creates a Deployment a
 | [11-katalog-notification.md](11-katalog-notification.md) | `notification` block |
 | [12-katalog-providers.md](12-katalog-providers.md) | `providers` block |
 | [15-enrich.md](15-enrich.md) | `enrich` — post-reconcile enrichment |
+| [16-resource-types.md](16-resource-types.md) | Supported resource types and placeholder fields |
 
 ---
 

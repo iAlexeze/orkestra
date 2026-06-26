@@ -62,7 +62,7 @@ Static names are validated at load time. Template expressions are validated when
 
 ---
 
-## The seven profile families
+## Profile families
 
 | Family | What it controls | Applied to |
 |--------|-----------------|------------|
@@ -73,6 +73,8 @@ Static names are validated at load time. Template expressions are validated when
 | [HPA Behavior](./05-hpa-behavior-profile.md) | Kubernetes HPA scale-up/down policies | `hpa[*].behavior` |
 | [PDB Behavior](./06-pdb-profile.md) | PodDisruptionBudget disruption limits | `pdb[*].behavior` |
 | [Rolling Update](./07-rolling-update-profile.md) | Deployment/StatefulSet/ReplicaSet rollout strategy | `deployments[*].rollingUpdate`, `statefulSets[*].rollingUpdate`, `replicaSets[*].rollingUpdate` |
+| [ResourceQuota](./08-resourcequota-profile.md) | Namespace resource limits (pods, CPU, memory) | `resourceQuotas[*]` |
+| [NetworkPolicy](./09-networkpolicy-profile.md) | Traffic allow/deny rules for pods | `networkPolicies[*]` |
 
 ---
 
