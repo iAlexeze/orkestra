@@ -32,7 +32,9 @@ imports:
 spec:
   crds:
     database:
-      workers: 5
+      operatorBox:
+        reconciler:
+          workers: 5
     website:
       dependsOn:
         database:

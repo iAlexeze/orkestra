@@ -13,13 +13,17 @@ spec:
   crds:
     # Override the postgres pattern for production
     postgres:
-      workers: 8       # default from import: 2
-      resync: 30s      # default from import: 1m
+      operatorBox:
+        reconciler:
+          workers: 8       # default from import: 2
+          resync: 30s      # default from import: 1m
 
     # Override the website operator
     website:
-      workers: 6
-      resync: 15s
+      operatorBox:
+        reconciler:
+          workers: 6
+          resync: 15s
 
     # Disable an operator entirely
     database:
@@ -35,8 +39,8 @@ The `postgres`, `website`, and `database` CRD names must have been declared in a
 | Field | Type | Description |
 |-------|------|-------------|
 | `enabled` | bool | `false` suppresses the operator without removing the import. |
-| `workers` | int | Number of reconcile worker goroutines. |
-| `resync` | duration | Forced resync interval (e.g. `30s`, `5m`). |
+| `operatorBox.reconciler.workers` | int | Number of reconcile worker goroutines. |
+| `operatorBox.reconciler.resync` | duration | Forced resync interval (e.g. `30s`, `5m`). |
 | `finalizers` | list | Additional finalizers applied to all CRs of this kind. |
 
 Any field valid in a Katalog CRD entry is valid here. Override only what differs between environments — leave the rest to the import source.
@@ -88,12 +92,16 @@ imports:
 spec:
   crds:
     postgres:
-      workers: 8
-      resync: 30s
+      operatorBox:
+        reconciler:
+          workers: 8
+          resync: 30s
 
     website:
-      workers: 6
-      resync: 15s
+      operatorBox:
+        reconciler:
+          workers: 6
+          resync: 15s
 
     database:
       enabled: false

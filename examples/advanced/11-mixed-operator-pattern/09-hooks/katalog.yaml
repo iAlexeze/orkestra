@@ -24,8 +24,6 @@ spec:
         # After setting this, run: ork generate registry --file katalog.yaml
         location: github.com/orkspace/orkestra-mixed-operator-pattern/09-hooks/api/v1alpha1
         alias: dbv1alpha1
-      workers: 3
-      resync: 30s
 
       operatorBox:
 
@@ -45,6 +43,8 @@ spec:
               - kind: StatefulSet
               - kind: Service
               - kind: CronJob
+          workers: 3
+          resync: 30s
 
         # Status Layer 1 (Ready condition) is always automatic.
         # Layer 2 fields are still written after the hook completes.

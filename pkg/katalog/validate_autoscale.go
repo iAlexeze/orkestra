@@ -75,9 +75,9 @@ func (k *Katalog) validateAutoscaleProfile() error {
 		// Expand the profile into a fully-formed AutoscaleSpec using the CRD's
 		// declared workers and queue depth as the baseline.
 		baseline := orktypes.AutoscaleBaseline{
-			Workers:  crd.Workers,
-			MaxDepth: crd.Queue.MaxDepth,
-			Resync:   crd.Resync,
+			Workers:  crd.OperatorBox.Reconciler.Workers,
+			MaxDepth: crd.OperatorBox.Reconciler.Queue.MaxDepth,
+			Resync:   crd.OperatorBox.Reconciler.Resync.Duration,
 		}
 		expanded, err := profiles.ApplyAutoscalerProfile(profile, baseline)
 		if err != nil {

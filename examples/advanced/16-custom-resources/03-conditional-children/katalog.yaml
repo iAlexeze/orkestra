@@ -16,9 +16,10 @@ spec:
     # ── AppEnvironment ─────────────────────────────────────────────────────────
     appenvironment:
       crdFile: ./crd-appenvironment.yaml
-      workers: 2
-      resync: 60s
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 60s
         status:
           fields:
             - path: phase
@@ -75,9 +76,10 @@ spec:
     # ── CacheCluster ───────────────────────────────────────────────────────────
     cachecluster:
       crdFile: ./crd-cachecluster.yaml
-      workers: 1
-      resync: 60s
       operatorBox:
+        reconciler:
+          workers: 1
+          resync: 60s
         status:
           fields:
             - path: phase
@@ -96,9 +98,10 @@ spec:
     # ── SearchIndex ────────────────────────────────────────────────────────────
     searchindex:
       crdFile: ./crd-searchindex.yaml
-      workers: 1
-      resync: 60s
       operatorBox:
+        reconciler:
+          workers: 1
+          resync: 60s
         status:
           fields:
             - path: phase

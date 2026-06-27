@@ -116,8 +116,8 @@ func (k *Katalog) Describe(name string) (string, error) {
 	if crd.IsNamespaced() {
 		fmt.Fprintf(b, "Namespace:   %s\n", crd.Namespace)
 	}
-	fmt.Fprintf(b, "Workers:     %d\n", crd.Workers)
-	fmt.Fprintf(b, "Resync:      %s\n", crd.Resync)
+	fmt.Fprintf(b, "Workers:     %d\n", crd.OperatorBox.Reconciler.Workers)
+	fmt.Fprintf(b, "Resync:      %s\n", crd.OperatorBox.Reconciler.Resync.String())
 	fmt.Fprintf(b, "Enabled:     %v\n", crd.Enabled)
 
 	deps := crd.DependsOn.Names()

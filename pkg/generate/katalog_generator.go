@@ -278,13 +278,13 @@ spec:
         objectList: TODO
         location: TODO # github.com/myorg/my-operator/api/v1alpha1
       mode: typed
-{{ end }}      workers: 3
-      resync: 30s
-      queue:
-        maxDepth: 100
-      operatorBox:
+{{ end }}      operatorBox:
         reconciler:
           default: {{ if .DefaultFalse }}false{{ else }}true{{ end }}
+          workers: 3
+          resync: 30s
+          queue:
+            maxDepth: 100
 {{ if .ShowHooks }}
           # hooks:
           #   # Package exporting the hook factory function.

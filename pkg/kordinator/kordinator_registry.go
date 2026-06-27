@@ -77,7 +77,7 @@ func (r *ResourceKatalog) GetWorkers(gvk string, defaultWorkers int) int {
 	if !ok {
 		return defaultWorkers
 	}
-	return entry.CRD.Workers
+	return entry.CRD.OperatorBox.Reconciler.Workers
 }
 
 func (r *ResourceKatalog) Entries() map[string]RegistryEntry {

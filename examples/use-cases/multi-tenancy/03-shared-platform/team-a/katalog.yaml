@@ -16,10 +16,11 @@ spec:
         kind: Api
         plural: apis
 
-      workers: 2
-      resync: 20s
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 20s
         cross:
           - crd: cache
             as: sharedCache

@@ -20,7 +20,9 @@ imports:
 spec:
   crds:
     declarativeApp:
-      workers: 3
+      operatorBox:
+        reconciler:
+          workers: 3
 
     hybridApp:
       dependsOn:
@@ -33,7 +35,11 @@ spec:
           condition: started
 
     constructorApp:
-      workers: 3
+      operatorBox:
+        reconciler:
+          workers: 3
 
     orkApp:
-      workers: 3
+      operatorBox:
+        reconciler:
+          workers: 3

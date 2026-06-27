@@ -8,6 +8,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/children"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/profiles"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -239,25 +240,44 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 			crd.OperatorBox.Finalizers = k.Spec.Finalizers
 		}
 
-		// Handle Resync
-		if crd.Resync == 0 {
-			crd.Resync = crd.SetResync(kfg.Katalog().DefaultResync())
+		// Ensure operatorBox.reconciler is always initialised so runtime callsites
+		// can read from it directly without nil-checking.
+		if crd.OperatorBox.Reconciler == nil {
+			crd.OperatorBox.Reconciler = &orktypes.ReconcilerConfig{}
+		}
+		rec := crd.OperatorBox.Reconciler
+
+		// Expand a named profile — inline fields win over profile values.
+		if rec.Profile != "" {
+			result, err := profiles.ApplyReconcilerProfile(rec.Profile, k.Profiles)
+			if err != nil {
+				return fmt.Errorf("CRD %q: %w", name, err)
+			}
+			if rec.Workers == 0 {
+				rec.Workers = result.Workers
+			}
+			if rec.Resync.Duration == 0 {
+				rec.Resync.Duration = result.Resync
+			}
+			if rec.Queue.MaxDepth == 0 {
+				rec.Queue.MaxDepth = result.MaxDepth
+			}
 		}
 
-		// Handle Workers
-		if crd.Workers == 0 {
-			crd.Workers = crd.SetWorkers(kfg.Katalog().DefaultWorkers())
+		// Apply global defaults for any field still at zero.
+		if rec.Workers == 0 {
+			rec.Workers = kfg.Katalog().DefaultWorkers()
 		}
-
-		// Handle QueueDepth
-		if crd.Queue.MaxDepth == 0 {
-			crd.Queue.MaxDepth = crd.SetQueueDepth(kfg.Katalog().DefaultQueueDepth())
+		if rec.Resync.Duration == 0 {
+			rec.Resync.Duration = kfg.Katalog().DefaultResync()
 		}
-
-		// Handle QueueFailureThreshold
-		if crd.Queue.FailureThreshold == 0 {
-			crd.Queue.FailureThreshold = crd.SetQueueDepth(kfg.Katalog().DefaultFailureThreshold())
+		if rec.Queue.MaxDepth == 0 {
+			rec.Queue.MaxDepth = kfg.Katalog().DefaultQueueDepth()
 		}
+		if rec.Queue.FailureThreshold == 0 {
+			rec.Queue.FailureThreshold = kfg.Katalog().DefaultFailureThreshold()
+		}
+		crd.OperatorBox.Reconciler = rec
 
 		// Handle Notifications
 		if k.IsEmailNotificationEnabled() || k.IsSlackNotificationEnabled() {

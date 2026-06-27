@@ -33,8 +33,6 @@ spec:
             namespace: platform
             timeout: 15s
 
-      workers: 2
-      resync: 1m
 
       imports:
         - motif: ../motifs/tenant-isolation/motif.yaml
@@ -50,6 +48,9 @@ spec:
             ownerNamespace: "{{ .spec.ownerNamespace }}"
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 1m
         status:
           fields:
             - path: phase

@@ -154,7 +154,9 @@ imports:
 spec:
   crds:
     postgres:
-      workers: 8      # override for production
+      operatorBox:
+        reconciler:
+          workers: 8      # override for production
 ```
 
 The `spec.crds` inline block always wins on name conflict — it is the override

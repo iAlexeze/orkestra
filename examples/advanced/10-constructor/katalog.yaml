@@ -23,8 +23,6 @@ spec:
         # instead of *unstructured.Unstructured.
         location: github.com/orkspace/orkestra-constructor-demo/api/v1alpha1
 
-      workers: 5       # pipelines can be IO-bound — more workers tolerated
-      resync: 10s      # short resync to check Job completion quickly
 
       operatorBox:
         reconciler:
@@ -48,6 +46,8 @@ spec:
                 group: batch
                 version: v1
                 plural: jobs
+          workers: 5       # pipelines can be IO-bound — more workers tolerated
+          resync: 10s      # short resync to check Job completion quickly
 
         # Note: onCreate, onReconcile, onDelete, hooks, and status.fields
         # are all ignored when reconciler.default is false. The constructor

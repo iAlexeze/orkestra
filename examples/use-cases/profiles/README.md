@@ -1,6 +1,6 @@
 # Profiles Examples
 
-Nine examples showing Orkestra's named presets and user-defined profiles. Each profile expands at Katalog load time into fully-formed configuration — the runtime never sees a profile name.
+Ten examples showing Orkestra's named presets and user-defined profiles. Each profile expands at Katalog load time into fully-formed configuration — the runtime never sees a profile name.
 
 | Example | What it teaches |
 |---|---|
@@ -13,8 +13,9 @@ Nine examples showing Orkestra's named presets and user-defined profiles. Each p
 | [07 — ResourceQuota](07-resourcequota/README.md) | `resourceQuotas.profile` — `small`, `medium`, `large`, `xlarge` tier presets |
 | [08 — LimitRange](08-limitrange/README.md) | `limitRanges.profile` — user-defined presets; LimitRange has no built-ins |
 | [09 — User-Defined](09-user-defined/README.md) | `profiles:` block — declare your own names for any class; `ork validate` enforces every reference |
+| [10 — Reconciler](10-reconciler/README.md) | `reconciler.profile` — built-in and user-defined reconciler tuning presets (`workers`, `resync`, `queue.maxDepth`) |
 
-All nine share one CRD (`crd.yaml`) and one CR (`cr.yaml`) at this directory level.
+All ten share one CRD (`crd.yaml`) and one CR (`cr.yaml`) at this directory level.
 
 For autoscale profiles (`autoscale.profile`):
 
@@ -35,7 +36,7 @@ cd 12-autoscale
 ork simulate
 ```
 
-This runs [simulate.yaml](./simulate.yaml), which chains all nine sub-examples.
+This runs [simulate.yaml](./simulate.yaml), which chains all ten sub-examples.
 
 To run a single example:
 
@@ -47,7 +48,7 @@ cd 06-networkpolicy && ork simulate
 
 ## E2E
 
-Run the full suite — all nine profile examples in one command:
+Run the full suite — all ten profile examples in one command:
 
 ```bash
 ork e2e -f e2e.yaml
@@ -57,4 +58,5 @@ This runs [e2e.yaml](./e2e.yaml), which imports each sub-example's `e2e.yaml` an
 
 ```bash
 cd 01-resource && ork e2e
+cd 10-reconciler && ork e2e
 ```

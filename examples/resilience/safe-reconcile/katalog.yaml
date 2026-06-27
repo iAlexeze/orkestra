@@ -24,9 +24,10 @@ spec:
         version: v1alpha1
         kind: Monitor
         plural: monitors
-      resync: 30s
 
       operatorBox:
+        reconciler:
+          resync: 30s
         status:
           fields:
             - path: phase
@@ -48,9 +49,10 @@ spec:
         version: v1alpha1
         kind: Queue
         plural: queues
-      resync: 30s
 
       operatorBox:
+        reconciler:
+          resync: 30s
         status:
           fields:
             - path: phase
@@ -76,7 +78,6 @@ spec:
         objectList: AppList
         location: github.com/orkspace/safe-reconcile-demo/api/v1alpha1
         alias: safev1alpha1
-      resync: 30s
 
       operatorBox:
         reconciler:
@@ -86,3 +87,4 @@ spec:
             alias: safehooks
             resources:
               - kind: Deployment
+          resync: 30s

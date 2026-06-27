@@ -15,8 +15,6 @@ spec:
     worker:
       crdFile: ./crd-worker.yaml
 
-      workers: 2
-      resync: 30s
 
       # ── Motif imports ──────────────────────────────────────────────────────
       # vault-gate and opa-policy are the same motif files imported by WebApp.
@@ -35,6 +33,9 @@ spec:
             policy: "deploy"
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
         default: true
 
         onReconcile:

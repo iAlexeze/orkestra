@@ -28,7 +28,9 @@ spec:
         version: v1alpha1
         kind: Website
         plural: websites
-      workers: 4        # production: more workers than the base katalog's 2
-      resync: 15s       # production: faster resync than the base katalog's 30s
       # All other fields (reconciler, status, onCreate) are inherited from
       # website-katalog.yaml — only overridden fields change
+      operatorBox:
+        reconciler:
+          workers: 4        # production: more workers than the base katalog's 2
+          resync: 15s       # production: faster resync than the base katalog's 30s

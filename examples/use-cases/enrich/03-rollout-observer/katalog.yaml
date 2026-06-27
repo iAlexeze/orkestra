@@ -16,8 +16,6 @@ spec:
     microservice:
       crdFile: ../crd.yaml
 
-      workers: 2
-      resync: 15s
 
       # ── Enrichment ───────────────────────────────────────────────────────────
       enrich:
@@ -42,6 +40,9 @@ spec:
 
       operatorBox:
 
+        reconciler:
+          workers: 2
+          resync: 15s
         status:
           fields:
             - path: phase

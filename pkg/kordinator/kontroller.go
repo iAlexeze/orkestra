@@ -84,7 +84,7 @@ func NewKontroller(
 	// Load registry entries
 	for gvk, entry := range katalog.Entries() {
 		k.crds = append(k.crds, entry.CRD)
-		k.failureThreshold[gvk] = entry.CRD.Queue.FailureThreshold
+		k.failureThreshold[gvk] = entry.CRD.OperatorBox.Reconciler.Queue.FailureThreshold
 	}
 
 	return k
@@ -101,7 +101,7 @@ func (k *Kontroller) Start(ctx context.Context) error {
 			continue
 		}
 		logger.Warn().Str("gvk", gvk).Msg("CRD missing — marking as degraded")
-		k.crdHealthMap[gvk].RecordStartupFailure(errors.New("CRD not found"), crd.Queue.FailureThreshold)
+		k.crdHealthMap[gvk].RecordStartupFailure(errors.New("CRD not found"), crd.OperatorBox.Reconciler.Queue.FailureThreshold)
 	}
 
 	// All CRDs confirmed (filtered by informer) — now sync caches

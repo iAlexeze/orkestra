@@ -46,8 +46,10 @@ kind: Katalog
 spec:
   crds:
     website:
-      workers: 3
       crdFile: website.yaml
+      operatorBox:
+        reconciler:
+          workers: 3
       crFiles:
         - examples/website-sample.yaml
       setup:

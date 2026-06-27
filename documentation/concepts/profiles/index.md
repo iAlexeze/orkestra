@@ -64,7 +64,7 @@ Static names are validated at load time. Template expressions are validated when
 
 ## Built-ins versus user-defined profiles
 
-Orkestra ships with built-in profiles — `deny-all`, `small/medium/large/xlarge`, `safe`, `zero-downtime` — so the feature works immediately without any extra YAML. They cover common Kubernetes patterns.
+Orkestra ships with built-in profiles — `deny-all`, `small/medium/large/xlarge`, `safe`, `zero-downtime`, `high-throughput/conservative/development` — so the feature works immediately without any extra YAML. They cover common Kubernetes patterns.
 
 But the feature is designed for the profiles you write yourself.
 
@@ -115,6 +115,7 @@ See [User-defined profiles](./10-user-defined-profiles.md) for the full referenc
 | [Rolling Update](./07-rolling-update-profile.md) | Deployment/StatefulSet/ReplicaSet rollout strategy | `deployments[*].rollingUpdate`, `statefulSets[*].rollingUpdate`, `replicaSets[*].rollingUpdate` |
 | [ResourceQuota](./08-resourcequota-profile.md) | Namespace resource limits (pods, CPU, memory) | `resourceQuotas[*]` |
 | [NetworkPolicy](./09-networkpolicy-profile.md) | Traffic allow/deny rules for pods | `networkPolicies[*]` |
+| [Reconciler](./11-reconciler-profile.md) | Reconciler tuning — workers, resync interval, queue depth | `operatorBox.reconciler` |
 | [User-defined](./10-user-defined-profiles.md) | Custom named profiles declared in your Katalog or Motif | All profile-supporting fields |
 
 ---

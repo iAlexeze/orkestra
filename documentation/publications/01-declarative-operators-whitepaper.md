@@ -130,12 +130,13 @@ metadata:
 spec:
   crds:
     website:
-      workers: 3
-      resync: 30s
       crdFile: ./crd.yaml
       crFiles:
         - ./cr.yaml
       operatorBox:
+        reconciler:
+          workers: 3
+          resync: 30s
         onCreate:
           deployments:
             - image: "{{ .spec.image }}"
@@ -206,7 +207,9 @@ CRDs can declare dependencies with an explicit condition:
 ```yaml
 crds:
   project:
-    workers: 3
+    operatorBox:
+      reconciler:
+        workers: 3
 
   namespace:
     dependsOn:
@@ -272,7 +275,9 @@ spec:
   crds:
     # Inline override — wins on name conflict with any source
     application:
-      workers: 8
+      operatorBox:
+        reconciler:
+          workers: 8
 ```
 
 Orkestra's in-built merger resolves all sources, deduplicates by CRD name, and produces one

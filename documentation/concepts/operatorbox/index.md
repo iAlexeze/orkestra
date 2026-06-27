@@ -39,8 +39,6 @@ spec:
   crds:
     pipeline:
       crdFile: my-pipeline.yaml
-      workers: 10
-      resync: 30s
       dependsOn:
         database: healthy
 
@@ -49,6 +47,9 @@ spec:
           schedule: "{{ ... }}"
 
       operatorBox:
+        reconciler:
+          workers: 10
+          resync: 30s
         # reconciler: is optional — omit for declarative-only CRDs (GenericReconciler is the default)
         # reconciler:
         #   default: false     # set to use a custom constructor instead

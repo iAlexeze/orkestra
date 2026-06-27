@@ -16,10 +16,11 @@ spec:
       crdFile: ./crd.yaml
       crFiles:
         - ./cr.yaml
-      workers: 2
-      resync: 60s
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 60s
         autoscale:
           interval: 15s
           cooldown: 2m

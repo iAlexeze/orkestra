@@ -80,8 +80,10 @@ imports:
 spec:
   crds:
     postgres:
-      workers: 8
-      resync: 30s
+      operatorBox:
+        reconciler:
+          workers: 8
+          resync: 30s
 ```
 
 ---

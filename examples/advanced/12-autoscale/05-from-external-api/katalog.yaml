@@ -28,10 +28,10 @@ spec:
         kind: Processor
         plural: processors
 
-      workers: 2
-      resync: 10s
-
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 10s
         cross:
           - crd: payment-system
             source:

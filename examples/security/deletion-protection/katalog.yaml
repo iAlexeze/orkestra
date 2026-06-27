@@ -28,9 +28,10 @@ spec:
         version: v1alpha1
         kind: App
         plural: apps
-      resync: 30s
 
       operatorBox:
+        reconciler:
+          resync: 30s
         status:
           fields:
             - path: phase
@@ -60,9 +61,10 @@ spec:
         version: v1alpha1
         kind: Database
         plural: databases
-      resync: 30s
 
       operatorBox:
+        reconciler:
+          resync: 30s
         status:
           fields:
             - path: phase
@@ -86,9 +88,10 @@ spec:
         version: v1alpha1
         kind: Cache
         plural: caches
-      resync: 30s
 
       operatorBox:
+        reconciler:
+          resync: 30s
         status:
           fields:
             - path: phase

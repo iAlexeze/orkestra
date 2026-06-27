@@ -26,7 +26,9 @@ spec:
         version: v1alpha1
         kind: DeclarativeApp
         plural: declarativeapps
-      workers: 3
+      operatorBox:
+        reconciler:
+          workers: 3
 
     hybridApp:
       apiTypes:
@@ -54,7 +56,9 @@ spec:
         version: v1alpha1
         kind: ConstructorApp
         plural: constructorapps
-      workers: 3
+      operatorBox:
+        reconciler:
+          workers: 3
 
     orkApp:
       apiTypes:
@@ -62,4 +66,6 @@ spec:
         version: v1alpha1
         kind: OrkApp
         plural: orkapps
-      workers: 3
+      operatorBox:
+        reconciler:
+          workers: 3

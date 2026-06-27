@@ -67,7 +67,9 @@ imports:
 spec:
   crds:
     postgres:
-      workers: 8
+      operatorBox:
+        reconciler:
+          workers: 8
 ```
 
 This includes `apiTypes`. If the upstream pattern targets `demo.orkestra.io/v1alpha1` but you want the same reconcile behaviour against your own CRD group and version, override it directly:

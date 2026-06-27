@@ -25,10 +25,11 @@ spec:
         kind: Producer
         plural: producers
 
-      workers: 2
-      resync: 30s
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
         status:
           fields:
             - path: phase
@@ -57,10 +58,11 @@ spec:
         kind: Consumer
         plural: consumers
 
-      workers: 2
-      resync: 30s
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
         # Declare the cross-CRD observation.
         # Orkestra resolves the Producer CR with the same name in the same
         # namespace and makes it available as .cross.producer.*

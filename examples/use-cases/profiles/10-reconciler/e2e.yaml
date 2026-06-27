@@ -1,0 +1,50 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: E2E
+metadata:
+  name: profiles-reconciler-e2e
+  description: >
+    reconciler.profile — the local-dev profile expands to workers: 1,
+    resync: 15s, queue.maxDepth: 50. One CR produces one Deployment.
+    Verifies the Deployment is created and removed on CR deletion.
+
+spec:
+  katalog: ./katalog.yaml
+  crd: ../crd.yaml
+  cr: ../cr.yaml
+
+  cluster:
+    provider: kind
+    name: ork-e2e
+    reuse: false
+
+  expect:
+    - name: Service CR created
+      after: cr-applied
+      timeout: 60s
+      commands:
+        - run: kubectl get services.demo.orkestra.io my-service
+          exitCode: 0
+
+    - name: Deployment created
+      after: cr-applied
+      timeout: 90s
+      resources:
+        - kind: Deployment
+          name: my-service
+          namespace: default
+
+    - name: Reconciler config visible on operator info endpoint
+      after: cr-applied
+      timeout: 30s
+      commands:
+        - run: curl -sf http://localhost:8080/katalog/service
+          outputContains: '"workers": 1'
+
+    - name: Cleanup verified
+      after: cr-deleted
+      timeout: 60s
+      resources:
+        - kind: Deployment
+          name: my-service
+          namespace: default
+          count: 0

@@ -95,11 +95,11 @@ func printTemplateSummary(k *katalog.Katalog, crds map[string]orktypes.CRDEntry,
 		// Workers / resync
 		fmt.Printf("%sworkers:%s  resync:%s",
 			indent,
-			green(fmt.Sprintf("%d", crd.Workers)),
-			green(crd.Resync.String()),
+			green(fmt.Sprintf("%d", crd.OperatorBox.Reconciler.Workers)),
+			green(crd.OperatorBox.Reconciler.Resync.String()),
 		)
-		if crd.Queue.MaxDepth > 0 {
-			fmt.Printf("  queue:%s", green(fmt.Sprintf("%d", crd.Queue.MaxDepth)))
+		if crd.OperatorBox.Reconciler.Queue.MaxDepth > 0 {
+			fmt.Printf("  queue:%s", green(fmt.Sprintf("%d", crd.OperatorBox.Reconciler.Queue.MaxDepth)))
 		}
 		fmt.Println()
 
@@ -314,10 +314,10 @@ func printCRDDetail(crd orktypes.CRDEntry, g *katalog.DependencyGraph) {
 
 	// ── Runtime config ───────────────────────────────────────────────────────
 	fmt.Printf("  %s\n", cyan(bold("Runtime")))
-	fmt.Printf("    Workers:       %s\n", green(fmt.Sprintf("%d", crd.Workers)))
-	fmt.Printf("    Resync:        %s\n", green(crd.Resync.String()))
-	if crd.Queue.MaxDepth > 0 {
-		fmt.Printf("    MaxDepth: %s\n", green(fmt.Sprintf("%d", crd.Queue.MaxDepth)))
+	fmt.Printf("    Workers:       %s\n", green(fmt.Sprintf("%d", crd.OperatorBox.Reconciler.Workers)))
+	fmt.Printf("    Resync:        %s\n", green(crd.OperatorBox.Reconciler.Resync.String()))
+	if crd.OperatorBox.Reconciler.Queue.MaxDepth > 0 {
+		fmt.Printf("    MaxDepth: %s\n", green(fmt.Sprintf("%d", crd.OperatorBox.Reconciler.Queue.MaxDepth)))
 	}
 	fmt.Println()
 

@@ -320,16 +320,22 @@
   <span class="token-key">crds:</span>
 
     <span class="token-key">network:</span>
-      <span class="token-key">workers:</span> <span class="token-number">2</span>
+      <span class="token-key">operatorBox:</span>
+        <span class="token-key">reconciler:</span>
+          <span class="token-key">workers:</span> <span class="token-number">2</span>
 
     <span class="token-key">database:</span>
-      <span class="token-key">workers:</span> <span class="token-number">5</span>
+      <span class="token-key">operatorBox:</span>
+        <span class="token-key">reconciler:</span>
+          <span class="token-key">workers:</span> <span class="token-number">5</span>
       <span class="token-key">dependsOn:</span>
         <span class="token-key">network:</span>
           <span class="token-key">condition:</span> <span class="token-string">healthy</span>
 
     <span class="token-key">application:</span>
-      <span class="token-key">workers:</span> <span class="token-number">3</span>
+      <span class="token-key">operatorBox:</span>
+        <span class="token-key">reconciler:</span>
+          <span class="token-key">workers:</span> <span class="token-number">3</span>
       <span class="token-key">dependsOn:</span>
         <span class="token-key">database:</span>
           <span class="token-key">condition:</span> <span class="token-string">healthy</span></code></pre>

@@ -21,8 +21,6 @@ spec:
     # Small preset: lean development platform.
     platform:
       crdFile: ./crd-platform.yaml
-      workers: 2
-      resync: 60s
       # Import the motif. The 'with' block provides sizing-specific values.
       # For a flexible Platform that reads size from spec, you would use
       # conditional imports or a hook. Here we show two separate imports
@@ -37,6 +35,9 @@ spec:
             searchNodes: 1
             searchHeapSize: "1g"
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 60s
         # Status propagation from all three children using the (index ...) pattern.
         # The child names are: <platform-name>-mq, <platform-name>-store, <platform-name>-search.
         status:
@@ -53,9 +54,10 @@ spec:
     # ── MessageQueue ───────────────────────────────────────────────────────────
     messagequeue:
       crdFile: ./crd-messagequeue.yaml
-      workers: 3
-      resync: 60s
       operatorBox:
+        reconciler:
+          workers: 3
+          resync: 60s
         status:
           fields:
             - path: phase
@@ -75,9 +77,10 @@ spec:
     # ── ObjectStore ────────────────────────────────────────────────────────────
     objectstore:
       crdFile: ./crd-objectstore.yaml
-      workers: 1
-      resync: 60s
       operatorBox:
+        reconciler:
+          workers: 1
+          resync: 60s
         status:
           fields:
             - path: phase
@@ -102,9 +105,10 @@ spec:
     # ── SearchCluster ──────────────────────────────────────────────────────────
     searchcluster:
       crdFile: ./crd-searchcluster.yaml
-      workers: 1
-      resync: 60s
       operatorBox:
+        reconciler:
+          workers: 1
+          resync: 60s
         status:
           fields:
             - path: phase

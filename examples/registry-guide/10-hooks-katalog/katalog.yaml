@@ -26,8 +26,6 @@ spec:
         location: github.com/orkspace/orkestra-registry-guide/api/v1alpha1
         alias: rkguidev1alpha1
 
-      workers: 3
-      resync: 30s
 
       operatorBox:
 
@@ -47,6 +45,8 @@ spec:
               - kind: StatefulSet
               - kind: Service
               - kind: CronJob
+          workers: 3
+          resync: 30s
 
         # Status Layer 1 (Ready condition) is always automatic.
         # Layer 2 fields are written after the hook completes.

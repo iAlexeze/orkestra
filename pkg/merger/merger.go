@@ -155,19 +155,25 @@ func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
 		result.Enabled = override.Enabled
 	}
 
-	// ── Runtime tuning ────────────────────────────────────────────────────
+	// ── Runtime tuning (operatorBox.reconciler) ──────────────────────────
 	// Override only when non-zero — zero means "not declared in override"
-	if override.Workers > 0 {
-		result.Workers = override.Workers
-	}
-	if override.Resync != 0 {
-		result.Resync = override.Resync
-	}
-	if override.Queue.MaxDepth > 0 {
-		result.Queue.MaxDepth = override.Queue.MaxDepth
-	}
-	if override.Queue.FailureThreshold > 0 {
-		result.Queue.FailureThreshold = override.Queue.FailureThreshold
+	if override.OperatorBox.Reconciler != nil {
+		if result.OperatorBox.Reconciler == nil {
+			result.OperatorBox.Reconciler = &orktypes.ReconcilerConfig{}
+		}
+		ov := override.OperatorBox.Reconciler
+		if ov.Workers > 0 {
+			result.OperatorBox.Reconciler.Workers = ov.Workers
+		}
+		if ov.Resync.Duration != 0 {
+			result.OperatorBox.Reconciler.Resync = ov.Resync
+		}
+		if ov.Queue.MaxDepth > 0 {
+			result.OperatorBox.Reconciler.Queue.MaxDepth = ov.Queue.MaxDepth
+		}
+		if ov.Queue.FailureThreshold > 0 {
+			result.OperatorBox.Reconciler.Queue.FailureThreshold = ov.Queue.FailureThreshold
+		}
 	}
 
 	// ── Deletion Protection ───────────────────────────────────────────────
