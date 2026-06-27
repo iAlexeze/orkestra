@@ -40,8 +40,7 @@ spec:
       operatorBox:
 
         reconciler:
-          # profile: # CHANGE ME
-          profile: local-dev
+          profile: # CHANGE ME
 
         status:
           fields:

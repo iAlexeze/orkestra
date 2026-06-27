@@ -6,6 +6,7 @@ metadata:
     reconciler.profile — the local-dev profile expands to workers: 1,
     resync: 15s, queue.maxDepth: 50. One CR produces one Deployment.
     Verifies the Deployment is created and removed on CR deletion.
+    Inspect the reconciler config via port-forward after ork run (see README).
 
 spec:
   katalog: ./katalog.yaml
@@ -33,12 +34,18 @@ spec:
           name: my-service
           namespace: default
 
-    - name: Reconciler config visible on operator info endpoint
+    - name: Reconciler config matches local-dev profile
       after: cr-applied
       timeout: 30s
       commands:
-        - run: curl -sf http://localhost:8080/katalog/service
-          outputContains: '"workers": 1'
+        - run: |
+            kubectl port-forward -n orkestra-system svc/orkestra-runtime 8080:8080 &
+            PF=$!
+            sleep 3
+            OUT=$(curl -sf http://localhost:8080/katalog/service)
+            kill $PF 2>/dev/null
+            echo "$OUT"
+          outputContains: '"workers":1'
 
     - name: Cleanup verified
       after: cr-deleted

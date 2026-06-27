@@ -153,6 +153,8 @@ operatorBox:
 
 ## E2E
 
+This asserts that the `local-dev` profile expands correctly.
+
 ```bash
 ork e2e
 ```
