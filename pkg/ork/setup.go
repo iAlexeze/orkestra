@@ -20,15 +20,18 @@ func HelmInstall(ctx context.Context, h orktypes.SetupHelmInstall) error {
 	release := h.ReleaseName()
 	namespace := h.EffectiveNamespace()
 
-	// Add and update the repo (idempotent).
-	repoName := release
-	_ = exec.CommandContext(ctx, "helm", "repo", "add", repoName, h.Repo).Run()
-	_ = exec.CommandContext(ctx, "helm", "repo", "update", repoName).Run()
+	chartRef := h.Chart
+	if !h.IsLocalChart() {
+		repoName := release
+		_ = exec.CommandContext(ctx, "helm", "repo", "add", repoName, h.Repo).Run()
+		_ = exec.CommandContext(ctx, "helm", "repo", "update", repoName).Run()
+		chartRef = fmt.Sprintf("%s/%s", repoName, h.Chart)
+	}
 
 	args := []string{
 		"upgrade", "--install",
 		release,
-		fmt.Sprintf("%s/%s", repoName, h.Chart),
+		chartRef,
 		"--namespace", namespace,
 	}
 	if h.CreateNamespace {
@@ -49,7 +52,7 @@ func HelmInstall(ctx context.Context, h orktypes.SetupHelmInstall) error {
 
 	cmd := exec.CommandContext(ctx, "helm", args...)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("helm install %s/%s: %w\n%s", h.Repo, h.Chart, err, out)
+		return fmt.Errorf("helm install %s: %w\n%s", chartRef, err, out)
 	}
 	return nil
 }

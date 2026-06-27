@@ -14,6 +14,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/e2e"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
+	motifpkg "github.com/orkspace/orkestra/pkg/motif"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	orkutils "github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
@@ -241,8 +242,8 @@ func validateE2EFile(path string) error {
 		if doc.Spec.CRD == "" && doc.Spec.Init == nil && !isCustom {
 			errs = append(errs, "spec.crd is required (or spec.init for example packs, spec.custom.target for custom targets, or imports)")
 		}
-		if doc.Spec.CR == "" && doc.Spec.Init == nil {
-			errs = append(errs, "spec.cr is required (or spec.init for example packs, or imports)")
+		if doc.Spec.CR == "" && doc.Spec.Init == nil && !isCustom {
+			errs = append(errs, "spec.cr is required (or spec.init for example packs, spec.custom.target for custom targets, or imports)")
 		}
 		if len(doc.Spec.Expect) == 0 {
 			errs = append(errs, "spec.expect must contain at least one expectation")
@@ -251,8 +252,19 @@ func validateE2EFile(path string) error {
 			if exp.Name == "" {
 				errs = append(errs, fmt.Sprintf("spec.expect[%d].name is required", i))
 			}
-			if exp.After != "cr-applied" && exp.After != "cr-deleted" {
-				errs = append(errs, fmt.Sprintf("spec.expect[%d].after must be cr-applied or cr-deleted (got %q)", i, exp.After))
+			after := exp.After
+			if after == "" {
+				after = orktypes.AfterSetupComplete
+			}
+			validAfter := false
+			for _, v := range orktypes.ValidAfterValues {
+				if after == v {
+					validAfter = true
+					break
+				}
+			}
+			if !validAfter {
+				errs = append(errs, fmt.Sprintf("spec.expect[%d].after must be one of %v (got %q)", i, orktypes.ValidAfterValues, exp.After))
 			}
 			if len(exp.Resources) == 0 && len(exp.Commands) == 0 {
 				errs = append(errs, fmt.Sprintf("spec.expect[%d] (%q): must have at least one resource or command check", i, exp.Name))
@@ -283,13 +295,22 @@ func validateE2EFile(path string) error {
 		if isCustom {
 			fmt.Printf("    %s\n", gray(fmt.Sprintf("mode    : custom target (%s — Orkestra install skipped)", doc.Spec.Custom.Target)))
 		}
-		fmt.Printf("    %s\n",
-			gray(fmt.Sprintf("katalog : %s\n    crd     : %s\n    cr      : %s",
-				doc.Spec.Katalog, doc.Spec.CRD, doc.Spec.CR)),
-		)
+		if doc.Spec.Katalog != "" {
+			fmt.Printf("    %s\n", gray("katalog : "+doc.Spec.Katalog))
+		}
+		if doc.Spec.CRD != "" {
+			fmt.Printf("    %s\n", gray("crd     : "+doc.Spec.CRD))
+		}
+		if doc.Spec.CR != "" {
+			fmt.Printf("    %s\n", gray("cr      : "+doc.Spec.CR))
+		}
 		if s := doc.Spec.Setup; s != nil {
 			if len(s.Apply) > 0 {
-				fmt.Printf("    %s\n", gray("setup.apply : "+strings.Join(s.Apply, ", ")))
+				paths := make([]string, len(s.Apply))
+				for i, e := range s.Apply {
+					paths[i] = e.Path
+				}
+				fmt.Printf("    %s\n", gray("setup.apply : "+strings.Join(paths, ", ")))
 			}
 			if len(s.Helm) > 0 {
 				fmt.Printf("    %s\n", gray(fmt.Sprintf("setup.helm  : %d chart(s)", len(s.Helm))))
@@ -318,8 +339,12 @@ func validateE2EFile(path string) error {
 		if to == "" {
 			to = "60s"
 		}
+		after := exp.After
+		if after == "" {
+			after = orktypes.AfterSetupComplete
+		}
 		fmt.Printf("    %s\n",
-			gray(fmt.Sprintf("%-40s after: %-12s timeout: %s", exp.Name, exp.After, to)))
+			gray(fmt.Sprintf("%-40s after: %-12s timeout: %s", exp.Name, after, to)))
 	}
 	fmt.Println()
 	fmt.Println(strings.Repeat("─", 60))
@@ -355,106 +380,96 @@ func validateSimulateFile(path string) error {
 	baseDir := filepath.Dir(path)
 	isAggregator := len(doc.Imports) > 0 && doc.Spec == nil
 
-	check := func(ok bool, pass, fail string) {
-		if ok {
-			fmt.Printf("  %s %s\n", successMark(), pass)
-		} else {
-			fmt.Printf("  %s %s\n", failureMark(), fail)
-		}
-	}
-
 	var errs []string
 
 	if doc.Metadata.Name == "" {
 		errs = append(errs, "metadata.name is required")
-		fmt.Printf("  %s metadata.name is required\n", failureMark())
-	} else {
-		fmt.Printf("  %s metadata.name: %s\n", successMark(), doc.Metadata.Name)
 	}
-
 	if !isAggregator && doc.Spec == nil {
 		errs = append(errs, "spec or imports is required")
-		fmt.Printf("  %s spec or imports is required\n", failureMark())
 	}
-
 	if isAggregator {
 		for _, f := range doc.Imports {
 			p := f
 			if !filepath.IsAbs(p) {
 				p = filepath.Join(baseDir, p)
 			}
-			check(fileExists(p), "imports: "+f+" (found)", "imports: "+f+" (not found)")
 			if !fileExists(p) {
 				errs = append(errs, "import not found: "+f)
 			}
 		}
 	}
-
 	if doc.Spec != nil {
 		if doc.Spec.Katalog == "" {
 			errs = append(errs, "spec.katalog is required")
-			fmt.Printf("  %s spec.katalog is required\n", failureMark())
-		} else {
-			p := filepath.Join(baseDir, doc.Spec.Katalog)
-			check(fileExists(p), "spec.katalog: "+doc.Spec.Katalog+" (found)", "spec.katalog: "+doc.Spec.Katalog+" (not found)")
-			if !fileExists(p) {
-				errs = append(errs, "spec.katalog not found: "+doc.Spec.Katalog)
-			}
+		} else if !fileExists(filepath.Join(baseDir, doc.Spec.Katalog)) {
+			errs = append(errs, "spec.katalog not found: "+doc.Spec.Katalog)
 		}
-
 		if doc.Spec.CR == "" {
 			errs = append(errs, "spec.cr is required")
-			fmt.Printf("  %s spec.cr is required\n", failureMark())
-		} else {
-			p := filepath.Join(baseDir, doc.Spec.CR)
-			check(fileExists(p), "spec.cr: "+doc.Spec.CR+" (found)", "spec.cr: "+doc.Spec.CR+" (not found)")
-			if !fileExists(p) {
-				errs = append(errs, "spec.cr not found: "+doc.Spec.CR)
-			}
+		} else if !fileExists(filepath.Join(baseDir, doc.Spec.CR)) {
+			errs = append(errs, "spec.cr not found: "+doc.Spec.CR)
 		}
-
-		if doc.Spec.Cycles <= 0 {
-			fmt.Printf("  %s spec.cycles: not set — defaulting to 10\n", yellow("⚠"))
-		} else {
-			fmt.Printf("  %s spec.cycles: %d\n", successMark(), doc.Spec.Cycles)
-		}
-
 		if doc.Spec.Expect != nil {
-			fmt.Printf("  %s expect.ops: %d rule(s)\n", successMark(), len(doc.Spec.Expect.Ops))
 			validVerbs := map[string]bool{"create": true, "update": true, "delete": true, "patch": true}
 			for i, rule := range doc.Spec.Expect.Ops {
 				switch {
 				case rule.Verb == "" || rule.Resource == "":
 					errs = append(errs, fmt.Sprintf("expect.ops[%d]: verb and resource are required", i))
-					fmt.Printf("  %s expect.ops[%d]: verb and resource are required\n", failureMark(), i)
 				case !validVerbs[rule.Verb]:
 					errs = append(errs, fmt.Sprintf("expect.ops[%d]: invalid verb %q (must be create, update, delete, or patch)", i, rule.Verb))
-					fmt.Printf("  %s expect.ops[%d]: invalid verb %q\n", failureMark(), i, rule.Verb)
 				}
 			}
 			for i, rule := range doc.Spec.Expect.Absent {
 				switch {
 				case rule.Verb == "" || rule.Resource == "":
 					errs = append(errs, fmt.Sprintf("expect.absent[%d]: verb and resource are required", i))
-					fmt.Printf("  %s expect.absent[%d]: verb and resource are required\n", failureMark(), i)
 				case !validVerbs[rule.Verb]:
 					errs = append(errs, fmt.Sprintf("expect.absent[%d]: invalid verb %q (must be create, update, delete, or patch)", i, rule.Verb))
-					fmt.Printf("  %s expect.absent[%d]: invalid verb %q\n", failureMark(), i, rule.Verb)
 				}
 			}
+		}
+	}
+
+	if len(errs) > 0 {
+		for _, e := range errs {
+			fmt.Printf("  %s %s\n", failureMark(), e)
+		}
+		fmt.Println()
+		fmt.Println(strings.Repeat("─", 60))
+		return fmt.Errorf("%d validation error(s) in %s", len(errs), path)
+	}
+
+	// Success — print structured summary matching the Katalog/E2E style.
+	fmt.Printf("%s %s\n", healthIcon("ready"), bold(doc.Metadata.Name))
+	if doc.Metadata.Description != "" {
+		fmt.Printf("    %s\n", gray(doc.Metadata.Description))
+	}
+	fmt.Println()
+
+	if isAggregator {
+		fmt.Printf("    %s\n", gray(fmt.Sprintf("imports : %d file(s)", len(doc.Imports))))
+		for _, f := range doc.Imports {
+			fmt.Printf("      %s %s\n", healthIcon("ready"), gray(f))
+		}
+	} else {
+		cycles := doc.Spec.Cycles
+		if cycles <= 0 {
+			cycles = 10
+		}
+		fmt.Printf("    %s\n", gray(fmt.Sprintf("katalog : %s", doc.Spec.Katalog)))
+		fmt.Printf("    %s\n", gray(fmt.Sprintf("cr      : %s", doc.Spec.CR)))
+		fmt.Printf("    %s\n", gray(fmt.Sprintf("cycles  : %d", cycles)))
+		if doc.Spec.Expect != nil {
+			fmt.Printf("    %s\n", gray(fmt.Sprintf("ops     : %d rule(s)", len(doc.Spec.Expect.Ops))))
 			if len(doc.Spec.Expect.Absent) > 0 {
-				fmt.Printf("  %s expect.absent: %d rule(s)\n", successMark(), len(doc.Spec.Expect.Absent))
+				fmt.Printf("    %s\n", gray(fmt.Sprintf("absent  : %d rule(s)", len(doc.Spec.Expect.Absent))))
 			}
 		}
 	}
 
 	fmt.Println()
 	fmt.Println(strings.Repeat("─", 60))
-
-	if len(errs) > 0 {
-		return fmt.Errorf("%d validation error(s) in %s", len(errs), path)
-	}
-
 	if isAggregator {
 		fmt.Printf("%d import(s) valid\n", len(doc.Imports))
 	} else {
@@ -474,18 +489,81 @@ func validateMotifFile(path string) error {
 	fmt.Println()
 
 	errs := katalog.ValidateMotif(path)
-	if len(errs) == 0 {
-		icon := healthIcon("ready")
-		fmt.Printf("%s %s\n", icon, bold(path))
-		fmt.Printf("    %s\n", gray("valid"))
-		return nil
+	if len(errs) > 0 {
+		for _, e := range errs {
+			fmt.Printf("  %s %s\n", failureMark(), e.Error())
+		}
+		fmt.Println()
+		fmt.Println(strings.Repeat("─", 60))
+		return fmt.Errorf("%d validation error(s) in %s", len(errs), path)
 	}
 
-	for _, e := range errs {
-		fmt.Printf("  %s %s\n", failureMark(), e.Error())
+	// Load the motif to build the structured summary.
+	m, err := motifpkg.Load(path)
+	if err != nil {
+		// ValidateMotif already passed, so this is unexpected — degrade gracefully.
+		fmt.Printf("%s %s\n", healthIcon("ready"), bold(path))
+	} else {
+		fmt.Printf("%s %s\n", healthIcon("ready"), bold(m.Metadata.Name))
+		if m.Metadata.Description != "" {
+			fmt.Printf("    %s\n", gray(m.Metadata.Description))
+		}
+		if m.Metadata.Version != "" {
+			fmt.Println()
+			fmt.Printf("    %s\n", gray("version : "+m.Metadata.Version))
+		}
+		if len(m.Inputs) > 0 {
+			if m.Metadata.Version == "" {
+				fmt.Println()
+			}
+			fmt.Printf("    %s\n", gray(fmt.Sprintf("inputs  : %d", len(m.Inputs))))
+		}
+		if summary := motifResourceSummary(m); summary != "" {
+			fmt.Printf("    %s\n", gray("resources: "+summary))
+		}
 	}
+
 	fmt.Println()
-	return fmt.Errorf("%d validation error(s) in %s", len(errs), path)
+	fmt.Println(strings.Repeat("─", 60))
+	fmt.Println("Motif is valid")
+	return nil
+}
+
+// motifResourceSummary returns a compact string listing non-empty resource types
+// and their counts, e.g. "deployments(1) services(1) networkPolicies(2)".
+func motifResourceSummary(m *orktypes.Motif) string {
+	if m.Resources == nil {
+		return ""
+	}
+	ht := m.Resources.HookTemplates
+	var parts []string
+	add := func(kind string, n int) {
+		if n > 0 {
+			parts = append(parts, fmt.Sprintf("%s(%d)", kind, n))
+		}
+	}
+	add("deployments", len(ht.Deployments))
+	add("statefulSets", len(ht.StatefulSets))
+	add("daemonSets", len(ht.DaemonSets))
+	add("services", len(ht.Services))
+	add("ingresses", len(ht.Ingresses))
+	add("networkPolicies", len(ht.NetworkPolicies))
+	add("jobs", len(ht.Jobs))
+	add("cronJobs", len(ht.CronJobs))
+	add("secrets", len(ht.Secrets))
+	add("configMaps", len(ht.ConfigMaps))
+	add("serviceAccounts", len(ht.ServiceAccounts))
+	add("roles", len(ht.Roles))
+	add("roleBindings", len(ht.RoleBindings))
+	add("clusterRoles", len(ht.ClusterRoles))
+	add("clusterRoleBindings", len(ht.ClusterRoleBindings))
+	add("resourceQuotas", len(ht.ResourceQuotas))
+	add("limitRanges", len(ht.LimitRanges))
+	add("namespaces", len(ht.Namespaces))
+	add("persistentVolumeClaims", len(ht.PersistentVolumeClaims))
+	add("horizontalPodAutoscalers", len(ht.HorizontalPodAutoscalers))
+	add("podDisruptionBudgets", len(ht.PodDisruptionBudgets))
+	return strings.Join(parts, " ")
 }
 
 func init() {

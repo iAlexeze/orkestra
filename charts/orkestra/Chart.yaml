@@ -7,7 +7,7 @@ description: >-
   Control Center. Runtime and Gateway deploy independently.
 type: application
 version: 1.7.7
-appVersion: "v0.7.7"
+appVersion: "0.7.7"
 
 keywords:
   - orkestra

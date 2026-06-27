@@ -115,9 +115,9 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 			}
 		}
 		if crd.Setup != nil {
-			for i, cf := range crd.Setup.Apply {
-				if !filepath.IsAbs(cf) && !strings.HasPrefix(cf, "http") {
-					crd.Setup.Apply[i] = filepath.Join(katalogDir, cf)
+			for i, entry := range crd.Setup.Apply {
+				if !filepath.IsAbs(entry.Path) && !strings.HasPrefix(entry.Path, "http") {
+					crd.Setup.Apply[i].Path = filepath.Join(katalogDir, entry.Path)
 				}
 			}
 		}
