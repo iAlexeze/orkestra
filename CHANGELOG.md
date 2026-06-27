@@ -1,3 +1,129 @@
+## v0.7.8 — First-class NetworkPolicy, ResourceQuota, LimitRange, ClusterRole, ClusterRoleBinding; namespace-provisioner sub-pack
+
+### New resource types
+
+Five resource types promoted from placeholder stubs to fully managed Orkestra resources:
+
+| Type | Scope | Notes |
+|------|-------|-------|
+| `NetworkPolicy` | Namespaced | Profile or explicit ingress/egress/policyTypes |
+| `ResourceQuota` | Namespaced | Profile or explicit hard map |
+| `LimitRange` | Namespaced | Explicit limit items |
+| `ClusterRole` | Cluster | No OwnerReferences — owned via `orkestra.io/owner` label |
+| `ClusterRoleBinding` | Cluster | RoleRef immutability handled (delete + recreate on change) |
+
+### New profiles
+
+**NetworkPolicy profiles** — set `profile:` on any networkPolicy entry:
+
+| Profile | Effect |
+|---------|--------|
+| `deny-all` | Block all ingress and egress |
+| `deny-all-ingress` | Block all ingress |
+| `deny-all-egress` | Block all egress |
+| `allow-same-namespace` | Allow ingress from pods in the same namespace |
+| `allow-dns-egress` | Allow egress on port 53 (UDP + TCP) |
+
+**ResourceQuota profiles** — set `profile:` on any resourceQuota entry:
+
+| Profile | Pods | CPU | Memory |
+|---------|------|-----|--------|
+| `small` | 10 | 2 | 4Gi |
+| `medium` | 20 | 4 | 8Gi |
+| `large` | 50 | 8 | 16Gi |
+| `xlarge` | 100 | 16 | 32Gi |
+
+### User-defined profiles
+
+All six profile classes now support user-defined named presets declared in the `profiles:` block at the root of a Katalog or Motif:
+
+```yaml
+profiles:
+  networkPolicies:
+    - name: org-deny-all
+      policyTypes: [Ingress, Egress]
+  resourceQuotas:
+    - name: org-medium
+      hard: { pods: "25", cpu: "4", memory: "8Gi" }
+  limitRanges:
+    - name: org-container-defaults
+      limits:
+        - type: Container
+          default: { cpu: 500m, memory: 512Mi }
+          defaultRequest: { cpu: 100m, memory: 128Mi }
+  hpa:
+    - name: org-conservative
+      targetCPUUtilizationPercentage: "70"
+  pdb:
+    - name: org-at-least-one
+      minAvailable: "1"
+  rollingUpdate:
+    - name: org-safe
+      maxSurge: "1"
+      maxUnavailable: "0"
+```
+
+User profiles resolve before built-ins. Motif-declared profiles merge into the importing Katalog's registry; duplicate names in the same class across Katalog and Motif are a hard error at load time. `ork validate` shows the profile count per class in Motif output.
+
+LimitRange profiles are always user-defined — there are no built-in LimitRange presets.
+
+### Katalog validation
+
+`ork validate` now rejects unknown profile names for all six profile families (HPA, PDB, RollingUpdate, NetworkPolicy, ResourceQuota, LimitRange) and `fromNamespace` set without `toNamespaces` or vice versa.
+
+### Simulate: cross-namespace copy auto-skip
+
+Resources declaring `fromNamespace` / `toNamespaces` are automatically skipped before the fake reconciler runs. A note is printed for each skipped resource. Use `ork e2e` to verify cross-namespace copies against a real cluster.
+
+### E2E: per-entry waits and setup-complete lifecycle
+
+- `setup.apply` and `setup.helm` entries support an inline `wait:` list that blocks after each step
+- New lifecycle event `after: setup-complete` for infrastructure assertions before the CR is applied. This is now the default when `after:` is omitted
+- `spec.crd` and `spec.cr` are optional when `spec.custom.target: kubernetes` is set
+
+### ork validate output consistency
+
+Simulate and Motif output now use the same `●` header + structured fields format as Katalog and E2E.
+
+### Chart: gateway PDB + self-test
+
+Gateway PodDisruptionBudget added (`enabled: true`, `minAvailable: 1`). The Orkestra Helm chart now ships with `charts/orkestra/e2e.yaml` — a `custom.target: kubernetes` spec that installs and validates the chart itself using `ork e2e`.
+
+### New sub-pack: `use-cases/namespace-provisioner`
+
+```bash
+ork init --pack use-cases/namespace-provisioner
+```
+
+Four progressive examples building a production namespace provisioner — a single CRD that provisions a namespace with quota, RBAC, and network policy in one apply:
+
+| Example | What you get |
+|---------|-------------|
+| `01-explicit` | Hard-coded quota, ClusterRole, ClusterRoleBinding, NetworkPolicy — every resource the operator emits, fully visible |
+| `02-profiles` | Same eight resources; sizes via built-in profiles (ResourceQuota: small/medium/large/xlarge, NetworkPolicy: allow-same-namespace / deny-all-egress) |
+| `03-user-defined` | User-defined profiles declared in a shared Motif; each team tier references a named preset — one Motif entry = one new tier |
+| `04-motif-profiles` | Org-wide policy in a single Motif file consumed by any Katalog that imports it |
+
+The step-by-step design narrative lives in `documentation/guides/namespace-provisioner/`.
+
+Because the operator creates ClusterRoles and ClusterRoleBindings, Orkestra automatically adds `escalate` and `bind` to the generated bundle — required by Kubernetes privilege escalation prevention. These verbs are absent from operators that manage no RBAC resources.
+
+### ork create pattern
+
+`ork create pattern` scaffolds a complete operator suite in one command:
+
+```bash
+ork create pattern
+ork create pattern -o ./my-operator/
+ork create pattern --typed
+```
+
+**Always generated:** `katalog.yaml`, `simulate.yaml`, `e2e.yaml`, `README.md`.
+
+**Typed mode** (`--typed`, `--add-hook`, `--add-constructor`): also generates `values.yaml`, `Makefile`, and `Dockerfile` — ready to build, push, and release a runtime binary.
+
+---
+
 ## v0.7.7 — New packs, typed group overrides, universal e2e, breaking: operatorBox.reconciler
 
 ### New pack: `from-controller-runtime`

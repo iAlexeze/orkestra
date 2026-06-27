@@ -116,6 +116,7 @@ Gateway permissions are only generated if the features that need them are declar
 |----------------|----------|
 | Each CRD you declare | Runtime — CRUD on that group/resource |
 | Deployments, Services, etc. in `onCreate` | Runtime — only the kinds you use |
+| `clusterRoles:` or `roles:` in `onCreate`/`onReconcile` | Runtime — CRUD + `escalate` + `bind` on that resource |
 | Validation rules | Gateway — `validatingwebhookconfigurations` |
 | Mutation rules | Gateway — `mutatingwebhookconfigurations` |
 | Deletion protection | Gateway — namespaces `get`/`patch` |
@@ -123,6 +124,26 @@ Gateway permissions are only generated if the features that need them are declar
 | TLS / certificates | Gateway — secrets |
 
 If you declare no validation rules, the gateway ClusterRole has no `admissionregistration.k8s.io` entries at all.
+
+---
+
+## ClusterRole and Role management — the `escalate` verb
+
+When your operator creates `ClusterRoles` or `Roles` on behalf of another service account — for example, to provision a tenant namespace with its own access policy — Orkestra automatically adds the `escalate` verb to the runtime ClusterRole alongside the standard CRUD verbs:
+
+```yaml
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["clusterroles"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "escalate", "bind"]
+```
+
+**Why `escalate` is required.** Kubernetes privilege escalation prevention blocks any attempt to create or update a Role or ClusterRole that grants permissions the creating subject does not already hold. Without `escalate`, the API server rejects the request even if the role content is otherwise valid.
+
+**Why `bind` is also required.** A second check applies when creating a RoleBinding or ClusterRoleBinding: the creating SA must either hold all permissions in the referenced Role, or have the `bind` verb on the Role/ClusterRole being bound. Without `bind`, the binding creation fails even after the role itself was created successfully. `escalate` and `bind` are two separate Kubernetes privilege checks — both are needed when the operator provisions RBAC on behalf of tenants.
+
+**Still least-privileged.** The rule is only generated when Orkestra detects `clusterRoles:` or `roles:` in your `onCreate`/`onReconcile` blocks. If your Katalog creates no Roles or ClusterRoles, the rule is absent entirely. An operator that manages only Deployments and Services never receives `escalate`.
+
+**Reviewing before apply.** As with all generated permissions, run `ork validate --full` to see the exact rule before committing the bundle.
 
 ---
 

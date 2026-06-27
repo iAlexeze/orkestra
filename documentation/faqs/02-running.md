@@ -159,6 +159,8 @@ kubectl apply -f bundle.yaml
 
 The ClusterRole is derived, not hand-written: only the API groups declared in your Katalog, only the verbs those resources actually need. If your operator creates no Deployments, the runtime has no `apps/deployments` permission.
 
+When the Katalog declares `clusterRoles:` or `roles:` in `onCreate`/`onReconcile`, two extra verbs are added automatically — `escalate` and `bind` on `rbac.authorization.k8s.io` roles and clusterroles. `escalate` lets the runtime create roles that grant permissions it doesn't hold. `bind` lets it create bindings that reference those roles. Both are required by Kubernetes privilege escalation prevention and are absent from the bundle whenever no RBAC resources are managed.
+
 **Re-run it every time the Katalog changes.** Adding a CRD, a new resource type, or a new API group makes the deployed bundle stale — the runtime will lack the permissions it now needs. Run it in CI alongside `ork validate`:
 
 ```bash
