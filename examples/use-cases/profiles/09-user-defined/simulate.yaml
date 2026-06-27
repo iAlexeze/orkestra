@@ -1,0 +1,46 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: profiles-user-defined-sim
+  description: >
+    Two user-defined profile classes — networkPolicies and hpa.
+    All five resources (1 Deployment, 3 NetworkPolicies, 2 HPAs) are
+    created in cycle 1. Names are team-prefixed; none are Orkestra built-ins.
+
+spec:
+  katalog: ./katalog.yaml
+  cr: ../cr.yaml
+  cycles: 3
+
+  expect:
+    steady: true
+    ops:
+      - cycle: 1
+        verb: create
+        resource: deployments
+        name: my-service
+
+      - cycle: 1
+        verb: create
+        resource: networkpolicies
+        name: my-service-deny-all
+
+      - cycle: 1
+        verb: create
+        resource: networkpolicies
+        name: my-service-allow-internal
+
+      - cycle: 1
+        verb: create
+        resource: networkpolicies
+        name: my-service-allow-dns
+
+      - cycle: 1
+        verb: create
+        resource: horizontalpodautoscalers
+        name: my-service-hpa-conservative
+
+      - cycle: 1
+        verb: create
+        resource: horizontalpodautoscalers
+        name: my-service-hpa-responsive

@@ -29,7 +29,15 @@ ork validate
 
 ---
 
-## Step 2 — Start the runtime
+## Step 2 — Simulate
+
+```bash
+ork simulate
+```
+
+---
+
+## Step 3 — Start the runtime
 
 ```bash
 ork run
@@ -37,7 +45,7 @@ ork run
 
 ---
 
-## Step 3 — Open the Control Center
+## Step 4 — Open the Control Center
 
 In a **separate terminal**:
 
@@ -50,7 +58,7 @@ Open [http://localhost:8081](http://localhost:8081). Select **service-resource-p
 
 ---
 
-## Step 4 — Apply the CR
+## Step 5 — Apply the CR
 
 ```bash
 kubectl apply -f ../cr.yaml
