@@ -14,6 +14,27 @@ var defaultVerbs = []string{
 	"get", "list", "watch", "create", "update", "patch", "delete",
 }
 
+// rbacVerbsFor returns the appropriate verb set for a built-in resource.
+//
+// Roles and ClusterRoles require two extra verbs beyond standard CRUD:
+//   - "escalate": allows creating/updating a Role or ClusterRole that grants
+//     permissions the Orkestra SA does not already hold. Without it Kubernetes
+//     blocks any attempt to provision a role with a broader permission set.
+//   - "bind": allows creating a RoleBinding or ClusterRoleBinding that
+//     references a Role/ClusterRole whose permissions the SA doesn't hold.
+//     Without it the binding creation is blocked even after the role exists.
+//
+// Both verbs are required whenever the operator provisions RBAC on behalf of
+// tenant service accounts (e.g. via clusterRoles:/roles: in onCreate).
+// They are absent from the generated bundle when no Roles or ClusterRoles are
+// detected in the Katalog, preserving least-privilege for all other operators.
+func rbacVerbsFor(group, plural string) []string {
+	if group == "rbac.authorization.k8s.io" && (plural == "roles" || plural == "clusterroles") {
+		return append(defaultVerbs, "escalate", "bind")
+	}
+	return defaultVerbs
+}
+
 func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 	var rules []rbacv1.PolicyRule
 
@@ -161,7 +182,7 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 			rules = append(rules, rbacv1.PolicyRule{
 				APIGroups: []string{b.Group},
 				Resources: []string{b.Plural},
-				Verbs:     defaultVerbs,
+				Verbs:     rbacVerbsFor(b.Group, b.Plural),
 			})
 		}
 	}
@@ -297,7 +318,7 @@ func (k *Katalog) GenerateRuntimeRBACRules() []rbacv1.PolicyRule {
 			rules = append(rules, rbacv1.PolicyRule{
 				APIGroups: []string{b.Group},
 				Resources: []string{b.Plural},
-				Verbs:     defaultVerbs,
+				Verbs:     rbacVerbsFor(b.Group, b.Plural),
 			})
 		}
 	}
