@@ -521,12 +521,37 @@ func validateMotifFile(path string) error {
 		if summary := motifResourceSummary(m); summary != "" {
 			fmt.Printf("    %s\n", gray("resources: "+summary))
 		}
+		if summary := motifProfileSummary(m); summary != "" {
+			fmt.Printf("    %s\n", gray("profiles : "+summary))
+		}
 	}
 
 	fmt.Println()
 	fmt.Println(strings.Repeat("─", 60))
 	fmt.Println("Motif is valid")
 	return nil
+}
+
+// motifProfileSummary returns a compact string listing non-empty profile classes
+// and their counts, e.g. "networkPolicies(2) resourceQuotas(1)".
+func motifProfileSummary(m *orktypes.Motif) string {
+	reg := m.Profiles
+	if reg.IsEmpty() {
+		return ""
+	}
+	var parts []string
+	add := func(kind string, n int) {
+		if n > 0 {
+			parts = append(parts, fmt.Sprintf("%s(%d)", kind, n))
+		}
+	}
+	add("networkPolicies", len(reg.NetworkPolicies))
+	add("resourceQuotas", len(reg.ResourceQuotas))
+	add("limitRanges", len(reg.LimitRanges))
+	add("hpa", len(reg.HPA))
+	add("pdb", len(reg.PDB))
+	add("rollingUpdate", len(reg.RollingUpdate))
+	return strings.Join(parts, " ")
 }
 
 // motifResourceSummary returns a compact string listing non-empty resource types

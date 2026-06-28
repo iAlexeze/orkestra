@@ -74,7 +74,7 @@ func RunNetworkPolicies(
 			return fmt.Errorf("networkPolicies[%d]: %w", i, err)
 		}
 
-		spec := orknp.Resolve(resolved, resolver.OwnerName())
+		spec := orknp.Resolve(resolved, resolver.OwnerName(), resolver.Profiles())
 
 		if len(resolved.ToNamespaces) > 0 {
 			namespaces, err := resolver.ResolveStringSlice(resolved.ToNamespaces)

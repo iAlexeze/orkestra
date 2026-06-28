@@ -36,6 +36,19 @@ type Resolver struct {
 	data           map[string]interface{}
 	ownerName      string
 	ownerNamespace string
+	profiles       orktypes.ProfileRegistry
+}
+
+// WithProfiles attaches a user-defined profile registry to the resolver.
+// Call this after NewResolver when the katalog declares a profiles: block.
+func (r *Resolver) WithProfiles(reg orktypes.ProfileRegistry) *Resolver {
+	r.profiles = reg
+	return r
+}
+
+// Profiles returns the user-defined profile registry attached to this resolver.
+func (r *Resolver) Profiles() orktypes.ProfileRegistry {
+	return r.profiles
 }
 
 // NewResolver creates a Resolver from any domain.Object.

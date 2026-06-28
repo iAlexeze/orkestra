@@ -74,7 +74,7 @@ func RunResourceQuotas(
 			return fmt.Errorf("resourceQuotas[%d]: %w", i, err)
 		}
 
-		spec := orkrq.Resolve(resolved, resolver.OwnerName())
+		spec := orkrq.Resolve(resolved, resolver.OwnerName(), resolver.Profiles())
 
 		if len(resolved.ToNamespaces) > 0 {
 			namespaces, err := resolver.ResolveStringSlice(resolved.ToNamespaces)

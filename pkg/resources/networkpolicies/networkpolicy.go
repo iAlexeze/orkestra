@@ -218,13 +218,13 @@ func CopyToNamespaces(
 
 // Resolve builds a ResolvedNetworkPolicySpec from a NetworkPolicyTemplateSource.
 // Template expressions must already be evaluated by template.Resolver before calling.
-func Resolve(src orktypes.NetworkPolicyTemplateSource, ownerName string) ResolvedNetworkPolicySpec {
+func Resolve(src orktypes.NetworkPolicyTemplateSource, ownerName string, reg orktypes.ProfileRegistry) ResolvedNetworkPolicySpec {
 	ingress := src.Ingress
 	egress := src.Egress
 	policyTypes := src.PolicyTypes
 
 	if src.Profile != "" {
-		if expanded, err := profiles.ApplyNetworkPolicyProfile(src.Profile); err != nil {
+		if expanded, err := profiles.ApplyNetworkPolicyProfile(src.Profile, reg); err != nil {
 			logger.Warn().Str("profile", src.Profile).Err(err).Msg("unknown networkpolicy profile — skipping")
 		} else {
 			ingress = expanded.Ingress
@@ -392,13 +392,23 @@ func buildNetworkPolicySpec(spec ResolvedNetworkPolicySpec) networkingv1.Network
 
 func translatePeer(peer orktypes.NetworkPolicyPeer) networkingv1.NetworkPolicyPeer {
 	p := networkingv1.NetworkPolicyPeer{}
-	if len(peer.PodSelector) > 0 || peer.PodSelector != nil {
+
+	hasNS := len(peer.NamespaceSelector) > 0
+	hasIP := peer.IPBlock != nil
+
+	if peer.PodSelector != nil {
 		p.PodSelector = &metav1.LabelSelector{MatchLabels: peer.PodSelector}
+	} else if !hasNS && !hasIP {
+		// podSelector: {} was declared but its empty map was dropped by omitempty
+		// during the bundle serialization round-trip. An all-nil peer is never valid
+		// in Kubernetes, so the only sensible interpretation is "select all pods in
+		// the namespace" — which is exactly what an empty LabelSelector means.
+		p.PodSelector = &metav1.LabelSelector{}
 	}
-	if len(peer.NamespaceSelector) > 0 {
+	if hasNS {
 		p.NamespaceSelector = &metav1.LabelSelector{MatchLabels: peer.NamespaceSelector}
 	}
-	if peer.IPBlock != nil {
+	if hasIP {
 		p.IPBlock = &networkingv1.IPBlock{
 			CIDR:   peer.IPBlock.CIDR,
 			Except: peer.IPBlock.Except,

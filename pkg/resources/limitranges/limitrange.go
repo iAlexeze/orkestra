@@ -4,12 +4,11 @@ package limitranges
 import (
 	"context"
 	"fmt"
-	"reflect"
-
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/profiles"
 	"github.com/orkspace/orkestra/pkg/resources/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
@@ -98,7 +97,7 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	}
 
 	desired := buildLimitRangeItems(limits)
-	if reflect.DeepEqual(existing.Spec.Limits, desired) {
+	if limitRangeItemsEqual(existing.Spec.Limits, desired) {
 		logger.Debug().
 			Str("limitrange", spec.Name).
 			Str("namespace", namespace).
@@ -218,11 +217,18 @@ func CopyToNamespaces(
 
 // Resolve builds a ResolvedLimitRangeSpec from a LimitRangeTemplateSource.
 // Template expressions must already be evaluated by template.Resolver before calling.
-func Resolve(src orktypes.LimitRangeTemplateSource, ownerName string) ResolvedLimitRangeSpec {
+func Resolve(src orktypes.LimitRangeTemplateSource, ownerName string, reg orktypes.ProfileRegistry) ResolvedLimitRangeSpec {
+	limits := src.Limits
+	if src.Profile != "" && len(limits) == 0 {
+		if expanded, err := profiles.ApplyLimitRangeProfile(src.Profile, reg); err == nil {
+			limits = expanded
+		}
+	}
+
 	spec := ResolvedLimitRangeSpec{
 		Name:           src.Name,
 		Namespace:      src.Namespace,
-		Limits:         src.Limits,
+		Limits:         limits,
 		FromLimitRange: src.FromLimitRange,
 		FromNamespace:  src.FromNamespace,
 		Labels:         make(map[string]string),
@@ -324,6 +330,41 @@ func buildLimitRangeItems(items []orktypes.LimitRangeItem) []corev1.LimitRangeIt
 		out = append(out, lri)
 	}
 	return out
+}
+
+func limitRangeItemsEqual(a, b []corev1.LimitRangeItem) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].Type != b[i].Type {
+			return false
+		}
+		if !resourceListEqual(a[i].Max, b[i].Max) ||
+			!resourceListEqual(a[i].Min, b[i].Min) ||
+			!resourceListEqual(a[i].Default, b[i].Default) ||
+			!resourceListEqual(a[i].DefaultRequest, b[i].DefaultRequest) ||
+			!resourceListEqual(a[i].MaxLimitRequestRatio, b[i].MaxLimitRequestRatio) {
+			return false
+		}
+	}
+	return true
+}
+
+func resourceListEqual(a, b corev1.ResourceList) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, qa := range a {
+		qb, ok := b[k]
+		if !ok {
+			return false
+		}
+		if qa.Cmp(qb) != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func mapToResourceList(m map[string]string) corev1.ResourceList {

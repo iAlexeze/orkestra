@@ -30,7 +30,7 @@ func (k *Katalog) validateResourceQuotaProfiles() error {
 			if isTemplateExpr(e.Profile) {
 				continue
 			}
-			if !profiles.IsValidResourceQuotaProfile(e.Profile) {
+			if !k.isUserResourceQuotaProfile(e.Profile) && !profiles.IsValidResourceQuotaProfile(e.Profile) {
 				return fmt.Errorf(
 					"crd %q: resourceQuota %q (phase %s) has unknown profile %q — "+
 						"allowed: small, medium, large, xlarge",

@@ -69,7 +69,7 @@ func RunStatefulSets(
 			return fmt.Errorf("statefulsets[%d]: %w", i, err)
 		}
 
-		spec := orksts.Resolve(resolved, resolver.OwnerName())
+		spec := orksts.Resolve(resolved, resolver.OwnerName(), resolver.Profiles())
 
 		if update {
 			if err := orksts.Update(ctx, kube, owner, spec); err != nil {

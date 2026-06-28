@@ -34,6 +34,7 @@ func (k *Katalog) SerializeExpanded() ([]byte, error) {
 		Gateway:      k.Gateway,
 		Notification: k.Notification,
 		Providers:    k.Providers,
+		Profiles:     k.Profiles,
 	}
 
 	out, err := yaml.Marshal(kf)

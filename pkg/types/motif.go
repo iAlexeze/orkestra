@@ -31,6 +31,7 @@ type Motif struct {
 	Kind       string          `yaml:"kind" json:"kind"`
 	Metadata   MotifMeta       `yaml:"metadata" json:"metadata"`
 	Inputs     []MotifInput    `yaml:"inputs,omitempty" json:"inputs,omitempty"`
+	Profiles   ProfileRegistry `yaml:"profiles,omitempty" json:"profiles,omitempty"`
 	Resources  *MotifResources `yaml:"resources,omitempty" json:"resources,omitempty"`
 	Status     *StatusConfig   `yaml:"status,omitempty" json:"status,omitempty"`
 	Admission  *Admission      `yaml:"admission,omitempty" json:"admission,omitempty"`

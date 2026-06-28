@@ -62,6 +62,46 @@ Static names are validated at load time. Template expressions are validated when
 
 ---
 
+## Built-ins versus user-defined profiles
+
+Orkestra ships with built-in profiles — `deny-all`, `small/medium/large/xlarge`, `safe`, `zero-downtime` — so the feature works immediately without any extra YAML. They cover common Kubernetes patterns.
+
+But the feature is designed for the profiles you write yourself.
+
+A team writing `profile: org-medium` is expressing an organizational contract: this namespace gets the capacity we agreed on for medium-sized teams. The numbers follow from that decision. Change the `org-medium` definition once and it propagates to every Katalog and Motif that references it — no grep, no PR chain, no drift.
+
+That is what built-ins cannot do. `medium` is Orkestra's guess at what medium means. `org-medium` is your team's actual answer.
+
+User-defined profiles are declared in a `profiles:` block at the root of any Katalog or Motif:
+
+```yaml
+profiles:
+  resourceQuotas:
+    - name: org-medium
+      description: Standard allocation for a medium-sized team namespace
+      hard:
+        pods: "25"
+        cpu: "4"
+        memory: "8Gi"
+
+  networkPolicies:
+    - name: org-deny-all
+      description: Block all traffic — start here and add policies for what you need
+      policyTypes: [Ingress, Egress]
+
+  rollingUpdate:
+    - name: org-safe
+      description: Never reduces capacity during a rollout
+      maxSurge: "1"
+      maxUnavailable: "0"
+```
+
+They resolve before built-ins. A profile named `deny-all` in your `profiles:` block shadows the built-in. A conflict between two imported Motifs declaring the same profile name in the same class is a hard error at load time.
+
+See [User-defined profiles](./10-user-defined-profiles.md) for the full reference.
+
+---
+
 ## Profile families
 
 | Family | What it controls | Applied to |
@@ -75,6 +115,7 @@ Static names are validated at load time. Template expressions are validated when
 | [Rolling Update](./07-rolling-update-profile.md) | Deployment/StatefulSet/ReplicaSet rollout strategy | `deployments[*].rollingUpdate`, `statefulSets[*].rollingUpdate`, `replicaSets[*].rollingUpdate` |
 | [ResourceQuota](./08-resourcequota-profile.md) | Namespace resource limits (pods, CPU, memory) | `resourceQuotas[*]` |
 | [NetworkPolicy](./09-networkpolicy-profile.md) | Traffic allow/deny rules for pods | `networkPolicies[*]` |
+| [User-defined](./10-user-defined-profiles.md) | Custom named profiles declared in your Katalog or Motif | All profile-supporting fields |
 
 ---
 
@@ -84,3 +125,4 @@ Static names are validated at load time. Template expressions are validated when
 - **Fail-fast** — an unknown profile name is a Katalog load error, not a runtime error.
 - **No mixing** — a profile and explicit fields of the same type cannot coexist on the same resource.
 - **Template-safe** — profile names can be template expressions. Static names are validated immediately; template expressions are validated at reconcile time.
+- **User-defined** — teams can declare custom named profiles in a Katalog or Motif `profiles:` block. They resolve before built-ins. See [User-defined profiles](./10-user-defined-profiles.md).

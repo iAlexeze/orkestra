@@ -88,6 +88,16 @@ func (k *Katalog) mergeExpandedMotif(entry *orktypes.CRDEntry, expanded *motif.E
 		}
 	}
 
+	// Merge user-defined profiles from the motif into the katalog registry.
+	// Conflict (same class, same name in both) is a hard error.
+	if !expanded.Profiles.IsEmpty() {
+		merged, err := k.Profiles.Merge(expanded.Profiles, fmt.Sprintf("motif %q", expanded.Name))
+		if err != nil {
+			return err
+		}
+		k.Profiles = merged
+	}
+
 	// Merge admission (validation + mutation) rules – these are at CRD level, not operatorBox
 	if expanded.HasAdmission() {
 		// Merge validation rules

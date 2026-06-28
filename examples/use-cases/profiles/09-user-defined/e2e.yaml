@@ -1,0 +1,72 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: E2E
+metadata:
+  name: profiles-user-defined-e2e
+  description: >
+    User-defined profiles (networkPolicies + hpa) — one CR produces one Deployment,
+    three NetworkPolicies, and two HPAs all using team-owned profile names.
+    Verifies all six resources are created and removed on deletion.
+
+spec:
+  katalog: ./katalog.yaml
+  crd: ../crd.yaml
+  cr: ../cr.yaml
+
+  cluster:
+    provider: kind
+    name: ork-e2e
+    reuse: false
+
+  expect:
+    - name: Service CR created
+      after: cr-applied
+      timeout: 60s
+      commands:
+        - run: kubectl get services.demo.orkestra.io my-service
+          exitCode: 0
+
+    - name: Deployment created
+      after: cr-applied
+      timeout: 90s
+      resources:
+        - kind: Deployment
+          name: my-service
+          namespace: default
+
+    - name: Three NetworkPolicies created
+      after: cr-applied
+      timeout: 60s
+      resources:
+        - kind: NetworkPolicy
+          name: my-service-deny-all
+          namespace: default
+        - kind: NetworkPolicy
+          name: my-service-allow-internal
+          namespace: default
+        - kind: NetworkPolicy
+          name: my-service-allow-dns
+          namespace: default
+
+    - name: Two HPAs created
+      after: cr-applied
+      timeout: 60s
+      resources:
+        - kind: HorizontalPodAutoscaler
+          name: my-service-hpa-conservative
+          namespace: default
+        - kind: HorizontalPodAutoscaler
+          name: my-service-hpa-responsive
+          namespace: default
+
+    - name: Cleanup verified
+      after: cr-deleted
+      timeout: 60s
+      resources:
+        - kind: Deployment
+          name: my-service
+          namespace: default
+          count: 0
+        - kind: NetworkPolicy
+          name: my-service-deny-all
+          namespace: default
+          count: 0

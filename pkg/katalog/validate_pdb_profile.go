@@ -28,7 +28,7 @@ func (k *Katalog) validatePDBBehaviorProfiles() error {
 			if isTemplateExpr(e.Profile) {
 				continue
 			}
-			if !profiles.IsValidPDBProfile(e.Profile) {
+			if !k.isUserPDBProfile(e.Profile) && !profiles.IsValidPDBProfile(e.Profile) {
 				return fmt.Errorf(
 					"crd %q: PDB %q (phase %s) has unknown behavior.profile %q — "+
 						"allowed: zero-downtime, rolling, relaxed",

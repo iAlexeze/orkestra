@@ -28,7 +28,7 @@ func (k *Katalog) validateRollingUpdateProfiles() error {
 			if isTemplateExpr(e.Profile) {
 				continue
 			}
-			if !profiles.IsValidRollingUpdateProfile(e.Profile) {
+			if !k.isUserRollingUpdateProfile(e.Profile) && !profiles.IsValidRollingUpdateProfile(e.Profile) {
 				return fmt.Errorf(
 					"crd %q: Deployment %q (phase %s) has unknown rollingUpdate.profile %q — "+
 						"allowed: safe, fast, blue-green",

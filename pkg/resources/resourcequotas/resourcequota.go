@@ -219,10 +219,10 @@ func CopyToNamespaces(
 
 // Resolve builds a ResolvedResourceQuotaSpec from a ResourceQuotaTemplateSource.
 // Template expressions must already be evaluated by template.Resolver before calling.
-func Resolve(src orktypes.ResourceQuotaTemplateSource, ownerName string) ResolvedResourceQuotaSpec {
+func Resolve(src orktypes.ResourceQuotaTemplateSource, ownerName string, reg orktypes.ProfileRegistry) ResolvedResourceQuotaSpec {
 	hard := src.Hard
 	if src.Profile != "" {
-		if expanded, err := profiles.ApplyResourceQuotaProfile(src.Profile); err != nil {
+		if expanded, err := profiles.ApplyResourceQuotaProfile(src.Profile, reg); err != nil {
 			logger.Warn().Str("profile", src.Profile).Err(err).Msg("unknown resourcequota profile — skipping")
 		} else {
 			hard = expanded.Hard

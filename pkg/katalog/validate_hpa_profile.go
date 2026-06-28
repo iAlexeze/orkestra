@@ -31,7 +31,7 @@ func (k *Katalog) validateHPABehaviorProfiles() error {
 			if isTemplateExpr(e.Profile) {
 				continue
 			}
-			if !profiles.IsValidHPAProfile(e.Profile) {
+			if !k.isUserHPAProfile(e.Profile) && !profiles.IsValidHPAProfile(e.Profile) {
 				return fmt.Errorf(
 					"crd %q: HPA %q (phase %s) has unknown behavior.profile %q — "+
 						"allowed: web, api, latency-sensitive, batch, cost-optimized",

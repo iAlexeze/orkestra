@@ -69,7 +69,7 @@ func RunPDBs(
 			return fmt.Errorf("pdbs[%d]: %w", i, err)
 		}
 
-		spec := orkpdb.Resolve(resolved, resolver.OwnerName())
+		spec := orkpdb.Resolve(resolved, resolver.OwnerName(), resolver.Profiles())
 
 		if update {
 			if err := orkpdb.Update(ctx, kube, owner, spec); err != nil {

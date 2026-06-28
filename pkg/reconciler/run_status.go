@@ -37,6 +37,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/children"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // patchStatusWithChildren is the top-level status entry point called from
@@ -136,7 +137,80 @@ func runStatusPatch[PTR domain.Object](
 		}
 	}
 
-	return r.kube.PatchStatus(ctx, obj, patch)
+	// Skip the API call entirely when nothing has semantically changed.
+	// PatchStatus always increments resourceVersion, which generates a watch
+	// event on the CR — immediately re-queuing a reconcile and defeating the
+	// configured resync interval.
+	if statusPatchNeeded(obj, patch) {
+		return r.kube.PatchStatus(ctx, obj, patch)
+	}
+	return nil
+}
+
+// statusPatchNeeded returns true when the patch carries at least one
+// meaningful change vs. the object's current status. lastTransitionTime is
+// excluded from the comparison — only type/status/reason/message are checked
+// for conditions, and the scalar fields (observedGeneration, any layer-2
+// values) are compared directly.
+func statusPatchNeeded(obj domain.Object, patch map[string]interface{}) bool {
+	u, ok := any(obj).(*unstructured.Unstructured)
+	if !ok {
+		// Can't read existing status — patch to be safe.
+		return true
+	}
+
+	// observedGeneration
+	if desiredGen, ok := patch["observedGeneration"].(int64); ok {
+		existingGen, _, _ := unstructured.NestedInt64(u.Object, "status", "observedGeneration")
+		if existingGen != desiredGen {
+			return true
+		}
+	}
+
+	// conditions — compare by type, ignoring lastTransitionTime
+	existing, _, _ := unstructured.NestedSlice(u.Object, "status", "conditions")
+	byType := make(map[string]map[string]interface{}, len(existing))
+	for _, c := range existing {
+		cm, ok := c.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if t, _ := cm["type"].(string); t != "" {
+			byType[t] = cm
+		}
+	}
+
+	desired, _ := patch["conditions"].([]interface{})
+	if len(desired) != len(byType) {
+		return true
+	}
+	for _, d := range desired {
+		dm, ok := d.(map[string]interface{})
+		if !ok {
+			return true
+		}
+		t, _ := dm["type"].(string)
+		ex, found := byType[t]
+		if !found {
+			return true
+		}
+		if ex["status"] != dm["status"] || ex["reason"] != dm["reason"] || ex["message"] != dm["message"] {
+			return true
+		}
+	}
+
+	// layer-2 scalar fields (any key beyond conditions/observedGeneration)
+	for k, v := range patch {
+		if k == "conditions" || k == "observedGeneration" {
+			continue
+		}
+		existing, ok, _ := unstructured.NestedFieldNoCopy(u.Object, "status", k)
+		if !ok || existing != v {
+			return true
+		}
+	}
+
+	return false
 }
 
 // buildReadyCondition constructs the standard Kubernetes Ready condition map.
