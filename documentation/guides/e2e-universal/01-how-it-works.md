@@ -58,6 +58,39 @@ An ephemeral kind cluster is created, your chart is installed into it, assertion
 
 ---
 
+## Assertions
+
+Assertions run in a polling loop until all pass or the checkpoint times out. Three blocks are available in any combination:
+
+| Block | What it does |
+|-------|-------------|
+| `resources:` | Watch Kubernetes API state — existence, readiness, count |
+| `commands:` | Run shell commands and assert stdout/stderr |
+| `kubectl:` | Structured DSL — `get`, `logs`, `describe`, `exec`, `port-forward` |
+
+The `kubectl:` block maps directly to kubectl subcommands you already know. Instead of constructing the command string yourself, you declare what you want to assert:
+
+```yaml
+kubectl:
+  get:
+    - kind: Deployment
+      name: my-app
+      field: .spec.replicas
+      equals: "2"
+  logs:
+    - labelSelector: app=my-app
+      outputContains: "server started"
+  port-forward:
+    - service: my-app
+      port: 8080
+      path: /healthz
+      outputContains: ok
+```
+
+See the [kubectl block reference](../../reference/schema/04-e2e/07-kubectl.md) for all subcommands and fields.
+
+---
+
 ## What this is not
 
 `custom.target: kubernetes` does not add Orkestra runtime features to your workload. Orkestra is the test harness — cluster lifecycle, assertion polling, and cleanup. Your workload runs exactly as it would in production.

@@ -19,7 +19,7 @@ Today there is no way to look at a container image, a deployment manifest, or a 
 | Page | What it covers |
 |---|---|
 | [How it works](01-how-it-works.md) | `custom.target: kubernetes`, the e2e file structure, running it |
-| [Use cases](02-use-cases.md) | Helm charts, third-party operators, platform stacks |
+| [Use cases](02-use-cases.md) | Helm charts, third-party operators, platform stacks, kubectl DSL |
 | [CI integration](03-ci.md) | GitHub Actions bridge — one step to add e2e to any workflow |
 
 ---
