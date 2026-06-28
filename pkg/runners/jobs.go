@@ -72,7 +72,7 @@ func RunJobs(
 		}
 
 		// 3. Build registry spec and apply
-		spec := orkjobs.Resolve(resolved, resolved.BackoffLimit, resolver.OwnerName())
+		spec := orkjobs.Resolve(resolved, resolved.BackoffLimit, resolver.OwnerName(), resolver.Profiles())
 
 		// Jobs are always creates — no update semantics
 		if err := orkjobs.Create(ctx, kube, owner, spec); err != nil {

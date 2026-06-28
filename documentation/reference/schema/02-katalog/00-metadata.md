@@ -62,15 +62,6 @@ SPDX license identifier (e.g. `Apache-2.0`, `MIT`). Displayed in registry listin
 
 Keywords for categorising the Katalog in the Orkestra Registry. Aid discovery via `ork patterns --tag <tag>` and indexing in Artifact Hub. Have no effect on runtime behaviour.
 
-### `createdBy`
-
-Indicates which client or tool generated this Katalog. Influences the Control Center UI:
-
-| Value | Control Center behaviour |
-|-------|--------------------------|
-| *(empty)* or `"operator"` | Operator-focused UI — infrastructure and workload controls, detailed CRD panels |
-| `"orkdoctor"` | Developer-oriented UI — simplified view with only application-relevant actions; hides low-level operator details |
-
 ### `deprecation`
 
 Marks this Katalog as deprecated. When set, `ork validate`, `ork inspect`, and `ork patterns` display a warning.

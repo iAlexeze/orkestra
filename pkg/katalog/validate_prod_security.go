@@ -34,10 +34,12 @@ func (k *Katalog) validateSecurityProfiles() error {
 			if isTemplateExpr(e.Profile) {
 				continue
 			}
-			if !profiles.IsValidSecurityProfile(e.Profile) {
+			_, csUser := k.Profiles.LookupContainerSecurity(e.Profile)
+			_, psUser := k.Profiles.LookupPodSecurity(e.Profile)
+			if !csUser && !psUser && !profiles.IsValidSecurityProfile(e.Profile) {
 				return fmt.Errorf(
 					"crd %q: %s %q (phase %s) has unknown %s security profile %q — "+
-						"allowed: baseline, restricted, hardened",
+						"allowed: baseline, restricted, hardened, or a user-defined profile declared in profiles.containerSecurity / profiles.podSecurity",
 					crdName, e.Resource, e.ResourceName, e.Phase, e.Kind, e.Profile,
 				)
 			}

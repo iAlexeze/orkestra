@@ -43,10 +43,11 @@ func (k *Katalog) validateResourceProfile() error {
 			if isTemplateExpr(e.Profile) {
 				continue
 			}
-			if !profiles.IsValidResourceProfile(e.Profile) {
+			_, userDefined := k.Profiles.LookupResource(e.Profile)
+			if !userDefined && !profiles.IsValidResourceProfile(e.Profile) {
 				return fmt.Errorf(
 					"crd %q: %s %q (phase %s) has unknown resources.profile %q — "+
-						"allowed: tiny, small, medium, large, burst, steady, compute-heavy, memory-heavy",
+						"allowed: tiny, small, medium, large, burst, steady, compute-heavy, memory-heavy, or a user-defined profile declared in profiles.resources",
 					crdName, e.Resource, e.ResourceName, e.Phase, e.Profile,
 				)
 			}
@@ -68,10 +69,11 @@ func (k *Katalog) validateProbeProfiles() error {
 			if isTemplateExpr(e.Profile) {
 				continue
 			}
-			if !profiles.IsValidProbeProfile(e.Profile) {
+			_, userDefined := k.Profiles.LookupProbe(e.Profile)
+			if !userDefined && !profiles.IsValidProbeProfile(e.Profile) {
 				return fmt.Errorf(
 					"crd %q: %s probe in %s %q (phase %s) has unknown probe profile %q — "+
-						"allowed: fast, standard, patient, slow-start",
+						"allowed: fast, standard, patient, slow-start, or a user-defined profile declared in profiles.probes",
 					crdName, e.ProbeType, e.Resource, e.ResourceName, e.Phase, e.Profile,
 				)
 			}

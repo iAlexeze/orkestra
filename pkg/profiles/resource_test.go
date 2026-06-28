@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/orkspace/orkestra/pkg/profiles"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 func TestResourceProfiles(t *testing.T) {
@@ -29,7 +30,7 @@ func TestResourceProfiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, err := profiles.ApplyResourceProfile(tt.profile)
+			r, err := profiles.ApplyResourceProfile(tt.profile, orktypes.ProfileRegistry{})
 
 			if tt.expectErr {
 				if err == nil {
@@ -53,6 +54,48 @@ func TestResourceProfiles(t *testing.T) {
 				t.Errorf("limits.memory: want %q got %q", tt.memLimit, got)
 			}
 		})
+	}
+}
+
+func TestResourceProfileUserDefined(t *testing.T) {
+	reg := orktypes.ProfileRegistry{
+		Resources: []orktypes.ResourceProfileDef{
+			{
+				Name:     "gpu-worker",
+				Requests: map[string]string{"cpu": "4", "memory": "8Gi"},
+				Limits:   map[string]string{"cpu": "8", "memory": "16Gi"},
+			},
+		},
+	}
+
+	r, err := profiles.ApplyResourceProfile("gpu-worker", reg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := r.Requests["cpu"]; got != "4" {
+		t.Errorf("requests.cpu: want 4 got %q", got)
+	}
+	if got := r.Limits["memory"]; got != "16Gi" {
+		t.Errorf("limits.memory: want 16Gi got %q", got)
+	}
+}
+
+func TestResourceProfileUserDefinedOverridesBuiltIn(t *testing.T) {
+	reg := orktypes.ProfileRegistry{
+		Resources: []orktypes.ResourceProfileDef{
+			{
+				Name:     "small",
+				Requests: map[string]string{"cpu": "999m", "memory": "999Mi"},
+				Limits:   map[string]string{"cpu": "999m", "memory": "999Mi"},
+			},
+		},
+	}
+	r, err := profiles.ApplyResourceProfile("small", reg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := r.Requests["cpu"]; got != "999m" {
+		t.Errorf("user-defined should override built-in: want 999m got %q", got)
 	}
 }
 

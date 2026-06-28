@@ -96,7 +96,7 @@ func RunCronJobs(
 		}
 
 		// 3. Build registry spec and apply
-		spec := orkcron.Resolve(resolved, resolver.OwnerName())
+		spec := orkcron.Resolve(resolved, resolver.OwnerName(), resolver.Profiles())
 
 		if update {
 			if err := orkcron.Update(ctx, kube, owner, spec); err != nil {

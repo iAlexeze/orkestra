@@ -64,6 +64,9 @@ type ResolvedStatefulSetSpec struct {
 	// PodSecurity — pod-level security settings.
 	PodSecurity *orktypes.PodSecurityContext
 
+	// Profiles — user-defined profile registry for runtime profile resolution.
+	Profiles orktypes.ProfileRegistry
+
 	// RollingUpdate — resolved rolling update strategy. nil uses OnDelete (Orkestra default).
 	RollingUpdate *orktypes.RollingUpdateBehavior
 

@@ -186,7 +186,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 //
 // Orkestra system labels (managed-by, orkestra-owner) are always added
 // and cannot be overridden by the user.
-func Resolve(src orktypes.PodTemplateSource, ownerName string) ResolvedPodSpec {
+func Resolve(src orktypes.PodTemplateSource, ownerName string, reg orktypes.ProfileRegistry) ResolvedPodSpec {
 	spec := ResolvedPodSpec{
 		Labels:      make(map[string]string),
 		Annotations: make(map[string]string),
@@ -201,8 +201,9 @@ func Resolve(src orktypes.PodTemplateSource, ownerName string) ResolvedPodSpec {
 	spec.Namespace = src.Namespace
 	spec.Resources = src.Resources
 	spec.Probes = src.Probes
-	spec.SecurityContext = common.ResolveContainerSecurityContext(src.SecurityContext)
-	spec.PodSecurity = common.ResolvePodSecurityContext(src.PodSecurity)
+	spec.Profiles = reg
+	spec.SecurityContext = common.ResolveContainerSecurityContext(src.SecurityContext, reg)
+	spec.PodSecurity = common.ResolvePodSecurityContext(src.PodSecurity, reg)
 	spec.Volumes = src.Volumes
 	spec.VolumeMounts = src.VolumeMounts
 	spec.Sleep = src.Sleep
@@ -269,7 +270,7 @@ func buildPod(owner domain.Object, spec ResolvedPodSpec, namespace string) *core
 		pod.Spec.Containers[0].Resources = common.BuildResourceRequirements(spec.Resources)
 	}
 
-	common.ApplyProbes(&pod.Spec.Containers[0], spec.Probes, int32(spec.Port))
+	common.ApplyProbes(&pod.Spec.Containers[0], spec.Probes, int32(spec.Port), spec.Profiles)
 
 	// Security
 	common.ApplySecurityContext(&pod.Spec.Containers[0], &pod.Spec, spec.SecurityContext, spec.PodSecurity)

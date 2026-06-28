@@ -34,6 +34,14 @@ metadata:
     - database
     - statefulset
 
+profiles:                              # optional → see profiles schema
+  networkPolicies: [...]
+  resourceQuotas: [...]
+  resources: [...]
+  probes: [...]
+  containerSecurity: [...]
+  podSecurity: [...]
+
 inputs:
   - name: image
     description: PostgreSQL image
@@ -159,6 +167,28 @@ ork patterns --kind Motif
 
 ---
 
+## `profiles`
+
+A Motif can declare its own `profiles:` block. When a Katalog imports the Motif, its profiles are merged into the Katalog's registry and become available to all CRD entries.
+
+Supported keys in a Motif are a subset of the Katalog's profiles — everything except `reconciler` (which is operator-level, not resource-level):
+
+| Key | Class |
+|-----|-------|
+| `profiles.networkPolicies` | NetworkPolicy ingress/egress rules |
+| `profiles.resourceQuotas` | Hard resource quota limits |
+| `profiles.limitRanges` | Container and pod limit items |
+| `profiles.pdb` | PodDisruptionBudget min/max settings |
+| `profiles.rollingUpdate` | Deployment rolling update strategy |
+| `profiles.resources` | Container CPU and memory requests/limits |
+| `profiles.probes` | Probe timing parameters |
+| `profiles.containerSecurity` | Container-level securityContext |
+| `profiles.podSecurity` | Pod-level securityContext |
+
+If the same profile name appears in the same class in both the Katalog and an imported Motif, it is a hard error at load time.
+
+→ Full reference: [User-Defined Profiles](../../../concepts/profiles/10-user-defined-profiles.md)
+
 ## Where to go
 
 | Page | Covers |
@@ -175,3 +205,4 @@ ork patterns --kind Motif
 - [operatorBox](../02-katalog/04-operatorbox.md) — the Katalog's own resources, merged alongside Motif resources
 - [Komposer schema](../03-komposer/index.md) — composing multiple Katalogs
 - [Orkestra Registry](../../../orkestra-registry/index.md) — publishing and consuming Motifs
+- [User-Defined Profiles](../../../concepts/profiles/10-user-defined-profiles.md) — declaring and referencing profiles

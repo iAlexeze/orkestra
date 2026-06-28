@@ -205,13 +205,14 @@ func Resolve(src orktypes.DeploymentTemplateSource, ownerName string, reg orktyp
 		Name:            src.Name,
 		Image:           src.Image,
 		Namespace:       src.Namespace,
-		Resources:       common.ResolveResources(src.Resources),
+		Resources:       common.ResolveResources(src.Resources, reg),
 		Labels:          make(map[string]string),
 		Annotations:     make(map[string]string),
 		EnvFrom:         src.EnvFrom,
 		Probes:          src.Probes,
-		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
-		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Profiles:        reg,
+		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext, reg),
+		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity, reg),
 		Volumes:         src.Volumes,
 		VolumeMounts:    src.VolumeMounts,
 		Sleep:           src.Sleep,
@@ -330,7 +331,7 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 	}
 
 	// Probes
-	common.ApplyProbes(&d.Spec.Template.Spec.Containers[0], spec.Probes, spec.Port)
+	common.ApplyProbes(&d.Spec.Template.Spec.Containers[0], spec.Probes, spec.Port, spec.Profiles)
 
 	// Rolling update strategy
 	if spec.RollingUpdate != nil {

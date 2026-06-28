@@ -6,13 +6,17 @@ import "fmt"
 // Profiles are resolved before built-ins at validate and reconcile time.
 // Template expressions in profile field values are allowed and resolved at reconcile time.
 type ProfileRegistry struct {
-	NetworkPolicies []NetworkPolicyProfileDef `yaml:"networkPolicies,omitempty" json:"networkPolicies,omitempty"`
-	ResourceQuotas  []ResourceQuotaProfileDef `yaml:"resourceQuotas,omitempty" json:"resourceQuotas,omitempty"`
-	LimitRanges     []LimitRangeProfileDef    `yaml:"limitRanges,omitempty"    json:"limitRanges,omitempty"`
-	HPA             []HPAProfileDef           `yaml:"hpa,omitempty"            json:"hpa,omitempty"`
-	PDB             []PDBProfileDef           `yaml:"pdb,omitempty"            json:"pdb,omitempty"`
-	RollingUpdate   []RollingUpdateProfileDef `yaml:"rollingUpdate,omitempty"  json:"rollingUpdate,omitempty"`
-	Reconciler      []ReconcilerProfileDef    `yaml:"reconciler,omitempty"     json:"reconciler,omitempty"`
+	NetworkPolicies   []NetworkPolicyProfileDef     `yaml:"networkPolicies,omitempty"    json:"networkPolicies,omitempty"`
+	ResourceQuotas    []ResourceQuotaProfileDef     `yaml:"resourceQuotas,omitempty"     json:"resourceQuotas,omitempty"`
+	LimitRanges       []LimitRangeProfileDef        `yaml:"limitRanges,omitempty"        json:"limitRanges,omitempty"`
+	HPA               []HPAProfileDef               `yaml:"hpa,omitempty"                json:"hpa,omitempty"`
+	PDB               []PDBProfileDef               `yaml:"pdb,omitempty"                json:"pdb,omitempty"`
+	RollingUpdate     []RollingUpdateProfileDef     `yaml:"rollingUpdate,omitempty"      json:"rollingUpdate,omitempty"`
+	Reconciler        []ReconcilerProfileDef        `yaml:"reconciler,omitempty"         json:"reconciler,omitempty"`
+	Resources         []ResourceProfileDef          `yaml:"resources,omitempty"          json:"resources,omitempty"`
+	Probes            []ProbeProfileDef             `yaml:"probes,omitempty"             json:"probes,omitempty"`
+	ContainerSecurity []ContainerSecurityProfileDef `yaml:"containerSecurity,omitempty" json:"containerSecurity,omitempty"`
+	PodSecurity       []PodSecurityProfileDef       `yaml:"podSecurity,omitempty"        json:"podSecurity,omitempty"`
 }
 
 func (r ProfileRegistry) IsEmpty() bool {
@@ -22,7 +26,11 @@ func (r ProfileRegistry) IsEmpty() bool {
 		len(r.HPA) == 0 &&
 		len(r.PDB) == 0 &&
 		len(r.RollingUpdate) == 0 &&
-		len(r.Reconciler) == 0
+		len(r.Reconciler) == 0 &&
+		len(r.Resources) == 0 &&
+		len(r.Probes) == 0 &&
+		len(r.ContainerSecurity) == 0 &&
+		len(r.PodSecurity) == 0
 }
 
 func (r ProfileRegistry) LookupNetworkPolicy(name string) (NetworkPolicyProfileDef, bool) {
@@ -88,6 +96,42 @@ func (r ProfileRegistry) LookupReconciler(name string) (ReconcilerProfileDef, bo
 	return ReconcilerProfileDef{}, false
 }
 
+func (r ProfileRegistry) LookupResource(name string) (ResourceProfileDef, bool) {
+	for _, e := range r.Resources {
+		if e.Name == name {
+			return e, true
+		}
+	}
+	return ResourceProfileDef{}, false
+}
+
+func (r ProfileRegistry) LookupProbe(name string) (ProbeProfileDef, bool) {
+	for _, e := range r.Probes {
+		if e.Name == name {
+			return e, true
+		}
+	}
+	return ProbeProfileDef{}, false
+}
+
+func (r ProfileRegistry) LookupContainerSecurity(name string) (ContainerSecurityProfileDef, bool) {
+	for _, e := range r.ContainerSecurity {
+		if e.Name == name {
+			return e, true
+		}
+	}
+	return ContainerSecurityProfileDef{}, false
+}
+
+func (r ProfileRegistry) LookupPodSecurity(name string) (PodSecurityProfileDef, bool) {
+	for _, e := range r.PodSecurity {
+		if e.Name == name {
+			return e, true
+		}
+	}
+	return PodSecurityProfileDef{}, false
+}
+
 // Merge combines other into r, returning a conflict error if the same name
 // appears in the same class in both registries.
 func (r ProfileRegistry) Merge(other ProfileRegistry, otherSource string) (ProfileRegistry, error) {
@@ -133,6 +177,30 @@ func (r ProfileRegistry) Merge(other ProfileRegistry, otherSource string) (Profi
 			return ProfileRegistry{}, profileConflictError("reconciler", e.Name, otherSource)
 		}
 		merged.Reconciler = append(merged.Reconciler, e)
+	}
+	for _, e := range other.Resources {
+		if _, found := r.LookupResource(e.Name); found {
+			return ProfileRegistry{}, profileConflictError("resources", e.Name, otherSource)
+		}
+		merged.Resources = append(merged.Resources, e)
+	}
+	for _, e := range other.Probes {
+		if _, found := r.LookupProbe(e.Name); found {
+			return ProfileRegistry{}, profileConflictError("probes", e.Name, otherSource)
+		}
+		merged.Probes = append(merged.Probes, e)
+	}
+	for _, e := range other.ContainerSecurity {
+		if _, found := r.LookupContainerSecurity(e.Name); found {
+			return ProfileRegistry{}, profileConflictError("containerSecurity", e.Name, otherSource)
+		}
+		merged.ContainerSecurity = append(merged.ContainerSecurity, e)
+	}
+	for _, e := range other.PodSecurity {
+		if _, found := r.LookupPodSecurity(e.Name); found {
+			return ProfileRegistry{}, profileConflictError("podSecurity", e.Name, otherSource)
+		}
+		merged.PodSecurity = append(merged.PodSecurity, e)
 	}
 	return merged, nil
 }
@@ -204,4 +272,49 @@ type ReconcilerProfileDef struct {
 	Workers     int      `yaml:"workers,omitempty" json:"workers,omitempty"`
 	Resync      Duration `yaml:"resync,omitempty" json:"resync,omitempty"`
 	Queue       Queue    `yaml:"queue,omitempty" json:"queue,omitempty"`
+}
+
+// ResourceProfileDef defines a named CPU/memory resource preset.
+// Built-ins: tiny, small, medium, large, burst, steady, compute-heavy, memory-heavy.
+type ResourceProfileDef struct {
+	Name        string            `yaml:"name" json:"name"`
+	Description string            `yaml:"description,omitempty" json:"description,omitempty"`
+	Requests    map[string]string `yaml:"requests,omitempty" json:"requests,omitempty"`
+	Limits      map[string]string `yaml:"limits,omitempty" json:"limits,omitempty"`
+}
+
+// ProbeProfileDef defines a named probe timing preset.
+// Built-ins: fast, standard, patient, slow-start.
+type ProbeProfileDef struct {
+	Name                string `yaml:"name" json:"name"`
+	Description         string `yaml:"description,omitempty" json:"description,omitempty"`
+	InitialDelaySeconds int32  `yaml:"initialDelaySeconds,omitempty" json:"initialDelaySeconds,omitempty"`
+	PeriodSeconds       int32  `yaml:"periodSeconds,omitempty" json:"periodSeconds,omitempty"`
+	FailureThreshold    int32  `yaml:"failureThreshold,omitempty" json:"failureThreshold,omitempty"`
+	SuccessThreshold    int32  `yaml:"successThreshold,omitempty" json:"successThreshold,omitempty"`
+	TimeoutSeconds      int32  `yaml:"timeoutSeconds,omitempty" json:"timeoutSeconds,omitempty"`
+}
+
+// ContainerSecurityProfileDef defines a named container security context preset.
+// Built-ins: baseline, restricted, hardened.
+type ContainerSecurityProfileDef struct {
+	Name                     string              `yaml:"name" json:"name"`
+	Description              string              `yaml:"description,omitempty" json:"description,omitempty"`
+	AllowPrivilegeEscalation *bool               `yaml:"allowPrivilegeEscalation,omitempty" json:"allowPrivilegeEscalation,omitempty"`
+	ReadOnlyRootFilesystem   *bool               `yaml:"readOnlyRootFilesystem,omitempty" json:"readOnlyRootFilesystem,omitempty"`
+	RunAsNonRoot             *bool               `yaml:"runAsNonRoot,omitempty" json:"runAsNonRoot,omitempty"`
+	RunAsUser                *int64              `yaml:"runAsUser,omitempty" json:"runAsUser,omitempty"`
+	RunAsGroup               *int64              `yaml:"runAsGroup,omitempty" json:"runAsGroup,omitempty"`
+	Capabilities             *CapabilitiesConfig `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
+}
+
+// PodSecurityProfileDef defines a named pod security context preset.
+// Built-ins: baseline, restricted, hardened.
+type PodSecurityProfileDef struct {
+	Name         string `yaml:"name" json:"name"`
+	Description  string `yaml:"description,omitempty" json:"description,omitempty"`
+	RunAsNonRoot *bool  `yaml:"runAsNonRoot,omitempty" json:"runAsNonRoot,omitempty"`
+	RunAsUser    *int64 `yaml:"runAsUser,omitempty" json:"runAsUser,omitempty"`
+	RunAsGroup   *int64 `yaml:"runAsGroup,omitempty" json:"runAsGroup,omitempty"`
+	FSGroup      *int64 `yaml:"fsGroup,omitempty" json:"fsGroup,omitempty"`
 }

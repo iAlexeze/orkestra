@@ -197,13 +197,14 @@ func Resolve(src orktypes.ReplicaSetTemplateSource, ownerName string, reg orktyp
 		Name:            src.Name,
 		Image:           src.Image,
 		Namespace:       src.Namespace,
-		Resources:       common.ResolveResources(src.Resources),
+		Resources:       common.ResolveResources(src.Resources, reg),
 		Labels:          make(map[string]string),
 		Annotations:     make(map[string]string),
 		EnvFrom:         src.EnvFrom,
 		Probes:          src.Probes,
-		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
-		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Profiles:        reg,
+		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext, reg),
+		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity, reg),
 		Volumes:         src.Volumes,
 		VolumeMounts:    src.VolumeMounts,
 		Sleep:           src.Sleep,
@@ -324,7 +325,7 @@ func buildReplicaSet(owner domain.Object, spec ResolvedReplicaSetSpec, namespace
 		rs.Spec.Template.Spec.Containers[0].Resources = common.BuildResourceRequirements(spec.Resources)
 	}
 
-	common.ApplyProbes(&rs.Spec.Template.Spec.Containers[0], spec.Probes, spec.Port)
+	common.ApplyProbes(&rs.Spec.Template.Spec.Containers[0], spec.Probes, spec.Port, spec.Profiles)
 
 	// Security
 	common.ApplySecurityContext(&rs.Spec.Template.Spec.Containers[0], &rs.Spec.Template.Spec, spec.SecurityContext, spec.PodSecurity)
