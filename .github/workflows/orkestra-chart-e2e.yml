@@ -1,0 +1,24 @@
+# ── Fixture: Orkestra Helm chart ────────────────────────────────────────────
+# Runs only when the chart or its fixtures change.
+# Installs the chart into a kind cluster via ork e2e and asserts infrastructure.
+name: Orkestra Chart E2E
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  fixture-chart:
+    name: Fixture — Orkestra chart (kind cluster)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run chart e2e
+        uses: orkspace/orkestra-action@main
+        with:
+          working-directory: charts/orkestra
+          e2e: "true"
