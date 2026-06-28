@@ -61,7 +61,7 @@ def generate_katalog(app_name, image, port, replicas=2, ingress_host=""):
                     "host": ingress_host,
                     "serviceName": "{{ .metadata.name }}-svc",
                     "servicePort": port,
-                    "ingressClass": "nginx",
+                    "className": "nginx",
                     "reconcile": True
                 }
             ]

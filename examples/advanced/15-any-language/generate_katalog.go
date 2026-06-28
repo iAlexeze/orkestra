@@ -60,7 +60,7 @@ type Ingress struct {
 	Host         string `yaml:"host"`
 	ServiceName  string `yaml:"serviceName"`
 	ServicePort  int    `yaml:"servicePort"`
-	IngressClass string `yaml:"ingressClass"`
+	ClassName string `yaml:"className"`
 	Reconcile    bool   `yaml:"reconcile"`
 }
 
@@ -108,7 +108,7 @@ func generateKatalog(appName, image string, port, replicas int, ingressHost stri
 				Host:         ingressHost,
 				ServiceName:  "{{ .metadata.name }}-svc",
 				ServicePort:  port,
-				IngressClass: "nginx",
+				ClassName: "nginx",
 				Reconcile:    true,
 			},
 		}

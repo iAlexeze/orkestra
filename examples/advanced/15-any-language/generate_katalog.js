@@ -56,7 +56,7 @@ function generateKatalog(appName, image, port, replicas, ingressHost) {
         host: ingressHost,
         serviceName: '{{ .metadata.name }}-svc',
         servicePort: port,
-        ingressClass: 'nginx',
+        className: 'nginx',
         reconcile: true,
       },
     ];
