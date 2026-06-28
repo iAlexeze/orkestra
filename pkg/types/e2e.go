@@ -355,6 +355,12 @@ type E2EExpectation struct {
 
 	// Commands are shell commands checked in the same polling loop as resources.
 	Commands []E2ECommand `yaml:"commands,omitempty"`
+
+	// Kubectl is the structured kubectl DSL block.
+	// An alternative to commands: for common kubectl operations — get, logs,
+	// describe, exec, port-forward. Compiles to kubectl invocations internally.
+	// Use commands: for anything that doesn't fit a subcommand.
+	Kubectl *E2EKubectl `yaml:"kubectl,omitempty"`
 }
 
 // E2EResourceCheck asserts the state of any Kubernetes resource.
@@ -383,4 +389,305 @@ type E2ECommand struct {
 	ExitCode int `yaml:"exitCode,omitempty"`
 	// OutputContains asserts the combined stdout+stderr contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
+	// OutputNotContains asserts the combined stdout+stderr does NOT contain this substring.
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+}
+
+// E2EKubectl is the structured kubectl DSL block.
+// Sits alongside resources: and commands: in each expect entry.
+// Each subcommand maps directly to the kubectl command people already know.
+type E2EKubectl struct {
+	// Get asserts field values on Kubernetes resources.
+	// Generates: kubectl get <kind> <name> -n <ns> -o jsonpath='<field>'
+	Get []E2EKubectlGet `yaml:"get,omitempty"`
+	// Logs asserts container log output.
+	// Generates: kubectl logs -n <ns> -l <selector> -c <container> --since=<since>
+	Logs []E2EKubectlLogs `yaml:"logs,omitempty"`
+	// Describe asserts kubectl describe output — useful for events and conditions.
+	// Generates: kubectl describe <kind> <name> -n <ns>
+	Describe []E2EKubectlDescribe `yaml:"describe,omitempty"`
+	// Exec runs a command inside a running container and asserts its output.
+	// Generates: kubectl exec -n <ns> <pod> -c <container> -- <command>
+	Exec []E2EKubectlExec `yaml:"exec,omitempty"`
+	// PortForward opens a port-forward to a service or pod, makes an HTTP request,
+	// and asserts the response. EnsureCurl is called automatically when any entry
+	// declares a path. Generates: kubectl port-forward + curl.
+	PortForward []E2EKubectlPortForward `yaml:"port-forward,omitempty"`
+	// Apply applies manifests from a file path or inline YAML/JSON content.
+	// Generates: kubectl apply -f <file>  or  echo '<inline>' | kubectl apply -f -
+	Apply []E2EKubectlApply `yaml:"apply,omitempty"`
+	// Patch patches a Kubernetes resource with a merge, strategic, or JSON patch.
+	// Generates: kubectl patch <kind> <name> -n <ns> --type=<type> -p '<patch>'
+	Patch []E2EKubectlPatch `yaml:"patch,omitempty"`
+	// Events lists Kubernetes events for a specific resource and asserts the output.
+	// Generates: kubectl events --for=<kind>/<name> -n <ns>
+	Events []E2EKubectlEvents `yaml:"events,omitempty"`
+	// Auth checks permissions via kubectl auth can-i and asserts the result.
+	// Generates: kubectl auth can-i <verb> <resource> [-n <ns>] [--as <as>]
+	Auth []E2EKubectlAuth `yaml:"auth,omitempty"`
+	// Cp copies a file out of a container and asserts its content.
+	// Generates: kubectl cp <ns>/<pod>:<src> <tempfile>
+	Cp []E2EKubectlCp `yaml:"cp,omitempty"`
+	// Top queries live CPU and memory usage via kubectl top and asserts the output.
+	// Requires metrics-server; installed automatically when entries are present.
+	// Generates: kubectl top <kind> [-n <ns>] [<name> | -l <selector>] [--containers]
+	Top []E2EKubectlTop `yaml:"top,omitempty"`
+}
+
+// E2EKubectlGet asserts a field value on a Kubernetes resource.
+type E2EKubectlGet struct {
+	// Kind is the Kubernetes resource kind (e.g. Deployment, ConfigMap).
+	Kind string `yaml:"kind"`
+	// Name is the resource name.
+	Name string `yaml:"name"`
+	// Namespace to look in. Defaults to "default".
+	Namespace string `yaml:"namespace,omitempty"`
+	// Field is a jsonpath expression to extract before asserting.
+	// e.g. .spec.template.spec.containers[0].resources.requests.cpu
+	Field string `yaml:"field,omitempty"`
+	// Format outputs the full resource as yaml or json for looser substring assertions.
+	// Ignored when field is set. Use with jq (json) or yq (yaml) for structured extraction.
+	Format string `yaml:"format,omitempty"` // yaml | json
+	// JQ is a jq expression applied to the output before asserting. Requires format: json.
+	JQ string `yaml:"jq,omitempty"`
+	// YQ is a yq expression applied to the output before asserting. Requires format: yaml.
+	YQ string `yaml:"yq,omitempty"`
+	// Equals asserts the output exactly matches this string.
+	Equals string `yaml:"equals,omitempty"`
+	// NotEquals asserts the output does not exactly match this string.
+	NotEquals string `yaml:"notEquals,omitempty"`
+	// OutputContains asserts the output contains this substring.
+	OutputContains string `yaml:"outputContains,omitempty"`
+	// OutputNotContains asserts the output does not contain this substring.
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+}
+
+// E2EKubectlLogs asserts container log output.
+type E2EKubectlLogs struct {
+	// Name is the pod name. Use LabelSelector to match by label instead.
+	Name string `yaml:"name,omitempty"`
+	// LabelSelector selects pods by label (e.g. "app=my-service").
+	LabelSelector string `yaml:"labelSelector,omitempty"`
+	// Namespace to look in. Defaults to "default".
+	Namespace string `yaml:"namespace,omitempty"`
+	// Container name. Defaults to the first container.
+	Container string `yaml:"container,omitempty"`
+	// Since limits log output to the given duration (e.g. "30s", "2m").
+	Since string `yaml:"since,omitempty"`
+	// JQ is a jq expression applied to each log line before asserting.
+	// Useful when containers emit structured JSON logs.
+	JQ string `yaml:"jq,omitempty"`
+	// Equals asserts the output exactly matches this string.
+	Equals string `yaml:"equals,omitempty"`
+	// NotEquals asserts the output does not exactly match this string.
+	NotEquals string `yaml:"notEquals,omitempty"`
+	// OutputContains asserts the output contains this substring.
+	OutputContains string `yaml:"outputContains,omitempty"`
+	// OutputNotContains asserts the output does not contain this substring.
+	// Useful for asserting no FATAL or ERROR lines were logged.
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+}
+
+// E2EKubectlDescribe asserts kubectl describe output.
+// Useful for checking events, conditions, and resource details.
+type E2EKubectlDescribe struct {
+	// Kind is the Kubernetes resource kind.
+	Kind string `yaml:"kind"`
+	// Name is the resource name. Use LabelSelector to match by label instead.
+	Name string `yaml:"name,omitempty"`
+	// LabelSelector selects resources by label.
+	LabelSelector string `yaml:"labelSelector,omitempty"`
+	// Namespace to look in. Defaults to "default".
+	Namespace string `yaml:"namespace,omitempty"`
+	// Equals asserts the output exactly matches this string.
+	Equals string `yaml:"equals,omitempty"`
+	// NotEquals asserts the output does not exactly match this string.
+	NotEquals string `yaml:"notEquals,omitempty"`
+	// OutputContains asserts the output contains this substring.
+	OutputContains string `yaml:"outputContains,omitempty"`
+	// OutputNotContains asserts the output does not contain this substring.
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+}
+
+// E2EKubectlExec runs a command inside a running container and asserts its output.
+type E2EKubectlExec struct {
+	// Name is the pod name. Use LabelSelector to match by label instead.
+	Name string `yaml:"name,omitempty"`
+	// LabelSelector selects the pod by label.
+	LabelSelector string `yaml:"labelSelector,omitempty"`
+	// Namespace to look in. Defaults to "default".
+	Namespace string `yaml:"namespace,omitempty"`
+	// Container name. Defaults to the first container.
+	Container string `yaml:"container,omitempty"`
+	// Command is the command to execute inside the container.
+	Command []string `yaml:"command"`
+	// JQ is a jq expression applied to the output before asserting.
+	JQ string `yaml:"jq,omitempty"`
+	// YQ is a yq expression applied to the output before asserting.
+	YQ string `yaml:"yq,omitempty"`
+	// Equals asserts the output exactly matches this string.
+	Equals string `yaml:"equals,omitempty"`
+	// NotEquals asserts the output does not exactly match this string.
+	NotEquals string `yaml:"notEquals,omitempty"`
+	// OutputContains asserts the output contains this substring.
+	OutputContains string `yaml:"outputContains,omitempty"`
+	// OutputNotContains asserts the output does not contain this substring.
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+}
+
+// E2EKubectlApply applies one or more manifests during an expect checkpoint.
+// Use file to reference a path on disk or inline to embed the manifest directly.
+// kubectl apply is idempotent so re-running inside the poll loop is safe.
+type E2EKubectlApply struct {
+	// File is a path to a manifest file. Relative paths resolve from the e2e.yaml directory.
+	// Generates: kubectl apply -f <file>
+	File string `yaml:"file,omitempty"`
+	// Inline is a raw YAML or JSON manifest string applied via stdin.
+	// Generates: echo '<inline>' | kubectl apply -f -
+	Inline string `yaml:"inline,omitempty"`
+	// Namespace overrides the namespace for resources that don't declare one.
+	Namespace string `yaml:"namespace,omitempty"`
+}
+
+// E2EKubectlPatch patches a Kubernetes resource in-place.
+// Useful for triggering state transitions (e.g. updating a field to drive a state machine).
+type E2EKubectlPatch struct {
+	// Kind is the Kubernetes resource kind (e.g. Deployment, MyResource).
+	Kind string `yaml:"kind"`
+	// Name is the resource name.
+	Name string `yaml:"name"`
+	// Namespace to target. Defaults to "default".
+	Namespace string `yaml:"namespace,omitempty"`
+	// Type is the patch strategy: merge (default), strategic, or json.
+	Type string `yaml:"type,omitempty"` // merge | strategic | json
+	// Patch is the patch content as a YAML or JSON string.
+	Patch string `yaml:"patch"`
+}
+
+// E2EKubectlEvents lists Kubernetes events for a specific resource and asserts
+// the output. Useful for verifying that the operator emitted expected events
+// (e.g. Reconciled, BackOff) or that no error events occurred.
+type E2EKubectlEvents struct {
+	// Kind is the Kubernetes resource kind to filter events for.
+	Kind string `yaml:"kind"`
+	// Name is the resource name.
+	Name string `yaml:"name"`
+	// Namespace to look in. Defaults to "default".
+	Namespace string `yaml:"namespace,omitempty"`
+	// Equals asserts the output exactly matches this string.
+	Equals string `yaml:"equals,omitempty"`
+	// NotEquals asserts the output does not exactly match this string.
+	NotEquals string `yaml:"notEquals,omitempty"`
+	// OutputContains asserts the output contains this substring.
+	OutputContains string `yaml:"outputContains,omitempty"`
+	// OutputNotContains asserts the output does not contain this substring.
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+}
+
+// E2EKubectlAuth checks permissions via kubectl auth can-i and asserts the result.
+// Useful for verifying that the operator created the correct RBAC resources.
+type E2EKubectlAuth struct {
+	// Verb is the action to check (e.g. get, list, create, delete).
+	Verb string `yaml:"verb"`
+	// Resource is the Kubernetes resource type (e.g. pods, deployments, secrets).
+	Resource string `yaml:"resource"`
+	// Namespace scopes the check. Omit for cluster-scoped checks.
+	Namespace string `yaml:"namespace,omitempty"`
+	// As is the user or service account to impersonate.
+	// Use the full service account form: system:serviceaccount:<ns>:<name>
+	As string `yaml:"as,omitempty"`
+	// Equals asserts the output exactly matches this string. Typically "yes" or "no".
+	Equals string `yaml:"equals,omitempty"`
+	// NotEquals asserts the output does not exactly match this string.
+	NotEquals string `yaml:"notEquals,omitempty"`
+	// OutputContains asserts the output contains this substring.
+	OutputContains string `yaml:"outputContains,omitempty"`
+	// OutputNotContains asserts the output does not contain this substring.
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+}
+
+// E2EKubectlCp copies a file out of a running container and asserts its content.
+// Resolves the pod by name or label selector, copies the file to a temp path,
+// reads it, applies assertions, and cleans up.
+type E2EKubectlCp struct {
+	// Name is the pod name. Use LabelSelector to match by label instead.
+	Name string `yaml:"name,omitempty"`
+	// LabelSelector selects the pod by label (e.g. "app=my-service").
+	LabelSelector string `yaml:"labelSelector,omitempty"`
+	// Namespace to look in. Defaults to "default".
+	Namespace string `yaml:"namespace,omitempty"`
+	// Container name. Defaults to the first container.
+	Container string `yaml:"container,omitempty"`
+	// Src is the path inside the container to copy from.
+	Src string `yaml:"src"`
+	// JQ is a jq expression applied to the file content before asserting.
+	JQ string `yaml:"jq,omitempty"`
+	// YQ is a yq expression applied to the file content before asserting.
+	YQ string `yaml:"yq,omitempty"`
+	// Equals asserts the file content (trimmed) exactly matches this string.
+	Equals string `yaml:"equals,omitempty"`
+	// NotEquals asserts the file content does not exactly match this string.
+	NotEquals string `yaml:"notEquals,omitempty"`
+	// OutputContains asserts the file content contains this substring.
+	OutputContains string `yaml:"outputContains,omitempty"`
+	// OutputNotContains asserts the file content does not contain this substring.
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+}
+
+// E2EKubectlTop queries live CPU and memory usage via kubectl top and asserts
+// the output. Requires metrics-server in the cluster; the runner installs it
+// automatically (via Helm) when any top entry is present.
+type E2EKubectlTop struct {
+	// Kind is the resource type to query: "pod" or "node".
+	Kind string `yaml:"kind"`
+	// Name is the pod or node name. Omit to list all.
+	Name string `yaml:"name,omitempty"`
+	// LabelSelector filters pods by label (e.g. "app=my-service"). Pods only.
+	LabelSelector string `yaml:"labelSelector,omitempty"`
+	// Namespace to query. Applies to pods only. Default: "default".
+	Namespace string `yaml:"namespace,omitempty"`
+	// Containers shows per-container metrics (--containers). Pods only.
+	Containers bool `yaml:"containers,omitempty"`
+	// Equals asserts the output (trimmed) exactly matches this string.
+	Equals string `yaml:"equals,omitempty"`
+	// NotEquals asserts the output does not exactly match this string.
+	NotEquals string `yaml:"notEquals,omitempty"`
+	// OutputContains asserts the output contains this substring.
+	OutputContains string `yaml:"outputContains,omitempty"`
+	// OutputNotContains asserts the output does not contain this substring.
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+}
+
+// E2EKubectlPortForward opens a port-forward to a service or pod, makes an HTTP
+// request via curl, and asserts the response. The port-forward lifecycle
+// (background process, wait for port, cleanup) is handled by the runner.
+// EnsureCurl is called automatically when any entry declares a path.
+type E2EKubectlPortForward struct {
+	// Service is the service name to port-forward to.
+	Service string `yaml:"service,omitempty"`
+	// Pod is the pod name to port-forward to. Use Service when possible.
+	Pod string `yaml:"pod,omitempty"`
+	// Namespace to look in. Defaults to "default".
+	Namespace string `yaml:"namespace,omitempty"`
+	// Port is the service or pod port to forward.
+	Port int `yaml:"port"`
+	// Path is the HTTP path to request after the port-forward is ready.
+	// Triggers EnsureCurl pre-flight when set.
+	Path string `yaml:"path,omitempty"`
+	// Method is the HTTP method. Defaults to GET.
+	Method string `yaml:"method,omitempty"`
+	// JQ is a jq expression to extract from the response before asserting.
+	// e.g. .workers  or  .items[0].status
+	JQ string `yaml:"jq,omitempty"`
+	// YQ is a yq expression to extract from the response before asserting.
+	// Use when the endpoint returns YAML instead of JSON.
+	YQ string `yaml:"yq,omitempty"`
+	// Equals asserts the output exactly matches this string.
+	Equals string `yaml:"equals,omitempty"`
+	// NotEquals asserts the output does not exactly match this string.
+	NotEquals string `yaml:"notEquals,omitempty"`
+	// OutputContains asserts the output contains this substring.
+	OutputContains string `yaml:"outputContains,omitempty"`
+	// OutputNotContains asserts the output does not contain this substring.
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -42,4 +43,222 @@ func ValidateImports(baseDir string, imports []orktypes.E2EImport) []error {
 		}
 	}
 	return errs
+}
+
+// ValidateKubectl checks every kubectl block across all expect entries.
+// Returns one error per violation — callers collect and print all of them.
+func ValidateKubectl(expects []orktypes.E2EExpectation) []error {
+	var errs []error
+	for i, exp := range expects {
+		if exp.Kubectl == nil {
+			continue
+		}
+		loc := func(sub string, idx int) string {
+			return fmt.Sprintf("expect[%d] %q kubectl.%s[%d]", i, exp.Name, sub, idx)
+		}
+		for j, g := range exp.Kubectl.Get {
+			errs = append(errs, validateKubectlGet(loc("get", j), g)...)
+		}
+		for j, l := range exp.Kubectl.Logs {
+			errs = append(errs, validateKubectlLogs(loc("logs", j), l)...)
+		}
+		for j, d := range exp.Kubectl.Describe {
+			errs = append(errs, validateKubectlDescribe(loc("describe", j), d)...)
+		}
+		for j, e := range exp.Kubectl.Exec {
+			errs = append(errs, validateKubectlExec(loc("exec", j), e)...)
+		}
+		for j, p := range exp.Kubectl.PortForward {
+			errs = append(errs, validateKubectlPortForward(loc("port-forward", j), p)...)
+		}
+		for j, a := range exp.Kubectl.Apply {
+			errs = append(errs, validateKubectlApply(loc("apply", j), a)...)
+		}
+		for j, p := range exp.Kubectl.Patch {
+			errs = append(errs, validateKubectlPatch(loc("patch", j), p)...)
+		}
+		for j, e := range exp.Kubectl.Events {
+			errs = append(errs, validateKubectlEvents(loc("events", j), e)...)
+		}
+		for j, a := range exp.Kubectl.Auth {
+			errs = append(errs, validateKubectlAuth(loc("auth", j), a)...)
+		}
+		for j, c := range exp.Kubectl.Cp {
+			errs = append(errs, validateKubectlCp(loc("cp", j), c)...)
+		}
+		for j, t := range exp.Kubectl.Top {
+			errs = append(errs, validateKubectlTop(loc("top", j), t)...)
+		}
+	}
+	return errs
+}
+
+func validateKubectlGet(loc string, g orktypes.E2EKubectlGet) []error {
+	var errs []error
+	if g.Kind == "" {
+		errs = append(errs, fmt.Errorf("%s: kind is required", loc))
+	}
+	if g.Name == "" {
+		errs = append(errs, fmt.Errorf("%s: name is required", loc))
+	}
+	if g.Field == "" && g.Format == "" {
+		errs = append(errs, fmt.Errorf("%s: field or format is required", loc))
+	}
+	if g.Format != "" && g.Format != "json" && g.Format != "yaml" {
+		errs = append(errs, fmt.Errorf("%s: format must be json or yaml, got %q", loc, g.Format))
+	}
+	if g.JQ != "" && g.Format != "json" {
+		errs = append(errs, fmt.Errorf("%s: jq requires format: json", loc))
+	}
+	if g.YQ != "" && g.Format != "yaml" {
+		errs = append(errs, fmt.Errorf("%s: yq requires format: yaml", loc))
+	}
+	if !hasAssertion(g.Equals, g.NotEquals, g.OutputContains, g.OutputNotContains) {
+		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
+	}
+	return errs
+}
+
+func validateKubectlLogs(loc string, l orktypes.E2EKubectlLogs) []error {
+	var errs []error
+	if l.Name == "" && l.LabelSelector == "" {
+		errs = append(errs, fmt.Errorf("%s: name or labelSelector is required", loc))
+	}
+	if !hasAssertion(l.Equals, l.NotEquals, l.OutputContains, l.OutputNotContains) {
+		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
+	}
+	return errs
+}
+
+func validateKubectlDescribe(loc string, d orktypes.E2EKubectlDescribe) []error {
+	var errs []error
+	if d.Kind == "" {
+		errs = append(errs, fmt.Errorf("%s: kind is required", loc))
+	}
+	if d.Name == "" && d.LabelSelector == "" {
+		errs = append(errs, fmt.Errorf("%s: name or labelSelector is required", loc))
+	}
+	if !hasAssertion(d.Equals, d.NotEquals, d.OutputContains, d.OutputNotContains) {
+		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
+	}
+	return errs
+}
+
+func validateKubectlExec(loc string, e orktypes.E2EKubectlExec) []error {
+	var errs []error
+	if e.Name == "" && e.LabelSelector == "" {
+		errs = append(errs, fmt.Errorf("%s: name or labelSelector is required", loc))
+	}
+	if len(e.Command) == 0 {
+		errs = append(errs, fmt.Errorf("%s: command is required", loc))
+	}
+	if !hasAssertion(e.Equals, e.NotEquals, e.OutputContains, e.OutputNotContains) {
+		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
+	}
+	return errs
+}
+
+func validateKubectlPortForward(loc string, p orktypes.E2EKubectlPortForward) []error {
+	var errs []error
+	if p.Service == "" && p.Pod == "" {
+		errs = append(errs, fmt.Errorf("%s: service or pod is required", loc))
+	}
+	if p.Port <= 0 {
+		errs = append(errs, fmt.Errorf("%s: port must be > 0", loc))
+	}
+	hasAny := hasAssertion(p.Equals, p.NotEquals, p.OutputContains, p.OutputNotContains)
+	if hasAny && p.Path == "" {
+		errs = append(errs, fmt.Errorf("%s: path is required when assertions are set", loc))
+	}
+	return errs
+}
+
+func validateKubectlApply(loc string, a orktypes.E2EKubectlApply) []error {
+	var errs []error
+	if a.File == "" && a.Inline == "" {
+		errs = append(errs, fmt.Errorf("%s: file or inline is required", loc))
+	}
+	if a.File != "" && a.Inline != "" {
+		errs = append(errs, fmt.Errorf("%s: file and inline are mutually exclusive", loc))
+	}
+	return errs
+}
+
+func validateKubectlPatch(loc string, p orktypes.E2EKubectlPatch) []error {
+	var errs []error
+	if p.Kind == "" {
+		errs = append(errs, fmt.Errorf("%s: kind is required", loc))
+	}
+	if p.Name == "" {
+		errs = append(errs, fmt.Errorf("%s: name is required", loc))
+	}
+	if p.Patch == "" {
+		errs = append(errs, fmt.Errorf("%s: patch is required", loc))
+	}
+	if p.Type != "" && p.Type != "merge" && p.Type != "strategic" && p.Type != "json" {
+		errs = append(errs, fmt.Errorf("%s: type must be merge, strategic, or json, got %q", loc, p.Type))
+	}
+	return errs
+}
+
+func validateKubectlEvents(loc string, e orktypes.E2EKubectlEvents) []error {
+	var errs []error
+	if e.Kind == "" {
+		errs = append(errs, fmt.Errorf("%s: kind is required", loc))
+	}
+	if e.Name == "" {
+		errs = append(errs, fmt.Errorf("%s: name is required", loc))
+	}
+	if !hasAssertion(e.Equals, e.NotEquals, e.OutputContains, e.OutputNotContains) {
+		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
+	}
+	return errs
+}
+
+func validateKubectlAuth(loc string, a orktypes.E2EKubectlAuth) []error {
+	var errs []error
+	if a.Verb == "" {
+		errs = append(errs, fmt.Errorf("%s: verb is required", loc))
+	}
+	if a.Resource == "" {
+		errs = append(errs, fmt.Errorf("%s: resource is required", loc))
+	}
+	if !hasAssertion(a.Equals, a.NotEquals, a.OutputContains, a.OutputNotContains) {
+		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
+	}
+	return errs
+}
+
+func validateKubectlCp(loc string, c orktypes.E2EKubectlCp) []error {
+	var errs []error
+	if c.Name == "" && c.LabelSelector == "" {
+		errs = append(errs, fmt.Errorf("%s: name or labelSelector is required", loc))
+	}
+	if c.Src == "" {
+		errs = append(errs, fmt.Errorf("%s: src is required", loc))
+	}
+	if !hasAssertion(c.Equals, c.NotEquals, c.OutputContains, c.OutputNotContains) {
+		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
+	}
+	return errs
+}
+
+func validateKubectlTop(loc string, t orktypes.E2EKubectlTop) []error {
+	var errs []error
+	if t.Kind == "" {
+		errs = append(errs, fmt.Errorf("%s: kind is required (pod or node)", loc))
+	} else {
+		k := strings.ToLower(t.Kind)
+		if k != "pod" && k != "pods" && k != "node" && k != "nodes" {
+			errs = append(errs, fmt.Errorf("%s: kind must be pod or node, got %q", loc, t.Kind))
+		}
+	}
+	if !hasAssertion(t.Equals, t.NotEquals, t.OutputContains, t.OutputNotContains) {
+		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
+	}
+	return errs
+}
+
+func hasAssertion(equals, notEquals, outputContains, outputNotContains string) bool {
+	return equals != "" || notEquals != "" || outputContains != "" || outputNotContains != ""
 }

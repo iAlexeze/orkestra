@@ -362,6 +362,10 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 		}
 
 		// ── 9. Run expectations ──────────────────────────────────────────
+		if err := ensureTools(r.e2e); err != nil {
+			return nil, err
+		}
+
 		crApplied := false
 		crDeleted := false
 

@@ -266,8 +266,9 @@ func validateE2EFile(path string) error {
 			if !validAfter {
 				errs = append(errs, fmt.Sprintf("spec.expect[%d].after must be one of %v (got %q)", i, orktypes.ValidAfterValues, exp.After))
 			}
-			if len(exp.Resources) == 0 && len(exp.Commands) == 0 {
-				errs = append(errs, fmt.Sprintf("spec.expect[%d] (%q): must have at least one resource or command check", i, exp.Name))
+			hasKubectl := exp.Kubectl != nil && (len(exp.Kubectl.Get)+len(exp.Kubectl.Logs)+len(exp.Kubectl.Describe)+len(exp.Kubectl.Exec)+len(exp.Kubectl.PortForward) > 0)
+			if len(exp.Resources) == 0 && len(exp.Commands) == 0 && !hasKubectl {
+				errs = append(errs, fmt.Sprintf("spec.expect[%d] (%q): must have at least one resource, command, or kubectl check", i, exp.Name))
 			}
 		}
 	}
@@ -275,15 +276,21 @@ func validateE2EFile(path string) error {
 	// Validate imports (collect per-import errors for display).
 	importErrs := e2e.ValidateImports(baseDir, doc.Imports)
 
-	if len(errs) > 0 || len(importErrs) > 0 {
+	// Validate kubectl blocks.
+	kubectlErrs := e2e.ValidateKubectl(doc.Spec.Expect)
+
+	if len(errs) > 0 || len(importErrs) > 0 || len(kubectlErrs) > 0 {
 		for _, e := range errs {
 			fmt.Printf("  %s %s\n", failureMark(), e)
 		}
 		for _, ie := range importErrs {
 			fmt.Printf("  %s import: %s\n", failureMark(), ie)
 		}
+		for _, ke := range kubectlErrs {
+			fmt.Printf("  %s %s\n", failureMark(), ke)
+		}
 		fmt.Println()
-		return fmt.Errorf("%d validation error(s) in %s", len(errs)+len(importErrs), path)
+		return fmt.Errorf("%d validation error(s) in %s", len(errs)+len(importErrs)+len(kubectlErrs), path)
 	}
 
 	icon := healthIcon("ready")
