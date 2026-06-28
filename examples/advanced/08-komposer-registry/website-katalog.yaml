@@ -35,7 +35,6 @@ spec:
             default: "8080"
 
       operatorBox:
-        default: true
         status:
           fields:
             - path: phase

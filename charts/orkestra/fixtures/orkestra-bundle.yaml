@@ -90,9 +90,9 @@ rules:
   - update
   - patch
 - apiGroups:
-  - ""
+  - apps
   resources:
-  - services
+  - deployments
   verbs:
   - get
   - list
@@ -102,9 +102,9 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - apps
+  - ""
   resources:
-  - deployments
+  - services
   verbs:
   - get
   - list
@@ -211,9 +211,13 @@ data:
                     kind: Website
                     plural: websites
                     apiPath: /apis
-                workers: 3
-                resync: 15s
                 operatorBox:
+                    reconciler:
+                        workers: 3
+                        resync: 15s
+                        queue:
+                            maxDepth: 100
+                            failureThreshold: 5
                     onCreate:
                         deployments:
                             - name: '{{ .metadata.name }}'
@@ -230,9 +234,6 @@ data:
                         fields:
                             - path: phase
                               value: Running
-                queue:
-                    maxDepth: 100
-                    failureThreshold: 100
                 allowedNamespaces:
                     - default
                 warnings: []

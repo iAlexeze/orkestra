@@ -14,12 +14,12 @@ imports:
   # OCI registry pattern — versioned, immutable
   # Pull a published operator pattern from the Orkestra registry
   registry:
-    - url: ghcr.io/orkspace/patterns/postgres@v1.0.0
+    - url: ghcr.io/orkspace/orkestra-registry/patterns/katalogs/postgres:v1.0.0
       oci: true
       # auth:
       #   type: bearer
       #   fromEnv: ORK_REGISTRY_TOKEN
-      # version is pinned via @v1.0.0 — immutable, safe for production
+      # version is pinned via v1.0.0 — immutable, safe for production
 
   # Local Katalog — your team's custom CRD
   files:
@@ -27,10 +27,10 @@ imports:
 
   # Helm chart source — pulls CRD behavior definitions from a chart
   helm:
-    - repo: https://github.com/orkspace/charts.git
-      chart: orkestra-katalog-example
-      path: katalog-example
-      version: v0.1.0     # ignore to use main branch or add branch name instead
+    - repo: https://github.com/orkspace/orkestra.git
+      chart: example
+      path: charts/examples/katalog-example
+      version: v0.7.9     # ignore to use main branch or add branch name instead
       # auth:
       #   type: bearer
       #   fromEnv: HELM_REPO_TOKEN
@@ -58,4 +58,4 @@ spec:
 
     # Disable the database operator since we now have Postgres
     database:
-      enabled: false
+      enabled: true
