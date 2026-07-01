@@ -1,4 +1,4 @@
-.PHONY: build orkcc clean test test-unit test-race test-integration test-all test-coverage test-coverage-text vet certs docs docs-sync docs-build docs-serve hugo-install generate-notes generate-e2e-example test-fixture-note test-fixture-reconciler ork-gateway-linux docker-gateway gateway-reload runtime-reload controlcenter-reload reload docker-devserver release-devserver
+.PHONY: build orkcc clean test test-unit test-race test-integration test-all test-coverage test-coverage-text vet vuln certs docs docs-sync docs-build docs-serve hugo-install generate-notes generate-e2e-example test-fixture-note test-fixture-reconciler ork-gateway-linux docker-gateway gateway-reload runtime-reload controlcenter-reload reload docker-devserver release-devserver
 
 # ── Configuration ────────────────────────────────────────────────────────────
 ORKESTRA_DIR := .
@@ -421,3 +421,7 @@ docs-serve: docs-sync
 vet:
 	@echo "Running go vet..."
 	go vet ./...
+
+vuln:
+	@command -v govulncheck >/dev/null 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@latest
+	govulncheck ./...
