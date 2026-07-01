@@ -27,7 +27,7 @@ func TestSetQueueDepth_UsesDefault(t *testing.T) {
 
 func TestSetQueueDepth_UsesPerCRDValue(t *testing.T) {
 	c := emptyCRD()
-	c.Queue.MaxDepth = 25
+	c.OperatorBox.Reconciler = &orktypes.ReconcilerConfig{Queue: orktypes.Queue{MaxDepth: 25}}
 	assert.Equal(t, 25, c.SetQueueDepth(10))
 }
 
@@ -40,7 +40,7 @@ func TestSetWorkers_UsesDefault(t *testing.T) {
 
 func TestSetWorkers_UsesPerCRDValue(t *testing.T) {
 	c := emptyCRD()
-	c.Workers = 8
+	c.OperatorBox.Reconciler = &orktypes.ReconcilerConfig{Workers: 8}
 	assert.Equal(t, 8, c.SetWorkers(4))
 }
 
@@ -124,7 +124,7 @@ func TestDefaultQueue_NilDefaultsFalse(t *testing.T) {
 
 func TestDefaultQueue_ExplicitTrue(t *testing.T) {
 	c := emptyCRD()
-	c.Queue.Shared = boolp(true)
+	c.OperatorBox.Reconciler = &orktypes.ReconcilerConfig{Queue: orktypes.Queue{Shared: boolp(true)}}
 	assert.True(t, c.SharedQueue())
 }
 

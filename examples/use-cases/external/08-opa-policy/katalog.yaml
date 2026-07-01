@@ -14,8 +14,6 @@ spec:
     webapp:
       crdFile: ../crd.yaml
 
-      workers: 2
-      resync: 30s
 
       validation:
         rules:
@@ -30,6 +28,9 @@ spec:
 
       operatorBox:
 
+        reconciler:
+          workers: 2
+          resync: 30s
         onReconcile:
           # ── OPA policy check — runs every reconcile ────────────────────────
           # Sends CR identity context as OPA input. continueOnError: false —

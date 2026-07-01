@@ -25,8 +25,6 @@ spec:
         version: v1
         kind: PlatformApp
         plural: platformapps
-      workers: 2
-      resync: 1m
 
       imports:
         # Resources: Deployment + Service + optional Ingress
@@ -45,6 +43,9 @@ spec:
             maxReplicas: "10"
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 1m
         status:
           fields:
             - path: phase

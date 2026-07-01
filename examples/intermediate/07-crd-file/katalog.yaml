@@ -13,10 +13,11 @@ spec:
     app:
       crdFile: ./crd-app.yaml     # applied automatically by ork run (dev mode)
 
-      workers: 2
-      resync: 30s
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
         status:
           fields:
             - path: phase
@@ -37,10 +38,11 @@ spec:
     database:
       crdFile: ./crd-database.yaml
 
-      workers: 1
-      resync: 60s
 
       operatorBox:
+        reconciler:
+          workers: 1
+          resync: 60s
         status:
           fields:
             - path: phase

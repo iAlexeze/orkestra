@@ -17,10 +17,11 @@ spec:
         kind: Database
         plural: databases
 
-      workers: 2
-      resync: 30s
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
         status:
           fields:
             - path: phase

@@ -14,8 +14,6 @@ spec:
     webapp:
       crdFile: ../crd.yaml
 
-      workers: 2
-      resync: 60s
 
       validation:
         rules:
@@ -30,6 +28,9 @@ spec:
 
       operatorBox:
 
+        reconciler:
+          workers: 2
+          resync: 60s
         onReconcile:
           # ── Call 1: fetch a short-lived token ─────────────────────────────
           # Token services typically return a JSON body like: {"token": "abc..."}

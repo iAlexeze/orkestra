@@ -272,11 +272,9 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 	for _, crd := range kat.Enabled() {
 		crd := crd
 		gvk := crd.GVKString()
-		crd.Workers = crd.SetWorkers(kfg.Katalog().DefaultWorkers())
-
 		object, _ := crd.GetRuntimeObjects()
 
-		wq := queueRegistry.Register(gvk, crd.SetQueueDepth(kfg.Katalog().DefaultQueueDepth()))
+		wq := queueRegistry.Register(gvk, crd.OperatorBox.Reconciler.Queue.MaxDepth)
 
 		// compute selectors
 		labelSelector := orktypes.SelectorMap(crd.LabelSelector).String()
@@ -284,7 +282,7 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 
 		opts := informer.Options{
 			Name:          crd.APITypes.Kind,
-			Resync:        crd.Resync,
+			Resync:        crd.OperatorBox.Reconciler.Resync.Duration,
 			LabelSelector: labelSelector,
 			FieldSelector: fieldSelector,
 		}

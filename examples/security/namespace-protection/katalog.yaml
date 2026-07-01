@@ -29,7 +29,6 @@ spec:
         version: v1alpha1
         kind: App
         plural: apps
-      resync: 30s
 
       # Only allow App CRs in the "production" namespace.
       # Applying an App CR anywhere else is rejected at admission time.
@@ -38,6 +37,8 @@ spec:
 
       operatorBox:
 
+        reconciler:
+          resync: 30s
         status:
           fields:
             - path: phase
@@ -67,7 +68,6 @@ spec:
         version: v1alpha1
         kind: Database
         plural: databases
-      resync: 30s
 
       # Only allow Database CRs in the "production" namespace.
       allowedNamespaces:
@@ -75,6 +75,8 @@ spec:
 
       operatorBox:
 
+        reconciler:
+          resync: 30s
         status:
           fields:
             - path: phase
@@ -96,7 +98,6 @@ spec:
         version: v1alpha1
         kind: Cache
         plural: caches
-      resync: 30s
 
       # Block Cache CRs from system namespaces.
       # Cache can be applied to any other namespace.
@@ -106,6 +107,8 @@ spec:
 
       operatorBox:
 
+        reconciler:
+          resync: 30s
         status:
           fields:
             - path: phase

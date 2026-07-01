@@ -3,7 +3,7 @@ kind: Simulate
 metadata:
   name: profiles-suite-sim
   description: >
-    Full profiles suite — all eight sub-examples run in sequence.
+    Full profiles suite — all ten sub-examples run in sequence.
     No cluster required.
 
 imports:
@@ -16,3 +16,4 @@ imports:
   - ./07-resourcequota/simulate.yaml
   - ./08-limitrange/simulate.yaml
   - ./09-user-defined/simulate.yaml
+  - ./10-reconciler/simulate.yaml

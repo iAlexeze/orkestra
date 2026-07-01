@@ -27,8 +27,6 @@ spec:
         kind: CronJob
         plural: cronjobs
 
-      workers: 5
-      resync: 30s
 
       # ── Lossless version conversion using cron notes ───────────────────────
       #
@@ -80,6 +78,9 @@ spec:
 
       # ── OperatorBox Reconciliation ─────────────────────────────────────────────────────────
       operatorBox:
+        reconciler:
+          workers: 5
+          resync: 30s
         # Status — three layers
         # Layer 1: Ready condition — automatic after every reconcile
         # Layer 2: Declared fields — resolved from live CR
@@ -129,14 +130,15 @@ spec:
         version: v1
         kind: CronJob
         plural: cronjobs
-      workers: 2
-      resync: 30s
       # participant: true marks this CRD as part of the conversion pair.
       # The paths live on cronjob-v2. This flag lets the Control Center
       # show conversion stats for v1 without duplicating path declarations.
       conversion:
         participant: true
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
         status:
           fields:
             - path: phase

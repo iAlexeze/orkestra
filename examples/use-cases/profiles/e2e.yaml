@@ -4,8 +4,9 @@ metadata:
   name: profiles-suite
   description: >
     Suite for the profiles use-case track — resource, security, probes,
-    rolling-update, PDB, networkpolicy, resourcequota, limitrange, and
-    user-defined profiles. Runs all nine sub-examples in the same cluster.
+    rolling-update, PDB, networkpolicy, resourcequota, limitrange,
+    user-defined profiles, and reconciler profiles. Runs all ten
+    sub-examples in the same cluster.
 
 imports:
   - ./01-resource/e2e.yaml
@@ -17,3 +18,4 @@ imports:
   - ./07-resourcequota/e2e.yaml
   - ./08-limitrange/e2e.yaml
   - ./09-user-defined/e2e.yaml
+  - ./10-reconciler/e2e.yaml

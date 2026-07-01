@@ -29,13 +29,19 @@ security:
 spec:
   crds:
     webapp:
-      workers: 4
-      resync: 30s
+      operatorBox:
+        reconciler:
+          workers: 4
+          resync: 30s
 
     cache:
-      workers: 1
-      resync: 10s
+      operatorBox:
+        reconciler:
+          workers: 1
+          resync: 10s
 
     platformapp:
-      workers: 5
-      resync: 45s
+      operatorBox:
+        reconciler:
+          workers: 5
+          resync: 45s

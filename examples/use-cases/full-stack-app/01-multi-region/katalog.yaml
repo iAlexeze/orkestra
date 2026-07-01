@@ -12,8 +12,6 @@ spec:
     multi-region-app:
       crdFile: ./crd.yaml
 
-      workers: 2
-      resync: 30s
 
       validation:
         rules:
@@ -33,6 +31,9 @@ spec:
             valueType: int
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
         onReconcile:
           deployments:
             - name: "{{ .metadata.name }}-{{ .item }}"

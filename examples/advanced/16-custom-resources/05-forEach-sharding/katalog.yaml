@@ -16,9 +16,10 @@ spec:
     # ── ShardedStore ───────────────────────────────────────────────────────────
     shardedstore:
       crdFile: ./crd-shardedstore.yaml
-      workers: 2
-      resync: 60s
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 60s
         status:
           fields:
             - path: phase
@@ -56,9 +57,10 @@ spec:
     # ── Shard ──────────────────────────────────────────────────────────────────
     shard:
       crdFile: ./crd-shard.yaml
-      workers: 3
-      resync: 60s
       operatorBox:
+        reconciler:
+          workers: 3
+          resync: 60s
         status:
           fields:
             - path: phase

@@ -23,8 +23,6 @@ spec:
   crds:
     webapp:
       crdFile: ./crd-v1.yaml
-      workers: 2
-      resync: 1m
 
       imports:
         - motif: oci://ghcr.io/myorg/motifs/web-service:v1.1.0
@@ -36,6 +34,9 @@ spec:
             resourceProfile: "{{ .spec.resourceProfile }}"
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 1m
         status:
           fields:
             - path: phase

@@ -960,7 +960,7 @@ func resolveCRDDisplayValues(
 ) crdDisplayValues {
 
 	// Queue depth
-	maxDepth := crd.Queue.MaxDepth
+	maxDepth := crd.OperatorBox.Reconciler.Queue.MaxDepth
 	maxDepthSource := "configured"
 	if maxDepth == 0 {
 		maxDepth = kfg.Katalog().DefaultQueueDepth()
@@ -968,17 +968,17 @@ func resolveCRDDisplayValues(
 	}
 
 	// Resync
-	resync := crd.Resync.String()
+	resync := crd.OperatorBox.Reconciler.Resync.String()
 	resyncSource := "configured"
-	if crd.Resync == 0 {
+	if crd.OperatorBox.Reconciler.Resync.Duration == 0 {
 		resyncSource = "default"
 		resync = kfg.Katalog().DefaultResync().String()
 	}
 
 	// Workers
-	workers := crd.Workers
+	workers := crd.OperatorBox.Reconciler.Workers
 	workersSource := "configured"
-	if crd.Workers == 0 {
+	if crd.OperatorBox.Reconciler.Workers == 0 {
 		workers = kfg.Katalog().DefaultWorkers()
 		workersSource = "default"
 	}

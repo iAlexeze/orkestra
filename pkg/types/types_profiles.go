@@ -12,6 +12,7 @@ type ProfileRegistry struct {
 	HPA             []HPAProfileDef           `yaml:"hpa,omitempty"            json:"hpa,omitempty"`
 	PDB             []PDBProfileDef           `yaml:"pdb,omitempty"            json:"pdb,omitempty"`
 	RollingUpdate   []RollingUpdateProfileDef `yaml:"rollingUpdate,omitempty"  json:"rollingUpdate,omitempty"`
+	Reconciler      []ReconcilerProfileDef    `yaml:"reconciler,omitempty"     json:"reconciler,omitempty"`
 }
 
 func (r ProfileRegistry) IsEmpty() bool {
@@ -20,7 +21,8 @@ func (r ProfileRegistry) IsEmpty() bool {
 		len(r.LimitRanges) == 0 &&
 		len(r.HPA) == 0 &&
 		len(r.PDB) == 0 &&
-		len(r.RollingUpdate) == 0
+		len(r.RollingUpdate) == 0 &&
+		len(r.Reconciler) == 0
 }
 
 func (r ProfileRegistry) LookupNetworkPolicy(name string) (NetworkPolicyProfileDef, bool) {
@@ -77,6 +79,15 @@ func (r ProfileRegistry) LookupRollingUpdate(name string) (RollingUpdateProfileD
 	return RollingUpdateProfileDef{}, false
 }
 
+func (r ProfileRegistry) LookupReconciler(name string) (ReconcilerProfileDef, bool) {
+	for _, e := range r.Reconciler {
+		if e.Name == name {
+			return e, true
+		}
+	}
+	return ReconcilerProfileDef{}, false
+}
+
 // Merge combines other into r, returning a conflict error if the same name
 // appears in the same class in both registries.
 func (r ProfileRegistry) Merge(other ProfileRegistry, otherSource string) (ProfileRegistry, error) {
@@ -116,6 +127,12 @@ func (r ProfileRegistry) Merge(other ProfileRegistry, otherSource string) (Profi
 			return ProfileRegistry{}, profileConflictError("rollingUpdate", e.Name, otherSource)
 		}
 		merged.RollingUpdate = append(merged.RollingUpdate, e)
+	}
+	for _, e := range other.Reconciler {
+		if _, found := r.LookupReconciler(e.Name); found {
+			return ProfileRegistry{}, profileConflictError("reconciler", e.Name, otherSource)
+		}
+		merged.Reconciler = append(merged.Reconciler, e)
 	}
 	return merged, nil
 }
@@ -176,4 +193,15 @@ type RollingUpdateProfileDef struct {
 	Description    string `yaml:"description,omitempty" json:"description,omitempty"`
 	MaxSurge       string `yaml:"maxSurge,omitempty" json:"maxSurge,omitempty"`
 	MaxUnavailable string `yaml:"maxUnavailable,omitempty" json:"maxUnavailable,omitempty"`
+}
+
+// ReconcilerProfileDef defines a named reconciler tuning profile.
+// All fields mirror the inline fields under operatorBox.reconciler.
+// Built-in profiles: high-throughput, conservative, development.
+type ReconcilerProfileDef struct {
+	Name        string   `yaml:"name" json:"name"`
+	Description string   `yaml:"description,omitempty" json:"description,omitempty"`
+	Workers     int      `yaml:"workers,omitempty" json:"workers,omitempty"`
+	Resync      Duration `yaml:"resync,omitempty" json:"resync,omitempty"`
+	Queue       Queue    `yaml:"queue,omitempty" json:"queue,omitempty"`
 }

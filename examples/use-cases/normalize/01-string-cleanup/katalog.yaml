@@ -13,8 +13,6 @@ spec:
     tenant:
       crdFile: ./crd.yaml
 
-      workers: 2
-      resync: 30s
 
       # ── Normalize ──────────────────────────────────────────────────────────
       # Each field normalizes independently against the raw CR.
@@ -55,6 +53,9 @@ spec:
 
       operatorBox:
 
+        reconciler:
+          workers: 2
+          resync: 30s
         status:
           fields:
             - path: phase

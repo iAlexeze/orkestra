@@ -280,9 +280,10 @@ data:
                           name: database-credentials
                           namespace: platform
                           timeout: 15s
-                workers: 2
-                resync: 1m0s
                 operatorBox:
+                  reconciler:
+                    workers: 2
+                    resync: 1m0s
                     onCreate:
                         deployments:
                             - name: '{{ .spec.team }}-ns-agent'
@@ -461,10 +462,12 @@ data:
                               value: '{{ .spec.targetNamespace }}'
                             - path: team
                               value: '{{ .spec.team }}'
-                queue:
-                    maxDepth: 100
-                    failureThreshold: 100
                 warnings: []
+                operatorBox:
+                  reconciler:
+                    queue:
+                        maxDepth: 100
+                        failureThreshold: 100
     security: {}
     profiles:
         networkPolicies:

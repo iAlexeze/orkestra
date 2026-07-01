@@ -119,33 +119,6 @@ func (c *CRDEntry) GetRuntimeObjects() (runtime.Object, runtime.Object) {
 	return c.DynamicModeObject(), c.ListDynamicModeObject()
 }
 
-// SetQueueDepth resolves the queue depth for this CRD. If a per‑CRD value is
-// provided, it is used; otherwise the Orkestra/Konduktor‑level default is applied.
-func (c *CRDEntry) SetQueueDepth(def int) int {
-	if c.Queue.MaxDepth == 0 {
-		return def
-	}
-	return c.Queue.MaxDepth
-}
-
-// SetWorkers resolves the worker count for this CRD. If a per‑CRD value is
-// provided, it is used; otherwise the global default worker count is applied.
-func (c *CRDEntry) SetWorkers(def int) int {
-	if c.Workers == 0 {
-		return def
-	}
-	return c.Workers
-}
-
-// SetResync resolves the resync period for this CRD. If a per‑CRD non‑zero value is
-// set, it is used; otherwise the global default resync is applied.
-func (c *CRDEntry) SetResync(def time.Duration) time.Duration {
-	if c.Resync != 0 {
-		return c.Resync
-	}
-	return def
-}
-
 // IsDynamic determines whether this CRD should operate in dynamic mode.
 // Resolution order (first match wins):
 //  1. mode: dynamic explicitly declared → true
@@ -282,15 +255,6 @@ func (c *CRDEntry) DefaultReconcile() bool {
 		return true
 	}
 	return *r.Default
-}
-
-// SharedQueue reports whether this CRD uses the shared default workqueue.
-// Defaults to false when omitted.
-func (c *CRDEntry) SharedQueue() bool {
-	if c.Queue.Shared == nil {
-		return false
-	}
-	return *c.Queue.Shared
 }
 
 // CustomHooksEnabled reports whether the reconcile behaviour uses custom hooks.
@@ -546,6 +510,51 @@ func (c *CRDEntry) HasRestrictedNamespaces() bool {
 //   - ClusterIP
 //   - NodePort
 //   - LoadBalancer
+//
+// SetWorkers resolves the worker count for this CRD.
+// Reads from operatorBox.reconciler.workers; falls back to the global default.
+func (c *CRDEntry) SetWorkers(def int) int {
+	if c.OperatorBox.Reconciler != nil && c.OperatorBox.Reconciler.Workers != 0 {
+		return c.OperatorBox.Reconciler.Workers
+	}
+	return def
+}
+
+// SetResync resolves the resync period for this CRD.
+// Reads from operatorBox.reconciler.resync; falls back to the global default.
+func (c *CRDEntry) SetResync(def time.Duration) time.Duration {
+	if c.OperatorBox.Reconciler != nil && c.OperatorBox.Reconciler.Resync.Duration != 0 {
+		return c.OperatorBox.Reconciler.Resync.Duration
+	}
+	return def
+}
+
+// SetQueueDepth resolves the queue depth for this CRD.
+// Reads from operatorBox.reconciler.queue.maxDepth; falls back to the global default.
+func (c *CRDEntry) SetQueueDepth(def int) int {
+	if c.OperatorBox.Reconciler != nil && c.OperatorBox.Reconciler.Queue.MaxDepth != 0 {
+		return c.OperatorBox.Reconciler.Queue.MaxDepth
+	}
+	return def
+}
+
+// SetFailureThreshold resolves the queue failure threshold for this CRD.
+// Reads from operatorBox.reconciler.queue.failureThreshold; falls back to the global default.
+func (c *CRDEntry) SetFailureThreshold(def int) int {
+	if c.OperatorBox.Reconciler != nil && c.OperatorBox.Reconciler.Queue.FailureThreshold != 0 {
+		return c.OperatorBox.Reconciler.Queue.FailureThreshold
+	}
+	return def
+}
+
+// SharedQueue reports whether this CRD uses the shared default workqueue.
+func (c *CRDEntry) SharedQueue() bool {
+	if c.OperatorBox.Reconciler == nil || c.OperatorBox.Reconciler.Queue.Shared == nil {
+		return false
+	}
+	return *c.OperatorBox.Reconciler.Queue.Shared
+}
+
 func IsValidServiceType(t string) bool {
 	switch strings.ToLower(t) {
 	case "", "clusterip", "nodeport", "loadbalancer":

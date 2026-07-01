@@ -15,8 +15,6 @@ spec:
     webapp:
       crdFile: ../crd.yaml
 
-      workers: 2
-      resync: 30s
 
       validation:
         rules:
@@ -31,6 +29,9 @@ spec:
 
       operatorBox:
 
+        reconciler:
+          workers: 2
+          resync: 30s
         onReconcile:
           # ── Vault secret read — runs every reconcile ───────────────────────
           # The path is constructed from the CR name so each webapp reads its

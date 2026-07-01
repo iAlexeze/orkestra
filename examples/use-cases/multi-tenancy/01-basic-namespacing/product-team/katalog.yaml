@@ -17,10 +17,11 @@ spec:
         kind: Website
         plural: websites
 
-      workers: 2
-      resync: 15s
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 15s
         status:
           fields:
             - path: phase

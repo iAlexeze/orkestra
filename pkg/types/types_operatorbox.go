@@ -1,7 +1,9 @@
 // pkg/types/types_operatorbox.go
 package types
 
-import "github.com/orkspace/orkestra/domain"
+import (
+	"github.com/orkspace/orkestra/domain"
+)
 
 // ── OperatorBoxConfig ──────────────────────────────────────────────────────────
 
@@ -37,6 +39,22 @@ type ReconcilerConfig struct {
 	// The function at Location.Function must match: NewReconcilerFunc
 	// Required when default: false in YAML mode.
 	ConstructorDecl *ConstructorDeclaration `yaml:"constructor,omitempty" json:"constructor,omitempty" validate:"omitempty"`
+
+	// Profile — named reconciler tuning preset. Built-ins: high-throughput, conservative, development.
+	// User-defined profiles declared in profiles.reconciler take precedence over built-ins.
+	// Inline Workers/Resync/Queue override the profile when both are declared.
+	Profile string `yaml:"profile,omitempty" json:"profile,omitempty"`
+
+	// Workers — number of concurrent reconcile goroutines for this CRD.
+	// 0 → uses Orkestra-level default (DEFAULT_WORKERS env var).
+	Workers int `yaml:"workers,omitempty" json:"workers,omitempty" validate:"omitempty,gte=1,lte=50"`
+
+	// Resync — full re-list interval for the informer cache.
+	// 0 → uses Orkestra-level default (DEFAULT_RESYNC env var).
+	Resync Duration `yaml:"resync,omitempty" json:"resync,omitempty"`
+
+	// Queue — work queue tuning for this CRD.
+	Queue Queue `yaml:"queue,omitempty" json:"queue,omitempty"`
 }
 
 // OperatorBoxConfig is the per-CRD configuration block in a Katalog. It controls

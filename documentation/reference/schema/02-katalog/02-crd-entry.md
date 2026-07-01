@@ -17,17 +17,10 @@ spec:
 
       namespaced: true
       namespace: default
-      workers: 3
-      resync: 30s
 
       dependsOn:
         other-crd:
           condition: healthy
-
-      queue:
-        shared: false
-        maxDepth: 100
-        failureThreshold: 5
 
       enrich:                      # optional → enrich.md
         - pods
@@ -39,6 +32,13 @@ spec:
         metadata.namespace: production
 
       operatorBox:             # → operatorbox.md
+        reconciler:
+          workers: 3
+          resync: 30s
+          queue:
+            shared: false
+            maxDepth: 100
+            failureThreshold: 5
         ...
 
       conversion:              # → conversion.md

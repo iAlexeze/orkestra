@@ -19,11 +19,6 @@ spec:
         kind: Pipeline
         plural: pipelines
 
-      workers: 4
-      resync: 10s   # short resync to check Job completion quickly
-      queue:
-        maxDepth: 1000
-        failureThreshold: 0.5
 
       # ── Validation ───────────────────────────────────────────────────
       validation:
@@ -38,6 +33,12 @@ spec:
             action: deny
 
       operatorBox:
+        reconciler:
+          workers: 4
+          resync: 10s   # short resync to check Job completion quickly
+          queue:
+            maxDepth: 1000
+            failureThreshold: 0.5
         # ── Phase-gated Jobs ─────────────────────────────────────────────
         # Each step is a separate Job.
         # The when: conditions gate creation based on current phase

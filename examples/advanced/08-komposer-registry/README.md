@@ -25,7 +25,7 @@ Helm: https://github.com/orkspace/charts.git
 
 Overrides (spec.crds):
         → postgres: workers 8, resync 30s
-        → website: workers 6, resync 15s, critical: true
+        → website: workers 6, resync 15s
 ```
 
 Three sources, two overrides, one Orkestra instance.
@@ -46,7 +46,7 @@ postgres/v1.0.0/
   README.md       pattern documentation
 ```
 
-The `@v1.0.0` pin in the URL is immutable — once published, that version's
+The `v1.0.0` pin in the URL is immutable — once published, that version's
 content cannot change. This is the guarantee that makes OCI distribution safe
 for production: you know exactly what you pulled.
 
@@ -54,29 +54,75 @@ for production: you know exactly what you pulled.
 
 ## Steps
 
-### 1. Preview the merged configuration
+### 0. OCI Inspection
+
+- Inspect the registry pattern:
 
 ```bash
-ork template --file komposer.yaml
+ork inspect postgres:v1.0.0
 ```
 
 Expected:
 ```text
-Success: Katalog is valid
+postgres:v1.0.0
+  Registry:    ghcr.io
+  Kind:        Katalog
+  Digest:      sha256:3b070e8b7aaac6009d7d617db70d08b96d21953784c45fcb1767e29ba2783679
+  Pushed:      2026-06-13T05:50:33Z
+  Size:        2.5 KB
+  ...
+  Simulate:    ✓ Verified · 6 assertions · 862ms · tested 14d ago
+  E2E:         ✓ Verified · 5 assertions · 2m21s · tested 14d ago
 
-Rendered CRDs:
-  - database
-  - cache
-  - postgres
-  - website
+  Files:
+    katalog.yaml                   1.5 KB
+    crd.yaml                       808 B
+    cr.yaml                        160 B
+    e2e.yaml                       1.2 KB
+    simulate.yaml                  723 B
+```
+
+- Preview any of the files:
+
+```bash
+ork inspect postgres:v1.0.0 --view katalog.yaml
+```
+
+The inspection stage is useful in understanding what is to be pulled from a public registry. You can view the tests that ran and replicate it yourself:
+
+#### Optional
+```bash
+# View unit tests and end-to-end tests
+ork inspect postgres:v1.0.0 --view simulate.yaml,e2e.yaml
+
+# Pull to a temporary directory
+ork pull postgres:v1.0.0 -o test-pattern
+
+# Run the tests
+cd test-pattern
+ork simulate    # Quick in-memory test. No cluster
+ork e2e         # 
+```
+
+Once satisfied, you can proceed.
+
+### 1. Preview the merged configuration
+
+First pull all dependencies to cache:
+
+```bash
+ork pull -f komposer.yaml
+```
+
+Preview the merged configuration:
+
+```bash
+ork template
 ```
 
 ```bash
-# To see a more detailed output:
-ork template --file komposer.yaml --json | jq
-# or
-ork template --file komposer.yaml --yaml
-
+# To see the startup order:
+ork template --graph
 ```
 
 This shows the merged result of all three sources with overrides applied —
@@ -85,7 +131,7 @@ without pulling anything or touching a cluster.
 ### 2. Validate
 
 ```bash
-ork validate --file komposer.yaml
+ork validate
 ```
 
 Expected:
@@ -118,7 +164,7 @@ Let's disable the `database` CRD. To do this, add an override block under `spec.
 
 
 ```yaml
-  - name: database
+  database:
     enabled: false
 ```
 
@@ -150,7 +196,7 @@ Now we have 3 valid CRDs to work with.
 
 #### 2.2 Generate runtime bundle
 ```bash
-ork generate rbac -k komposer.yaml -o rbac.yaml
+ork generate bundle -o bundle.yaml
 ```
 This generates the following:
 - Namespace
@@ -175,7 +221,7 @@ kubectl apply -f crd.yaml
 # (This file contains all CRDs)
 
 # Apply Bundle generated in the previous step
-kubectl apply -f rbac.yaml
+kubectl apply -f bundle.yaml
 
 # Deploy Orkestra
 helm repo add orkestra https://orkspace.github.io/orkestra
@@ -205,9 +251,17 @@ Expected:
 kubectl apply -f cr.yaml
 
 # portforward to view the control center
-kubectl port-forward svc orkestra-cc 8081:8081 -n orkestra-system &
-
+kubectl port-forward svc/orkestra-cc 8081:8081 -n orkestra-system &
 ```
+
+Open http://localhost:8081
+
+> [!NOTE]
+> You might notice this error in `Website CRD: 
+> "Last Error
+> validation denied: field "spec.image": images must come from the internal registry (got "nginx:latest")"
+>
+> This is Orkestra's runtime validation denying the creation of Kubernetes resources since image is not from internal registry `myorg/`. See [`Website Katalog`](website-katalog.yaml) for validation details.
 
 ## The production pattern
 

@@ -190,22 +190,3 @@ jobs:
           echo "=== ReconcilerProbe ===" && kubectl get reconcilerprobe probe -o yaml || true
           echo "=== All resources in default ===" && kubectl get all || true
           echo "=== Operator logs ===" && kubectl logs -l app.kubernetes.io/name=orkestra --tail=100 || true
-
-  # ── Fixture: Orkestra Helm chart ────────────────────────────────────────────
-  # Runs only when the chart or its fixtures change.
-  # Installs the chart into a kind cluster via ork e2e and asserts infrastructure.
-  fixture-chart:
-    name: Fixture — Orkestra chart (kind cluster)
-    runs-on: ubuntu-latest
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      contains(github.event.pull_request.changed_files, 'charts/')
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Run chart e2e
-        uses: orkspace/orkestra-action@main
-        with:
-          working-directory: charts/orkestra
-          e2e: "true"

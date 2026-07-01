@@ -14,11 +14,12 @@ spec:
       crdFile: ./crd.yaml
       crFiles:
         - ./cr.yaml
-      workers: 3
-      resync: 15s
 
       operatorBox:
 
+        reconciler:
+          workers: 3
+          resync: 15s
         # ── Status ───────────────────────────────────────────────────────
         # Layer 1: Ready condition — automatic
         # Layer 2: fields from the CR spec

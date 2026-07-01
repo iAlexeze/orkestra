@@ -25,7 +25,6 @@ spec:
         plural: websites
 
       operatorBox:
-        default: true
 
         status:
           fields:

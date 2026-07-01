@@ -78,11 +78,10 @@ spec:
         objectList: DatabaseList
         location: github.com/myorg/database-operator/api/v1alpha1
 
-      workers: 3
-      resync: 30s
-
       operatorBox:
         reconciler:
+          workers: 3
+          resync: 30s
           hooks:
           location: github.com/myorg/database-operator/hooks
           version: v1.3.0

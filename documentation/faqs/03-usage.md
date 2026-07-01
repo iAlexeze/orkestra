@@ -101,7 +101,9 @@ See [When Conditions](../reference/schema/02-katalog/06-when-conditions.md) for 
 spec:
   crds:
     database:
-      workers: 8
+      operatorBox:
+        reconciler:
+          workers: 8
     application:
       dependsOn:
         database:
@@ -274,7 +276,9 @@ Yes. Each CRD in a Katalog or Komposer can use a different mode. One binary, one
 spec:
   crds:
     database:          # typed hooks — Go SDK calls alongside declarative templates
-      workers: 5
+      operatorBox:
+        reconciler:
+          workers: 5
     website:           # dynamic — pure YAML, no Go
       dependsOn:
         database:

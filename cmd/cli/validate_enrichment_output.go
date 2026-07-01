@@ -86,7 +86,7 @@ func printKindInfo(entry orktypes.CRDEntry) {
 func printModeResync(entry orktypes.CRDEntry) {
 	fmt.Printf("    %s\n", gray(fmt.Sprintf(
 		"mode: %s / workers: %v / resync: %v",
-		entry.Mode, entry.Workers, entry.Resync,
+		entry.Mode, entry.OperatorBox.Reconciler.Workers, entry.OperatorBox.Reconciler.Resync.String(),
 	)))
 }
 

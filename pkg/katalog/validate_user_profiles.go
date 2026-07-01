@@ -57,6 +57,11 @@ func (k *Katalog) validateUserProfiles() error {
 			names:     ruDefNames(reg.RollingUpdate),
 			isBuiltin: profiles.IsValidRollingUpdateProfile,
 		},
+		{
+			class:     "reconciler",
+			names:     reconcilerDefNames(reg.Reconciler),
+			isBuiltin: profiles.IsValidReconcilerProfile,
+		},
 	}
 
 	for _, c := range checks {
@@ -105,7 +110,6 @@ func (k *Katalog) isUserRollingUpdateProfile(name string) bool {
 	_, found := k.Profiles.LookupRollingUpdate(name)
 	return found
 }
-
 func npDefNames(defs []orktypes.NetworkPolicyProfileDef) []string {
 	out := make([]string, len(defs))
 	for i, d := range defs {
@@ -142,6 +146,13 @@ func pdbDefNames(defs []orktypes.PDBProfileDef) []string {
 	return out
 }
 func ruDefNames(defs []orktypes.RollingUpdateProfileDef) []string {
+	out := make([]string, len(defs))
+	for i, d := range defs {
+		out[i] = d.Name
+	}
+	return out
+}
+func reconcilerDefNames(defs []orktypes.ReconcilerProfileDef) []string {
 	out := make([]string, len(defs))
 	for i, d := range defs {
 		out[i] = d.Name

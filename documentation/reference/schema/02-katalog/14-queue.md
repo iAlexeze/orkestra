@@ -5,11 +5,13 @@ The `queue:` block controls how reconcile events accumulate and when the operato
 ```yaml
 crds:
   myapp:
-    workers: 4
-    resync: 30s
-    queue:
-      maxDepth: 500
-      failureThreshold: 10
+    operatorBox:
+      reconciler:
+        workers: 4
+        resync: 30s
+        queue:
+          maxDepth: 500
+          failureThreshold: 10
 ```
 
 ---
@@ -47,10 +49,10 @@ The right value for `maxDepth` depends on how many CRs the operator manages and 
 When the autoscaler is active, `maxDepth` becomes the baseline. The autoscaler can raise the limit at runtime when conditions trigger (e.g., queue depth exceeds 80% of the limit) and restore it when conditions clear:
 
 ```yaml
-queue:
-  maxDepth: 100       # baseline — what you start with
-
 operatorBox:
+  reconciler:
+    queue:
+      maxDepth: 100       # baseline — what you start with
   autoscale:
     conditions:
       when:
@@ -85,15 +87,19 @@ Each reconcile failure increments a consecutive failure counter. When it reaches
 The default of `5` is appropriate for most operators. Increase it for operators that call external services that can be transiently unavailable — a lower threshold would cause false degraded states during brief outages:
 
 ```yaml
-queue:
-  failureThreshold: 20   # external service can be down for a few minutes
+operatorBox:
+  reconciler:
+    queue:
+      failureThreshold: 20   # external service can be down for a few minutes
 ```
 
 Decrease it for operators managing critical infrastructure where you want immediate health signalling:
 
 ```yaml
-queue:
-  failureThreshold: 2   # degrade fast — this CRD must be healthy
+operatorBox:
+  reconciler:
+    queue:
+      failureThreshold: 2   # degrade fast — this CRD must be healthy
 ```
 
 ---

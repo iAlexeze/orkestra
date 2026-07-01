@@ -36,8 +36,6 @@ spec:
         version: v2
         kind: WebApp
         plural: webapps
-      workers: 2
-      resync: 1m
 
       # ── Lossless bidirectional conversion ────────────────────────────────
       #
@@ -84,6 +82,9 @@ spec:
             replicas: "{{ .spec.replicas }}"
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 1m
         status:
           fields:
             - path: phase
@@ -106,11 +107,12 @@ spec:
         version: v1
         kind: WebApp
         plural: webapps
-      workers: 2
-      resync: 1m
       conversion:
         participant: true
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 1m
         status:
           fields:
             - path: phase

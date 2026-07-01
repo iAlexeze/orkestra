@@ -15,6 +15,13 @@ metadata:
   name: platform-operator
 
 profiles:
+  reconciler:
+    - name: api-service
+      workers: 4
+      resync: 30s
+      queue:
+        maxDepth: 200
+
   networkPolicies:
     - name: allow-monitoring
       description: Allow ingress from the platform monitoring namespace
@@ -39,6 +46,8 @@ spec:
     namespace:
       ...
       operatorBox:
+        reconciler:
+          profile: api-service
         onCreate:
           networkPolicies:
             - name: "{{ .metadata.name }}-monitoring"
@@ -52,14 +61,68 @@ spec:
 
 ## Supported profile classes
 
-| Class | YAML key | Expands into |
-|-------|----------|--------------|
-| NetworkPolicy | `profiles.networkPolicies` | ingress/egress rules, policyTypes |
-| ResourceQuota | `profiles.resourceQuotas` | hard limits map |
-| LimitRange | `profiles.limitRanges` | limit items |
-| HPA | `profiles.hpa` | minReplicas, maxReplicas, CPU target, behavior |
-| PDB | `profiles.pdb` | minAvailable or maxUnavailable |
-| Rolling Update | `profiles.rollingUpdate` | maxSurge, maxUnavailable |
+| Class | YAML key | Expands into | Referenced from |
+|-------|----------|--------------|-----------------|
+| NetworkPolicy | `profiles.networkPolicies` | ingress/egress rules, policyTypes | `onCreate.networkPolicies[].profile` |
+| ResourceQuota | `profiles.resourceQuotas` | hard limits map | `onCreate.resourceQuotas[].profile` |
+| LimitRange | `profiles.limitRanges` | limit items | `onCreate.limitRanges[].profile` |
+| HPA | `profiles.hpa` | minReplicas, maxReplicas, CPU target, behavior | `onCreate.hpa[].behavior.profile` |
+| PDB | `profiles.pdb` | minAvailable or maxUnavailable | `onCreate.pdb[].behavior.profile` |
+| Rolling Update | `profiles.rollingUpdate` | maxSurge, maxUnavailable | `onCreate.deployments[].rollingUpdate.profile` |
+| Reconciler | `profiles.reconciler` | workers, resync, queue.maxDepth | `operatorBox.reconciler.profile` |
+
+The reconciler class is different from the others: it tunes how the CRD's own reconciler runs, not what child resources are created. It is set once per CRD entry at the `operatorBox.reconciler` level rather than on individual child resource entries.
+
+### Reconciler profiles
+
+A reconciler profile sets the tuning for a CRD's reconcile loop — workers, resync interval, and queue depth. Declare profiles in `profiles.reconciler` and reference one with `operatorBox.reconciler.profile`:
+
+```yaml
+profiles:
+  reconciler:
+    - name: api-service
+      description: Balanced for a standard web service operator
+      workers: 4
+      resync: 30s
+      queue:
+        maxDepth: 200
+
+    - name: batch-worker
+      description: Low churn, background processing
+      workers: 2
+      resync: 5m
+      queue:
+        maxDepth: 500
+
+spec:
+  crds:
+    orders:
+      operatorBox:
+        reconciler:
+          profile: api-service
+          # inline fields override the profile — add here to tune per-CRD
+    archive:
+      operatorBox:
+        reconciler:
+          profile: batch-worker
+```
+
+Inline fields always win over the profile. To use a profile as the baseline and tune one field:
+
+```yaml
+operatorBox:
+  reconciler:
+    profile: api-service
+    workers: 8    # override — profile's workers (4) is ignored; resync and maxDepth come from the profile
+```
+
+Orkestra also ships three built-in reconciler profiles that require no declaration:
+
+| Profile | workers | resync | queue.maxDepth |
+|---------|---------|--------|----------------|
+| `high-throughput` | 10 | 5m | 1000 |
+| `conservative` | 2 | 1m | 100 |
+| `development` | 1 | 30s | 50 |
 
 ---
 

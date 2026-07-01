@@ -176,8 +176,10 @@ spec:
         group: apps.orkestra.io
         version: v1
         kind: Application
-      workers: 2
-      resync: 1m
+      operatorBox:
+        reconciler:
+          workers: 2
+          resync: 1m
       imports:
         - motif: oci://ghcr.io/orkspace/patterns/motifs/deployment-stack:v0.1.0
           with:

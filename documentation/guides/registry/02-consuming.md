@@ -154,8 +154,10 @@ imports:
 spec:
   crds:
     postgres:
-      workers: 8          # override the upstream default
-      resync: 30s
+      operatorBox:
+        reconciler:
+          workers: 8          # override the upstream default
+          resync: 30s
 ```
 
 Your inline `spec.crds` always wins over imported values. This is how platform teams customize community patterns for their environment.

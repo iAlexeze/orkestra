@@ -172,7 +172,7 @@ func NewGenericReconciler[PTR domain.Object](
 		ev = discardRecorder{}
 	}
 
-	workers := crd.Workers
+	workers := crd.OperatorBox.Reconciler.Workers
 	if workers <= 0 {
 		workers = 1
 	}
@@ -212,8 +212,8 @@ func NewGenericReconciler[PTR domain.Object](
 	if crd.AutoscaleEnabled() {
 		baseline := orktypes.AutoscaleBaseline{
 			Workers:  workers,
-			MaxDepth: crd.Queue.MaxDepth,
-			Resync:   crd.Resync,
+			MaxDepth: crd.OperatorBox.Reconciler.Queue.MaxDepth,
+			Resync:   crd.OperatorBox.Reconciler.Resync.Duration,
 		}
 		r.autoscaler = autoscaler.NewAutoscaler(
 			crd.APITypes.Kind,

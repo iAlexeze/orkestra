@@ -13,8 +13,6 @@ spec:
     microservice:
       crdFile: ../crd.yaml
 
-      workers: 2
-      resync: 15s
 
       # ── Enrichment ───────────────────────────────────────────────────────────
       # pods: always fetch the pod list for the child Deployment.
@@ -32,6 +30,9 @@ spec:
 
       operatorBox:
 
+        reconciler:
+          workers: 2
+          resync: 15s
         status:
           fields:
             - path: phase

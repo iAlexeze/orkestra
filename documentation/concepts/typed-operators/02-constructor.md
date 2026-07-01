@@ -26,12 +26,11 @@ spec:
         objectList: PipelineList
         location: github.com/myorg/pipeline-operator/api/v1alpha1
 
-      workers: 5
-      resync: 10s
-
       operatorBox:
         reconciler:
           default: false   # disable GenericReconciler; constructor owns everything
+          workers: 5
+          resync: 10s
 
           constructor:
             location: github.com/myorg/pipeline-operator/reconciler@v2.0.0

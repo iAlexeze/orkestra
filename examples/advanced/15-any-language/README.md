@@ -76,12 +76,12 @@ Watch the operator logs – you should see it creating a Deployment, Service, an
 ## Step 6 – Verify resources
 
 ```bash
-kubectl get deployments,services,ingresses
+kubectl get deployments,services,ingresses -n default
 ```
 
 - Deployment name: `my-webapp-deploy`
 - Service name: `my-webapp-svc`
-- Ingress name: `my-webapp-ingress` (if you used `--ingress`)
+- Ingress name: `my-webapp-ingress`
 
 ## Step 7 – Stop the Python operator (Ctrl+C) and run the Go operator
 
@@ -107,7 +107,7 @@ All three produce the same behaviour because they all create the same Katalog st
 ```bash
 kubectl delete -f cr.yaml
 kubectl delete -f crd.yaml
-# Stop the operator with Ctrl+C
+# Stop the runtime with Ctrl+C
 ```
 
 ## Why this matters
@@ -115,4 +115,4 @@ kubectl delete -f crd.yaml
 - **No lock‑in** – Write your operator specification in any language you prefer.
 - **Perfect for CI/CD** – Generate the Katalog dynamically based on environment variables or external APIs.
 - **Learn by analogy** – Use the script that matches your team’s primary language.
-- **Seamless switching** – Orkestra doesn't care which language generated the Katalog; the operator works identically.
+- **Seamless switching** – Orkestra doesn't care which language generated the Katalog; the runtime works identically.

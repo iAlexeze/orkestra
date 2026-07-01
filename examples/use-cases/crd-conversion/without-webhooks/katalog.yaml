@@ -12,8 +12,6 @@ spec:
   crds:
     cronjob:
       crdFile: crd-single.yaml
-      workers: 5
-      resync: 45s
 
       # normalize runs before mutation, validation, and template rendering.
       # Produces an in-memory canonical spec — raw CR in etcd is unchanged.
@@ -63,6 +61,9 @@ spec:
             action: deny
 
       operatorBox:
+        reconciler:
+          workers: 5
+          resync: 45s
         status:
           fields:
             - path: phase

@@ -18,7 +18,12 @@ spec:
       #   - default
 
       operatorBox:
-        default: true
+        reconciler:
+          # default: true         # Omit to use defaults
+          # workers: 4
+          # resync: 30s
+          # queue:
+          #   maxDepth: 100
 
         # ── On Create ────────────────────────────────────────────────────
         onCreate:

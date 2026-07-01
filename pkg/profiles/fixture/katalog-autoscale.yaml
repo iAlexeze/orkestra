@@ -13,20 +13,18 @@ metadata:
 spec:
   crds:
     profile-probe-burst:
-      crdFile: ./crd.yaml
+      crdFile: crds/probes/crd-burst.yaml
       crFiles:
-        - ./cr.yaml
-      workers: 2
-      resync: 30s
-      queue:
-        maxDepth: 50
-
-      autoscale:
-        profile: burst
-
+        - crds/probes/cr-burst.yaml
       operatorBox:
-        default: true
-
+        autoscale:
+          profile: burst
+        reconciler:
+          default: true
+          workers: 2
+          resync: 30s
+          queue:
+            maxDepth: 50
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}-burst"
@@ -49,20 +47,17 @@ spec:
                   equals: "true"
 
     profile-probe-steady:
-      crdFile: ./crd.yaml
+      crdFile: crds/probes/crd-steady.yaml
       crFiles:
-        - ./cr.yaml
-      workers: 2
-      resync: 30s
-      queue:
-        maxDepth: 50
-
-      autoscale:
-        profile: steady
-
+        - crds/probes/cr-steady.yaml
       operatorBox:
-        default: true
-
+        autoscale:
+          profile: steady
+        reconciler:
+          workers: 2
+          resync: 30s
+          queue:
+            maxDepth: 50
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}-steady"
@@ -85,20 +80,19 @@ spec:
                   equals: "true"
 
     profile-probe-batch:
-      crdFile: ./crd.yaml
+      crdFile: crds/probes/crd-batch.yaml
       crFiles:
-        - ./cr.yaml
-      workers: 2
-      resync: 30s
-      queue:
-        maxDepth: 50
-
-      autoscale:
-        profile: batch
+        - crds/probes/cr-batch.yaml
 
       operatorBox:
-        default: true
-
+        autoscale:
+          profile: batch
+        reconciler:
+          default: true
+          workers: 2
+          resync: 30s
+          queue:
+            maxDepth: 50
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}-batch"
@@ -121,19 +115,18 @@ spec:
                   equals: "true"
 
     profile-probe-latency-sensitive:
-      crdFile: ./crd.yaml
+      crdFile: crds/probes/crd-latency-sensitive.yaml
       crFiles:
-        - ./cr.yaml
-      workers: 4
-      resync: 30s
-      queue:
-        maxDepth: 100
-
-      autoscale:
-        profile: latency-sensitive
-
+        - crds/probes/cr-latency-sensitive.yaml
       operatorBox:
-        default: true
+        autoscale:
+          profile: latency-sensitive
+        reconciler:
+          default: true
+          workers: 4
+          resync: 30s
+          queue:
+            maxDepth: 100
 
         onCreate:
           deployments:
@@ -157,20 +150,18 @@ spec:
                   equals: "true"
 
     profile-probe-cost-optimized:
-      crdFile: ./crd.yaml
+      crdFile: crds/probes/crd-optimized.yaml
       crFiles:
-        - ./cr.yaml
-      workers: 4
-      resync: 30s
-      queue:
-        maxDepth: 100
-
-      autoscale:
-        profile: cost-optimized
-
+        - crds/probes/cr-optimized.yaml
       operatorBox:
-        default: true
-
+        autoscale:
+          profile: cost-optimized
+        reconciler:
+          default: true
+          workers: 4
+          resync: 30s
+          queue:
+            maxDepth: 100
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}-cost"

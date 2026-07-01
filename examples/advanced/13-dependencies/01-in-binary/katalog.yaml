@@ -20,10 +20,11 @@ spec:
     # is ready so App can read it.
     database:
       crdFile: ./crd.yaml
-      workers: 2
-      resync: 30s
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
         status:
           fields:
             - path: phase
@@ -59,13 +60,14 @@ spec:
     #       condition: healthy
     app:
       crdFile: ./crd.yaml
-      workers: 3
-      resync: 30s
 
       dependsOn:
         database: healthy
 
       operatorBox:
+        reconciler:
+          workers: 3
+          resync: 30s
         cross:
           - crd: database
             selector:
