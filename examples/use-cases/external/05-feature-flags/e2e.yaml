@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -30,11 +31,18 @@ spec:
     - name: Status v2Enabled is true and activeReplicas is 5
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get webapp my-app -o jsonpath='{.status.v2Enabled}'
-          outputContains: "true"
-        - run: kubectl get deploy my-app -o jsonpath='{.spec.replicas}'
-          outputContains: "5"
+      kubectl:
+        get:
+          - kind: WebApp
+            name: my-app
+            namespace: default
+            field: .status.v2Enabled
+            equals: "true"
+          - kind: Deployment
+            name: my-app
+            namespace: default
+            field: .spec.replicas
+            equals: "5"
 
     - name: Cleanup verified
       after: cr-deleted

@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -30,9 +31,13 @@ spec:
     - name: Status records verified image
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get webapp my-app -o jsonpath='{.status.signedImage}'
-          outputContains: nginx:1.25
+      kubectl:
+        get:
+          - kind: WebApp
+            name: my-app
+            namespace: default
+            field: .status.signedImage
+            outputContains: nginx:1.25
 
     - name: Cleanup verified
       after: cr-deleted

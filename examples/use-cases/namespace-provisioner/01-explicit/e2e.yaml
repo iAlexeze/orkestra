@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -86,9 +87,13 @@ spec:
     - name: ResourceQuota has correct pod limit
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get resourcequota alpha-quota -n team-alpha -o jsonpath='{.spec.hard.pods}'
-          outputContains: "20"
+      kubectl:
+        get:
+          - kind: ResourceQuota
+            name: alpha-quota
+            namespace: team-alpha
+            field: .spec.hard.pods
+            equals: "20"
 
     - name: NamespaceClaim removed
       after: cr-deleted

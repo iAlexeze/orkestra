@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -61,16 +62,24 @@ spec:
     - name: us-east-1 has 3 replicas
       after: cr-applied
       timeout: 90s
-      commands:
-        - run: kubectl get deployment my-multi-region-us-east-1 -o jsonpath='{.spec.replicas}'
-          outputContains: "3"
+      kubectl:
+        get:
+          - kind: Deployment
+            name: my-multi-region-us-east-1
+            namespace: default
+            field: .spec.replicas
+            equals: "3"
 
     - name: eu-west-1 has 1 replica
       after: cr-applied
       timeout: 90s
-      commands:
-        - run: kubectl get deployment my-multi-region-eu-west-1 -o jsonpath='{.spec.replicas}'
-          outputContains: "1"
+      kubectl:
+        get:
+          - kind: Deployment
+            name: my-multi-region-eu-west-1
+            namespace: default
+            field: .spec.replicas
+            equals: "1"
 
     - name: Cleanup verified
       after: cr-deleted

@@ -1,4 +1,4 @@
-# Kubernetes, operators, and why Orkestra
+# Kubernetes, operators, and Orkestra
 
 For engineers who are new to Kubernetes or want a clear mental model before writing their first Katalog. If you already know what CRDs, operators, and reconciliation are, go straight to [Learning to Orkestrate](./index.md).
 
@@ -43,26 +43,27 @@ Each kind is stored in Kubernetes, validated against a schema, and watched by a 
 
 `CRD` stands for Custom Resource Definition. It is how you add your own resource types to Kubernetes.
 
-Suppose you are building a platform that manages databases. You want your users to write:
+Suppose you are building a platform that manages blockchain nodes. You want your users to write:
 
 ```yaml
 apiVersion: platform.myorg.io/v1
-kind: Database
+kind: BlockchainApp
 metadata:
-  name: production-db
+  name: my-node
 spec:
-  engine: postgres
-  version: "14"
-  storage: 100Gi
+  network: ethereum
+  version: "1.13"
+  storage: 500Gi
 ```
 
-For this to work, Kubernetes needs to know what a `Database` is — what fields it accepts, how it is stored, how it should be validated. That is what a CRD does:
+For this to work, Kubernetes needs to know what a `BlockchainApp` is — what fields it accepts, how it is stored, how it should be validated. That is what a CRD does:
 
-> "There is a new kind called `Database`. Here is its schema. Store it, validate it, serve it over the API like any other resource."
+!!! tip "What a CRD tells Kubernetes"
+    "There is a new kind called `BlockchainApp`. Here is its schema. Store it, validate it, serve it over the API like any other resource."
 
-After you apply the CRD, `kubectl get databases` works. The object is stored. Kubernetes treats it as a first-class resource.
+After you apply the CRD, `kubectl get blockchainapps` works. The object is stored. Kubernetes treats it as a first-class resource.
 
-What Kubernetes does **not** do is act on it. It stores the object and waits. Something else has to watch for `Database` objects and do the actual work. That is an **operator**.
+What Kubernetes does **not** do is act on it. It stores the object and waits. Something else has to watch for `BlockchainApp` objects and do the actual work. That is an **operator**.
 
 ---
 
@@ -75,11 +76,11 @@ An operator is a program that:
 3. Creates or modifies Kubernetes resources to make that state real
 4. Continuously checks that the desired state is maintained
 
-For the `Database` example, the operator would create a `StatefulSet`, a `Service`, and a `PersistentVolumeClaim` when a `Database` appears — update them when the spec changes — clean them up when the object is deleted.
+For the `BlockchainApp` example, the operator would create a `StatefulSet`, a `Service`, and a `PersistentVolumeClaim` when a `BlockchainApp` appears — update them when the spec changes — clean them up when the object is deleted.
 
 The loop it runs — watch, compare, act — is the **reconcile loop**.
 
-```
+```text
 Desired state (what the CR says)
         │
         ▼
@@ -99,9 +100,7 @@ This loop is level-triggered, not edge-triggered. The operator does not track wh
 
 ---
 
-## Why operators are hard to write
-
-The pattern is simple. The implementation is not.
+## What writing an operator requires
 
 To write an operator from scratch, you need to:
 
@@ -118,46 +117,67 @@ To write an operator from scratch, you need to:
 - Write a Dockerfile, build a binary, push an image
 - Write a Helm chart or deployment manifests
 
-All of this before you write a single line of business logic. The community answer to this is controller-runtime (the library) or Kubebuilder / Operator SDK (the scaffolding tools). They reduce the boilerplate — you still write Go, manage a project layout, maintain generated code, and own the reconcile loop.
+All of this is infrastructure. Your business logic lives in exactly one place — the `Reconcile()` function. The community answer to this is controller-runtime (the library) or Kubebuilder / Operator SDK (the scaffolding tools). They reduce the scaffolding — you still write Go, manage a project layout, maintain generated code, and own the reconcile loop.
 
 ---
 
 ## Where Orkestra fits
 
-The list above is the cost of writing an operator with controller-runtime or Kubebuilder. Those are the standard tools — you write Go, own the reconcile function, manage generated code and a build pipeline.
+The above is what writing one operator requires. The next CRD you want to manage means going through the same list again.
 
-Orkestra is a runtime that implements the reconcile loop for you. You write a Katalog — a YAML declaration of what CRD your operator manages, what resources it creates per CR, and what status transitions look like. Orkestra reads the Katalog and runs a full operator from it — informers, workqueue, leader election, metrics, events.
+Orkestra makes a separation: the scaffolding is infrastructure, and `Reconcile()` is business logic. Orkestra handles the infrastructure. You declare the behaviour of your CRD in a Katalog. When you need a second operator, you add a new CRD entry to the same Katalog and declare its behaviour there.
+
+For the declaration, Orkestra gives you five options:
+
+| Option | What you write |
+|--------|---------------|
+| Declarative | Nothing — pure YAML, no binary |
+| Hybrid | The 10% that templates cannot express |
+| Hooks | Go functions at specific points in the reconcile cycle |
+| Constructor | Your own `Reconcile` method; Orkestra's runtime as the host |
+| Constructor + Orkestra resources | Your reconciler with Orkestra's resource helpers instead of raw client calls |
 
 ```yaml
 # katalog.yaml
 apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
-  name: database-operator
+  name: blockchain-operator
 spec:
   crds:
-    database:
-      group: platform.myorg.io
-      version: v1alpha1
-      # ...
-  operatorBox:
-    reconciler:
-      statefulSet:
-        template: ./templates/statefulset.yaml
-      service:
-        template: ./templates/service.yaml
-      pvc:
-        template: ./templates/pvc.yaml
+    blockchainapp:
+      crdFile: blockchainapp-crd.yaml
+      operatorBox:
+        reconciler:
+          workers: 3
+          resync: 30s
+        status:
+          fields:
+            - path: phase
+              value: "Ready"
+            - path: endpoint
+              value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}"
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: "{{ .spec.port }}"
+              reconcile: true
+          services:
+            - name: "{{ .metadata.name }}-svc"
+              port: "5432"
+              targetPort: "{{ .spec.port }}"
+              reconcile: true
 ```
 
-`ork run` starts the operator locally against a real cluster. No image build, no Helm chart.
-
-The file count is lower because the structure is declared rather than implemented — a Katalog, a CRD, and one or two templates covers most operators. When the pattern cannot be expressed declaratively, Orkestra lets you attach Go logic at specific points in the reconcile pipeline without rewriting the whole controller.
+`ork run` starts the operator locally against a real cluster.
 
 ---
 
 ## Next
 
+- [Kubernetes Basics](https://kubernetes.io/docs/tutorials/kubernetes-basics/) — hands-on introduction to Kubernetes
 - [Learning to Orkestrate](./index.md) — the map of all runnable examples
 - [Writing your first Katalog](../03-writing-your-first-katalog.md) — go from nothing to a running operator in one file
 - [Migration Guide](./07-migration.md) — if you have an existing controller-runtime operator

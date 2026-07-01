@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -37,9 +38,13 @@ spec:
     - name: Status image has registry and tag added
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get app app-bare -o jsonpath='{.status.image}'
-          outputContains: registry.internal/nginx
+      kubectl:
+        get:
+          - kind: App
+            name: app-bare
+            namespace: default
+            field: .status.image
+            outputContains: registry.internal/nginx
 
     - name: Cleanup verified
       after: cr-deleted

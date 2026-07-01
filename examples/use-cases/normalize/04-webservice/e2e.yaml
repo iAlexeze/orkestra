@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -48,9 +49,13 @@ spec:
     - name: Status internalName is normalized (environment trimmed and lowercased)
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get webservice my-app -o jsonpath='{.status.internalName}'
-          outputContains: my-app-production
+      kubectl:
+        get:
+          - kind: WebService
+            name: my-app
+            namespace: default
+            field: .status.internalName
+            outputContains: my-app-production
 
     - name: Cleanup verified
       after: cr-deleted

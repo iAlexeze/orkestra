@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -43,16 +44,24 @@ spec:
     - name: Restricted profile drops all capabilities
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get deployment my-service-restricted -o jsonpath='{.spec.template.spec.containers[0].securityContext.capabilities.drop[0]}'
-          outputContains: ALL
+      kubectl:
+        get:
+          - kind: Deployment
+            name: my-service-restricted
+            namespace: default
+            field: .spec.template.spec.containers[0].securityContext.capabilities.drop[0]
+            equals: ALL
 
     - name: Hardened profile sets read-only root filesystem
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get deployment my-service-hardened -o jsonpath='{.spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem}'
-          outputContains: "true"
+      kubectl:
+        get:
+          - kind: Deployment
+            name: my-service-hardened
+            namespace: default
+            field: .spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+            equals: "true"
 
     - name: Cleanup verified
       after: cr-deleted

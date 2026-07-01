@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -34,34 +35,56 @@ spec:
         - kind: Deployment
           name: my-service
           namespace: default
-      commands:
-        - run: kubectl get deployment my-service -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}'
-          outputContains: 200m
-        - run: kubectl get deployment my-service -o jsonpath='{.spec.template.spec.containers[0].resources.limits.memory}'
-          outputContains: 512Mi
+      kubectl:
+        get:
+          - kind: Deployment
+            name: my-service
+            namespace: default
+            field: .spec.template.spec.containers[0].resources.requests.cpu
+            equals: 200m
+          - kind: Deployment
+            name: my-service
+            namespace: default
+            field: .spec.template.spec.containers[0].resources.limits.memory
+            equals: 512Mi
 
     - name: Deployment has probe profile applied
       after: cr-applied
       timeout: 90s
-      commands:
-        - run: kubectl get deployment my-service -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.initialDelaySeconds}'
-          outputContains: "10"
-        - run: kubectl get deployment my-service -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.periodSeconds}'
-          outputContains: "15"
+      kubectl:
+        get:
+          - kind: Deployment
+            name: my-service
+            namespace: default
+            field: .spec.template.spec.containers[0].livenessProbe.initialDelaySeconds
+            equals: "10"
+          - kind: Deployment
+            name: my-service
+            namespace: default
+            field: .spec.template.spec.containers[0].livenessProbe.periodSeconds
+            equals: "15"
 
     - name: Deployment has container security profile applied
       after: cr-applied
       timeout: 90s
-      commands:
-        - run: kubectl get deployment my-service -o jsonpath='{.spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation}'
-          outputContains: "false"
+      kubectl:
+        get:
+          - kind: Deployment
+            name: my-service
+            namespace: default
+            field: .spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+            equals: "false"
 
     - name: Deployment has pod security profile applied
       after: cr-applied
       timeout: 90s
-      commands:
-        - run: kubectl get deployment my-service -o jsonpath='{.spec.template.spec.securityContext.runAsUser}'
-          outputContains: "1000"
+      kubectl:
+        get:
+          - kind: Deployment
+            name: my-service
+            namespace: default
+            field: .spec.template.spec.securityContext.runAsUser
+            equals: "1000"
 
     - name: Three NetworkPolicies created
       after: cr-applied

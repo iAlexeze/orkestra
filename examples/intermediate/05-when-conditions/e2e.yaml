@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -29,9 +30,13 @@ spec:
     - name: Free tier — status tier is free
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get platform my-platform -o jsonpath='{.status.tier}'
-          outputContains: free
+      kubectl:
+        get:
+          - kind: Platform
+            name: my-platform
+            namespace: default
+            field: .status.tier
+            equals: free
 
     - name: Cleanup verified
       after: cr-deleted

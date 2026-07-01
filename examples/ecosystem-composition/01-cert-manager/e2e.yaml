@@ -1,4 +1,4 @@
-# Schema reference: https://orkestra.sh/docs/reference/schema/e2e/
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:

@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -45,9 +46,13 @@ spec:
     - name: Fast profile has short probe period
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get deployment my-service-fast -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.periodSeconds}'
-          outputContains: "10"
+      kubectl:
+        get:
+          - kind: Deployment
+            name: my-service-fast
+            namespace: default
+            field: .spec.template.spec.containers[0].livenessProbe.periodSeconds
+            equals: "10"
 
     - name: Cleanup verified
       after: cr-deleted
