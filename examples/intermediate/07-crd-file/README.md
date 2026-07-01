@@ -20,11 +20,6 @@ CRD YAML:
 spec:
   crds:
     app:
-      apiTypes:
-        group: crdfile.orkestra.io
-        version: v1alpha1
-        kind: App
-        plural: apps
       crdFile: ./crd-app.yaml
 ```
 
@@ -62,7 +57,7 @@ Expected:
 ### 2. Start the runtime
 
 ```bash
-ork run --file katalog.yaml
+ork run
 ```
 
 Watch the startup logs. You will see two lines like:
@@ -117,7 +112,7 @@ Without this feature, the typical flow is:
 ```bash
 kubectl apply -f crd-app.yaml
 kubectl apply -f crd-database.yaml
-ork run --file katalog.yaml
+ork run -f katalog.yaml
 kubectl apply -f cr-app.yaml
 ```
 

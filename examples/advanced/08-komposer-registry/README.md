@@ -14,7 +14,7 @@ multi-source composition, production Komposer structure, disabling CRDs.
 ## The composition
 
 ```
-OCI:  ghcr.io/orkspace/postgres@v1.0.0
+OCI:  ghcr.io/orkspace/orkestra-registry/patterns/katalogs/postgres:v1.0.0
         → postgres CRD with production-tested operator behavior
 
 File: ./website-katalog.yaml
@@ -34,21 +34,27 @@ Three sources, two overrides, one Orkestra instance.
 
 ## Understanding OCI patterns
 
-An OCI pattern is a versioned artifact in a container registry. It contains
-exactly five files:
+An OCI pattern is a versioned artifact in a container registry. It can contain the following files:
 
-```
+```text
 postgres/v1.0.0/
   crd.yaml        the PostgreSQL CRD definition
-  katalog.yaml    operator behavior (what Orkestra reads)
+  katalog.yaml    operator behavior (what Orkestra reads)   → Required
   komposer.yaml   example import reference
   cr.yaml         example PostgreSQL CR
+  simulate.yaml   in-memory test
+  e2e.yaml        end-to-end test
   README.md       pattern documentation
 ```
+
+> [!NOTE]
+> Only `katalog.yaml` is required.
 
 The `v1.0.0` pin in the URL is immutable — once published, that version's
 content cannot change. This is the guarantee that makes OCI distribution safe
 for production: you know exactly what you pulled.
+
+> To learn more about OCI patterns including publishing, see: `ork init --pack registry-guide`
 
 ---
 
@@ -88,7 +94,7 @@ postgres:v1.0.0
 ork inspect postgres:v1.0.0 --view katalog.yaml
 ```
 
-The inspection stage is useful in understanding what is to be pulled from a public registry. You can view the tests that ran and replicate it yourself:
+The inspection stage is useful in understanding what is to be pulled from a public registry. You can view the tests that ran and replicate it in your environment:
 
 #### Optional
 ```bash
