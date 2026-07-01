@@ -18,7 +18,7 @@
     <a href="https://orkestra.sh/docs/getting-started">Quick Start</a> ·
     <a href="https://orkestra.sh">Docs</a> ·
     <a href="https://github.com/orkspace/orkestra/discussions">Discussions</a> ·
-    <a href="https://orkspace-group.slack.com/archives/C0B5RT8JUEA">Early Access Slack</a>
+    <a href="https://join.slack.com/t/orkspace-group/shared_invite/zt-42i4idb0h-WYUF6JryDFMkky95ZJWHBg">Early Access Slack</a>
   </p>
 </div>
 
