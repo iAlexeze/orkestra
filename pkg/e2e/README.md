@@ -31,7 +31,7 @@ ork e2e init --suite             # write a suite aggregator from discovered leaf
 
 **1. Type — `pkg/types/e2e.go`**
 
-Add a struct for the new subcommand:
+Add a struct for the new subcommand. Assertion fields are the same on every subcommand — copy them verbatim:
 
 ```go
 type E2EKubectlMyCmd struct {
@@ -40,6 +40,8 @@ type E2EKubectlMyCmd struct {
     NotEquals         string `yaml:"notEquals,omitempty"`
     OutputContains    string `yaml:"outputContains,omitempty"`
     OutputNotContains string `yaml:"outputNotContains,omitempty"`
+    GreaterThan       string `yaml:"greaterThan,omitempty"`
+    LessThan          string `yaml:"lessThan,omitempty"`
 }
 ```
 
@@ -51,13 +53,25 @@ MyCmd []E2EKubectlMyCmd `yaml:"my-cmd,omitempty"`
 
 **2. Runner — `pkg/e2e/verify.go`**
 
-Add `checkKubectlMyCmd(ctx, e, workDir)` and call it from `checkKubectl`:
+Add `checkKubectlMyCmd(ctx, e, workDir)` and call it from `checkKubectl`. Use the `assertions` struct when calling `applyAssertions` — do not pass positional strings:
 
 ```go
 for i, e := range k.MyCmd {
     if err := checkKubectlMyCmd(ctx, e, workDir); err != nil {
         return fmt.Errorf("kubectl.my-cmd[%d]: %w", i, err)
     }
+}
+
+// inside checkKubectlMyCmd:
+if err := applyAssertions(out, assertions{
+    Equals:            e.Equals,
+    NotEquals:         e.NotEquals,
+    OutputContains:    e.OutputContains,
+    OutputNotContains: e.OutputNotContains,
+    GreaterThan:       e.GreaterThan,
+    LessThan:          e.LessThan,
+}); err != nil {
+    return err
 }
 ```
 

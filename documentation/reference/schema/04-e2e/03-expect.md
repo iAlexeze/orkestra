@@ -93,6 +93,8 @@ commands:
 | `outputNotContains` | no | The combined stdout+stderr must not contain this substring. |
 | `equals` | no | Output (trimmed) must exactly match this string. |
 | `notEquals` | no | Output must not exactly match this string. |
+| `greaterThan` | no | Output (trimmed, parsed as a number) must be greater than this value. |
+| `lessThan` | no | Output (trimmed, parsed as a number) must be less than this value. |
 
 ---
 

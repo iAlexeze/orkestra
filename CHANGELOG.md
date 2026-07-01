@@ -1,3 +1,7 @@
+## Unreleased
+
+---
+
 ## v0.7.9 — Reconciler configuration, user-defined profiles, and kubectl DSL for e2e
 
 ### Breaking: reconciler config moves inside `operatorBox`
@@ -108,7 +112,7 @@ A `kubectl:` block can now sit alongside `resources:` and `commands:` in any `ex
 | `cp` | `kubectl cp <ns>/<pod>:<src>` — copies to temp file, asserts content, cleans up |
 | `top` | `kubectl top <pod\|node>` — requires metrics-server; installed automatically via Helm |
 
-All subcommands share four assertion fields: `equals`, `notEquals`, `outputContains`, `outputNotContains`. `jq` and `yq` extraction is supported where applicable. `apply` and `patch` run before read subcommands each iteration so mutations take effect before assertions check them.
+All subcommands share six assertion fields: `equals`, `notEquals`, `outputContains`, `outputNotContains`, `greaterThan`, `lessThan`. `greaterThan` and `lessThan` parse the output as `float64` — the check fails if the output is not numeric. `jq` and `yq` extraction is supported where applicable. `apply` and `patch` run before read subcommands each iteration so mutations take effect before assertions check them.
 
 `commands[].run` now also supports `outputNotContains`.
 

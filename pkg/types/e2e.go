@@ -391,6 +391,8 @@ type E2ECommand struct {
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the combined stdout+stderr does NOT contain this substring.
 	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string `yaml:"greaterThan,omitempty"`
+	LessThan          string `yaml:"lessThan,omitempty"`
 }
 
 // E2EKubectl is the structured kubectl DSL block.
@@ -460,6 +462,8 @@ type E2EKubectlGet struct {
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
 	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string `yaml:"greaterThan,omitempty"`
+	LessThan          string `yaml:"lessThan,omitempty"`
 }
 
 // E2EKubectlLogs asserts container log output.
@@ -486,6 +490,8 @@ type E2EKubectlLogs struct {
 	// OutputNotContains asserts the output does not contain this substring.
 	// Useful for asserting no FATAL or ERROR lines were logged.
 	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string `yaml:"greaterThan,omitempty"`
+	LessThan          string `yaml:"lessThan,omitempty"`
 }
 
 // E2EKubectlDescribe asserts kubectl describe output.
@@ -507,6 +513,8 @@ type E2EKubectlDescribe struct {
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
 	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string `yaml:"greaterThan,omitempty"`
+	LessThan          string `yaml:"lessThan,omitempty"`
 }
 
 // E2EKubectlExec runs a command inside a running container and asserts its output.
@@ -533,6 +541,8 @@ type E2EKubectlExec struct {
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
 	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string `yaml:"greaterThan,omitempty"`
+	LessThan          string `yaml:"lessThan,omitempty"`
 }
 
 // E2EKubectlApply applies one or more manifests during an expect checkpoint.
@@ -582,6 +592,8 @@ type E2EKubectlEvents struct {
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
 	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string `yaml:"greaterThan,omitempty"`
+	LessThan          string `yaml:"lessThan,omitempty"`
 }
 
 // E2EKubectlAuth checks permissions via kubectl auth can-i and asserts the result.
@@ -604,6 +616,8 @@ type E2EKubectlAuth struct {
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
 	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string `yaml:"greaterThan,omitempty"`
+	LessThan          string `yaml:"lessThan,omitempty"`
 }
 
 // E2EKubectlCp copies a file out of a running container and asserts its content.
@@ -632,6 +646,8 @@ type E2EKubectlCp struct {
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the file content does not contain this substring.
 	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string `yaml:"greaterThan,omitempty"`
+	LessThan          string `yaml:"lessThan,omitempty"`
 }
 
 // E2EKubectlTop queries live CPU and memory usage via kubectl top and asserts
@@ -656,6 +672,8 @@ type E2EKubectlTop struct {
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
 	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string `yaml:"greaterThan,omitempty"`
+	LessThan          string `yaml:"lessThan,omitempty"`
 }
 
 // E2EKubectlPortForward opens a port-forward to a service or pod, makes an HTTP
@@ -690,4 +708,6 @@ type E2EKubectlPortForward struct {
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
 	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string `yaml:"greaterThan,omitempty"`
+	LessThan          string `yaml:"lessThan,omitempty"`
 }

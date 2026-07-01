@@ -33,7 +33,7 @@ All subcommands in a `kubectl:` block are checked in the same polling loop as `r
 
 ## Assertion fields
 
-Every subcommand supports the same four assertion fields:
+Every subcommand supports the same assertion fields:
 
 | Field | Description |
 |-------|-------------|
@@ -41,8 +41,10 @@ Every subcommand supports the same four assertion fields:
 | `notEquals` | Output must not exactly match this string |
 | `outputContains` | Output must contain this substring |
 | `outputNotContains` | Output must not contain this substring |
+| `greaterThan` | Output (trimmed, parsed as a number) must be greater than this value |
+| `lessThan` | Output (trimmed, parsed as a number) must be less than this value |
 
-Multiple assertions on the same entry all apply. Empty fields are ignored.
+Multiple assertions on the same entry all apply. Empty fields are ignored. `greaterThan` and `lessThan` parse the output as `float64` — the check fails if the output is not numeric when either is set.
 
 ---
 
