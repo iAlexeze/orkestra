@@ -56,12 +56,12 @@ type Service struct {
 }
 
 type Ingress struct {
-	Name         string `yaml:"name"`
-	Host         string `yaml:"host"`
-	ServiceName  string `yaml:"serviceName"`
-	ServicePort  int    `yaml:"servicePort"`
-	ClassName string `yaml:"className"`
-	Reconcile    bool   `yaml:"reconcile"`
+	Name        string `yaml:"name"`
+	Host        string `yaml:"host"`
+	ServiceName string `yaml:"serviceName"`
+	ServicePort int    `yaml:"servicePort"`
+	ClassName   string `yaml:"className"`
+	Reconcile   bool   `yaml:"reconcile"`
 }
 
 func generateKatalog(appName, image string, port, replicas int, ingressHost string) *Katalog {
@@ -104,12 +104,12 @@ func generateKatalog(appName, image string, port, replicas int, ingressHost stri
 	if ingressHost != "" {
 		crd.OperatorBox.OnCreate.Ingresses = []Ingress{
 			{
-				Name:         "{{ .metadata.name }}-ingress",
-				Host:         ingressHost,
-				ServiceName:  "{{ .metadata.name }}-svc",
-				ServicePort:  port,
-				ClassName: "nginx",
-				Reconcile:    true,
+				Name:        "{{ .metadata.name }}-ingress",
+				Host:        ingressHost,
+				ServiceName: "{{ .metadata.name }}-svc",
+				ServicePort: port,
+				ClassName:   "nginx",
+				Reconcile:   true,
 			},
 		}
 	}

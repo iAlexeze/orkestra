@@ -82,7 +82,7 @@ func RunPods(
 			return fmt.Errorf("pods[%d]: %w", i, err)
 		}
 
-		spec := orkpods.Resolve(resolved, resolver.OwnerName())
+		spec := orkpods.Resolve(resolved, resolver.OwnerName(), resolver.Profiles())
 
 		if update {
 			if err := orkpods.Update(ctx, kube, owner, spec); err != nil {

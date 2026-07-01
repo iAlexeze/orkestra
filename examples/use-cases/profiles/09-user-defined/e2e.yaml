@@ -3,9 +3,11 @@ kind: E2E
 metadata:
   name: profiles-user-defined-e2e
   description: >
-    User-defined profiles (networkPolicies + hpa) — one CR produces one Deployment,
-    three NetworkPolicies, and two HPAs all using team-owned profile names.
-    Verifies all six resources are created and removed on deletion.
+    User-defined profiles (networkPolicies, hpa, resources, probes,
+    containerSecurity, podSecurity) — one CR produces one Deployment,
+    three NetworkPolicies, and two HPAs. The Deployment container uses
+    team-owned resource, probe, and security profiles.
+    Verifies all six Kubernetes resources are created and removed on deletion.
 
 spec:
   katalog: ./katalog.yaml
@@ -25,13 +27,41 @@ spec:
         - run: kubectl get services.demo.orkestra.io my-service
           exitCode: 0
 
-    - name: Deployment created
+    - name: Deployment created with resource profile applied
       after: cr-applied
       timeout: 90s
       resources:
         - kind: Deployment
           name: my-service
           namespace: default
+      commands:
+        - run: kubectl get deployment my-service -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}'
+          outputContains: 200m
+        - run: kubectl get deployment my-service -o jsonpath='{.spec.template.spec.containers[0].resources.limits.memory}'
+          outputContains: 512Mi
+
+    - name: Deployment has probe profile applied
+      after: cr-applied
+      timeout: 90s
+      commands:
+        - run: kubectl get deployment my-service -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.initialDelaySeconds}'
+          outputContains: "10"
+        - run: kubectl get deployment my-service -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.periodSeconds}'
+          outputContains: "15"
+
+    - name: Deployment has container security profile applied
+      after: cr-applied
+      timeout: 90s
+      commands:
+        - run: kubectl get deployment my-service -o jsonpath='{.spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation}'
+          outputContains: "false"
+
+    - name: Deployment has pod security profile applied
+      after: cr-applied
+      timeout: 90s
+      commands:
+        - run: kubectl get deployment my-service -o jsonpath='{.spec.template.spec.securityContext.runAsUser}'
+          outputContains: "1000"
 
     - name: Three NetworkPolicies created
       after: cr-applied

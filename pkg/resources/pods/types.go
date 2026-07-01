@@ -61,6 +61,9 @@ type ResolvedPodSpec struct {
 	// PodSecurity — pod-level security settings.
 	PodSecurity *orktypes.PodSecurityContext
 
+	// Profiles — user-defined profile registry for runtime profile resolution.
+	Profiles orktypes.ProfileRegistry
+
 	// Volumes / VolumeMounts — pod volumes and container mounts.
 	Volumes      []orktypes.VolumeSource
 	VolumeMounts []orktypes.VolumeMount

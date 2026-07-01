@@ -23,8 +23,19 @@ const (
 )
 
 // ApplyContainerSecurityProfile expands a named profile into a
-// ContainerSecurityContext. Returns an error for unknown profile names.
-func ApplyContainerSecurityProfile(name string) (*orktypes.ContainerSecurityContext, error) {
+// ContainerSecurityContext. User-defined profiles in reg are checked first;
+// falls back to built-ins. Returns an error for unknown profile names.
+func ApplyContainerSecurityProfile(name string, reg orktypes.ProfileRegistry) (*orktypes.ContainerSecurityContext, error) {
+	if def, found := reg.LookupContainerSecurity(name); found {
+		return &orktypes.ContainerSecurityContext{
+			AllowPrivilegeEscalation: def.AllowPrivilegeEscalation,
+			ReadOnlyRootFilesystem:   def.ReadOnlyRootFilesystem,
+			RunAsNonRoot:             def.RunAsNonRoot,
+			RunAsUser:                def.RunAsUser,
+			RunAsGroup:               def.RunAsGroup,
+			Capabilities:             def.Capabilities,
+		}, nil
+	}
 	switch SecurityProfile(strings.ToLower(name)) {
 	case SecurityBaseline:
 		return &orktypes.ContainerSecurityContext{
@@ -50,8 +61,17 @@ func ApplyContainerSecurityProfile(name string) (*orktypes.ContainerSecurityCont
 }
 
 // ApplyPodSecurityProfile expands a named profile into a PodSecurityContext.
+// User-defined profiles in reg are checked first; falls back to built-ins.
 // Returns an error for unknown profile names.
-func ApplyPodSecurityProfile(name string) (*orktypes.PodSecurityContext, error) {
+func ApplyPodSecurityProfile(name string, reg orktypes.ProfileRegistry) (*orktypes.PodSecurityContext, error) {
+	if def, found := reg.LookupPodSecurity(name); found {
+		return &orktypes.PodSecurityContext{
+			RunAsNonRoot: def.RunAsNonRoot,
+			RunAsUser:    def.RunAsUser,
+			RunAsGroup:   def.RunAsGroup,
+			FSGroup:      def.FSGroup,
+		}, nil
+	}
 	switch SecurityProfile(strings.ToLower(name)) {
 	case SecurityBaseline:
 		return &orktypes.PodSecurityContext{

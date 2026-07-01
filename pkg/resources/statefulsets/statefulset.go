@@ -170,10 +170,11 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string, reg orkty
 		Annotations:     make(map[string]string),
 		Env:             src.Env,
 		EnvFrom:         src.EnvFrom,
-		Resources:       common.ResolveResources(src.Resources),
+		Resources:       common.ResolveResources(src.Resources, reg),
 		Probes:          src.Probes,
-		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
-		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Profiles:        reg,
+		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext, reg),
+		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity, reg),
 		Volumes:         src.Volumes,
 		VolumeMounts:    src.VolumeMounts,
 		Sleep:           src.Sleep,
@@ -287,7 +288,7 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 		container.Resources = common.BuildResourceRequirements(spec.Resources)
 	}
 
-	common.ApplyProbes(&container, spec.Probes, spec.Port)
+	common.ApplyProbes(&container, spec.Probes, spec.Port, spec.Profiles)
 
 	for _, ev := range spec.Env {
 		kev := corev1.EnvVar{Name: ev.Name}

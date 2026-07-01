@@ -295,7 +295,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 // Resolve builds a ResolvedCronJobSpec from a CronJobTemplateSource.
 // All template expressions in src must already have been evaluated by
 // template.Resolver — Resolve only performs type conversion and defaults.
-func Resolve(src orktypes.CronJobTemplateSource, ownerName string) ResolvedCronJobSpec {
+func Resolve(src orktypes.CronJobTemplateSource, ownerName string, reg orktypes.ProfileRegistry) ResolvedCronJobSpec {
 	spec := ResolvedCronJobSpec{
 		Name:            src.Name,
 		Namespace:       src.Namespace,
@@ -304,9 +304,9 @@ func Resolve(src orktypes.CronJobTemplateSource, ownerName string) ResolvedCronJ
 		Command:         src.Command,
 		Args:            src.Args,
 		Labels:          make(map[string]string),
-		Resources:       common.ResolveResources(src.Resources),
-		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
-		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Resources:       common.ResolveResources(src.Resources, reg),
+		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext, reg),
+		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity, reg),
 		Sleep:           src.Sleep,
 	}
 

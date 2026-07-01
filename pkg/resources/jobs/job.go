@@ -145,7 +145,7 @@ func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 
 // Resolve builds a ResolvedJobSpec from a JobTemplateSource.
 // Template expressions must already be evaluated by template.Resolver before calling.
-func Resolve(src orktypes.JobTemplateSource, backoffLimit int, ownerName string) ResolvedJobSpec {
+func Resolve(src orktypes.JobTemplateSource, backoffLimit int, ownerName string, reg orktypes.ProfileRegistry) ResolvedJobSpec {
 	spec := ResolvedJobSpec{
 		Name:            src.Name,
 		Namespace:       src.Namespace,
@@ -154,9 +154,9 @@ func Resolve(src orktypes.JobTemplateSource, backoffLimit int, ownerName string)
 		Args:            src.Args,
 		BackoffLimit:    backoffLimit,
 		Labels:          make(map[string]string),
-		Resources:       common.ResolveResources(src.Resources),
-		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
-		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Resources:       common.ResolveResources(src.Resources, reg),
+		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext, reg),
+		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity, reg),
 		Volumes:         src.Volumes,
 		VolumeMounts:    src.VolumeMounts,
 		Sleep:           src.Sleep,

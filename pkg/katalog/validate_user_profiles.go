@@ -62,6 +62,26 @@ func (k *Katalog) validateUserProfiles() error {
 			names:     reconcilerDefNames(reg.Reconciler),
 			isBuiltin: profiles.IsValidReconcilerProfile,
 		},
+		{
+			class:     "resources",
+			names:     resourceDefNames(reg.Resources),
+			isBuiltin: profiles.IsValidResourceProfile,
+		},
+		{
+			class:     "probes",
+			names:     probeDefNames(reg.Probes),
+			isBuiltin: profiles.IsValidProbeProfile,
+		},
+		{
+			class:     "containerSecurity",
+			names:     containerSecurityDefNames(reg.ContainerSecurity),
+			isBuiltin: profiles.IsValidSecurityProfile,
+		},
+		{
+			class:     "podSecurity",
+			names:     podSecurityDefNames(reg.PodSecurity),
+			isBuiltin: profiles.IsValidSecurityProfile,
+		},
 	}
 
 	for _, c := range checks {
@@ -153,6 +173,34 @@ func ruDefNames(defs []orktypes.RollingUpdateProfileDef) []string {
 	return out
 }
 func reconcilerDefNames(defs []orktypes.ReconcilerProfileDef) []string {
+	out := make([]string, len(defs))
+	for i, d := range defs {
+		out[i] = d.Name
+	}
+	return out
+}
+func resourceDefNames(defs []orktypes.ResourceProfileDef) []string {
+	out := make([]string, len(defs))
+	for i, d := range defs {
+		out[i] = d.Name
+	}
+	return out
+}
+func probeDefNames(defs []orktypes.ProbeProfileDef) []string {
+	out := make([]string, len(defs))
+	for i, d := range defs {
+		out[i] = d.Name
+	}
+	return out
+}
+func containerSecurityDefNames(defs []orktypes.ContainerSecurityProfileDef) []string {
+	out := make([]string, len(defs))
+	for i, d := range defs {
+		out[i] = d.Name
+	}
+	return out
+}
+func podSecurityDefNames(defs []orktypes.PodSecurityProfileDef) []string {
 	out := make([]string, len(defs))
 	for i, d := range defs {
 		out[i] = d.Name

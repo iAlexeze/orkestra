@@ -70,6 +70,12 @@ spec:
 | PDB | `profiles.pdb` | minAvailable or maxUnavailable | `onCreate.pdb[].behavior.profile` |
 | Rolling Update | `profiles.rollingUpdate` | maxSurge, maxUnavailable | `onCreate.deployments[].rollingUpdate.profile` |
 | Reconciler | `profiles.reconciler` | workers, resync, queue.maxDepth | `operatorBox.reconciler.profile` |
+| Resources | `profiles.resources` | requests and limits per container | `containers[].resources.profile` |
+| Probes | `profiles.probes` | initialDelaySeconds, periodSeconds, failureThreshold, successThreshold, timeoutSeconds | `containers[].probes[].profile` |
+| Container Security | `profiles.containerSecurity` | allowPrivilegeEscalation, readOnlyRootFilesystem, runAsNonRoot, capabilities | `containers[].securityContext.profile` |
+| Pod Security | `profiles.podSecurity` | runAsNonRoot, runAsUser, runAsGroup, fsGroup | `spec.securityContext.profile` |
+
+> **Not yet supported:** `operatorBox.autoscaler` — the operator autoscaler does not support user-defined profiles. Configure it inline.
 
 The reconciler class is different from the others: it tunes how the CRD's own reconciler runs, not what child resources are created. It is set once per CRD entry at the `operatorBox.reconciler` level rather than on individual child resource entries.
 
@@ -123,6 +129,83 @@ Orkestra also ships three built-in reconciler profiles that require no declarati
 | `high-throughput` | 10 | 5m | 1000 |
 | `conservative` | 2 | 1m | 100 |
 | `development` | 1 | 30s | 50 |
+
+### Resources profiles
+
+A resources profile sets container CPU and memory requests and limits. Declare in `profiles.resources` and reference with `containers[].resources.profile`:
+
+```yaml
+profiles:
+  resources:
+    - name: api-worker
+      requests:
+        cpu: "500m"
+        memory: "256Mi"
+      limits:
+        cpu: "2"
+        memory: "1Gi"
+
+    - name: batch-processor
+      requests:
+        cpu: "1"
+        memory: "512Mi"
+      limits:
+        cpu: "4"
+        memory: "2Gi"
+```
+
+Orkestra ships built-in resource profiles (`tiny`, `small`, `medium`, `large`, `burst`, `steady`, `compute-heavy`, `memory-heavy`) that require no declaration.
+
+### Probes profiles
+
+A probes profile sets timing parameters shared across liveness, readiness, and startup probes:
+
+```yaml
+profiles:
+  probes:
+    - name: slow-boot
+      description: For services with long JVM or Python startup times
+      initialDelaySeconds: 60
+      periodSeconds: 20
+      failureThreshold: 5
+      successThreshold: 1
+      timeoutSeconds: 10
+```
+
+Orkestra ships built-in probe profiles (`fast`, `standard`, `patient`, `slow-start`) that require no declaration.
+
+### Container security profiles
+
+A container security profile sets securityContext fields on individual containers:
+
+```yaml
+profiles:
+  containerSecurity:
+    - name: strict-readonly
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      capabilities:
+        drop: [ALL]
+```
+
+Orkestra ships built-in container security profiles (`baseline`, `restricted`, `hardened`) that require no declaration.
+
+### Pod security profiles
+
+A pod security profile sets securityContext fields at the pod level:
+
+```yaml
+profiles:
+  podSecurity:
+    - name: ci-runner
+      runAsNonRoot: true
+      runAsUser: 2000
+      runAsGroup: 2000
+      fsGroup: 2000
+```
+
+Orkestra ships built-in pod security profiles (`baseline`, `restricted`, `hardened`) that require no declaration.
 
 ---
 
