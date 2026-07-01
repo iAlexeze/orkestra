@@ -22,7 +22,7 @@ import (
 // loadHelmSource renders a Helm chart and extracts Katalog CRD definitions.
 // The chart must contain at least one template with kind: Katalog.
 func (m *Merger) loadHelmSource(src orktypes.HelmSource) (map[string]orktypes.CRDEntry, error) {
-	logger.Info().
+	logger.Debug().
 		Str("repo", src.Repo).
 		Str("chart", src.Chart).
 		Str("version", src.Version).
@@ -122,7 +122,7 @@ func resolveGitChart(src orktypes.HelmSource) (string, func(), error) {
 		ref = "HEAD"
 	}
 
-	logger.Info().
+	logger.Debug().
 		Str("repo", src.Repo).
 		Str("ref", ref).
 		Msg("merger: cloning git repository")
@@ -145,7 +145,7 @@ func resolveGitChart(src orktypes.HelmSource) (string, func(), error) {
 		return "", nil, fmt.Errorf("chart path %q not found in repo %q", chartPath, src.Repo)
 	}
 
-	logger.Info().
+	logger.Debug().
 		Str("repo", src.Repo).
 		Str("ref", ref).
 		Str("chartPath", chartPath).
