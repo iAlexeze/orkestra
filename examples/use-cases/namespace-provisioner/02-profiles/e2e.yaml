@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -58,19 +59,21 @@ spec:
           name: beta-quota
           namespace: team-beta
 
-    - name: medium profile expands to 20 pods
+    - name: medium profile expands to 20 pods and 2 CPU request
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get resourcequota beta-quota -n team-beta -o jsonpath='{.spec.hard.pods}'
-          outputContains: "20"
-
-    - name: medium profile expands to 2 CPU request
-      after: cr-applied
-      timeout: 60s
-      commands:
-        - run: kubectl get resourcequota beta-quota -n team-beta -o jsonpath='{.spec.hard.requests\.cpu}'
-          outputContains: "2"
+      kubectl:
+        get:
+          - kind: ResourceQuota
+            name: beta-quota
+            namespace: team-beta
+            field: .spec.hard.pods
+            equals: "20"
+          - kind: ResourceQuota
+            name: beta-quota
+            namespace: team-beta
+            field: '.spec.hard["requests.cpu"]'
+            equals: "2"
 
     - name: NetworkPolicies applied
       after: cr-applied

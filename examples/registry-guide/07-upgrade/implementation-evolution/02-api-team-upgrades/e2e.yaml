@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -53,24 +54,29 @@ spec:
     - name: "probePath wired as HTTP GET path"
       after: cr-applied
       timeout: 30s
-      commands:
-        - run: |
-            kubectl get deployment my-webapp -n default \
-              -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.httpGet.path}'
-          outputContains: "/ready"
+      kubectl:
+        get:
+          - kind: Deployment
+            name: my-webapp
+            namespace: default
+            field: .spec.template.spec.containers[0].readinessProbe.httpGet.path
+            equals: /ready
 
     - name: "standard probeProfile expands correctly"
       after: cr-applied
       timeout: 30s
-      commands:
-        - run: |
-            kubectl get deployment my-webapp -n default \
-              -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.periodSeconds}'
-          outputContains: "20"
-        - run: |
-            kubectl get deployment my-webapp -n default \
-              -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.failureThreshold}'
-          outputContains: "3"
+      kubectl:
+        get:
+          - kind: Deployment
+            name: my-webapp
+            namespace: default
+            field: .spec.template.spec.containers[0].readinessProbe.periodSeconds
+            equals: "20"
+          - kind: Deployment
+            name: my-webapp
+            namespace: default
+            field: .spec.template.spec.containers[0].readinessProbe.failureThreshold
+            equals: "3"
 
     - name: "WebApp CR deleted"
       after: cr-deleted

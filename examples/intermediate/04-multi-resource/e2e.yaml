@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -35,9 +36,13 @@ spec:
     - name: Status reflects live Deployment state
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get application my-app -o jsonpath='{.status.phase}'
-          outputContains: Running
+      kubectl:
+        get:
+          - kind: Application
+            name: my-app
+            namespace: default
+            field: .status.phase
+            equals: Running
 
     - name: Cleanup verified
       after: cr-deleted

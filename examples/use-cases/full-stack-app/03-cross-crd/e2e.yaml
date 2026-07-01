@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -56,9 +57,13 @@ spec:
     - name: Status reflects database endpoint
       after: cr-applied
       timeout: 90s
-      commands:
-        - run: kubectl get databasebackedapp my-app -o jsonpath='{.status.databaseEndpoint}'
-          outputContains: my-app-db
+      kubectl:
+        get:
+          - kind: DatabaseBackedApp
+            name: my-app
+            namespace: default
+            field: .status.databaseEndpoint
+            outputContains: my-app-db
 
     - name: Cleanup verified
       after: cr-deleted

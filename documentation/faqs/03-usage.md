@@ -303,7 +303,7 @@ cd 11-mixed-operator-pattern
 
 ---
 
-## Next
+## Further reading
 
 - **[Running](./02-running.md)** — setup, configuration, and operations
 - **[Ecosystem](./04-ecosystem.md)** — comparisons and the Kubernetes roadmap

@@ -56,6 +56,9 @@ jobs:
       - name: Run go vet
         run: go vet ./...
 
+      - name: Run vulnerability check
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
       - name: Run unit tests (no cluster required)
         run: make test-unit
 

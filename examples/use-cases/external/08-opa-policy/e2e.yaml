@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -35,9 +36,13 @@ spec:
           name: deny-my-app
           namespace: default
           count: 0
-      commands:
-        - run: kubectl get webapp deny-my-app -o jsonpath='{.status.phase}'
-          outputContains: PolicyDenied
+      kubectl:
+        get:
+          - kind: WebApp
+            name: deny-my-app
+            namespace: default
+            field: .status.phase
+            equals: PolicyDenied
 
     - name: Cleanup verified
       after: cr-deleted

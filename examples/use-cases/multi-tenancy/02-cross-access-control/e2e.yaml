@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -36,16 +37,24 @@ spec:
     - name: Report reaches Ready phase (reads ledger, skips payment gracefully)
       after: cr-applied
       timeout: 90s
-      commands:
-        - run: kubectl get report daily-summary -n default -o jsonpath='{.status.phase}'
-          outputContains: Ready
+      kubectl:
+        get:
+          - kind: Report
+            name: daily-summary
+            namespace: default
+            field: .status.phase
+            equals: Ready
 
     - name: Report status reflects ledger data
       after: cr-applied
       timeout: 90s
-      commands:
-        - run: kubectl get report daily-summary -n default -o jsonpath='{.status.ledgerPhase}'
-          outputContains: Running
+      kubectl:
+        get:
+          - kind: Report
+            name: daily-summary
+            namespace: default
+            field: .status.ledgerPhase
+            equals: Running
 
     - name: Report ConfigMap is blocked from ledger data
       after: cr-applied

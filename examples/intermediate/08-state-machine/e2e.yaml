@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -32,16 +33,24 @@ spec:
     - name: build-and-test reaches Succeeded
       after: cr-applied
       timeout: 120s
-      commands:
-        - run: kubectl get pipeline build-and-test -o jsonpath='{.status.phase}'
-          outputContains: Succeeded
+      kubectl:
+        get:
+          - kind: Pipeline
+            name: build-and-test
+            namespace: default
+            field: .status.phase
+            equals: Succeeded
 
     - name: failing-pipeline reaches Failed
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get pipeline failing-pipeline -o jsonpath='{.status.phase}'
-          outputContains: Failed
+      kubectl:
+        get:
+          - kind: Pipeline
+            name: failing-pipeline
+            namespace: default
+            field: .status.phase
+            equals: Failed
 
     - name: Cleanup verified
       after: cr-deleted

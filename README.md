@@ -9,7 +9,7 @@
     <a href="https://goreportcard.com/report/github.com/orkspace/orkestra"><img src="https://goreportcard.com/badge/github.com/orkspace/orkestra" alt="Go Report Card" /></a>
     <a href="https://github.com/orkspace/orkestra/releases"><img src="https://img.shields.io/github/v/release/orkspace/orkestra" alt="Release" /></a>
     <a href="https://artifacthub.io/packages/search?repo=orkestra"><img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/orkestra" alt="Artifact Hub" /></a>
-    <img src="https://img.shields.io/badge/Go-1.22+-00ADD8.svg" alt="Go" />
+    <img src="https://img.shields.io/badge/Go-1.26+-00ADD8.svg" alt="Go" />
     <img src="https://img.shields.io/badge/Kubernetes-1.28+-326CE5.svg" alt="Kubernetes" />
     <img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License" />
   </p>
@@ -18,7 +18,7 @@
     <a href="https://orkestra.sh/docs/getting-started">Quick Start</a> ·
     <a href="https://orkestra.sh">Docs</a> ·
     <a href="https://github.com/orkspace/orkestra/discussions">Discussions</a> ·
-    <a href="https://orkspace-group.slack.com/archives/C0B5RT8JUEA">Early Access Slack</a>
+    <a href="https://join.slack.com/t/orkspace-group/shared_invite/zt-42i4idb0h-WYUF6JryDFMkky95ZJWHBg">Early Access Slack</a>
   </p>
 </div>
 

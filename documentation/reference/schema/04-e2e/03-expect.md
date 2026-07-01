@@ -27,6 +27,7 @@ expect:
 | `timeout` | yes | Maximum wait time (Go duration: `30s`, `2m`, `90s`). |
 | `resources` | no | Resource state assertions, polled until passing. |
 | `commands` | no | Shell command assertions, run in the same polling loop. |
+| `kubectl` | no | Structured kubectl subcommand assertions. See [kubectl block](07-kubectl.md). |
 
 ---
 
@@ -89,6 +90,11 @@ commands:
 | `run` | yes | Shell command executed via `sh -c`. |
 | `exitCode` | no | Expected exit code. Default `0` (success). Set non-zero to assert the command must fail — useful for admission webhook rejection tests. |
 | `outputContains` | no | The combined stdout+stderr must contain this substring. |
+| `outputNotContains` | no | The combined stdout+stderr must not contain this substring. |
+| `equals` | no | Output (trimmed) must exactly match this string. |
+| `notEquals` | no | Output must not exactly match this string. |
+| `greaterThan` | no | Output (trimmed, parsed as a number) must be greater than this value. |
+| `lessThan` | no | Output (trimmed, parsed as a number) must be less than this value. |
 
 ---
 

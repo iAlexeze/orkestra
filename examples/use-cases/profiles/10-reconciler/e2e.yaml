@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -37,15 +38,14 @@ spec:
     - name: Reconciler config matches local-dev profile
       after: cr-applied
       timeout: 30s
-      commands:
-        - run: |
-            kubectl port-forward -n orkestra-system svc/orkestra-runtime 8080:8080 &
-            PF=$!
-            sleep 3
-            OUT=$(curl -sf http://localhost:8080/katalog/service)
-            kill $PF 2>/dev/null
-            echo "$OUT"
-          outputContains: '"workers":1'
+      kubectl:
+        port-forward:
+          - service: orkestra-runtime
+            namespace: orkestra-system
+            port: 8080
+            path: /katalog/service
+            jq: workers
+            equals: "1"
 
     - name: Cleanup verified
       after: cr-deleted

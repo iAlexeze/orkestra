@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -57,16 +58,24 @@ spec:
     - name: Tiny profile has correct CPU request
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get deployment my-service-tiny -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}'
-          outputContains: 25m
+      kubectl:
+        get:
+          - kind: Deployment
+            name: my-service-tiny
+            namespace: default
+            field: .spec.template.spec.containers[0].resources.requests.cpu
+            equals: 25m
 
     - name: Large profile has correct CPU request
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get deployment my-service-large -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}'
-          outputContains: 500m
+      kubectl:
+        get:
+          - kind: Deployment
+            name: my-service-large
+            namespace: default
+            field: .spec.template.spec.containers[0].resources.requests.cpu
+            equals: 500m
 
     - name: Cleanup verified
       after: cr-deleted

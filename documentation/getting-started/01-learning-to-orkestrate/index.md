@@ -71,7 +71,8 @@ Each example has its own `README.md`. Follow it — it tells you exactly what to
 ## Which example to start with
 
 **New to Kubernetes operators**
-- Start with [`beginner/01-hello-website`](./01-beginner.md) — the mental model it builds is the foundation for everything else.
+- Read [Kubernetes, operators, and why Orkestra](./00-kubernetes-basics.md) first — CRDs, the reconcile loop, and where Orkestra fits.
+- Then [`beginner/01-hello-website`](./01-beginner.md) — the mental model it builds is the foundation for everything else.
 
 **Know Kubernetes, new to Orkestra**
 - [`beginner/01-hello-website`](./01-beginner.md), then [`intermediate/05-when-conditions`](./02-intermediate.md) and [`advanced/07-validation-mutation`](./03-advanced.md)
@@ -122,7 +123,7 @@ ork init --list
 
 ---
 
-## Next
+## Further reading
 
 - **[Orkestra Core](../../orkestra-core/index.md)** — runtime, gateway, and control center architecture
 - **[Security](../../security/index.md)** — admission control, RBAC, namespace protection

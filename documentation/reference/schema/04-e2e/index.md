@@ -130,18 +130,18 @@ ork e2e --keep-cluster
 Every example pack ships with a root `e2e.yaml`. Run the full suite in one command:
 
 ```bash
-ork e2e -f examples/beginner/e2e.yaml --use-current
-ork e2e -f examples/intermediate/e2e.yaml --use-current
+ork e2e -f beginner/e2e.yaml --use-current
+ork e2e -f intermediate/e2e.yaml --use-current
 ```
 
-Orkestra installs once before the suite, each test updates the bundle in place, Orkestra uninstalls once at the end.
+`--use-current` skips the kind cluster setup and uses the already-running cluster. Orkestra installs once before the suite, each test updates the bundle in place, Orkestra uninstalls once at the end.
 
 ### Discover and run without a root file
 
 `./...` finds every leaf test automatically — no root `e2e.yaml` needed:
 
 ```bash
-ork e2e ./examples/beginner/...          # all beginner tests
+ork e2e ./beginner/...          # all beginner tests
 ork e2e ./... --skip external            # everything except external gate tests
 ork e2e ./... --dry-run                  # list what would run, no cluster created
 ```
@@ -160,6 +160,8 @@ See [06-discovery.md](06-discovery.md).
 | [04-imports.md](04-imports.md) | `imports` — test suites, `wait:`, cluster strategy, pure aggregators |
 | [05-custom-target.md](05-custom-target.md) | `custom.target: kubernetes` — test any Kubernetes workload without Orkestra |
 | [06-discovery.md](06-discovery.md) | `./...` discovery, `--wait`, `--skip`, `--dry-run` |
+| [07-kubectl.md](07-kubectl.md) | `kubectl:` DSL — `get`, `logs`, `describe`, `exec`, `port-forward`, `apply`, `patch` |
+| [08-complete-example.md](08-complete-example.md) | Complete E2E — every subcommand in one file *(generated from fixture)* |
 
 ---
 

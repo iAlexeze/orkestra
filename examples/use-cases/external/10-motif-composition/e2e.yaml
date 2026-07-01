@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -42,9 +43,13 @@ spec:
           name: my-app
           namespace: default
           ready: true
-      commands:
-        - run: kubectl get webapp my-app -o jsonpath='{.status.phase}'
-          outputContains: Ready
+      kubectl:
+        get:
+          - kind: WebApp
+            name: my-app
+            namespace: default
+            field: .status.phase
+            equals: Ready
 
     - name: Worker Deployment ready — vault + OPA checks pass
       after: cr-applied
@@ -54,9 +59,13 @@ spec:
           name: my-worker
           namespace: default
           ready: true
-      commands:
-        - run: kubectl get worker my-worker -o jsonpath='{.status.phase}'
-          outputContains: Ready
+      kubectl:
+        get:
+          - kind: Worker
+            name: my-worker
+            namespace: default
+            field: .status.phase
+            equals: Ready
 
     - name: Cleanup verified
       after: cr-deleted

@@ -117,6 +117,51 @@ spec:
 
 ---
 
+## Structured assertions with kubectl DSL
+
+The `kubectl:` block replaces ad-hoc shell commands with structured subcommands that map directly to how people already use kubectl. It supports `get`, `logs`, `describe`, `exec`, and `port-forward`. All assertions run in the same polling loop as `resources:`.
+
+```yaml
+expect:
+  - name: Deployment is healthy and correctly configured
+    after: cr-applied
+    timeout: 90s
+
+    resources:
+      - kind: Deployment
+        name: my-service
+        namespace: default
+        ready: true
+
+    kubectl:
+      # assert a field value
+      get:
+        - kind: Deployment
+          name: my-service
+          field: .spec.template.spec.containers[0].resources.requests.cpu
+          equals: 200m
+
+      # assert a log line appeared
+      logs:
+        - labelSelector: app=my-service
+          namespace: default
+          since: 30s
+          outputContains: "server started"
+          outputNotContains: FATAL
+
+      # assert HTTP endpoint via port-forward + curl (auto-installed if missing)
+      port-forward:
+        - service: my-service
+          namespace: default
+          port: 8080
+          path: /healthz
+          outputContains: ok
+```
+
+See [kubectl block reference](../../reference/schema/04-e2e/07-kubectl.md) for all fields and subcommands.
+
+---
+
 ## Platform stacks
 
 Install multiple tools together and assert they interact correctly. Per-entry `wait:`

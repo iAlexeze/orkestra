@@ -88,7 +88,7 @@ Push and pull work identically. Credentials come from `~/.docker/config.json` �
 
 ---
 
-## Next
+## Further reading
 
 - **[Orkestra Registry](../orkestra-registry/index.md)** — full publishing and pulling reference
 - **[simulate gates](../orkestra-registry/05-simulate.md)** — how simulate quality signals work

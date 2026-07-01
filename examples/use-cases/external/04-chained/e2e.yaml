@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -30,9 +31,13 @@ spec:
     - name: Status phase is Ready
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get webapp my-app -o jsonpath='{.status.phase}'
-          outputContains: Ready
+      kubectl:
+        get:
+          - kind: WebApp
+            name: my-app
+            namespace: default
+            field: .status.phase
+            equals: Ready
 
     - name: Cleanup verified
       after: cr-deleted

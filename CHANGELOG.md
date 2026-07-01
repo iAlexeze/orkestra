@@ -1,3 +1,129 @@
+## Unreleased
+
+---
+
+## v0.7.9 — Reconciler configuration, user-defined profiles, and kubectl DSL for e2e
+
+### Breaking: reconciler config moves inside `operatorBox`
+
+`workers`, `resync`, and `queue` (`maxDepth`, `failureThreshold`) move from the CRD root into `operatorBox.reconciler`. The `operatorBox` is the complete definition of what makes a CRD an operator — the reconciler runtime config belongs there alongside `onCreate`, `onReconcile`, `status`, and `admission`.
+
+```yaml
+# before
+spec:
+  crds:
+    service:
+      workers: 4
+      resync: 30s
+      queue:
+        maxDepth: 200
+        failureThreshold: 5
+      operatorBox:
+        onCreate: ...
+
+# after
+spec:
+  crds:
+    service:
+      operatorBox:
+        reconciler:
+          workers: 4
+          resync: 30s
+          queue:
+            maxDepth: 200
+            failureThreshold: 5
+        onCreate: ...
+```
+
+`ork validate` rejects the old layout with a clear error pointing to `operatorBox.reconciler`.
+
+### New profile class: `reconciler`
+
+Named presets for concurrency and queue tuning. Reference with `operatorBox.reconciler.profile`:
+
+| Profile | workers | resync | queue.maxDepth |
+|---------|---------|--------|----------------|
+| `high-throughput` | 10 | 5m | 1000 |
+| `conservative` | 2 | 1m | 100 |
+| `development` | 1 | 30s | 50 |
+
+Inline fields override the profile when both are declared. Retry is always exponential backoff — no `maxRetries`.
+
+### User-defined profiles for all profile classes
+
+All profile classes now support user-defined named presets declared in the `profiles:` block at the root of a Katalog or Motif. Previously only `networkPolicies`, `resourceQuotas`, `limitRanges`, `hpa`, `pdb`, and `rollingUpdate` supported this. Four additional classes are added:
+
+| Class | YAML key | What it tunes |
+|-------|----------|---------------|
+| Resources | `profiles.resources` | Container CPU and memory requests/limits |
+| Probes | `profiles.probes` | Probe timing — initialDelaySeconds, periodSeconds, failureThreshold, successThreshold, timeoutSeconds |
+| Container Security | `profiles.containerSecurity` | Per-container securityContext — allowPrivilegeEscalation, readOnlyRootFilesystem, runAsNonRoot, capabilities |
+| Pod Security | `profiles.podSecurity` | Pod-level securityContext — runAsNonRoot, runAsUser, runAsGroup, fsGroup |
+
+```yaml
+profiles:
+  resources:
+    - name: api-worker
+      requests: { cpu: "500m", memory: "256Mi" }
+      limits: { cpu: "2", memory: "1Gi" }
+
+  probes:
+    - name: slow-boot
+      initialDelaySeconds: 60
+      periodSeconds: 20
+      failureThreshold: 5
+      timeoutSeconds: 10
+
+  containerSecurity:
+    - name: strict-readonly
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      capabilities:
+        drop: [ALL]
+
+  podSecurity:
+    - name: ci-runner
+      runAsNonRoot: true
+      runAsUser: 2000
+      runAsGroup: 2000
+      fsGroup: 2000
+```
+
+User-defined profiles are resolved before Orkestra built-ins. Declaring a profile with the same name as a built-in overrides it for that Katalog. `ork validate` prints a warning when a built-in is shadowed.
+
+`operatorBox.autoscaler` does not yet support user-defined profiles — configure autoscaler behavior inline.
+
+### kubectl: DSL block for e2e assertions
+
+A `kubectl:` block can now sit alongside `resources:` and `commands:` in any `expect:` entry. Ten subcommands:
+
+| Subcommand | Generates |
+|------------|-----------|
+| `get` | `kubectl get <kind> <name> -o jsonpath='{<field>}'` or `--output json/yaml` |
+| `logs` | `kubectl logs -n <ns> [-l <selector> \| <name>] [--since=<since>]` |
+| `describe` | `kubectl describe <kind> <name/selector> -n <ns>` |
+| `exec` | `kubectl exec -n <ns> <pod> -- <command>` |
+| `port-forward` | Port-forward + curl as one operation; lifecycle managed by the runner |
+| `apply` | `kubectl apply -f <file>` or inline manifest via stdin |
+| `patch` | `kubectl patch <kind> <name> --type=<merge\|strategic\|json> -p '<patch>'` |
+| `events` | `kubectl events --for=<kind>/<name> -n <ns>` |
+| `auth` | `kubectl auth can-i <verb> <resource> [--as <as>]` |
+| `cp` | `kubectl cp <ns>/<pod>:<src>` — copies to temp file, asserts content, cleans up |
+| `top` | `kubectl top <pod\|node>` — requires metrics-server; installed automatically via Helm |
+
+All subcommands share six assertion fields: `equals`, `notEquals`, `outputContains`, `outputNotContains`, `greaterThan`, `lessThan`. `greaterThan` and `lessThan` parse the output as `float64` — the check fails if the output is not numeric. `jq` and `yq` extraction is supported where applicable. `apply` and `patch` run before read subcommands each iteration so mutations take effect before assertions check them.
+
+`commands[].run` now also supports `outputNotContains`.
+
+**Tool pre-flight**: `ork e2e` scans the spec and installs missing tools before assertions run — `curl` (port-forward), `jq`, `yq` (apt-get / apk / brew), and `metrics-server` (Helm, with `--kubelet-insecure-tls` on kind clusters).
+
+**Validator**: `ork validate` checks all `kubectl:` blocks — required fields, mutual exclusion, at least one assertion per entry, `jq`/`yq` format consistency, `top` kind must be `pod` or `node`.
+
+**Fixture**: `pkg/e2e/fixture/` is a living integration test with one checkpoint per subcommand. Rule: add a checkpoint when you add a subcommand.
+
+---
+
 ## v0.7.8 — First-class NetworkPolicy, ResourceQuota, LimitRange, ClusterRole, ClusterRoleBinding; namespace-provisioner sub-pack
 
 ### New resource types

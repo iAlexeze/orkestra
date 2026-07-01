@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -68,9 +69,13 @@ spec:
     - name: org-medium expands to 25 pods
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get resourcequota gamma-quota -n team-gamma -o jsonpath='{.spec.hard.pods}'
-          outputContains: "25"
+      kubectl:
+        get:
+          - kind: ResourceQuota
+            name: gamma-quota
+            namespace: team-gamma
+            field: .spec.hard.pods
+            equals: "25"
 
     - name: LimitRange from org-container-defaults profile
       after: cr-applied

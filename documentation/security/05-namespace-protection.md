@@ -148,7 +148,7 @@ ork e2e
 
 ---
 
-## Next
+## Further reading
 
 - **[Admission Control](./01-admission.md)** — deny and warn rules at admission time
 - **[RBAC](./02-rbac.md)** — generating and scoping ClusterRoles

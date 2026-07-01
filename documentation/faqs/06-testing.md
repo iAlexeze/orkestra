@@ -172,7 +172,7 @@ Yes — this is the same `custom.target: kubernetes` mode. cert-manager, FluxCD,
 
 ---
 
-## Next
+## Further reading
 
 - **[simulate concept docs](../concepts/simulate/index.md)** — how simulate works in depth
 - **[E2E concept docs](../concepts/e2e/index.md)** — end-to-end testing

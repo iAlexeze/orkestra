@@ -139,3 +139,42 @@ spec:
         - kind: Service
           name: hello-website-svc
           namespace: default
+
+    - name: Fixture CR rendered with correct configuration
+      timeout: 30s
+      kubectl:
+        get:
+          - kind: Deployment
+            name: hello-website
+            namespace: default
+            field: .spec.replicas
+            equals: "1"
+          - kind: Service
+            name: hello-website-svc
+            namespace: default
+            field: .spec.ports[0].port
+            equals: "80"
+
+    - name: Runtime API responds with reconciled service
+      timeout: 60s
+      kubectl:
+        port-forward:
+          - service: orkestra-runtime
+            namespace: orkestra-system
+            port: 8080
+            path: /katalog/website/health
+            jq: resourceCount
+            equals: "1"
+
+          - service: orkestra-runtime
+            namespace: orkestra-system
+            port: 8080
+            path: /katalog/website
+            jq: healthy
+            equals: "true"
+
+          - service: orkestra-runtime
+            namespace: orkestra-system
+            port: 8080
+            path: /katalog/website
+            outputContains: "Website CRD, GVK: demo.orkestra.io/v1alpha1, Kind=Website"

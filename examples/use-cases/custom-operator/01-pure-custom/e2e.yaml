@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -42,9 +43,12 @@ spec:
     - name: ClusterIssuer and Certificate created
       after: cr-applied
       timeout: 30s
-      commands:
-        - run: kubectl get clusterissuer selfsigned-issuer -o jsonpath='{.status.conditions[0].type}'
-          outputContains: Ready
+      kubectl:
+        get:
+          - kind: ClusterIssuer
+            name: selfsigned-issuer
+            field: .status.conditions[0].type
+            equals: Ready
 
     - name: TLS Secret issued by cert-manager
       after: cr-applied

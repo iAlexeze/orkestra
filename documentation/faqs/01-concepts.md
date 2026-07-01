@@ -374,7 +374,7 @@ declared alongside reconcile templates:
 
 ---
 
-## Next
+## Further reading
 
 - **[Running](./02-running.md)** — setup, configuration, and operations
 - **[Usage](./03-usage.md)** — validation, mutation, built-in kinds

@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -22,20 +23,36 @@ spec:
     - name: v1 CR produces Kubernetes CronJob with correct schedule
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get cronjob print-hello-v1 -n default -o jsonpath='{.spec.schedule}'
-          outputContains: "*/1 * * * *"
+      kubectl:
+        get:
+          - kind: CronJob
+            name: print-hello-v1
+            namespace: default
+            field: .spec.schedule
+            equals: "*/1 * * * *"
 
-    - name: v2 CR also produces Kubernetes CronJob with correct schedule
+    - name: Apply v2 CR
       after: cr-applied
-      timeout: 60s
+      timeout: 30s
       commands:
         - run: kubectl apply -f cr-v2.yaml
           exitCode: 0
-        - run: kubectl get cronjob print-hello-v2 -n default -o jsonpath='{.spec.schedule}'
-          outputContains: "*/1 * * * *"
-        - run: kubectl get cronjob daily-backup -n default -o jsonpath='{.spec.schedule}'
-          outputContains: "0 2 * * 1-5"
+
+    - name: v2 CR also produces Kubernetes CronJobs with correct schedules
+      after: cr-applied
+      timeout: 60s
+      kubectl:
+        get:
+          - kind: CronJob
+            name: print-hello-v2
+            namespace: default
+            field: .spec.schedule
+            equals: "*/1 * * * *"
+          - kind: CronJob
+            name: daily-backup
+            namespace: default
+            field: .spec.schedule
+            equals: "0 2 * * 1-5"
 
     - name: Delete v2 CR
       after: cr-applied
