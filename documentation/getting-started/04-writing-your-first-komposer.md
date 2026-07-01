@@ -98,7 +98,7 @@ Resolves all sources, merges everything, and reports errors — without touching
 
 ---
 
-## Next
+## Further reading
 
 - **[Learning to Orkestrate](./01-learning-to-orkestrate.md)** — progression through the full example library
 - **[Komposers](../orkestra-registry/03-komposers.md)** — publishing and pulling Komposers from the registry

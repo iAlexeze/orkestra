@@ -175,7 +175,7 @@ spec:
 
 ---
 
-## Next
+## Further reading
 
 - [Kubernetes Basics](https://kubernetes.io/docs/tutorials/kubernetes-basics/) — hands-on introduction to Kubernetes
 - [Learning to Orkestrate](./index.md) — the map of all runnable examples

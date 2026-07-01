@@ -169,7 +169,7 @@ No cloud provider account. No Minikube. No existing Kubernetes setup.
 
 ---
 
-## Next
+## Further reading
 
 - **[Ecosystem Composition Guide](../guides/ecosystem/index.md)** — wrap ArgoCD, cert-manager, Prometheus, and Crossplane with abstraction layers
 - **[Migration Guide](../guides/migration/index.md)** — move an existing controller-runtime operator to Orkestra

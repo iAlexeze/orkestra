@@ -123,7 +123,7 @@ ork init --list
 
 ---
 
-## Next
+## Further reading
 
 - **[Orkestra Core](../../orkestra-core/index.md)** — runtime, gateway, and control center architecture
 - **[Security](../../security/index.md)** — admission control, RBAC, namespace protection

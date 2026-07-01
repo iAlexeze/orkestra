@@ -330,7 +330,7 @@ Override via Helm values or the `LEASE_DURATION` environment variable.
 
 ---
 
-## Next
+## Further reading
 
 - **[Usage](./03-usage.md)** — validation, mutation, built-in kinds
 - **[Ecosystem](./04-ecosystem.md)** — comparisons and the Kubernetes roadmap

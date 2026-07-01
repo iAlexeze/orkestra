@@ -148,6 +148,6 @@ ork control
 
 ---
 
-## Next
+## Further reading
 
 - **[Writing Your First Katalog](./02-writing-your-first-katalog.md)** — put the reconcile model into practice with a real operator
