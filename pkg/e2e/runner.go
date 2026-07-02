@@ -90,7 +90,10 @@ func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster, devServer bool,
 		return nil, fmt.Errorf("%s: expected kind E2E, got %q", e2eFile, e2e.Kind)
 	}
 
-	e2eDir := filepath.Dir(e2eFile)
+	e2eDir, err := filepath.Abs(filepath.Dir(e2eFile))
+	if err != nil {
+		return nil, fmt.Errorf("resolving e2e directory: %w", err)
+	}
 	allValueFiles := make([]string, 0, len(e2e.Spec.ValuesFiles)+len(valueFiles))
 	for _, f := range e2e.Spec.ValuesFiles {
 		if !filepath.IsAbs(f) {
