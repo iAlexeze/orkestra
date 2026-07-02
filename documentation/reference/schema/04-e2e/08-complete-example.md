@@ -113,6 +113,10 @@ spec:
           - labelSelector: orkestra-owner=my-probe-exec
             namespace: default
             outputContains: "Configuration complete"
+          - leaderElection:
+              lease: my-operator-leader
+              namespace: my-operator-system
+            outputContains: "acquired leader lock"
 
     # ── kubectl.describe ─────────────────────────────────────────────────────
     - name: Describe shows expected resource state

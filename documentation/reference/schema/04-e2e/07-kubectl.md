@@ -114,16 +114,25 @@ kubectl:
     - name: my-service-abc123
       container: sidecar
       outputContains: "config reloaded"
+
+    # assert a log line emitted by the current leader pod
+    - leaderElection:
+        lease: my-operator-leader
+        namespace: my-operator-system
+      outputContains: "acquired leader lock"
 ```
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `name` | no | Pod name. Use `labelSelector` to match by label instead |
-| `labelSelector` | no | Label selector (e.g. `app=my-service`). One of `name` or `labelSelector` required |
+| `name` | no | Pod name. Mutually exclusive with `leaderElection` |
+| `labelSelector` | no | Label selector (e.g. `app=my-service`). Mutually exclusive with `leaderElection` |
+| `leaderElection` | no | Resolve the log target from a Kubernetes Lease holder. Mutually exclusive with `name` and `labelSelector`. See [leaderElection](#leaderlection) |
 | `namespace` | no | Namespace. Default: `default` |
 | `container` | no | Container name. Defaults to the first container |
 | `since` | no | Limit output to logs from the last duration (e.g. `30s`, `2m`) |
 | `jq` | no | jq expression applied to each log line. Useful for JSON-structured logs |
+
+> **Note** — `name`, `labelSelector`, and `leaderElection` are mutually exclusive. Exactly one must be provided.
 
 ---
 

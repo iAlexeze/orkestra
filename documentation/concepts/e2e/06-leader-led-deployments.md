@@ -6,9 +6,9 @@ This creates a problem for E2E tests that use `kubectl port-forward svc/<service
 
 ---
 
-## The solution: `leaderElection` on port-forward
+## The solution: `leaderElection` on port-forward and logs
 
-Port-forward entries support a `leaderElection` block that resolves the target pod from a Kubernetes `coordination.k8s.io/v1` Lease before opening the connection:
+Port-forward and log entries support a `leaderElection` block that resolves the target pod from a Kubernetes `coordination.k8s.io/v1` Lease before running the command:
 
 ```yaml
 kubectl:
@@ -39,6 +39,23 @@ Every assertion now runs against the leader. There is no randomness in pod selec
 
 ---
 
+## Logs from the leader pod
+
+The same pattern works for `kubectl.logs`. When you want to assert a log line that only the leader emits — a reconcile event, a lock acquisition message, an election confirmation — use `leaderElection` instead of targeting by name or label selector:
+
+```yaml
+kubectl:
+  logs:
+    - leaderElection:
+        lease: my-operator-leader
+        namespace: my-operator-system
+      outputContains: "acquired leader lock"
+```
+
+The harness resolves the Lease holder, then runs `kubectl logs <holder-pod> -n <namespace>`. Label selectors would fan out across all replicas including followers; `leaderElection` pins the log read to exactly the pod that holds the Lease.
+
+---
+
 ## When to use it
 
 Use `leaderElection` whenever the assertion depends on state that only the leader maintains:
@@ -47,6 +64,7 @@ Use `leaderElection` whenever the assertion depends on state that only the leade
 - in-memory cache endpoints
 - health endpoints that reflect actual CRD state
 - any endpoint where a follower would return `pending`, `0`, or empty values
+- log lines emitted only by the elected leader (lock acquisition, reconcile events)
 
 For endpoints that are consistent across replicas (e.g. `/readyz`, `/livez`, static config), a service port-forward is fine.
 
@@ -96,4 +114,5 @@ kubectl:
 
 ## Schema reference
 
-→ [kubectl.port-forward leaderElection](../../reference/schema/04-e2e/07-kubectl.md#leaderlection)
+→ [kubectl.port-forward leaderElection](../../reference/schema/04-e2e/07-kubectl.md#leaderlection)  
+→ [kubectl.logs](../../reference/schema/04-e2e/07-kubectl.md#kubectllogs)
