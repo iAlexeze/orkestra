@@ -11,4 +11,5 @@ imports:
   - ./safe-reconcile/e2e.yaml
   - ./admission-protection/e2e.yaml
   - ./crd-missing-recovery/e2e.yaml
-  - ./leader-failover/e2e.yaml
+  - path: ./leader-failover/e2e.yaml
+    freshCluster: true                  # uses fresh cluster because of lease transition checks
