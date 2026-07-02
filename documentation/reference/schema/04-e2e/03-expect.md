@@ -25,6 +25,7 @@ expect:
 | `name` | yes | Printed in the results table. |
 | `after` | yes | Lifecycle phase that must have occurred. |
 | `timeout` | yes | Maximum wait time (Go duration: `30s`, `2m`, `90s`). |
+| `wait` | no | Duration to sleep before the polling loop starts (Go duration: `5s`, `30s`). Useful when the previous step triggers an async operation that needs time to propagate before assertions are meaningful. |
 | `resources` | no | Resource state assertions, polled until passing. |
 | `commands` | no | Shell command assertions, run in the same polling loop. |
 | `kubectl` | no | Structured kubectl subcommand assertions. See [kubectl block](07-kubectl.md). |

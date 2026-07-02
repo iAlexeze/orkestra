@@ -112,7 +112,7 @@ curl -s localhost:8080/katalog/blockchainapp/health | jq
   "state": "degraded",
   "healthy": false,
   "consecutiveFails": 3,
-  "lastError": "validation failed: images must come from the internal registry (myorg/)"
+  "lastError": "validation denied: images must come from the internal registry (myorg/)"
 }
 ```
 
@@ -144,7 +144,7 @@ Three levels, three different answers:
 No StatefulSet was created — the validation blocked every reconcile before the operatorBox ran:
 
 ```bash
-kubectl get statefulset
+kubectl get statefulset -n default
 # No resources found.
 ```
 
@@ -208,7 +208,7 @@ curl -s localhost:8080/katalog/blockchainapp/health | jq
 The StatefulSet and Service now exist:
 
 ```bash
-kubectl get statefulset,service -l app.kubernetes.io/name=my-chain
+kubectl get statefulset,service -n default
 ```
 
 ---
@@ -220,6 +220,10 @@ ork e2e
 ```
 
 Exercises the full arc — degraded state, health endpoint assertions, patch, recovery, and resource creation — without manual steps.
+
+The health endpoint assertions use **leader election** to resolve the port-forward target. Instead of forwarding to the runtime Service (which routes to a random pod), the harness reads the `orkestra-konductor` Lease to find the elected leader and forwards directly to that pod. This guarantees assertions run against the replica with authoritative reconciler state.
+
+For more: https://orkestra.sh/docs/concepts/e2e/leader-led-deployments/
 
 ---
 

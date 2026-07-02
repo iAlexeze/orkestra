@@ -20,37 +20,35 @@ spec:
   expect:
     - name: Bad CR causes consecutive failures and operator degrades
       after: cr-applied
+      wait: 30s
       timeout: 120s
       kubectl:
         port-forward:
-          - service: orkestra-runtime
-            namespace: orkestra-system
+          - namespace: orkestra-system
             port: 8080
             path: /katalog/blockchainapp/health
-            jq: state
-            equals: "degraded"
-
-    - name: Health endpoint shows operator is not healthy
-      after: cr-applied
-      timeout: 30s
-      kubectl:
-        port-forward:
-          - service: orkestra-runtime
-            namespace: orkestra-system
-            port: 8080
-            path: /katalog/blockchainapp/health
+            leaderElection:
+              lease: orkestra-konductor
             jq: healthy
             equals: "false"
+          - namespace: orkestra-system
+            port: 8080
+            path: /katalog/blockchainapp/health
+            leaderElection:
+              lease: orkestra-konductor
+            jq: state
+            equals: "degraded"
 
     - name: Consecutive failures exceed threshold
       after: cr-applied
       timeout: 30s
       kubectl:
         port-forward:
-          - service: orkestra-runtime
-            namespace: orkestra-system
+          - namespace: orkestra-system
             port: 8080
             path: /katalog/blockchainapp/health
+            leaderElection:
+              lease: orkestra-konductor
             jq: consecutiveFails
             greaterThan: "2"
 
@@ -59,10 +57,11 @@ spec:
       timeout: 30s
       kubectl:
         port-forward:
-          - service: orkestra-runtime
-            namespace: orkestra-system
+          - namespace: orkestra-system
             port: 8080
             path: /katalog/blockchainapp/health
+            leaderElection:
+              lease: orkestra-konductor
             jq: lastError
             outputContains: "images must come from the internal registry"
 
@@ -71,22 +70,25 @@ spec:
       timeout: 30s
       kubectl:
         port-forward:
-          - service: orkestra-runtime
-            namespace: orkestra-system
+          - namespace: orkestra-system
             port: 8080
             path: /katalog
+            leaderElection:
+              lease: orkestra-konductor
             jq: .OrkReady
             equals: "true"
-          - service: orkestra-runtime
-            namespace: orkestra-system
+          - namespace: orkestra-system
             port: 8080
             path: /katalog
+            leaderElection:
+              lease: orkestra-konductor
             jq: .healthy
             equals: "false"
-          - service: orkestra-runtime
-            namespace: orkestra-system
+          - namespace: orkestra-system
             port: 8080
             path: /katalog
+            leaderElection:
+              lease: orkestra-konductor
             jq: .degradedReason
             outputContains: "degraded"
 
@@ -120,10 +122,11 @@ spec:
       timeout: 120s
       kubectl:
         port-forward:
-          - service: orkestra-runtime
-            namespace: orkestra-system
+          - namespace: orkestra-system
             port: 8080
             path: /katalog/blockchainapp/health
+            leaderElection:
+              lease: orkestra-konductor
             jq: state
             equals: "healthy"
 
@@ -132,10 +135,11 @@ spec:
       timeout: 30s
       kubectl:
         port-forward:
-          - service: orkestra-runtime
-            namespace: orkestra-system
+          - namespace: orkestra-system
             port: 8080
             path: /katalog/blockchainapp/health
+            leaderElection:
+              lease: orkestra-konductor
             jq: consecutiveFails
             equals: "0"
 
@@ -144,10 +148,11 @@ spec:
       timeout: 30s
       kubectl:
         port-forward:
-          - service: orkestra-runtime
-            namespace: orkestra-system
+          - namespace: orkestra-system
             port: 8080
             path: /katalog/blockchainapp/health
+            leaderElection:
+              lease: orkestra-konductor
             jq: lastError
             outputContains: "images must come from the internal registry"
 

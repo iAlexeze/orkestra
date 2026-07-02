@@ -193,20 +193,19 @@ kubectl:
 
 ## `kubectl.port-forward`
 
-Opens a port-forward to a service or pod, makes an HTTP request via curl, and asserts the response. The runner manages the port-forward lifecycle — background start, port-open polling, curl, cleanup. No shell scripting required.
+Opens a port-forward to a service, pod, or the elected leader of a Kubernetes Lease, makes an HTTP request via curl, and asserts the response. The runner manages the port-forward lifecycle — background start, port-open polling, curl, cleanup. No shell scripting required.
 
 `curl`, `jq`, and `yq` are installed automatically if not present when detected in the spec.
 
 ```yaml
 kubectl:
   port-forward:
-    # assert Orkestra introspection API response
-    - service: orkestra-runtime
-      namespace: orkestra-system
-      port: 8080
-      path: /katalog/service
-      jq: .workers
-      equals: "1"
+    # assert via service
+    - service: my-api
+      namespace: default
+      port: 9090
+      path: /healthz
+      outputContains: "ok"
 
     # assert a YAML API endpoint
     - service: my-api
@@ -217,24 +216,52 @@ kubectl:
       yq: .maxConnections
       outputContains: "100"
 
-    # just assert the HTTP endpoint responds
-    - service: my-api
-      namespace: default
-      port: 9090
+    # assert via leader election — port-forward directly to the leader pod
+    - namespace: my-operator-system
+      port: 8080
       path: /healthz
+      leaderElection:
+        lease: my-operator-leader
       outputContains: "ok"
 ```
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `service` | no | Service name to port-forward to. One of `service` or `pod` required |
-| `pod` | no | Pod name to port-forward to |
+| `service` | no | Service name to port-forward to. Required when `leaderElection` is not set and `pod` is not set |
+| `pod` | no | Pod name to port-forward to. Alternative to `service` |
+| `leaderElection` | no | Resolve the port-forward target from a Kubernetes Lease. When set, `service` and `pod` are not required. See [leaderElection](#leaderlection) |
 | `namespace` | no | Namespace. Default: `default` |
 | `port` | yes | Port to forward (used as both local and remote) |
 | `path` | no | HTTP path to request via curl after port-forward is ready |
 | `method` | no | HTTP method. Default: `GET` |
+| `wait` | no | Duration to sleep after the port-forward is ready but before sending the curl request (Go duration: `5s`, `10s`). Useful when the endpoint needs time to stabilize |
 | `jq` | no | jq expression applied to the response before asserting |
 | `yq` | no | yq expression applied to the response before asserting |
+
+### `leaderElection`
+
+Resolves the port-forward target by reading a Kubernetes Lease object and port-forwarding directly to the holder pod. This guarantees that assertions run against the process with authoritative state — not a follower that may return stale data.
+
+```yaml
+kubectl:
+  port-forward:
+    - namespace: my-operator-system
+      port: 8080
+      path: /metrics
+      leaderElection:
+        lease: my-operator-leader
+        namespace: my-operator-system   # optional; defaults to the port-forward namespace
+      outputContains: "process_start_time"
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `lease` | yes | Name of the `coordination.k8s.io/v1` Lease object |
+| `namespace` | no | Namespace of the Lease. Defaults to the port-forward `namespace` |
+
+At runtime, the harness runs `kubectl get lease <name> -n <namespace> -o jsonpath='{.spec.holderIdentity}'` to find the current holder, then opens a port-forward to `pod/<holder>`. If the Lease has no holder yet, the step retries until the checkpoint times out.
+
+See [Testing Leader-Led Deployments](../../concepts/e2e/06-leader-led-deployments.md) for the full picture on why this matters and when to use it.
 
 ---
 
