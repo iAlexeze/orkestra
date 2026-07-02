@@ -68,6 +68,50 @@ func ExtractOCIImports(filePath string) (*OCIImports, error) {
 	return out, nil
 }
 
+// HelmAndFileImports holds non-OCI remote sources that benefit from local caching:
+// git/remote Helm sources and HTTPS file sources from a komposer spec.
+type HelmAndFileImports struct {
+	// HelmSources are all helm: entries in imports.helm.
+	HelmSources []orktypes.HelmSource
+	// RemoteFiles are all HTTPS URLs found in imports.files.
+	RemoteFiles []string
+}
+
+// Empty returns true when there are no cacheable remote sources.
+func (h *HelmAndFileImports) Empty() bool {
+	return len(h.HelmSources) == 0 && len(h.RemoteFiles) == 0
+}
+
+// ExtractHelmAndFileImports parses a komposer file and returns all helm sources
+// and HTTPS file sources. Local file paths are excluded — they need no caching.
+func ExtractHelmAndFileImports(filePath string) (*HelmAndFileImports, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("reading %q: %w", filePath, err)
+	}
+
+	var kf orktypes.KatalogFile
+	if err := yaml.Unmarshal(data, &kf); err != nil {
+		return nil, fmt.Errorf("parsing %q: %w", filePath, err)
+	}
+
+	out := &HelmAndFileImports{}
+
+	if kf.Imports == nil {
+		return out, nil
+	}
+
+	out.HelmSources = append(out.HelmSources, kf.Imports.Helm...)
+
+	for _, fs := range kf.Imports.Files {
+		if strings.HasPrefix(fs.URL, "https://") || strings.HasPrefix(fs.URL, "http://") {
+			out.RemoteFiles = append(out.RemoteFiles, fs.URL)
+		}
+	}
+
+	return out, nil
+}
+
 // LocalMotifImport describes a motif import in a katalog that uses a local file path.
 // Local imports are valid for development (ork simulate, ork template) but cannot
 // be resolved by consumers after the katalog is published.

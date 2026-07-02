@@ -35,25 +35,38 @@ type FileAuth struct {
 }
 
 // LoadFile loads a file from local disk or HTTP(S).
-//
-// For remote files, auth is optional. When nil, an unauthenticated
-// GET is performed. When set, the appropriate Authorization header
-// is added based on auth.Type.
-//
-// For local files, auth is ignored.
+// For https:// URLs the local cache is checked first; fetches on miss.
+// For local files, auth is ignored and no caching is done.
 func LoadFile(path string) ([]byte, error) {
-	return LoadFileWithAuth(path, nil)
+	return LoadFileWithAuthRefresh(path, nil, false)
 }
 
 // LoadFileWithAuth loads a file with optional authentication.
-// Called by the merger when a source declares an auth block.
+// For https:// URLs the local cache is checked first; fetches on miss.
 func LoadFileWithAuth(path string, auth *FileAuth) ([]byte, error) {
+	return LoadFileWithAuthRefresh(path, auth, false)
+}
+
+// LoadFileWithAuthRefresh loads a file with optional authentication.
+// When refresh is true the cache is bypassed and the remote is fetched fresh.
+// For local files, refresh and auth are both ignored.
+func LoadFileWithAuthRefresh(path string, auth *FileAuth, refresh bool) ([]byte, error) {
 	if path == "" {
 		return nil, fmt.Errorf("file path is empty")
 	}
 
 	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
-		return fetchRemote(path, auth)
+		if !refresh {
+			if cached, ok := CachedFileBytes(path); ok {
+				return cached, nil
+			}
+		}
+		data, err := fetchRemote(path, auth)
+		if err != nil {
+			return nil, err
+		}
+		_ = CacheFileBytes(path, data)
+		return data, nil
 	}
 
 	return readLocal(path)

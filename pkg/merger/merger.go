@@ -70,6 +70,10 @@ type Merger struct {
 	apiMetadata apiMetadata
 
 	registryURL string // set from ORK_REGISTRY via SetRegistryURL
+
+	// Refresh bypasses all local caches — git charts, remote Helm repos, and
+	// remote file fetches are re-downloaded and the cached copies are overwritten.
+	Refresh bool
 }
 
 type apiMetadata struct {
