@@ -160,8 +160,12 @@ func validateKubectlExec(loc string, e orktypes.E2EKubectlExec) []error {
 
 func validateKubectlPortForward(loc string, p orktypes.E2EKubectlPortForward) []error {
 	var errs []error
-	if p.Service == "" && p.Pod == "" {
-		errs = append(errs, fmt.Errorf("%s: service or pod is required", loc))
+	if p.LeaderElection != nil {
+		if p.LeaderElection.Lease == "" {
+			errs = append(errs, fmt.Errorf("%s: leaderElection.lease is required", loc))
+		}
+	} else if p.Service == "" && p.Pod == "" {
+		errs = append(errs, fmt.Errorf("%s: service, pod, or leaderElection is required", loc))
 	}
 	if p.Port <= 0 {
 		errs = append(errs, fmt.Errorf("%s: port must be > 0", loc))

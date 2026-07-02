@@ -349,6 +349,11 @@ type E2EExpectation struct {
 	After E2EAfter `yaml:"after"`
 	// Timeout is the maximum time to wait for the expectation to pass.
 	Timeout string `yaml:"timeout"` // e.g. "60s"
+	// Wait is an optional duration to sleep before the polling loop starts.
+	// Useful when the previous step needs time to take effect before assertions
+	// should begin — e.g. waiting for enough reconcile cycles to accumulate.
+	// Must be a valid Go duration string (e.g. "10s", "30s").
+	Wait string `yaml:"wait,omitempty"`
 
 	// Resources is a unified list of resource checks across any kind.
 	Resources []E2EResourceCheck `yaml:"resources,omitempty"`
@@ -676,17 +681,32 @@ type E2EKubectlTop struct {
 	LessThan          string `yaml:"lessThan,omitempty"`
 }
 
+// E2EKubectlPortForwardLeaderElection resolves the port-forward target by reading
+// the current holder from a Kubernetes Lease object rather than routing through
+// a Service. Use for leader-elected deployments where only the leader holds
+// authoritative state — followers may return stale or pending data.
+type E2EKubectlPortForwardLeaderElection struct {
+	// Lease is the name of the Kubernetes Lease object that tracks leader election.
+	Lease string `yaml:"lease"`
+	// Namespace of the lease. Defaults to the port-forward namespace.
+	Namespace string `yaml:"namespace,omitempty"`
+}
+
 // E2EKubectlPortForward opens a port-forward to a service or pod, makes an HTTP
 // request via curl, and asserts the response. The port-forward lifecycle
 // (background process, wait for port, cleanup) is handled by the runner.
 // EnsureCurl is called automatically when any entry declares a path.
 type E2EKubectlPortForward struct {
-	// Service is the service name to port-forward to.
+	// Service is the service name to port-forward to. Optional when leaderElection is set.
 	Service string `yaml:"service,omitempty"`
-	// Pod is the pod name to port-forward to. Use Service when possible.
+	// Pod is the pod name to port-forward to. Optional when leaderElection is set.
 	Pod string `yaml:"pod,omitempty"`
 	// Namespace to look in. Defaults to "default".
 	Namespace string `yaml:"namespace,omitempty"`
+	// LeaderElection resolves the port-forward target from a Kubernetes Lease object.
+	// When set, service and pod are ignored — the current lease holder is used instead.
+	// The lease namespace defaults to the port-forward namespace.
+	LeaderElection *E2EKubectlPortForwardLeaderElection `yaml:"leaderElection,omitempty"`
 	// Port is the service or pod port to forward.
 	Port int `yaml:"port"`
 	// Path is the HTTP path to request after the port-forward is ready.
@@ -694,6 +714,11 @@ type E2EKubectlPortForward struct {
 	Path string `yaml:"path,omitempty"`
 	// Method is the HTTP method. Defaults to GET.
 	Method string `yaml:"method,omitempty"`
+	// Wait is an optional duration to sleep after the port-forward is ready
+	// but before the curl request is made. Useful when the endpoint needs a
+	// moment to stabilise after the connection is established.
+	// Must be a valid Go duration string (e.g. "2s", "5s").
+	Wait string `yaml:"wait,omitempty"`
 	// JQ is a jq expression to extract from the response before asserting.
 	// e.g. .workers  or  .items[0].status
 	JQ string `yaml:"jq,omitempty"`

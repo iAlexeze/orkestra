@@ -1,0 +1,7 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: resilience-simulate
+
+imports: 
+  - ./01-admission-protection/simulate.yaml

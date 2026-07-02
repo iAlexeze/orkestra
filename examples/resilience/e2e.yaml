@@ -1,0 +1,12 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: E2E
+metadata:
+  name: resilience-suite
+  description: >
+    Suite for the resilience pack — panic isolation and runtime admission protection.
+    Demonstrates that Orkestra stays operational through panics, bad input, and
+    degraded state.
+
+imports:
+  - ./safe-reconcile/e2e.yaml
+  - ./01-admission-protection/e2e.yaml
