@@ -1,0 +1,160 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: E2E
+metadata:
+  name: leader-failover-e2e
+  description: >
+    Verify that when the konductor pod is killed, a follower is elected within
+    leaseDuration and reconciliation continues. Uses a helm-deployed runtime
+    with replicaCount: 2 so a follower is always ready.
+
+spec:
+  custom:
+    target: kubernetes
+
+  cluster:
+    provider: kind
+    name: ork-e2e-leader-failover
+    reuse: false
+
+  setup:
+    apply:
+      - path: ./crd.yaml
+        wait:
+          - kind: CustomResourceDefinition
+            name: blockchainapps.resilience.demo.orkestra.io
+            timeout: 30s
+      - path: ./bundle.yaml
+        wait:
+          - kind: ConfigMap
+            name: orkestra-katalog
+            namespace: orkestra-system
+            timeout: 30s
+    helm:
+      - repo: https://orkspace.github.io/orkestra
+        chart: orkestra
+        release: orkestra
+        namespace: orkestra-system
+        createNamespace: true
+        values:
+          runtime.replicaCount: 2
+          controlCenter.enabled: false
+          runtime.image.tag: 5810f0e7
+        wait:
+          - kind: Deployment
+            name: orkestra-runtime
+            namespace: orkestra-system
+            ready: true
+            timeout: 120s
+
+  expect:
+    - name: Leader elected — konductor log emitted
+      after: setup-complete
+      timeout: 60s
+      kubectl:
+        logs:
+          - leaderElection:
+              lease: orkestra-konductor
+              namespace: orkestra-system
+            namespace: orkestra-system
+            outputContains: "became konductor"
+
+    - name: Apply CR and verify operator reconciles
+      after: setup-complete
+      timeout: 60s
+      kubectl:
+        apply:
+          - file: ./cr.yaml
+        port-forward:
+          - namespace: orkestra-system
+            port: 8080
+            path: /katalog/blockchainapp/health
+            leaderElection:
+              lease: orkestra-konductor
+            jq: state
+            equals: "healthy"
+
+    - name: StatefulSet and Service created by leader
+      after: setup-complete
+      timeout: 60s
+      resources:
+        - kind: StatefulSet
+          name: my-chain
+          namespace: default
+        - kind: Service
+          name: my-chain-rpc
+          namespace: default
+
+    - name: Kill the konductor pod
+      after: setup-complete
+      timeout: 30s
+      commands:
+        - run: |
+            kubectl delete pod \
+              $(kubectl get lease orkestra-konductor -n orkestra-system \
+                -o jsonpath='{.spec.holderIdentity}') \
+              -n orkestra-system
+          exitCode: 0
+
+    - name: New leader elected — lease transitions increment
+      after: setup-complete
+      timeout: 60s
+      kubectl:
+        get:
+          - kind: Lease
+            name: orkestra-konductor
+            namespace: orkestra-system
+            field: .spec.leaseTransitions
+            equals: "1"
+
+    - name: New leader serves authoritative state
+      after: setup-complete
+      timeout: 60s
+      kubectl:
+        port-forward:
+          - namespace: orkestra-system
+            port: 8080
+            path: /katalog/blockchainapp/health
+            leaderElection:
+              lease: orkestra-konductor
+            jq: state
+            equals: "healthy"
+
+    - name: New leader log confirms election
+      after: setup-complete
+      timeout: 30s
+      kubectl:
+        logs:
+          - leaderElection:
+              lease: orkestra-konductor
+              namespace: orkestra-system
+            namespace: orkestra-system
+            outputContains: "became konductor"
+
+    - name: Resources intact after failover
+      after: setup-complete
+      timeout: 30s
+      resources:
+        - kind: StatefulSet
+          name: my-chain
+          namespace: default
+        - kind: Service
+          name: my-chain-rpc
+          namespace: default
+
+    - name: Delete CR
+      timeout: 30s
+      commands:
+        - run: kubectl delete -f ./cr.yaml
+          exitCode: 0
+
+    - name: Cleanup
+      timeout: 60s
+      resources:
+        - kind: StatefulSet
+          name: my-chain
+          namespace: default
+          count: 0
+        - kind: Service
+          name: my-chain-rpc
+          namespace: default
+          count: 0
