@@ -707,6 +707,14 @@ func (r *Runner) applySetup(ctx context.Context) ([]string, error) {
 
 	// ── Phase 2: helm ─────────────────────────────────────────────────────────
 	for _, h := range s.Helm {
+		if h.IsLocalChart() && !filepath.IsAbs(h.Chart) {
+			h.Chart = r.abs(h.Chart)
+		}
+		for i, f := range h.ValueFiles {
+			if f != "" && !filepath.IsAbs(f) {
+				h.ValueFiles[i] = r.abs(f)
+			}
+		}
 		sp := orkutils.StartSpinner(fmt.Sprintf("Installing %s...", h.ReleaseName()))
 		if err := ork.HelmInstall(ctx, h); err != nil {
 			sp.Failure()
