@@ -74,6 +74,9 @@ func ValidateKubectl(expects []orktypes.E2EExpectation) []error {
 		for j, a := range exp.Kubectl.Apply {
 			errs = append(errs, validateKubectlApply(loc("apply", j), a)...)
 		}
+		for j, d := range exp.Kubectl.Delete {
+			errs = append(errs, validateKubectlDelete(loc("delete", j), d)...)
+		}
 		for j, p := range exp.Kubectl.Patch {
 			errs = append(errs, validateKubectlPatch(loc("patch", j), p)...)
 		}
@@ -180,6 +183,17 @@ func validateKubectlPortForward(loc string, p orktypes.E2EKubectlPortForward) []
 	hasAny := hasAssertion(assertions{Equals: p.Equals, NotEquals: p.NotEquals, OutputContains: p.OutputContains, OutputNotContains: p.OutputNotContains, GreaterThan: p.GreaterThan, LessThan: p.LessThan})
 	if hasAny && p.Path == "" {
 		errs = append(errs, fmt.Errorf("%s: path is required when assertions are set", loc))
+	}
+	return errs
+}
+
+func validateKubectlDelete(loc string, d orktypes.E2EKubectlDelete) []error {
+	var errs []error
+	if d.File == "" && (d.Kind == "" || d.Name == "") {
+		errs = append(errs, fmt.Errorf("%s: file or (kind + name) is required", loc))
+	}
+	if d.File != "" && (d.Kind != "" || d.Name != "") {
+		errs = append(errs, fmt.Errorf("%s: file and kind/name are mutually exclusive", loc))
 	}
 	return errs
 }

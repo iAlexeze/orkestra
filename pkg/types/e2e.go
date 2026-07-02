@@ -423,6 +423,9 @@ type E2EKubectl struct {
 	// Apply applies manifests from a file path or inline YAML/JSON content.
 	// Generates: kubectl apply -f <file>  or  echo '<inline>' | kubectl apply -f -
 	Apply []E2EKubectlApply `yaml:"apply,omitempty"`
+	// Delete deletes resources by file path or by resource identity.
+	// Generates: kubectl delete -f <file>  or  kubectl delete <kind> <name> -n <ns>
+	Delete []E2EKubectlDelete `yaml:"delete,omitempty"`
 	// Patch patches a Kubernetes resource with a merge, strategic, or JSON patch.
 	// Generates: kubectl patch <kind> <name> -n <ns> --type=<type> -p '<patch>'
 	Patch []E2EKubectlPatch `yaml:"patch,omitempty"`
@@ -565,6 +568,23 @@ type E2EKubectlApply struct {
 	Inline string `yaml:"inline,omitempty"`
 	// Namespace overrides the namespace for resources that don't declare one.
 	Namespace string `yaml:"namespace,omitempty"`
+}
+
+// E2EKubectlDelete deletes resources during an expect checkpoint.
+// Use file to delete all resources in a manifest, or kind+name for a single resource.
+type E2EKubectlDelete struct {
+	// File is a path to a manifest file. All resources in the file are deleted.
+	// Relative paths resolve from the e2e.yaml directory.
+	// Generates: kubectl delete -f <file>
+	File string `yaml:"file,omitempty"`
+	// Kind is the Kubernetes resource kind. Used with name for single-resource deletion.
+	Kind string `yaml:"kind,omitempty"`
+	// Name is the resource name.
+	Name string `yaml:"name,omitempty"`
+	// Namespace to target. Defaults to "default".
+	Namespace string `yaml:"namespace,omitempty"`
+	// IgnoreNotFound silences errors when the resource does not exist.
+	IgnoreNotFound bool `yaml:"ignoreNotFound,omitempty"`
 }
 
 // E2EKubectlPatch patches a Kubernetes resource in-place.

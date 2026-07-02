@@ -186,9 +186,9 @@ spec:
 
     - name: Delete CR
       timeout: 30s
-      commands:
-        - run: kubectl delete -f fixtures/cr.yaml
-          exitCode: 0
+      kubectl:
+        delete:
+          - file: fixtures/cr.yaml
 
     - name: Cleanup verified
       timeout: 30s

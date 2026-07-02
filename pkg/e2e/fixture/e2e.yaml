@@ -196,6 +196,23 @@ spec:
             field: .spec.message
             equals: patched
 
+    # ── kubectl.delete ───────────────────────────────────────────────────────
+    - name: Delete the inline ConfigMap and verify it is gone
+      after: cr-applied
+      timeout: 30s
+      kubectl:
+        delete:
+          - kind: ConfigMap
+            name: e2e-probe-extra
+            namespace: default
+            ignoreNotFound: true
+        get:
+          - kind: ConfigMap
+            name: e2e-probe-extra
+            namespace: default
+            field: .metadata.name
+            equals: ""
+
     # ── kubectl.events ───────────────────────────────────────────────────────
     - name: Kubernetes events recorded for both Deployments
       after: cr-applied

@@ -2,7 +2,7 @@
 
 The `kubectl:` block provides a structured alternative to `commands:` for the most common assertion patterns. Each subcommand maps directly to the `kubectl` command people already know — `kubectl.get`, `kubectl.logs`, `kubectl.describe`, `kubectl.exec`, `kubectl.port-forward`.
 
-Raw `commands:` stays for anything that doesn't fit a subcommand — though `kubectl.apply` and `kubectl.patch` now cover the most common mutation patterns.
+Raw `commands:` stays for anything that doesn't fit a subcommand — though `kubectl.apply`, `kubectl.delete`, and `kubectl.patch` now cover the most common mutation patterns.
 
 ---
 
@@ -306,6 +306,35 @@ kubectl:
 | `file` | no | Path to a manifest file. Relative paths resolve from the `e2e.yaml` directory. Mutually exclusive with `inline` |
 | `inline` | no | Raw YAML or JSON manifest applied via stdin. Mutually exclusive with `file` |
 | `namespace` | no | Namespace override for resources that don't declare one |
+
+---
+
+## `kubectl.delete`
+
+Deletes resources during an expect checkpoint. Use `file` to delete all resources in a manifest, or `kind` + `name` for a single resource. `file` and `kind`/`name` are mutually exclusive.
+
+Generates: `kubectl delete -f <file>` or `kubectl delete <kind> <name> -n <namespace>`
+
+```yaml
+kubectl:
+  delete:
+    # delete all resources in a manifest
+    - file: ./crd.yaml
+
+    # delete a single resource by identity
+    - kind: Pod
+      name: my-pod
+      namespace: default
+      ignoreNotFound: true
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `file` | one of file or kind+name | Path to a manifest file. Relative paths resolve from the e2e.yaml directory |
+| `kind` | one of file or kind+name | Kubernetes resource kind |
+| `name` | one of file or kind+name | Resource name |
+| `namespace` | no | Namespace to target. Defaults to `default` |
+| `ignoreNotFound` | no | Silences errors when the resource does not exist |
 
 ---
 

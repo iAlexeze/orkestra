@@ -246,6 +246,11 @@ func checkKubectl(ctx context.Context, k *orktypes.E2EKubectl, workDir string) e
 			return fmt.Errorf("kubectl.apply[%d]: %w", i, err)
 		}
 	}
+	for i, e := range k.Delete {
+		if err := checkKubectlDelete(ctx, e, workDir); err != nil {
+			return fmt.Errorf("kubectl.delete[%d]: %w", i, err)
+		}
+	}
 	for i, e := range k.Patch {
 		if err := checkKubectlPatch(ctx, e, workDir); err != nil {
 			return fmt.Errorf("kubectl.patch[%d]: %w", i, err)
@@ -295,6 +300,35 @@ func checkKubectl(ctx context.Context, k *orktypes.E2EKubectl, workDir string) e
 		if err := checkKubectlTop(ctx, e, workDir); err != nil {
 			return fmt.Errorf("kubectl.top[%d]: %w", i, err)
 		}
+	}
+	return nil
+}
+
+func checkKubectlDelete(ctx context.Context, e orktypes.E2EKubectlDelete, workDir string) error {
+	var args []string
+	if e.File != "" {
+		file := e.File
+		if !filepath.IsAbs(file) && workDir != "" {
+			file = filepath.Join(workDir, file)
+		}
+		args = []string{"delete", "-f", file}
+	} else {
+		ns := e.Namespace
+		if ns == "" {
+			ns = "default"
+		}
+		args = []string{"delete", e.Kind, e.Name, "-n", ns}
+	}
+	if e.IgnoreNotFound {
+		args = append(args, "--ignore-not-found")
+	}
+	out, err := runKubectl(ctx, workDir, args...)
+	if err != nil {
+		ref := e.File
+		if ref == "" {
+			ref = e.Kind + "/" + e.Name
+		}
+		return fmt.Errorf("kubectl delete %s: %s", ref, out)
 	}
 	return nil
 }

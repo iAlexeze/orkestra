@@ -33,9 +33,9 @@ spec:
     - name: Delete CRD — simulate runtime CRD loss
       after: cr-applied
       timeout: 30s
-      commands:
-        - run: kubectl delete -f ./crd.yaml
-          exitCode: 0
+      kubectl:
+        delete:
+          - file: ./crd.yaml
 
     - name: Operator detects missing CRD and degrades
       after: cr-applied
@@ -143,9 +143,10 @@ spec:
     - name: Cleanup
       after: cr-deleted
       timeout: 60s
-      commands:
-        - run: kubectl delete -f ./cr.yaml --ignore-not-found
-          exitCode: 0
+      kubectl:
+        delete:
+          - file: ./cr.yaml
+            ignoreNotFound: true
       resources:
         - kind: StatefulSet
           name: my-chain

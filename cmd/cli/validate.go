@@ -269,7 +269,7 @@ func validateE2EFile(path string) error {
 			var kubectlCount int
 			if k := exp.Kubectl; k != nil {
 				kubectlCount = len(k.Get) + len(k.Logs) + len(k.Describe) + len(k.Exec) +
-					len(k.PortForward) + len(k.Apply) + len(k.Patch) +
+					len(k.PortForward) + len(k.Apply) + len(k.Delete) + len(k.Patch) +
 					len(k.Events) + len(k.Auth) + len(k.Cp) + len(k.Top)
 			}
 			if len(exp.Resources) == 0 && len(exp.Commands) == 0 && kubectlCount == 0 {
