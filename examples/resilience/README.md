@@ -14,6 +14,8 @@ ork init --pack resilience
 |---------|-----------------|
 | [Safe Reconcile](safe-reconcile/README.md) | Panic isolation in the worker pool. A nil pointer in a typed hook is caught, logged, and recovered — the operator stays running and other CRDs are unaffected. |
 | [Admission Protection](01-admission-protection/README.md) | Runtime validation as a resilience layer. A bad CR degrades the operator after `failureThreshold` is exceeded. Patch it — the operator recovers automatically, no restart needed. |
+| [CRD Missing Recovery](02-crd-missing-recovery/README.md) | Runtime CRD watch without deletion protection. Delete the CRD at runtime — Orkestra detects the disappearance, degrades, and retries. Re-apply the CRD and CR — the operator recovers with no restart. |
+| [Leader Failover](03-leader-failover/README.md) | High-availability leader election. Deploy with `replicaCount: 2`, kill the leader pod — a follower is elected within `leaseDuration` and reconciliation continues with no manual intervention. |
 
 ---
 
@@ -40,6 +42,8 @@ Or run a single example:
 ```bash
 cd safe-reconcile && ork e2e
 cd 01-admission-protection && ork e2e
+cd 02-crd-missing-recovery && ork e2e
+cd 03-leader-failover && ork e2e
 ```
 
 ## Simulate

@@ -3,5 +3,7 @@ kind: Simulate
 metadata:
   name: resilience-simulate
 
-imports: 
+imports:
   - ./01-admission-protection/simulate.yaml
+  - ./02-crd-missing-recovery/simulate.yaml
+  - ./03-leader-failover/simulate.yaml

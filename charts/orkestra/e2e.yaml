@@ -159,22 +159,25 @@ spec:
       timeout: 60s
       kubectl:
         port-forward:
-          - service: orkestra-runtime
-            namespace: orkestra-system
+          - leaderElection:
+              lease: orkestra-konductor
+              namespace: orkestra-system
             port: 8080
             path: /katalog/website/health
             jq: resourceCount
-            equals: "1"
+            greaterThan: "1"
 
-          - service: orkestra-runtime
-            namespace: orkestra-system
+          - leaderElection:
+              lease: orkestra-konductor
+              namespace: orkestra-system
             port: 8080
             path: /katalog/website
             jq: healthy
             equals: "true"
 
-          - service: orkestra-runtime
-            namespace: orkestra-system
+          - leaderElection:
+              lease: orkestra-konductor
+              namespace: orkestra-system
             port: 8080
             path: /katalog/website
             outputContains: "Website CRD, GVK: demo.orkestra.io/v1alpha1, Kind=Website"

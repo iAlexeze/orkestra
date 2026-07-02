@@ -3,10 +3,12 @@ kind: E2E
 metadata:
   name: resilience-suite
   description: >
-    Suite for the resilience pack — panic isolation and runtime admission protection.
-    Demonstrates that Orkestra stays operational through panics, bad input, and
-    degraded state.
+    Suite for the resilience pack — panic isolation, runtime admission protection,
+    CRD missing recovery, and leader failover. Demonstrates that Orkestra stays
+    operational through panics, bad input, missing CRDs, and leader election events.
 
 imports:
   - ./safe-reconcile/e2e.yaml
   - ./01-admission-protection/e2e.yaml
+  - ./02-crd-missing-recovery/e2e.yaml
+  - ./03-leader-failover/e2e.yaml
