@@ -111,7 +111,7 @@ Operators that stay running when things go wrong.
 | Example | What you learn |
 |---------|----------------|
 | [Safe Reconcile](./resilience/safe-reconcile/) | Panic isolation in the worker pool. A nil pointer in a typed hook is caught and recovered — the operator keeps running and other CRDs are unaffected. |
-| [Admission Protection](./resilience/01-admission-protection/) | Runtime validation as a resilience layer. Bad CR → operator degrades after `failureThreshold`. Patch the CR → operator recovers automatically. |
+| [Admission Protection](./resilience/admission-protection/) | Runtime validation as a resilience layer. Bad CR → operator degrades after `failureThreshold`. Patch the CR → operator recovers automatically. |
 
 ### Use Cases — `--pack use-cases`
 

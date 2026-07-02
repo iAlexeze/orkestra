@@ -9,6 +9,6 @@ metadata:
 
 imports:
   - ./safe-reconcile/e2e.yaml
-  - ./01-admission-protection/e2e.yaml
-  - ./02-crd-missing-recovery/e2e.yaml
-  - ./03-leader-failover/e2e.yaml
+  - ./admission-protection/e2e.yaml
+  - ./crd-missing-recovery/e2e.yaml
+  - ./leader-failover/e2e.yaml

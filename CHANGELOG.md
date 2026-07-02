@@ -1,84 +1,4 @@
-## Unreleased
-
-### E2E harness enhancements
-
-**`leaderElection` on `kubectl.port-forward`**
-
-Port-forward entries now support a `leaderElection` block that resolves the target pod from a Kubernetes `coordination.k8s.io/v1` Lease before opening the connection. In multi-replica deployments only the elected leader runs reconcilers — port-forwarding via a Service hits a random pod and may land on a follower returning stale state. `leaderElection` guarantees assertions run against the pod with authoritative state.
-
-```yaml
-kubectl:
-  port-forward:
-    - namespace: orkestra-system
-      port: 8080
-      path: /katalog/myapp/health
-      leaderElection:
-        lease: orkestra-konductor
-      jq: state
-      equals: "healthy"
-```
-
-`service` and `pod` become optional when `leaderElection` is set. The harness resolves `kubectl get lease <name> -n <namespace> -o jsonpath='{.spec.holderIdentity}'` and port-forwards directly to `pod/<holder>`. `lease.namespace` defaults to the port-forward `namespace`.
-
-**`leaderElection` on `kubectl.logs`**
-
-Log assertions now support the same `leaderElection` block — resolves the pod from the Kubernetes Lease holder before running `kubectl logs`. Use this to assert that the elected leader emitted a specific log line, rather than checking a random pod selected by label.
-
-```yaml
-kubectl:
-  logs:
-    - leaderElection:
-        lease: orkestra-konductor
-        namespace: orkestra-system
-      outputContains: "became konductor"
-```
-
-`name`, `labelSelector`, and `leaderElection` are mutually exclusive.
-
-**`kubectl.delete`**
-
-New subcommand for deleting Kubernetes resources as part of an assertion checkpoint. Supports deletion by file or by resource identity. `ignoreNotFound: true` silences errors when the resource is already gone — useful in cleanup steps or after cascade deletes.
-
-```yaml
-kubectl:
-  delete:
-    # by file — deletes all resources in the manifest
-    - file: ./crd.yaml
-      ignoreNotFound: true
-
-    # by resource identity
-    - kind: Pod
-      name: my-pod
-      namespace: default
-      ignoreNotFound: true
-```
-
-**`wait:` on `expect` checkpoints**
-
-Each `expect:` checkpoint now accepts a `wait:` field — a duration to sleep before the polling loop starts. Useful when the previous step triggers an async operation that needs time to propagate before assertions are meaningful.
-
-```yaml
-expect:
-  - name: Operator detects missing CRD
-    after: cr-applied
-    wait: 10s
-    timeout: 60s
-    kubectl:
-      port-forward:
-        ...
-```
-
-**`wait:` on `kubectl.port-forward`**
-
-Individual port-forward entries now accept a `wait:` field — a duration to sleep after the port-forward is ready but before the curl request is sent. Useful when the endpoint needs stabilization time after the connection is established.
-
-**Curl fix: HTTP 4xx/5xx responses no longer silently fail**
-
-Port-forward curl calls previously used `curl -sf`, which exits non-zero on any HTTP 4xx/5xx response. Health endpoints for degraded operators return HTTP 503, causing all assertions against degraded state to time out with a confusing exit-code error rather than reporting the actual body. Changed to `curl -s` — the body is always returned and assertions check content directly.
-
-**Port-forward progress spinner**
-
-During the polling loop, a spinner now shows the URL being curled and the resolved target (`curl http://localhost:PORT/path (→ pod/holder-name)`). Previously the URL was only visible on failure.
+## v0.7.9 — Reconciler configuration, user-defined profiles, kubectl DSL, and resilience examples
 
 ### Resilience pack — new sub-examples
 
@@ -86,9 +6,9 @@ Three new examples under `examples/resilience/`, each with `ork validate`, `ork 
 
 | Example | What it teaches |
 |---------|-----------------|
-| `01-admission-protection` | Runtime validation as a resilience layer. Bad CR → `failureThreshold` exceeded → operator degrades. Patch to valid image → automatic recovery, no restart. |
-| `02-crd-missing-recovery` | Runtime CRD watch. Delete the CRD at runtime without deletion protection — Orkestra detects the disappearance, degrades, and retries. Re-apply the CRD and CR → full recovery. `lastError` preserved as audit trail. |
-| `03-leader-failover` | Leader election resilience. Helm-deployed runtime with `replicaCount: 2`. Kill the konductor pod — a follower is elected within `leaseDuration` and reconciliation continues. Covers lease inspection and leader election configuration. |
+| `admission-protection` | Runtime validation as a resilience layer. Bad CR → `failureThreshold` exceeded → operator degrades. Patch to valid image → automatic recovery, no restart. |
+| `crd-missing-recovery` | Runtime CRD watch. Delete the CRD at runtime without deletion protection — Orkestra detects the disappearance, degrades, and retries. Re-apply the CRD and CR → full recovery. `lastError` preserved as audit trail. |
+| `leader-failover` | Leader election resilience. Helm-deployed runtime with `replicaCount: 2`. Kill the konductor pod — a follower is elected within `leaseDuration` and reconciliation continues. Covers lease inspection and leader election configuration. |
 
 ### Live API documentation
 
@@ -97,10 +17,6 @@ New concept section: **Every CRD is a Live API** (`documentation/concepts/live-a
 ### E2E concept: testing leader-led deployments
 
 New concept page (`documentation/concepts/e2e/06-leader-led-deployments.md`) explaining the follower routing problem and how `leaderElection` solves it. Covers `isKonductor`, lease namespace defaulting, when to use service vs. leader port-forward, and `kubectl.logs` with `leaderElection`. General-purpose — applies to any operator using Kubernetes leader election, not just Orkestra.
-
----
-
-## v0.7.9 — Reconciler configuration, user-defined profiles, and kubectl DSL for e2e
 
 ### Source caching for `ork pull -f`
 
@@ -214,17 +130,18 @@ User-defined profiles are resolved before Orkestra built-ins. Declaring a profil
 
 ### kubectl: DSL block for e2e assertions
 
-A `kubectl:` block can now sit alongside `resources:` and `commands:` in any `expect:` entry. Ten subcommands:
+A `kubectl:` block can now sit alongside `resources:` and `commands:` in any `expect:` entry. Eleven subcommands:
 
 | Subcommand | Generates |
 |------------|-----------|
 | `get` | `kubectl get <kind> <name> -o jsonpath='{<field>}'` or `--output json/yaml` |
-| `logs` | `kubectl logs -n <ns> [-l <selector> \| <name>] [--since=<since>]` |
+| `logs` | `kubectl logs -n <ns> [-l <selector> \| <name> \| leaderElection] [--since=<since>]` |
 | `describe` | `kubectl describe <kind> <name/selector> -n <ns>` |
 | `exec` | `kubectl exec -n <ns> <pod> -- <command>` |
 | `port-forward` | Port-forward + curl as one operation; lifecycle managed by the runner |
 | `apply` | `kubectl apply -f <file>` or inline manifest via stdin |
 | `patch` | `kubectl patch <kind> <name> --type=<merge\|strategic\|json> -p '<patch>'` |
+| `delete` | `kubectl delete -f <file>` or by resource identity; `ignoreNotFound: true` available |
 | `events` | `kubectl events --for=<kind>/<name> -n <ns>` |
 | `auth` | `kubectl auth can-i <verb> <resource> [--as <as>]` |
 | `cp` | `kubectl cp <ns>/<pod>:<src>` — copies to temp file, asserts content, cleans up |
@@ -233,6 +150,56 @@ A `kubectl:` block can now sit alongside `resources:` and `commands:` in any `ex
 All subcommands share six assertion fields: `equals`, `notEquals`, `outputContains`, `outputNotContains`, `greaterThan`, `lessThan`. `greaterThan` and `lessThan` parse the output as `float64` — the check fails if the output is not numeric. `jq` and `yq` extraction is supported where applicable. `apply` and `patch` run before read subcommands each iteration so mutations take effect before assertions check them.
 
 `commands[].run` now also supports `outputNotContains`.
+
+**`leaderElection` on `port-forward` and `logs`**
+
+Both `port-forward` and `logs` entries accept a `leaderElection` block that resolves the target pod from a Kubernetes `coordination.k8s.io/v1` Lease. In multi-replica deployments only the elected leader runs reconcilers — without this, port-forward may land on a follower returning stale state and `kubectl logs` may target the wrong pod. `leaderElection` guarantees assertions always run against the pod with authoritative state.
+
+```yaml
+kubectl:
+  port-forward:
+    - leaderElection:
+        lease: orkestra-konductor
+      namespace: orkestra-system
+      port: 8080
+      path: /katalog/myapp/health
+      jq: state
+      equals: "healthy"
+  logs:
+    - leaderElection:
+        lease: orkestra-konductor
+        namespace: orkestra-system
+      outputContains: "became konductor"
+```
+
+`service` and `pod` are optional when `leaderElection` is set. For `logs`, `name`, `labelSelector`, and `leaderElection` are mutually exclusive. `lease.namespace` defaults to the entry's `namespace`.
+
+**`kubectl.delete`**
+
+Supports deletion by file or by resource identity. `ignoreNotFound: true` silences errors when the resource is already gone — useful in cleanup steps or after cascade deletes.
+
+```yaml
+kubectl:
+  delete:
+    - file: ./crd.yaml
+      ignoreNotFound: true
+    - kind: Pod
+      name: my-pod
+      namespace: default
+      ignoreNotFound: true
+```
+
+**`wait:` on checkpoints and `port-forward` entries**
+
+Each `expect:` checkpoint accepts a `wait:` field — a duration to sleep before the polling loop starts. Individual `port-forward` entries accept their own `wait:` — a duration to sleep after the connection is established but before the curl request is sent.
+
+**Curl fix: HTTP 4xx/5xx responses no longer silently fail**
+
+Port-forward curl calls previously used `curl -sf`, which exits non-zero on any HTTP 4xx/5xx response. Health endpoints for degraded operators return HTTP 503, causing assertions against degraded state to time out rather than report the actual body. Changed to `curl -s` — the body is always returned and assertions check content directly.
+
+**Port-forward progress spinner**
+
+During the polling loop, a spinner shows the URL being curled and the resolved target (`curl http://localhost:PORT/path (→ pod/holder-name)`).
 
 **Tool pre-flight**: `ork e2e` scans the spec and installs missing tools before assertions run — `curl` (port-forward), `jq`, `yq` (apt-get / apk / brew), and `metrics-server` (Helm, with `--kubelet-insecure-tls` on kind clusters).
 
