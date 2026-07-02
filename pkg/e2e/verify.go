@@ -393,7 +393,19 @@ func checkKubectlLogs(ctx context.Context, e orktypes.E2EKubectlLogs, workDir st
 	}
 
 	args := []string{"logs", "-n", ns}
-	if e.LabelSelector != "" {
+	if e.LeaderElection != nil {
+		leaseNs := e.LeaderElection.Namespace
+		if leaseNs == "" {
+			leaseNs = ns
+		}
+		holder, err := runKubectl(ctx, workDir,
+			"get", "lease", e.LeaderElection.Lease, "-n", leaseNs,
+			"-o", "jsonpath={.spec.holderIdentity}")
+		if err != nil || strings.TrimSpace(holder) == "" {
+			return fmt.Errorf("kubectl logs: lease %s/%s has no holder yet", leaseNs, e.LeaderElection.Lease)
+		}
+		args = append(args, strings.TrimSpace(holder))
+	} else if e.LabelSelector != "" {
 		args = append(args, "-l", e.LabelSelector)
 	} else {
 		args = append(args, e.Name)

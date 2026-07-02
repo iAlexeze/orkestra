@@ -473,10 +473,13 @@ type E2EKubectlGet struct {
 
 // E2EKubectlLogs asserts container log output.
 type E2EKubectlLogs struct {
-	// Name is the pod name. Use LabelSelector to match by label instead.
+	// Name is the pod name. Use LabelSelector or LeaderElection instead.
 	Name string `yaml:"name,omitempty"`
 	// LabelSelector selects pods by label (e.g. "app=my-service").
 	LabelSelector string `yaml:"labelSelector,omitempty"`
+	// LeaderElection resolves the target pod from a Kubernetes Lease holder.
+	// Mutually exclusive with Name and LabelSelector.
+	LeaderElection *E2EKubectlPortForwardLeaderElection `yaml:"leaderElection,omitempty"`
 	// Namespace to look in. Defaults to "default".
 	Namespace string `yaml:"namespace,omitempty"`
 	// Container name. Defaults to the first container.

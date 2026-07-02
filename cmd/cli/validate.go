@@ -266,8 +266,13 @@ func validateE2EFile(path string) error {
 			if !validAfter {
 				errs = append(errs, fmt.Sprintf("spec.expect[%d].after must be one of %v (got %q)", i, orktypes.ValidAfterValues, exp.After))
 			}
-			hasKubectl := exp.Kubectl != nil && (len(exp.Kubectl.Get)+len(exp.Kubectl.Logs)+len(exp.Kubectl.Describe)+len(exp.Kubectl.Exec)+len(exp.Kubectl.PortForward) > 0)
-			if len(exp.Resources) == 0 && len(exp.Commands) == 0 && !hasKubectl {
+			var kubectlCount int
+			if k := exp.Kubectl; k != nil {
+				kubectlCount = len(k.Get) + len(k.Logs) + len(k.Describe) + len(k.Exec) +
+					len(k.PortForward) + len(k.Apply) + len(k.Patch) +
+					len(k.Events) + len(k.Auth) + len(k.Cp) + len(k.Top)
+			}
+			if len(exp.Resources) == 0 && len(exp.Commands) == 0 && kubectlCount == 0 {
 				errs = append(errs, fmt.Sprintf("spec.expect[%d] (%q): must have at least one resource, command, or kubectl check", i, exp.Name))
 			}
 		}

@@ -121,8 +121,15 @@ func validateKubectlGet(loc string, g orktypes.E2EKubectlGet) []error {
 
 func validateKubectlLogs(loc string, l orktypes.E2EKubectlLogs) []error {
 	var errs []error
-	if l.Name == "" && l.LabelSelector == "" {
-		errs = append(errs, fmt.Errorf("%s: name or labelSelector is required", loc))
+	if l.LeaderElection != nil {
+		if l.Name != "" || l.LabelSelector != "" {
+			errs = append(errs, fmt.Errorf("%s: leaderElection is mutually exclusive with name and labelSelector", loc))
+		}
+		if l.LeaderElection.Lease == "" {
+			errs = append(errs, fmt.Errorf("%s: leaderElection.lease is required", loc))
+		}
+	} else if l.Name == "" && l.LabelSelector == "" {
+		errs = append(errs, fmt.Errorf("%s: name, labelSelector, or leaderElection is required", loc))
 	}
 	if !hasAssertion(assertions{Equals: l.Equals, NotEquals: l.NotEquals, OutputContains: l.OutputContains, OutputNotContains: l.OutputNotContains, GreaterThan: l.GreaterThan, LessThan: l.LessThan}) {
 		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
