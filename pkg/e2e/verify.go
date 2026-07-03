@@ -438,7 +438,7 @@ func checkKubectlLogs(ctx context.Context, e orktypes.E2EKubectlLogs, workDir st
 		if err != nil || strings.TrimSpace(holder) == "" {
 			return fmt.Errorf("kubectl logs: lease %s/%s has no holder yet", leaseNs, e.LeaderElection.Lease)
 		}
-		args = append(args, strings.TrimSpace(holder))
+		args = []string{"logs", "-n", leaseNs, strings.TrimSpace(holder)}
 	} else if e.LabelSelector != "" {
 		args = append(args, "-l", e.LabelSelector)
 	} else {
