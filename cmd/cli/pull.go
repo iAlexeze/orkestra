@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/motif"
 	"github.com/orkspace/orkestra/pkg/registry"
+	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -199,6 +201,37 @@ func pullFromFile(cmd *cobra.Command, filePath string, refresh bool) error {
 			spinRef.Stop()
 			fmt.Printf("  %s %s\n", successMark(), ref.ShortName())
 			pullMotifDeps(cacheDir)
+		}
+	}
+
+	// ── Helm sources ─────────────────────────────────────────────────────────
+	helmImports, err := registry.ExtractHelmAndFileImports(filePath)
+	if err == nil && !helmImports.Empty() {
+		for _, src := range helmImports.HelmSources {
+			label := src.Repo + "/" + src.Chart + "@" + src.Version
+			spin := StartSpinner(label)
+			if cacheErr := merger.WarmHelmSource(src, refresh); cacheErr != nil {
+				spin.Failure()
+				errs = append(errs, fmt.Sprintf("helm %s: %v", label, cacheErr))
+			} else {
+				spin.Stop()
+				fmt.Printf("  %s %s\n", successMark(), label)
+			}
+		}
+
+		// ── Remote file sources ───────────────────────────────────────────────
+		for _, url := range helmImports.RemoteFiles {
+			spin := StartSpinner(url)
+			if refresh {
+				utils.InvalidateFileCache(url)
+			}
+			if _, fetchErr := utils.LoadFileWithAuthRefresh(url, nil, refresh); fetchErr != nil {
+				spin.Failure()
+				errs = append(errs, fmt.Sprintf("file %s: %v", url, fetchErr))
+			} else {
+				spin.Stop()
+				fmt.Printf("  %s %s\n", successMark(), url)
+			}
 		}
 	}
 

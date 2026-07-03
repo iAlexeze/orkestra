@@ -4,6 +4,26 @@
 
 ## v0.7.9 — Reconciler configuration, user-defined profiles, and kubectl DSL for e2e
 
+### Source caching for `ork pull -f`
+
+`ork pull -f komposer.yaml` now pre-warms all three local cache namespaces so that subsequent `ork template`, `ork validate`, and `ork generate` calls are served from disk rather than making network requests:
+
+| Cache | Location | Key |
+|-------|----------|-----|
+| Git Helm sources | `~/.orkestra/helm/git/<sha256>/` | `SHA256(repo + ref + subpath)` |
+| Remote Helm repository charts | `~/.orkestra/helm/repo/<sha256>/` | `SHA256(repo + chart + version)` |
+| Remote HTTPS files | `~/.orkestra/files/<sha256>/` | `SHA256(url)` |
+
+Caches have no TTL — entries persist until `ork pull -f komposer.yaml --refresh` is run, which bypasses all three and overwrites the stored copies. `--refresh` on the OCI registry pull was already supported; it now extends to Helm and file sources.
+
+### Bug fixes
+
+- **Merger log noise**: git clone and Helm pull progress messages in `resolveGitChart` and `resolveRemoteChart` downgraded from `Info` to `Debug`. Only shown with `--debug`.
+- **charts/examples gitlink**: dangling gitlink (`mode 160000`) in the repository index with no `.gitmodules` caused `ork template` to fail on machines that cloned the repo via the merger. Re-added as regular tracked files.
+- **`.gitignore` bare `ork` pattern**: the entry `ork` matched `pkg/ork/` and blocked `pkg/ork/metrics.go` from being tracked. Changed to `/ork` (root-only).
+- **govulncheck in CI**: `go run golang.org/x/vuln/cmd/govulncheck@latest ./...` added to `validate-pr` workflow. `go install` + call-by-name was tried first but `GOPATH/bin` is not on `PATH` in CI runners.
+- **CVE dependency updates**: `x/crypto` → `v0.52.0`, `x/net` → `v0.55.0`, `containerd` → `v1.7.33`. Three remaining containerd advisories have `Fixed in: N/A` upstream and are not actionable.
+
 ### Breaking: reconciler config moves inside `operatorBox`
 
 `workers`, `resync`, and `queue` (`maxDepth`, `failureThreshold`) move from the CRD root into `operatorBox.reconciler`. The `operatorBox` is the complete definition of what makes a CRD an operator — the reconciler runtime config belongs there alongside `onCreate`, `onReconcile`, `status`, and `admission`.

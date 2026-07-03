@@ -166,6 +166,8 @@ Six Runtimes. 75 CRDs. One Control Center.
 
 ## What Orkestra is not
 
+**Orkestra is not an operator — it is a runtime for Kubernetes behaviour.** Each CRD you declare in a Katalog becomes an operator. Orkestra itself is the runtime that runs them.
+
 **CRD generation is a starting point, not the source of truth.** `ork generate crd` scaffolds a base CRD from your Katalog. You own the final schema — add validation, printer columns, and version history to it. `crdFile` just points to whatever CRD file you maintain.
 
 **It does not replace Go for complex logic.** Hooks and constructors exist for exactly this reason. ~90% of operators are declarative structure; ~10% need code. Orkestra handles the 90% and gives the 10% a clean interface.

@@ -59,4 +59,13 @@ const (
 	// CacheDir is the local cache directory for pulled artifacts.
 	// Resolved relative to the user's home directory.
 	CacheDir = ".orkestra/registry"
+
+	// HelmGitCacheDir is the local cache directory for git-sourced Helm charts.
+	HelmGitCacheDir = ".orkestra/helm/git"
+
+	// HelmRepoCacheDir is the local cache directory for remote Helm repository charts.
+	HelmRepoCacheDir = ".orkestra/helm/repo"
+
+	// FileCacheDir is the local cache directory for remote file fetches (https://).
+	FileCacheDir = ".orkestra/files"
 )
