@@ -36,7 +36,7 @@ ork init --list-packs
 ```
 
 After init, your examples live at:
-```
+```text
 my-operator/
 └── <pack>/
     ├── e2e.yaml            full suite — runs all examples in one command
@@ -111,6 +111,7 @@ Operators that stay running when things go wrong.
 | Example | What you learn |
 |---------|----------------|
 | [Safe Reconcile](./resilience/safe-reconcile/) | Panic isolation in the worker pool. A nil pointer in a typed hook is caught and recovered — the operator keeps running and other CRDs are unaffected. |
+| [Admission Protection](./resilience/admission-protection/) | Runtime validation as a resilience layer. Bad CR → operator degrades after `failureThreshold`. Patch the CR → operator recovers automatically. |
 
 ### Use Cases — `--pack use-cases`
 
@@ -127,6 +128,7 @@ Real-world patterns combining multiple Orkestra features.
 | [Enrich](./use-cases/enrich/) | Inject data from external sources into CR status. |
 | [Normalize](./use-cases/normalize/) | Validate and normalise CR fields at reconcile time. |
 | [Profiles](./use-cases/profiles/) | Apply different resource configurations based on environment profiles. |
+| [Namespace Provisioner](./use-cases/namespace-provisioner/) | Tenant namespaces, RBAC, quotas, and network policies from a single CRD. |
 
 ### From controller-runtime — `--pack from-controller-runtime`
 

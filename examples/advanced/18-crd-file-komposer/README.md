@@ -16,10 +16,9 @@ with Komposer imports.
 
 ## The pattern
 
-```
+```text
 vendor-katalog.yaml            →  logic (reconciler, status, onCreate)
-komposer.yaml (override)       →  apiTypes: platform.acme.io    ← your group
-                                  crdFile:  ./crd-mine.yaml     ← your CRD
+komposer.yaml (override)       →  crdFile:  ./crd-mine.yaml     ← your CRD containing your API types (Group, Version, Kind, Plural)
 ```
 
 The vendor Katalog provides all the operator logic. The Komposer declares:
@@ -27,7 +26,7 @@ The vendor Katalog provides all the operator logic. The Komposer declares:
 2. **Where the CRD file lives** — applied automatically by `ork run` in dev mode
 
 No manual `kubectl apply -f crd-mine.yaml` step. No modifications to the vendor
-file.
+file. Orkestra reads the CRD information from the [`crdFile`](./crd-mine.yaml).
 
 ---
 
@@ -36,12 +35,14 @@ file.
 ### 1. Validate
 
 ```bash
-ork validate --file komposer.yaml
+ork validate
 ```
 
+> Defaults to `katalog.yaml` or `komposer.yaml`
+
 Expected:
-```
-✓ managed-service
+```text
+● managed-service
     kind: ManagedService
     group: platform.acme.io / version: v1alpha1 / plural: managedservices
     crdFile: ./crd-mine.yaml
@@ -51,11 +52,13 @@ Expected:
 ### 2. Start the runtime
 
 ```bash
-ork run --file komposer.yaml
+ork run
 ```
 
+> Defaults to `katalog.yaml` or `komposer.yaml`
+
 On startup you will see:
-```
+```text
 INF crdFile applied crd=managed-service path=.../crd-mine.yaml
 ```
 
@@ -80,7 +83,7 @@ kubectl get services   | grep my-service
 ```
 
 Expected (after a moment):
-```
+```text
 NAME         IMAGE                PHASE
 my-service   nginx:stable-alpine  Running
 ```
@@ -96,8 +99,8 @@ my-service   nginx:stable-alpine  Running
 | `crdFile` override | No | Yes |
 | Startup step count | 5 (install → validate → run → CR → verify) | 4 (validate → run → CR → verify) |
 
-Use **18** when you want the Komposer to be the single artifact to hand off.
-Use **17** when your CI pipeline handles CRD installation separately.
+Use **18** for faster development. You can also add `crFiles:` block which a list of CRs to be applied before `ork run` starts.
+Use **17** when running Orkestra with Helm install - **Production Deployment**.
 
 ---
 

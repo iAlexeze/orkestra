@@ -45,6 +45,35 @@ func ValidateImports(baseDir string, imports []orktypes.E2EImport) []error {
 	return errs
 }
 
+// ExpandExpectIncludes resolves include: entries in the expect list, loading each
+// referenced file and splicing its entries in place. Relative paths are resolved
+// against baseDir. Nested includes are not supported.
+func ExpandExpectIncludes(expects []orktypes.E2EExpectation, baseDir string) ([]orktypes.E2EExpectation, error) {
+	var result []orktypes.E2EExpectation
+	for _, exp := range expects {
+		if exp.Include == "" {
+			result = append(result, exp)
+			continue
+		}
+		path := exp.Include
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(baseDir, path)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("include %s: %w", exp.Include, err)
+		}
+		var wrapper struct {
+			Expect []orktypes.E2EExpectation `yaml:"expect"`
+		}
+		if err := yaml.Unmarshal(data, &wrapper); err != nil {
+			return nil, fmt.Errorf("include %s: %w", exp.Include, err)
+		}
+		result = append(result, wrapper.Expect...)
+	}
+	return result, nil
+}
+
 // ValidateKubectl checks every kubectl block across all expect entries.
 // Returns one error per violation — callers collect and print all of them.
 func ValidateKubectl(expects []orktypes.E2EExpectation) []error {
@@ -73,6 +102,9 @@ func ValidateKubectl(expects []orktypes.E2EExpectation) []error {
 		}
 		for j, a := range exp.Kubectl.Apply {
 			errs = append(errs, validateKubectlApply(loc("apply", j), a)...)
+		}
+		for j, d := range exp.Kubectl.Delete {
+			errs = append(errs, validateKubectlDelete(loc("delete", j), d)...)
 		}
 		for j, p := range exp.Kubectl.Patch {
 			errs = append(errs, validateKubectlPatch(loc("patch", j), p)...)
@@ -121,8 +153,15 @@ func validateKubectlGet(loc string, g orktypes.E2EKubectlGet) []error {
 
 func validateKubectlLogs(loc string, l orktypes.E2EKubectlLogs) []error {
 	var errs []error
-	if l.Name == "" && l.LabelSelector == "" {
-		errs = append(errs, fmt.Errorf("%s: name or labelSelector is required", loc))
+	if l.LeaderElection != nil {
+		if l.Name != "" || l.LabelSelector != "" {
+			errs = append(errs, fmt.Errorf("%s: leaderElection is mutually exclusive with name and labelSelector", loc))
+		}
+		if l.LeaderElection.Lease == "" {
+			errs = append(errs, fmt.Errorf("%s: leaderElection.lease is required", loc))
+		}
+	} else if l.Name == "" && l.LabelSelector == "" {
+		errs = append(errs, fmt.Errorf("%s: name, labelSelector, or leaderElection is required", loc))
 	}
 	if !hasAssertion(assertions{Equals: l.Equals, NotEquals: l.NotEquals, OutputContains: l.OutputContains, OutputNotContains: l.OutputNotContains, GreaterThan: l.GreaterThan, LessThan: l.LessThan}) {
 		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
@@ -160,8 +199,12 @@ func validateKubectlExec(loc string, e orktypes.E2EKubectlExec) []error {
 
 func validateKubectlPortForward(loc string, p orktypes.E2EKubectlPortForward) []error {
 	var errs []error
-	if p.Service == "" && p.Pod == "" {
-		errs = append(errs, fmt.Errorf("%s: service or pod is required", loc))
+	if p.LeaderElection != nil {
+		if p.LeaderElection.Lease == "" {
+			errs = append(errs, fmt.Errorf("%s: leaderElection.lease is required", loc))
+		}
+	} else if p.Service == "" && p.Pod == "" {
+		errs = append(errs, fmt.Errorf("%s: service, pod, or leaderElection is required", loc))
 	}
 	if p.Port <= 0 {
 		errs = append(errs, fmt.Errorf("%s: port must be > 0", loc))
@@ -169,6 +212,17 @@ func validateKubectlPortForward(loc string, p orktypes.E2EKubectlPortForward) []
 	hasAny := hasAssertion(assertions{Equals: p.Equals, NotEquals: p.NotEquals, OutputContains: p.OutputContains, OutputNotContains: p.OutputNotContains, GreaterThan: p.GreaterThan, LessThan: p.LessThan})
 	if hasAny && p.Path == "" {
 		errs = append(errs, fmt.Errorf("%s: path is required when assertions are set", loc))
+	}
+	return errs
+}
+
+func validateKubectlDelete(loc string, d orktypes.E2EKubectlDelete) []error {
+	var errs []error
+	if d.File == "" && (d.Kind == "" || d.Name == "") {
+		errs = append(errs, fmt.Errorf("%s: file or (kind + name) is required", loc))
+	}
+	if d.File != "" && (d.Kind != "" || d.Name != "") {
+		errs = append(errs, fmt.Errorf("%s: file and kind/name are mutually exclusive", loc))
 	}
 	return errs
 }

@@ -105,6 +105,10 @@ spec:
           - labelSelector: orkestra-owner=my-probe-exec
             namespace: default
             outputContains: "Configuration complete"
+          - leaderElection:
+              lease: orkestra-konductor
+              namespace: orkestra-system
+            outputContains: "became konductor"
 
     # ── kubectl.describe ─────────────────────────────────────────────────────
     - name: Describe shows expected resource state
@@ -191,6 +195,22 @@ spec:
             namespace: default
             field: .spec.message
             equals: patched
+
+    # ── kubectl.delete ───────────────────────────────────────────────────────
+    - name: Delete the inline ConfigMap and verify it is gone
+      after: cr-applied
+      timeout: 30s
+      kubectl:
+        delete:
+          - kind: ConfigMap
+            name: e2e-probe-extra
+            namespace: default
+            ignoreNotFound: true
+      resources:
+        - kind: ConfigMap
+          name: e2e-probe-extra
+          namespace: default
+          count: 0
 
     # ── kubectl.events ───────────────────────────────────────────────────────
     - name: Kubernetes events recorded for both Deployments

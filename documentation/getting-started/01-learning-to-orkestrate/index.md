@@ -26,7 +26,7 @@ Examples are grouped into packs. Pull any pack with `ork init --pack <name>`.
 | [Advanced](./03-advanced.md) | Admission, composition, escape hatches, autoscaling, cross-operator |
 | [Use-cases](./04-use-cases.md) | Normalize, enrich, profiles, full-stack patterns, external calls, motif composition |
 | [Security](./05-security.md) | Admission, deletion protection, namespace isolation |
-| [Resilience](./09-resilience.md) | Panic recovery, degraded state, operator isolation |
+| [Resilience](./09-resilience.md) | Panic recovery, runtime admission protection, degraded state, operator isolation |
 | [Registry Guide](./06-registry.md) | Distribution — publish, version, gate, consume, and automate the full pattern lifecycle |
 | [Migration Guide](./07-migration.md) | Migrating an existing controller-runtime operator to Orkestra — five options, zero lock-in |
 | [Ecosystem Guide](./08-ecosystem.md) | Wrapping ArgoCD, cert-manager, Prometheus, and Crossplane with Orkestra abstraction layers |
@@ -86,6 +86,8 @@ Each example has its own `README.md`. Follow it — it tells you exactly what to
 **Building a platform**
 - [`advanced/08-komposer-registry`](./03-advanced.md) and [`advanced/13-dependencies`](./03-advanced.md)
 - Then [`use-cases/full-stack-app/06-full-stack`](./04-use-cases.md) for how the patterns compose
+- [`use-cases/namespace-provisioner`](./04-use-cases.md) — tenant namespaces, RBAC, quotas, and network policies from a single CRD
+- [`ecosystem-composition`](./08-ecosystem.md) — add an Orkestra abstraction layer over ArgoCD, cert-manager, Prometheus, and Crossplane
 
 **Supply chain and policy enforcement**
 - [`use-cases/external/03-image-signing`](./04-use-cases.md) → [`07-vault-secret-gate`](./04-use-cases.md) → [`08-opa-policy`](./04-use-cases.md)

@@ -75,4 +75,10 @@ count checks, command assertions, cleanup verification — to any workload that 
 Kubernetes: controller-runtime operators, Helm charts, raw manifests, third-party tools.
 
 ## Example
-See [`examples/use-cases/custom-operator/`](../../../examples/use-cases/custom-operator/README.md) for two runnable examples.
+
+```bash
+ork init --pack use-cases/custom-operator
+cd custom-operator
+
+# Follow the steps in the README.
+```

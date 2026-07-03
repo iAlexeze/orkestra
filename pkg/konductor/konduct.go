@@ -173,7 +173,7 @@ func (ko *KonductorElection) callbacks() leaderelection.LeaderCallbacks {
 
 			ko.election.startedKonducting.Store(true)
 
-			logger.Info().Msgf("%s 🏆 became konductor, starting controller...", ko.election.konductor)
+			logger.Info().Msgf("%s 🏆 became konductor, starting kordinator...", ko.election.konductor)
 
 			ko.run(runCtx)
 		},

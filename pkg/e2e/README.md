@@ -27,7 +27,7 @@ ork e2e init --suite             # write a suite aggregator from discovered leaf
 ## Adding a new `kubectl:` subcommand
 
 > [!IMPORTANT]
-> Every new `kubectl:` subcommand requires changes in four places and a fixture entry. Missing any one of them means the feature is incomplete.
+> Every new `kubectl:` subcommand requires changes in five places and a fixture entry. Missing any one of them means the feature is incomplete.
 
 **1. Type — `pkg/types/e2e.go`**
 
@@ -91,6 +91,19 @@ for j, e := range exp.Kubectl.MyCmd {
 
 Add a `## kubectl.my-cmd` section with the field table and a usage example.
 
-**5. Fixture — [`pkg/e2e/fixture/e2e.yaml`](./fixture/e2e.yaml)**
+**5. `hasKubectl` count — [`cmd/cli/validate.go`](../../cmd/cli/validate.go)**
+
+Add `len(k.MyCmd)` to the `kubectlCount` sum in `cmd/cli/validate.go`:
+
+```go
+var kubectlCount int
+if k := exp.Kubectl; k != nil {
+    kubectlCount = len(k.Get) + len(k.Logs) + ... + len(k.MyCmd)
+}
+```
+
+Without this, an expectation that uses only the new subcommand fails validation with "must have at least one resource, command, or kubectl check" even though the YAML is correct.
+
+**6. Fixture — [`pkg/e2e/fixture/e2e.yaml`](./fixture/e2e.yaml)**
 
 Add a checkpoint that exercises the new subcommand end-to-end against the `E2EProbe` operator. See [fixture/README.md](fixture/README.md) for details.

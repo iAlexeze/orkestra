@@ -13,6 +13,7 @@ import (
 	"time"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	orkutils "github.com/orkspace/orkestra/pkg/utils"
 )
 
 const portForwardTimeout = 15 * time.Second
@@ -21,6 +22,16 @@ const portForwardTimeout = 15 * time.Second
 // workDir is the working directory for command checks — relative paths in
 // commands and resource file refs resolve from there.
 func verifyExpectation(ctx context.Context, exp orktypes.E2EExpectation, workDir string) error {
+	if exp.Wait != "" {
+		if d, err := time.ParseDuration(exp.Wait); err == nil && d > 0 {
+			select {
+			case <-time.After(d):
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+	}
+
 	timeout, err := time.ParseDuration(exp.Timeout)
 	if err != nil || timeout <= 0 {
 		timeout = 60 * time.Second
@@ -235,6 +246,11 @@ func checkKubectl(ctx context.Context, k *orktypes.E2EKubectl, workDir string) e
 			return fmt.Errorf("kubectl.apply[%d]: %w", i, err)
 		}
 	}
+	for i, e := range k.Delete {
+		if err := checkKubectlDelete(ctx, e, workDir); err != nil {
+			return fmt.Errorf("kubectl.delete[%d]: %w", i, err)
+		}
+	}
 	for i, e := range k.Patch {
 		if err := checkKubectlPatch(ctx, e, workDir); err != nil {
 			return fmt.Errorf("kubectl.patch[%d]: %w", i, err)
@@ -284,6 +300,35 @@ func checkKubectl(ctx context.Context, k *orktypes.E2EKubectl, workDir string) e
 		if err := checkKubectlTop(ctx, e, workDir); err != nil {
 			return fmt.Errorf("kubectl.top[%d]: %w", i, err)
 		}
+	}
+	return nil
+}
+
+func checkKubectlDelete(ctx context.Context, e orktypes.E2EKubectlDelete, workDir string) error {
+	var args []string
+	if e.File != "" {
+		file := e.File
+		if !filepath.IsAbs(file) && workDir != "" {
+			file = filepath.Join(workDir, file)
+		}
+		args = []string{"delete", "-f", file}
+	} else {
+		ns := e.Namespace
+		if ns == "" {
+			ns = "default"
+		}
+		args = []string{"delete", e.Kind, e.Name, "-n", ns}
+	}
+	if e.IgnoreNotFound {
+		args = append(args, "--ignore-not-found")
+	}
+	out, err := runKubectl(ctx, workDir, args...)
+	if err != nil {
+		ref := e.File
+		if ref == "" {
+			ref = e.Kind + "/" + e.Name
+		}
+		return fmt.Errorf("kubectl delete %s: %s", ref, out)
 	}
 	return nil
 }
@@ -346,7 +391,11 @@ func checkKubectlGet(ctx context.Context, e orktypes.E2EKubectlGet, workDir stri
 
 	var args []string
 	if e.Field != "" {
-		args = []string{"get", e.Kind, e.Name, "-n", ns, "-o", "jsonpath={" + e.Field + "}"}
+		field := e.Field
+		if !strings.HasPrefix(field, ".") {
+			field = "." + field
+		}
+		args = []string{"get", e.Kind, e.Name, "-n", ns, "-o", "jsonpath={" + field + "}"}
 	} else {
 		format := e.Format
 		if format == "" {
@@ -378,7 +427,19 @@ func checkKubectlLogs(ctx context.Context, e orktypes.E2EKubectlLogs, workDir st
 	}
 
 	args := []string{"logs", "-n", ns}
-	if e.LabelSelector != "" {
+	if e.LeaderElection != nil {
+		leaseNs := e.LeaderElection.Namespace
+		if leaseNs == "" {
+			leaseNs = ns
+		}
+		holder, err := runKubectl(ctx, workDir,
+			"get", "lease", e.LeaderElection.Lease, "-n", leaseNs,
+			"-o", "jsonpath={.spec.holderIdentity}")
+		if err != nil || strings.TrimSpace(holder) == "" {
+			return fmt.Errorf("kubectl logs: lease %s/%s has no holder yet", leaseNs, e.LeaderElection.Lease)
+		}
+		args = []string{"logs", "-n", leaseNs, strings.TrimSpace(holder)}
+	} else if e.LabelSelector != "" {
 		args = append(args, "-l", e.LabelSelector)
 	} else {
 		args = append(args, e.Name)
@@ -476,16 +537,43 @@ func checkKubectlPortForward(ctx context.Context, e orktypes.E2EKubectlPortForwa
 		ns = "default"
 	}
 
-	target := ""
-	if e.Service != "" {
+	var target string
+	if e.LeaderElection != nil {
+		leaseNs := e.LeaderElection.Namespace
+		if leaseNs == "" {
+			leaseNs = ns
+		}
+		holder, err := runKubectl(ctx, workDir,
+			"get", "lease", e.LeaderElection.Lease, "-n", leaseNs,
+			"-o", "jsonpath={.spec.holderIdentity}")
+		if err != nil || strings.TrimSpace(holder) == "" {
+			return fmt.Errorf("kubectl port-forward: lease %s/%s has no holder yet", leaseNs, e.LeaderElection.Lease)
+		}
+		target = "pod/" + strings.TrimSpace(holder)
+	} else if e.Service != "" {
 		target = "svc/" + e.Service
 	} else {
 		target = e.Pod
 	}
 
+	return doPortForwardCurl(ctx, e, ns, target, workDir)
+}
+
+// doPortForwardCurl opens a port-forward, optionally waits, runs curl, extracts,
+// and asserts the response in one shot.
+func doPortForwardCurl(ctx context.Context, e orktypes.E2EKubectlPortForward, ns, target, workDir string) error {
+	raw, err := doPortForwardCurlRaw(ctx, e, ns, target, workDir)
+	if err != nil {
+		return err
+	}
+	return assertPortForwardOutput(ctx, workDir, raw, e, target)
+}
+
+// doPortForwardCurlRaw opens a port-forward and returns the raw curl output.
+func doPortForwardCurlRaw(ctx context.Context, e orktypes.E2EKubectlPortForward, ns, target, workDir string) (string, error) {
 	localPort, err := freeLocalPort()
 	if err != nil {
-		return fmt.Errorf("kubectl port-forward %s: could not find free local port: %w", target, err)
+		return "", fmt.Errorf("kubectl port-forward %s: could not find free local port: %w", target, err)
 	}
 	pfArgs := []string{"port-forward", "-n", ns, target,
 		fmt.Sprintf("%s:%d", localPort, e.Port)}
@@ -495,7 +583,7 @@ func checkKubectlPortForward(ctx context.Context, e orktypes.E2EKubectlPortForwa
 		pfCmd.Dir = workDir
 	}
 	if err := pfCmd.Start(); err != nil {
-		return fmt.Errorf("kubectl port-forward %s: %w", target, err)
+		return "", fmt.Errorf("kubectl port-forward %s: %w", target, err)
 	}
 	defer func() { _ = pfCmd.Process.Kill() }()
 
@@ -512,7 +600,17 @@ func checkKubectlPortForward(ctx context.Context, e orktypes.E2EKubectlPortForwa
 	}
 
 	if e.Path == "" {
-		return nil
+		return "", nil
+	}
+
+	if e.Wait != "" {
+		if d, err := time.ParseDuration(e.Wait); err == nil && d > 0 {
+			select {
+			case <-time.After(d):
+			case <-ctx.Done():
+				return "", ctx.Err()
+			}
+		}
 	}
 
 	method := e.Method
@@ -520,19 +618,24 @@ func checkKubectlPortForward(ctx context.Context, e orktypes.E2EKubectlPortForwa
 		method = "GET"
 	}
 	url := fmt.Sprintf("http://localhost:%s%s", localPort, e.Path)
-	curlArgs := []string{"-sf", "-X", method, url}
+	curlArgs := []string{"-s", "-X", method, url}
 
+	sp := orkutils.StartSpinner(fmt.Sprintf("curl %s (→ %s)", url, target))
 	curlCmd := exec.CommandContext(ctx, "curl", curlArgs...)
 	if workDir != "" {
 		curlCmd.Dir = workDir
 	}
 	curlOut, err := curlCmd.CombinedOutput()
+	sp.Stop()
 	if err != nil {
-		return fmt.Errorf("curl %s: %w\noutput: %s", url, err, strings.TrimSpace(string(curlOut)))
+		return "", fmt.Errorf("curl %s: %w\noutput: %s", url, err, strings.TrimSpace(string(curlOut)))
 	}
+	return strings.TrimSpace(string(curlOut)), nil
+}
 
-	out := strings.TrimSpace(string(curlOut))
-	out, err = applyExtract(ctx, workDir, out, e.JQ, e.YQ)
+// assertPortForwardOutput applies jq/yq extraction and assertions to raw curl output.
+func assertPortForwardOutput(ctx context.Context, workDir, raw string, e orktypes.E2EKubectlPortForward, target string) error {
+	out, err := applyExtract(ctx, workDir, raw, e.JQ, e.YQ)
 	if err != nil {
 		return fmt.Errorf("kubectl port-forward %s%s: %w", target, e.Path, err)
 	}

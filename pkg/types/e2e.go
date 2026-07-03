@@ -342,6 +342,12 @@ var ValidAfterValues = []E2EAfter{AfterSetupComplete, AfterCRApplied, AfterCRDel
 
 // E2EExpectation is one named assertion block.
 type E2EExpectation struct {
+	// Include is a path to a YAML file containing a list of E2EExpectation entries.
+	// When set, the file is loaded and its entries are expanded in place of this entry.
+	// All other fields must be empty when include is set.
+	// Relative paths resolve from the e2e.yaml directory.
+	Include string `yaml:"include,omitempty"`
+
 	// Name is printed in the results table.
 	Name string `yaml:"name"`
 	// After is the lifecycle event that triggers this expectation.
@@ -349,6 +355,11 @@ type E2EExpectation struct {
 	After E2EAfter `yaml:"after"`
 	// Timeout is the maximum time to wait for the expectation to pass.
 	Timeout string `yaml:"timeout"` // e.g. "60s"
+	// Wait is an optional duration to sleep before the polling loop starts.
+	// Useful when the previous step needs time to take effect before assertions
+	// should begin — e.g. waiting for enough reconcile cycles to accumulate.
+	// Must be a valid Go duration string (e.g. "10s", "30s").
+	Wait string `yaml:"wait,omitempty"`
 
 	// Resources is a unified list of resource checks across any kind.
 	Resources []E2EResourceCheck `yaml:"resources,omitempty"`
@@ -418,6 +429,9 @@ type E2EKubectl struct {
 	// Apply applies manifests from a file path or inline YAML/JSON content.
 	// Generates: kubectl apply -f <file>  or  echo '<inline>' | kubectl apply -f -
 	Apply []E2EKubectlApply `yaml:"apply,omitempty"`
+	// Delete deletes resources by file path or by resource identity.
+	// Generates: kubectl delete -f <file>  or  kubectl delete <kind> <name> -n <ns>
+	Delete []E2EKubectlDelete `yaml:"delete,omitempty"`
 	// Patch patches a Kubernetes resource with a merge, strategic, or JSON patch.
 	// Generates: kubectl patch <kind> <name> -n <ns> --type=<type> -p '<patch>'
 	Patch []E2EKubectlPatch `yaml:"patch,omitempty"`
@@ -468,10 +482,13 @@ type E2EKubectlGet struct {
 
 // E2EKubectlLogs asserts container log output.
 type E2EKubectlLogs struct {
-	// Name is the pod name. Use LabelSelector to match by label instead.
+	// Name is the pod name. Use LabelSelector or LeaderElection instead.
 	Name string `yaml:"name,omitempty"`
 	// LabelSelector selects pods by label (e.g. "app=my-service").
 	LabelSelector string `yaml:"labelSelector,omitempty"`
+	// LeaderElection resolves the target pod from a Kubernetes Lease holder.
+	// Mutually exclusive with Name and LabelSelector.
+	LeaderElection *E2EKubectlPortForwardLeaderElection `yaml:"leaderElection,omitempty"`
 	// Namespace to look in. Defaults to "default".
 	Namespace string `yaml:"namespace,omitempty"`
 	// Container name. Defaults to the first container.
@@ -557,6 +574,23 @@ type E2EKubectlApply struct {
 	Inline string `yaml:"inline,omitempty"`
 	// Namespace overrides the namespace for resources that don't declare one.
 	Namespace string `yaml:"namespace,omitempty"`
+}
+
+// E2EKubectlDelete deletes resources during an expect checkpoint.
+// Use file to delete all resources in a manifest, or kind+name for a single resource.
+type E2EKubectlDelete struct {
+	// File is a path to a manifest file. All resources in the file are deleted.
+	// Relative paths resolve from the e2e.yaml directory.
+	// Generates: kubectl delete -f <file>
+	File string `yaml:"file,omitempty"`
+	// Kind is the Kubernetes resource kind. Used with name for single-resource deletion.
+	Kind string `yaml:"kind,omitempty"`
+	// Name is the resource name.
+	Name string `yaml:"name,omitempty"`
+	// Namespace to target. Defaults to "default".
+	Namespace string `yaml:"namespace,omitempty"`
+	// IgnoreNotFound silences errors when the resource does not exist.
+	IgnoreNotFound bool `yaml:"ignoreNotFound,omitempty"`
 }
 
 // E2EKubectlPatch patches a Kubernetes resource in-place.
@@ -676,17 +710,32 @@ type E2EKubectlTop struct {
 	LessThan          string `yaml:"lessThan,omitempty"`
 }
 
+// E2EKubectlPortForwardLeaderElection resolves the port-forward target by reading
+// the current holder from a Kubernetes Lease object rather than routing through
+// a Service. Use for leader-elected deployments where only the leader holds
+// authoritative state — followers may return stale or pending data.
+type E2EKubectlPortForwardLeaderElection struct {
+	// Lease is the name of the Kubernetes Lease object that tracks leader election.
+	Lease string `yaml:"lease"`
+	// Namespace of the lease. Defaults to the port-forward namespace.
+	Namespace string `yaml:"namespace,omitempty"`
+}
+
 // E2EKubectlPortForward opens a port-forward to a service or pod, makes an HTTP
 // request via curl, and asserts the response. The port-forward lifecycle
 // (background process, wait for port, cleanup) is handled by the runner.
 // EnsureCurl is called automatically when any entry declares a path.
 type E2EKubectlPortForward struct {
-	// Service is the service name to port-forward to.
+	// Service is the service name to port-forward to. Optional when leaderElection is set.
 	Service string `yaml:"service,omitempty"`
-	// Pod is the pod name to port-forward to. Use Service when possible.
+	// Pod is the pod name to port-forward to. Optional when leaderElection is set.
 	Pod string `yaml:"pod,omitempty"`
 	// Namespace to look in. Defaults to "default".
 	Namespace string `yaml:"namespace,omitempty"`
+	// LeaderElection resolves the port-forward target from a Kubernetes Lease object.
+	// When set, service and pod are ignored — the current lease holder is used instead.
+	// The lease namespace defaults to the port-forward namespace.
+	LeaderElection *E2EKubectlPortForwardLeaderElection `yaml:"leaderElection,omitempty"`
 	// Port is the service or pod port to forward.
 	Port int `yaml:"port"`
 	// Path is the HTTP path to request after the port-forward is ready.
@@ -694,6 +743,11 @@ type E2EKubectlPortForward struct {
 	Path string `yaml:"path,omitempty"`
 	// Method is the HTTP method. Defaults to GET.
 	Method string `yaml:"method,omitempty"`
+	// Wait is an optional duration to sleep after the port-forward is ready
+	// but before the curl request is made. Useful when the endpoint needs a
+	// moment to stabilise after the connection is established.
+	// Must be a valid Go duration string (e.g. "2s", "5s").
+	Wait string `yaml:"wait,omitempty"`
 	// JQ is a jq expression to extract from the response before asserting.
 	// e.g. .workers  or  .items[0].status
 	JQ string `yaml:"jq,omitempty"`

@@ -17,9 +17,5 @@ spec:
   crds:
     managed-service:
       apiTypes:
-        group: platform.acme.io        # your API group
-        version: v1alpha1
-        kind: ManagedService
-        plural: managedservices
-      crdFile: ./crd-mine.yaml         # auto-applied by ork run in dev mode
+      crdFile: ./crd-mine.yaml         # auto-applied by ork run in dev mode with your company's API group
       # workers, resync, operatorBox all inherited from vendor-katalog.yaml
