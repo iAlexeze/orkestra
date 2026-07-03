@@ -50,5 +50,6 @@ Select a command to view its full documentation.
 | [`ork notes`](./notes.md) | Browse and search built-in Katalog template functions |
 | [`ork migrate`](./migrate.md) | Rewrite a controller-runtime Reconcile method to the Orkestra constructor signature |
 | [`ork create cluster`](./create.md) | Create a local kind cluster for development or testing |
+| [`ork delete cluster`](./delete.md) | Delete a local kind cluster |
 | [`ork upgrade`](./upgrade.md) | Upgrade the Orkestra CLI to the latest or a specific version |
 | [`ork uninstall`](./uninstall.md) | Remove the CLI, Control Center binary, cache, and completions |
