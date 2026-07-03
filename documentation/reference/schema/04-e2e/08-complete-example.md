@@ -114,9 +114,9 @@ spec:
             namespace: default
             outputContains: "Configuration complete"
           - leaderElection:
-              lease: my-operator-leader
-              namespace: my-operator-system
-            outputContains: "acquired leader lock"
+              lease: orkestra-konductor
+              namespace: orkestra-system
+            outputContains: "became konductor"
 
     # ── kubectl.describe ─────────────────────────────────────────────────────
     - name: Describe shows expected resource state
@@ -214,12 +214,11 @@ spec:
             name: e2e-probe-extra
             namespace: default
             ignoreNotFound: true
-        get:
-          - kind: ConfigMap
-            name: e2e-probe-extra
-            namespace: default
-            field: .metadata.name
-            equals: ""
+      resources:
+        - kind: ConfigMap
+          name: e2e-probe-extra
+          namespace: default
+          count: 0
 
     # ── kubectl.events ───────────────────────────────────────────────────────
     - name: Kubernetes events recorded for both Deployments

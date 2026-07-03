@@ -22,13 +22,14 @@ expect:
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `name` | yes | Printed in the results table. |
+| `name` | yes* | Printed in the results table. Not required when `include:` is set. |
 | `after` | yes | Lifecycle phase that must have occurred. |
 | `timeout` | yes | Maximum wait time (Go duration: `30s`, `2m`, `90s`). |
 | `wait` | no | Duration to sleep before the polling loop starts (Go duration: `5s`, `30s`). Useful when the previous step triggers an async operation that needs time to propagate before assertions are meaningful. |
 | `resources` | no | Resource state assertions, polled until passing. |
 | `commands` | no | Shell command assertions, run in the same polling loop. |
 | `kubectl` | no | Structured kubectl subcommand assertions. See [kubectl block](07-kubectl.md). |
+| `include` | no | Path to a YAML file containing a bare list of checkpoints to expand in place. See [Composing expectations](#composing-expectations-with-include). |
 
 ---
 
@@ -99,38 +100,56 @@ commands:
 
 ---
 
-## Full example — secret distribution
+## Composing expectations with `include:`
+
+Large test suites can be split across files. An `include:` entry is replaced in place by the checkpoints in the referenced file — position in the list determines where the expanded checkpoints appear in the run order. Place an `include:` at the top for setup checks, in the middle for shared assertions, or at the end for cleanup. The file uses `expect:` as its root key, mirroring the field it slots into.
 
 ```yaml
+# e2e.yaml
 expect:
-  - name: CR created
+  - include: ./infra-ready.yaml     # expands here — runs first
+  - name: Operator-specific check
     after: cr-applied
-    timeout: 60s
-    resources:
-      - kind: SecretDistribution
-        name: db-creds
-
-  - name: Secret distributed to team-alpha
-    after: cr-applied
-    timeout: 60s
-    resources:
-      - kind: Secret
-        name: database-credentials
-        namespace: team-alpha
-
-  - name: Cleanup verified
-    after: cr-deleted
     timeout: 30s
     resources:
-      - kind: SecretDistribution
-        name: db-creds
-        count: 0
-      - kind: Secret
-        name: database-credentials
-        namespace: team-alpha
-        count: 0
+      - kind: MyOperator
+        name: my-resource
+  - include: ./cleanup.yaml         # expands here — runs last
 ```
 
+```yaml
+# infra-ready.yaml
+expect:
+  - name: CRD registered
+    after: cr-applied
+    timeout: 30s
+    kubectl:
+      get:
+        - kind: CustomResourceDefinition
+          name: myoperators.example.com
+          field: status.conditions[0].type
+          equals: Established
+```
+
+Paths are resolved relative to the `e2e.yaml` that contains the `include:` entry. Nested includes (a file that itself includes another) are not supported.
+
+Use `ork validate` to confirm the expansion and see where each checkpoint landed:
+
+```text
+● my-operator-e2e
+
+    CRD registered                   after: cr-applied    timeout: 30s
+    Operator-specific check          after: cr-applied    timeout: 30s
+    Cleanup verified                 after: cr-deleted    timeout: 60s
+
+────────────────────────────────────────────────────────────
+3 expectation(s) valid
+```
+
+The checkpoint list is the fully-expanded run order — what you see is what runs.
+
 ---
+
+→ See [08-complete-example.md](08-complete-example.md) for a full E2E file exercising every subcommand.
 
 → Back: [02-setup.md](02-setup.md) | [Schema index](index.md)

@@ -369,10 +369,15 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 			return nil, err
 		}
 
+		expects, err := ExpandExpectIncludes(r.e2e.Spec.Expect, r.e2eDir)
+		if err != nil {
+			return nil, err
+		}
+
 		crApplied := false
 		crDeleted := false
 
-		for _, exp := range r.e2e.Spec.Expect {
+		for _, exp := range expects {
 			after := exp.After
 			if after == "" {
 				after = orktypes.AfterSetupComplete

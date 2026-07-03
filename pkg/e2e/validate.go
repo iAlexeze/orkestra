@@ -45,6 +45,35 @@ func ValidateImports(baseDir string, imports []orktypes.E2EImport) []error {
 	return errs
 }
 
+// ExpandExpectIncludes resolves include: entries in the expect list, loading each
+// referenced file and splicing its entries in place. Relative paths are resolved
+// against baseDir. Nested includes are not supported.
+func ExpandExpectIncludes(expects []orktypes.E2EExpectation, baseDir string) ([]orktypes.E2EExpectation, error) {
+	var result []orktypes.E2EExpectation
+	for _, exp := range expects {
+		if exp.Include == "" {
+			result = append(result, exp)
+			continue
+		}
+		path := exp.Include
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(baseDir, path)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("include %s: %w", exp.Include, err)
+		}
+		var wrapper struct {
+			Expect []orktypes.E2EExpectation `yaml:"expect"`
+		}
+		if err := yaml.Unmarshal(data, &wrapper); err != nil {
+			return nil, fmt.Errorf("include %s: %w", exp.Include, err)
+		}
+		result = append(result, wrapper.Expect...)
+	}
+	return result, nil
+}
+
 // ValidateKubectl checks every kubectl block across all expect entries.
 // Returns one error per violation — callers collect and print all of them.
 func ValidateKubectl(expects []orktypes.E2EExpectation) []error {

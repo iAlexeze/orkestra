@@ -342,6 +342,12 @@ var ValidAfterValues = []E2EAfter{AfterSetupComplete, AfterCRApplied, AfterCRDel
 
 // E2EExpectation is one named assertion block.
 type E2EExpectation struct {
+	// Include is a path to a YAML file containing a list of E2EExpectation entries.
+	// When set, the file is loaded and its entries are expanded in place of this entry.
+	// All other fields must be empty when include is set.
+	// Relative paths resolve from the e2e.yaml directory.
+	Include string `yaml:"include,omitempty"`
+
 	// Name is printed in the results table.
 	Name string `yaml:"name"`
 	// After is the lifecycle event that triggers this expectation.

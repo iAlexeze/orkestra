@@ -235,6 +235,7 @@ func validateE2EFile(path string) error {
 			))
 		}
 	}
+	expanded := doc.Spec.Expect
 	if !isAggregator {
 		if doc.Spec.Katalog == "" && doc.Spec.Init == nil && !isCustom {
 			errs = append(errs, "spec.katalog is required (or spec.init for example packs, spec.custom.target for custom targets, or imports)")
@@ -248,7 +249,16 @@ func validateE2EFile(path string) error {
 		if len(doc.Spec.Expect) == 0 {
 			errs = append(errs, "spec.expect must contain at least one expectation")
 		}
-		for i, exp := range doc.Spec.Expect {
+		var expandErr error
+		expanded, expandErr = e2e.ExpandExpectIncludes(doc.Spec.Expect, baseDir)
+		if expandErr != nil {
+			errs = append(errs, expandErr.Error())
+			expanded = doc.Spec.Expect
+		}
+		for i, exp := range expanded {
+			if exp.Include != "" {
+				continue
+			}
 			if exp.Name == "" {
 				errs = append(errs, fmt.Sprintf("spec.expect[%d].name is required", i))
 			}
@@ -282,7 +292,7 @@ func validateE2EFile(path string) error {
 	importErrs := e2e.ValidateImports(baseDir, doc.Imports)
 
 	// Validate kubectl blocks.
-	kubectlErrs := e2e.ValidateKubectl(doc.Spec.Expect)
+	kubectlErrs := e2e.ValidateKubectl(expanded)
 
 	if len(errs) > 0 || len(importErrs) > 0 || len(kubectlErrs) > 0 {
 		for _, e := range errs {
@@ -346,7 +356,7 @@ func validateE2EFile(path string) error {
 		}
 	}
 	fmt.Println()
-	for _, exp := range doc.Spec.Expect {
+	for _, exp := range expanded {
 		to := exp.Timeout
 		if to == "" {
 			to = "60s"
@@ -363,7 +373,7 @@ func validateE2EFile(path string) error {
 	if isAggregator {
 		fmt.Printf("%d import(s) valid\n", len(doc.Imports))
 	} else {
-		fmt.Printf("%d expectation(s) valid", len(doc.Spec.Expect))
+		fmt.Printf("%d expectation(s) valid", len(expanded))
 		if len(doc.Imports) > 0 {
 			fmt.Printf(", %d import(s) valid", len(doc.Imports))
 		}

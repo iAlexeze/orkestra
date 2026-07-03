@@ -203,6 +203,24 @@ During the polling loop, a spinner shows the URL being curled and the resolved t
 
 **Tool pre-flight**: `ork e2e` scans the spec and installs missing tools before assertions run — `curl` (port-forward), `jq`, `yq` (apt-get / apk / brew), and `metrics-server` (Helm, with `--kubelet-insecure-tls` on kind clusters).
 
+**`include:` for `expect:` composition**
+
+Large test suites can be split across files. An `include:` entry is replaced in place by the checkpoints in the referenced file — position in the list determines where the expanded checkpoints appear in the run order. The file uses `expect:` as its root key.
+
+```yaml
+expect:
+  - include: ./infra-ready.yaml   # expands here — runs first
+  - name: Operator-specific check
+    after: cr-applied
+    timeout: 30s
+    resources:
+      - kind: MyOperator
+        name: my-resource
+  - include: ./cleanup.yaml       # expands here — runs last
+```
+
+`ork validate` expands all includes before reporting — the checkpoint list and count reflect the fully-expanded run order. Paths are resolved relative to the `e2e.yaml` that contains the `include:` entry.
+
 **Validator**: `ork validate` checks all `kubectl:` blocks — required fields, mutual exclusion, at least one assertion per entry, `jq`/`yq` format consistency, `top` kind must be `pod` or `node`.
 
 **Fixture**: `pkg/e2e/fixture/` is a living integration test with one checkpoint per subcommand. Rule: add a checkpoint when you add a subcommand.
