@@ -1,4 +1,5 @@
-## v0.7.10 [UNRELEASED] — E2E DSL extensions, cluster improvements
+## v0.7.10 [UNRELEASED] — E2E DSL extensions, cluster improvements, endpoint control
+
 
 ### `leaderElection:` on `kubectl.delete` and `kubectl.exec`
 
@@ -8,18 +9,6 @@
 
 `kubectl.exec` with `leaderElection:` runs a command inside the leader pod.
 
-### `include:` composition for `expect:`
-
-Long `expect:` sections can now be split across files in an `e2e/` subfolder and composed with `include:`:
-
-```yaml
-expect:
-  - include: ./e2e/infra-ready.yaml
-  - include: ./e2e/failover.yaml
-  - include: ./e2e/cleanup.yaml
-```
-
-Each include file carries the `expect:` root key. Phases can be read, improved, and scaled independently without touching the others. The three resilience examples (`leader-failover`, `crd-missing-recovery`, `admission-protection`) are refactored to use this pattern.
 
 ### Type rename: `E2EKubectlPortForwardLeaderElection` → `E2EKubectlLeaderElection`
 
@@ -60,6 +49,36 @@ ork run postgres:v1.0.0 --dev --refresh  # re-pull before running
 ### `komposer.yaml` now included in pushed artifacts
 
 `komposer.yaml` was missing from `OptionalFiles` for Katalog patterns — it was never included as an OCI layer when pushing. Added `FileKomposer` constant and added it to the optional files list. Patterns must be re-pushed to include it.
+
+### Endpoint control — `endpoints:` and `crossAccess:` surfaced in the Control Center
+
+Disabled endpoints no longer show as degraded in the CC. The `/katalog` summary now carries `healthEnabled`, `infoEnabled`, and `crossAccess` flags alongside the static CRD fields (`GVK`, `GVR`, `Mode`, `Namespaced`, `Description`) that were previously only available from the per-CRD info endpoint.
+
+The CC reads these flags and skips disabled endpoint calls, synthesising health and info from the always-available `/katalog` summary. A CRD with `endpoints: enabled: false` returns `state: "endpoints-disabled"` and renders a clean disabled page instead of zeros or error states.
+
+All three CC templates updated:
+
+- **Katalog card** — health badge + `⊘` icon when health is disabled; metrics rows hidden when info is disabled; `⊘ info endpoint disabled` row when fully dark
+- **CRD detail** — three explicit disabled states: full-page notice, health section notice, operatorBox section notice
+- **Generated docs** — new Endpoints section (always shown); Cross-read access row in Overview; operatorBox summary table (hooks, constructor, finalizers); Configuration section hidden for disabled CRDs
+
+`crossAccess:` is now visible in the generated docs page for each CRD — ✓ allowed or ⊘ denied with a plain-English explanation.
+
+### Advanced pack — `19-endpoint-control`
+
+Three new examples under `examples/advanced/19-endpoint-control/`, each with `ork validate`, `ork simulate`, `ork run` walkthrough, and a fully passing `ork e2e`:
+
+| Example | What it teaches |
+|---------|-----------------|
+| `01-selective-health` | `endpoints: health: false` — info and CR list active, health endpoint removed |
+| `02-full-disable` | `endpoints: enabled: false` — all HTTP surfaces removed, operator reconciles normally |
+| `03-fully-dark` | `crossAccess: false` + `endpoints: enabled: false` — dark operator reads its open sibling via `cross:`; sibling's cross-read is denied; both outcomes visible in status printer columns |
+
+Root `simulate.yaml` and `e2e.yaml` use `imports:` to chain all three sub-examples.
+
+### Control Center — generated docs page
+
+New documentation page in `documentation/orkestra-core/03-controlcenter/generated-docs.md` covering the live-generated per-CRD docs: what sections appear, when, and how disabled endpoints affect the output.
 
 ### Bug fixes
 

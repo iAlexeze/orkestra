@@ -26,7 +26,7 @@ import re
 import sys
 
 
-def fix_file(path: str) -> bool:
+def fix_file(path: str, dry_run: bool = False) -> bool:
     with open(path) as f:
         lines = f.readlines()
 
@@ -50,7 +50,7 @@ def fix_file(path: str) -> bool:
         else:
             new_lines.append(line)
 
-    if changed:
+    if changed and not dry_run:
         with open(path, "w") as f:
             f.writelines(new_lines)
 
@@ -71,21 +71,27 @@ def collect_markdown(paths: list[str]) -> list[str]:
 
 
 def main() -> None:
-    targets = sys.argv[1:] if len(sys.argv) > 1 else ["."]
+    args = sys.argv[1:]
+    dry_run = "--dry-run" in args
+    targets = [a for a in args if a != "--dry-run"] or ["."]
+
     files = collect_markdown(targets)
 
     if not files:
         print("No markdown files found.")
         return
 
+    if dry_run:
+        print("Dry run — no files will be modified.\n")
+
     fixed = 0
     for path in files:
-        if fix_file(path):
-            print(f"fixed: {path}")
+        if fix_file(path, dry_run=dry_run):
+            print(f"{'would fix' if dry_run else 'fixed'}: {path}")
             fixed += 1
 
     total = len(files)
-    print(f"\n{fixed} file(s) changed, {total - fixed} already clean ({total} scanned).")
+    print(f"\n{fixed} file(s) {'would be changed' if dry_run else 'changed'}, {total - fixed} already clean ({total} scanned).")
 
 
 if __name__ == "__main__":
