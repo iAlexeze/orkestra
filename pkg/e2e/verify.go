@@ -306,7 +306,17 @@ func checkKubectl(ctx context.Context, k *orktypes.E2EKubectl, workDir string) e
 
 func checkKubectlDelete(ctx context.Context, e orktypes.E2EKubectlDelete, workDir string) error {
 	var args []string
-	if e.File != "" {
+	if e.LeaderElection != nil {
+		ns := e.Namespace
+		if ns == "" {
+			ns = "default"
+		}
+		pod, leaseNs, err := resolveLeaderHolder(ctx, e.LeaderElection, ns, workDir)
+		if err != nil {
+			return fmt.Errorf("kubectl delete: %w", err)
+		}
+		args = []string{"delete", "pod", pod, "-n", leaseNs}
+	} else if e.File != "" {
 		file := e.File
 		if !filepath.IsAbs(file) && workDir != "" {
 			file = filepath.Join(workDir, file)
@@ -420,6 +430,23 @@ func checkKubectlGet(ctx context.Context, e orktypes.E2EKubectlGet, workDir stri
 	return nil
 }
 
+// resolveLeaderHolder looks up the holder of a Kubernetes Lease and returns the
+// pod name and the namespace the lease lives in. leaseNs defaults to ns when
+// the LeaderElection struct leaves it empty.
+func resolveLeaderHolder(ctx context.Context, le *orktypes.E2EKubectlLeaderElection, ns, workDir string) (pod, leaseNs string, err error) {
+	leaseNs = le.Namespace
+	if leaseNs == "" {
+		leaseNs = ns
+	}
+	holder, err := runKubectl(ctx, workDir,
+		"get", "lease", le.Lease, "-n", leaseNs,
+		"-o", "jsonpath={.spec.holderIdentity}")
+	if err != nil || strings.TrimSpace(holder) == "" {
+		return "", leaseNs, fmt.Errorf("lease %s/%s has no holder yet", leaseNs, le.Lease)
+	}
+	return strings.TrimSpace(holder), leaseNs, nil
+}
+
 func checkKubectlLogs(ctx context.Context, e orktypes.E2EKubectlLogs, workDir string) error {
 	ns := e.Namespace
 	if ns == "" {
@@ -428,17 +455,11 @@ func checkKubectlLogs(ctx context.Context, e orktypes.E2EKubectlLogs, workDir st
 
 	args := []string{"logs", "-n", ns}
 	if e.LeaderElection != nil {
-		leaseNs := e.LeaderElection.Namespace
-		if leaseNs == "" {
-			leaseNs = ns
+		pod, leaseNs, err := resolveLeaderHolder(ctx, e.LeaderElection, ns, workDir)
+		if err != nil {
+			return fmt.Errorf("kubectl logs: %w", err)
 		}
-		holder, err := runKubectl(ctx, workDir,
-			"get", "lease", e.LeaderElection.Lease, "-n", leaseNs,
-			"-o", "jsonpath={.spec.holderIdentity}")
-		if err != nil || strings.TrimSpace(holder) == "" {
-			return fmt.Errorf("kubectl logs: lease %s/%s has no holder yet", leaseNs, e.LeaderElection.Lease)
-		}
-		args = []string{"logs", "-n", leaseNs, strings.TrimSpace(holder)}
+		args = []string{"logs", "-n", leaseNs, pod}
 	} else if e.LabelSelector != "" {
 		args = append(args, "-l", e.LabelSelector)
 	} else {
@@ -497,8 +518,16 @@ func checkKubectlExec(ctx context.Context, e orktypes.E2EKubectlExec, workDir st
 		ns = "default"
 	}
 
-	pod := e.Name
-	if pod == "" && e.LabelSelector != "" {
+	var pod string
+	if e.LeaderElection != nil {
+		var leaseNs string
+		var err error
+		pod, leaseNs, err = resolveLeaderHolder(ctx, e.LeaderElection, ns, workDir)
+		if err != nil {
+			return fmt.Errorf("kubectl exec: %w", err)
+		}
+		ns = leaseNs
+	} else if e.LabelSelector != "" {
 		var err error
 		pod, err = runKubectl(ctx, workDir,
 			"get", "pod", "-n", ns, "-l", e.LabelSelector,
@@ -506,6 +535,9 @@ func checkKubectlExec(ctx context.Context, e orktypes.E2EKubectlExec, workDir st
 		if err != nil || strings.TrimSpace(pod) == "" {
 			return fmt.Errorf("kubectl exec: no pod found for selector %q in %s", e.LabelSelector, ns)
 		}
+		pod = strings.TrimSpace(pod)
+	} else {
+		pod = e.Name
 	}
 
 	args := []string{"exec", "-n", ns, pod}

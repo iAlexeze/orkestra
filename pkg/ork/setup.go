@@ -23,8 +23,8 @@ func HelmInstall(ctx context.Context, h orktypes.SetupHelmInstall) error {
 	chartRef := h.Chart
 	if !h.IsLocalChart() {
 		repoName := release
-		_ = exec.CommandContext(ctx, "helm", "repo", "add", repoName, h.Repo).Run()
-		_ = exec.CommandContext(ctx, "helm", "repo", "update", repoName).Run()
+		_, _ = exec.CommandContext(ctx, "helm", "repo", "add", repoName, h.Repo).Output()
+		_, _ = exec.CommandContext(ctx, "helm", "repo", "update", repoName).Output()
 		chartRef = fmt.Sprintf("%s/%s", repoName, h.Chart)
 	}
 
@@ -100,7 +100,7 @@ func WaitForResource(ctx context.Context, w orktypes.SetupWait) error {
 					args = append(args, "-n", w.Namespace)
 				}
 			}
-			if err := exec.CommandContext(ctx, "kubectl", args...).Run(); err == nil {
+			if _, err := exec.CommandContext(ctx, "kubectl", args...).Output(); err == nil {
 				return nil
 			}
 		} else {

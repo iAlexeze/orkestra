@@ -223,6 +223,8 @@ Exercises the full arc — degraded state, health endpoint assertions, patch, re
 
 The health endpoint assertions use **leader election** to resolve the port-forward target. Instead of forwarding to the runtime Service (which routes to a random pod), the harness reads the `orkestra-konductor` Lease to find the elected leader and forwards directly to that pod. This guarantees assertions run against the replica with authoritative reconciler state.
 
+The expect checkpoints are split across three files in `e2e/` and composed into [`e2e.yaml`](e2e.yaml) via `include:` — `degraded.yaml`, `recovery.yaml`, and `cleanup.yaml`. Each can be read, improved, and scaled independently without touching the others.
+
 For more: https://orkestra.sh/docs/concepts/e2e/leader-led-deployments/
 
 ---

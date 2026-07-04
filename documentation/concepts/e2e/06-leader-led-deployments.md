@@ -6,9 +6,9 @@ This creates a problem for E2E tests that use `kubectl port-forward svc/<service
 
 ---
 
-## The solution: `leaderElection` on port-forward and logs
+## The solution: `leaderElection` on kubectl subcommands
 
-Port-forward and log entries support a `leaderElection` block that resolves the target pod from a Kubernetes `coordination.k8s.io/v1` Lease before running the command:
+Four kubectl subcommands support a `leaderElection` block that resolves the target pod from a Kubernetes `coordination.k8s.io/v1` Lease before running the command: `port-forward`, `logs`, `delete`, and `exec`.
 
 ```yaml
 kubectl:
@@ -41,7 +41,7 @@ Every assertion now runs against the leader. There is no randomness in pod selec
 
 ## Logs from the leader pod
 
-The same pattern works for `kubectl.logs`. When you want to assert a log line that only the leader emits — a reconcile event, a lock acquisition message, an election confirmation — use `leaderElection` instead of targeting by name or label selector:
+`kubectl.logs` with `leaderElection` asserts a log line that only the leader emits — a reconcile event, a lock acquisition message, an election confirmation:
 
 ```yaml
 kubectl:
@@ -53,6 +53,46 @@ kubectl:
 ```
 
 The harness resolves the Lease holder, then runs `kubectl logs <holder-pod> -n <namespace>`. Label selectors would fan out across all replicas including followers; `leaderElection` pins the log read to exactly the pod that holds the Lease.
+
+---
+
+## Deleting the leader pod
+
+`kubectl.delete` with `leaderElection` deletes the current leader pod by name — without knowing it in advance. This is the clean way to test failover: kill the leader, then assert that a new one is elected and resumes serving.
+
+```yaml
+kubectl:
+  delete:
+    - leaderElection:
+        lease: my-operator-leader
+        namespace: my-operator-system
+```
+
+This replaces the shell anti-pattern that was previously the only option:
+
+```bash
+# fragile — breaks on restart, fails validate, hard to read
+kubectl delete pod \
+  $(kubectl get lease my-operator-leader -n my-operator-system \
+    -o jsonpath='{.spec.holderIdentity}') \
+  -n my-operator-system
+```
+
+---
+
+## Exec into the leader pod
+
+`kubectl.exec` with `leaderElection` runs a command inside the leader pod — useful for inspecting in-memory state or files that only the leader writes:
+
+```yaml
+kubectl:
+  exec:
+    - leaderElection:
+        lease: my-operator-leader
+        namespace: my-operator-system
+      command: [cat, /var/run/leader-token]
+      outputContains: "valid"
+```
 
 ---
 
@@ -110,9 +150,18 @@ kubectl:
       equals: "healthy"
 ```
 
+## Try it
+
+```bash
+ork init --pack resilience/leader-failover
+
+# Follow the steps in README
+```
 ---
 
 ## Schema reference
 
-→ [kubectl.port-forward leaderElection](../../reference/schema/04-e2e/07-kubectl.md#leaderlection)  
-→ [kubectl.logs](../../reference/schema/04-e2e/07-kubectl.md#kubectllogs)
+→ [kubectl.port-forward leaderElection](../../reference/schema/04-e2e/07-kubectl.md#leaderelection)  
+→ [kubectl.logs](../../reference/schema/04-e2e/07-kubectl.md#kubectllogs)  
+→ [kubectl.delete](../../reference/schema/04-e2e/07-kubectl.md#kubectldelete)  
+→ [kubectl.exec](../../reference/schema/04-e2e/07-kubectl.md#kubectlexec)

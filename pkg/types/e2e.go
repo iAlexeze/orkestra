@@ -488,7 +488,7 @@ type E2EKubectlLogs struct {
 	LabelSelector string `yaml:"labelSelector,omitempty"`
 	// LeaderElection resolves the target pod from a Kubernetes Lease holder.
 	// Mutually exclusive with Name and LabelSelector.
-	LeaderElection *E2EKubectlPortForwardLeaderElection `yaml:"leaderElection,omitempty"`
+	LeaderElection *E2EKubectlLeaderElection `yaml:"leaderElection,omitempty"`
 	// Namespace to look in. Defaults to "default".
 	Namespace string `yaml:"namespace,omitempty"`
 	// Container name. Defaults to the first container.
@@ -536,10 +536,13 @@ type E2EKubectlDescribe struct {
 
 // E2EKubectlExec runs a command inside a running container and asserts its output.
 type E2EKubectlExec struct {
-	// Name is the pod name. Use LabelSelector to match by label instead.
+	// Name is the pod name. Use LabelSelector or LeaderElection to match instead.
 	Name string `yaml:"name,omitempty"`
 	// LabelSelector selects the pod by label.
 	LabelSelector string `yaml:"labelSelector,omitempty"`
+	// LeaderElection resolves the target pod from a Kubernetes Lease holder.
+	// Mutually exclusive with name and labelSelector.
+	LeaderElection *E2EKubectlLeaderElection `yaml:"leaderElection,omitempty"`
 	// Namespace to look in. Defaults to "default".
 	Namespace string `yaml:"namespace,omitempty"`
 	// Container name. Defaults to the first container.
@@ -577,7 +580,8 @@ type E2EKubectlApply struct {
 }
 
 // E2EKubectlDelete deletes resources during an expect checkpoint.
-// Use file to delete all resources in a manifest, or kind+name for a single resource.
+// Use file to delete all resources in a manifest, kind+name for a single resource,
+// or leaderElection to delete the current leader pod by resolving the Lease holder.
 type E2EKubectlDelete struct {
 	// File is a path to a manifest file. All resources in the file are deleted.
 	// Relative paths resolve from the e2e.yaml directory.
@@ -589,6 +593,9 @@ type E2EKubectlDelete struct {
 	Name string `yaml:"name,omitempty"`
 	// Namespace to target. Defaults to "default".
 	Namespace string `yaml:"namespace,omitempty"`
+	// LeaderElection resolves the pod to delete by reading the holder of a Kubernetes Lease.
+	// Mutually exclusive with file, kind, and name.
+	LeaderElection *E2EKubectlLeaderElection `yaml:"leaderElection,omitempty"`
 	// IgnoreNotFound silences errors when the resource does not exist.
 	IgnoreNotFound bool `yaml:"ignoreNotFound,omitempty"`
 }
@@ -710,11 +717,10 @@ type E2EKubectlTop struct {
 	LessThan          string `yaml:"lessThan,omitempty"`
 }
 
-// E2EKubectlPortForwardLeaderElection resolves the port-forward target by reading
-// the current holder from a Kubernetes Lease object rather than routing through
-// a Service. Use for leader-elected deployments where only the leader holds
-// authoritative state — followers may return stale or pending data.
-type E2EKubectlPortForwardLeaderElection struct {
+// E2EKubectlLeaderElection resolves the target pod by reading the current holder
+// from a Kubernetes Lease object. Used by port-forward, logs, delete, and exec
+// to pin commands to the elected leader rather than a random replica.
+type E2EKubectlLeaderElection struct {
 	// Lease is the name of the Kubernetes Lease object that tracks leader election.
 	Lease string `yaml:"lease"`
 	// Namespace of the lease. Defaults to the port-forward namespace.
@@ -735,7 +741,7 @@ type E2EKubectlPortForward struct {
 	// LeaderElection resolves the port-forward target from a Kubernetes Lease object.
 	// When set, service and pod are ignored — the current lease holder is used instead.
 	// The lease namespace defaults to the port-forward namespace.
-	LeaderElection *E2EKubectlPortForwardLeaderElection `yaml:"leaderElection,omitempty"`
+	LeaderElection *E2EKubectlLeaderElection `yaml:"leaderElection,omitempty"`
 	// Port is the service or pod port to forward.
 	Port int `yaml:"port"`
 	// Path is the HTTP path to request after the port-forward is ready.
