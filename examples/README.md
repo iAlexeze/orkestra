@@ -28,6 +28,7 @@ ork init my-operator --pack resilience              # Operators that stay runnin
 ork init my-operator --pack use-cases               # Full-stack, cross-CRD, external gates, multi-region, and more
 ork init my-operator --pack from-controller-runtime # Migrate from controller-runtime: all 5 options in one pack
 ork init my-operator --pack ecosystem-composition   # Build an IDP: ArgoCD, cert-manager, Crossplane, Prometheus
+ork init my-operator --pack registry-guide          # Publish and consume Orkestra patterns via OCI registry
 ```
 
 List all packs:
@@ -93,6 +94,7 @@ Production patterns. Admission policy, typed Go operators, autoscaling, custom r
 | [16 — Custom Resources](./advanced/16-custom-resources/) | Compose third-party CRDs as children — 7 sub-examples from single child to full platform. |
 | [17 — API Type Override](./advanced/17-apitype-override/) | Override API types per Komposer import without editing source Katalogs. |
 | [18 — CRD File Komposer](./advanced/18-crd-file-komposer/) | `crdFile:` across Komposer imports. |
+| [19 — Endpoint Control](./advanced/19-endpoint-control/) | Per-CRD HTTP visibility and cross-read access control. Selective health disable, full endpoint disable, and the fully-dark asymmetric pattern — one CRD cross-reads its sibling while the sibling's read back is denied. |
 
 ### Security — `--pack security`
 
@@ -112,6 +114,8 @@ Operators that stay running when things go wrong.
 |---------|----------------|
 | [Safe Reconcile](./resilience/safe-reconcile/) | Panic isolation in the worker pool. A nil pointer in a typed hook is caught and recovered — the operator keeps running and other CRDs are unaffected. |
 | [Admission Protection](./resilience/admission-protection/) | Runtime validation as a resilience layer. Bad CR → operator degrades after `failureThreshold`. Patch the CR → operator recovers automatically. |
+| [CRD Missing Recovery](./resilience/crd-missing-recovery/) | Delete the CRD at runtime — Orkestra detects the disappearance, degrades, and retries. Re-apply the CRD and CR and the operator recovers with no restart. |
+| [Leader Failover](./resilience/leader-failover/) | HA leader election with two replicas. Kill the konductor pod — a follower is elected within `leaseDuration` and reconciliation continues automatically. |
 
 ### Use Cases — `--pack use-cases`
 
@@ -156,8 +160,27 @@ Build an internal developer platform on top of the tools you already run.
 | [02 — Prometheus](./ecosystem-composition/02-prometheus/) | `MonitoringConfig` CRD → ServiceMonitor + PrometheusRule. |
 | [03 — Crossplane](./ecosystem-composition/03-crossplane/) | `Infra` CRD → Crossplane Composite Claim. |
 | [04 — Platform Stack](./ecosystem-composition/04-platform-stack/) | All four, composed with Komposer. |
-| [05 — Policy Layer](./ecosystem-composition/05-policy-layer/) | Shared admission motif across all CRDs. Deletion protection. |
-| [06 — All-in-One](./ecosystem-composition/06-all-in-one/) | Single `PlatformResource` CRD, `workloadType` discriminator, all four tools. |
+| [05 — All-in-One](./ecosystem-composition/05-all-in-one/) | Single `PlatformResource` CRD, `workloadType` discriminator, all four tools. |
+
+### Registry Guide — `--pack registry-guide`
+
+The distribution pack. Publish and consume Orkestra patterns via OCI registry — from pulling a proven pattern to building your own, gating every publish behind simulate and e2e, and automating with GitHub Actions.
+
+| Example | What you learn |
+|---------|----------------|
+| [00 — Consume](./registry-guide/00-consume/) | Pull a proven pattern from the public registry. Inspect its simulate proof before importing. |
+| [01 — Motifs](./registry-guide/01-motifs/) | Author and push reusable motifs. Version and tag must agree. |
+| [02 — Katalog API](./registry-guide/02-katalog-api/) | Build a Katalog from a motif. Gate publish behind `ork simulate`. |
+| [03 — Katalog Cache](./registry-guide/03-katalog-cache/) | Simulate gate catches a broken assertion before the pattern ships. |
+| [04 — Katalog Platform](./registry-guide/04-katalog-platform/) | E2E gate: simulate passes, e2e fails — blocks the publish. |
+| [05 — Komposer](./registry-guide/05-komposer/) | Compose registry patterns into a production deployment with supply chain verification. |
+| [06 — Pattern Zoo](./registry-guide/06-pattern-zoo/) | Seven official patterns, one Komposer, twenty lines. Cross-registry composition. |
+| [07 — Upgrade](./registry-guide/07-upgrade/) | Release a new motif version. One katalog upgrades; another stays pinned. |
+| [08 — Bad Actor](./registry-guide/08-bad-actor/) | Audit trail inspection. Detect unexpected pushes by comparing digests, diffing against known-good source, and deprecating compromised versions. |
+| [09 — Deprecation](./registry-guide/09-deprecation/) | Declare `deprecation:` — `ork inspect` and `ork validate` warn consumers. |
+| [10 — Hooks Katalog](./registry-guide/10-hooks-katalog/) | Typed Go hooks published as a registry pattern. |
+| [11 — Typed Komposer](./registry-guide/11-typed-komposer/) | Mix typed and declarative katalogs in one Komposer. |
+| [12 — Ork Action](./registry-guide/12-ork-action/) | Full pipeline in GitHub Actions using `orkspace/orkestra-action`. |
 
 ---
 

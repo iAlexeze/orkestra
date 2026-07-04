@@ -4,6 +4,9 @@ Orkestra turns a YAML file into a working Kubernetes operator. This guide takes 
 
 ---
 
+!!! tip "New to Kubernetes?"
+    Read [Kubernetes, operators, and Orkestra](./00-kubernetes-basics.md) first — CRDs, the reconcile loop, and where Orkestra fits in.
+
 ## Requirements
 
 - A running Kubernetes cluster — [kind](https://kind.sigs.k8s.io/) recommended for local development
@@ -181,3 +184,4 @@ Ctrl+C
 - **[Writing Your First E2E Test](./06-writing-your-first-e2e.md)** — declarative end-to-end testing
 - **[Running Patterns from the Registry](./07-running-patterns.md)** — inspect, pull, and run published patterns with a single command
 - **[Learning to Orkestrate](./01-learning-to-orkestrate/index.md)** — progression through the example packs
+- **[Kubernetes, operators, and Orkestra](./00-kubernetes-basics.md)** — CRDs, reconciliation, and where Orkestra fits
