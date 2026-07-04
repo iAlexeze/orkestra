@@ -90,6 +90,11 @@
             <span class="cc-status-dot started"></span>Started
           </span>
 
+          {{- else if eq .CRD.State "endpoints-disabled" }}
+          <span class="cc-badge" style="background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-muted)">
+            <span class="cc-status-dot" style="background:var(--text-muted)"></span>Endpoints Disabled
+          </span>
+
           {{- else }}
           <span class="cc-badge cc-badge-degraded">
             <span class="cc-status-dot degraded"></span>Degraded
@@ -111,6 +116,17 @@
     </div>
 
     <div class="cc-page">
+
+      {{- if eq .CRD.State "endpoints-disabled" }}
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 24px;text-align:center">
+        <div style="font-size:36px;margin-bottom:16px;opacity:0.4">⊘</div>
+        <div style="font-size:16px;font-weight:600;color:var(--text-primary);margin-bottom:8px">Endpoints disabled</div>
+        <div style="font-size:13px;color:var(--text-muted);max-width:400px">
+          All HTTP endpoints for this CRD have been disabled via <code style="font-size:11px;background:var(--bg-elevated);padding:1px 5px;border-radius:3px">endpoints: enabled: false</code> in the Katalog.
+          The operator is running and reconciling normally — its API surface is intentionally hidden.
+        </div>
+      </div>
+      {{- else }}
 
       <!-- Stats Grid -->
       {{ $queuePercent := 0 }}
@@ -462,6 +478,12 @@
       <!-- Runtime Health -->
       <div class="cc-section">
         <h2 class="cc-section-title">Runtime Health</h2>
+        {{- if .CRD.HealthEndpointDisabled }}
+        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;align-items:center;gap:12px;color:var(--text-muted)">
+          <span style="font-size:18px;opacity:0.5">⊘</span>
+          <span style="font-size:13px">Health endpoint disabled — <code style="font-size:11px;background:var(--bg-elevated);padding:1px 5px;border-radius:3px">endpoints: health: false</code></span>
+        </div>
+        {{- else }}
         <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;font-size:13px;margin-bottom:16px">
             <div>
@@ -493,6 +515,7 @@
           </div>
           {{ end }}
         </div>
+        {{- end }}
       </div>
 
       <!-- Version Conversion -->
@@ -785,6 +808,17 @@
       {{ end }}
 
       <!-- operatorBox: Configuration -->
+      {{- if .CRD.InfoEndpointDisabled }}
+      <div class="cc-section">
+        <div class="cc-section-header">
+          <h2 class="cc-section-title" style="margin:0">operatorBox</h2>
+        </div>
+        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;align-items:center;gap:12px;color:var(--text-muted)">
+          <span style="font-size:18px;opacity:0.5">⊘</span>
+          <span style="font-size:13px">Info endpoint disabled — <code style="font-size:11px;background:var(--bg-elevated);padding:1px 5px;border-radius:3px">endpoints: enabled: false</code></span>
+        </div>
+      </div>
+      {{- else }}
       {{ $ob := .CRD.OperatorBox }}
       {{ $obType   := mapGet $ob "type"        | asString }}
       {{ $fins     := mapGet $ob "finalizers" }}
@@ -912,6 +946,8 @@
         {{ end }}
 
       </div>
+      {{- end }}
+      {{- end }}
 
     </div>
   </main>
