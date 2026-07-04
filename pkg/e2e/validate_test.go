@@ -247,7 +247,7 @@ func TestValidateKubectl_LogsNoAssertion(t *testing.T) {
 
 func TestValidateKubectl_LogsLeaderElectionMissingLease(t *testing.T) {
 	errs := validateKubectlLogs("loc", orktypes.E2EKubectlLogs{
-		LeaderElection: &orktypes.E2EKubectlLeaderElection {},
+		LeaderElection: &orktypes.E2EKubectlLeaderElection{},
 		OutputContains: "started",
 	})
 	requireErr(t, errs, "leaderElection.lease")
@@ -256,7 +256,7 @@ func TestValidateKubectl_LogsLeaderElectionMissingLease(t *testing.T) {
 func TestValidateKubectl_LogsLeaderElectionMutuallyExclusiveWithName(t *testing.T) {
 	errs := validateKubectlLogs("loc", orktypes.E2EKubectlLogs{
 		Name: "my-pod",
-		LeaderElection: &orktypes.E2EKubectlLeaderElection {
+		LeaderElection: &orktypes.E2EKubectlLeaderElection{
 			Lease: "my-lease",
 		},
 		OutputContains: "started",
@@ -267,7 +267,7 @@ func TestValidateKubectl_LogsLeaderElectionMutuallyExclusiveWithName(t *testing.
 func TestValidateKubectl_LogsLeaderElectionMutuallyExclusiveWithSelector(t *testing.T) {
 	errs := validateKubectlLogs("loc", orktypes.E2EKubectlLogs{
 		LabelSelector: "app=foo",
-		LeaderElection: &orktypes.E2EKubectlLeaderElection {
+		LeaderElection: &orktypes.E2EKubectlLeaderElection{
 			Lease: "my-lease",
 		},
 		OutputContains: "started",
@@ -277,7 +277,7 @@ func TestValidateKubectl_LogsLeaderElectionMutuallyExclusiveWithSelector(t *test
 
 func TestValidateKubectl_LogsLeaderElectionValid(t *testing.T) {
 	errs := validateKubectlLogs("loc", orktypes.E2EKubectlLogs{
-		LeaderElection: &orktypes.E2EKubectlLeaderElection {
+		LeaderElection: &orktypes.E2EKubectlLeaderElection{
 			Lease: "my-lease",
 		},
 		OutputContains: "started",
@@ -361,7 +361,7 @@ func TestValidateKubectl_PortForwardValidNoAssertion(t *testing.T) {
 func TestValidateKubectl_PortForwardLeaderElectionMissingLease(t *testing.T) {
 	errs := validateKubectlPortForward("loc", orktypes.E2EKubectlPortForward{
 		Port:           8080,
-		LeaderElection: &orktypes.E2EKubectlLeaderElection {},
+		LeaderElection: &orktypes.E2EKubectlLeaderElection{},
 	})
 	requireErr(t, errs, "leaderElection.lease")
 }

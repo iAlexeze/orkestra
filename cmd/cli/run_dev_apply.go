@@ -206,6 +206,35 @@ func applyCRDFilesIfNeeded(ctx context.Context, katalogPath string, m *merger.Me
 	}
 }
 
+// applyPatternExamples applies crd.yaml and cr.yaml from the pattern directory
+// when --apply-cr is set. These are the example files shipped with the pattern —
+// distinct from crdFile/crFiles declared in the katalog itself. kubectl apply
+// is idempotent so overlap with applyPreRuntimeResources is safe.
+func applyPatternExamples(ctx context.Context, katalogPath string, m *merger.Merger) {
+	dir := filepath.Dir(katalogPath)
+
+	crdPath := filepath.Join(dir, fileCrd)
+	if fileExists(crdPath) {
+		out, err := exec.CommandContext(ctx, "kubectl", "apply", "-f", crdPath).CombinedOutput()
+		if err != nil {
+			logger.Warn().Str("path", crdPath).Str("output", strings.TrimSpace(string(out))).Err(err).Msgf("%s apply failed", fileCrd)
+		} else {
+			logger.Info().Str("path", crdPath).Msgf("%s applied", fileCrd)
+		}
+		waitForCRDsEstablished(ctx, m)
+	}
+
+	crPath := filepath.Join(dir, fileCr)
+	if fileExists(crPath) {
+		out, err := exec.CommandContext(ctx, "kubectl", "apply", "-f", crPath).CombinedOutput()
+		if err != nil {
+			logger.Warn().Str("path", crPath).Str("output", strings.TrimSpace(string(out))).Err(err).Msgf("%s apply failed", fileCr)
+		} else {
+			logger.Info().Str("path", crPath).Msgf("%s applied", fileCr)
+		}
+	}
+}
+
 // applySetupIfNeeded applies setup YAML files via kubectl in order before
 // Orkestra starts. Only runs outside the cluster (dev mode).
 func applySetupIfNeeded(ctx context.Context, katalogPath string, m *merger.Merger) {

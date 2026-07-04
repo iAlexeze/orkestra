@@ -42,6 +42,25 @@ ork delete cluster --name ork-e2e
 
 `New(e2eFile string, opts Options)` replaces a long positional parameter list. `Workers` and `KindVersion` propagate into sub-runner `New` calls for imports.
 
+### `ork run <name>:<version>` — OCI positional argument
+
+`ork run postgres:v1.0.0` pulls the pattern from the registry (if not cached) and starts the runtime directly. No `-f` flag, no local files required.
+
+```bash
+ork run postgres:v1.0.0 --dev           # pull + cluster + runtime
+ork run postgres:v1.0.0 --dev --apply-cr  # + apply example crd.yaml and cr.yaml
+ork run postgres:v1.0.0 --dev --use-komposer  # run via the pattern's komposer.yaml
+ork run postgres:v1.0.0 --dev --refresh  # re-pull before running
+```
+
+`--apply-cr` applies `crd.yaml` from the pattern, waits for the CRD to establish, then applies `cr.yaml`. The operator starts with a CR already in the cluster.
+
+`--use-komposer` uses `komposer.yaml` from the cached pattern instead of `katalog.yaml`. Only applies to the OCI positional arg path.
+
+### `komposer.yaml` now included in pushed artifacts
+
+`komposer.yaml` was missing from `OptionalFiles` for Katalog patterns — it was never included as an OCI layer when pushing. Added `FileKomposer` constant and added it to the optional files list. Patterns must be re-pushed to include it.
+
 ### Bug fixes
 
 - **Node-ready race**: `waitForNodesReady` checked the condition *type* (`Ready`) not its *status* (`True`). A node could be type=Ready status=False and still be reported ready. Replaced with `kubectl wait --for=condition=Ready node --all`.
