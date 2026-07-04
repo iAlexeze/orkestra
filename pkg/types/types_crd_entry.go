@@ -290,3 +290,17 @@ type EndpointsConfig struct {
 	// Info controls whether the /info endpoint is served.
 	Info *bool `yaml:"info,omitempty" json:"info,omitempty"`
 }
+
+func (e EndpointsConfig) IsHealthEnabled() bool {
+	if e.Enabled != nil && !*e.Enabled {
+		return false
+	}
+	return e.Health == nil || *e.Health
+}
+
+func (e EndpointsConfig) IsInfoEnabled() bool {
+	if e.Enabled != nil && !*e.Enabled {
+		return false
+	}
+	return e.Info == nil || *e.Info
+}
