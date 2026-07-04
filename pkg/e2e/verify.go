@@ -598,6 +598,14 @@ func doPortForwardCurl(ctx context.Context, e orktypes.E2EKubectlPortForward, ns
 	if err != nil {
 		return err
 	}
+	if e.StatusCode != 0 {
+		got := strings.TrimSpace(raw)
+		want := strconv.Itoa(e.StatusCode)
+		if got != want {
+			return fmt.Errorf("kubectl port-forward %s%s: expected HTTP %s, got %s", target, e.Path, want, got)
+		}
+		return nil
+	}
 	return assertPortForwardOutput(ctx, workDir, raw, e, target)
 }
 
@@ -650,7 +658,11 @@ func doPortForwardCurlRaw(ctx context.Context, e orktypes.E2EKubectlPortForward,
 		method = "GET"
 	}
 	url := fmt.Sprintf("http://localhost:%s%s", localPort, e.Path)
-	curlArgs := []string{"-s", "-X", method, url}
+	curlArgs := []string{"-s", "-X", method}
+	if e.StatusCode != 0 {
+		curlArgs = append(curlArgs, "-o", "/dev/null", "-w", "%{http_code}")
+	}
+	curlArgs = append(curlArgs, url)
 
 	sp := orkutils.StartSpinner(fmt.Sprintf("curl %s (→ %s)", url, target))
 	curlCmd := exec.CommandContext(ctx, "curl", curlArgs...)

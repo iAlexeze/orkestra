@@ -166,8 +166,14 @@ Examples:
 		}
 
 		// Summary
+		crdText := "CRDs"
+		if (builtIn + custom) == 1 {
+			crdText = "CRD"
+
+		}
+
 		fmt.Println(strings.Repeat("─", 60))
-		fmt.Printf("%d CRDs valid (%d built-in, %d custom)\n", len(entries), builtIn, custom)
+		fmt.Printf("%d %s valid (%d built-in, %d custom)\n", len(entries), crdText, builtIn, custom)
 
 		if full {
 			if dd := k.DependencyDisplayData(); dd != nil {
