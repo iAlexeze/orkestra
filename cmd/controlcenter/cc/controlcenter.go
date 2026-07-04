@@ -779,7 +779,9 @@ func (cc *ControlCenter) handleCRDDetail(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	crd, err := inst.Client.FetchCRDDetail(crdName)
+	endpoints := endpointInfoFor(inst.Katalog, crdName)
+	summary := summaryFor(inst.Katalog, crdName)
+	crd, err := inst.Client.FetchCRDDetail(crdName, endpoints, summary)
 	if err != nil {
 		log.Printf("WARN: fetch CRD %s: %v", crdName, err)
 		// Render a degraded view rather than a hard error
