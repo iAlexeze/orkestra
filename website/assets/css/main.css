@@ -1300,7 +1300,7 @@ html.no-transition .sidebar-subsection-pages {
   transition: none !important;
 }
 .sidebar-section.open .sidebar-section-pages {
-  max-height: 800px;
+  max-height: 3000px;
   opacity: 1;
   padding-bottom: 0.75rem;
 }
