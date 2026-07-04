@@ -1,4 +1,4 @@
-# Endpoint access control
+# Endpoint Access Control
 
 Orkestra exposes a live HTTP API for every CRD in a Katalog. Two independent controls let you restrict who can see what:
 
@@ -43,7 +43,7 @@ The reconciler runs normally. Nothing about `enabled: false` affects reconciliat
 
 ### What always remains
 
-Regardless of `endpoints:` settings, the top-level `/katalog` endpoint always includes the CRD in its summary count. There is no way to make a CRD invisible to the top-level listing — only its per-CRD paths can be suppressed.
+Regardless of `endpoints:` settings, the top-level `/katalog` endpoint always includes the CRD in its summary count. There is no way to make a CRD invisible to the top-level listing except by disabling the CRD — only its per-CRD paths can be suppressed.
 
 ---
 
@@ -124,5 +124,7 @@ ork init --pack advanced/19-endpoint-control
 
 ---
 
-→ [Endpoint reference](endpoints.md) — full list of per-CRD HTTP paths
-→ [ONCOP](../oncop/) — cross-binary observation protocol that `crossAccess` gates
+## Further Reading
+
+- **[Endpoint reference](endpoints.md)** — full list of per-CRD HTTP paths
+- **[ONCOP](../oncop/)** — cross-binary observation protocol that `crossAccess` gates
