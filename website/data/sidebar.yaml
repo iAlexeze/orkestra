@@ -32,6 +32,9 @@ nav:
   - title: Roadmap
     url: /docs/roadmap/
     page: true
+  - title: Changelog
+    section: changelog
+    url: /docs/changelog/
   - title: Support
     url: /docs/support/
     page: true

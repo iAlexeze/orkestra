@@ -45,7 +45,7 @@
                     {{ range .Sections }}{{ $subChildren = $subChildren | append . }}{{ end }}
                     <li class="sidebar-subsection{{ if $childActive }} open{{ end }}">
                       <div class="sidebar-subsection-header">
-                        <a href="{{ .RelPermalink }}" class="sidebar-link{{ if $childActive }} active{{ end }}">{{ .Title }}</a>
+                        <a href="{{ .RelPermalink }}" class="sidebar-link{{ if $childActive }} active{{ end }}">{{ .LinkTitle }}</a>
                         {{ if $subChildren }}
                         <button class="sidebar-subsection-toggle" aria-expanded="{{ if $childActive }}true{{ else }}false{{ end }}" aria-label="Toggle {{ .Title }}">
                           <svg class="chevron" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 9l-7 7-7-7"/></svg>
@@ -61,7 +61,7 @@
                           {{ range .Sections }}{{ $subSubChildren = $subSubChildren | append . }}{{ end }}
                           <li class="sidebar-subsubsection{{ if $subSubActive }} open{{ end }}">
                             <div class="sidebar-subsubsection-header">
-                              <a href="{{ .RelPermalink }}" class="sidebar-link sidebar-link--nested{{ if $subSubActive }} active{{ end }}">{{ .Title }}</a>
+                              <a href="{{ .RelPermalink }}" class="sidebar-link sidebar-link--nested{{ if $subSubActive }} active{{ end }}">{{ .LinkTitle }}</a>
                               {{ if $subSubChildren }}
                               <button class="sidebar-subsubsection-toggle" aria-expanded="{{ if $subSubActive }}true{{ else }}false{{ end }}" aria-label="Toggle {{ .Title }}">
                                 <svg class="chevron" viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 9l-7 7-7-7"/></svg>
@@ -72,7 +72,7 @@
                             <ul class="sidebar-subsubsection-pages" role="list">
                               {{ range sort $subSubChildren "Weight" "asc" }}
                               <li>
-                                <a href="{{ .RelPermalink }}" class="sidebar-link sidebar-link--deep{{ if eq $currentPage . }} active{{ end }}">{{ .Title }}</a>
+                                <a href="{{ .RelPermalink }}" class="sidebar-link sidebar-link--deep{{ if eq $currentPage . }} active{{ end }}">{{ .LinkTitle }}</a>
                               </li>
                               {{ end }}
                             </ul>
@@ -80,7 +80,7 @@
                           </li>
                         {{ else }}
                         <li>
-                          <a href="{{ .RelPermalink }}" class="sidebar-link sidebar-link--nested{{ if eq $currentPage . }} active{{ end }}">{{ .Title }}</a>
+                          <a href="{{ .RelPermalink }}" class="sidebar-link sidebar-link--nested{{ if eq $currentPage . }} active{{ end }}">{{ .LinkTitle }}</a>
                         </li>
                         {{ end }}
                         {{ end }}
@@ -89,7 +89,7 @@
                     </li>
                   {{ else }}
                   <li>
-                    <a href="{{ .RelPermalink }}" class="sidebar-link{{ if $childActive }} active{{ end }}">{{ .Title }}</a>
+                    <a href="{{ .RelPermalink }}" class="sidebar-link{{ if $childActive }} active{{ end }}">{{ .LinkTitle }}</a>
                   </li>
                   {{ end }}
                 {{ end }}

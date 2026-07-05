@@ -1,4 +1,4 @@
-## v0.7.10 [UNRELEASED] — E2E DSL extensions, cluster improvements, endpoint control, children forEach fixes
+## v0.7.10 — E2E DSL extensions, cluster improvements, endpoint control, children forEach fixes
 
 
 ### `leaderElection:` on `kubectl.delete` and `kubectl.exec`

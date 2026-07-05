@@ -1,6 +1,7 @@
 # Kubernetes, operators, and Orkestra
 
-For engineers who are new to Kubernetes or want a clear mental model before writing their first Katalog. If you already know what CRDs, operators, and reconciliation are, go straight to [Learning to Orkestrate](./01-learning-to-orkestrate/index.md).
+!!! tip "Already know Kubernetes?"
+    For engineers who are new to Kubernetes or want a clear mental model before writing their first Katalog. If you already know what CRDs, operators, and reconciliation are, go straight to [Learning to Orkestrate](./01-learning-to-orkestrate/index.md).
 
 ---
 

@@ -55,7 +55,7 @@
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           <div>
             <span class="pagination-label">Previous</span>
-            <span class="pagination-title">{{ .Title }}</span>
+            <span class="pagination-title">{{ .LinkTitle }}</span>
           </div>
         </a>
         {{ end }}
@@ -63,7 +63,7 @@
         <a href="{{ .RelPermalink }}" class="pagination-link pagination-next">
           <div>
             <span class="pagination-label">Next</span>
-            <span class="pagination-title">{{ .Title }}</span>
+            <span class="pagination-title">{{ .LinkTitle }}</span>
           </div>
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </a>
