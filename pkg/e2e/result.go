@@ -6,6 +6,23 @@ import (
 	"time"
 )
 
+// Markdown renders the result as a GitHub-flavoured markdown summary block.
+func (r *Result) Markdown() string {
+	var b strings.Builder
+	b.WriteString("## E2E Results: " + r.Name + "\n\n")
+	b.WriteString("| | Test | Time |\n")
+	b.WriteString("|---|---|---|\n")
+	for _, c := range r.Cases {
+		icon := "✅"
+		if !c.Passed {
+			icon = "❌"
+		}
+		b.WriteString(fmt.Sprintf("| %s | %s | %s |\n", icon, c.Name, c.Elapsed.Round(time.Millisecond)))
+	}
+	b.WriteString("\n**" + r.Summary() + "**\n")
+	return b.String()
+}
+
 // Result holds the outcome of a complete E2E run.
 // It is returned by Run and consumed by ork push to embed
 // verification metadata into OCI annotations.
