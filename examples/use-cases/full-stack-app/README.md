@@ -26,3 +26,32 @@ ork run --dev-server
 ---
 
 **Next step:** [multi-region-map](../multi-region-map/README.md) — forEach over a map with per-region replica counts and ports, plus a real app you can port-forward to.
+
+---
+
+## Troubleshooting
+
+### Duplicate CRD error when running `ork validate` from this directory
+
+```
+duplicate CRD "managed-database": defined in ".../03-cross-crd/katalog.yaml"
+and ".../06-full-stack/katalog.yaml" — names must be unique across all imports
+```
+
+This happens when `06-full-stack/katalog.yaml` has the `managed-database:` block **uncommented**. The root composite already imports `managed-database` from `03-cross-crd` — having it declared again in `06-full-stack` creates a collision.
+
+**Fix:** comment out the `managed-database:` block in `06-full-stack/katalog.yaml` and re-run `ork validate` from the root:
+
+```yaml
+# 06-full-stack/katalog.yaml
+spec:
+  crds:
+    # managed-database:       ← keep this commented when running from full-stack-app/
+    #   crdFile: ../03-cross-crd/crd-managed-database.yaml
+    #   ...
+
+    full-stack-app:
+      ...
+```
+
+The `managed-database:` block only needs to be uncommented when running `06-full-stack` **in isolation** (i.e. `cd 06-full-stack && ork validate`). See [06-full-stack/README.md](06-full-stack/README.md#step-1--validate).
