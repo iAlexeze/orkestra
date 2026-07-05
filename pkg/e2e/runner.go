@@ -466,13 +466,31 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 	// ── Report ───────────────────────────────────────────────────────────
 	if !isPureAgg {
 		fmt.Printf("\nE2E Results: %s\n\n", name)
+
 		for _, c := range cases {
 			if c.Passed {
 				fmt.Printf("  %s %-40s (%s)\n", orkutils.SuccessMark(), c.Name, c.Elapsed.Round(time.Millisecond))
-			} else {
-				fmt.Printf("  %s %-40s (%s)\n", orkutils.FailureMark(), c.Name, c.Elapsed.Round(time.Millisecond))
 			}
 		}
+
+		var failures []CaseResult
+		for _, c := range cases {
+			if !c.Passed {
+				failures = append(failures, c)
+			}
+		}
+		if len(failures) > 0 {
+			fmt.Printf("\n")
+			for _, c := range failures {
+				fmt.Printf("  %s %-40s (%s)\n", orkutils.FailureMark(), c.Name, c.Elapsed.Round(time.Millisecond))
+				if c.Err != nil {
+					for _, line := range strings.Split(strings.TrimSpace(c.Err.Error()), "\n") {
+						fmt.Printf("      %s\n", line)
+					}
+				}
+			}
+		}
+
 		clusterInfo := r.clusterName()
 		fmt.Printf("\n  %s\n", result.Summary())
 		if clusterInfo != "" {

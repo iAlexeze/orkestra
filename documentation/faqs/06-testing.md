@@ -177,4 +177,4 @@ Yes — this is the same `custom.target: kubernetes` mode. cert-manager, FluxCD,
 - **[simulate concept docs](../concepts/simulate/index.md)** — how simulate works in depth
 - **[E2E concept docs](../concepts/e2e/index.md)** — end-to-end testing
 - **[Simulate schema reference](../reference/schema/05-simulate/index.md)** — full field reference
-- **[Universal e2e guide](../guides/e2e-universal.md)** — test anything that runs in Kubernetes
+- **[Universal e2e guide](../guides/e2e-universal/index.md)** — test anything that runs in Kubernetes
