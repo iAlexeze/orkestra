@@ -6,8 +6,8 @@ description: >-
   namespace protection with admission webhooks, and observe everything in the
   Control Center. Runtime and Gateway deploy independently.
 type: application
-version: 1.7.6
-appVersion: "v0.7.6"
+version: 1.7.8
+appVersion: "0.7.8"
 
 keywords:
   - orkestra
@@ -63,160 +63,20 @@ annotations:
       url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/control-panel-website.png
     - title: Metrics Overview
       url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
-  artifacthub.io/crds: |
-    - kind: Katalog
-      version: v1
-      name: katalogs.orkestra.orkspace.io
-      displayName: Katalog
-      description: Declarative operator definition for one or more CRDs
-    - kind: Komposer
-      version: v1
-      name: komposers.orkestra.orkspace.io
-      displayName: Komposer
-      description: Compose multiple Katalogs from different sources
-    - kind: Motif
-      version: v1
-      name: motifs.orkestra.orkspace.io
-      displayName: Motif
-      description: A parameterized set of resource declarations. Write once, import from any Katalog.
-    - kind: E2E
-      version: v1
-      name: e2es.orkestra.orkspace.io
-      displayName: E2E
-      description: Declarative end-to-end testing for Kubernetes operators
   artifacthub.io/changes: |
     - kind: added
-      description: "registry-guide pack — 13-step walkthrough from consuming a pattern to automated CI publishing with GitHub Actions"
+      description: "NetworkPolicy, ResourceQuota, LimitRange, ClusterRole, ClusterRoleBinding as first-class resource types"
     - kind: added
-      description: "ork push: --use-current and --cluster flags to reuse an existing cluster for the e2e gate"
+      description: "networkpolicy profiles: deny-all, deny-all-ingress, deny-all-egress, allow-same-namespace, allow-dns-egress"
     - kind: added
-      description: "ork push: RuntimeVersion read from go.mod for typed operators and recorded as OCI annotation"
+      description: "resourcequota profiles: small, medium, large, xlarge"
     - kind: added
-      description: "ork pull: warns on runtime version mismatch for typed operators"
+      description: "gateway PodDisruptionBudget (enabled by default)"
     - kind: added
-      description: "ork inspect: shows Typed and Runtime fields for typed patterns"
+      description: "ork e2e: per-entry wait on setup.apply and setup.helm entries"
     - kind: added
-      description: "ork validate / ork simulate: TypedOperatorError with ork inspect hint for registry-sourced typed operators"
-    - kind: added
-      description: "dev server: /ready and /started health endpoints"
+      description: "ork e2e: setup-complete lifecycle event — assert infrastructure before any CR is applied"
     - kind: fixed
-      description: "probe path templates ({{ .spec.probePath }}) now resolve correctly in Deployment, ReplicaSet, StatefulSet, and Pod specs"
+      description: "ork simulate: cross-namespace copy resources auto-skipped with an explanatory note instead of erroring"
     - kind: fixed
-      description: "Deployment no longer triggers a no-op update every reconcile when an HTTP probe is configured (missing Scheme on HTTPGetAction)"
-    - kind: fixed
-      description: "Helm bundle deploy correctly routes CRDs to their declared metadata.namespace — each team sees their own namespace panel in the Control Center"
-    - kind: fixed
-      description: "ork inspect --versions table columns align correctly when version strings are colorized"
-    - kind: fixed
-      description: "ork inspect --versions works without a version tag in the argument"
-    - kind: fixed
-      description: "deprecated pattern row aligns correctly in ork patterns — warning marker moved to its own column"
-    - kind: fixed
-      description: "deprecation message shown even when no migration target is set"
-    - kind: fixed
-      description: "Control Center version labels no longer double the v prefix"
-    - kind: fixed
-      description: "Control Center katalog panel shows namespace-level description when a namespace filter is active"
-  artifacthub.io/crdsExamples: |
-    - apiVersion: orkestra.orkspace.io/v1
-      kind: Katalog
-      metadata:
-        name: hello-website
-      spec:
-        crds:
-          website:
-            crdFile: ./crd.yaml
-            crFiles:
-              - ./cr.yaml
-            operatorBox:
-              default: true
-              onCreate:
-                deployments:
-                  - name: "{{ .metadata.name }}"
-                    image: "{{ .spec.image }}"
-                    replicas: "{{ .spec.replicas }}"
-                    reconcile: true
-                services:
-                  - name: "{{ .metadata.name }}-svc"
-                    port: "80"
-                    targetPort: "{{ .spec.port }}"
-                    reconcile: true
-    - apiVersion: orkestra.orkspace.io/v1
-      kind: Komposer
-      metadata:
-        name: platform
-      imports:
-        registry:
-          - url: ghcr.io/orkspace/patterns/postgres@v1.0.0
-            oci: true
-        files:
-          - ./website-katalog.yaml
-      spec:
-        crds:
-          postgres:
-            workers: 8
-            resync: 30s
-          website:
-            workers: 6
-            resync: 15s
-    - apiVersion: orkestra.orkspace.io/v1
-      kind: Motif
-      metadata:
-        name: postgres
-        version: v0.1.0
-        description: PostgreSQL StatefulSet with persistent storage and pgAdmin UI.
-        author: orkspace
-        license: Apache-2.0
-        tags:
-          - database
-          - statefulset
-      inputs:
-        - name: image
-          default: "postgres:latest"
-        - name: replicas
-          default: "1"
-        - name: volumeSize
-          default: "10Gi"
-      resources:
-        onCreate:
-          secrets:
-            - name: "{{ .metadata.name }}-creds"
-              once: true
-              data:
-                password: "{{ randomAlphanumeric 16 }}"
-        statefulSets:
-          - name: "{{ .metadata.name }}-postgres"
-            image: "{{ .inputs.image }}"
-            replicas: "{{ .inputs.replicas }}"
-            volumeClaimTemplates:
-              - name: data
-                storageSize: "{{ .inputs.volumeSize }}"
-                mountPath: /var/lib/postgresql/data
-        services:
-          - name: "{{ .metadata.name }}-postgres"
-            port: 5432
-      status:
-        fields:
-          - path: postgresReady
-            value: "{{ allReplicasReady .children.statefulset }}"
-          - path: connectionString
-            value: "postgresql://{{ .metadata.name }}-postgres.{{ .metadata.namespace }}.svc.cluster.local:5432"
-    - apiVersion: orkestra.orkspace.io/v1
-      kind: E2E
-      metadata:
-        name: hello-website-e2e
-      spec:
-        katalog: ./katalog.yaml
-        crd: ./crd.yaml
-        cr: ./cr.yaml
-        cluster:
-          provider: kind
-          name: ork-e2e
-        expect:
-          - name: Deployment created
-            after: cr-applied
-            timeout: 60s
-            resources:
-              - kind: Deployment
-                namespace: default
-                ready: true
+      description: "namespace owned by CR now deleted when CR is removed"

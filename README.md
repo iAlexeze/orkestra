@@ -9,7 +9,7 @@
     <a href="https://goreportcard.com/report/github.com/orkspace/orkestra"><img src="https://goreportcard.com/badge/github.com/orkspace/orkestra" alt="Go Report Card" /></a>
     <a href="https://github.com/orkspace/orkestra/releases"><img src="https://img.shields.io/github/v/release/orkspace/orkestra" alt="Release" /></a>
     <a href="https://artifacthub.io/packages/search?repo=orkestra"><img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/orkestra" alt="Artifact Hub" /></a>
-    <img src="https://img.shields.io/badge/Go-1.22+-00ADD8.svg" alt="Go" />
+    <img src="https://img.shields.io/badge/Go-1.26+-00ADD8.svg" alt="Go" />
     <img src="https://img.shields.io/badge/Kubernetes-1.28+-326CE5.svg" alt="Kubernetes" />
     <img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License" />
   </p>
@@ -18,7 +18,7 @@
     <a href="https://orkestra.sh/docs/getting-started">Quick Start</a> ·
     <a href="https://orkestra.sh">Docs</a> ·
     <a href="https://github.com/orkspace/orkestra/discussions">Discussions</a> ·
-    <a href="https://orkspace-group.slack.com/archives/C0B5RT8JUEA">Early Access Slack</a>
+    <a href="https://join.slack.com/t/orkspace-group/shared_invite/zt-42i4idb0h-WYUF6JryDFMkky95ZJWHBg">Early Access Slack</a>
   </p>
 </div>
 
@@ -166,6 +166,8 @@ Six Runtimes. 75 CRDs. One Control Center.
 
 ## What Orkestra is not
 
+**Orkestra is not an operator — it is a runtime for Kubernetes behaviour.** Each CRD you declare in a Katalog becomes an operator. Orkestra itself is the runtime that runs them.
+
 **CRD generation is a starting point, not the source of truth.** `ork generate crd` scaffolds a base CRD from your Katalog. You own the final schema — add validation, printer columns, and version history to it. `crdFile` just points to whatever CRD file you maintain.
 
 **It does not replace Go for complex logic.** Hooks and constructors exist for exactly this reason. ~90% of operators are declarative structure; ~10% need code. Orkestra handles the 90% and gives the 10% a clean interface.
@@ -181,6 +183,7 @@ Six Runtimes. 75 CRDs. One Control Center.
 | | |
 |---|---|
 | [Why Orkestra](https://orkestra.sh/blog/why-orkestra) | What Orkestra is, how it works, and why it’s different |
+| [Foundations](https://orkestra.sh/docs/foundations) | The decisions that shaped the design — and why they hold |
 | [Trust and Failure Model](https://orkestra.sh/publications/trust-and-failure-model) | What happens when things go wrong |
 | [Getting Started](https://orkestra.sh/docs/getting-started) | First operator in under an hour |
 | [Learning to Orkestrate](https://orkestra.sh/docs/getting-started/learning-to-orkestrate) | Every capability, as a runnable example |

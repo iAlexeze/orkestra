@@ -6,7 +6,7 @@
     <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
   </svg>
   <span>Actively building. APIs may change. Feedback shapes what ships next.</span>
-  <a href="https://orkspace-group.slack.com/archives/C0B5RT8JUEA" target="_blank" rel="noopener noreferrer">Join Early Access Slack →</a>
+  <a href="https://join.slack.com/t/orkspace-group/shared_invite/zt-42i4idb0h-WYUF6JryDFMkky95ZJWHBg" target="_blank" rel="noopener noreferrer">Join Early Access Slack →</a>
 </div>
 
 <!-- ===== HERO ===== -->
@@ -70,7 +70,6 @@
     <span class="token-key">website:</span>
       <span class="token-key">crdFile: my-website.yaml</span>
       <span class="token-key">operatorBox:</span>
-        <span class="token-key">default:</span> <span class="token-bool">true</span>
         <span class="token-key">onCreate:</span>
           <span class="token-key">deployments:</span>
             <span class="token-key">- image:</span> <span class="token-string">"{{ "{{" }} .spec.image {{ "}}" }}"</span></code></pre>
@@ -321,16 +320,22 @@
   <span class="token-key">crds:</span>
 
     <span class="token-key">network:</span>
-      <span class="token-key">workers:</span> <span class="token-number">2</span>
+      <span class="token-key">operatorBox:</span>
+        <span class="token-key">reconciler:</span>
+          <span class="token-key">workers:</span> <span class="token-number">2</span>
 
     <span class="token-key">database:</span>
-      <span class="token-key">workers:</span> <span class="token-number">5</span>
+      <span class="token-key">operatorBox:</span>
+        <span class="token-key">reconciler:</span>
+          <span class="token-key">workers:</span> <span class="token-number">5</span>
       <span class="token-key">dependsOn:</span>
         <span class="token-key">network:</span>
           <span class="token-key">condition:</span> <span class="token-string">healthy</span>
 
     <span class="token-key">application:</span>
-      <span class="token-key">workers:</span> <span class="token-number">3</span>
+      <span class="token-key">operatorBox:</span>
+        <span class="token-key">reconciler:</span>
+          <span class="token-key">workers:</span> <span class="token-number">3</span>
       <span class="token-key">dependsOn:</span>
         <span class="token-key">database:</span>
           <span class="token-key">condition:</span> <span class="token-string">healthy</span></code></pre>

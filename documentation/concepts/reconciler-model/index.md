@@ -1,6 +1,8 @@
 # Reconciler Model
 
-When you apply a CR to your cluster, Orkestra's reconciler runs. It reads your Katalog, follows your instructions, and makes sure the Kubernetes resources you declared exist and stay correct — automatically, without any code.
+When you apply a CR to your cluster, Orkestra reconciles it. It reads your Katalog, follows your instructions, and makes sure the Kubernetes resources you declared exist and stay correct — automatically, without any code.
+
+Orkestra creates one reconciler, one informer, and one worker pool **per CRD**. Each CRD in your Katalog gets its own independent reconcile loop — its own watch stream from the API server, its own workqueue, and its own configurable concurrency. Adding a second CRD does not share or contend with the first.
 
 Think of it like a recipe: you write the recipe (Katalog), you provide the ingredients (CR spec), Orkestra follows the recipe (creates resources), and Orkestra keeps checking the result (drift correction).
 

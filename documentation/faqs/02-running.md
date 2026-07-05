@@ -159,6 +159,8 @@ kubectl apply -f bundle.yaml
 
 The ClusterRole is derived, not hand-written: only the API groups declared in your Katalog, only the verbs those resources actually need. If your operator creates no Deployments, the runtime has no `apps/deployments` permission.
 
+When the Katalog declares `clusterRoles:` or `roles:` in `onCreate`/`onReconcile`, two extra verbs are added automatically — `escalate` and `bind` on `rbac.authorization.k8s.io` roles and clusterroles. `escalate` lets the runtime create roles that grant permissions it doesn't hold. `bind` lets it create bindings that reference those roles. Both are required by Kubernetes privilege escalation prevention and are absent from the bundle whenever no RBAC resources are managed.
+
 **Re-run it every time the Katalog changes.** Adding a CRD, a new resource type, or a new API group makes the deployed bundle stale — the runtime will lack the permissions it now needs. Run it in CI alongside `ork validate`:
 
 ```bash
@@ -265,6 +267,33 @@ failure mode, what it means, and how Orkestra handles it.
 
 ---
 
+## What happens if my reconciler panics?
+
+The panic is caught. The operator process keeps running.
+
+Every reconcile call runs inside `safeReconcile` — a deferred `recover()` that intercepts panics before they can unwind past the worker goroutine. When a panic occurs:
+
+- The panic and its full stack trace are logged against the CRD that triggered it
+- The CR is requeued with backoff — it will be retried
+- Every other CRD in the runtime keeps reconciling without interruption
+- The `/katalog/<kind>/health` endpoint returns 503 for the degraded CRD; others stay 200
+
+A nil pointer in a typed hook, an out-of-bounds slice access, a failed type assertion — none of these bring down the operator. The failure is isolated to the CRD that produced it.
+
+To see this in action:
+
+```bash
+ork init --pack resilience/safe-reconcile
+cd safe-reconcile
+ork run
+```
+
+The pack runs three CRDs simultaneously. One has a deliberate nil pointer in its hook. Apply its CR and watch the panic appear in logs while the other two keep reconciling cleanly.
+
+→ [Panic recovery](../concepts/operatorbox/01-reconcile-pipeline/03-panic-recovery.md)
+
+---
+
 ## Does the deletion protection webhook protect Orkestra itself?
 
 Yes — including the webhook itself.
@@ -301,7 +330,7 @@ Override via Helm values or the `LEASE_DURATION` environment variable.
 
 ---
 
-## Next
+## Further reading
 
 - **[Usage](./03-usage.md)** — validation, mutation, built-in kinds
 - **[Ecosystem](./04-ecosystem.md)** — comparisons and the Kubernetes roadmap

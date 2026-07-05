@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -38,16 +39,24 @@ spec:
     - name: Status has defaulted replicas
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get workload api-server -o jsonpath='{.status.replicas}'
-          outputContains: "1"
+      kubectl:
+        get:
+          - kind: Workload
+            name: api-server
+            namespace: default
+            field: .status.replicas
+            equals: "1"
 
     - name: Status shows defaulted CPU request
       after: cr-applied
       timeout: 60s
-      commands:
-        - run: kubectl get workload api-server -o jsonpath='{.status.cpu}'
-          outputContains: 100m
+      kubectl:
+        get:
+          - kind: Workload
+            name: api-server
+            namespace: default
+            field: .status.cpu
+            equals: 100m
 
     - name: Cleanup verified
       after: cr-deleted

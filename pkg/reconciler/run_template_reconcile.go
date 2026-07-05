@@ -18,8 +18,11 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/children"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
+	orkns "github.com/orkspace/orkestra/pkg/resources/namespaces"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
+	"github.com/orkspace/orkestra/pkg/runners"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
@@ -137,81 +140,107 @@ func (r *GenericReconciler[PTR]) runResourceGroup(
 	// nil-safe: if CRD has no restrictions, guard is a no-op.
 	guard := r.namespaceGuardFunc(ctx, obj)
 
+	labelMgr := orklabels.NewManager(orklabels.Config{
+		Standalone:                r.kat.IsStandaloneGateway(),
+		DeletionProtectionEnabled: r.kat.IsDeletionProtectionEnabled(),
+	})
+
 	// Create namespaces first
-	if err := runNamespaces(ctx, kube, resolver, obj,
+	if err := runners.RunNamespaces(ctx, kube, resolver, obj,
 		children.ExpandForEachNamespaces(resolver, t.Namespaces), update); err != nil {
 		return err
 	}
 
-	if err := runSecrets(ctx, kube, resolver, obj,
+	if err := runners.RunSecrets(ctx, kube, resolver, obj,
 		children.ExpandForEachSecrets(resolver, t.Secrets), update, guard); err != nil {
 		return err
 	}
-	if err := runConfigMaps(ctx, kube, resolver, obj,
+	if err := runners.RunConfigMaps(ctx, kube, resolver, obj,
 		children.ExpandForEachConfigMaps(resolver, t.ConfigMaps), update, guard); err != nil {
 		return err
 	}
-	if err := runServiceAccounts(ctx, kube, resolver, obj,
+	if err := runners.RunNetworkPolicies(ctx, kube, resolver, obj,
+		t.NetworkPolicies, update, guard); err != nil {
+		return err
+	}
+	if err := runners.RunResourceQuotas(ctx, kube, resolver, obj,
+		t.ResourceQuotas, update, guard); err != nil {
+		return err
+	}
+	if err := runners.RunLimitRanges(ctx, kube, resolver, obj,
+		t.LimitRanges, update, guard); err != nil {
+		return err
+	}
+	if err := runners.RunClusterRoles(ctx, kube, resolver, obj,
+		t.ClusterRoles, update); err != nil {
+		return err
+	}
+	if err := runners.RunClusterRoleBindings(ctx, kube, resolver, obj,
+		t.ClusterRoleBindings, update); err != nil {
+		return err
+	}
+	if err := runners.RunServiceAccounts(ctx, kube, resolver, obj,
 		children.ExpandForEachServiceAccounts(resolver, t.ServiceAccounts), update, guard); err != nil {
 		return err
 	}
-	if err := runRoles(ctx, kube, resolver, obj,
+	if err := runners.RunRoles(ctx, kube, resolver, obj,
 		children.ExpandForEachRoles(resolver, t.Roles), update, guard); err != nil {
 		return err
 	}
-	if err := runRoleBindings(ctx, kube, resolver, obj,
+	if err := runners.RunRoleBindings(ctx, kube, resolver, obj,
 		children.ExpandForEachRoleBindings(resolver, t.RoleBindings), update, guard); err != nil {
 		return err
 	}
 	if err := runCustomResources(ctx, kube, resolver, obj,
-		children.ExpandForEachCustomResources(resolver, t.CustomResource), update, guard); err != nil {
+		children.ExpandForEachCustomResources(resolver, t.CustomResource), update, guard, labelMgr,
+		r.kat.IsDeletionProtectionEnabled() && r.crd.ShouldProtectCRs()); err != nil {
 		return err
 	}
-	if err := runReplicaSets(ctx, kube, resolver, obj,
+	if err := runners.RunReplicaSets(ctx, kube, resolver, obj,
 		children.ExpandForEachReplicaSets(resolver, t.ReplicaSets), update, guard); err != nil {
 		return err
 	}
-	if err := runDeployments(ctx, kube, resolver, obj,
+	if err := runners.RunDeployments(ctx, kube, resolver, obj,
 		children.ExpandForEachDeployments(resolver, t.Deployments), update, guard); err != nil {
 		return err
 	}
-	if err := runServices(ctx, kube, resolver, obj,
+	if err := runners.RunServices(ctx, kube, resolver, obj,
 		children.ExpandForEachServices(resolver, t.Services), update, guard); err != nil {
 		return err
 	}
-	if err := runJobs(ctx, kube, resolver, obj,
+	if err := runners.RunJobs(ctx, kube, resolver, obj,
 		children.ExpandForEachJobs(resolver, t.Jobs), guard); err != nil {
 		return err
 	}
-	if err := runCronJobs(ctx, kube, resolver, obj,
+	if err := runners.RunCronJobs(ctx, kube, resolver, obj,
 		children.ExpandForEachCronJobs(resolver, t.CronJobs), update, guard); err != nil {
 		return err
 	}
-	if err := runStatefulSets(ctx, kube, resolver, obj,
+	if err := runners.RunStatefulSets(ctx, kube, resolver, obj,
 		children.ExpandForEachStatefulSets(resolver, t.StatefulSets), update, guard); err != nil {
 		return err
 	}
-	if err := runPVs(ctx, kube, resolver, obj,
+	if err := runners.RunPVs(ctx, kube, resolver, obj,
 		children.ExpandForEachPVs(resolver, t.PersistentVolumes), update); err != nil {
 		return err
 	}
-	if err := runPVCs(ctx, kube, resolver, obj,
+	if err := runners.RunPVCs(ctx, kube, resolver, obj,
 		children.ExpandForEachPVCs(resolver, t.PersistentVolumeClaims), update, guard); err != nil {
 		return err
 	}
-	if err := runIngresses(ctx, kube, resolver, obj,
+	if err := runners.RunIngresses(ctx, kube, resolver, obj,
 		children.ExpandForEachIngresses(resolver, t.Ingresses), update, guard); err != nil {
 		return err
 	}
-	if err := runHPAs(ctx, kube, resolver, obj,
+	if err := runners.RunHPAs(ctx, kube, resolver, obj,
 		children.ExpandForEachHPAs(resolver, t.HorizontalPodAutoscalers), update, guard); err != nil {
 		return err
 	}
-	if err := runPDBs(ctx, kube, resolver, obj,
+	if err := runners.RunPDBs(ctx, kube, resolver, obj,
 		children.ExpandForEachPDBs(resolver, t.PodDisruptionBudgets), update, guard); err != nil {
 		return err
 	}
-	if err := runPods(ctx, kube, resolver, obj,
+	if err := runners.RunPods(ctx, kube, resolver, obj,
 		children.ExpandForEachPods(resolver, t.Pods), update, guard); err != nil {
 		return err
 	}
@@ -233,7 +262,7 @@ func (r *GenericReconciler[PTR]) runTemplateOnDelete(ctx context.Context, resolv
 				return err
 			}
 		} else {
-			if err := runJobs(ctx, kube, resolver, obj,
+			if err := runners.RunJobs(ctx, kube, resolver, obj,
 				children.ExpandForEachJobs(resolver, t.Jobs), guard); err != nil {
 				return err
 			}
@@ -253,6 +282,42 @@ func (r *GenericReconciler[PTR]) runTemplateOnDelete(ctx context.Context, resolv
 		return fmt.Errorf("namespace cleanup: %w", err)
 	}
 
+	return nil
+}
+
+// deleteOwnedNamespaces explicitly deletes all Namespaces declared across
+// onCreate, onReconcile, and onDelete that are owned by this CR.
+//
+// Kubernetes GC does not handle this automatically: owner references from
+// namespace-scoped resources (CRs) to cluster-scoped resources (Namespaces)
+// are not honoured by the garbage collector. Explicit deletion is required.
+func deleteOwnedNamespaces(
+	ctx context.Context,
+	kube kubeclient.KubeClient,
+	resolver *orktmpl.Resolver,
+	obj domain.Object,
+	box orktypes.OperatorBoxConfig,
+) error {
+	var srcs []orktypes.NamespaceTemplateSource
+	if box.OnCreate != nil {
+		srcs = append(srcs, box.OnCreate.Namespaces...)
+	}
+	if box.OnReconcile != nil {
+		srcs = append(srcs, box.OnReconcile.Namespaces...)
+	}
+	if box.OnDelete != nil {
+		srcs = append(srcs, box.OnDelete.Namespaces...)
+	}
+
+	for i, src := range srcs {
+		name, err := resolver.Resolve(src.Name)
+		if err != nil || name == "" {
+			continue
+		}
+		if err := orkns.DeleteIfOwned(ctx, kube, obj, name); err != nil {
+			return fmt.Errorf("namespace[%d] %q: %w", i, name, err)
+		}
+	}
 	return nil
 }
 

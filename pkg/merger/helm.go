@@ -22,13 +22,13 @@ import (
 // loadHelmSource renders a Helm chart and extracts Katalog CRD definitions.
 // The chart must contain at least one template with kind: Katalog.
 func (m *Merger) loadHelmSource(src orktypes.HelmSource) (map[string]orktypes.CRDEntry, error) {
-	logger.Info().
+	logger.Debug().
 		Str("repo", src.Repo).
 		Str("chart", src.Chart).
 		Str("version", src.Version).
 		Msg("merger: loading helm source")
 
-	chartPath, cleanup, err := resolveChartPath(src)
+	chartPath, cleanup, err := resolveChartPath(src, m.Refresh)
 	if err != nil {
 		return nil, err
 	}
@@ -42,12 +42,13 @@ func (m *Merger) loadHelmSource(src orktypes.HelmSource) (map[string]orktypes.CR
 // resolveChartPath returns the local path to the chart directory or .tgz,
 // downloading or cloning if necessary.
 // cleanup is non-nil when a temp directory was created and must be removed.
-func resolveChartPath(src orktypes.HelmSource) (chartPath string, cleanup func(), err error) {
+// When refresh is true, the local cache is bypassed and the source is fetched fresh.
+func resolveChartPath(src orktypes.HelmSource, refresh bool) (chartPath string, cleanup func(), err error) {
 	switch {
 	case isGitURL(src.Repo):
 		// ── Git source ────────────────────────────────────────────────────
 		// Clone the repo to a temp dir, then use the chart subdirectory.
-		return resolveGitChart(src)
+		return resolveGitChart(src, refresh)
 
 	case isLocalPath(src.Repo):
 		// ── Local source ──────────────────────────────────────────────────
@@ -60,7 +61,7 @@ func resolveChartPath(src orktypes.HelmSource) (chartPath string, cleanup func()
 
 	default:
 		// ── Remote Helm repo ──────────────────────────────────────────────
-		return resolveRemoteChart(src)
+		return resolveRemoteChart(src, refresh)
 	}
 }
 
@@ -108,13 +109,21 @@ func resolveLocalChart(src orktypes.HelmSource) (string, func(), error) {
 	return chartPath, nil, nil
 }
 
-// resolveGitChart clones the git repository to a temp directory
-func resolveGitChart(src orktypes.HelmSource) (string, func(), error) {
+// resolveGitChart clones the git repository and returns the chart directory.
+// On a cache hit the clone is skipped entirely. When refresh is true the cache
+// is bypassed and the repo is cloned fresh.
+func resolveGitChart(src orktypes.HelmSource, refresh bool) (string, func(), error) {
+	if !refresh {
+		if cached, ok := helmGitCached(src); ok {
+			logger.Debug().Str("repo", src.Repo).Msg("merger: git chart served from cache")
+			return cached, func() {}, nil
+		}
+	}
+
 	tmpDir, err := os.MkdirTemp("", "orkestra-git-*")
 	if err != nil {
 		return "", nil, fmt.Errorf("creating temp dir: %w", err)
 	}
-
 	cleanup := func() { os.RemoveAll(tmpDir) }
 
 	ref := src.Version
@@ -122,7 +131,7 @@ func resolveGitChart(src orktypes.HelmSource) (string, func(), error) {
 		ref = "HEAD"
 	}
 
-	logger.Info().
+	logger.Debug().
 		Str("repo", src.Repo).
 		Str("ref", ref).
 		Msg("merger: cloning git repository")
@@ -132,7 +141,6 @@ func resolveGitChart(src orktypes.HelmSource) (string, func(), error) {
 		return "", nil, err
 	}
 
-	// Resolve chart path
 	chartPath := tmpDir
 	if src.Path != "" {
 		chartPath = filepath.Join(tmpDir, src.Path)
@@ -145,86 +153,33 @@ func resolveGitChart(src orktypes.HelmSource) (string, func(), error) {
 		return "", nil, fmt.Errorf("chart path %q not found in repo %q", chartPath, src.Repo)
 	}
 
-	logger.Info().
+	logger.Debug().
 		Str("repo", src.Repo).
 		Str("ref", ref).
 		Str("chartPath", chartPath).
 		Msg("merger: git repo cloned")
 
-	return chartPath, cleanup, nil
+	cached, err := helmGitCacheStore(src, chartPath)
+	if err != nil {
+		// Cache write failure is non-fatal — use the temp dir directly.
+		logger.Debug().Err(err).Msg("merger: failed to store git chart in cache")
+		return chartPath, cleanup, nil
+	}
+	cleanup()
+	return cached, func() {}, nil
 }
 
-// and returns the path to the chart within it.
-// func resolveGitChart(src orktypes.HelmSource) (string, func(), error) {
-// 	tmpDir, err := os.MkdirTemp("", "orkestra-git-*")
-// 	if err != nil {
-// 		return "", nil, fmt.Errorf("creating temp dir for git clone: %w", err)
-// 	}
-
-// 	cleanup := func() { os.RemoveAll(tmpDir) }
-
-// 	// Build the git clone command
-// 	// ref can be a branch, tag, or commit
-// 	ref := src.Version // version doubles as git ref for git sources
-// 	if ref == "" {
-// 		ref = "HEAD"
-// 	}
-
-// 	logger.Info().
-// 		Str("repo", src.Repo).
-// 		Str("ref", ref).
-// 		Msg("merger: cloning git repository")
-
-// 	// Shallow clone at the specific ref
-// 	cmd := exec.Command("git", "clone",
-// 		"--depth", "1",
-// 		"--branch", ref,
-// 		src.Repo,
-// 		tmpDir,
-// 	)
-// 	cmd.Stdout = io.Discard
-// 	cmd.Stderr = io.Discard
-
-// 	if err := cmd.Run(); err != nil {
-// 		// Branch clone failed — try as commit hash with full clone
-// 		cmd = exec.Command("git", "clone", src.Repo, tmpDir)
-// 		if err2 := cmd.Run(); err2 != nil {
-// 			cleanup()
-// 			return "", nil, fmt.Errorf("cloning %q: %w", src.Repo, err)
-// 		}
-
-// 		// Checkout the specific commit/ref
-// 		checkout := exec.Command("git", "-C", tmpDir, "checkout", ref)
-// 		if err3 := checkout.Run(); err3 != nil {
-// 			cleanup()
-// 			return "", nil, fmt.Errorf("checking out %q in %q: %w", ref, src.Repo, err3)
-// 		}
-// 	}
-
-// 	// Chart lives at src.Path within the repo, or src.Chart, or root
-// 	chartPath := tmpDir
-// 	if src.Path != "" {
-// 		chartPath = filepath.Join(tmpDir, src.Path)
-// 	} else if src.Chart != "" {
-// 		chartPath = filepath.Join(tmpDir, src.Chart)
-// 	}
-
-// 	if _, err := os.Stat(chartPath); err != nil {
-// 		cleanup()
-// 		return "", nil, fmt.Errorf("chart path %q not found in repo %q", chartPath, src.Repo)
-// 	}
-
-// 	logger.Info().
-// 		Str("repo", src.Repo).
-// 		Str("ref", ref).
-// 		Str("chartPath", chartPath).
-// 		Msg("merger: git repo cloned")
-
-// 	return chartPath, cleanup, nil
-// }
-
 // resolveRemoteChart pulls a chart from a remote Helm repository.
-func resolveRemoteChart(src orktypes.HelmSource) (string, func(), error) {
+// On a cache hit the pull is skipped entirely. When refresh is true the cache
+// is bypassed and the chart is pulled fresh.
+func resolveRemoteChart(src orktypes.HelmSource, refresh bool) (string, func(), error) {
+	if !refresh {
+		if cached, ok := helmRepoCached(src); ok {
+			logger.Debug().Str("repo", src.Repo).Str("chart", src.Chart).Msg("merger: helm chart served from cache")
+			return cached, func() {}, nil
+		}
+	}
+
 	settings := cli.New()
 	cfg := &action.Configuration{}
 
@@ -261,7 +216,14 @@ func resolveRemoteChart(src orktypes.HelmSource) (string, func(), error) {
 		return "", nil, fmt.Errorf("pulling chart %q@%s: %w", src.Chart, src.Version, err)
 	}
 
-	return filepath.Join(tmpDir, src.Chart), cleanup, nil
+	chartPath := filepath.Join(tmpDir, src.Chart)
+	cached, err := helmRepoCacheStore(src, chartPath)
+	if err != nil {
+		logger.Debug().Err(err).Msg("merger: failed to store helm chart in cache")
+		return chartPath, cleanup, nil
+	}
+	cleanup()
+	return cached, func() {}, nil
 }
 
 // renderAndExtract renders a chart from a local path and extracts Katalog CRDs.

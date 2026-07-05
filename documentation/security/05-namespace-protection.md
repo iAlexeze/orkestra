@@ -19,7 +19,6 @@ spec:
       allowedNamespaces:
         - production
       operatorBox:
-        default: true
 ```
 
 A CR applied to `staging` is stored in etcd but silently dropped at the informer. No child resources are created. No error is surfaced to the user unless the webhook is also enabled.
@@ -149,7 +148,7 @@ ork e2e
 
 ---
 
-## Next
+## Further reading
 
 - **[Admission Control](./01-admission.md)** — deny and warn rules at admission time
 - **[RBAC](./02-rbac.md)** — generating and scoping ClusterRoles

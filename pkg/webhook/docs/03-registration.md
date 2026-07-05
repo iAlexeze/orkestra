@@ -43,7 +43,7 @@ UnregisterAdmissionWebhooks(ctx, ws.kubeClient, cleanupOpts)
 
 By default, webhook configurations persist across pod restarts. Set `cleanupOnShutdown: true` to remove them on graceful shutdown.
 
-## Webhook controller
+## Housekeeper
 
 `housekeeper.go` runs a reconciliation loop that keeps webhook configurations in sync with the Katalog, independent of pod lifecycle.
 
@@ -58,7 +58,7 @@ housekeeper(ctx)
     }
 ```
 
-Sync interval is controlled by `kat.WebhookControllerSyncInterval()`.
+Sync interval is controlled by `kat.HousekeeperSyncInterval()`.
 
 Each reconcile sub-function:
 - If the capability is **enabled**: calls the appropriate register function (idempotent).

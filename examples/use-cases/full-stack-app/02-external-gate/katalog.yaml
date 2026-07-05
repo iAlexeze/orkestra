@@ -16,8 +16,6 @@ spec:
     gated-app:
       crdFile: ./crd.yaml
 
-      workers: 2
-      resync: 30s
 
       validation:
         rules:
@@ -30,6 +28,9 @@ spec:
             action: deny
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
         onReconcile:
           external:
             - name: healthCheck

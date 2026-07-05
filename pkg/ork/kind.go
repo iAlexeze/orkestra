@@ -11,21 +11,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/orkspace/orkestra/pkg/spinner"
 	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 const (
 	// KindClusterName is the default kind cluster name used by ork run --dev.
-	KindClusterName = "orkestra-playground"
-	kindVersion     = "v0.27.0"
+	KindClusterName    = "orkestra-playground"
+	DefaultKindVersion = "v0.27.0"
 )
 
 // EnsureKindCluster creates a kind cluster named `name` if it does not already
 // exist, then switches kubectl to its context. Downloads the kind binary from
 // GitHub releases if not found in PATH or ~/.orkestra/bin.
-func EnsureKindCluster(name string) error {
-	kindBin, err := resolveKind()
+// workers > 0 provisions that many worker nodes in addition to the control-plane.
+// version selects the kind release to download; empty string uses DefaultKindVersion.
+func EnsureKindCluster(name string, workers int, version string) error {
+	kindBin, err := resolveKind(version)
 	if err != nil {
 		return err
 	}
@@ -38,8 +39,23 @@ func EnsureKindCluster(name string) error {
 		}
 	}
 
-	fmt.Printf("  → Creating local cluster '%s'...\n", name)
-	create := exec.Command(kindBin, "create", "cluster", "--name", name)
+	label := fmt.Sprintf("'%s'", name)
+	if workers > 0 {
+		label = fmt.Sprintf("'%s' (%d worker(s))", name, workers)
+	}
+	fmt.Printf("  → Creating local cluster %s...\n", label)
+
+	args := []string{"create", "cluster", "--name", name}
+	if workers > 0 {
+		cfg, cfgErr := writeKindConfig(workers)
+		if cfgErr != nil {
+			return fmt.Errorf("kind config: %w", cfgErr)
+		}
+		defer os.Remove(cfg)
+		args = append(args, "--config", cfg)
+	}
+
+	create := exec.Command(kindBin, args...)
 	create.Stdout = os.Stdout
 	create.Stderr = os.Stderr
 	if err := create.Run(); err != nil {
@@ -47,7 +63,7 @@ func EnsureKindCluster(name string) error {
 	}
 	fmt.Printf("  %s Cluster '%s' ready\n", utils.SuccessMark(), name)
 
-	spin := spinner.Start("   → Waiting for nodes to be ready...")
+	spin := utils.StartSpinner("   → Waiting for nodes to be ready...")
 	defer spin.Failure()
 	if err := waitForNodesReady(5 * time.Minute); err != nil {
 		return err
@@ -60,7 +76,7 @@ func EnsureKindCluster(name string) error {
 // DeleteKindCluster deletes a kind cluster by name. Safe to call when the
 // cluster does not exist.
 func DeleteKindCluster(name string) error {
-	kindBin, err := resolveKind()
+	kindBin, err := resolveKind(DefaultKindVersion)
 	if err != nil {
 		return err
 	}
@@ -83,27 +99,32 @@ func useKindContext(name string) error {
 	return nil
 }
 
-func resolveKind() (string, error) {
-	if p, err := exec.LookPath("kind"); err == nil {
-		return p, nil
+func resolveKind(version string) (string, error) {
+	if version == "" {
+		// No explicit version: prefer whatever is already in PATH.
+		if p, err := exec.LookPath("kind"); err == nil {
+			return p, nil
+		}
+		version = DefaultKindVersion
 	}
-	dest := filepath.Join(orkBinDir(), "kind")
+	// Explicit version: use the versioned cache entry, downloading if needed.
+	dest := filepath.Join(orkBinDir(), "kind-"+version)
 	if _, err := os.Stat(dest); err == nil {
 		return dest, nil
 	}
-	return downloadKind(dest)
+	return downloadKind(dest, version)
 }
 
-func downloadKind(dest string) (string, error) {
+func downloadKind(dest, version string) (string, error) {
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
 
 	url := fmt.Sprintf(
 		"https://github.com/kubernetes-sigs/kind/releases/download/%s/kind-%s-%s",
-		kindVersion, goos, goarch,
+		version, goos, goarch,
 	)
 
-	fmt.Printf("  → Downloading kind %s...\n", kindVersion)
+	fmt.Printf("  → Downloading kind %s...\n", version)
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return "", fmt.Errorf("kind: cannot create bin dir: %w", err)
 	}
@@ -128,31 +149,32 @@ func downloadKind(dest string) (string, error) {
 	}
 	f.Close()
 
-	fmt.Printf("  ✓ kind %s installed (%s)\n", kindVersion, dest)
+	fmt.Printf("  %s kind %s installed (%s)\n", utils.SuccessMark(), version, dest)
 	return dest, nil
 }
 
-func waitForNodesReady(timeout time.Duration) error {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		out, err := exec.Command("kubectl", "get", "nodes",
-			"--no-headers", "-o", "custom-columns=STATUS:.status.conditions[-1].type").Output()
-		if err == nil {
-			lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-			allReady := len(lines) > 0
-			for _, l := range lines {
-				if strings.TrimSpace(l) != "Ready" {
-					allReady = false
-					break
-				}
-			}
-			if allReady {
-				return nil
-			}
-		}
-		time.Sleep(2 * time.Second)
+func writeKindConfig(workers int) (string, error) {
+	f, err := os.CreateTemp("", "ork-kind-*.yaml")
+	if err != nil {
+		return "", err
 	}
-	return fmt.Errorf("nodes not ready after %s", timeout)
+	defer f.Close()
+	fmt.Fprintf(f, "kind: Cluster\napiVersion: kind.x-k8s.io/v1alpha4\nnodes:\n- role: control-plane\n")
+	for range workers {
+		fmt.Fprintf(f, "- role: worker\n")
+	}
+	return f.Name(), nil
+}
+
+func waitForNodesReady(timeout time.Duration) error {
+	cmd := exec.Command("kubectl", "wait", "--for=condition=Ready",
+		"node", "--all", fmt.Sprintf("--timeout=%ds", int(timeout.Seconds())))
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("nodes not ready after %s", timeout)
+	}
+	return nil
 }
 
 // orkBinDir returns ~/.orkestra/bin — where Orkestra stores downloaded tools.

@@ -16,6 +16,9 @@
 | `prune_yaml.go` | YAML pruning — removes zero-value fields before applying to the cluster |
 | `gvk.go` | GroupVersionKind parsing and formatting helpers |
 | `crd.go` | CRD discovery utilities — REST mapper construction, GVR lookup by kind |
+| `file_cache.go` | SHA256-keyed disk cache for remote files (`~/.orkestra/files/`) |
+
+**`LoadFileWithAuthRefresh(path, auth, refresh)`** — loads a local or HTTPS file. HTTPS responses are cached in `~/.orkestra/files/<sha256>/` keyed by URL. Pass `refresh: true` to bypass and overwrite the cached copy. `LoadFile` and `LoadFileWithAuth` are convenience wrappers with `refresh: false`.
 
 ## Key utilities
 
@@ -31,3 +34,4 @@
 |-------|-------|
 | How the REST mapper and CRD discovery client work | [docs/crd.md](docs/crd.md) |
 | How dot-path navigation works | [pkg/types/docs/navigate-dot-path.md](../types/docs/navigate-dot-path.md) |
+| Remote file loading and caching | [docs/loadfile.md](docs/loadfile.md) |

@@ -14,10 +14,10 @@ spec:
   crds:
     multi-region-app:
       crdFile: crd.yaml
-      workers: 2
-      resync: 30s
       operatorBox:
-        default: true
+        reconciler:
+          workers: 2
+          resync: 30s
         onReconcile:
 
           # Deployments — one per region.

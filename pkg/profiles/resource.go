@@ -30,8 +30,15 @@ const (
 )
 
 // ApplyResourceProfile expands a named resource profile into a complete
-// ResourceRequirements. Returns an error for unknown profile names.
-func ApplyResourceProfile(name string) (*orktypes.ResourceRequirements, error) {
+// ResourceRequirements. User-defined profiles in reg are checked first; falls
+// back to built-ins. Returns an error for unknown profile names.
+func ApplyResourceProfile(name string, reg orktypes.ProfileRegistry) (*orktypes.ResourceRequirements, error) {
+	if def, found := reg.LookupResource(name); found {
+		return &orktypes.ResourceRequirements{
+			Requests: def.Requests,
+			Limits:   def.Limits,
+		}, nil
+	}
 	switch ResourceProfile(strings.ToLower(name)) {
 	case ResourceTiny:
 		return &orktypes.ResourceRequirements{
@@ -74,7 +81,7 @@ func ApplyResourceProfile(name string) (*orktypes.ResourceRequirements, error) {
 			Limits:   map[string]string{"cpu": "500m", "memory": "2Gi"},
 		}, nil
 	default:
-		return nil, fmt.Errorf("unknown resource profile: %q — allowed: tiny, small, medium, large, burst, steady, compute-heavy, memory-heavy", name)
+		return nil, fmt.Errorf("unknown resource profile: %q — built-ins: tiny, small, medium, large, burst, steady, compute-heavy, memory-heavy", name)
 	}
 }
 

@@ -13,12 +13,12 @@ spec:
     service:
       crdFile: ../crd.yaml
 
-      workers: 2
-      resync: 30s
 
       operatorBox:
-        default: true
 
+        reconciler:
+          workers: 2
+          resync: 30s
         status:
           fields:
             - path: phase

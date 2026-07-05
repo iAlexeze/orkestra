@@ -17,7 +17,6 @@ spec:
         plural: appcerts
 
       operatorBox:
-        default: true
 
         status:
           fields:
@@ -27,20 +26,23 @@ spec:
         onCreate:
           custom:
             - apiVersion: cert-manager.io/v1
-              kind: ClusterIssuer
-              name: "{{ .metadata.name }}-issuer"
+              kind: Issuer
+              metadata:
+                name: "{{ .metadata.name }}-issuer"
+                namespace: "{{ .metadata.namespace }}"
               spec:
                 selfSigned: {}
 
             - apiVersion: cert-manager.io/v1
               kind: Certificate
-              name: "{{ .metadata.name }}-cert"
-              namespace: "{{ .metadata.namespace }}"
+              metadata:
+                name: "{{ .metadata.name }}-cert"
+                namespace: "{{ .metadata.namespace }}"
               spec:
                 secretName: "{{ .metadata.name }}-tls"
                 issuerRef:
                   name: "{{ .metadata.name }}-issuer"
-                  kind: ClusterIssuer
+                  kind: Issuer
                 commonName: "{{ .spec.domain }}"
                 dnsNames:
                   - "{{ .spec.domain }}"

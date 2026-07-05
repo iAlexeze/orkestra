@@ -53,6 +53,9 @@ type Merger struct {
 	// gateway holds the gateway deployment config of the final katalog
 	gateway *orktypes.GatewayConfig
 
+	// profiles holds the merged user-defined profile registry of the final katalog
+	profiles orktypes.ProfileRegistry
+
 	// projects holds the merged projectInfo configuration of the final katalog
 	projects map[string]interface{}
 
@@ -67,6 +70,10 @@ type Merger struct {
 	apiMetadata apiMetadata
 
 	registryURL string // set from ORK_REGISTRY via SetRegistryURL
+
+	// Refresh bypasses all local caches — git charts, remote Helm repos, and
+	// remote file fetches are re-downloaded and the cached copies are overwritten.
+	Refresh bool
 }
 
 type apiMetadata struct {
@@ -152,19 +159,25 @@ func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
 		result.Enabled = override.Enabled
 	}
 
-	// ── Runtime tuning ────────────────────────────────────────────────────
+	// ── Runtime tuning (operatorBox.reconciler) ──────────────────────────
 	// Override only when non-zero — zero means "not declared in override"
-	if override.Workers > 0 {
-		result.Workers = override.Workers
-	}
-	if override.Resync != 0 {
-		result.Resync = override.Resync
-	}
-	if override.Queue.MaxDepth > 0 {
-		result.Queue.MaxDepth = override.Queue.MaxDepth
-	}
-	if override.Queue.FailureThreshold > 0 {
-		result.Queue.FailureThreshold = override.Queue.FailureThreshold
+	if override.OperatorBox.Reconciler != nil {
+		if result.OperatorBox.Reconciler == nil {
+			result.OperatorBox.Reconciler = &orktypes.ReconcilerConfig{}
+		}
+		ov := override.OperatorBox.Reconciler
+		if ov.Workers > 0 {
+			result.OperatorBox.Reconciler.Workers = ov.Workers
+		}
+		if ov.Resync.Duration != 0 {
+			result.OperatorBox.Reconciler.Resync = ov.Resync
+		}
+		if ov.Queue.MaxDepth > 0 {
+			result.OperatorBox.Reconciler.Queue.MaxDepth = ov.Queue.MaxDepth
+		}
+		if ov.Queue.FailureThreshold > 0 {
+			result.OperatorBox.Reconciler.Queue.FailureThreshold = ov.Queue.FailureThreshold
+		}
 	}
 
 	// ── Deletion Protection ───────────────────────────────────────────────
@@ -356,6 +369,13 @@ func (m *Merger) ToNotification() *orktypes.KatalogNotification {
 func (m *Merger) ToGateway() *orktypes.GatewayConfig {
 	m.mustBeMerged()
 	return m.gateway
+}
+
+// ToProfiles returns the merged user-defined profile registry of the merged result.
+// Used by KomposeRuntimeKatalog to populate Katalog.Profiles.
+func (m *Merger) ToProfiles() orktypes.ProfileRegistry {
+	m.mustBeMerged()
+	return m.profiles
 }
 
 // ToProjectInfo returns merged project information of the merged result

@@ -3,12 +3,13 @@ kind: E2E
 metadata:
   name: appcert-custom-e2e
   description: >
-    AppCert via customOperator: true — cert-manager manages the Certificate directly,
+    AppCert via custom.target: kubernetes — cert-manager manages the Certificate directly,
     no Orkestra. The AppCert CR is applied and deleted manually; cert-manager issues
     the TLS Secret. Assertions are identical to e2e-orkestra.yaml.
 
 spec:
-  customOperator: true
+  custom:
+    target: kubernetes
   crd: ./crd.yaml
   cr: ./cr.yaml
 
@@ -49,9 +50,10 @@ spec:
         - run: |
             kubectl apply -f - <<EOF
             apiVersion: cert-manager.io/v1
-            kind: ClusterIssuer
+            kind: Issuer
             metadata:
               name: my-app-issuer
+              namespace: default
             spec:
               selfSigned: {}
             ---
@@ -64,7 +66,7 @@ spec:
               secretName: my-app-tls
               issuerRef:
                 name: my-app-issuer
-                kind: ClusterIssuer
+                kind: Issuer
               commonName: my-app.example.local
               dnsNames:
                 - my-app.example.local
@@ -79,9 +81,11 @@ spec:
       after: cr-deleted
       timeout: 30s
       commands:
-        - run: kubectl delete clusterissuer my-app-issuer --ignore-not-found
+        - run: kubectl delete issuer my-app-issuer -n default --ignore-not-found
           exitCode: 0
         - run: kubectl delete certificate my-app-cert -n default --ignore-not-found
+          exitCode: 0
+        - run: kubectl delete secret my-app-tls -n default --ignore-not-found
           exitCode: 0
       resources:
         - kind: Secret

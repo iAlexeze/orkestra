@@ -101,7 +101,9 @@ See [When Conditions](../reference/schema/02-katalog/06-when-conditions.md) for 
 spec:
   crds:
     database:
-      workers: 8
+      operatorBox:
+        reconciler:
+          workers: 8
     application:
       dependsOn:
         database:
@@ -223,11 +225,10 @@ Hooks are additive: the hook runs, then Orkestra applies `onCreate`/`onReconcile
 
 ```yaml
 operatorBox:
-  default: true   # GenericReconciler still runs; hooks are additive
-
-  hooks:
-    location: github.com/myorg/database-operator/hooks
-    function: DatabaseHooks
+  reconciler:
+    hooks:
+      location: github.com/myorg/database-operator/hooks
+      function: DatabaseHooks
 ```
 
 Try it:
@@ -238,7 +239,7 @@ cd 09-hooks
 # Follow the steps in README
 ```
 
-→ [Typed Operators — Hooks](../concepts/typed-operators/01-hooks.md)
+→ [Typed Operators — Hooks](../concepts/typed-operators/01-hooks.md) · [Migration Guide — Hybrid](../guides/migration/03-hybrid.md) · [Migration Guide — Hooks Only](../guides/migration/04-hooks-only.md)
 
 ---
 
@@ -248,10 +249,11 @@ When you need to own the full reconcile loop — typically when integrating an e
 
 ```yaml
 operatorBox:
-  default: false   # GenericReconciler is replaced; constructor owns everything
+  reconciler:
+    default: false   # GenericReconciler is replaced; constructor owns everything
 ```
 
-`default: false` is the one field change that replaces the entire reconciler. Your constructor receives Orkestra's `KubeClient` and informer — no `controller-runtime` required. Declarative templates (`onCreate`, `onReconcile`, `status.fields`) are not applied when `default: false`; the constructor is responsible for all state.
+`reconciler.default: false` is the one field change that replaces the entire reconciler. Your constructor receives Orkestra's `KubeClient` and informer — no `controller-runtime` required. Declarative templates (`onCreate`, `onReconcile`, `status.fields`) are not applied when `reconciler.default: false`; the constructor is responsible for all state.
 
 Try it:
 
@@ -261,7 +263,7 @@ cd 10-constructor
 # Follow the steps in README
 ```
 
-→ [Typed Operators — Constructor](../concepts/typed-operators/02-constructor.md)
+→ [Typed Operators — Constructor](../concepts/typed-operators/02-constructor.md) · [Migration Guide — Constructor](../guides/migration/05-constructor.md) · [ork migrate](../guides/migration/07-ork-migrate.md)
 
 ---
 
@@ -274,7 +276,9 @@ Yes. Each CRD in a Katalog or Komposer can use a different mode. One binary, one
 spec:
   crds:
     database:          # typed hooks — Go SDK calls alongside declarative templates
-      workers: 5
+      operatorBox:
+        reconciler:
+          workers: 5
     website:           # dynamic — pure YAML, no Go
       dependsOn:
         database:
@@ -285,7 +289,7 @@ spec:
           condition: started
 ```
 
-You promote along a single axis: start pure YAML, add `hooks:` when you need Go logic, flip `default: false` when you need full control. No project restructure. No framework switch.
+You promote along a single axis: start pure YAML, add `reconciler.hooks:` when you need Go logic, flip `reconciler.default: false` when you need full control. No project restructure. No framework switch.
 
 Try it:
 
@@ -299,7 +303,7 @@ cd 11-mixed-operator-pattern
 
 ---
 
-## Next
+## Further reading
 
 - **[Running](./02-running.md)** — setup, configuration, and operations
 - **[Ecosystem](./04-ecosystem.md)** — comparisons and the Kubernetes roadmap

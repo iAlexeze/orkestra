@@ -109,43 +109,43 @@ type WorkerStats struct {
 }
 
 type CRDInfoResponse struct {
-	Name                   string                           `json:"name"`
-	Description            string                           `json:"description"`
-	Mode                   string                           `json:"mode"`
-	GVK                    string                           `json:"gvk"`
-	GVR                    string                           `json:"gvr"`
-	Namespaced             bool                             `json:"namespaced"`
-	Namespace              string                           `json:"namespace"`
-	DependsOn              []string                         `json:"dependsOn,omitempty"`
-	IsKonductor            bool                             `json:"isKonductor"`
-	Workers                int                              `json:"workers"`
-	WorkersActive          int32                            `json:"workersActive"`
-	WorkersIdle            int32                            `json:"workersIdle"`
-	WorkersProcessing      int32                            `json:"workersProcessing"`
-	WorkerDetails          map[string]string                `json:"workerDetails,omitempty"`
-	WorkersSource          string                           `json:"workersSource"`
-	Resync                 string                           `json:"resync"`
-	ResyncSource           string                           `json:"resyncSource"`
-	QueueDepth             int                              `json:"queueDepth"`
-	MaxDepth               int                              `json:"maxDepth"`
-	MaxDepthSource         string                           `json:"maxDepthSource"`
-	ResourceCount          int                              `json:"resourceCount"`
-	TotalReconciles        int64                            `json:"totalReconciles"`
-	OperatorBox            OperatorBoxInfo                  `json:"operatorBox"`
-	Healthy                bool                             `json:"healthy"`
-	Started                bool                             `json:"started"`
-	Pending                bool                             `json:"pending"`
-	ErrorRate              float64                          `json:"errorRate"`
-	Conversion             *ConversionStatsResponse         `json:"conversion,omitempty"`
-	Admission              *AdmissionStatsResponse          `json:"admission,omitempty"`
-	DeletionProtection     *DeletionProtectionStatsResponse `json:"deletionProtection,omitempty"`
-	NamespaceProtection    *NamespaceProtectionResponse     `json:"namespaceProtection,omitempty"`
-	WebhookControllerStats *WebhookControllerStats          `json:"webhookControllerStats,omitempty"`
-	Providers              []ProviderInfoResponse           `json:"providers,omitempty"`
-	RBAC                   RBACInfo                         `json:"rbac,omitempty"`
-	AutoscalerEnabled      bool                             `json:"autoscalerEnabled,omitempty"`
-	AutoscalerWorkers      *ork_autoscaler.WorkerInfo       `json:"autoscalerWorkers,omitempty"`
-	Rollback               *RollbackStats                   `json:"rollback,omitempty"`
+	Name                string                           `json:"name"`
+	Description         string                           `json:"description"`
+	Mode                string                           `json:"mode"`
+	GVK                 string                           `json:"gvk"`
+	GVR                 string                           `json:"gvr"`
+	Namespaced          bool                             `json:"namespaced"`
+	Namespace           string                           `json:"namespace"`
+	DependsOn           []string                         `json:"dependsOn,omitempty"`
+	IsKonductor         bool                             `json:"isKonductor"`
+	Workers             int                              `json:"workers"`
+	WorkersActive       int32                            `json:"workersActive"`
+	WorkersIdle         int32                            `json:"workersIdle"`
+	WorkersProcessing   int32                            `json:"workersProcessing"`
+	WorkerDetails       map[string]string                `json:"workerDetails,omitempty"`
+	WorkersSource       string                           `json:"workersSource"`
+	Resync              string                           `json:"resync"`
+	ResyncSource        string                           `json:"resyncSource"`
+	QueueDepth          int                              `json:"queueDepth"`
+	MaxDepth            int                              `json:"maxDepth"`
+	MaxDepthSource      string                           `json:"maxDepthSource"`
+	ResourceCount       int                              `json:"resourceCount"`
+	TotalReconciles     int64                            `json:"totalReconciles"`
+	OperatorBox         OperatorBoxInfo                  `json:"operatorBox"`
+	Healthy             bool                             `json:"healthy"`
+	Started             bool                             `json:"started"`
+	Pending             bool                             `json:"pending"`
+	ErrorRate           float64                          `json:"errorRate"`
+	Conversion          *ConversionStatsResponse         `json:"conversion,omitempty"`
+	Admission           *AdmissionStatsResponse          `json:"admission,omitempty"`
+	DeletionProtection  *DeletionProtectionStatsResponse `json:"deletionProtection,omitempty"`
+	NamespaceProtection *NamespaceProtectionResponse     `json:"namespaceProtection,omitempty"`
+	HousekeeperStats    *HousekeeperStats                `json:"housekeeperStats,omitempty"`
+	Providers           []ProviderInfoResponse           `json:"providers,omitempty"`
+	RBAC                RBACInfo                         `json:"rbac,omitempty"`
+	AutoscalerEnabled   bool                             `json:"autoscalerEnabled,omitempty"`
+	AutoscalerWorkers   *ork_autoscaler.WorkerInfo       `json:"autoscalerWorkers,omitempty"`
+	Rollback            *RollbackStats                   `json:"rollback,omitempty"`
 	// Metrics is the live AutoMetrics map for this operatorbox.
 	// Populated only when autoscale: is declared. Used by cross-binary autoscale
 	// conditions via the source.endpoint HTTP fallback — the remote autoscaler
@@ -226,8 +226,8 @@ type NamespaceProtectionResponse struct {
 	RestrictedNamespaces []string `json:"restrictedNamespaces,omitempty"` // non-nil only when restrictedNamespaces: is declared
 }
 
-// WebhookControllerStats tracks reconciliation counters for the webhook controller.
-type WebhookControllerStats struct {
+// HousekeeperStats tracks reconciliation counters for the housekeeper.
+type HousekeeperStats struct {
 	Reconciled int64 // total successful reconciliation cycles
 	Failed     int64 // reconciliation attempts that encountered errors
 }
@@ -267,7 +267,7 @@ func BuildCRDInfoHandler(
 	convStats *health.ConversionStats,
 	admStats *health.AdmissionStats,
 	protStats *health.DeletionProtectionStats,
-	webhookControllerStats *health.WebhookStats,
+	housekeeperStats *health.WebhookStats,
 	provStats *health.ProviderStats,
 	nsStats *health.NamespaceProtectionStats,
 	isDeletionProtected bool,
@@ -427,10 +427,10 @@ func BuildCRDInfoHandler(
 			response.NamespaceProtection = nsr
 		}
 
-		// Webhook controller stats
-		if webhookControllerStats != nil {
-			snap := webhookControllerStats.GetStats()
-			response.WebhookControllerStats = &WebhookControllerStats{
+		// Housekeeper stats
+		if housekeeperStats != nil {
+			snap := housekeeperStats.GetStats()
+			response.HousekeeperStats = &HousekeeperStats{
 				Reconciled: snap.Reconciled,
 				Failed:     snap.Failed,
 			}
@@ -657,7 +657,7 @@ func BuildKatalogHandler(
 				OperatorBox: OperatorBoxSummary{
 					Type:           "generic",
 					HasTemplates:   crd.OperatorBox.OnCreate != nil,
-					HasHooks:       crd.OperatorBox.Hooks != nil || crd.OperatorBox.HookFactory != nil,
+					HasHooks:       (crd.OperatorBox.Reconciler != nil && crd.OperatorBox.Reconciler.Hooks != nil) || crd.OperatorBox.HookFactory != nil,
 					HasConstructor: crd.OperatorBox.Constructor != nil,
 				},
 				Healthy:          isHealthy,
@@ -764,7 +764,7 @@ func isCRDProtected(protected map[string]struct{}, plural, group string) bool {
 
 // Helper function to convert to struct-based reconciler info
 func operatorBoxInfoStruct(crd orktypes.CRDEntry) OperatorBoxInfo {
-	op := crd.OperatorBox
+	box := crd.OperatorBox
 
 	reconcilerType := "generic"
 	if !crd.DefaultReconcile() {
@@ -775,20 +775,20 @@ func operatorBoxInfoStruct(crd orktypes.CRDEntry) OperatorBoxInfo {
 		Source: "default",
 		Values: []string{},
 	}
-	if len(op.Finalizers) > 0 {
+	if len(box.Finalizers) > 0 {
 		finalizersInfo.Source = "configured"
-		finalizersInfo.Values = op.Finalizers
+		finalizersInfo.Values = box.Finalizers
 	}
 
 	hooksInfo := HooksInfo{Configured: false}
-	if op.Hooks != nil {
+	if box.Reconciler != nil && box.Reconciler.Hooks != nil {
 		hooksInfo = HooksInfo{
 			Configured: true,
 			Source:     "yaml",
-			Location:   op.Hooks.Location,
-			Function:   op.Hooks.Function,
+			Location:   box.Reconciler.Hooks.Location,
+			Function:   box.Reconciler.Hooks.Function,
 		}
-	} else if op.HookFactory != nil {
+	} else if box.HookFactory != nil {
 		hooksInfo = HooksInfo{
 			Configured: true,
 			Source:     "go",
@@ -796,14 +796,14 @@ func operatorBoxInfoStruct(crd orktypes.CRDEntry) OperatorBoxInfo {
 	}
 
 	constructorInfo := ConstructorInfo{Configured: false}
-	if op.ConstructorDecl != nil {
+	if box.Reconciler != nil && box.Reconciler.ConstructorDecl != nil {
 		constructorInfo = ConstructorInfo{
 			Configured: true,
 			Source:     "yaml",
-			Location:   op.ConstructorDecl.Location,
-			Function:   op.ConstructorDecl.Function,
+			Location:   box.Reconciler.ConstructorDecl.Location,
+			Function:   box.Reconciler.ConstructorDecl.Function,
 		}
-	} else if op.Constructor != nil {
+	} else if box.Constructor != nil {
 		constructorInfo = ConstructorInfo{
 			Configured: true,
 			Source:     "go",
@@ -817,11 +817,11 @@ func operatorBoxInfoStruct(crd orktypes.CRDEntry) OperatorBoxInfo {
 		Constructor: constructorInfo,
 	}
 
-	if op.OnCreate != nil || op.OnReconcile != nil || op.OnDelete != nil {
+	if box.OnCreate != nil || box.OnReconcile != nil || box.OnDelete != nil {
 		result.Templates = make(map[string]interface{})
-		if op.OnCreate != nil {
-			onCreate := templateSummary(op.OnCreate)
-			if hasAutoReconcile(op.OnCreate) {
+		if box.OnCreate != nil {
+			onCreate := templateSummary(box.OnCreate)
+			if hasAutoReconcile(box.OnCreate) {
 				result.Templates["onReconcile"] = map[string]interface{}{
 					"source": "auto",
 					"from":   "onCreate[reconcile:true]",
@@ -829,11 +829,11 @@ func operatorBoxInfoStruct(crd orktypes.CRDEntry) OperatorBoxInfo {
 			}
 			result.Templates["onCreate"] = onCreate
 		}
-		if op.OnReconcile != nil {
-			result.Templates["onReconcile"] = templateSummary(op.OnReconcile)
+		if box.OnReconcile != nil {
+			result.Templates["onReconcile"] = templateSummary(box.OnReconcile)
 		}
-		if op.OnDelete != nil {
-			result.Templates["onDelete"] = templateSummary(op.OnDelete)
+		if box.OnDelete != nil {
+			result.Templates["onDelete"] = templateSummary(box.OnDelete)
 		}
 	}
 
@@ -960,7 +960,7 @@ func resolveCRDDisplayValues(
 ) crdDisplayValues {
 
 	// Queue depth
-	maxDepth := crd.Queue.MaxDepth
+	maxDepth := crd.OperatorBox.Reconciler.Queue.MaxDepth
 	maxDepthSource := "configured"
 	if maxDepth == 0 {
 		maxDepth = kfg.Katalog().DefaultQueueDepth()
@@ -968,17 +968,17 @@ func resolveCRDDisplayValues(
 	}
 
 	// Resync
-	resync := crd.Resync.String()
+	resync := crd.OperatorBox.Reconciler.Resync.String()
 	resyncSource := "configured"
-	if crd.Resync == 0 {
+	if crd.OperatorBox.Reconciler.Resync.Duration == 0 {
 		resyncSource = "default"
 		resync = kfg.Katalog().DefaultResync().String()
 	}
 
 	// Workers
-	workers := crd.Workers
+	workers := crd.OperatorBox.Reconciler.Workers
 	workersSource := "configured"
-	if crd.Workers == 0 {
+	if crd.OperatorBox.Reconciler.Workers == 0 {
 		workers = kfg.Katalog().DefaultWorkers()
 		workersSource = "default"
 	}

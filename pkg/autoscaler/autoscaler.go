@@ -38,11 +38,12 @@ type AutoscaleTarget interface {
 
 // Autoscaler evaluates conditions and applies/restores overrides for one operatorbox.
 type Autoscaler struct {
-	crdKind  string
-	spec     *orktypes.AutoscaleSpec
-	baseline orktypes.AutoscaleBaseline
-	target   AutoscaleTarget
-	metrics  *AutoMetrics
+	crdKind    string
+	spec       *orktypes.AutoscaleSpec
+	baseline   orktypes.AutoscaleBaseline
+	target     AutoscaleTarget
+	metrics    *AutoMetrics
+	crossDecls []orktypes.CrossCRDDeclaration
 
 	// state — not exported, not persisted
 	state orktypes.AutoscaleState
@@ -50,19 +51,24 @@ type Autoscaler struct {
 
 // NewAutoscaler constructs an Autoscaler for one operatorbox.
 // baseline is captured from the CRD's declared configuration before startup.
+// crossDecls is the operatorBox.cross slice — used to resolve source fallback
+// for autoscale conditions that reference cross.<crd>.metrics.* without an
+// explicit source: block on the condition itself.
 func NewAutoscaler(
 	crdKind string,
 	spec *orktypes.AutoscaleSpec,
 	baseline orktypes.AutoscaleBaseline,
 	target AutoscaleTarget,
 	metrics *AutoMetrics,
+	crossDecls []orktypes.CrossCRDDeclaration,
 ) *Autoscaler {
 	return &Autoscaler{
-		crdKind:  crdKind,
-		spec:     spec,
-		baseline: baseline,
-		target:   target,
-		metrics:  metrics,
+		crdKind:    crdKind,
+		spec:       spec,
+		baseline:   baseline,
+		target:     target,
+		metrics:    metrics,
+		crossDecls: crossDecls,
 		state: orktypes.AutoscaleState{
 			CronWindowsOpenAt: make(map[string]time.Time),
 		},
@@ -155,7 +161,11 @@ func (a *Autoscaler) buildConditionData() map[string]interface{} {
 	for _, cond := range all {
 		// Cross-metric resolution
 		if orktypes.IsCrossMetricField(cond.Field) {
-			val := ResolveCrossMetric(GlobalCrossMetricsRegistry, cond.Field, cond.Source)
+			src := cond.Source
+			if src == nil {
+				src = a.crossSourceFor(cond.Field)
+			}
+			val := ResolveCrossMetric(GlobalCrossMetricsRegistry, cond.Field, src)
 			if val != "" {
 				injectCrossMetricValue(data, cond.Field, val)
 			}
@@ -213,6 +223,38 @@ func injectCrossMetricValue(data map[string]interface{}, field, val string) {
 		crdMap["metrics"] = metricsMap
 	}
 	metricsMap[metric] = val
+}
+
+// crossSourceFor returns the CrossSource declared in the operatorBox.cross block
+// that is suitable for metrics resolution of the given cross field path.
+// Only entries with a direct endpoint or type: metrics are considered — entries
+// with type: cr, health, events, etc. are for different data and are skipped.
+// Used as a fallback when a condition's own source: block is absent.
+func (a *Autoscaler) crossSourceFor(field string) *orktypes.CrossSource {
+	cf := orktypes.ParseCrossField(field)
+	if cf == nil {
+		return nil
+	}
+	for _, decl := range a.crossDecls {
+		if decl.Source == nil {
+			continue
+		}
+		// Match field CRD against the alias (as:) if set, otherwise the crd name.
+		// Field paths use the alias when one is declared (e.g. cross.paymentSystem.*),
+		// but some operators use the raw crd name in their field path (e.g. cross.loader.*).
+		// Check both so either style resolves correctly.
+		crdMatch := strings.EqualFold(decl.Crd, cf.CRD)
+		aliasMatch := decl.As != "" && strings.EqualFold(decl.As, cf.CRD)
+		if !crdMatch && !aliasMatch {
+			continue
+		}
+		// Only use sources that can resolve metrics: a raw endpoint (any shape)
+		// or an ONCOP host entry typed as metrics.
+		if decl.Source.Endpoint != "" || decl.Source.Type == orktypes.ONCOPMetrics {
+			return decl.Source
+		}
+	}
+	return nil
 }
 
 // applyOverride applies the do: block to the target operatorbox.

@@ -22,9 +22,10 @@ spec:
     # ── Loader ────────────────────────────────────────────────────────────────
     loader:
       crdFile: ./crd-loader.yaml
-      workers: 3
-      resync: 60s
       operatorBox:
+        reconciler:
+          workers: 3
+          resync: 60s
         status:
           fields:
             - path: phase
@@ -41,9 +42,10 @@ spec:
     # ── Processor ────────────────────────────────────────────────────────────
     processor:
       crdFile: ./crd-processor.yaml
-      workers: 2
-      resync: 30s
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
         status:
           fields:
             - path: phase
@@ -60,9 +62,10 @@ spec:
     # ── Auditor ────────────────────────────────────────────────────────────
     auditor:
       crdFile: ./crd-auditor.yaml
-      workers: 1
-      resync: 60s
       operatorBox:
+        reconciler:
+          workers: 1
+          resync: 60s
         status:
           fields:
             - path: phase

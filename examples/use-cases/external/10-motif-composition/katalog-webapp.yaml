@@ -13,8 +13,6 @@ spec:
     webapp:
       crdFile: ./crd-webapp.yaml
 
-      workers: 2
-      resync: 30s
 
       # ── Motif imports ──────────────────────────────────────────────────────
       # Each motif is parameterized via with:. The motif owns the external call
@@ -38,6 +36,9 @@ spec:
             policy: "deploy"
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
         default: true
 
         onReconcile:

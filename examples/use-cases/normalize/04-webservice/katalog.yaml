@@ -15,8 +15,6 @@ spec:
     webservice:
       crdFile: ./crd.yaml
 
-      workers: 3
-      resync: 30s
 
       # ── Normalize ──────────────────────────────────────────────────────────
       # All templates see the raw CR. Results overwrite in-memory fields only.
@@ -67,8 +65,10 @@ spec:
             action: deny
 
       operatorBox:
-        default: true
 
+        reconciler:
+          workers: 3
+          resync: 30s
         status:
           fields:
             - path: phase

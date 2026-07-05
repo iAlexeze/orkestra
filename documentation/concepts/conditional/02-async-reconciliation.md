@@ -11,7 +11,6 @@ The `when:` gate on `onReconcile` bridges this gap. If the condition is not met,
 ```yaml
 operatorBox:
   crdFile: my-operator-crd.yaml
-  default: true
 
   # Phase 1 — runs once on CR creation
   onCreate:

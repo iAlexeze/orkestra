@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/orkspace/orkestra/pkg/profiles"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 func TestContainerSecurityProfiles(t *testing.T) {
@@ -46,7 +47,7 @@ func TestContainerSecurityProfiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sc, err := profiles.ApplyContainerSecurityProfile(tt.profile)
+			sc, err := profiles.ApplyContainerSecurityProfile(tt.profile, orktypes.ProfileRegistry{})
 
 			if tt.expectErr {
 				if err == nil {
@@ -116,7 +117,7 @@ func TestPodSecurityProfiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ps, err := profiles.ApplyPodSecurityProfile(tt.profile)
+			ps, err := profiles.ApplyPodSecurityProfile(tt.profile, orktypes.ProfileRegistry{})
 
 			if tt.expectErr {
 				if err == nil {
@@ -140,6 +141,51 @@ func TestPodSecurityProfiles(t *testing.T) {
 				t.Errorf("FSGroup: want %v got %v", tt.fsGroup, ps.FSGroup)
 			}
 		})
+	}
+}
+
+func TestContainerSecurityProfileUserDefined(t *testing.T) {
+	reg := orktypes.ProfileRegistry{
+		ContainerSecurity: []orktypes.ContainerSecurityProfileDef{
+			{
+				Name:                     "strict-readonly",
+				AllowPrivilegeEscalation: boolPtr(false),
+				ReadOnlyRootFilesystem:   boolPtr(true),
+				RunAsNonRoot:             boolPtr(true),
+				Capabilities:             &orktypes.CapabilitiesConfig{Drop: []string{"ALL"}},
+			},
+		},
+	}
+
+	sc, err := profiles.ApplyContainerSecurityProfile("strict-readonly", reg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !ptrBoolEqual(sc.ReadOnlyRootFilesystem, boolPtr(true)) {
+		t.Errorf("ReadOnlyRootFilesystem: want true got %v", sc.ReadOnlyRootFilesystem)
+	}
+	if sc.Capabilities == nil || len(sc.Capabilities.Drop) == 0 || sc.Capabilities.Drop[0] != "ALL" {
+		t.Errorf("expected capabilities.drop=[ALL], got %v", sc.Capabilities)
+	}
+}
+
+func TestPodSecurityProfileUserDefined(t *testing.T) {
+	uid := int64(2000)
+	reg := orktypes.ProfileRegistry{
+		PodSecurity: []orktypes.PodSecurityProfileDef{
+			{Name: "ci-runner", RunAsNonRoot: boolPtr(true), RunAsUser: &uid},
+		},
+	}
+
+	ps, err := profiles.ApplyPodSecurityProfile("ci-runner", reg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !ptrBoolEqual(ps.RunAsNonRoot, boolPtr(true)) {
+		t.Errorf("RunAsNonRoot: want true got %v", ps.RunAsNonRoot)
+	}
+	if !ptrInt64Equal(ps.RunAsUser, &uid) {
+		t.Errorf("RunAsUser: want 2000 got %v", ps.RunAsUser)
 	}
 }
 

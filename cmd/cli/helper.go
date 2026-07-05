@@ -95,11 +95,11 @@ func printTemplateSummary(k *katalog.Katalog, crds map[string]orktypes.CRDEntry,
 		// Workers / resync
 		fmt.Printf("%sworkers:%s  resync:%s",
 			indent,
-			green(fmt.Sprintf("%d", crd.Workers)),
-			green(crd.Resync.String()),
+			green(fmt.Sprintf("%d", crd.OperatorBox.Reconciler.Workers)),
+			green(crd.OperatorBox.Reconciler.Resync.String()),
 		)
-		if crd.Queue.MaxDepth > 0 {
-			fmt.Printf("  queue:%s", green(fmt.Sprintf("%d", crd.Queue.MaxDepth)))
+		if crd.OperatorBox.Reconciler.Queue.MaxDepth > 0 {
+			fmt.Printf("  queue:%s", green(fmt.Sprintf("%d", crd.OperatorBox.Reconciler.Queue.MaxDepth)))
 		}
 		fmt.Println()
 
@@ -314,10 +314,10 @@ func printCRDDetail(crd orktypes.CRDEntry, g *katalog.DependencyGraph) {
 
 	// ── Runtime config ───────────────────────────────────────────────────────
 	fmt.Printf("  %s\n", cyan(bold("Runtime")))
-	fmt.Printf("    Workers:       %s\n", green(fmt.Sprintf("%d", crd.Workers)))
-	fmt.Printf("    Resync:        %s\n", green(crd.Resync.String()))
-	if crd.Queue.MaxDepth > 0 {
-		fmt.Printf("    MaxDepth: %s\n", green(fmt.Sprintf("%d", crd.Queue.MaxDepth)))
+	fmt.Printf("    Workers:       %s\n", green(fmt.Sprintf("%d", crd.OperatorBox.Reconciler.Workers)))
+	fmt.Printf("    Resync:        %s\n", green(crd.OperatorBox.Reconciler.Resync.String()))
+	if crd.OperatorBox.Reconciler.Queue.MaxDepth > 0 {
+		fmt.Printf("    MaxDepth: %s\n", green(fmt.Sprintf("%d", crd.OperatorBox.Reconciler.Queue.MaxDepth)))
 	}
 	fmt.Println()
 
@@ -607,10 +607,14 @@ func roleNameList(srcs []orktypes.RoleTemplateSource) []string {
 	return out
 }
 
-func clusterRoleNameList(srcs []orktypes.PlaceholderSource) []string {
+func clusterRoleNameList(srcs []orktypes.ClusterRoleTemplateSource) []string {
 	out := make([]string, len(srcs))
-	for i := range srcs {
-		out[i] = fmt.Sprintf("<clusterrole-%d>", i+1)
+	for i, s := range srcs {
+		if s.Name != "" {
+			out[i] = s.Name
+		} else {
+			out[i] = fmt.Sprintf("<clusterrole-%d>", i+1)
+		}
 	}
 	return out
 }
@@ -653,10 +657,10 @@ func crdModeLabel(crd orktypes.CRDEntry) string {
 		return "default"
 	}
 	if crd.CustomHooksEnabled() {
-		return fmt.Sprintf("hooks(%s)", crd.OperatorBox.Hooks.Function)
+		return fmt.Sprintf("hooks(%s)", crd.OperatorBox.Reconciler.Hooks.Function)
 	}
 	if crd.ConstructorEnabled() {
-		return fmt.Sprintf("constructor(%s)", crd.OperatorBox.ConstructorDecl.Function)
+		return fmt.Sprintf("constructor(%s)", crd.OperatorBox.Reconciler.ConstructorDecl.Function)
 	}
 	if crd.Mode != "" {
 		return string(crd.Mode)

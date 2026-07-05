@@ -90,6 +90,27 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 		return nil, fmt.Errorf("CRD %q not found in Katalog", crdName)
 	}
 
+	// Strip cross-namespace copy resources (fromNamespace / toNamespaces) from
+	// all hook phases before the fake reconciler runs. These require a live API
+	// server to read the source object; in simulation they would error and block
+	// all subsequent resources in the same cycle.
+	//
+	// The removed resources are surfaced as notes in the result so the simulate
+	// output explains exactly what was omitted and why.
+	result := &Result{}
+	for _, phase := range []*orktypes.HookTemplates{
+		crdEntry.OperatorBox.OnCreate,
+		crdEntry.OperatorBox.OnReconcile,
+		crdEntry.OperatorBox.OnDelete,
+	} {
+		if phase == nil {
+			continue
+		}
+		filtered, skipped := orktypes.FilterSimulatable(*phase)
+		*phase = filtered
+		result.Notes = append(result.Notes, skipped...)
+	}
+
 	scheme, err := kat.Scheme()
 	if err != nil {
 		return nil, fmt.Errorf("building scheme: %w", err)
@@ -145,8 +166,6 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 	if fn, ok := orktypes.HookRegistry[gvk]; ok {
 		hookBinder = fn()
 	}
-
-	result := &Result{}
 
 	// Build a peer registry so cross: declarations can read sibling CRDs' CRs
 	// from the fake informer cache rather than returning empty results.

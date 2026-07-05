@@ -24,7 +24,7 @@
 // and reacting to it would create a tight loop. Content drift is caught by the
 // safety ticker instead.
 //
-// A safety ticker (WEBHOOK_CONTROLLER_SYNC_INTERVAL, default 30 s) runs in
+// A safety ticker (HOUSEKEEPER_SYNC_INTERVAL, default 30 s) runs in
 // parallel as a backstop for drift that Watch silently misses: partial mutations,
 // silent stream drops on some managed clusters, and token expiry.
 //
@@ -124,7 +124,7 @@ func (ws *WebhookServer) housekeeper(ctx context.Context) error {
 	}
 
 	go func() {
-		safetyTicker := time.NewTicker(kat.WebhookControllerSyncInterval())
+		safetyTicker := time.NewTicker(kat.HousekeeperSyncInterval())
 		defer safetyTicker.Stop()
 
 		// Reconcile immediately on startup — don't wait for the first tick or event.

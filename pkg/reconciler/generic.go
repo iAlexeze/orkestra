@@ -4,6 +4,7 @@ package reconciler
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -171,12 +172,24 @@ func NewGenericReconciler[PTR domain.Object](
 		ev = discardRecorder{}
 	}
 
-	workers := crd.Workers
+	workers := crd.OperatorBox.Reconciler.Workers
 	if workers <= 0 {
 		workers = 1
 	}
 	sem := autoscaler.NewResizableSemaphore(workers)
 	autoMet := autoscaler.NewAutoMetrics(sem)
+
+	box := crd.OperatorBox
+	// Auto-inject a system finalizer when namespaces are declared in any hook phase.
+	// Namespaces are cluster-scoped and are not garbage-collected via owner references,
+	// so explicit cleanup in handleDeletion is required. The finalizer ensures the
+	// CR is not deleted before the cleanup runs, even when the user does not declare
+	// any finalizers in the katalog.
+	if box.HasNamespaceDeclarations() {
+		if !slices.Contains(box.Finalizers, labels.NsCleanupFinalizer) {
+			box.Finalizers = append(box.Finalizers, labels.NsCleanupFinalizer)
+		}
+	}
 
 	r := &GenericReconciler[PTR]{
 		katalogRegistry:   katalogRegistry,
@@ -184,7 +197,7 @@ func NewGenericReconciler[PTR domain.Object](
 		providerRegistry:  providerRegistry,
 		providerStats:     providerStats,
 		crd:               crd,
-		operatorBox:       crd.OperatorBox,
+		operatorBox:       box,
 		informer:          informer,
 		event:             ev,
 		kube:              kube,
@@ -199,8 +212,8 @@ func NewGenericReconciler[PTR domain.Object](
 	if crd.AutoscaleEnabled() {
 		baseline := orktypes.AutoscaleBaseline{
 			Workers:  workers,
-			MaxDepth: crd.Queue.MaxDepth,
-			Resync:   crd.Resync,
+			MaxDepth: crd.OperatorBox.Reconciler.Queue.MaxDepth,
+			Resync:   crd.OperatorBox.Reconciler.Resync.Duration,
 		}
 		r.autoscaler = autoscaler.NewAutoscaler(
 			crd.APITypes.Kind,
@@ -208,6 +221,7 @@ func NewGenericReconciler[PTR domain.Object](
 			baseline,
 			r,
 			autoMet,
+			crd.OperatorBox.Cross,
 		)
 	}
 
@@ -289,6 +303,9 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	}
 	if len(normalizeChanges) > 0 {
 		resolver = resolver.WithNormalizeChanges(normalizeChanges)
+	}
+	if r.kat != nil && !r.kat.Profiles.IsEmpty() {
+		resolver = resolver.WithProfiles(r.kat.Profiles)
 	}
 
 	// ──────────────────────────────────────────────────────────────────────────────
@@ -413,14 +430,14 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	}
 
 	// One atomic patch: diff serverLabels → desired. No-op if nothing changed.
-	if err := r.kube.PatchLabels(ctx, obj, r.crd.GVR(), serverLabels, obj.GetLabels()); err != nil {
+	if err := r.kube.PatchLabels(ctx, obj, serverLabels, obj.GetLabels()); err != nil {
 		return err
 	}
 
 	// Annotations only ever add keys (managed-by, managed-since are write-once),
 	// so a plain Merge Patch with the desired map is correct here.
 	if labelMgr.EnsureManagedAnnotations(obj, r.crd.KatalogName) {
-		if err := r.kube.PatchAnnotations(ctx, obj, r.crd.GVR(), obj.GetAnnotations()); err != nil {
+		if err := r.kube.PatchAnnotations(ctx, obj, obj.GetAnnotations()); err != nil {
 			return err
 		}
 	}
@@ -476,11 +493,13 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 		}
 	}
 
+	var lastValResult *ValidationResult
 	if r.crd.HasValidationRules() {
-		valResult := runValidation(obj, r.crd.Validation, r.crd.APITypes.Kind)
+		vr := runValidation(obj, r.crd.Validation, r.crd.APITypes.Kind)
+		lastValResult = vr
 
 		// Warn violations: log and emit events but do NOT halt
-		for _, w := range valResult.Warnings {
+		for _, w := range vr.Warnings {
 			logger.FromContext(ctx).Warn().
 				Str("name", obj.GetName()).
 				Str("crd", r.crd.GVKString()).
@@ -492,9 +511,11 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 				fmt.Sprintf("field %q: %s", w.Field, w.Message))
 		}
 
-		// Deny violations: halt reconcile
-		if valResult.Deny {
-			return valResult.DenialError()
+		// Deny violations: write condition and halt reconcile
+		if vr.Deny {
+			denialErr := vr.DenialError()
+			r.patchStatusWithChildren(ctx, obj, resolver, denialErr, vr)
+			return denialErr
 		}
 	}
 
@@ -505,11 +526,23 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 				Msg("reconcile mutation failed — continuing")
 		}
 	}
+	hasTemplates := r.operatorBox.OnCreate != nil || r.operatorBox.OnReconcile != nil
 	switch {
 	case r.hooks.OnReconcile != nil:
 		// Go hooks — user-provided, full type-safe access.
 		// Requires: ork generate registry to register in HookRegistry.
-		err = r.hooks.OnReconcile(ctx, obj)
+		//
+		// Order: by default declared templates run first (hybrid 90/10 pattern).
+		// Set hooks.runHooksFirst: true in the Katalog to run the hook first.
+		if !r.crd.RunHooksFirst() && hasTemplates {
+			resolver, err = r.runTemplateReconcile(ctx, resolver, obj)
+		}
+		if err == nil {
+			err = r.hooks.OnReconcile(ctx, obj)
+		}
+		if err == nil && r.crd.RunHooksFirst() && hasTemplates {
+			resolver, err = r.runTemplateReconcile(ctx, resolver, obj)
+		}
 
 	case r.operatorBox.OnCreate != nil || r.operatorBox.OnReconcile != nil:
 		// Declarative templates — interpreted at runtime.
@@ -590,7 +623,7 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 	// Always patch status — best-effort, never fails reconcile.
 	// Called with the outcome so Ready condition reflects reality.
 	// Must run before the error return so Ready=False is written on failure.
-	r.patchStatusWithChildren(ctx, obj, resolver, err)
+	r.patchStatusWithChildren(ctx, obj, resolver, err, lastValResult)
 
 	if err != nil {
 		logger.FromContext(ctx).Error().Err(err).
@@ -650,6 +683,18 @@ func (r *GenericReconciler[PTR]) handleDeletion(ctx context.Context, resolver *o
 			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"DeleteError",
 				fmt.Sprintf("Template deletion failed: %v", err))
 			return fmt.Errorf("template deletion: %w", err)
+		}
+	}
+
+	// Namespaces require explicit deletion regardless of whether an onDelete block exists:
+	// they are cluster-scoped and the GC does not cascade through owner references on them.
+	// runTemplateOnDelete already handles this when OnDelete is set; run it here for all
+	// other cases (no onDelete block, or Go hook path).
+	if r.operatorBox.OnDelete == nil {
+		if kube, ok := kubeclient.FromContext(ctx); ok {
+			if err := deleteOwnedNamespaces(ctx, kube, resolver, obj, r.operatorBox); err != nil {
+				return fmt.Errorf("namespace cleanup: %w", err)
+			}
 		}
 	}
 

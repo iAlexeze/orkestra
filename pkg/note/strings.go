@@ -22,6 +22,7 @@ func stringNotes() template.FuncMap {
 		"repeat":       strings.Repeat,
 		"camelToKebab": camelToKebab,
 		"truncate":     strTruncate,
+		"concat":       strConcat,
 	}
 }
 
@@ -84,6 +85,17 @@ func strTruncate(s string, n int) string {
 		return s[:n]
 	}
 	return s[:n-3] + "..."
+}
+
+// strConcat joins all arguments into a single string with no separator.
+//
+//	{{ concat "*." .spec.domain }}   →  "*.api.example.com"
+func strConcat(parts ...string) string {
+	var b strings.Builder
+	for _, p := range parts {
+		b.WriteString(p)
+	}
+	return b.String()
 }
 
 // helper

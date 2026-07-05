@@ -159,7 +159,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient, owner domain
 }
 
 // Resolve builds a ResolvedStatefulSetSpec from a StatefulSetTemplateSource.
-func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedStatefulSetSpec {
+func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string, reg orktypes.ProfileRegistry) ResolvedStatefulSetSpec {
 	spec := ResolvedStatefulSetSpec{
 		Name:            src.Name,
 		Namespace:       src.Namespace,
@@ -170,10 +170,11 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedS
 		Annotations:     make(map[string]string),
 		Env:             src.Env,
 		EnvFrom:         src.EnvFrom,
-		Resources:       common.ResolveResources(src.Resources),
+		Resources:       common.ResolveResources(src.Resources, reg),
 		Probes:          src.Probes,
-		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext),
-		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity),
+		Profiles:        reg,
+		SecurityContext: common.ResolveContainerSecurityContext(src.SecurityContext, reg),
+		PodSecurity:     common.ResolvePodSecurityContext(src.PodSecurity, reg),
 		Volumes:         src.Volumes,
 		VolumeMounts:    src.VolumeMounts,
 		Sleep:           src.Sleep,
@@ -222,7 +223,7 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedS
 	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	if src.RollingUpdate != nil && src.RollingUpdate.Profile != "" {
-		expansion, err := profiles.ApplyRollingUpdateProfile(src.RollingUpdate.Profile)
+		expansion, err := profiles.ApplyRollingUpdateProfile(src.RollingUpdate.Profile, reg)
 		if err != nil {
 			logger.Warn().Str("profile", src.RollingUpdate.Profile).Err(err).Msg("unknown rolling update profile — skipping")
 		} else {
@@ -287,7 +288,7 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 		container.Resources = common.BuildResourceRequirements(spec.Resources)
 	}
 
-	common.ApplyProbes(&container, spec.Probes, spec.Port)
+	common.ApplyProbes(&container, spec.Probes, spec.Port, spec.Profiles)
 
 	for _, ev := range spec.Env {
 		kev := corev1.EnvVar{Name: ev.Name}

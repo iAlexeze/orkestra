@@ -26,7 +26,10 @@ Examples are grouped into packs. Pull any pack with `ork init --pack <name>`.
 | [Advanced](./03-advanced.md) | Admission, composition, escape hatches, autoscaling, cross-operator |
 | [Use-cases](./04-use-cases.md) | Normalize, enrich, profiles, full-stack patterns, external calls, motif composition |
 | [Security](./05-security.md) | Admission, deletion protection, namespace isolation |
-| [Registry Guide](./06-registry-guide.md) | Distribution — publish, version, gate, consume, and automate the full pattern lifecycle |
+| [Resilience](./09-resilience.md) | Panic recovery, runtime admission protection, degraded state, operator isolation |
+| [Registry Guide](./06-registry.md) | Distribution — publish, version, gate, consume, and automate the full pattern lifecycle |
+| [Migration Guide](./07-migration.md) | Migrating an existing controller-runtime operator to Orkestra — five options, zero lock-in |
+| [Ecosystem Guide](./08-ecosystem.md) | Wrapping ArgoCD, cert-manager, Prometheus, and Crossplane with Orkestra abstraction layers |
 
 ---
 
@@ -68,18 +71,23 @@ Each example has its own `README.md`. Follow it — it tells you exactly what to
 ## Which example to start with
 
 **New to Kubernetes operators**
-- Start with [`beginner/01-hello-website`](./01-beginner.md) — the mental model it builds is the foundation for everything else.
+- Read [Kubernetes, operators, and why Orkestra](./00-kubernetes-basics.md) first — CRDs, the reconcile loop, and where Orkestra fits.
+- Then [`beginner/01-hello-website`](./01-beginner.md) — the mental model it builds is the foundation for everything else.
 
 **Know Kubernetes, new to Orkestra**
 - [`beginner/01-hello-website`](./01-beginner.md), then [`intermediate/05-when-conditions`](./02-intermediate.md) and [`advanced/07-validation-mutation`](./03-advanced.md)
 
-**Migrating from Kubebuilder or Operator SDK**
+**Migrating from controller-runtime, Kubebuilder, or Operator SDK**
+- [Migration Guide](./07-migration.md) — the full migration pack; see all five options before choosing one
+- `ork migrate <file>` to automate the constructor path for an existing reconciler
 - [`advanced/09-hooks`](./03-advanced.md) to wrap existing Go logic
 - [`advanced/10-constructor`](./03-advanced.md) to bring a full reconciler across intact
 
 **Building a platform**
 - [`advanced/08-komposer-registry`](./03-advanced.md) and [`advanced/13-dependencies`](./03-advanced.md)
 - Then [`use-cases/full-stack-app/06-full-stack`](./04-use-cases.md) for how the patterns compose
+- [`use-cases/namespace-provisioner`](./04-use-cases.md) — tenant namespaces, RBAC, quotas, and network policies from a single CRD
+- [`ecosystem-composition`](./08-ecosystem.md) — add an Orkestra abstraction layer over ArgoCD, cert-manager, Prometheus, and Crossplane
 
 **Supply chain and policy enforcement**
 - [`use-cases/external/03-image-signing`](./04-use-cases.md) → [`07-vault-secret-gate`](./04-use-cases.md) → [`08-opa-policy`](./04-use-cases.md)
@@ -99,13 +107,13 @@ Each example has its own `README.md`. Follow it — it tells you exactly what to
 - [`advanced/12-autoscale/02-based-on-own-metrics`](./03-advanced.md)
 
 **Publishing and distributing operators**
-- Start with [`registry-guide/00-consume`](./06-registry-guide.md) — pull a proven pattern and deploy it before building your own
-- Then [`registry-guide/02-katalog-api`](./06-registry-guide.md) through [`04-katalog-platform`](./06-registry-guide.md) to build the publish → gate → distribute pipeline
-- [`registry-guide/05-komposer`](./06-registry-guide.md) for production deployment with admission and deletion protection
-- [`registry-guide/12-ork-action`](./06-registry-guide.md) to automate everything in CI
+- Start with [`registry-guide/00-consume`](./06-registry.md) — pull a proven pattern and deploy it before building your own
+- Then [`registry-guide/02-katalog-api`](./06-registry.md) through [`04-katalog-platform`](./06-registry.md) to build the publish → gate → distribute pipeline
+- [`registry-guide/05-komposer`](./06-registry.md) for production deployment with admission and deletion protection
+- [`registry-guide/12-ork-action`](./06-registry.md) to automate everything in CI
 
 **Supply chain verification**
-- [`registry-guide/08-bad-actor`](./06-registry-guide.md) — simulate passed, `ork plan` caught what the assertions missed
+- [`registry-guide/08-bad-actor`](./06-registry.md) — simulate passed, `ork plan` caught what the assertions missed
 
 ---
 
@@ -117,7 +125,7 @@ ork init --list
 
 ---
 
-## Next
+## Further reading
 
 - **[Orkestra Core](../../orkestra-core/index.md)** — runtime, gateway, and control center architecture
 - **[Security](../../security/index.md)** — admission control, RBAC, namespace protection

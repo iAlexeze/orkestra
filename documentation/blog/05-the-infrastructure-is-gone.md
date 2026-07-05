@@ -30,13 +30,17 @@ None of this runs in your cluster as a new stack of CRDs. The separation is clea
 
 Once the infrastructure is gone, what is left is a declaration.
 
-Orkestra gives you three ways to make it:
+Orkestra gives you five ways to make it:
 
-**Zero code.** Write a Katalog. Declare your CRD, the resources to create on `onCreate`, the status fields to write, the validation rules to enforce, the dependencies to respect. The reconciler is not yours to write — it is Orkestra's, and it runs your declaration. No Go, no build pipeline, no image.
+**No code.** Write a Katalog. Declare your CRD, the resources to create on `onCreate`, the status fields to write, the validation rules to enforce, the dependencies to respect. The reconciler is not yours to write — it is Orkestra's, and it runs your declaration. No Go, no build pipeline, no image.
+
+**Hybrid.** Combine declarative and hooks in a single operator. Declare what templates can express; attach hooks for what they cannot. The boundary is yours to draw.
 
 **Hooks.** Attach Go functions at specific points in the reconcile cycle. The declarative model handles everything it can; your hooks handle what it cannot. You write exactly the code your business logic requires, nothing else.
 
 **Constructor.** Replace the reconciler entirely with your own. Full control, typed input, Orkestra's runtime as the host. The infrastructure is still gone — you are only responsible for the domain logic.
+
+**Constructor with Orkestra resources.** Write your own reconciler and use Orkestra's resource helpers — `orkdeploy.Update`, `orksvc.Update`, and the rest of `pkg/resources` — instead of raw client Get → IsNotFound → Create → Patch sequences. Owner references and drift correction are handled automatically. The constructor signature stays yours; the resource management layer becomes Orkestra's.
 
 ---
 
@@ -48,6 +52,14 @@ Just the problem you came to solve.
 
 That is what Kubernetes intended when it introduced CRDs. The CRD was the declaration. The operator was supposed to answer one question about it: what should happen when someone creates one of these? We turned that one question into years of infrastructure work.
 
-Orkestra gives the question back. Whichever you pick — zero code, hooks, or constructor — you are solving exactly one problem.
+Orkestra gives the question back. Whichever you pick — no code, hybrid, hooks, constructor, or constructor with Orkestra resources — you are solving exactly one problem.
 
 Yours.
+
+---
+
+**Want to try it?**
+
+```bash
+ork init --pack from-controller-runtime
+```

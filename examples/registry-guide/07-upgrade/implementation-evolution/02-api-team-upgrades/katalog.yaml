@@ -23,8 +23,6 @@ spec:
         version: v1
         kind: WebApp
         plural: webapps
-      workers: 2
-      resync: 1m
 
       imports:
         - motif: oci://ghcr.io/myorg/motifs/web-service:v1.1.0   # bumped from v1.0.0
@@ -38,7 +36,9 @@ spec:
             probePath: "{{ .spec.probePath }}"                   # new in v1.1.0
 
       operatorBox:
-        default: true
+        reconciler:
+          workers: 2
+          resync: 1m
         status:
           fields:
             - path: phase

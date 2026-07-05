@@ -40,6 +40,14 @@ spec:
       imports:                 # Motif imports
         ...
 
+profiles:                      # optional — user-defined named profiles
+  networkPolicies:
+    - name: allow-monitoring
+      ...
+  resourceQuotas:
+    - name: team-medium
+      ...
+
 security:                      # optional
   ...
 
@@ -80,7 +88,10 @@ This scaffolds the simplest Katalog — a single CRD that creates a Deployment a
 | [10-katalog-security.md](10-katalog-security.md) | `security` block |
 | [11-katalog-notification.md](11-katalog-notification.md) | `notification` block |
 | [12-katalog-providers.md](12-katalog-providers.md) | `providers` block |
+| [16-resource-types.md](16-resource-types.md) | Supported Kubernetes resource types |
+| [Profiles concept](../../../concepts/profiles/10-user-defined-profiles.md) | `profiles:` — user-defined named profiles |
 | [15-enrich.md](15-enrich.md) | `enrich` — post-reconcile enrichment |
+| [16-resource-types.md](16-resource-types.md) | Supported resource types and placeholder fields |
 
 ---
 

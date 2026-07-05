@@ -194,7 +194,13 @@ validation:
 
 Old CRs continue to reconcile normally. When you are ready to enforce, change `action: warn` to `action: deny`. No stored object migration required at any point — the stored format never changes, only the admission policy does.
 
-> **Note:** `action: warn` surfaces as an immediate warning in the `kubectl apply` response only when the Orkestra Gateway is deployed. Without it, Orkestra enforces the rule at reconcile time — visible in the CR status, not at apply time. For gateway-backed validation, see the admission example:
+> **Note:** `action: warn` surfaces as an immediate warning in the `kubectl apply` response only when the Orkestra Gateway is deployed. Without it, Orkestra enforces the rule at reconcile time — the result is written as a `ValidationWarning` condition on the CR and visible in the Control Center **Conditions** tab:
+> ```bash
+> kubectl get cronjob <name> -o yaml | grep -A6 "ValidationWarning"
+> # - type: ValidationWarning  status: "True"  reason: WarnRuleViolation
+> #   message: "field \"spec.schedule\": spec.schedule must be a structured object..."
+> ```
+> For gateway-backed validation, see the admission example:
 
 ```bash
 ork init --pack advanced

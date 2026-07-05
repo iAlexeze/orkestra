@@ -17,13 +17,19 @@ imports:
 spec:
   crds:
     webapp:
-      workers: 4
-      resync: 30s
+      operatorBox:
+        reconciler:
+          workers: 4
+          resync: 30s
 
     cache:
-      workers: 2
-      resync: 30s
+      operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
 
     database:
-      workers: 3
-      resync: 30s
+      operatorBox:
+        reconciler:
+          workers: 3
+          resync: 30s

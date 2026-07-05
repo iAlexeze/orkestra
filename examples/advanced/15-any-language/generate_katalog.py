@@ -22,10 +22,11 @@ def generate_katalog(app_name, image, port, replicas=2, ingress_host=""):
                         "kind": "WebApp",
                         "plural": "webapps"
                     },
-                    "workers": 2,
-                    "resync": "30s",
                     "operatorBox": {
-                        "default": True,
+                        "reconciler": {
+                            "workers": 2,
+                            "resync": "30s",
+                        },
                         "onCreate": {
                             "deployments": [
                                 {
@@ -60,7 +61,7 @@ def generate_katalog(app_name, image, port, replicas=2, ingress_host=""):
                     "host": ingress_host,
                     "serviceName": "{{ .metadata.name }}-svc",
                     "servicePort": port,
-                    "ingressClass": "nginx",
+                    "className": "nginx",
                     "reconcile": True
                 }
             ]

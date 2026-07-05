@@ -124,21 +124,21 @@ func printBanner(kfg *runtimeKfg, konductor string) {
 		fmt.Printf("  Namespaced:    %s\n",
 			utils.Green(map[bool]string{true: "Yes", false: "No"}[crd.IsNamespaced()]))
 
-		if crd.Workers > 0 {
-			fmt.Printf("  Workers:       %d\n", crd.Workers)
+		if crd.OperatorBox.Reconciler.Workers > 0 {
+			fmt.Printf("  Workers:       %d\n", crd.OperatorBox.Reconciler.Workers)
 		} else {
 			fmt.Printf("  Workers:       %d (default)\n", kfg.konfig.Katalog().DefaultWorkers())
 		}
 
-		if crd.Queue.MaxDepth > 0 {
-			fmt.Printf("  MaxDepth: %d\n", crd.Queue.MaxDepth)
+		if crd.OperatorBox.Reconciler.Queue.MaxDepth > 0 {
+			fmt.Printf("  MaxDepth: %d\n", crd.OperatorBox.Reconciler.Queue.MaxDepth)
 		} else {
 			fmt.Printf("  MaxDepth: %d (default)\n",
 				kfg.konfig.Katalog().DefaultQueueDepth())
 		}
 
-		if crd.Resync != 0 {
-			fmt.Printf("  Resync:        %s\n", crd.Resync.String())
+		if crd.OperatorBox.Reconciler.Resync.Duration != 0 {
+			fmt.Printf("  Resync:        %s\n", crd.OperatorBox.Reconciler.Resync.String())
 		} else {
 			fmt.Printf("  Resync:        %s (default)\n",
 				kfg.konfig.Katalog().DefaultResync().String())

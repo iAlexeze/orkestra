@@ -47,6 +47,8 @@ Every reconcile runs inside `safeReconcile`, which catches panics with a `recove
 
 Panics are surfaced in logs at `ERROR` level with a full stack trace. They increment the consecutive-failure counter and trigger backoff identically to regular errors.
 
+See [Panic Recovery](03-panic-recovery.md) for the full implementation, what you see in logs and metrics, and a live example.
+
 ---
 
 ## Partial reconcile

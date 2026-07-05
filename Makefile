@@ -1,4 +1,4 @@
-.PHONY: build orkcc clean test test-unit test-race test-integration test-all test-coverage test-coverage-text vet certs docs docs-sync docs-build docs-serve hugo-install generate-notes test-fixture-note test-fixture-reconciler ork-gateway-linux docker-gateway gateway-reload runtime-reload controlcenter-reload reload docker-devserver release-devserver
+.PHONY: build orkcc clean test test-unit test-race test-integration test-all test-coverage test-coverage-text vet vuln certs docs docs-sync docs-build docs-serve hugo-install generate-notes generate-e2e-example test-fixture-note test-fixture-reconciler ork-gateway-linux docker-gateway gateway-reload runtime-reload controlcenter-reload reload docker-devserver release-devserver
 
 # ── Configuration ────────────────────────────────────────────────────────────
 ORKESTRA_DIR := .
@@ -25,12 +25,18 @@ generate-notes:
 	go run ./hack/generate-notes
 	@echo "✅ Note catalog generated at pkg/note/catalog_generated.go"
 
-ork: generate-notes
+generate-e2e-example:
+	@echo "Generating e2e complete example doc..."
+	@bash scripts/generate-e2e-example.sh
+	@echo "✅ documentation/reference/schema/04-e2e/08-complete-example.md updated"
+
+ork: generate-notes generate-e2e-example
 	@echo "Building Orkestra..."
 	@mkdir -p $(OUTPUT_DIR)
 	cd $(ORKESTRA_DIR) && gofmt -w .
 	cd $(ORKESTRA_DIR) && go build -ldflags "$(ORK_LDFLAGS)" -o $(OUTPUT_DIR)/ork ./cmd/orkestra
 	@echo "✅ Orkestra built successfully"
+	@python3 scripts/fix-bare-fences.py documentation/
 
 orkcc:
 	@echo "Building Orkestra Control Center..."
@@ -415,3 +421,6 @@ docs-serve: docs-sync
 vet:
 	@echo "Running go vet..."
 	go vet ./...
+
+vuln:
+	go run golang.org/x/vuln/cmd/govulncheck@latest ./...

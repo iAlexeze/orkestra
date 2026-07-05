@@ -4,7 +4,7 @@
 
 Every CR (Custom Resource) that Orkestra manages goes through one shared reconcile pipeline. The pipeline is implemented in `generic.go` and `run_template_reconcile.go`. Resource-specific logic lives in isolated `run_*.go` files.
 
-```
+```text
 Kubernetes event (Add/Update/Delete)
          │
          ▼
@@ -54,7 +54,7 @@ For non-autoscaled CRDs the semaphore is always uncontested.
 
 `run_template_reconcile.go` is the declarative path. It builds a resolver, enriches it with external data, then dispatches to resource-type runners.
 
-```
+```text
 Step 1   NewResolver(obj)
             .spec.*, .status.*, .metadata.*
             .children.* (owned child resources)
@@ -93,14 +93,14 @@ Each step can reference data produced by all earlier steps. The resolver is pass
 
 `runResourceGroup` calls each resource runner with the same signature:
 
-```
+```text
 expandForEach*(resolver, t.<Resource>)   →   []TypedTemplateSource
 runXxx(ctx, kube, resolver, owner, srcs, update, guard)
 ```
 
 The `expandForEach*` call happens **before** the runner is invoked. Every runner receives an already-expanded slice and does not need to know about `forEach`. The field can be a list (`.item` = element) or a map (`.item` = key, `.value` = map value).
 
-```
+```text
 runResourceGroup()
    │
    ├── expandForEachNamespaces           → runNamespaces

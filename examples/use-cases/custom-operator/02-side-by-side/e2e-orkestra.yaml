@@ -52,6 +52,9 @@ spec:
     - name: Cleanup verified
       after: cr-deleted
       timeout: 30s
+      commands:
+        - run: kubectl delete secret my-app-tls -n default --ignore-not-found
+          exitCode: 0
       resources:
         - kind: Secret
           name: my-app-tls

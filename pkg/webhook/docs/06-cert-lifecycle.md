@@ -105,7 +105,7 @@ Recovery time: one API server round-trip after the deletion event.
 
 ### Safety ticker backstop
 
-If the Watch stream drops silently (common on managed clusters, token expiry, network partitions), the safety ticker fires every `WEBHOOK_CONTROLLER_SYNC_INTERVAL` (default 30s) and calls `reconcileAll()`, which includes `reconcileCertSecret()`. This catches deletions that the Watch missed.
+If the Watch stream drops silently (common on managed clusters, token expiry, network partitions), the safety ticker fires every `HOUSEKEEPER_SYNC_INTERVAL` (default 30s) and calls `reconcileAll()`, which includes `reconcileCertSecret()`. This catches deletions that the Watch missed.
 
 ### Why restore from in-memory bundle, not regenerate
 

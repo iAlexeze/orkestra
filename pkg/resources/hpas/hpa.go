@@ -179,7 +179,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 
 // Resolve builds a ResolvedHPASpec from an HPATemplateSource.
 // All template expressions must be evaluated before calling here.
-func Resolve(src orktypes.HPATemplateSource, ownerName string) ResolvedHPASpec {
+func Resolve(src orktypes.HPATemplateSource, ownerName string, reg orktypes.ProfileRegistry) ResolvedHPASpec {
 	spec := ResolvedHPASpec{
 		Name:           src.Name,
 		Namespace:      src.Namespace,
@@ -214,7 +214,7 @@ func Resolve(src orktypes.HPATemplateSource, ownerName string) ResolvedHPASpec {
 	}
 
 	if src.Behavior != nil && src.Behavior.Profile != "" {
-		expansion, err := profiles.ApplyHPAProfile(src.Behavior.Profile)
+		expansion, err := profiles.ApplyHPAProfile(src.Behavior.Profile, reg)
 		if err != nil {
 			logger.Warn().Str("profile", src.Behavior.Profile).Err(err).Msg("unknown hpa behavior profile — skipping")
 		} else {
@@ -342,10 +342,22 @@ func behaviorEqual(a, b *autoscalingv2.HorizontalPodAutoscalerBehavior) bool {
 	if a == nil && b == nil {
 		return true
 	}
-	if a == nil || b == nil {
+	if b == nil {
+		// No desired behavior — nothing to enforce, not a drift.
+		return true
+	}
+	if a == nil {
 		return false
 	}
-	return scalingRulesEqual(a.ScaleUp, b.ScaleUp) && scalingRulesEqual(a.ScaleDown, b.ScaleDown)
+	// Only compare a side if we have an explicit desired spec for it.
+	// Kubernetes injects defaults for the unset side; ignore those.
+	if b.ScaleUp != nil && !scalingRulesEqual(a.ScaleUp, b.ScaleUp) {
+		return false
+	}
+	if b.ScaleDown != nil && !scalingRulesEqual(a.ScaleDown, b.ScaleDown) {
+		return false
+	}
+	return true
 }
 
 func scalingRulesEqual(a, b *autoscalingv2.HPAScalingRules) bool {
@@ -366,23 +378,26 @@ func scalingRulesEqual(a, b *autoscalingv2.HPAScalingRules) bool {
 	if swA != swB {
 		return false
 	}
-	spA := autoscalingv2.ScalingPolicySelect("")
-	if a.SelectPolicy != nil {
-		spA = *a.SelectPolicy
-	}
-	spB := autoscalingv2.ScalingPolicySelect("")
+	// Only compare SelectPolicy when we explicitly set one — Kubernetes injects
+	// a default ("Max") when the field is omitted, which would otherwise loop.
 	if b.SelectPolicy != nil {
-		spB = *b.SelectPolicy
-	}
-	if spA != spB {
-		return false
-	}
-	if len(a.Policies) != len(b.Policies) {
-		return false
-	}
-	for i := range a.Policies {
-		if a.Policies[i] != b.Policies[i] {
+		spA := autoscalingv2.ScalingPolicySelect("")
+		if a.SelectPolicy != nil {
+			spA = *a.SelectPolicy
+		}
+		if spA != *b.SelectPolicy {
 			return false
+		}
+	}
+	// Only compare Policies when we declared any — same default-injection risk.
+	if len(b.Policies) > 0 {
+		if len(a.Policies) != len(b.Policies) {
+			return false
+		}
+		for i := range b.Policies {
+			if a.Policies[i] != b.Policies[i] {
+				return false
+			}
 		}
 	}
 	return true

@@ -92,6 +92,13 @@ status:
   lastExternalError: "expected status 200, got 503"
 ```
 
+> **If a CR is missing `spec.image` or `spec.healthCheckUrl`:** reconcile halts before the health check runs. The `ValidationFailed` condition is written to the CR and visible in the Control Center **Conditions** tab:
+> ```bash
+> kubectl get webapp <name> -o yaml | grep -A6 "conditions:"
+> # - type: ValidationFailed  status: "True"  reason: DenyRuleViolation
+> #   message: "validation denied: field \"spec.image\": spec.image is required"
+> ```
+
 ---
 
 ## Step 6 — Fix the degraded app

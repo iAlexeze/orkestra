@@ -21,7 +21,6 @@ spec:
       crFiles:
         - ./cr.yaml
       operatorBox:
-        default: true
 ```
 
 This tells Orkestra: read the CRD from `crd.yaml`, apply it to the cluster, and watch for `MyApp` CRs. No resources are created yet.
@@ -85,7 +84,6 @@ spec:
       crFiles:
         - ./cr.yaml
       operatorBox:
-        default: true
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}"
@@ -140,7 +138,6 @@ Write values back to the CR after every reconcile:
 
 ```yaml
 operatorBox:
-  default: true
   status:
     fields:
       - path: phase
@@ -209,7 +206,7 @@ ork validate
 
 ---
 
-## Next
+## Further reading
 
 - **[Writing Your First Komposer](./03-writing-your-first-komposer.md)** — compose multiple Katalogs into a platform declaration
 - **[Learning to Orkestrate](./01-learning-to-orkestrate.md)** — full progression through the example packs

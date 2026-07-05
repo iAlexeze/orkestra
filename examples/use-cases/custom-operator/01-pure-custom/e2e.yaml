@@ -1,14 +1,16 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
   name: cert-manager-e2e
   description: >
-    customOperator: true — cert-manager installed via setup.helm.
+    custom.target: kubernetes — cert-manager installed via setup.helm.
     Applies a self-signed Certificate CR and asserts the TLS Secret is created.
     No Orkestra bundle or helm install — ork e2e is the test harness only.
 
 spec:
-  customOperator: true
+  custom:
+    target: kubernetes
   cr: ./cr.yaml
 
   cluster:
@@ -41,9 +43,12 @@ spec:
     - name: ClusterIssuer and Certificate created
       after: cr-applied
       timeout: 30s
-      commands:
-        - run: kubectl get clusterissuer selfsigned-issuer -o jsonpath='{.status.conditions[0].type}'
-          outputContains: Ready
+      kubectl:
+        get:
+          - kind: ClusterIssuer
+            name: selfsigned-issuer
+            field: .status.conditions[0].type
+            equals: Ready
 
     - name: TLS Secret issued by cert-manager
       after: cr-applied

@@ -25,10 +25,11 @@ type registryTemplateData struct {
 	Imports   []importEntry
 	Entries   []registryEntry
 	//	SchemeEntries    []registryEntry
-	HookEntries      []hookEntry
-	RecEntries       []reconcilerEntry
-	NeedsRecImports  bool // true when RecEntries is non-empty
-	NeedsHookImports bool // true when HookEntries is non-empty
+	HookEntries        []hookEntry
+	RecEntries         []reconcilerEntry
+	NeedsRecImports    bool // true when RecEntries is non-empty
+	NeedsHookImports   bool // true when HookEntries is non-empty
+	NeedsSchemeImports bool // true when Entries is non-empty (metav1.AddToGroupVersion needed)
 }
 
 type importEntry struct {

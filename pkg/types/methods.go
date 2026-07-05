@@ -119,33 +119,6 @@ func (c *CRDEntry) GetRuntimeObjects() (runtime.Object, runtime.Object) {
 	return c.DynamicModeObject(), c.ListDynamicModeObject()
 }
 
-// SetQueueDepth resolves the queue depth for this CRD. If a per‑CRD value is
-// provided, it is used; otherwise the Orkestra/Konduktor‑level default is applied.
-func (c *CRDEntry) SetQueueDepth(def int) int {
-	if c.Queue.MaxDepth == 0 {
-		return def
-	}
-	return c.Queue.MaxDepth
-}
-
-// SetWorkers resolves the worker count for this CRD. If a per‑CRD value is
-// provided, it is used; otherwise the global default worker count is applied.
-func (c *CRDEntry) SetWorkers(def int) int {
-	if c.Workers == 0 {
-		return def
-	}
-	return c.Workers
-}
-
-// SetResync resolves the resync period for this CRD. If a per‑CRD non‑zero value is
-// set, it is used; otherwise the global default resync is applied.
-func (c *CRDEntry) SetResync(def time.Duration) time.Duration {
-	if c.Resync != 0 {
-		return c.Resync
-	}
-	return def
-}
-
 // IsDynamic determines whether this CRD should operate in dynamic mode.
 // Resolution order (first match wins):
 //  1. mode: dynamic explicitly declared → true
@@ -167,28 +140,41 @@ func (c *CRDEntry) IsDynamic() bool {
 // Does not imply anything about Default: true/false — a typed CRD can have hooks
 // even when Default: true (generic reconciler) or false (custom reconciler).
 func (c *CRDEntry) WithHooksDecl() bool {
-	return c.OperatorBox.Hooks != nil && c.OperatorBox.Hooks.Location != ""
+	r := c.OperatorBox.Reconciler
+	return r != nil && r.Hooks != nil && r.Hooks.Location != ""
+}
+
+// RunHooksFirst reports whether the hook should run before declarative templates.
+// Returns false by default — declared templates run first (the 90/10 hybrid pattern).
+// Set reconciler.hooks.runHooksFirst: true in the Katalog to override.
+func (c *CRDEntry) RunHooksFirst() bool {
+	r := c.OperatorBox.Reconciler
+	if r == nil || r.Hooks == nil {
+		return false
+	}
+	return r.Hooks.RunHooksFirst
 }
 
 // WithConstructorDecl returns true if the CRD has a constructor declaration.
-// Required when Default: false in the Katalog. The generated registry will
+// Required when reconciler.default: false in the Katalog. The generated registry will
 // emit a ReconcilerRegistry entry for this CRD.
 func (c *CRDEntry) WithConstructorDecl() bool {
-	return c.OperatorBox.ConstructorDecl != nil && c.OperatorBox.ConstructorDecl.Location != ""
+	r := c.OperatorBox.Reconciler
+	return r != nil && r.ConstructorDecl != nil && r.ConstructorDecl.Location != ""
 }
 
 // WithHookManagedResources reports whether this CRD has hooks that declare
 // managed resources for RBAC generation.
 func (c *CRDEntry) WithHookManagedResources() bool {
-	return c.WithHooksDecl() &&
-		len(c.OperatorBox.Hooks.Resources) > 0
+	r := c.OperatorBox.Reconciler
+	return c.WithHooksDecl() && r != nil && len(r.Hooks.Resources) > 0
 }
 
 // WithConstructorManagedResources reports whether this CRD has a constructor
 // that declares managed resources for RBAC generation.
 func (c *CRDEntry) WithConstructorManagedResources() bool {
-	return c.WithConstructorDecl() &&
-		len(c.OperatorBox.ConstructorDecl.Resources) > 0
+	r := c.OperatorBox.Reconciler
+	return c.WithConstructorDecl() && r != nil && len(r.ConstructorDecl.Resources) > 0
 }
 
 // WithAnyManagedResources reports whether hooks or constructor declare resources.
@@ -202,7 +188,7 @@ func (c *CRDEntry) HookManagedResources() []ManagedResource {
 	if !c.WithHooksDecl() {
 		return nil
 	}
-	return c.OperatorBox.Hooks.Resources
+	return c.OperatorBox.Reconciler.Hooks.Resources
 }
 
 // ConstructorManagedResources returns the list of managed resources declared
@@ -212,7 +198,7 @@ func (c *CRDEntry) ConstructorManagedResources() []ManagedResource {
 	if !c.WithConstructorDecl() {
 		return nil
 	}
-	return c.OperatorBox.ConstructorDecl.Resources
+	return c.OperatorBox.Reconciler.ConstructorDecl.Resources
 }
 
 // HasTemplates reports whether this CRD declares any declarative hook templates.
@@ -261,34 +247,28 @@ func (c *CRDEntry) IsNamespaced() bool {
 	return *c.Namespaced
 }
 
-// DefaultReconcile reports whether this CRD uses the default reconciler behavior.
-// Defaults to true unless explicitly enabled.
+// DefaultReconcile reports whether this CRD uses the default reconciler (GenericReconciler).
+// True when reconciler: is absent or reconciler.default: is omitted or true.
 func (c *CRDEntry) DefaultReconcile() bool {
-	if c.OperatorBox.Default == nil {
+	r := c.OperatorBox.Reconciler
+	if r == nil || r.Default == nil {
 		return true
 	}
-	return *c.OperatorBox.Default
-}
-
-// SharedQueue reports whether this CRD uses the shared default workqueue.
-// Defaults to false when omitted.
-func (c *CRDEntry) SharedQueue() bool {
-	if c.Queue.Shared == nil {
-		return false
-	}
-	return *c.Queue.Shared
+	return *r.Default
 }
 
 // CustomHooksEnabled reports whether the reconcile behaviour uses custom hooks.
 // Defaults to false when omitted.
 func (c *CRDEntry) CustomHooksEnabled() bool {
-	return c.OperatorBox.Hooks != nil
+	r := c.OperatorBox.Reconciler
+	return r != nil && r.Hooks != nil
 }
 
 // ConstructorEnabled reports whether the reconcile behaviour uses a constructor.
 // Defaults to false when omitted.
 func (c *CRDEntry) ConstructorEnabled() bool {
-	return c.OperatorBox.ConstructorDecl != nil
+	r := c.OperatorBox.Reconciler
+	return r != nil && r.ConstructorDecl != nil
 }
 
 // IsHealthEnabled reports whether the /health endpoint is enabled for this CRD.
@@ -530,6 +510,51 @@ func (c *CRDEntry) HasRestrictedNamespaces() bool {
 //   - ClusterIP
 //   - NodePort
 //   - LoadBalancer
+//
+// SetWorkers resolves the worker count for this CRD.
+// Reads from operatorBox.reconciler.workers; falls back to the global default.
+func (c *CRDEntry) SetWorkers(def int) int {
+	if c.OperatorBox.Reconciler != nil && c.OperatorBox.Reconciler.Workers != 0 {
+		return c.OperatorBox.Reconciler.Workers
+	}
+	return def
+}
+
+// SetResync resolves the resync period for this CRD.
+// Reads from operatorBox.reconciler.resync; falls back to the global default.
+func (c *CRDEntry) SetResync(def time.Duration) time.Duration {
+	if c.OperatorBox.Reconciler != nil && c.OperatorBox.Reconciler.Resync.Duration != 0 {
+		return c.OperatorBox.Reconciler.Resync.Duration
+	}
+	return def
+}
+
+// SetQueueDepth resolves the queue depth for this CRD.
+// Reads from operatorBox.reconciler.queue.maxDepth; falls back to the global default.
+func (c *CRDEntry) SetQueueDepth(def int) int {
+	if c.OperatorBox.Reconciler != nil && c.OperatorBox.Reconciler.Queue.MaxDepth != 0 {
+		return c.OperatorBox.Reconciler.Queue.MaxDepth
+	}
+	return def
+}
+
+// SetFailureThreshold resolves the queue failure threshold for this CRD.
+// Reads from operatorBox.reconciler.queue.failureThreshold; falls back to the global default.
+func (c *CRDEntry) SetFailureThreshold(def int) int {
+	if c.OperatorBox.Reconciler != nil && c.OperatorBox.Reconciler.Queue.FailureThreshold != 0 {
+		return c.OperatorBox.Reconciler.Queue.FailureThreshold
+	}
+	return def
+}
+
+// SharedQueue reports whether this CRD uses the shared default workqueue.
+func (c *CRDEntry) SharedQueue() bool {
+	if c.OperatorBox.Reconciler == nil || c.OperatorBox.Reconciler.Queue.Shared == nil {
+		return false
+	}
+	return *c.OperatorBox.Reconciler.Queue.Shared
+}
+
 func IsValidServiceType(t string) bool {
 	switch strings.ToLower(t) {
 	case "", "clusterip", "nodeport", "loadbalancer":

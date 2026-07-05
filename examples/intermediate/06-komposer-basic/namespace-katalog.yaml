@@ -11,8 +11,9 @@ spec:
     namespace-governance:
       apiTypes:
         kind: Namespace           # built-in — no group/version/plural needed
-      workers: 1
       operatorBox:
+        reconciler:
+          workers: 1
         default: true
       # Governance-only: no onCreate templates.
       # Validation rules declared here apply at reconcile time.

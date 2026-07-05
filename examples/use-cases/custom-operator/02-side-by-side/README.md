@@ -4,7 +4,7 @@ The same `AppCert` CRD tested two ways using the same underlying infrastructure
 (cert-manager). Identical assertions in both files. When both pass, the two
 implementations are proven equivalent.
 
-**What you learn:** How to use `customOperator: true` for migration parity testing.
+**What you learn:** How to use `custom.target: kubernetes` for migration parity testing.
 `e2e-orkestra.yaml` uses Orkestra's katalog to compose cert-manager via
 `customResources`. `e2e-custom.yaml` uses cert-manager directly. Same inputs,
 same assertions, same output — two implementations proven equivalent by e2e.
@@ -15,12 +15,12 @@ same assertions, same output — two implementations proven equivalent by e2e.
 
 **Orkestra side (`e2e-orkestra.yaml`):**
 - Orkestra katalog wraps cert-manager — an `AppCert` CR triggers creation of a
-  `ClusterIssuer` + `Certificate` as child custom resources
+  namespaced `Issuer` + `Certificate` as child custom resources
 - Orkestra manages the lifecycle; cert-manager does the actual certificate work
 - Result: `my-app-tls` Secret created
 
 **Custom side (`e2e-custom.yaml`):**
-- `customOperator: true` — cert-manager is the operator, no Orkestra
+- `custom.target: kubernetes` — cert-manager is the operator, no Orkestra
 - The test applies the `AppCert` CR (tracked as the CR under test) then manually
   creates the cert-manager resources via a command assertion
 - Same result: `my-app-tls` Secret created
@@ -62,3 +62,9 @@ chmod +x cleanup.sh && ./cleanup.sh
 ork e2e -f e2e-orkestra.yaml    # Orkestra composes cert-manager
 ork e2e -f e2e-custom.yaml      # cert-manager directly, ork e2e as test harness
 ```
+
+| Expectation | What it checks |
+|-------------|----------------|
+| AppCert CR created | `my-app` AppCert exists in default namespace |
+| TLS Secret issued | `my-app-tls` Secret created by cert-manager |
+| Cleanup verified | Secret removed after CR delete |

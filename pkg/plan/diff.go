@@ -134,18 +134,18 @@ func diffCRDEntry(_ string, from, to *orktypes.CRDEntry) []FieldChange {
 	}
 
 	// spec
-	if from.Workers != to.Workers {
+	if from.OperatorBox.Reconciler.Workers != to.OperatorBox.Reconciler.Workers {
 		changes = append(changes, FieldChange{
 			Path: "workers",
-			From: fmt.Sprint(from.Workers),
-			To:   fmt.Sprint(to.Workers),
+			From: fmt.Sprint(from.OperatorBox.Reconciler.Workers),
+			To:   fmt.Sprint(to.OperatorBox.Reconciler.Workers),
 		})
 	}
-	if from.Resync != to.Resync {
+	if from.OperatorBox.Reconciler.Resync != to.OperatorBox.Reconciler.Resync {
 		changes = append(changes, FieldChange{
 			Path: "resync",
-			From: from.Resync.String(),
-			To:   to.Resync.String(),
+			From: from.OperatorBox.Reconciler.Resync.String(),
+			To:   to.OperatorBox.Reconciler.Resync.String(),
 		})
 	}
 	if from.CRDFile != to.CRDFile {
@@ -155,11 +155,11 @@ func diffCRDEntry(_ string, from, to *orktypes.CRDEntry) []FieldChange {
 			To:   to.CRDFile,
 		})
 	}
-	if !reflect.DeepEqual(from.Queue, to.Queue) {
+	if !reflect.DeepEqual(from.OperatorBox.Reconciler.Queue, to.OperatorBox.Reconciler.Queue) {
 		changes = append(changes, FieldChange{
 			Path: "queue",
-			From: fmt.Sprint(from.Queue),
-			To:   fmt.Sprint(to.Queue),
+			From: fmt.Sprint(from.OperatorBox.Reconciler.Queue),
+			To:   fmt.Sprint(to.OperatorBox.Reconciler.Queue),
 		})
 	}
 	if !reflect.DeepEqual(from.DependsOn, to.DependsOn) {

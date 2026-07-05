@@ -19,12 +19,15 @@ The examples are **embedded in the CLI binary** — no internet connection neede
 ## Choose your pack
 
 ```bash
-ork init my-operator                          # defaults to beginner
-ork init my-operator --pack beginner          # Simple CRDs, Deployments, Services
-ork init my-operator --pack intermediate      # Multi-resource, conditions, state machines, Komposer
-ork init my-operator --pack advanced          # Hooks, constructors, validation, registries, autoscale, custom resources
-ork init my-operator --pack security          # Deletion protection, namespace isolation, admission webhooks
-ork init my-operator --pack use-cases         # Full-stack, cross-CRD, external gates, multi-region, and more
+ork init my-operator                                # defaults to beginner
+ork init my-operator --pack beginner                # Simple CRDs, Deployments, Services
+ork init my-operator --pack intermediate            # Multi-resource, conditions, state machines, Komposer
+ork init my-operator --pack advanced                # Hooks, constructors, validation, registries, autoscale, custom resources
+ork init my-operator --pack security                # Deletion protection, namespace isolation, admission webhooks
+ork init my-operator --pack resilience              # Operators that stay running — panic recovery, degraded state
+ork init my-operator --pack use-cases               # Full-stack, cross-CRD, external gates, multi-region, and more
+ork init my-operator --pack from-controller-runtime # Migrate from controller-runtime: all 5 options in one pack
+ork init my-operator --pack ecosystem-composition   # Build an IDP: ArgoCD, cert-manager, Crossplane, Prometheus
 ```
 
 List all packs:
@@ -33,7 +36,7 @@ ork init --list-packs
 ```
 
 After init, your examples live at:
-```
+```text
 my-operator/
 └── <pack>/
     ├── e2e.yaml            full suite — runs all examples in one command
@@ -101,6 +104,15 @@ Protect your cluster from accidental deletions, rogue workloads, and bad input.
 | [Deletion Protection](./security/deletion-protection/) | Block deletion of critical CRs via admission. |
 | [Namespace Protection](./security/namespace-protection/) | Restrict what namespaces operators can act on. |
 
+### Resilience — `--pack resilience`
+
+Operators that stay running when things go wrong.
+
+| Example | What you learn |
+|---------|----------------|
+| [Safe Reconcile](./resilience/safe-reconcile/) | Panic isolation in the worker pool. A nil pointer in a typed hook is caught and recovered — the operator keeps running and other CRDs are unaffected. |
+| [Admission Protection](./resilience/admission-protection/) | Runtime validation as a resilience layer. Bad CR → operator degrades after `failureThreshold`. Patch the CR → operator recovers automatically. |
+
 ### Use Cases — `--pack use-cases`
 
 Real-world patterns combining multiple Orkestra features.
@@ -110,12 +122,42 @@ Real-world patterns combining multiple Orkestra features.
 | [Full-Stack App](./use-cases/full-stack-app/) | forEach + external + cross + once + anyOf in one CR. |
 | [Multi-Region Map](./use-cases/multi-region-map/) | Deploy across regions using `forEach` over a map. |
 | [CRD Conversion](./use-cases/crd-conversion/) | Multi-version CRDs with or without a conversion webhook. |
-| [Custom Operator](./use-cases/custom-operator/) | `spec.customOperator: true` — use `ork e2e` as a test harness for any operator. |
+| [Custom Target](./use-cases/custom-operator/) | `spec.custom.target: kubernetes` — use `ork e2e` as a test harness for any operator. |
 | [External](./use-cases/external/) | Gate resource creation on upstream health checks. |
 | [Multi-Tenancy](./use-cases/multi-tenancy/) | Namespace isolation, per-tenant configuration. |
 | [Enrich](./use-cases/enrich/) | Inject data from external sources into CR status. |
 | [Normalize](./use-cases/normalize/) | Validate and normalise CR fields at reconcile time. |
 | [Profiles](./use-cases/profiles/) | Apply different resource configurations based on environment profiles. |
+| [Namespace Provisioner](./use-cases/namespace-provisioner/) | Tenant namespaces, RBAC, quotas, and network policies from a single CRD. |
+
+### From controller-runtime — `--pack from-controller-runtime`
+
+Migrating an existing operator from controller-runtime to Orkestra. Six progressive examples from baseline to all-5-options.
+
+| Example | What you learn |
+|---------|----------------|
+| [00 — Baseline](./from-controller-runtime/00-controller-runtime-baseline/) | The controller-runtime starting point. The before picture. |
+| [01 — Declarative](./from-controller-runtime/01-declarative/) | Zero Go. Same behaviour. |
+| [02 — Hybrid](./from-controller-runtime/02-hybrid/) | Declarative + one Go hook for resources templates can't express. |
+| [03 — Hooks Only](./from-controller-runtime/03-hooks-only/) | All resources in Go. Typed access to your CRD spec. |
+| [04 — Constructor Migration](./from-controller-runtime/04-constructor-migration/) | Lift the existing reconcile loop into Orkestra's constructor. |
+| [05 — Constructor Ork Resources](./from-controller-runtime/05-constructor-orkestra-resources/) | Same constructor, Orkestra resource helpers replace manual Get/Create/Patch. |
+| [06 — Ork Migrate](./from-controller-runtime/06-ork-migrate/) | `ork migrate` rewrites controller-runtime reconcilers automatically. |
+| [07 — All Options](./from-controller-runtime/07-all-options/) | All five migration options running in one binary via Komposer. |
+
+### Ecosystem Composition — `--pack ecosystem-composition`
+
+Build an internal developer platform on top of the tools you already run.
+
+| Example | What you learn |
+|---------|----------------|
+| [00 — ArgoCD](./ecosystem-composition/00-argocd/) | `App` CRD → ArgoCD Application. Status propagation. Admission rules. |
+| [01 — cert-manager](./ecosystem-composition/01-cert-manager/) | `SecurityConfig` CRD → Certificate. |
+| [02 — Prometheus](./ecosystem-composition/02-prometheus/) | `MonitoringConfig` CRD → ServiceMonitor + PrometheusRule. |
+| [03 — Crossplane](./ecosystem-composition/03-crossplane/) | `Infra` CRD → Crossplane Composite Claim. |
+| [04 — Platform Stack](./ecosystem-composition/04-platform-stack/) | All four, composed with Komposer. |
+| [05 — Policy Layer](./ecosystem-composition/05-policy-layer/) | Shared admission motif across all CRDs. Deletion protection. |
+| [06 — All-in-One](./ecosystem-composition/06-all-in-one/) | Single `PlatformResource` CRD, `workloadType` discriminator, all four tools. |
 
 ---
 
@@ -131,6 +173,7 @@ cd beginner/01-hello-website && ork e2e
 ork e2e -f beginner/e2e.yaml
 ork e2e -f intermediate/e2e.yaml
 ork e2e -f security/e2e.yaml
+ork e2e -f resilience/e2e.yaml
 
 # Simulate the full pack (no cluster needed)
 ork simulate ./...
@@ -142,7 +185,7 @@ ork simulate ./...
 
 All examples:
 - `ork` CLI — `curl get.orkestra.sh | bash`
-- A running Kubernetes cluster (`kind create cluster` works for every example here)
+- A running Kubernetes cluster (`ork create cluster` works for every example here)
 - `kubectl` configured
 
 Advanced typed examples (09, 10, 11) also require:

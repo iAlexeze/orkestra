@@ -14,9 +14,13 @@ imports:
 spec:
   crds:
     cronjob-v2:
-      workers: 8
-      resync: 15s
+      operatorBox:
+        reconciler:
+          workers: 8
+          resync: 15s
 
     cronjob-v1:
-      workers: 4
-      resync: 15s
+      operatorBox:
+        reconciler:
+          workers: 4
+          resync: 15s

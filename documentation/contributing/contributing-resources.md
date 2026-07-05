@@ -24,7 +24,12 @@ The registry is the library of built-in Kubernetes resource handlers Orkestra kn
 | `namespaces/` | `v1 Namespace` | Implemented — cleanup on delete not yet working |
 | `roles/` | `rbac/v1 Role` | Implemented — needs tests |
 | `rolebindings/` | `rbac/v1 RoleBinding` | Implemented — needs tests |
+| `clusterroles/` | `rbac/v1 ClusterRole` | Implemented — needs tests |
+| `clusterrolebindings/` | `rbac/v1 ClusterRoleBinding` | Implemented — needs tests |
 | `serviceaccounts/` | `v1 ServiceAccount` | Implemented — needs tests |
+| `networkpolicies/` | `networking.k8s.io/v1 NetworkPolicy` | Implemented — needs tests |
+| `resourcequotas/` | `v1 ResourceQuota` | Implemented — needs tests |
+| `limitranges/` | `v1 LimitRange` | Implemented — needs tests |
 | `customresources/` | Dynamic CR via `dynamic` client | Implemented |
 | `pods/` | `v1 Pod` | Implemented |
 
@@ -32,25 +37,16 @@ The registry is the library of built-in Kubernetes resource handlers Orkestra kn
 
 ## What needs implementing
 
-The following resource types are declared in `pkg/types/types.go` as `PlaceholderSource` — they are accepted in YAML but not yet executed. Implementing one means building the full handler package.
+The following resource types are declared in `pkg/types/types_hook_templates.go` as `PlaceholderSource` — they are accepted in YAML but not yet executed. Implementing one means building the full handler package.
 
 **Workloads:**
 - `DaemonSets`
 - `PodTemplates`
 
-**RBAC:**
-- `ClusterRoles`
-- `ClusterRoleBindings`
-
 **Scheduling:**
 - `PriorityClasses`
 - `PriorityLevelConfigurations`
-- `LimitRanges`
-- `ResourceQuotas`
 - `RuntimeClasses`
-
-**Networking:**
-- `NetworkPolicies`
 
 **Storage:**
 - `StorageClasses`
@@ -102,9 +98,11 @@ func (r *Resolver) ResolveMyResourceTemplate(src *orktypes.MyResourceSource) (*m
 
 Use `r.Resolve(expr)` for any field that may contain a `{{ .spec.something }}` expression.
 
-### 4. Wire the runner in `pkg/reconciler/generic.go`
+### 4. Write the runner in `pkg/runners/`
 
-Find `runResources` and add your resource type alongside the existing ones.
+Create `pkg/runners/myresources.go` — see [pkg/runners/docs/01-runner-contract.md](../../pkg/runners/docs/01-runner-contract.md) for the canonical shape. Then wire it into `pkg/reconciler/run_template_reconcile.go` via `runners.RunMyResources(...)` and add `expandForEachMyResources` to `run_foreach.go`.
+
+The full end-to-end walkthrough is in [pkg/reconciler/docs/07-adding-a-resource.md](../../pkg/reconciler/docs/07-adding-a-resource.md).
 
 ### 5. Write tests
 

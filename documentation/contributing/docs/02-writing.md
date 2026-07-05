@@ -43,7 +43,9 @@ ork run
 spec:
   crds:
     website:
-      workers: 3
+      operatorBox:
+        reconciler:
+          workers: 3
 ```
 
 ```text

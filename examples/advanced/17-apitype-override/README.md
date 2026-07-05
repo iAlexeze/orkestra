@@ -72,8 +72,8 @@ ork validate --file komposer.yaml
 ```
 
 Expected:
-```
-✓ db-cluster
+```text
+● db-cluster
     kind: DatabaseCluster
     group: platform.acme.io / version: v1alpha1 / plural: databaseclusters
     mode: dynamic / workers: 2 / resync: 45s

@@ -170,15 +170,16 @@ The CR is never stored. Nothing to clean up.
 
 **Without webhooks:**
 
-The CR is stored, but reconcile halts:
+The CR is stored, but reconcile halts and two conditions are written:
 
 ```bash
-kubectl get website bad-site -o jsonpath='{.status.conditions[0]}'
-# {"type":"Ready","status":"False","reason":"ReconcileError",
-#  "message":"validation denied: field \"spec.image\": images must come..."}
+kubectl get website bad-site -o yaml | grep -A6 "conditions:"
+# - type: Ready             status: "False"  reason: ReconcileError
+# - type: ValidationFailed  status: "True"   reason: DenyRuleViolation
+#   message: "validation denied: field \"spec.image\": images must come from the internal registry (myorg/)"
 ```
 
-The Ready condition surfaces the validation error directly in status.
+`ValidationFailed=True` is the signal to watch — it is set only when a `deny` rule fires, making it safe to gate CI or alerting on this condition type specifically. Both conditions are also visible in the Control Center **Conditions** tab without reading logs.
 
 ---
 
@@ -205,6 +206,14 @@ EOF
 ```
 Warning: orkestra: field "spec.environment": declare spec.environment for better observability
 website.demo.orkestra.io/warn-site created
+```
+
+**Without webhooks:** reconcile proceeds but `ValidationWarning=True` is written to the CR status and visible in the Control Center **Conditions** tab:
+
+```bash
+kubectl get website warn-site -o yaml | grep -A5 "ValidationWarning"
+# - type: ValidationWarning  status: "True"  reason: WarnRuleViolation
+#   message: "field \"spec.environment\": declare spec.environment for better observability"
 ```
 
 ---

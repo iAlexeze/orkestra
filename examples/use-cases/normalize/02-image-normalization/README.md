@@ -67,6 +67,13 @@ status:
   image: registry.internal/nginx:latest   # ← tag and registry added
 ```
 
+> **If a CR is applied without `spec.image`:** reconcile halts before normalization runs. The `ValidationFailed` condition is written to the CR and visible in the Control Center **Conditions** tab:
+> ```bash
+> kubectl get app <name> -o yaml | grep -A6 "conditions:"
+> # - type: ValidationFailed  status: "True"  reason: DenyRuleViolation
+> #   message: "validation denied: field \"spec.image\": spec.image is required"
+> ```
+
 Deployment:
 ```bash
 kubectl get deployment app-bare -o jsonpath='{.spec.template.spec.containers[0].image}' && echo

@@ -5,6 +5,7 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/konductor"
 	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/utils"
@@ -35,6 +36,7 @@ func KonductRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 			LeaseDuration: kfg.Konductor().LeaseDuration(),
 			RenewDeadline: kfg.Konductor().RenewDeadline(),
 			RetryPeriod:   kfg.Konductor().RetryPeriod(),
+			Labels:        labels.WithDeletionProtection(nil),
 		})
 
 	// start konductor election as postStartHook after  orkestra is ready

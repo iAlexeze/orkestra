@@ -20,7 +20,6 @@ spec:
     webapp:
       crdFile: ./crd.yaml
       operatorBox:
-        default: true
         onCreate:
           deployments:
             - image: "{{ .spec.image }}"

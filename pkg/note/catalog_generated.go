@@ -864,7 +864,7 @@ var BuiltinNotes = []NoteInfo{
 		Name:        "podContainerState",
 		Domain:      "pods",
 		Description: "Return the state of a named container within the pod at the given ordinal. Returns `\"\"` when the pod or container is not found.",
-		Example:     "- path: appContainerState\n  value: \"{{ podContainerState .children.statefulset 0 \\\"app\\\" }}\"\n# → \"Running\"\n# → \"Waiting\"\nspec:\n  crds:\n    memcached:\n      enrich: [pods]\n      operatorBox:\n        default: true\n        onCreate:\n          deployments:\n            - name: \"{{ .metadata.name }}\"\n              image: \"memcache:{{ .spec.version }}\"\n              replicas: \"{{ .spec.size }}\"\n\n        status:\n          fields:\n            - path: pods\n              value: \"{{ podNames .children.deployment }}\"\n            - path: podIPs\n              value: \"{{ podIPs .children.deployment }}\"\n            - path: size\n              value: \"{{ podCount .children.deployment }}\"\n            - path: ready\n              value: \"{{ readyPodCount .children.deployment }}\"",
+		Example:     "- path: appContainerState\n  value: \"{{ podContainerState .children.statefulset 0 \\\"app\\\" }}\"\n# → \"Running\"\n# → \"Waiting\"\nspec:\n  crds:\n    memcached:\n      enrich: [pods]\n      operatorBox:\n        onCreate:\n          deployments:\n            - name: \"{{ .metadata.name }}\"\n              image: \"memcache:{{ .spec.version }}\"\n              replicas: \"{{ .spec.size }}\"\n\n        status:\n          fields:\n            - path: pods\n              value: \"{{ podNames .children.deployment }}\"\n            - path: podIPs\n              value: \"{{ podIPs .children.deployment }}\"\n            - path: size\n              value: \"{{ podCount .children.deployment }}\"\n            - path: ready\n              value: \"{{ readyPodCount .children.deployment }}\"",
 		Keywords:    []string{"pods", "container", "state", "statefulset", "ordinal", "enriched", "string", "running", "waiting"},
 	},
 	{
@@ -1356,6 +1356,13 @@ var BuiltinNotes = []NoteInfo{
 		Description: "Convert CamelCase or PascalCase to kebab-case. Useful when deriving Kubernetes resource names from Go type names.",
 		Example:     "# value: \"{{ camelToKebab .spec.controllerName }}\"\n# \"WebsiteOperator\" → \"website-operator\"\n# \"myAppName\"       → \"my-app-name\"",
 		Keywords:    []string{"string", "case", "camel", "kebab", "transform", "naming", "kubernetes"},
+	},
+	{
+		Name:        "concat",
+		Domain:      "strings",
+		Description: "Join any number of strings together with no separator. Useful for building domain names, resource name prefixes, or any value assembled from multiple parts.",
+		Example:     "# value: \"{{ concat \\\"*.\\\" .spec.domain }}\"\n# spec.domain: \"api.example.com\" → \"*.api.example.com\"\n\n# value: \"{{ concat .metadata.name \\\"-\\\" .spec.tier }}\"\n# name: \"webapp\", tier: \"prod\" → \"webapp-prod\"",
+		Keywords:    []string{"string", "concat", "join", "combine", "build", "prefix", "suffix", "append"},
 	},
 	{
 		Name:        "contains",

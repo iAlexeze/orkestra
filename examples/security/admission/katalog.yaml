@@ -29,7 +29,6 @@ spec:
         version: v1alpha1
         kind: Platform
         plural: platforms
-      resync: 30s
 
       # ── Validation ────────────────────────────────────────────────────────
       # Rules are declared once. Enforced at:
@@ -86,6 +85,8 @@ spec:
             valueType: int  # Because the CRD expects an integer
 
       operatorBox:
+        reconciler:
+          resync: 30s
         # Status fields reflect the object AFTER mutation — so you can see
         # what Orkestra filled in even if the CR did not declare it.
         status:

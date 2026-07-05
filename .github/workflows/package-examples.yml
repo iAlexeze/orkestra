@@ -47,9 +47,21 @@ jobs:
           tar -czf "dist/examples_security_${TAG}.tar.gz" \
             -C examples/security .
 
+          # Resilience
+          tar -czf "dist/examples_resilience_${TAG}.tar.gz" \
+            -C examples/resilience .
+
           # Registry Guide
           tar -czf "dist/examples_registry-guide_${TAG}.tar.gz" \
             -C examples/registry-guide .
+
+          # From controller-runtime
+          tar -czf "dist/examples_from-controller-runtime_${TAG}.tar.gz" \
+            -C examples/from-controller-runtime .
+
+          # Ecosystem composition
+          tar -czf "dist/examples_ecosystem-composition_${TAG}.tar.gz" \
+            -C examples/ecosystem-composition .
 
           echo "📦 Example packs packaged"
 
@@ -74,7 +86,10 @@ jobs:
           echo "| Advanced | Custom resources & controllers | \`examples_advanced_${TAG}.tar.gz\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Use Cases | Real‑world scenarios | \`examples_use-cases_${TAG}.tar.gz\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Security | Admission, Deletion, and Namespace protection | \`examples_security_${TAG}.tar.gz\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Resilience | Panic recovery, degraded state, isolation | \`examples_resilience_${TAG}.tar.gz\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Registry Guide | End-to-end registry workflow: consume, build, publish, compose, upgrade | \`examples_registry-guide_${TAG}.tar.gz\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| From controller-runtime | Migrate an existing operator to Orkestra: declarative, hooks, or constructor | \`examples_from-controller-runtime_${TAG}.tar.gz\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Ecosystem Composition | Wrap ArgoCD, cert-manager, Prometheus Operator, and Crossplane behind internal CRDs | \`examples_ecosystem-composition_${TAG}.tar.gz\` |" >> "$GITHUB_STEP_SUMMARY"
           # echo "| Developer | Local to production in minutes | \`examples_developer_${TAG}.tar.gz\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "**Download from the release assets or run:**" >> "$GITHUB_STEP_SUMMARY"

@@ -62,9 +62,17 @@ The same rules in the Katalog are enforced at two independent points:
 
 1. **Admission time** (`security.webhooks.admission.enabled: true`) — the mutation webhook fires first (filling defaults), then the validation webhook fires (checking rules). A CR that fails a `deny` rule is rejected before it is stored; the reconciler never sees it.
 
-2. **Reconcile time** (always, whether webhooks are enabled or not) — the reconciler re-applies mutation defaults and re-checks validation rules on every reconcile cycle. If a CR somehow bypassed the webhook (e.g., the webhook was absent during a restart window), reconcile halts the moment it encounters a `deny` violation — no Deployment, no Service, no child resource of any kind.
+2. **Reconcile time** (always, whether webhooks are enabled or not) — the reconciler re-applies mutation defaults and re-checks validation rules on every reconcile cycle. If a CR somehow bypassed the webhook (e.g., the webhook was absent during a restart window), reconcile halts the moment it encounters a `deny` violation — no Deployment, no Service, no child resource of any kind. The result is written directly to the CR's status conditions:
 
-> **Without `security.webhooks.admission`:** only enforcement point 2 is active. A bad CR can be `kubectl apply`-ed and stored in etcd, but Orkestra will never act on it — the reconciler halts immediately on the first `deny` rule. Enabling admission webhooks adds the fast gate so the CR is never stored in the first place.
+   ```bash
+   kubectl get platform my-platform -o yaml | grep -A8 "conditions:"
+   # type: ValidationFailed  status: "True"  reason: DenyRuleViolation
+   # type: ValidationWarning status: "True"  reason: WarnRuleViolation  (if any warns)
+   ```
+
+   `warn` violations do not halt reconcile but are written as `ValidationWarning=True` — visible in the Control Center **Conditions** tab and via `kubectl` without reading logs.
+
+> **Without `security.webhooks.admission`:** only enforcement point 2 is active. A bad CR can be `kubectl apply`-ed and stored in etcd, but Orkestra will never act on it — the reconciler halts immediately on the first `deny` rule and writes `ValidationFailed=True` to the CR status. Enabling admission webhooks adds the fast gate so the CR is never stored in the first place.
 
 ---
 
@@ -287,7 +295,7 @@ Watch the operator logs:
 
 Both webhooks are back within milliseconds. Validation and mutation are restored without restarting the operator.
 
-A safety poll (`WEBHOOK_CONTROLLER_SYNC_INTERVAL`, default 30 s) continues in parallel as a backstop — it catches any drift the Watch stream might silently miss on some managed cluster distributions.
+A safety poll (`HOUSEKEEPER_SYNC_INTERVAL`, default 30 s) continues in parallel as a backstop — it catches any drift the Watch stream might silently miss on some managed cluster distributions.
 
 ---
 

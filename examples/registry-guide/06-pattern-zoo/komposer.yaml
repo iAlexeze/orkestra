@@ -26,53 +26,71 @@ spec:
   crds:
     # Heavy stateful — single worker avoids concurrent mutation; 1m resync is enough
     postgres:
-      workers: 1
-      resync: 1m
-      queue:
-        failureThreshold: 3
+      operatorBox:
+        reconciler:
+          workers: 1
+          resync: 1m
+          queue:
+            failureThreshold: 3
 
     mysql:
-      workers: 1
-      resync: 1m
-      queue:
-        failureThreshold: 3
+      operatorBox:
+        reconciler:
+          workers: 1
+          resync: 1m
+          queue:
+            failureThreshold: 3
 
     mongodb:
-      workers: 1
-      resync: 1m
-      queue:
-        failureThreshold: 3
+      operatorBox:
+        reconciler:
+          workers: 1
+          resync: 1m
+          queue:
+            failureThreshold: 3
 
     # Semi-stateful cache
     redis:
-      workers: 2
-      resync: 30s
+      operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
 
     # Messaging brokers — deeper queue absorbs burst
     kafka:
-      workers: 2
-      resync: 30s
-      queue:
-        maxDepth: 200
+      operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
+          queue:
+            maxDepth: 200
 
     rabbitmq:
-      workers: 2
-      resync: 30s
-      queue:
-        maxDepth: 200
+      operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
+          queue:
+            maxDepth: 200
 
     # Stateless deployments
     application:
-      workers: 3
-      resync: 30s
+      operatorBox:
+        reconciler:
+          workers: 3
+          resync: 30s
 
     # Team katalogs
     webapp:
-      workers: 2
-      resync: 30s
+      operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
 
     cache:
-      workers: 1
-      resync: 30s
-      queue:
-        failureThreshold: 3
+      operatorBox:
+        reconciler:
+          workers: 1
+          resync: 30s
+          queue:
+            failureThreshold: 3

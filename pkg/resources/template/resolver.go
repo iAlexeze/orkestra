@@ -36,6 +36,19 @@ type Resolver struct {
 	data           map[string]interface{}
 	ownerName      string
 	ownerNamespace string
+	profiles       orktypes.ProfileRegistry
+}
+
+// WithProfiles attaches a user-defined profile registry to the resolver.
+// Call this after NewResolver when the katalog declares a profiles: block.
+func (r *Resolver) WithProfiles(reg orktypes.ProfileRegistry) *Resolver {
+	r.profiles = reg
+	return r
+}
+
+// Profiles returns the user-defined profile registry attached to this resolver.
+func (r *Resolver) Profiles() orktypes.ProfileRegistry {
+	return r.profiles
 }
 
 // NewResolver creates a Resolver from any domain.Object.
@@ -1475,4 +1488,317 @@ func (r *Resolver) resolveVolumeMounts(src []orktypes.VolumeMount) ([]orktypes.V
 		result = append(result, rm)
 	}
 	return result, nil
+}
+
+// ResolveNetworkPolicyTemplate resolves all template expressions in a NetworkPolicyTemplateSource.
+func (r *Resolver) ResolveNetworkPolicyTemplate(src orktypes.NetworkPolicyTemplateSource) (orktypes.NetworkPolicyTemplateSource, error) {
+	resolved := orktypes.NetworkPolicyTemplateSource{
+		Version:     src.Version,
+		PolicyTypes: src.PolicyTypes,
+		Ingress:     src.Ingress,
+		Egress:      src.Egress,
+		PodSelector: src.PodSelector,
+	}
+	var err error
+
+	if resolved.Profile, err = r.Resolve(src.Profile); err != nil {
+		return resolved, fmt.Errorf("networkpolicy.profile: %w", err)
+	}
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("networkpolicy.name: %w", err)
+	}
+	if resolved.Namespace, err = r.Resolve(src.Namespace); err != nil {
+		return resolved, fmt.Errorf("networkpolicy.namespace: %w", err)
+	}
+	if resolved.FromNetworkPolicy, err = r.Resolve(src.FromNetworkPolicy); err != nil {
+		return resolved, fmt.Errorf("networkpolicy.fromNetworkPolicy: %w", err)
+	}
+	if resolved.FromNamespace, err = r.Resolve(src.FromNamespace); err != nil {
+		return resolved, fmt.Errorf("networkpolicy.fromNamespace: %w", err)
+	}
+	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
+		return resolved, fmt.Errorf("networkpolicy.sleep: %w", err)
+	}
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("networkpolicy.labels: %w", err)
+	}
+
+	for i, v := range src.ToNamespaces {
+		if !strings.Contains(v, "{{") {
+			if v != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, v)
+			}
+			continue
+		}
+		raw := resolveRawValue(r.data, v)
+		switch typed := raw.(type) {
+		case []interface{}:
+			for _, item := range typed {
+				if s, ok := item.(string); ok && s != "" {
+					resolved.ToNamespaces = append(resolved.ToNamespaces, s)
+				}
+			}
+		case string:
+			if typed != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, typed)
+			}
+		default:
+			rv, e := r.Resolve(v)
+			if e != nil {
+				return resolved, fmt.Errorf("networkpolicy.toNamespaces[%d]: %w", i, e)
+			}
+			if rv != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, rv)
+			}
+		}
+	}
+
+	return resolved, nil
+}
+
+// ResolveResourceQuotaTemplate resolves all template expressions in a ResourceQuotaTemplateSource.
+func (r *Resolver) ResolveResourceQuotaTemplate(src orktypes.ResourceQuotaTemplateSource) (orktypes.ResourceQuotaTemplateSource, error) {
+	resolved := orktypes.ResourceQuotaTemplateSource{
+		Version: src.Version,
+	}
+	var err error
+
+	if resolved.Profile, err = r.Resolve(src.Profile); err != nil {
+		return resolved, fmt.Errorf("resourcequota.profile: %w", err)
+	}
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("resourcequota.name: %w", err)
+	}
+	if resolved.Namespace, err = r.Resolve(src.Namespace); err != nil {
+		return resolved, fmt.Errorf("resourcequota.namespace: %w", err)
+	}
+	if resolved.FromResourceQuota, err = r.Resolve(src.FromResourceQuota); err != nil {
+		return resolved, fmt.Errorf("resourcequota.fromResourceQuota: %w", err)
+	}
+	if resolved.FromNamespace, err = r.Resolve(src.FromNamespace); err != nil {
+		return resolved, fmt.Errorf("resourcequota.fromNamespace: %w", err)
+	}
+	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
+		return resolved, fmt.Errorf("resourcequota.sleep: %w", err)
+	}
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("resourcequota.labels: %w", err)
+	}
+
+	if len(src.Hard) > 0 {
+		resolved.Hard = make(map[string]string, len(src.Hard))
+		for k, v := range src.Hard {
+			rv, e := r.Resolve(v)
+			if e != nil {
+				return resolved, fmt.Errorf("resourcequota.hard[%q]: %w", k, e)
+			}
+			resolved.Hard[k] = rv
+		}
+	}
+
+	for i, v := range src.ToNamespaces {
+		if !strings.Contains(v, "{{") {
+			if v != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, v)
+			}
+			continue
+		}
+		raw := resolveRawValue(r.data, v)
+		switch typed := raw.(type) {
+		case []interface{}:
+			for _, item := range typed {
+				if s, ok := item.(string); ok && s != "" {
+					resolved.ToNamespaces = append(resolved.ToNamespaces, s)
+				}
+			}
+		case string:
+			if typed != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, typed)
+			}
+		default:
+			rv, e := r.Resolve(v)
+			if e != nil {
+				return resolved, fmt.Errorf("resourcequota.toNamespaces[%d]: %w", i, e)
+			}
+			if rv != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, rv)
+			}
+		}
+	}
+
+	return resolved, nil
+}
+
+// ResolveLimitRangeTemplate resolves all template expressions in a LimitRangeTemplateSource.
+func (r *Resolver) ResolveLimitRangeTemplate(src orktypes.LimitRangeTemplateSource) (orktypes.LimitRangeTemplateSource, error) {
+	resolved := orktypes.LimitRangeTemplateSource{
+		Version: src.Version,
+	}
+	var err error
+
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("limitrange.name: %w", err)
+	}
+	if resolved.Namespace, err = r.Resolve(src.Namespace); err != nil {
+		return resolved, fmt.Errorf("limitrange.namespace: %w", err)
+	}
+	if resolved.FromLimitRange, err = r.Resolve(src.FromLimitRange); err != nil {
+		return resolved, fmt.Errorf("limitrange.fromLimitRange: %w", err)
+	}
+	if resolved.FromNamespace, err = r.Resolve(src.FromNamespace); err != nil {
+		return resolved, fmt.Errorf("limitrange.fromNamespace: %w", err)
+	}
+	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
+		return resolved, fmt.Errorf("limitrange.sleep: %w", err)
+	}
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("limitrange.labels: %w", err)
+	}
+
+	for i, item := range src.Limits {
+		ri := item
+		ri.Max, err = r.resolveStringMap(item.Max)
+		if err != nil {
+			return resolved, fmt.Errorf("limitrange.limits[%d].max: %w", i, err)
+		}
+		ri.Min, err = r.resolveStringMap(item.Min)
+		if err != nil {
+			return resolved, fmt.Errorf("limitrange.limits[%d].min: %w", i, err)
+		}
+		ri.Default, err = r.resolveStringMap(item.Default)
+		if err != nil {
+			return resolved, fmt.Errorf("limitrange.limits[%d].default: %w", i, err)
+		}
+		ri.DefaultRequest, err = r.resolveStringMap(item.DefaultRequest)
+		if err != nil {
+			return resolved, fmt.Errorf("limitrange.limits[%d].defaultRequest: %w", i, err)
+		}
+		ri.MaxLimitRequestRatio, err = r.resolveStringMap(item.MaxLimitRequestRatio)
+		if err != nil {
+			return resolved, fmt.Errorf("limitrange.limits[%d].maxLimitRequestRatio: %w", i, err)
+		}
+		resolved.Limits = append(resolved.Limits, ri)
+	}
+
+	for i, v := range src.ToNamespaces {
+		if !strings.Contains(v, "{{") {
+			if v != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, v)
+			}
+			continue
+		}
+		raw := resolveRawValue(r.data, v)
+		switch typed := raw.(type) {
+		case []interface{}:
+			for _, item := range typed {
+				if s, ok := item.(string); ok && s != "" {
+					resolved.ToNamespaces = append(resolved.ToNamespaces, s)
+				}
+			}
+		case string:
+			if typed != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, typed)
+			}
+		default:
+			rv, e := r.Resolve(v)
+			if e != nil {
+				return resolved, fmt.Errorf("limitrange.toNamespaces[%d]: %w", i, e)
+			}
+			if rv != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, rv)
+			}
+		}
+	}
+
+	return resolved, nil
+}
+
+// resolveStringMap resolves template expressions in all values of a map[string]string.
+func (r *Resolver) resolveStringMap(m map[string]string) (map[string]string, error) {
+	if len(m) == 0 {
+		return nil, nil
+	}
+	out := make(map[string]string, len(m))
+	for k, v := range m {
+		rv, err := r.Resolve(v)
+		if err != nil {
+			return nil, fmt.Errorf("%q: %w", k, err)
+		}
+		out[k] = rv
+	}
+	return out, nil
+}
+
+// ResolveClusterRoleTemplate resolves all template expressions in a ClusterRoleTemplateSource.
+func (r *Resolver) ResolveClusterRoleTemplate(src orktypes.ClusterRoleTemplateSource) (orktypes.ClusterRoleTemplateSource, error) {
+	resolved := orktypes.ClusterRoleTemplateSource{
+		Version:   src.Version,
+		Reconcile: src.Reconcile,
+	}
+	var err error
+
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("clusterrole.name: %w", err)
+	}
+	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
+		return resolved, fmt.Errorf("clusterrole.sleep: %w", err)
+	}
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("clusterrole.labels: %w", err)
+	}
+
+	for _, rule := range src.Rules {
+		resolvedRule := orktypes.PolicyRuleSpec{
+			APIGroups: rule.APIGroups,
+			Resources: rule.Resources,
+			Verbs:     rule.Verbs,
+		}
+		for _, rn := range rule.ResourceNames {
+			rv, resolveErr := r.Resolve(rn)
+			if resolveErr != nil {
+				return resolved, fmt.Errorf("clusterrole.rules.resourceNames: %w", resolveErr)
+			}
+			resolvedRule.ResourceNames = append(resolvedRule.ResourceNames, rv)
+		}
+		resolved.Rules = append(resolved.Rules, resolvedRule)
+	}
+
+	return resolved, nil
+}
+
+// ResolveClusterRoleBindingTemplate resolves all template expressions in a ClusterRoleBindingTemplateSource.
+func (r *Resolver) ResolveClusterRoleBindingTemplate(src orktypes.ClusterRoleBindingTemplateSource) (orktypes.ClusterRoleBindingTemplateSource, error) {
+	resolved := orktypes.ClusterRoleBindingTemplateSource{
+		Version:   src.Version,
+		Reconcile: src.Reconcile,
+	}
+	var err error
+
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("clusterrolebinding.name: %w", err)
+	}
+	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
+		return resolved, fmt.Errorf("clusterrolebinding.sleep: %w", err)
+	}
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("clusterrolebinding.labels: %w", err)
+	}
+
+	resolved.RoleRef.Kind = src.RoleRef.Kind
+	if resolved.RoleRef.Name, err = r.Resolve(src.RoleRef.Name); err != nil {
+		return resolved, fmt.Errorf("clusterrolebinding.roleRef.name: %w", err)
+	}
+
+	for i, s := range src.Subjects {
+		rs := orktypes.SubjectSpec{Kind: s.Kind}
+		if rs.Name, err = r.Resolve(s.Name); err != nil {
+			return resolved, fmt.Errorf("clusterrolebinding.subjects[%d].name: %w", i, err)
+		}
+		if rs.Namespace, err = r.Resolve(s.Namespace); err != nil {
+			return resolved, fmt.Errorf("clusterrolebinding.subjects[%d].namespace: %w", i, err)
+		}
+		resolved.Subjects = append(resolved.Subjects, rs)
+	}
+
+	return resolved, nil
 }

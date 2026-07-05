@@ -3,7 +3,7 @@ package health
 
 import "sync"
 
-// WebhookStats tracks reconciliation counters for the webhook controller.
+// WebhookStats tracks reconciliation counters for the housekeeper.
 // Thread-safe for concurrent updates from the reconciliation loop.
 //
 // Mirrors the pattern used by ConversionStats, AdmissionStats, and ProtectionStats.

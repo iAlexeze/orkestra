@@ -2,8 +2,6 @@
 package types
 
 import (
-	"time"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -127,18 +125,8 @@ type CRDEntry struct {
 
 	// ── Runtime behaviour ─────────────────────────────────────────────────────
 
-	// Workers — number of concurrent reconcile workers for this CRD.
-	// Higher values increase throughput but also increase API server load.
-	// 0 → uses Orkestra-level default (DEFAULT_WORKERS env var).
-	Workers int `yaml:"workers,omitempty" json:"workers,omitempty" validate:"omitempty,gte=1,lte=50"`
-
 	// WorkersActive — records number of active concurrent reconcile workers for this CRD.
 	WorkersActive int `yaml:"workersActive,omitempty" json:"workersActive,omitempty" validate:"omitempty,gte=1,lte=50"`
-
-	// Resync — full re-list interval for the informer cache.
-	// Triggers a reconcile for every cached object at this interval.
-	// 0 → uses Orkestra-level default (DEFAULT_RESYNC env var).
-	Resync time.Duration `yaml:"resync,omitempty" json:"resync,omitempty" validate:"omitempty"`
 
 	// DependsOn — names of other CRDs that must reach a condition before this one starts.
 	// Orkestra resolves the dependency graph and starts CRDs in topological order.
@@ -164,9 +152,6 @@ type CRDEntry struct {
 
 	// ── OperatorBox ────────────────────────────────────────────────────
 	OperatorBox OperatorBoxConfig `yaml:"operatorBox,omitempty" json:"operatorBox,omitempty"`
-
-	// ── Queue ────────────────────────────────────────────────────
-	Queue Queue `yaml:"queue,omitempty" json:"queue,omitempty"`
 
 	// Labels           []ResourceLabel  `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
 	// LabelSelector filters which resources this CRD entry reconciles.

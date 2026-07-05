@@ -465,8 +465,8 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 		return fmt.Errorf("reading %s: %w", path, err)
 	}
 	var doc orktypes.Simulate
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return fmt.Errorf("parsing %s:\n%s", path, orkutils.FormatYAMLError(err, data))
+	if err := orkutils.StrictUnmarshal(data, &doc); err != nil {
+		return fmt.Errorf("parsing %s:\n%s", path, err)
 	}
 
 	dir := filepath.Dir(path)

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/orkspace/orkestra/pkg/profiles"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 func TestProbeProfiles(t *testing.T) {
@@ -46,7 +47,7 @@ func TestProbeProfiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, ok := profiles.ApplyProbeProfile(tt.profile)
+			got, ok := profiles.ApplyProbeProfile(tt.profile, orktypes.ProfileRegistry{})
 			if ok != tt.ok {
 				t.Fatalf("ok: want %v got %v", tt.ok, ok)
 			}
@@ -58,13 +59,47 @@ func TestProbeProfiles(t *testing.T) {
 }
 
 func TestDefaultProbeTimingsMatchStandard(t *testing.T) {
-	standard, ok := profiles.ApplyProbeProfile("standard")
+	standard, ok := profiles.ApplyProbeProfile("standard", orktypes.ProfileRegistry{})
 	if !ok {
 		t.Fatal("standard profile not found")
 	}
 	if profiles.DefaultProbeTimings != standard {
 		t.Errorf("DefaultProbeTimings does not match standard profile: default=%+v standard=%+v",
 			profiles.DefaultProbeTimings, standard)
+	}
+}
+
+func TestProbeProfileUserDefined(t *testing.T) {
+	reg := orktypes.ProfileRegistry{
+		Probes: []orktypes.ProbeProfileDef{
+			{Name: "aggressive", InitialDelaySeconds: 2, PeriodSeconds: 5, FailureThreshold: 1, SuccessThreshold: 1, TimeoutSeconds: 3},
+		},
+	}
+
+	timings, ok := profiles.ApplyProbeProfile("aggressive", reg)
+	if !ok {
+		t.Fatal("expected user-defined profile to be found")
+	}
+	if timings.InitialDelaySeconds != 2 {
+		t.Errorf("initialDelaySeconds: want 2 got %d", timings.InitialDelaySeconds)
+	}
+	if timings.PeriodSeconds != 5 {
+		t.Errorf("periodSeconds: want 5 got %d", timings.PeriodSeconds)
+	}
+}
+
+func TestProbeProfileUserDefinedOverridesBuiltIn(t *testing.T) {
+	reg := orktypes.ProfileRegistry{
+		Probes: []orktypes.ProbeProfileDef{
+			{Name: "fast", InitialDelaySeconds: 99, PeriodSeconds: 99},
+		},
+	}
+	timings, ok := profiles.ApplyProbeProfile("fast", reg)
+	if !ok {
+		t.Fatal("expected profile to be found")
+	}
+	if timings.InitialDelaySeconds != 99 {
+		t.Errorf("user-defined should override built-in: want 99 got %d", timings.InitialDelaySeconds)
 	}
 }
 

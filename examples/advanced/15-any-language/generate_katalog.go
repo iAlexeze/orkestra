@@ -27,10 +27,11 @@ type CRDEntry struct {
 		Kind    string `yaml:"kind"`
 		Plural  string `yaml:"plural"`
 	} `yaml:"apiTypes"`
-	Workers     int    `yaml:"workers"`
-	Resync      string `yaml:"resync"`
 	OperatorBox struct {
-		Default  bool `yaml:"default"`
+		Reconciler struct {
+			Workers int    `yaml:"workers"`
+			Resync  string `yaml:"resync"`
+		} `yaml:"reconciler"`
 		OnCreate struct {
 			Deployments []Deployment `yaml:"deployments"`
 			Services    []Service    `yaml:"services"`
@@ -55,12 +56,12 @@ type Service struct {
 }
 
 type Ingress struct {
-	Name         string `yaml:"name"`
-	Host         string `yaml:"host"`
-	ServiceName  string `yaml:"serviceName"`
-	ServicePort  int    `yaml:"servicePort"`
-	IngressClass string `yaml:"ingressClass"`
-	Reconcile    bool   `yaml:"reconcile"`
+	Name        string `yaml:"name"`
+	Host        string `yaml:"host"`
+	ServiceName string `yaml:"serviceName"`
+	ServicePort int    `yaml:"servicePort"`
+	ClassName   string `yaml:"className"`
+	Reconcile   bool   `yaml:"reconcile"`
 }
 
 func generateKatalog(appName, image string, port, replicas int, ingressHost string) *Katalog {
@@ -70,15 +71,13 @@ func generateKatalog(appName, image string, port, replicas int, ingressHost stri
 	k.Metadata.Name = appName + "-operator"
 	k.Metadata.Description = fmt.Sprintf("Generated Katalog for %s", appName)
 
-	crd := CRDEntry{
-		Workers: 2,
-		Resync:  "30s",
-	}
+	crd := CRDEntry{}
 	crd.APITypes.Group = "web.orkestra.io"
 	crd.APITypes.Version = "v1alpha1"
 	crd.APITypes.Kind = "WebApp"
 	crd.APITypes.Plural = "webapps"
-	crd.OperatorBox.Default = true
+	crd.OperatorBox.Reconciler.Workers = 2
+	crd.OperatorBox.Reconciler.Resync = "30s"
 
 	// Deployment
 	crd.OperatorBox.OnCreate.Deployments = []Deployment{
@@ -105,12 +104,12 @@ func generateKatalog(appName, image string, port, replicas int, ingressHost stri
 	if ingressHost != "" {
 		crd.OperatorBox.OnCreate.Ingresses = []Ingress{
 			{
-				Name:         "{{ .metadata.name }}-ingress",
-				Host:         ingressHost,
-				ServiceName:  "{{ .metadata.name }}-svc",
-				ServicePort:  port,
-				IngressClass: "nginx",
-				Reconcile:    true,
+				Name:        "{{ .metadata.name }}-ingress",
+				Host:        ingressHost,
+				ServiceName: "{{ .metadata.name }}-svc",
+				ServicePort: port,
+				ClassName:   "nginx",
+				Reconcile:   true,
 			},
 		}
 	}

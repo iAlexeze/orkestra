@@ -3,7 +3,7 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "orkestra.fullname" . }}
+  name: {{ include "orkestra.fullname" . }}-runtime
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "orkestra.labels" . | nindent 4 }}
@@ -21,6 +21,31 @@ spec:
   {{- end }}
 {{- end }}
 
+---
+# Gateway PodDisruptionBudget
+{{- if and .Values.gateway.pdb.enabled .Values.gateway.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "orkestra.fullname" . }}-gateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "orkestra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+spec:
+  selector:
+    matchLabels:
+      {{- include "orkestra.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: gateway
+  {{- if .Values.gateway.pdb.minAvailable }}
+  minAvailable: {{ .Values.gateway.pdb.minAvailable }}
+  {{- end }}
+  {{- if .Values.gateway.pdb.maxUnavailable }}
+  maxUnavailable: {{ .Values.gateway.pdb.maxUnavailable }}
+  {{- end }}
+{{- end }}
+
+---
 # Control Center PodDisruptionBudget
 {{- if and .Values.controlCenter.pdb.enabled .Values.controlCenter.enabled }}
 apiVersion: policy/v1

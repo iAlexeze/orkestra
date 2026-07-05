@@ -172,7 +172,7 @@ func listPacks() error {
 	fmt.Printf("Available example packs:\n")
 
 	for _, p := range ListPacks() {
-		fmt.Printf("  %-15s → %s\n", p.Name, p.Description)
+		fmt.Printf("  %-25s → %s\n", p.Name, p.Description)
 	}
 
 	fmt.Printf("\nNo pack — canonical hello-website operator:\n")

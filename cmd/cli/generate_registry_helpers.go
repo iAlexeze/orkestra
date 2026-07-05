@@ -39,7 +39,7 @@ func collectModulesToGet(crds map[string]orktypes.CRDEntry) []string {
 
 		// --- Hooks ---
 		if crd.CustomHooksEnabled() {
-			h := crd.OperatorBox.Hooks
+			h := crd.OperatorBox.Reconciler.Hooks
 			// normalize if user put @version in location
 			loc, locVer := splitLocationVersion(h.Location)
 			version := h.Version
@@ -62,7 +62,7 @@ func collectModulesToGet(crds map[string]orktypes.CRDEntry) []string {
 
 		// --- Constructor ---
 		if crd.ConstructorEnabled() {
-			c := crd.OperatorBox.ConstructorDecl
+			c := crd.OperatorBox.Reconciler.ConstructorDecl
 			loc, locVer := splitLocationVersion(c.Location)
 			version := c.Version
 

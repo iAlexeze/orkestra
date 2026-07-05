@@ -48,6 +48,7 @@ Discovery mode — runs all *e2e.yaml files found recursively (skips pure aggreg
 		keepCluster, _ := cmd.Flags().GetBool("keep-cluster")
 		useCurrentCtx, _ := cmd.Flags().GetBool("use-current")
 		clusterCtx, _ := cmd.Flags().GetString("cluster")
+		workers, _ := cmd.Flags().GetInt("workers")
 		version, _ := cmd.Flags().GetString("version")
 		valuesFiles, _ := cmd.Flags().GetStringSlice("values")
 		helmArgRaw, _ := cmd.Flags().GetStringSlice("set")
@@ -69,14 +70,14 @@ Discovery mode — runs all *e2e.yaml files found recursively (skips pure aggreg
 			if dryRun {
 				return dryRunDiscovery(root, skipRaw)
 			}
-			return runDiscovery(cmd, root, wait, skipRaw, clusterCtx, useCurrentCtx, keepCluster, devServer, version, valuesFiles, helmArgs)
+			return runDiscovery(cmd, root, wait, skipRaw, clusterCtx, useCurrentCtx, keepCluster, devServer, workers, version, valuesFiles, helmArgs)
 		}
 
 		if dryRun {
 			return validateE2EFile(file)
 		}
 
-		runner, err := e2e.New(file, clusterCtx, useCurrentCtx, keepCluster, devServer, version, valuesFiles, helmArgs...)
+		runner, err := e2e.New(file, e2e.Options{ClusterCtx: clusterCtx, UseCurrentCtx: useCurrentCtx, KeepCluster: keepCluster, Workers: workers, DevServer: devServer, OrkVersion: version, ValueFiles: valuesFiles, HelmArgs: helmArgs})
 		if err != nil {
 			return err
 		}
@@ -121,7 +122,7 @@ func dryRunDiscovery(root string, skip []string) error {
 
 // runDiscovery finds all *e2e.yaml leaf files under root, builds a temp
 // aggregator, and runs it as a normal suite.
-func runDiscovery(cmd *cobra.Command, root, wait string, skip []string, clusterCtx string, useCurrentCtx, keepCluster, devServer bool, version string, valuesFiles, helmArgs []string) error {
+func runDiscovery(cmd *cobra.Command, root, wait string, skip []string, clusterCtx string, useCurrentCtx, keepCluster, devServer bool, workers int, version string, valuesFiles, helmArgs []string) error {
 	// Expand comma-separated skip entries
 	var patterns []string
 	for _, s := range skip {
@@ -163,7 +164,7 @@ func runDiscovery(cmd *cobra.Command, root, wait string, skip []string, clusterC
 	}
 	tmp.Close()
 
-	runner, err := e2e.New(tmp.Name(), clusterCtx, useCurrentCtx, keepCluster, devServer, version, valuesFiles, helmArgs...)
+	runner, err := e2e.New(tmp.Name(), e2e.Options{ClusterCtx: clusterCtx, UseCurrentCtx: useCurrentCtx, KeepCluster: keepCluster, Workers: workers, DevServer: devServer, OrkVersion: version, ValueFiles: valuesFiles, HelmArgs: helmArgs})
 	if err != nil {
 		return err
 	}
@@ -467,6 +468,7 @@ func init() {
 	e2eCmd.Flags().Bool("keep-cluster", false, "Keep the kind cluster after the test completes")
 	e2eCmd.Flags().Bool("use-current", false, "Use the current kubectl context, skip cluster creation")
 	e2eCmd.Flags().String("cluster", "", "Use an existing kubectl context instead of creating a cluster")
+	e2eCmd.Flags().Int("workers", 0, "Number of kind worker nodes to provision (default: 0, control-plane only)")
 	e2eCmd.Flags().String("version", "", "Orkestra version to install (e.g., v1.2.3)")
 	e2eCmd.Flags().StringSlice("values", []string{}, "Helm values files to pass to Orkestra installation")
 	e2eCmd.Flags().StringSlice("set", []string{}, "Additional Helm --set arguments (e.g., key=value)")

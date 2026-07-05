@@ -6,6 +6,7 @@ import (
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orkcust "github.com/orkspace/orkestra/pkg/resources/customresources"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
@@ -21,6 +22,8 @@ func runCustomResources(
 	srcs []orktypes.CustomResourceTemplateSource,
 	update bool,
 	guard func(ctx context.Context, obj domain.Object, ns string) bool,
+	labelMgr *orklabels.Manager,
+	shouldProtect bool,
 ) error {
 	// Track active names for conditional cleanup when resources are no longer desired.
 	activeNames := make(map[string]bool, len(srcs))
@@ -92,11 +95,11 @@ func runCustomResources(
 		// Create enforces spec if resource already exists (idempotent OnCreate).
 		// Update always corrects drift — delete drift (recreate) and spec drift.
 		if update {
-			if err := orkcust.Update(ctx, kube, owner, spec); err != nil {
+			if err := orkcust.Update(ctx, kube, owner, spec, labelMgr, shouldProtect); err != nil {
 				return fmt.Errorf("custom[%d].update: %w", i, err)
 			}
 		} else {
-			if err := orkcust.Create(ctx, kube, owner, spec); err != nil {
+			if err := orkcust.Create(ctx, kube, owner, spec, labelMgr, shouldProtect); err != nil {
 				return fmt.Errorf("custom[%d].create: %w", i, err)
 			}
 		}

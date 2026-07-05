@@ -29,9 +29,25 @@ Build a typed Go operator using Orkestra hooks. The Database CRD drives a Statef
 
 ## Why typed hooks?
 
-Declarative templates work for most patterns. Hooks are the escape hatch when logic is not expressible in templates
+Declarative templates work for most patterns. Hooks are the escape hatch when logic is not expressible in templates.
 
 Orkestra still provides the informer, workqueue, worker pool, finalizer management, status management, and metrics. The hook only provides the business logic.
+
+The key insight is that hooks are **additive** — the Katalog still owns what it can. In this example the `ServiceAccount` is declared in the Katalog:
+
+```yaml
+onCreate:
+  serviceAccounts:
+    - name: "{{ .metadata.name }}-sa"
+```
+
+Orkestra creates it before the hook runs. The hook then references it by the same naming convention:
+
+```go
+ServiceAccountName: obj.Name + "-sa",
+```
+
+No coordination needed. The declaration and the hook cooperate through a shared convention. This is the pattern: declare in YAML what Orkestra handles well, write Go for what it can't.
 
 ---
 

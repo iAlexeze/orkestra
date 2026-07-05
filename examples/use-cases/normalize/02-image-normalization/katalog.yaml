@@ -13,8 +13,6 @@ spec:
     app:
       crdFile: ./crd.yaml
 
-      workers: 2
-      resync: 30s
 
       # ── Normalize ──────────────────────────────────────────────────────────
       normalize:
@@ -43,8 +41,10 @@ spec:
             action: deny
 
       operatorBox:
-        default: true
 
+        reconciler:
+          workers: 2
+          resync: 30s
         status:
           fields:
             - path: phase

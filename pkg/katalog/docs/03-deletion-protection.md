@@ -39,14 +39,16 @@ Built-in types (ConfigMap, Deployment) are excluded — they are not CRDs and ca
 
 ## Protected GVRs
 
-`DeletionProtectionGVRs()` returns the four rules that back the two webhook entries:
+`DeletionProtectionGVRs()` returns the rules that back the two webhook entries:
 
-| Resource | Group | Entry |
-|----------|-------|-------|
+| Resource | Source | Entry |
+|----------|--------|-------|
 | `customresourcedefinitions` | `apiextensions.k8s.io/v1` | Entry 1 (CRD, name-filtered) |
-| `deployments` | `apps/v1` | Entry 2 (ObjectSelector) |
-| `services` | `v1` (core) | Entry 2 (ObjectSelector) |
-| `ingresses` | `networking.k8s.io/v1` | Entry 2 (ObjectSelector) |
+| `deployments`, `services`, `ingresses` | Orkestra internal built-ins | Entry 2 (ObjectSelector) |
+| owner CRDs (e.g. `infras`, `securityconfigs`) | `CRDEntry.APITypes` | Entry 2 (ObjectSelector) |
+| custom children (e.g. `applications`, `certificates`) | `onCreate.custom` / `onReconcile.custom` entries | Entry 2 (ObjectSelector) |
+
+Custom children — resources declared in `onCreate.custom` or `onReconcile.custom` blocks — are now included in Entry 2. Any child resource Orkestra creates on behalf of an owner CR (ArgoCD `Application`, cert-manager `Certificate`, Crossplane `PostgreSQLInstance`, etc.) is registered in the deletion-protection webhook. The `ObjectSelector` (`orkestra.io/deletion-protection=true`) ensures only labeled instances are intercepted.
 
 ## In-cluster vs local
 

@@ -42,7 +42,6 @@ spec:
         kind: Website
         plural: websites
       operatorBox:
-        default: true
         onCreate:
           deployments:
             - image: nginx
@@ -287,12 +286,14 @@ kubectl logs -n orkestra-system deployment/orkestra-runtime | grep -i katalog
 
 ### RBAC permission denied
 
-Regenerate the bundle and re-apply:
+Regenerate the bundle and re-apply — the bundle derives permissions from your current Katalog, so stale bundles are the most common cause:
 
 ```bash
 ork generate bundle -f katalog.yaml -o bundle.yaml
 kubectl apply -f bundle.yaml
 ```
+
+If the error mentions `attempting to grant RBAC permissions not currently held` on a `clusterroles` or `clusterrolebindings` resource, your operator is creating Roles or ClusterRoles. Orkestra automatically adds `escalate` and `bind` to the runtime ClusterRole for this case — regenerating the bundle picks up those verbs. See [RBAC — ClusterRole management](security/02-rbac.md#clusterrole-and-role-management-the-escalate-verb).
 
 ### Webhooks not working
 

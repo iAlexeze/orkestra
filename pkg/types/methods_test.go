@@ -27,7 +27,7 @@ func TestSetQueueDepth_UsesDefault(t *testing.T) {
 
 func TestSetQueueDepth_UsesPerCRDValue(t *testing.T) {
 	c := emptyCRD()
-	c.Queue.MaxDepth = 25
+	c.OperatorBox.Reconciler = &orktypes.ReconcilerConfig{Queue: orktypes.Queue{MaxDepth: 25}}
 	assert.Equal(t, 25, c.SetQueueDepth(10))
 }
 
@@ -40,7 +40,7 @@ func TestSetWorkers_UsesDefault(t *testing.T) {
 
 func TestSetWorkers_UsesPerCRDValue(t *testing.T) {
 	c := emptyCRD()
-	c.Workers = 8
+	c.OperatorBox.Reconciler = &orktypes.ReconcilerConfig{Workers: 8}
 	assert.Equal(t, 8, c.SetWorkers(4))
 }
 
@@ -111,7 +111,7 @@ func TestDefaultReconcile_NilDefaultsTrue(t *testing.T) {
 
 func TestDefaultReconcile_ExplicitFalse(t *testing.T) {
 	c := emptyCRD()
-	c.OperatorBox.Default = boolp(false)
+	c.OperatorBox.Reconciler = &orktypes.ReconcilerConfig{Default: boolp(false)}
 	assert.False(t, c.DefaultReconcile())
 }
 
@@ -124,7 +124,7 @@ func TestDefaultQueue_NilDefaultsFalse(t *testing.T) {
 
 func TestDefaultQueue_ExplicitTrue(t *testing.T) {
 	c := emptyCRD()
-	c.Queue.Shared = boolp(true)
+	c.OperatorBox.Reconciler = &orktypes.ReconcilerConfig{Queue: orktypes.Queue{Shared: boolp(true)}}
 	assert.True(t, c.SharedQueue())
 }
 
@@ -430,7 +430,7 @@ func TestWithHooksDecl_Nil(t *testing.T) {
 
 func TestWithHooksDecl_WithLocation(t *testing.T) {
 	c := emptyCRD()
-	c.OperatorBox.Hooks = &orktypes.HookDeclaration{Location: "hooks/"}
+	c.OperatorBox.Reconciler = &orktypes.ReconcilerConfig{Hooks: &orktypes.HookDeclaration{Location: "hooks/"}}
 	assert.True(t, c.WithHooksDecl())
 }
 
@@ -441,6 +441,6 @@ func TestWithConstructorDecl_Nil(t *testing.T) {
 
 func TestWithConstructorDecl_WithLocation(t *testing.T) {
 	c := emptyCRD()
-	c.OperatorBox.ConstructorDecl = &orktypes.ConstructorDeclaration{Location: "cmd/"}
+	c.OperatorBox.Reconciler = &orktypes.ReconcilerConfig{ConstructorDecl: &orktypes.ConstructorDeclaration{Location: "cmd/"}}
 	assert.True(t, c.WithConstructorDecl())
 }

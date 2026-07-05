@@ -76,46 +76,11 @@ e2e:
 	$(DEV_OUTPUT_DIR)/$(BINARY_NAME) e2e
 
 # ── docker / push / release ───────────────────────────────────────────────────
-# Builds the production runtime binary, copies it to the current directory for
-# Docker build, then restores the development binary (if it exists) or leaves
-# a clean state. This round‑trip is required because the Docker image should
-# contain ONLY the production binary (runtime tag), not the full CLI.
+# Copies the production runtime binary into the current directory for docker build,
+# then removes it. The Docker image contains ONLY the production binary (runtime tag).
 .PHONY: docker
 docker: build-runtime
-	@echo "📦 Preparing production binary for Docker image..."
 	@cp $(PROD_OUTPUT_DIR)/$(BINARY_NAME) ./$(BINARY_NAME)
 	docker build -t $(IMAGE) .
 	@rm -f ./$(BINARY_NAME)
-	@if [ -f $(DEV_OUTPUT_DIR)/$(BINARY_NAME) ]; then \
-		cp $(DEV_OUTPUT_DIR)/$(BINARY_NAME) ./$(BINARY_NAME); \
-		echo "🔧 Restored development binary to ./$(BINARY_NAME)"; \
-	fi
 	@echo "✅ Docker image built: $(IMAGE)"
-
-.PHONY: push
-push:
-	docker push $(IMAGE)
-
-.PHONY: release
-release: docker push
-
-# ── clean ─────────────────────────────────────────────────────────────────────
-.PHONY: clean
-clean:
-	@rm -f $(DEV_OUTPUT_DIR)/$(BINARY_NAME)
-	@rm -rf $(PROD_OUTPUT_DIR)
-	@echo "✅ Removed all local builds"
-
-# ── help ──────────────────────────────────────────────────────────────────────
-.PHONY: help
-help:
-	@echo "  registry       generate type registry from Katalog"
-	@echo "  build          compile full development CLI (all commands)"
-	@echo "  build-runtime  compile production binary (only 'ork run')"
-	@echo "  validate       run katalog validation (using development binary)"
-	@echo "  simulate       run simulation tests (using development binary)"
-	@echo "  e2e            run end‑to‑end tests (using development binary)"
-	@echo "  docker         build-runtime + copy into Docker image"
-	@echo "  push           push Docker image to registry"
-	@echo "  release        docker + push"
-	@echo "  clean          remove all local builds"

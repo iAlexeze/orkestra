@@ -1,11 +1,18 @@
 // pkg/types/types_operatorbox.go
 package types
 
-import "github.com/orkspace/orkestra/domain"
+import (
+	"github.com/orkspace/orkestra/domain"
+)
 
 // ── OperatorBoxConfig ──────────────────────────────────────────────────────────
 
-type OperatorBoxConfig struct {
+// ReconcilerConfig groups the reconciler identity fields that are declared
+// under operatorBox.reconciler: in a katalog. Separating them from the rest of
+// OperatorBoxConfig makes the YAML shape explicit: everything under reconciler:
+// concerns which implementation runs; everything at the operatorBox: level
+// concerns what resources to manage and how.
+type ReconcilerConfig struct {
 	// Default controls which reconciler implementation is used for this CRD.
 	//
 	// true  — GenericReconciler manages the full lifecycle automatically.
@@ -16,30 +23,57 @@ type OperatorBoxConfig struct {
 	// false — Custom reconciler. The user provides the full reconcile implementation.
 	//         Constructor must be declared (in YAML mode) or set directly (Go mode).
 	//         GenericReconciler is not used — the user owns the entire lifecycle.
+	//
+	// Omit reconciler: entirely for declarative-only CRDs — GenericReconciler is
+	// the default and default: true is implied.
 	Default *bool `yaml:"default,omitempty" json:"default,omitempty" validate:"omitempty"`
 
-	// Finalizers — per-CRD finalizer list. Overrides the Katalog-level finalizer.
-	// Applied by GenericReconciler when a CR is first created.
-	// Stripped one-by-one before delete to unblock Kubernetes garbage collection.
-	// If empty, falls back to the Katalog-level finalizer declaration.
-	Finalizers []string `yaml:"finalizers,omitempty" json:"finalizers,omitempty" validate:"omitempty"`
-
-	// ── YAML mode declarations ────────────────────────────────────────────────
-	// These fields declare where Go functions live in your codebase or in remote modules.
-	// ork generate reads them and emits HookRegistry / ReconcilerRegistry entries.
-	// Katalog validation reads them to wire HookFactory and Constructor at startup.
-
-	// Hooks — declares a Go hook function for Default: true CRDs in typed or dynamic mode.
+	// Hooks — declares a Go hook function for GenericReconciler CRDs in typed or dynamic mode.
 	// The function at Location.Function must match: func() domain.AnyReconcileHooks
 	// Use this when you want full Go control over reconcile logic.
 	// For declarative resource management without Go code, use OnCreate/OnReconcile/OnDelete.
 	// Only one of Hooks or OnCreate/OnReconcile/OnDelete should be used — not both.
 	Hooks *HookDeclaration `yaml:"hooks,omitempty" json:"hooks,omitempty" validate:"omitempty"`
 
-	// ConstructorDecl — declares a custom reconciler constructor for Default: false CRDs.
+	// ConstructorDecl — declares a custom reconciler constructor for default: false CRDs.
 	// The function at Location.Function must match: NewReconcilerFunc
-	// Required when Default: false in YAML mode.
+	// Required when default: false in YAML mode.
 	ConstructorDecl *ConstructorDeclaration `yaml:"constructor,omitempty" json:"constructor,omitempty" validate:"omitempty"`
+
+	// Profile — named reconciler tuning preset. Built-ins: high-throughput, conservative, development.
+	// User-defined profiles declared in profiles.reconciler take precedence over built-ins.
+	// Inline Workers/Resync/Queue override the profile when both are declared.
+	Profile string `yaml:"profile,omitempty" json:"profile,omitempty"`
+
+	// Workers — number of concurrent reconcile goroutines for this CRD.
+	// 0 → uses Orkestra-level default (DEFAULT_WORKERS env var).
+	Workers int `yaml:"workers,omitempty" json:"workers,omitempty" validate:"omitempty,gte=1,lte=50"`
+
+	// Resync — full re-list interval for the informer cache.
+	// 0 → uses Orkestra-level default (DEFAULT_RESYNC env var).
+	Resync Duration `yaml:"resync,omitempty" json:"resync,omitempty"`
+
+	// Queue — work queue tuning for this CRD.
+	Queue Queue `yaml:"queue,omitempty" json:"queue,omitempty"`
+}
+
+// OperatorBoxConfig is the per-CRD configuration block in a Katalog. It controls
+// which reconciler implementation runs, what resources to manage, and how lifecycle
+// hooks, status, admission, autoscaling, and rollback behave.
+//
+// The reconciler: sub-block is the only field that determines reconciler identity.
+// All other fields (onCreate, status, admission, etc.) are independent of which
+// reconciler is in use and remain at the top level.
+type OperatorBoxConfig struct {
+	// Reconciler groups the reconciler identity fields. Omit for declarative-only CRDs.
+	// nil → GenericReconciler with default: true.
+	Reconciler *ReconcilerConfig `yaml:"reconciler,omitempty" json:"reconciler,omitempty"`
+
+	// Finalizers — per-CRD finalizer list. Overrides the Katalog-level finalizer.
+	// Applied by GenericReconciler when a CR is first created.
+	// Stripped one-by-one before delete to unblock Kubernetes garbage collection.
+	// If empty, falls back to the Katalog-level finalizer declaration.
+	Finalizers []string `yaml:"finalizers,omitempty" json:"finalizers,omitempty" validate:"omitempty"`
 
 	// ── Declarative hook templates ────────────────────────────────────────────
 	// Only valid when Default: true and mode: dynamic.
@@ -164,6 +198,11 @@ type HookDeclaration struct {
 
 	// Resources — Kubernetes resource types this hook manages (used for RBAC generation).
 	Resources []ManagedResource `json:"resources,omitempty" yaml:"resources,omitempty"`
+
+	// RunHooksFirst — when true, the hook runs before declarative templates.
+	// When false (default), declarative templates run first and the hook is
+	// additive — the 90/10 hybrid pattern.
+	RunHooksFirst bool `yaml:"runHooksFirst,omitempty" json:"runHooksFirst,omitempty"`
 }
 
 // ConstructorDeclaration declares where a custom reconciler constructor lives.

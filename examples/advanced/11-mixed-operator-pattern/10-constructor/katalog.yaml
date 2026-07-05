@@ -23,31 +23,32 @@ spec:
         # instead of *unstructured.Unstructured.
         location: github.com/orkspace/orkestra-mixed-operator-pattern/10-constructor/api/v1alpha1
         alias: pipev1alpha1
-      workers: 5       # pipelines can be IO-bound — more workers tolerated
-      resync: 10s      # short resync to check Job completion quickly
 
       operatorBox:
-        # default: false tells Orkestra NOT to use the GenericReconciler.
-        # The constructor below provides the complete reconcile implementation.
-        default: false
+        reconciler:
+          # default: false tells Orkestra NOT to use the GenericReconciler.
+          # The constructor below provides the complete reconcile implementation.
+          default: false
 
-        # constructor replaces the GenericReconciler entirely.
-        # The function must match:
-        #   func(kube *kubeclient.Kubeclient,
-        #        informer cache.SharedIndexInformer,
-        #        ev *event.Event) domain.Reconciler
-        constructor:
-          location: github.com/orkspace/orkestra-mixed-operator-pattern/10-constructor/reconciler
-          function: NewPipelineReconciler
-          alias: pipeconstructor
-          # 
-          # (Required for RBAC)
-          # Define the resources managed by this reconciler
-          resources:
-            - kind: Job           # For built-ins, only kind is required
-              group: batch
-              version: v1
-              plural: jobs
+          # constructor replaces the GenericReconciler entirely.
+          # The function must match:
+          #   func(kube *kubeclient.Kubeclient,
+          #        informer cache.SharedIndexInformer,
+          #        ev *event.Event) domain.Reconciler
+          constructor:
+            location: github.com/orkspace/orkestra-mixed-operator-pattern/10-constructor/reconciler
+            function: NewPipelineReconciler
+            alias: pipeconstructor
+            #
+            # (Required for RBAC)
+            # Define the resources managed by this reconciler
+            resources:
+              - kind: Job           # For built-ins, only kind is required
+                group: batch
+                version: v1
+                plural: jobs
+          workers: 5       # pipelines can be IO-bound — more workers tolerated
+          resync: 10s      # short resync to check Job completion quickly
 
         # Note: onCreate, onReconcile, onDelete, hooks, and status.fields
         # are all ignored when reconciler.default is false. The constructor

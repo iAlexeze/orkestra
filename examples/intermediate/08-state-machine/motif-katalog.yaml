@@ -15,11 +15,6 @@ spec:
         kind: Pipeline
         plural: pipelines
 
-      workers: 4
-      resync: 10s
-      queue:
-        maxDepth: 1000
-        failureThreshold: 0.5
 
       imports:
         - motif: ./motif/admission.yaml
@@ -28,4 +23,11 @@ spec:
 
       # operatorBox:
       #   default: true
+      operatorBox:
+        reconciler:
+          workers: 4
+          resync: 10s
+          queue:
+            maxDepth: 1000
+            failureThreshold: 0.5
       # No inline code – everything comes from motifs

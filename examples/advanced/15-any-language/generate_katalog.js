@@ -19,10 +19,11 @@ function generateKatalog(appName, image, port, replicas, ingressHost) {
             kind: 'WebApp',
             plural: 'webapps',
           },
-          workers: 2,
-          resync: '30s',
           operatorBox: {
-            default: true,
+            reconciler: {
+              workers: 2,
+              resync: '30s',
+            },
             onCreate: {
               deployments: [
                 {
@@ -55,7 +56,7 @@ function generateKatalog(appName, image, port, replicas, ingressHost) {
         host: ingressHost,
         serviceName: '{{ .metadata.name }}-svc',
         servicePort: port,
-        ingressClass: 'nginx',
+        className: 'nginx',
         reconcile: true,
       },
     ];

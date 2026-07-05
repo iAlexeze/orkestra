@@ -8,7 +8,6 @@
 
 ```yaml
 operatorBox:
-  default: true
   crdFile: my-operator-crd.yaml
 
   onDelete:

@@ -24,8 +24,6 @@ spec:
         version: v1
         kind: WebApp
         plural: webapps
-      workers: 2
-      resync: 1m
 
       # Import the web-service motif and wire its inputs to spec fields.
       # The motif provides the Deployment, Service, and optional Ingress.
@@ -39,7 +37,9 @@ spec:
             resourceProfile: "{{ .spec.resourceProfile }}"
 
       operatorBox:
-        default: true
+        reconciler:
+          workers: 2
+          resync: 1m
         status:
           fields:
             - path: phase

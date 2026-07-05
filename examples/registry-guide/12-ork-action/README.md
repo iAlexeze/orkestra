@@ -48,7 +48,17 @@ git init
 git remote add origin https://github.com/myorg/ork-automation.git
 ```
 
-**2. Ensure versions match**
+**2. Add the `ORK_ACTION_TOKEN` secret**
+
+In your repository go to **Settings → Secrets and variables → Actions → New repository secret** and add:
+
+| Name | Value |
+|------|-------|
+| `ORK_ACTION_TOKEN` | A [Personal Access Token](https://github.com/settings/tokens) with **`write:packages`** scope |
+
+The workflows use this token to push the katalog artifact to `ghcr.io`. Without write access to packages the push step will fail with a 403.
+
+**3. Ensure versions match**
 
 The tag you push becomes the artifact version. Both `katalog.yaml` files should have `metadata.version` set to match:
 
@@ -60,7 +70,7 @@ metadata:
 
 If the tag and `metadata.version` differ, the push step fails with a version mismatch error and nothing is published.
 
-**5. Commit and push**
+**4. Commit and push**
 
 ```bash
 git add .
@@ -148,6 +158,20 @@ imports:
 ```
 
 That is the exact import block used in [11-typed-komposer](../11-typed-komposer/README.md). A consumer pulls, validates, simulates, and deploys without writing a single line of Go or YAML.
+
+---
+
+## Troubleshooting
+
+**Push fails with 403 Forbidden**
+
+```text
+Pushing webapp-operator:v1.0.0...
+push failed: pushing: failed to perform "Exists" on destination: HEAD "https://ghcr.io/v2/myorg/katalogs/webapp-operator/blobs/sha256:690f052c6781a039e2c3810eaf604e730e8f2634204039ceb0ad7bbae33034d5": response status code 403: Forbidden
+Error: Process completed with exit code 1.
+```
+
+Your `ORK_ACTION_TOKEN` exists but does not have write access to packages. Go to the token settings on GitHub and ensure the **`write:packages`** scope is checked, then update the secret value in the repository.
 
 ---
 

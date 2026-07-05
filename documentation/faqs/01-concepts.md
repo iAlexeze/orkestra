@@ -113,7 +113,6 @@ spec:
         kind: Website
         plural: websites
       operatorBox:
-        default: true
         onCreate:
           deployments:
             - image: "{{ .spec.image }}"
@@ -155,7 +154,9 @@ imports:
 spec:
   crds:
     postgres:
-      workers: 8      # override for production
+      operatorBox:
+        reconciler:
+          workers: 8      # override for production
 ```
 
 The `spec.crds` inline block always wins on name conflict — it is the override
@@ -373,7 +374,7 @@ declared alongside reconcile templates:
 
 ---
 
-## Next
+## Further reading
 
 - **[Running](./02-running.md)** — setup, configuration, and operations
 - **[Usage](./03-usage.md)** — validation, mutation, built-in kinds

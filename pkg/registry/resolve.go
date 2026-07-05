@@ -198,6 +198,27 @@ func (r *Ref) ShortName() string {
 	return parts[len(parts)-1] + ":" + r.Tag
 }
 
+// IsOCIRef reports whether s looks like an OCI pattern reference rather than
+// a local filesystem path. Returns true for bare name:tag, full registry
+// references, and oci:// URIs. Returns false for absolute paths, relative
+// paths (./  ../), and plain filenames without a version tag.
+func IsOCIRef(s string) bool {
+	if s == "" {
+		return false
+	}
+	if strings.HasPrefix(s, "oci://") {
+		return true
+	}
+	if strings.HasPrefix(s, "/") || strings.HasPrefix(s, "./") || strings.HasPrefix(s, "../") {
+		return false
+	}
+	// name:tag or registry/path:tag — colon at position > 1 (avoids Windows C:\)
+	if idx := strings.Index(s, ":"); idx > 1 {
+		return true
+	}
+	return looksLikeFull(s)
+}
+
 // ResolveForKind resolves a reference against the correct default registry
 // for the given pattern kind. A full OCI reference (contains a dot in the host)
 // or an oci:// prefix is used as-is regardless of kind.

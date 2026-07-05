@@ -16,8 +16,6 @@ spec:
         - ../03-cross-crd/crd-managed-database.yaml
         - ../03-cross-crd/database-cr.yaml
 
-      workers: 2
-      resync: 30s
       dependsOn:
         managed-database: healthy
 
@@ -42,6 +40,9 @@ spec:
             default: "false"
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
         cross:
           - crd: managed-database
             selector:

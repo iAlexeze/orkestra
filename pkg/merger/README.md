@@ -13,6 +13,7 @@ The merger package resolves and merges Katalog/Komposer YAML files into a single
 | `helm.go` | `loadHelmSource` — Helm chart render → Katalog template extraction |
 | `registry.go` / `registry_v2.go` | `loadRegistrySource` — fetch CRDs from the Orkestra registry |
 | `helper.go` | `mergeKatalogSecurity`, `mergeKatalogNotification`, `checkDuplicate`, `resolveEnvVar`, `writeTempFile`, `gitClone` |
+| `helm_cache.go` | Disk cache for git and remote Helm sources (`~/.orkestra/helm/`) + `WarmHelmSource` |
 
 ## Merge rules
 
@@ -73,3 +74,4 @@ Full step-by-step documentation is in [docs/](docs/README.md).
 | Add or understand a source type | [03 — Imports](docs/03-imports.md) |
 | Debug duplicate CRD name errors | [04 — Deduplication](docs/04-deduplication.md) |
 | Understand security/notification/providers inheritance | [05 — Top-Level Accumulation](docs/05-top-level-accumulation.md) |
+| Understand Helm and file source caching | [07 — Source Caching](docs/07-source-caching.md) |

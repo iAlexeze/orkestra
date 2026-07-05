@@ -1,3 +1,570 @@
+## v0.7.10 [UNRELEASED] — E2E DSL extensions, cluster improvements
+
+### `leaderElection:` on `kubectl.delete` and `kubectl.exec`
+
+`leaderElection:` was previously supported only on `port-forward` and `logs`. It now works on `delete` and `exec` as well, completing all four kubectl subcommands.
+
+`kubectl.delete` with `leaderElection:` resolves the current Lease holder at test time and deletes the pod by name — without hardcoding it. The leader-failover example now uses this for its "Kill the konductor pod" step, replacing a raw shell command embedded in YAML.
+
+`kubectl.exec` with `leaderElection:` runs a command inside the leader pod.
+
+### `include:` composition for `expect:`
+
+Long `expect:` sections can now be split across files in an `e2e/` subfolder and composed with `include:`:
+
+```yaml
+expect:
+  - include: ./e2e/infra-ready.yaml
+  - include: ./e2e/failover.yaml
+  - include: ./e2e/cleanup.yaml
+```
+
+Each include file carries the `expect:` root key. Phases can be read, improved, and scaled independently without touching the others. The three resilience examples (`leader-failover`, `crd-missing-recovery`, `admission-protection`) are refactored to use this pattern.
+
+### Type rename: `E2EKubectlPortForwardLeaderElection` → `E2EKubectlLeaderElection`
+
+The type is now used by all four kubectl subcommands. The old name was misleading. YAML schema keys (`leaderElection:`) are unchanged.
+
+### `ork create cluster` — `--workers` and `--version`
+
+`--workers <n>` provisions `n` worker nodes in addition to the control-plane. `--version <v>` selects which kind release to download and cache at `~/.orkestra/bin/kind-<version>`; previously hardcoded to `v0.27.0`. An explicit `--version` skips any `kind` binary already in PATH and uses the versioned cache entry. The same `--workers` flag is accepted on `ork e2e` and `ork push`.
+
+### `ork delete cluster`
+
+New command — the complement to `ork create cluster`. Deletes a kind cluster by name:
+
+```bash
+ork delete cluster
+ork delete cluster --name ork-e2e
+```
+
+### `e2e.New` Options struct
+
+`New(e2eFile string, opts Options)` replaces a long positional parameter list. `Workers` and `KindVersion` propagate into sub-runner `New` calls for imports.
+
+### `ork run <name>:<version>` — OCI positional argument
+
+`ork run postgres:v1.0.0` pulls the pattern from the registry (if not cached) and starts the runtime directly. No `-f` flag, no local files required.
+
+```bash
+ork run postgres:v1.0.0 --dev           # pull + cluster + runtime
+ork run postgres:v1.0.0 --dev --apply-cr  # + apply example crd.yaml and cr.yaml
+ork run postgres:v1.0.0 --dev --use-komposer  # run via the pattern's komposer.yaml
+ork run postgres:v1.0.0 --dev --refresh  # re-pull before running
+```
+
+`--apply-cr` applies `crd.yaml` from the pattern, waits for the CRD to establish, then applies `cr.yaml`. The operator starts with a CR already in the cluster.
+
+`--use-komposer` uses `komposer.yaml` from the cached pattern instead of `katalog.yaml`. Only applies to the OCI positional arg path.
+
+### `komposer.yaml` now included in pushed artifacts
+
+`komposer.yaml` was missing from `OptionalFiles` for Katalog patterns — it was never included as an OCI layer when pushing. Added `FileKomposer` constant and added it to the optional files list. Patterns must be re-pushed to include it.
+
+### Bug fixes
+
+- **Node-ready race**: `waitForNodesReady` checked the condition *type* (`Ready`) not its *status* (`True`). A node could be type=Ready status=False and still be reported ready. Replaced with `kubectl wait --for=condition=Ready node --all`.
+- **`--version` silently ignored when kind is in PATH**: `resolveKind` always checked PATH first regardless of the version flag. Fixed: empty version checks PATH then falls back to default; non-empty version skips PATH entirely.
+- **Spinner output leaking during setup waits**: `WaitForResource` used `.Run()` for ready checks, letting `kubectl rollout status` and `kubectl wait` write progress to the terminal while the spinner goroutine was running. Replaced with `.Output()`. `helm repo add/update` had the same issue during the Installing spinner.
+
+---
+
+## v0.7.9 — Reconciler configuration, user-defined profiles, kubectl DSL, and resilience examples
+
+### Resilience pack — new sub-examples
+
+Three new examples under `examples/resilience/`, each with `ork validate`, `ork simulate`, `ork run` walkthrough, and a fully passing `ork e2e`:
+
+| Example | What it teaches |
+|---------|-----------------|
+| `admission-protection` | Runtime validation as a resilience layer. Bad CR → `failureThreshold` exceeded → operator degrades. Patch to valid image → automatic recovery, no restart. |
+| `crd-missing-recovery` | Runtime CRD watch. Delete the CRD at runtime without deletion protection — Orkestra detects the disappearance, degrades, and retries. Re-apply the CRD and CR → full recovery. `lastError` preserved as audit trail. |
+| `leader-failover` | Leader election resilience. Helm-deployed runtime with `replicaCount: 2`. Kill the konductor pod — a follower is elected within `leaseDuration` and reconciliation continues. Covers lease inspection and leader election configuration. |
+
+### Live API documentation
+
+New concept section: **Every CRD is a Live API** (`documentation/concepts/live-api/`). Covers the runtime HTTP API on port 8080 — `/katalog`, `/katalog/{crd}`, `/katalog/{crd}/health`, `/katalog/{crd}/cr` — with real response shapes, `isKonductor` signal, `hasUnhealthyDependencies`, and the gateway API on port 8443. Includes a complete endpoint reference.
+
+### E2E concept: testing leader-led deployments
+
+New concept page (`documentation/concepts/e2e/06-leader-led-deployments.md`) explaining the follower routing problem and how `leaderElection` solves it. Covers `isKonductor`, lease namespace defaulting, when to use service vs. leader port-forward, and `kubectl.logs` with `leaderElection`. General-purpose — applies to any operator using Kubernetes leader election, not just Orkestra.
+
+### Source caching for `ork pull -f`
+
+`ork pull -f komposer.yaml` now pre-warms all three local cache namespaces so that subsequent `ork template`, `ork validate`, and `ork generate` calls are served from disk rather than making network requests:
+
+| Cache | Location | Key |
+|-------|----------|-----|
+| Git Helm sources | `~/.orkestra/helm/git/<sha256>/` | `SHA256(repo + ref + subpath)` |
+| Remote Helm repository charts | `~/.orkestra/helm/repo/<sha256>/` | `SHA256(repo + chart + version)` |
+| Remote HTTPS files | `~/.orkestra/files/<sha256>/` | `SHA256(url)` |
+
+Caches have no TTL — entries persist until `ork pull -f komposer.yaml --refresh` is run, which bypasses all three and overwrites the stored copies. `--refresh` on the OCI registry pull was already supported; it now extends to Helm and file sources.
+
+### Bug fixes
+
+- **Merger log noise**: git clone and Helm pull progress messages in `resolveGitChart` and `resolveRemoteChart` downgraded from `Info` to `Debug`. Only shown with `--debug`.
+- **charts/examples gitlink**: dangling gitlink (`mode 160000`) in the repository index with no `.gitmodules` caused `ork template` to fail on machines that cloned the repo via the merger. Re-added as regular tracked files.
+- **`.gitignore` bare `ork` pattern**: the entry `ork` matched `pkg/ork/` and blocked `pkg/ork/metrics.go` from being tracked. Changed to `/ork` (root-only).
+- **govulncheck in CI**: `go run golang.org/x/vuln/cmd/govulncheck@latest ./...` added to `validate-pr` workflow. `go install` + call-by-name was tried first but `GOPATH/bin` is not on `PATH` in CI runners.
+- **CVE dependency updates**: `x/crypto` → `v0.52.0`, `x/net` → `v0.55.0`, `containerd` → `v1.7.33`. Three remaining containerd advisories have `Fixed in: N/A` upstream and are not actionable.
+
+### Breaking: reconciler config moves inside `operatorBox`
+
+`workers`, `resync`, and `queue` (`maxDepth`, `failureThreshold`) move from the CRD root into `operatorBox.reconciler`. The `operatorBox` is the complete definition of what makes a CRD an operator — the reconciler runtime config belongs there alongside `onCreate`, `onReconcile`, `status`, and `admission`.
+
+```yaml
+# before
+spec:
+  crds:
+    service:
+      workers: 4
+      resync: 30s
+      queue:
+        maxDepth: 200
+        failureThreshold: 5
+      operatorBox:
+        onCreate: ...
+
+# after
+spec:
+  crds:
+    service:
+      operatorBox:
+        reconciler:
+          workers: 4
+          resync: 30s
+          queue:
+            maxDepth: 200
+            failureThreshold: 5
+        onCreate: ...
+```
+
+`ork validate` rejects the old layout with a clear error pointing to `operatorBox.reconciler`.
+
+### New profile class: `reconciler`
+
+Named presets for concurrency and queue tuning. Reference with `operatorBox.reconciler.profile`:
+
+| Profile | workers | resync | queue.maxDepth |
+|---------|---------|--------|----------------|
+| `high-throughput` | 10 | 5m | 1000 |
+| `conservative` | 2 | 1m | 100 |
+| `development` | 1 | 30s | 50 |
+
+Inline fields override the profile when both are declared. Retry is always exponential backoff — no `maxRetries`.
+
+### User-defined profiles for all profile classes
+
+All profile classes now support user-defined named presets declared in the `profiles:` block at the root of a Katalog or Motif. Previously only `networkPolicies`, `resourceQuotas`, `limitRanges`, `hpa`, `pdb`, and `rollingUpdate` supported this. Four additional classes are added:
+
+| Class | YAML key | What it tunes |
+|-------|----------|---------------|
+| Resources | `profiles.resources` | Container CPU and memory requests/limits |
+| Probes | `profiles.probes` | Probe timing — initialDelaySeconds, periodSeconds, failureThreshold, successThreshold, timeoutSeconds |
+| Container Security | `profiles.containerSecurity` | Per-container securityContext — allowPrivilegeEscalation, readOnlyRootFilesystem, runAsNonRoot, capabilities |
+| Pod Security | `profiles.podSecurity` | Pod-level securityContext — runAsNonRoot, runAsUser, runAsGroup, fsGroup |
+
+```yaml
+profiles:
+  resources:
+    - name: api-worker
+      requests: { cpu: "500m", memory: "256Mi" }
+      limits: { cpu: "2", memory: "1Gi" }
+
+  probes:
+    - name: slow-boot
+      initialDelaySeconds: 60
+      periodSeconds: 20
+      failureThreshold: 5
+      timeoutSeconds: 10
+
+  containerSecurity:
+    - name: strict-readonly
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      capabilities:
+        drop: [ALL]
+
+  podSecurity:
+    - name: ci-runner
+      runAsNonRoot: true
+      runAsUser: 2000
+      runAsGroup: 2000
+      fsGroup: 2000
+```
+
+User-defined profiles are resolved before Orkestra built-ins. Declaring a profile with the same name as a built-in overrides it for that Katalog. `ork validate` prints a warning when a built-in is shadowed.
+
+`operatorBox.autoscaler` does not yet support user-defined profiles — configure autoscaler behavior inline.
+
+### kubectl: DSL block for e2e assertions
+
+A `kubectl:` block can now sit alongside `resources:` and `commands:` in any `expect:` entry. Eleven subcommands:
+
+| Subcommand | Generates |
+|------------|-----------|
+| `get` | `kubectl get <kind> <name> -o jsonpath='{<field>}'` or `--output json/yaml` |
+| `logs` | `kubectl logs -n <ns> [-l <selector> \| <name> \| leaderElection] [--since=<since>]` |
+| `describe` | `kubectl describe <kind> <name/selector> -n <ns>` |
+| `exec` | `kubectl exec -n <ns> <pod> -- <command>` |
+| `port-forward` | Port-forward + curl as one operation; lifecycle managed by the runner |
+| `apply` | `kubectl apply -f <file>` or inline manifest via stdin |
+| `patch` | `kubectl patch <kind> <name> --type=<merge\|strategic\|json> -p '<patch>'` |
+| `delete` | `kubectl delete -f <file>` or by resource identity; `ignoreNotFound: true` available |
+| `events` | `kubectl events --for=<kind>/<name> -n <ns>` |
+| `auth` | `kubectl auth can-i <verb> <resource> [--as <as>]` |
+| `cp` | `kubectl cp <ns>/<pod>:<src>` — copies to temp file, asserts content, cleans up |
+| `top` | `kubectl top <pod\|node>` — requires metrics-server; installed automatically via Helm |
+
+All subcommands share six assertion fields: `equals`, `notEquals`, `outputContains`, `outputNotContains`, `greaterThan`, `lessThan`. `greaterThan` and `lessThan` parse the output as `float64` — the check fails if the output is not numeric. `jq` and `yq` extraction is supported where applicable. `apply` and `patch` run before read subcommands each iteration so mutations take effect before assertions check them.
+
+`commands[].run` now also supports `outputNotContains`.
+
+**`leaderElection` on `port-forward` and `logs`**
+
+Both `port-forward` and `logs` entries accept a `leaderElection` block that resolves the target pod from a Kubernetes `coordination.k8s.io/v1` Lease. In multi-replica deployments only the elected leader runs reconcilers — without this, port-forward may land on a follower returning stale state and `kubectl logs` may target the wrong pod. `leaderElection` guarantees assertions always run against the pod with authoritative state.
+
+```yaml
+kubectl:
+  port-forward:
+    - leaderElection:
+        lease: orkestra-konductor
+      namespace: orkestra-system
+      port: 8080
+      path: /katalog/myapp/health
+      jq: state
+      equals: "healthy"
+  logs:
+    - leaderElection:
+        lease: orkestra-konductor
+        namespace: orkestra-system
+      outputContains: "became konductor"
+```
+
+`service` and `pod` are optional when `leaderElection` is set. For `logs`, `name`, `labelSelector`, and `leaderElection` are mutually exclusive. `lease.namespace` defaults to the entry's `namespace`.
+
+**`kubectl.delete`**
+
+Supports deletion by file or by resource identity. `ignoreNotFound: true` silences errors when the resource is already gone — useful in cleanup steps or after cascade deletes.
+
+```yaml
+kubectl:
+  delete:
+    - file: ./crd.yaml
+      ignoreNotFound: true
+    - kind: Pod
+      name: my-pod
+      namespace: default
+      ignoreNotFound: true
+```
+
+**`wait:` on checkpoints and `port-forward` entries**
+
+Each `expect:` checkpoint accepts a `wait:` field — a duration to sleep before the polling loop starts. Individual `port-forward` entries accept their own `wait:` — a duration to sleep after the connection is established but before the curl request is sent.
+
+**Curl fix: HTTP 4xx/5xx responses no longer silently fail**
+
+Port-forward curl calls previously used `curl -sf`, which exits non-zero on any HTTP 4xx/5xx response. Health endpoints for degraded operators return HTTP 503, causing assertions against degraded state to time out rather than report the actual body. Changed to `curl -s` — the body is always returned and assertions check content directly.
+
+**Port-forward progress spinner**
+
+During the polling loop, a spinner shows the URL being curled and the resolved target (`curl http://localhost:PORT/path (→ pod/holder-name)`).
+
+**Tool pre-flight**: `ork e2e` scans the spec and installs missing tools before assertions run — `curl` (port-forward), `jq`, `yq` (apt-get / apk / brew), and `metrics-server` (Helm, with `--kubelet-insecure-tls` on kind clusters).
+
+**`include:` for `expect:` composition**
+
+Large test suites can be split across files. An `include:` entry is replaced in place by the checkpoints in the referenced file — position in the list determines where the expanded checkpoints appear in the run order. The file uses `expect:` as its root key.
+
+```yaml
+expect:
+  - include: ./infra-ready.yaml   # expands here — runs first
+  - name: Operator-specific check
+    after: cr-applied
+    timeout: 30s
+    resources:
+      - kind: MyOperator
+        name: my-resource
+  - include: ./cleanup.yaml       # expands here — runs last
+```
+
+`ork validate` expands all includes before reporting — the checkpoint list and count reflect the fully-expanded run order. Paths are resolved relative to the `e2e.yaml` that contains the `include:` entry.
+
+**Validator**: `ork validate` checks all `kubectl:` blocks — required fields, mutual exclusion, at least one assertion per entry, `jq`/`yq` format consistency, `top` kind must be `pod` or `node`.
+
+**Fixture**: `pkg/e2e/fixture/` is a living integration test with one checkpoint per subcommand. Rule: add a checkpoint when you add a subcommand.
+
+---
+
+## v0.7.8 — First-class NetworkPolicy, ResourceQuota, LimitRange, ClusterRole, ClusterRoleBinding; namespace-provisioner sub-pack
+
+### New resource types
+
+Five resource types promoted from placeholder stubs to fully managed Orkestra resources:
+
+| Type | Scope | Notes |
+|------|-------|-------|
+| `NetworkPolicy` | Namespaced | Profile or explicit ingress/egress/policyTypes |
+| `ResourceQuota` | Namespaced | Profile or explicit hard map |
+| `LimitRange` | Namespaced | Explicit limit items |
+| `ClusterRole` | Cluster | No OwnerReferences — owned via `orkestra.io/owner` label |
+| `ClusterRoleBinding` | Cluster | RoleRef immutability handled (delete + recreate on change) |
+
+### New profiles
+
+**NetworkPolicy profiles** — set `profile:` on any networkPolicy entry:
+
+| Profile | Effect |
+|---------|--------|
+| `deny-all` | Block all ingress and egress |
+| `deny-all-ingress` | Block all ingress |
+| `deny-all-egress` | Block all egress |
+| `allow-same-namespace` | Allow ingress from pods in the same namespace |
+| `allow-dns-egress` | Allow egress on port 53 (UDP + TCP) |
+
+**ResourceQuota profiles** — set `profile:` on any resourceQuota entry:
+
+| Profile | Pods | CPU | Memory |
+|---------|------|-----|--------|
+| `small` | 10 | 2 | 4Gi |
+| `medium` | 20 | 4 | 8Gi |
+| `large` | 50 | 8 | 16Gi |
+| `xlarge` | 100 | 16 | 32Gi |
+
+### User-defined profiles
+
+All six profile classes now support user-defined named presets declared in the `profiles:` block at the root of a Katalog or Motif:
+
+```yaml
+profiles:
+  networkPolicies:
+    - name: org-deny-all
+      policyTypes: [Ingress, Egress]
+  resourceQuotas:
+    - name: org-medium
+      hard: { pods: "25", cpu: "4", memory: "8Gi" }
+  limitRanges:
+    - name: org-container-defaults
+      limits:
+        - type: Container
+          default: { cpu: 500m, memory: 512Mi }
+          defaultRequest: { cpu: 100m, memory: 128Mi }
+  hpa:
+    - name: org-conservative
+      targetCPUUtilizationPercentage: "70"
+  pdb:
+    - name: org-at-least-one
+      minAvailable: "1"
+  rollingUpdate:
+    - name: org-safe
+      maxSurge: "1"
+      maxUnavailable: "0"
+```
+
+User profiles resolve before built-ins. Motif-declared profiles merge into the importing Katalog's registry; duplicate names in the same class across Katalog and Motif are a hard error at load time. `ork validate` shows the profile count per class in Motif output.
+
+LimitRange profiles are always user-defined — there are no built-in LimitRange presets.
+
+### Katalog validation
+
+`ork validate` now rejects unknown profile names for all six profile families (HPA, PDB, RollingUpdate, NetworkPolicy, ResourceQuota, LimitRange) and `fromNamespace` set without `toNamespaces` or vice versa.
+
+### Simulate: cross-namespace copy auto-skip
+
+Resources declaring `fromNamespace` / `toNamespaces` are automatically skipped before the fake reconciler runs. A note is printed for each skipped resource. Use `ork e2e` to verify cross-namespace copies against a real cluster.
+
+### E2E: per-entry waits and setup-complete lifecycle
+
+- `setup.apply` and `setup.helm` entries support an inline `wait:` list that blocks after each step
+- New lifecycle event `after: setup-complete` for infrastructure assertions before the CR is applied. This is now the default when `after:` is omitted
+- `spec.crd` and `spec.cr` are optional when `spec.custom.target: kubernetes` is set
+
+### ork validate output consistency
+
+Simulate and Motif output now use the same `●` header + structured fields format as Katalog and E2E.
+
+### Chart: gateway PDB + self-test
+
+Gateway PodDisruptionBudget added (`enabled: true`, `minAvailable: 1`). The Orkestra Helm chart now ships with `charts/orkestra/e2e.yaml` — a `custom.target: kubernetes` spec that installs and validates the chart itself using `ork e2e`.
+
+### New sub-pack: `use-cases/namespace-provisioner`
+
+```bash
+ork init --pack use-cases/namespace-provisioner
+```
+
+Four progressive examples building a production namespace provisioner — a single CRD that provisions a namespace with quota, RBAC, and network policy in one apply:
+
+| Example | What you get |
+|---------|-------------|
+| `01-explicit` | Hard-coded quota, ClusterRole, ClusterRoleBinding, NetworkPolicy — every resource the operator emits, fully visible |
+| `02-profiles` | Same eight resources; sizes via built-in profiles (ResourceQuota: small/medium/large/xlarge, NetworkPolicy: allow-same-namespace / deny-all-egress) |
+| `03-user-defined` | User-defined profiles declared in a shared Motif; each team tier references a named preset — one Motif entry = one new tier |
+| `04-motif-profiles` | Org-wide policy in a single Motif file consumed by any Katalog that imports it |
+
+The step-by-step design narrative lives in `documentation/guides/namespace-provisioner/`.
+
+Because the operator creates ClusterRoles and ClusterRoleBindings, Orkestra automatically adds `escalate` and `bind` to the generated bundle — required by Kubernetes privilege escalation prevention. These verbs are absent from operators that manage no RBAC resources.
+
+### ork create pattern
+
+`ork create pattern` scaffolds a complete operator suite in one command:
+
+```bash
+ork create pattern
+ork create pattern -o ./my-operator/
+ork create pattern --typed
+```
+
+**Always generated:** `katalog.yaml`, `simulate.yaml`, `e2e.yaml`, `README.md`.
+
+**Typed mode** (`--typed`, `--add-hook`, `--add-constructor`): also generates `values.yaml`, `Makefile`, and `Dockerfile` — ready to build, push, and release a runtime binary.
+
+---
+
+## v0.7.7 — New packs, typed group overrides, universal e2e, breaking: operatorBox.reconciler
+
+### New pack: `from-controller-runtime`
+
+```bash
+ork init my-operator --pack from-controller-runtime
+```
+
+Eight examples tracing the migration path from an existing controller-runtime operator to Orkestra:
+
+| Example | What you get |
+|---------|-------------|
+| `00-baseline` | The controller-runtime starting point |
+| `01-declarative` | Zero Go. Same behaviour. Two CRDs including a Worker with `rotateAfter: 30d` token rotation |
+| `02-hybrid` | Declarative + one Go hook for what templates can't express |
+| `03-hooks-only` | All resources in Go, typed access to your CRD spec |
+| `04-constructor-migration` | Lift the existing reconcile loop into Orkestra's constructor |
+| `05-constructor-orkestra-resources` | Same constructor, Orkestra resource helpers replace manual Get/Create/Patch |
+| `06-ork-migrate` | `ork migrate` rewrites controller-runtime reconcilers automatically |
+| `07-all-options` | All five options in one binary via Komposer — `komposer-local.yaml` for local dev, `komposer.yaml` for OCI distribution |
+
+The step-by-step narrative lives in `documentation/guides/migration/`.
+
+### New pack: `ecosystem-composition`
+
+```bash
+ork init my-operator --pack ecosystem-composition
+```
+
+Seven examples building an internal developer platform on top of the tools you already run:
+
+| Example | What you get |
+|---------|-------------|
+| `00-argocd` | `App` CRD → ArgoCD Application. Admission. Status propagation |
+| `01-cert-manager` | `SecurityConfig` CRD → Certificate |
+| `02-prometheus` | `MonitoringConfig` CRD → ServiceMonitor + PrometheusRule |
+| `03-crossplane` | `Infra` CRD → Crossplane Composite Claim |
+| `04-platform-stack` | All four, composed with Komposer |
+| `05-policy-layer` | Shared admission motif across all CRDs. Deletion protection |
+| `06-all-in-one` | Single `PlatformResource` CRD with `workloadType` discriminator routing to the right tool |
+
+The `06-all-in-one` guide (`documentation/guides/ecosystem/07-all-in-one.md`) includes a full trade-off comparison between focused CRDs and a unified CRD.
+
+### New pack: `resilience`
+
+```bash
+ork init my-operator --pack resilience
+```
+
+Operators that stay running — through panics, cascading failures, and degraded dependencies:
+
+| Example | What you get |
+|---------|-------------|
+| `safe-reconcile` | Panic isolation in the worker pool. Nil pointer in a typed hook, caught by `safeReconcile`. Two declarative CRDs keep reconciling while the typed one degrades. |
+
+The deep-dive lives in `documentation/concepts/operatorbox/01-reconcile-pipeline/03-panic-recovery.md`.
+
+### Typed apiTypes group override (marketplace-ready patterns)
+
+Typed katalogs can now be published under one API group and consumed under another. Set `apiTypes.group` in your komposer override — the generated registry uses `AddKnownTypeWithName` to register the Go type under the override group rather than the package's compiled-in `GroupVersion` constant. `apiTypes.location` is now purely the import path for the Go structs, not an implicit API identity contract.
+
+This enables the marketplace model: pull a typed pattern from OCI, set your org's group, build, run. No source fork required.
+
+### Patch API simplified
+
+`PatchStatus`, `PatchFinalizers`, `PatchLabels`, `PatchAnnotations`, and `PatchSpec` no longer take an explicit `gvr schema.GroupVersionResource`. GVR is resolved internally from the object's Go type via the scheme and REST mapper — the same mechanism used by `Get`, `Create`, and `Patch`. Constructor reconcilers no longer need to reference `GroupVersionResource` constants at all.
+
+```go
+// before
+r.kube.PatchStatus(ctx, obj, apiv1.GroupVersionResource, fields)
+
+// after
+r.kube.PatchStatus(ctx, obj, fields)
+```
+
+### Breaking: `operatorBox.reconciler` sub-block
+
+`default`, `hooks`, and `constructor` have moved under an `operatorBox.reconciler:` key.
+
+**Before:**
+```yaml
+operatorBox:
+  default: true
+  hooks:
+    location: ...
+    function: ...
+```
+
+**After:**
+```yaml
+operatorBox:
+  reconciler:
+    hooks:
+      location: ...
+      function: ...
+```
+
+Migration rules:
+- **Declarative-only katalogs** (no `hooks:` or `constructor:`): delete `default: true` entirely. A nil `reconciler:` block means GenericReconciler — `default: true` is now implicit and redundant.
+- **Hook katalogs**: wrap `hooks:` (and `default: true` if present) under `reconciler:`. Move `default:` and `hooks:` in by two spaces; everything else (`onCreate:`, `status:`, etc.) stays at the `operatorBox:` level.
+- **Constructor katalogs**: wrap `default: false` and `constructor:` under `reconciler:`. Move both in by two spaces.
+
+`utils.StrictUnmarshal` rejects unknown fields, so an old katalog with top-level `default:` or `hooks:` under `operatorBox` will fail at parse time with a clear error before any validation runs.
+
+### `ork e2e` is now a universal Kubernetes test harness
+
+`spec.customOperator: true` is replaced by `spec.custom.target: kubernetes`. The new
+field names the thing being tested rather than describing what to skip.
+
+**Supported targets:**
+
+| Value | Status |
+|-------|--------|
+| `kubernetes` | Supported |
+| `container` | Coming soon |
+
+**Migration** — find and replace in all `e2e.yaml` files:
+
+```yaml
+# before
+spec:
+  customOperator: true
+
+# after
+spec:
+  custom:
+    target: kubernetes
+```
+
+`ork validate e2e` now fast-fails with a clear error on unknown target values. If
+`container` is specified, it exits with "coming soon" rather than silently doing nothing.
+
+The docs reframe `custom.target: kubernetes` as what it is: `ork e2e` with any
+workload that runs on Kubernetes — operators, Helm charts, raw manifests, third-party
+tools. The cluster lifecycle, assertion polling, and cleanup are Orkestra's. The
+workload is yours.
+
+New guide: `documentation/guides/e2e-universal.md` — "Test Anything That Runs in Kubernetes"
+
+---
+
 ## v0.7.6 — Registry Guide pack, CLI UX polish, bug fixes
 
 ### Registry Guide pack

@@ -28,10 +28,11 @@ spec:
         kind: Processor
         plural: processors
 
-      workers: 2
-      resync: 30s
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
         cross:
           # Monitors a particular Loader CR called 'my-loader'
           - crd: loader
@@ -60,6 +61,7 @@ spec:
           - crd: loader
             source:
               host: "http://localhost:8080"
+              type: metrics
               cacheFor: 30s
             as: loaderCRDInfo
 
@@ -70,10 +72,6 @@ spec:
             when:
               - field: cross.loader.metrics.queueDepth
                 greaterThan: "60"
-                source:
-                  # host: "http://orkestra-runtime.loader-system:8080"  # > if running in a pod
-                  host: "http://localhost:8080"
-                  cacheFor: 10s
           do:
             workers: 8
             queueDepth: 800

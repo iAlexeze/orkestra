@@ -29,12 +29,15 @@ package reconciler
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/children"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // patchStatusWithChildren is the top-level status entry point called from
@@ -47,6 +50,7 @@ func (r *GenericReconciler[PTR]) patchStatusWithChildren(
 	obj PTR,
 	resolver *orktmpl.Resolver,
 	reconcileErr error,
+	valResult ...*ValidationResult,
 ) {
 	// ── Layer 3: extend resolver with child resource state ─────────────────
 	// WithChildren returns a new Resolver — the original is not modified.
@@ -59,7 +63,11 @@ func (r *GenericReconciler[PTR]) patchStatusWithChildren(
 	}
 
 	// ── Layer 1 + 2: patch status ──────────────────────────────────────────
-	if err := runStatusPatch(ctx, r, obj, resolver, reconcileErr); err != nil {
+	var vr *ValidationResult
+	if len(valResult) > 0 {
+		vr = valResult[0]
+	}
+	if err := runStatusPatch(ctx, r, obj, resolver, reconcileErr, vr); err != nil {
 		logger.FromContext(ctx).Warn().Err(err).
 			Str("name", obj.GetName()).
 			Msg("status: patch failed — continuing")
@@ -79,6 +87,7 @@ func runStatusPatch[PTR domain.Object](
 	obj PTR,
 	resolver *orktmpl.Resolver,
 	reconcileErr error,
+	valResult *ValidationResult,
 ) error {
 	// ── Layer 1: Ready condition ───────────────────────────────────────────
 	// Always written — on success and failure — so operators can monitor
@@ -92,7 +101,10 @@ func runStatusPatch[PTR domain.Object](
 
 	skipObservedGen := r.crd.SkipObservedGeneration() // true for Namespace etc
 	cond := buildReadyCondition(reconcileErr, obj.GetGeneration(), skipObservedGen)
-	patch["conditions"] = []interface{}{cond}
+	conditions := []interface{}{cond}
+	conditions = append(conditions, buildValidationCondition(valResult))
+	conditions = append(conditions, buildValidationWarningCondition(valResult))
+	patch["conditions"] = conditions
 
 	// Only patch if necessary
 	if !skipObservedGen {
@@ -125,7 +137,80 @@ func runStatusPatch[PTR domain.Object](
 		}
 	}
 
-	return r.kube.PatchStatus(ctx, obj, r.crd.GVR(), patch)
+	// Skip the API call entirely when nothing has semantically changed.
+	// PatchStatus always increments resourceVersion, which generates a watch
+	// event on the CR — immediately re-queuing a reconcile and defeating the
+	// configured resync interval.
+	if statusPatchNeeded(obj, patch) {
+		return r.kube.PatchStatus(ctx, obj, patch)
+	}
+	return nil
+}
+
+// statusPatchNeeded returns true when the patch carries at least one
+// meaningful change vs. the object's current status. lastTransitionTime is
+// excluded from the comparison — only type/status/reason/message are checked
+// for conditions, and the scalar fields (observedGeneration, any layer-2
+// values) are compared directly.
+func statusPatchNeeded(obj domain.Object, patch map[string]interface{}) bool {
+	u, ok := any(obj).(*unstructured.Unstructured)
+	if !ok {
+		// Can't read existing status — patch to be safe.
+		return true
+	}
+
+	// observedGeneration
+	if desiredGen, ok := patch["observedGeneration"].(int64); ok {
+		existingGen, _, _ := unstructured.NestedInt64(u.Object, "status", "observedGeneration")
+		if existingGen != desiredGen {
+			return true
+		}
+	}
+
+	// conditions — compare by type, ignoring lastTransitionTime
+	existing, _, _ := unstructured.NestedSlice(u.Object, "status", "conditions")
+	byType := make(map[string]map[string]interface{}, len(existing))
+	for _, c := range existing {
+		cm, ok := c.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if t, _ := cm["type"].(string); t != "" {
+			byType[t] = cm
+		}
+	}
+
+	desired, _ := patch["conditions"].([]interface{})
+	if len(desired) != len(byType) {
+		return true
+	}
+	for _, d := range desired {
+		dm, ok := d.(map[string]interface{})
+		if !ok {
+			return true
+		}
+		t, _ := dm["type"].(string)
+		ex, found := byType[t]
+		if !found {
+			return true
+		}
+		if ex["status"] != dm["status"] || ex["reason"] != dm["reason"] || ex["message"] != dm["message"] {
+			return true
+		}
+	}
+
+	// layer-2 scalar fields (any key beyond conditions/observedGeneration)
+	for k, v := range patch {
+		if k == "conditions" || k == "observedGeneration" {
+			continue
+		}
+		existing, ok, _ := unstructured.NestedFieldNoCopy(u.Object, "status", k)
+		if !ok || existing != v {
+			return true
+		}
+	}
+
+	return false
 }
 
 // buildReadyCondition constructs the standard Kubernetes Ready condition map.
@@ -136,6 +221,58 @@ func runStatusPatch[PTR domain.Object](
 //
 // The condition is returned as map[string]interface{} for direct inclusion
 // in the status patch — avoids an extra metav1.Condition → unstructured conversion.
+func buildValidationCondition(valResult *ValidationResult) map[string]interface{} {
+	now := time.Now().UTC().Format(time.RFC3339)
+	if valResult != nil && valResult.Deny {
+		msg := valResult.Error().Error()
+		if len(msg) > 256 {
+			msg = msg[:253] + "..."
+		}
+		return map[string]interface{}{
+			"type":               "ValidationFailed",
+			"status":             "True",
+			"reason":             "DenyRuleViolation",
+			"message":            msg,
+			"lastTransitionTime": now,
+		}
+	}
+	return map[string]interface{}{
+		"type":               "ValidationFailed",
+		"status":             "False",
+		"reason":             "ValidationPassed",
+		"message":            "",
+		"lastTransitionTime": now,
+	}
+}
+
+func buildValidationWarningCondition(valResult *ValidationResult) map[string]interface{} {
+	now := time.Now().UTC().Format(time.RFC3339)
+	if valResult != nil && len(valResult.Warnings) > 0 {
+		msgs := make([]string, 0, len(valResult.Warnings))
+		for _, w := range valResult.Warnings {
+			msgs = append(msgs, fmt.Sprintf("field %q: %s", w.Field, w.Message))
+		}
+		msg := strings.Join(msgs, "; ")
+		if len(msg) > 256 {
+			msg = msg[:253] + "..."
+		}
+		return map[string]interface{}{
+			"type":               "ValidationWarning",
+			"status":             "True",
+			"reason":             "WarnRuleViolation",
+			"message":            msg,
+			"lastTransitionTime": now,
+		}
+	}
+	return map[string]interface{}{
+		"type":               "ValidationWarning",
+		"status":             "False",
+		"reason":             "NoWarnings",
+		"message":            "",
+		"lastTransitionTime": now,
+	}
+}
+
 func buildReadyCondition(reconcileErr error, generation int64, skipObservedGeneration bool) map[string]interface{} {
 	now := time.Now().UTC().Format(time.RFC3339)
 

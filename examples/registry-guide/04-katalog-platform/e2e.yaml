@@ -1,3 +1,4 @@
+# https://orkestra.sh/docs/reference/schema/e2e/
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
@@ -28,6 +29,13 @@ spec:
           name: my-platform-app
           namespace: default
           ready: true
+      kubectl:
+        get:
+          - kind: Deployment
+            name: my-platform-app
+            namespace: default
+            field: .spec.replicas
+            equals: "2"
 
     - name: "Service exists"
       after: cr-applied

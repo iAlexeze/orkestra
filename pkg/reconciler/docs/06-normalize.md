@@ -46,7 +46,7 @@ onCreate:
 
 ## Pipeline position
 
-```
+```text
 informer cache
      │
      ▼

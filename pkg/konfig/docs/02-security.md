@@ -1,6 +1,6 @@
 # 02 — SecurityConfig
 
-`SecurityConfig` consolidates all security-related configuration for the Orkestra runtime. It is populated from ENV variables at `Init()` time, then the Katalog loader merges YAML-level values on top.
+`SecurityConfig` consolidates all security-related configuration for the Orkestra gateway. It is populated from ENV variables at `Init()` time, then the Katalog loader merges YAML-level values on top.
 
 ## Structure
 

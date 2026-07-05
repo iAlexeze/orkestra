@@ -31,10 +31,11 @@ spec:
         kind: Producer
         plural: producers
 
-      workers: 2
-      resync: 30s
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
         status:
           fields:
             - path: phase
@@ -63,10 +64,11 @@ spec:
         kind: Consumer
         plural: consumers
 
-      workers: 2
-      resync: 60s
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 60s
         cross:
           - crd: producer
             selector:

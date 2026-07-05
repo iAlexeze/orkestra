@@ -25,8 +25,6 @@ spec:
         version: v1
         kind: WebApp
         plural: webapps
-      workers: 2
-      resync: 1m
 
       # normalize runs before mutation, validation, and template rendering.
       # Produces an in-memory canonical spec — the raw CR in etcd is unchanged.
@@ -49,7 +47,9 @@ spec:
             replicas: "{{ .spec.replicas }}"
 
       operatorBox:
-        default: true
+        reconciler:
+          workers: 2
+          resync: 1m
         status:
           fields:
             - path: phase

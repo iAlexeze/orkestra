@@ -51,7 +51,8 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	{{ if or .NeedsHookImports .NeedsRecImports }}"github.com/orkspace/orkestra/domain"
+	{{ if .NeedsSchemeImports }}metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	{{ end }}{{ if or .NeedsHookImports .NeedsRecImports }}"github.com/orkspace/orkestra/domain"
 	{{ end }}{{ if .NeedsRecImports }}"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/event"
 	"k8s.io/client-go/tools/cache"
@@ -72,7 +73,12 @@ import (
 func init() {
 	logger.Debug().Msg("typeregistry.init() started")
 	RegisterRuntimeObjects()
-{{ range .Entries }}	orktypes.SchemeAdderFns = append(orktypes.SchemeAdderFns, {{ .Alias }}.AddToScheme)
+{{ range .Entries }}	orktypes.SchemeAdderFns = append(orktypes.SchemeAdderFns, func(s *runtime.Scheme) error {
+		s.AddKnownTypeWithName(schema.GroupVersionKind{Group: "{{ .Group }}", Version: "{{ .Version }}", Kind: "{{ .Kind }}"}, &{{ .Alias }}.{{ .Object }}{})
+		s.AddKnownTypeWithName(schema.GroupVersionKind{Group: "{{ .Group }}", Version: "{{ .Version }}", Kind: "{{ .Kind }}List"}, &{{ .Alias }}.{{ .List }}{})
+		metav1.AddToGroupVersion(s, schema.GroupVersion{Group: "{{ .Group }}", Version: "{{ .Version }}"})
+		return nil
+	})
 {{ end }}	logger.Debug().Int("length", len(orktypes.SchemeAdderFns)).Msg("typeregistry.init() finished")
 }
 

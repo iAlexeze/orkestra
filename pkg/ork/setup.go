@@ -20,15 +20,18 @@ func HelmInstall(ctx context.Context, h orktypes.SetupHelmInstall) error {
 	release := h.ReleaseName()
 	namespace := h.EffectiveNamespace()
 
-	// Add and update the repo (idempotent).
-	repoName := release
-	_ = exec.CommandContext(ctx, "helm", "repo", "add", repoName, h.Repo).Run()
-	_ = exec.CommandContext(ctx, "helm", "repo", "update", repoName).Run()
+	chartRef := h.Chart
+	if !h.IsLocalChart() {
+		repoName := release
+		_, _ = exec.CommandContext(ctx, "helm", "repo", "add", repoName, h.Repo).Output()
+		_, _ = exec.CommandContext(ctx, "helm", "repo", "update", repoName).Output()
+		chartRef = fmt.Sprintf("%s/%s", repoName, h.Chart)
+	}
 
 	args := []string{
 		"upgrade", "--install",
 		release,
-		fmt.Sprintf("%s/%s", repoName, h.Chart),
+		chartRef,
 		"--namespace", namespace,
 	}
 	if h.CreateNamespace {
@@ -45,13 +48,24 @@ func HelmInstall(ctx context.Context, h orktypes.SetupHelmInstall) error {
 	for k, v := range h.Values {
 		args = append(args, "--set", fmt.Sprintf("%s=%v", k, v))
 	}
+	args = append(args, "--wait", "--timeout", "5m")
 
-	fmt.Printf("  → Installing %s...\n", release)
 	cmd := exec.CommandContext(ctx, "helm", args...)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("helm install %s/%s: %w\n%s", h.Repo, h.Chart, err, out)
+		return fmt.Errorf("helm install %s: %w\n%s", chartRef, err, out)
 	}
-	fmt.Printf("  ✓ %s installed\n", release)
+	return nil
+}
+
+// HelmUninstall removes a Helm release installed by HelmInstall.
+func HelmUninstall(ctx context.Context, h orktypes.SetupHelmInstall) error {
+	release := h.ReleaseName()
+	namespace := h.EffectiveNamespace()
+	cmd := exec.CommandContext(ctx, "helm", "uninstall", release,
+		"--namespace", namespace, "--ignore-not-found")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("helm uninstall %s: %w\n%s", release, err, out)
+	}
 	return nil
 }
 
@@ -86,7 +100,7 @@ func WaitForResource(ctx context.Context, w orktypes.SetupWait) error {
 					args = append(args, "-n", w.Namespace)
 				}
 			}
-			if err := exec.CommandContext(ctx, "kubectl", args...).Run(); err == nil {
+			if _, err := exec.CommandContext(ctx, "kubectl", args...).Output(); err == nil {
 				return nil
 			}
 		} else {

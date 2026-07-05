@@ -102,6 +102,14 @@ The [Operator of Operators](operator-of-operators/) pattern lets one Orkestra op
 
 ---
 
+## Every CRD is a Live API
+
+Every CRD you declare in a Katalog becomes a live HTTP API outside the cluster — health, config, CR list, CR detail, and events, all served from in-memory cache on port 8080. This is the transport layer for the Control Center, ONCOP, and operator autoscaling.
+
+→ [Read: Live API](live-api/)
+
+---
+
 ## Health Subsystem
 
 The [Health Subsystem](health-subsystem/) is Orkestra's liveness, readiness, and metrics surface. Four Kubernetes-native probe endpoints, per-CRD health tracking, and the `/katalog` API that powers the Control Center.

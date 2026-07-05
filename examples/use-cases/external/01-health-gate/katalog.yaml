@@ -14,8 +14,6 @@ spec:
     webapp:
       crdFile: ../crd.yaml
 
-      workers: 2
-      resync: 15s
 
       validation:
         rules:
@@ -29,8 +27,10 @@ spec:
             action: deny
 
       operatorBox:
-        default: true
 
+        reconciler:
+          workers: 2
+          resync: 15s
         onReconcile:
           # ── External call ──────────────────────────────────────────────────
           # continueOnError: true — a failed health check does not halt the

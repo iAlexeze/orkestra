@@ -21,6 +21,7 @@ ork push [<name>:<version>] [<dir>]
 | `--update-meta` | `false` | Persist the overridden version tag back into the primary file. |
 | `--use-current` | `false` | Use the current kubeconfig context for the E2E gate. Skips cluster creation — significantly faster for local iteration. |
 | `--cluster <ctx>` | _(none)_ | Reuse an existing cluster context for the E2E gate. Skips cluster creation. |
+| `--workers <n>` | `0` | Number of kind worker nodes to provision for the E2E gate cluster (0 = control-plane only). |
 
 > **Note:** `--use-current` and `--cluster` skip cluster provisioning and accept whatever state the cluster is in. Use them only for local iteration — `ork push` is intended for production publishing against a clean cluster.
 
@@ -142,4 +143,4 @@ To import:
 
 - [`ork inspect`](./11-inspect.md) — read quality annotations after push
 - [`ork patterns`](./12-patterns.md) — browse the registry
-- [Gate Mechanics](../../registry-guide/05-gate-mechanics.md) — full gate story
+- [Gate Mechanics](../../guides/registry/05-gate-mechanics.md) — full gate story

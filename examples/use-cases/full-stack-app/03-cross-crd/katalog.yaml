@@ -13,11 +13,11 @@ spec:
     managed-database:
       crdFile: ./crd-managed-database.yaml
 
-      workers: 2
-      resync: 30s
 
       operatorBox:
-        default: true
+        reconciler:
+          workers: 2
+          resync: 30s
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}-postgres"
@@ -62,8 +62,6 @@ spec:
     database-backed-app:
       crdFile: ./crd-database-backed-app.yaml
 
-      workers: 2
-      resync: 30s
       dependsOn:
         managed-database: healthy
 
@@ -74,6 +72,9 @@ spec:
             action: deny
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
         cross:
           - crd: managed-database
             selector:

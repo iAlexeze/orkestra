@@ -1,6 +1,6 @@
 # Deletion protection
 
-Deletion protection prevents CRs — and Orkestra's own infrastructure — from being accidentally (or maliciously) deleted. It works by attaching a label to every protected resource and registering a validating webhook that intercepts DELETE requests on those resources.
+Deletion protection prevents CRDSs, their CRs — and Orkestra's own infrastructure — from being accidentally (or maliciously) deleted. It works by attaching a label to every protected resource and registering a validating webhook that intercepts DELETE requests on those resources.
 
 ```yaml
 security:
@@ -28,7 +28,7 @@ kubectl delete app my-app
 
 ### Orkestra's own infrastructure is protected too
 
-Every resource the Helm chart creates — the `Deployment`, `Service`, `ServiceAccount`, `ClusterRoleBinding`, TLS `Secret`, and webhook configurations — carries the protection label. The webhook protects them the same way it protects your CRs. You cannot accidentally `kubectl delete` the operator out of the cluster while deletion protection is active.
+Every resource the Helm chart creates — the `Deployment`, `Service`, `ServiceAccount`, `ClusterRoleBinding`, TLS `Secret`, and webhook configurations — carries the protection label. The webhook protects them the same way it protects your CRs. You cannot accidentally `kubectl delete` the runtime, the gateway or the control center out of the cluster while deletion protection is active.
 
 ---
 

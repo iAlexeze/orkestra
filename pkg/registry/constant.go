@@ -14,6 +14,9 @@ const (
 	// FileKatalog is the required operator declaration file.
 	FileKatalog = "katalog.yaml"
 
+	// FileKomposer is the optional multi-operator composition file.
+	FileKomposer = "komposer.yaml"
+
 	// FileMotif is the required motif declaration file.
 	FileMotif = "motif.yaml"
 
@@ -59,4 +62,13 @@ const (
 	// CacheDir is the local cache directory for pulled artifacts.
 	// Resolved relative to the user's home directory.
 	CacheDir = ".orkestra/registry"
+
+	// HelmGitCacheDir is the local cache directory for git-sourced Helm charts.
+	HelmGitCacheDir = ".orkestra/helm/git"
+
+	// HelmRepoCacheDir is the local cache directory for remote Helm repository charts.
+	HelmRepoCacheDir = ".orkestra/helm/repo"
+
+	// FileCacheDir is the local cache directory for remote file fetches (https://).
+	FileCacheDir = ".orkestra/files"
 )

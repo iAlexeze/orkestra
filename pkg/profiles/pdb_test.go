@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/orkspace/orkestra/pkg/profiles"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 func TestPDBProfiles(t *testing.T) {
@@ -19,7 +20,7 @@ func TestPDBProfiles(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.profile, func(t *testing.T) {
-			result, err := profiles.ApplyPDBProfile(tc.profile)
+			result, err := profiles.ApplyPDBProfile(tc.profile, orktypes.ProfileRegistry{})
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -35,7 +36,7 @@ func TestPDBProfiles(t *testing.T) {
 
 func TestPDBProfileMutualExclusivity(t *testing.T) {
 	for _, name := range []string{"zero-downtime", "rolling", "relaxed"} {
-		result, _ := profiles.ApplyPDBProfile(name)
+		result, _ := profiles.ApplyPDBProfile(name, orktypes.ProfileRegistry{})
 		if result.MinAvailable != "" && result.MaxUnavailable != "" {
 			t.Errorf("profile %q sets both MinAvailable and MaxUnavailable", name)
 		}
@@ -44,7 +45,7 @@ func TestPDBProfileMutualExclusivity(t *testing.T) {
 
 func TestPDBProfileCaseInsensitive(t *testing.T) {
 	for _, name := range []string{"ZERO-DOWNTIME", "Zero-Downtime", "ROLLING", "RELAXED"} {
-		_, err := profiles.ApplyPDBProfile(name)
+		_, err := profiles.ApplyPDBProfile(name, orktypes.ProfileRegistry{})
 		if err != nil {
 			t.Errorf("profile %q: unexpected error: %v", name, err)
 		}
@@ -52,7 +53,7 @@ func TestPDBProfileCaseInsensitive(t *testing.T) {
 }
 
 func TestPDBProfileUnknown(t *testing.T) {
-	_, err := profiles.ApplyPDBProfile("unknown")
+	_, err := profiles.ApplyPDBProfile("unknown", orktypes.ProfileRegistry{})
 	if err == nil {
 		t.Error("expected error for unknown profile, got nil")
 	}

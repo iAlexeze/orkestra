@@ -94,8 +94,8 @@ func TypeRegistry(crds map[string]orktypes.CRDEntry, dryRun bool) (bool, error) 
 		// This is NOT needed for declarative template CRDs — those are handled
 		// at runtime by GenericReconciler.runTemplateReconcile() with no
 		// registration required.
-		if crd.DefaultReconcile() && crd.OperatorBox.Hooks != nil {
-			h := crd.OperatorBox.Hooks
+		if crd.DefaultReconcile() && crd.OperatorBox.Reconciler != nil && crd.OperatorBox.Reconciler.Hooks != nil {
+			h := crd.OperatorBox.Reconciler.Hooks
 
 			if err := validateHookEntry(h, crd.Name); err != nil {
 				return false, err
@@ -125,7 +125,7 @@ func TypeRegistry(crds map[string]orktypes.CRDEntry, dryRun bool) (bool, error) 
 		// We need to import their constructor and register it in ReconcilerRegistry
 		// so addReconcilers() can wire it at startup.
 		if !crd.DefaultReconcile() {
-			if crd.OperatorBox.ConstructorDecl == nil {
+			if crd.OperatorBox.Reconciler == nil || crd.OperatorBox.Reconciler.ConstructorDecl == nil {
 				return false, fmt.Errorf(
 					"CRD %q: reconciler.default is false but no constructor declared — "+
 						"add reconciler.constructor with location and function, "+
@@ -134,7 +134,7 @@ func TypeRegistry(crds map[string]orktypes.CRDEntry, dryRun bool) (bool, error) 
 				)
 			}
 
-			c := crd.OperatorBox.ConstructorDecl
+			c := crd.OperatorBox.Reconciler.ConstructorDecl
 
 			if err := validateConstructorEntry(c, crd.Name); err != nil {
 				return false, err
@@ -169,13 +169,14 @@ func TypeRegistry(crds map[string]orktypes.CRDEntry, dryRun bool) (bool, error) 
 
 	// ── Render registry file ──────────────────────────────────────────────────
 	registryData := registryTemplateData{
-		Timestamp:        time.Now().UTC().Format(time.RFC3339),
-		Imports:          imports,
-		Entries:          entries,
-		HookEntries:      hookEntries,
-		RecEntries:       recEntries,
-		NeedsRecImports:  len(recEntries) > 0,
-		NeedsHookImports: len(hookEntries) > 0,
+		Timestamp:          time.Now().UTC().Format(time.RFC3339),
+		Imports:            imports,
+		Entries:            entries,
+		HookEntries:        hookEntries,
+		RecEntries:         recEntries,
+		NeedsRecImports:    len(recEntries) > 0,
+		NeedsHookImports:   len(hookEntries) > 0,
+		NeedsSchemeImports: len(entries) > 0,
 	}
 
 	outPath := filepath.Join(TypeRegistryPackage, RegistryFile)

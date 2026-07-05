@@ -8,7 +8,6 @@ import (
 
 	"github.com/orkspace/orkestra/domain"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -49,16 +48,17 @@ import (
 func (k *Kubeclient) PatchStatus(
 	ctx context.Context,
 	obj domain.Object,
-	gvr schema.GroupVersionResource,
 	statusFields map[string]interface{},
 ) error {
 	if len(statusFields) == 0 {
 		return nil
 	}
 
-	// Wrap status fields in the "status" key — this is the merge patch body.
-	// The API server extracts the "status" key and merges it into the
-	// existing status subresource.
+	mapping, err := k.gvrFor(obj)
+	if err != nil {
+		return err
+	}
+
 	patch := map[string]interface{}{
 		"status": statusFields,
 	}
@@ -68,11 +68,10 @@ func (k *Kubeclient) PatchStatus(
 		return fmt.Errorf("marshalling status patch: %w", err)
 	}
 
-	// Determine namespace — empty string for cluster-scoped resources
 	namespace := obj.GetNamespace()
 
 	_, err = k.DynamicClient().
-		Resource(gvr).
+		Resource(mapping.Resource).
 		Namespace(namespace).
 		Patch(
 			ctx,
@@ -80,7 +79,7 @@ func (k *Kubeclient) PatchStatus(
 			types.MergePatchType,
 			patchBytes,
 			metav1.PatchOptions{},
-			"status", // ← subresource path — critical, routes to /status endpoint
+			"status",
 		)
 
 	return err

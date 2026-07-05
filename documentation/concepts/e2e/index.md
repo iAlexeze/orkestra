@@ -102,6 +102,7 @@ ork e2e -f e2e.yaml
 - [Suites and imports](03-suite-and-imports.md) — composing multiple E2E files, cluster strategy, pure aggregators
 - [Best practices](04-best-practices.md) — focused tests, naming, `count: 0`, CI integration
 - [Scaffolding tests](05-init.md) — `ork e2e init` and `--suite` to generate e2e.yaml from a Katalog
+- [Testing leader-led deployments](06-leader-led-deployments.md) — targeting the elected leader instead of a random follower across `port-forward`, `logs`, `delete`, and `exec`
 
 ---
 

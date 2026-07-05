@@ -1,0 +1,179 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: service-user-defined-profiles
+  description: >
+    Profiles 09 — user-defined profiles.
+    Declares six profile classes in the profiles: block and references them
+    from operatorBox. None of the names below are Orkestra built-ins —
+    every definition is owned by this Katalog.
+
+profiles:
+  networkPolicies:
+    - name: team-deny-all
+      description: Block all ingress and egress — baseline isolation
+      policyTypes: [Ingress, Egress]
+
+    - name: team-allow-internal
+      description: Allow ingress from pods in the same namespace
+      ingress:
+        - from:
+            - podSelector: {}
+      policyTypes: [Ingress]
+
+    - name: team-allow-dns
+      description: Allow outbound DNS resolution
+      egress:
+        - ports:
+            - port: 53
+              protocol: UDP
+            - port: 53
+              protocol: TCP
+      policyTypes: [Egress]
+
+  hpa:
+    - name: team-conservative
+      description: 70% CPU target, slow scale-down
+      targetCPUUtilizationPercentage: "70"
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Pods
+              value: 1
+              periodSeconds: 60
+
+    - name: team-responsive
+      description: 50% CPU target, fast scale-down
+      targetCPUUtilizationPercentage: "50"
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 30
+          policies:
+            - type: Percent
+              value: 25
+              periodSeconds: 15
+
+  resources:
+    - name: team-api
+      description: Standard allocation for a web API container
+      requests:
+        cpu: "200m"
+        memory: "128Mi"
+      limits:
+        cpu: "1"
+        memory: "512Mi"
+
+  probes:
+    - name: team-standard
+      description: Standard timing for most web services
+      initialDelaySeconds: 10
+      periodSeconds: 15
+      failureThreshold: 3
+      successThreshold: 1
+      timeoutSeconds: 5
+
+  containerSecurity:
+    - name: team-baseline
+      description: Drop NET_RAW, no privilege escalation
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [NET_RAW]
+
+  podSecurity:
+    - name: team-nonroot
+      description: Run as a fixed non-root UID
+      runAsNonRoot: true
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+
+spec:
+  crds:
+    service:
+      crdFile: ../crd.yaml
+
+      operatorBox:
+
+        reconciler:
+          workers: 2
+          resync: 30s
+        status:
+          fields:
+            - path: phase
+              value: "Pending"
+              when:
+                - field: status.phase
+                  operator: notExists
+            - path: phase
+              value: "Ready"
+              when:
+                - field: "{{ allReplicasReady .children.deployments.my-service }}"
+                  equals: "true"
+
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}"
+              image: "{{ .spec.image }}"
+              port: "{{ .spec.port }}"
+              replicas: "2"
+              reconcile: true
+              resources:
+                profile: team-api
+              probes:
+                liveness:
+                  type: http
+                  path: /healthz
+                  profile: team-standard
+                readiness:
+                  type: http
+                  path: /readyz
+                  profile: team-standard
+              securityContext:
+                profile: team-baseline
+              podSecurity:
+                profile: team-nonroot
+
+          networkPolicies:
+            - name: "{{ .metadata.name }}-deny-all"
+              namespace: "{{ .metadata.namespace }}"
+              podSelector: {}
+              profile: team-deny-all
+              reconcile: true
+
+            - name: "{{ .metadata.name }}-allow-internal"
+              namespace: "{{ .metadata.namespace }}"
+              podSelector: {}
+              profile: team-allow-internal
+              reconcile: true
+
+            - name: "{{ .metadata.name }}-allow-dns"
+              namespace: "{{ .metadata.namespace }}"
+              podSelector: {}
+              profile: team-allow-dns
+              reconcile: true
+
+          hpa:
+            - name: "{{ .metadata.name }}-hpa-conservative"
+              namespace: "{{ .metadata.namespace }}"
+              scaleTargetRef:
+                apiVersion: apps/v1
+                kind: Deployment
+                name: "{{ .metadata.name }}"
+              minReplicas: "2"
+              maxReplicas: "6"
+              behavior:
+                profile: team-conservative
+              reconcile: true
+
+            - name: "{{ .metadata.name }}-hpa-responsive"
+              namespace: "{{ .metadata.namespace }}"
+              scaleTargetRef:
+                apiVersion: apps/v1
+                kind: Deployment
+                name: "{{ .metadata.name }}"
+              minReplicas: "2"
+              maxReplicas: "10"
+              behavior:
+                profile: team-responsive
+              reconcile: true

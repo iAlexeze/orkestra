@@ -95,6 +95,8 @@ spec:
 This is how governance patterns work — you apply Orkestra's validation and mutation
 model to CRDs you did not write and cannot modify.
 
+For the full wrapping pattern — internal CRD → ecosystem resource, admission enforcement, status propagation, and e2e testing against the real tool — see the [Ecosystem Composition Guide](../guides/ecosystem/index.md).
+
 ---
 
 ## What is the path to Kubernetes core?
@@ -113,7 +115,63 @@ understands declarative operator definitions. Platform teams write Katalogs. Kub
 manages them.
 
 
-## Next
+## I already have a controller-runtime operator. Where do I start?
 
+Pull the migration pack. It scaffolds the exact files you need — the Katalog stub, the constructor wiring, the bundle — pre-filled from a working controller-runtime operator so you can see the delta between what you have and what Orkestra expects:
+
+```bash
+ork init --pack from-controller-runtime
+cd from-controller-runtime
+```
+
+The pack contains three progressive examples — declarative only, hybrid (declarative + hooks), and hooks-only — so you can pick the migration depth that fits your operator today without rewriting everything at once.
+
+If you want to understand the conceptual shift first, the [Migration Guide](../guides/migration/index.md) walks through each mode. `ork migrate` automates the mechanical parts.
+
+---
+
+## What does `ork migrate` do?
+
+`ork migrate` reads your existing controller-runtime operator and generates the Orkestra scaffolding around it. It inspects your `Reconcile()` method, infers the CRD group/version/kind from your scheme registration, and writes:
+
+- A `katalog.yaml` stub with the CRD entry, operatorBox declaration, and constructor block wired to your existing reconciler
+- A `bundle/` directory ready for `ork generate bundle`
+- A `simulate.yaml` with a placeholder CR and first-cycle expectations
+
+The output is a starting point — not a complete migration. Fields that Orkestra can declare (standard Deployments, Services, ConfigMaps) still need to move from your Go code into the Katalog. `ork migrate` handles the structural scaffolding; you handle the logic separation.
+
+```bash
+ork migrate --src ./my-operator --out ./my-operator-orkestra
+```
+
+→ [ork migrate reference](../reference/cli/migrate.md) · [Migration Guide](../guides/migration/index.md)
+
+---
+
+## I want to try Orkestra but I don't have a cluster. What do I need?
+
+Docker. That is all.
+
+Two ways to get started:
+
+```bash
+# Create the cluster first, then start the runtime
+ork create cluster
+ork run
+
+# Or in one command — creates the cluster and starts the runtime together
+ork run --dev
+```
+
+`ork create cluster` provisions a local kind cluster and writes the kubeconfig. `ork run` starts the Orkestra runtime against it. `ork run --dev` does both in a single step — the fastest path from nothing to a running Orkestra operator.
+
+No cloud provider account. No Minikube. No existing Kubernetes setup.
+
+---
+
+## Further reading
+
+- **[Ecosystem Composition Guide](../guides/ecosystem/index.md)** — wrap ArgoCD, cert-manager, Prometheus, and Crossplane with abstraction layers
+- **[Migration Guide](../guides/migration/index.md)** — move an existing controller-runtime operator to Orkestra
 - **[Roadmap](../roadmap.md)** — what is shipped and what is coming
 - **[Getting Started](../getting-started/index.md)** — your first operator in minutes

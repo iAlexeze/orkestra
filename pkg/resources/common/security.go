@@ -12,12 +12,12 @@ import (
 // ResolveContainerSecurityContext resolves a ContainerSecurityContext:
 // if a profile is set it expands to explicit fields; otherwise the block is
 // returned as-is. Returns nil when sc is nil.
-func ResolveContainerSecurityContext(sc *orktypes.ContainerSecurityContext) *orktypes.ContainerSecurityContext {
+func ResolveContainerSecurityContext(sc *orktypes.ContainerSecurityContext, reg orktypes.ProfileRegistry) *orktypes.ContainerSecurityContext {
 	if sc == nil {
 		return nil
 	}
 	if sc.Profile != "" {
-		expanded, err := profiles.ApplyContainerSecurityProfile(sc.Profile)
+		expanded, err := profiles.ApplyContainerSecurityProfile(sc.Profile, reg)
 		if err != nil {
 			logger.Warn().Str("profile", sc.Profile).Err(err).Msg("unknown securityContext.profile — skipping")
 			return nil
@@ -30,12 +30,12 @@ func ResolveContainerSecurityContext(sc *orktypes.ContainerSecurityContext) *ork
 // ResolvePodSecurityContext resolves a PodSecurityContext:
 // if a profile is set it expands to explicit fields; otherwise the block is
 // returned as-is. Returns nil when ps is nil.
-func ResolvePodSecurityContext(ps *orktypes.PodSecurityContext) *orktypes.PodSecurityContext {
+func ResolvePodSecurityContext(ps *orktypes.PodSecurityContext, reg orktypes.ProfileRegistry) *orktypes.PodSecurityContext {
 	if ps == nil {
 		return nil
 	}
 	if ps.Profile != "" {
-		expanded, err := profiles.ApplyPodSecurityProfile(ps.Profile)
+		expanded, err := profiles.ApplyPodSecurityProfile(ps.Profile, reg)
 		if err != nil {
 			logger.Warn().Str("profile", ps.Profile).Err(err).Msg("unknown podSecurity.profile — skipping")
 			return nil

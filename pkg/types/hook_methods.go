@@ -20,6 +20,11 @@ func (h HookTemplates) IsEmpty() bool {
 		len(h.Namespaces) == 0 &&
 		len(h.Roles) == 0 &&
 		len(h.RoleBindings) == 0 &&
+		len(h.ClusterRoles) == 0 &&
+		len(h.ClusterRoleBindings) == 0 &&
+		len(h.NetworkPolicies) == 0 &&
+		len(h.ResourceQuotas) == 0 &&
+		len(h.LimitRanges) == 0 &&
 		len(h.External) == 0 &&
 		len(h.CustomResource) == 0 &&
 		h.Git == nil &&
@@ -163,6 +168,21 @@ func (c *CRDEntry) HasAnyServiceAccounts() bool {
 	}
 	if c.HasOnReconcile() {
 		return len(c.OperatorBox.OnReconcile.ServiceAccounts) > 0
+	}
+	return false
+}
+
+// HasNamespaceDeclarations reports whether any hook phase declares Namespace resources.
+// Used to determine whether to auto-inject a cleanup finalizer.
+func (b OperatorBoxConfig) HasNamespaceDeclarations() bool {
+	if b.OnCreate != nil && len(b.OnCreate.Namespaces) > 0 {
+		return true
+	}
+	if b.OnReconcile != nil && len(b.OnReconcile.Namespaces) > 0 {
+		return true
+	}
+	if b.OnDelete != nil && len(b.OnDelete.Namespaces) > 0 {
+		return true
 	}
 	return false
 }

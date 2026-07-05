@@ -13,8 +13,6 @@ spec:
     secure-app:
       crdFile: ./crd.yaml
 
-      workers: 2
-      resync: 30s
 
       validation:
         rules:
@@ -23,6 +21,9 @@ spec:
             action: deny
 
       operatorBox:
+        reconciler:
+          workers: 2
+          resync: 30s
         onCreate:
           secrets:
             - name: "{{ .metadata.name }}-credentials"

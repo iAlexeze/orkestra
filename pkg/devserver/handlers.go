@@ -10,6 +10,8 @@ import (
 )
 
 func registerHandlers(mux *http.ServeMux) {
+	mux.HandleFunc("/autoscale-metrics/flip", handle(autoscaleMetricsFlipHandler))
+	mux.HandleFunc("/autoscale-metrics", handle(autoscaleMetricsHandler))
 	mux.HandleFunc("/health", handle(healthHandler))
 	mux.HandleFunc("/ready", handle(readyHandler))
 	mux.HandleFunc("/started", handle(startedHandler))
@@ -321,4 +323,51 @@ func flagsHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "unknown flags route"})
 	}
+}
+
+// autoscaleMetricsHandler serves GET /autoscale-metrics.
+// Returns a baseline (low load) or overloaded (high load) metrics payload
+// depending on the current flip state. The payload shape mirrors the Orkestra
+// /katalog/{crd} metrics response so that cross.<crd>.metrics.* conditions
+// can resolve against it directly.
+func autoscaleMetricsHandler(w http.ResponseWriter, _ *http.Request) {
+	autoscaleMu.Lock()
+	flipped := autoscaleFlipped
+	autoscaleMu.Unlock()
+
+	var m map[string]interface{}
+	if flipped {
+		m = map[string]interface{}{
+			"errorRatePercent":       0,
+			"queueDepth":             98,
+			"reconcileDurationP95Ms": 1244.18,
+			"workersBusyPercent":     100,
+			"workersIdlePercent":     0,
+		}
+	} else {
+		m = map[string]interface{}{
+			"errorRatePercent":       0,
+			"queueDepth":             12,
+			"reconcileDurationP95Ms": 142.3,
+			"workersBusyPercent":     18,
+			"workersIdlePercent":     82,
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"metrics": m})
+}
+
+// autoscaleMetricsFlipHandler serves POST /autoscale-metrics/flip.
+// Toggles between baseline and overloaded payload; returns the new state.
+func autoscaleMetricsFlipHandler(w http.ResponseWriter, _ *http.Request) {
+	autoscaleMu.Lock()
+	autoscaleFlipped = !autoscaleFlipped
+	flipped := autoscaleFlipped
+	autoscaleMu.Unlock()
+
+	state := "baseline"
+	if flipped {
+		state = "overloaded"
+	}
+	writePlain(w, http.StatusOK, state)
 }
