@@ -1,4 +1,4 @@
-## v0.7.10 [UNRELEASED] — E2E DSL extensions, cluster improvements, endpoint control
+## v0.7.10 [UNRELEASED] — E2E DSL extensions, cluster improvements, endpoint control, children forEach fixes
 
 
 ### `leaderElection:` on `kubectl.delete` and `kubectl.exec`
@@ -81,6 +81,12 @@ Root `simulate.yaml` and `e2e.yaml` use `imports:` to chain all three sub-exampl
 New documentation page in `documentation/orkestra-core/03-controlcenter/generated-docs.md` covering the live-generated per-CRD docs: what sections appear, when, and how disabled endpoints affect the output.
 
 ### Bug fixes
+
+- **`forEach:` silently no-op on NetworkPolicy, ResourceQuota, LimitRange, ClusterRole, ClusterRoleBinding**: These five v0.7.8 resource types were wired to runners but skipped the `ExpandForEach*` step — a declared `forEach:` block produced no expansion. Fixed: added `ExpandForEachNetworkPolicies`, `ExpandForEachResourceQuotas`, `ExpandForEachLimitRanges`, `ExpandForEachClusterRoles`, `ExpandForEachClusterRoleBindings` in `pkg/children/foreach.go`; runner calls in `run_template_reconcile.go` now pass through the expand step.
+- **`ForEach` field missing on NetworkPolicy, ResourceQuota, LimitRange, ClusterRole, ClusterRoleBinding template sources**: `forEach:` was undeclared on these types — any YAML using it would be silently ignored. Fixed: `ForEach *ForEachSpec` added to all five structs.
+- **NetworkPolicy invisible to child tracker**: `mergeTemplates` in `pkg/children/read.go` merged all v0.7.8 resources except `NetworkPolicies` — they never appeared in the CR detail children map. Fixed.
+- **ResourceQuota and LimitRange invisible to CR detail view**: `ResourceQuotaGVR` and `LimitRangeGVR` were absent from `pkg/children/gvr.go` — these resources could not be read back as children after reconcile. Fixed: GVR vars and `ChildGVRs()` entries added.
+- **NetworkPolicy, ResourceQuota, LimitRange, ClusterRole, ClusterRoleBinding not tracked as children**: No `*Names` helper or `children.go` read block existed for any of the five types. Fixed: helpers and read blocks added; resources now appear in CR detail and the Control Center Resources tab.
 
 - **Node-ready race**: `waitForNodesReady` checked the condition *type* (`Ready`) not its *status* (`True`). A node could be type=Ready status=False and still be reported ready. Replaced with `kubectl wait --for=condition=Ready node --all`.
 - **`--version` silently ignored when kind is in PATH**: `resolveKind` always checked PATH first regardless of the version flag. Fixed: empty version checks PATH then falls back to default; non-empty version skips PATH entirely.

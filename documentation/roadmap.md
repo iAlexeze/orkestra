@@ -182,6 +182,19 @@ A policy can import other published policies. If two imported policies conflict 
 
 If `policy.yaml` is present when a pattern is pushed, it is embedded in the OCI artifact and enforced automatically when consumers run `ork lint` against that pattern — no `--policy` flag required.
 
+### ork plan — deeper intent analysis
+
+`ork plan` exists today and shows a diff between the current katalog and the running state. It is useful but limited — it does not yet explain *why* resources will change, surface drift from outside reconcile, or show which CRs will be affected by a template change.
+
+Planned improvements:
+
+- **Intent diff** — distinguish a template change that affects 3 of 12 CRs from one that affects all of them. Show which CRs are affected and how.
+- **Drift detection** — detect resources that exist in the cluster but are no longer declared in the Katalog. Surface them as orphans before apply, not after.
+- **Dependency impact** — when a Katalog change affects a dependency, surface the downstream CRDs that will re-reconcile as a result.
+- **Structured output** — `--output json` for CI integration; diff summaries as GitHub step comments via `ork-action`.
+
+Until these land, `ork plan` is a basic diff — helpful for catching renames and field changes, not yet suitable as a full pre-apply review gate.
+
 ### ork lint
 
 `ork validate` checks schema correctness — the document is well-formed. `ork lint` checks semantic correctness — the document is safe and sound for your deployment context.

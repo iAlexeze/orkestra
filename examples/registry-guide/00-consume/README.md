@@ -174,6 +174,24 @@ kubectl port-forward svc/orkestra-cc -n orkestra-system 8081:8081
 
 ---
 
+## Another way to run it
+
+If you don't want to go through inspect → pull → deploy manually, `ork run` does it in one command:
+
+```bash
+ork run postgres:v1.0.0 --dev --apply-cr
+```
+
+`--dev` creates a local kind cluster if you don't have one. `--apply-cr` applies the CRD and a sample CR so the operator starts with something to reconcile. No files to download, no kubectl, no Helm.
+
+```bash
+# Already have a cluster? Skip --dev
+ork run postgres:v1.0.0 --apply-cr
+```
+
+`ork run` pulls from the registry on first use and caches locally — subsequent runs start immediately.
+
+---
 ## Cleanup
 
 ```bash
