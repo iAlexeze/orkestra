@@ -14,6 +14,9 @@ const (
 	// FileKatalog is the required operator declaration file.
 	FileKatalog = "katalog.yaml"
 
+	// FileKomposer is the optional multi-operator composition file.
+	FileKomposer = "komposer.yaml"
+
 	// FileMotif is the required motif declaration file.
 	FileMotif = "motif.yaml"
 
