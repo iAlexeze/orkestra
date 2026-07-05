@@ -44,7 +44,7 @@ cd registry-guide/00-consume
 | Example | What it teaches |
 |---|---|
 | `07-upgrade` | Release a new motif version. One katalog upgrades; another stays pinned. Upgrade is deliberate — restart the runtime to pick up the new katalog. `ork plan` previews the reconciler template diff before applying. Rollback is a version bump. |
-| `08-bad-actor` | Simulate passed — `ork plan` catches what the assertions missed. A pattern creates a ClusterRoleBinding it never declared. Supply chain audit: author's proof covers only what they declared; plan shows everything. |
+| `08-bad-actor` | Audit trail inspection. Detect unexpected pushes by comparing digests and diffing against known-good source. Steps to investigate a tampered or unauthorised pattern version and deprecate it. |
 | `09-deprecation` | Pattern end-of-life. Declare `deprecation:` in metadata — `ork inspect`, `ork patterns`, and `ork validate` all warn consumers. Old versions are never deleted; consumers migrate on their own timeline. |
 
 ---

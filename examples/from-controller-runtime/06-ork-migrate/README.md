@@ -51,4 +51,4 @@ When the simulation passes, the result is equivalent to `04-constructor-migratio
 
 - [04 — constructor: lift and change](../04-constructor-migration/) — what the output looks like after the TODOs are resolved
 - [05 — constructor: Orkestra resources](../05-constructor-orkestra-resources/) — the next step once it builds
-- [CLI reference: ork migrate](../../../documentation/reference/cli/migrate.md)
+- [CLI reference: ork migrate](https://orkestra.sh/docs/reference/cli/migrate/)

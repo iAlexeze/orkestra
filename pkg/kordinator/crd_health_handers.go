@@ -526,6 +526,7 @@ type CRDSummaryResponse struct {
 	GVR                      string             `json:"gvr"`
 	Namespaced               bool               `json:"namespaced"`
 	Namespace                string             `json:"namespace"`
+	CrossAccess              bool               `json:"crossAccess"`
 	DependsOn                []string           `json:"dependsOn,omitempty"`
 	HasUnhealthyDependencies bool               `json:"hasUnhealthyDependencies"`
 	Workers                  int                `json:"workers"`
@@ -560,8 +561,10 @@ type OperatorBoxSummary struct {
 }
 
 type EndpointInfo struct {
-	Health string `json:"health"`
-	Info   string `json:"info"`
+	Health        string `json:"health"`
+	Info          string `json:"info"`
+	HealthEnabled bool   `json:"healthEnabled"`
+	InfoEnabled   bool   `json:"infoEnabled"`
 }
 
 type StatusCounts struct {
@@ -666,10 +669,13 @@ func BuildKatalogHandler(
 				StartedAt:        h.StartedAt(),
 				Uptime:           h.Uptime(),
 				ErrorRate:        h.ErrorRatePercent(),
+				CrossAccess:      crd.CrossAccess == nil || *crd.CrossAccess,
 				KatalogNamespace: crd.KatalogNamespace,
 				Endpoints: EndpointInfo{
-					Health: "/katalog/" + strings.ToLower(crd.Name) + "/health",
-					Info:   "/katalog/" + strings.ToLower(crd.Name),
+					Health:        "/katalog/" + strings.ToLower(crd.Name) + "/health",
+					Info:          "/katalog/" + strings.ToLower(crd.Name),
+					HealthEnabled: crd.Endpoints.IsHealthEnabled(),
+					InfoEnabled:   crd.Endpoints.IsInfoEnabled(),
 				},
 			})
 

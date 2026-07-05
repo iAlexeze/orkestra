@@ -1,4 +1,4 @@
-# Live API — Endpoint Reference
+# Endpoint Reference
 
 All endpoints are served by the Orkestra runtime on port 8080. No authentication by default — the port is cluster-internal unless you expose it.
 
@@ -317,7 +317,8 @@ kubectl:
       jq: state
       equals: "healthy"
 ```
+## Further Reading
 
-→ [ONCOP](../oncop/) — how cross-binary operators use these endpoints as observation targets
-→ [Operator Autoscaler](../operator-autoscaler/) — reading `metrics.*` cross-binary via `/katalog/{crd}`
-→ [Health Subsystem](../health-subsystem/) — operator-level probes (`/health`, `/ready`, `/startup`, `/metrics`)
+- **[ONCOP](../oncop/)** — how cross-binary operators use these endpoints as observation targets
+- **[Operator Autoscaler](../operator-autoscaler/)** — reading `metrics.*` cross-binary via `/katalog/{crd}`
+- **[Health Subsystem](../health-subsystem/)** — operator-level probes (`/health`, `/ready`, `/startup`, `/metrics`)

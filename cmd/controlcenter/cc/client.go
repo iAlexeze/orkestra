@@ -51,47 +51,84 @@ func (c *Client) FetchKatalog() (*KatalogResponse, error) {
 // The health call is retried up to 3 times until it comes from the leader pod
 // (isKonductor: true). Without this, a multi-replica runtime Service can
 // route the request to a follower whose CRD health is always "pending".
-func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
-	var health *CRDHealth
-	for i := 0; i < 3; i++ {
-		h, err := getJSON[CRDHealth](c, "/katalog/"+name+"/health")
-		if err != nil {
-			return nil, fmt.Errorf("fetching health: %w", err)
+// When endpoints.HealthEnabled or endpoints.InfoEnabled is false, the
+// corresponding HTTP call is skipped and a synthetic placeholder is used so
+// the CC never shows the CRD as degraded due to a deliberately disabled endpoint.
+func (c *Client) FetchCRDDetail(name string, endpoints EndpointInfo, summary *CRDSummary) (*CRDDetail, error) {
+	// When all per-CRD endpoints are disabled, return a minimal detail that
+	// makes the disabled state explicit rather than showing partial/zero data.
+	if !endpoints.HealthEnabled && !endpoints.InfoEnabled {
+		d := &CRDDetail{
+			Name:                   name,
+			State:                  "endpoints-disabled",
+			Description:            "HTTP endpoints are disabled for this CRD.",
+			HealthEndpointDisabled: true,
+			InfoEndpointDisabled:   true,
 		}
-		if h.IsKonductor {
-			health = h
-			break
+		if summary != nil {
+			d.Description = summary.Description
+			d.Mode = summary.Mode
+			d.GVK = summary.GVK
+			d.GVR = summary.GVR
+			d.Namespaced = summary.Namespaced
+			d.Namespace = summary.Namespace
+			d.CrossAccess = summary.CrossAccess
+			d.Workers = summary.Workers
+			d.RBACCount = summary.RBACCount
 		}
+		return d, nil
 	}
-	if health == nil {
-		// All attempts hit a follower — use the last response rather than
-		// returning an error. The data may be stale but is better than nothing.
-		h, err := getJSON[CRDHealth](c, "/katalog/"+name+"/health")
-		if err != nil {
-			return nil, fmt.Errorf("fetching health: %w", err)
+
+	var health *CRDHealth
+	if !endpoints.HealthEnabled {
+		// Health endpoint is disabled — synthesise from the /katalog summary
+		// which always responds and already carries the runtime's internal health state.
+		health = synthHealthFromSummary(name, summary)
+	} else {
+		for i := 0; i < 3; i++ {
+			h, err := getJSON[CRDHealth](c, "/katalog/"+name+"/health")
+			if err != nil {
+				return nil, fmt.Errorf("fetching health: %w", err)
+			}
+			if h.IsKonductor {
+				health = h
+				break
+			}
 		}
-		health = h
+		if health == nil {
+			// All attempts hit a follower — use the last response rather than
+			// returning an error. The data may be stale but is better than nothing.
+			h, err := getJSON[CRDHealth](c, "/katalog/"+name+"/health")
+			if err != nil {
+				return nil, fmt.Errorf("fetching health: %w", err)
+			}
+			health = h
+		}
 	}
 
 	// Same retry pattern for info — worker counts (workersActive, workerDetails)
 	// are zero on follower pods since they never start reconcilers.
 	var info *CRDInfo
-	for i := 0; i < 3; i++ {
-		inf, err := getJSON[CRDInfo](c, "/katalog/"+name)
-		if err != nil {
-			return nil, fmt.Errorf("fetching info: %w", err)
+	if !endpoints.InfoEnabled {
+		info = synthInfoFromSummary(name, summary)
+	} else {
+		for i := 0; i < 3; i++ {
+			inf, err := getJSON[CRDInfo](c, "/katalog/"+name)
+			if err != nil {
+				return nil, fmt.Errorf("fetching info: %w", err)
+			}
+			if inf.IsKonductor {
+				info = inf
+				break
+			}
 		}
-		if inf.IsKonductor {
+		if info == nil {
+			inf, err := getJSON[CRDInfo](c, "/katalog/"+name)
+			if err != nil {
+				return nil, fmt.Errorf("fetching info: %w", err)
+			}
 			info = inf
-			break
 		}
-	}
-	if info == nil {
-		inf, err := getJSON[CRDInfo](c, "/katalog/"+name)
-		if err != nil {
-			return nil, fmt.Errorf("fetching info: %w", err)
-		}
-		info = inf
 	}
 
 	nsProtection := info.NamespaceProtection
@@ -112,6 +149,7 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 		GVR:                      info.GVR,
 		Namespaced:               info.Namespaced,
 		Namespace:                info.Namespace,
+		CrossAccess:              summary == nil || summary.CrossAccess,
 		DependsOn:                info.DependsOn,
 		HasUnhealthyDependencies: health.HasUnhealthyDependencies,
 		Dependencies:             health.Dependencies,
@@ -149,6 +187,8 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 		AutoscalerEnabled:        info.AutoscalerEnabled,
 		AutoscalerWorkers:        info.AutoscalerWorkers,
 		Rollback:                 info.Rollback,
+		HealthEndpointDisabled:   !endpoints.HealthEnabled,
+		InfoEndpointDisabled:     !endpoints.InfoEnabled,
 	}
 
 	detail.StartedAgo = humanDuration(health.StartedAt)
@@ -170,7 +210,7 @@ func (c *Client) FetchCRList(instanceURL, crdName string) (*CRListResponse, erro
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusServiceUnavailable {
+	if resp.StatusCode == http.StatusServiceUnavailable || resp.StatusCode == http.StatusNotFound {
 		return &CRListResponse{CRD: crdName, Items: []CRSummary{}}, nil
 	}
 	if resp.StatusCode != http.StatusOK {

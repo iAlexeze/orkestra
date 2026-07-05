@@ -71,7 +71,7 @@ Each example has its own `README.md`. Follow it — it tells you exactly what to
 ## Which example to start with
 
 **New to Kubernetes operators**
-- Read [Kubernetes, operators, and why Orkestra](./00-kubernetes-basics.md) first — CRDs, the reconcile loop, and where Orkestra fits.
+- Read [Kubernetes, operators, and why Orkestra](../00-kubernetes-basics.md) first — CRDs, the reconcile loop, and where Orkestra fits.
 - Then [`beginner/01-hello-website`](./01-beginner.md) — the mental model it builds is the foundation for everything else.
 
 **Know Kubernetes, new to Orkestra**

@@ -19,6 +19,7 @@ Open [http://localhost:8081](http://localhost:8081).
 - **CRD Detail** — per-CRD deep dive. Every worker's state, RBAC permissions, dependencies, admission metrics.
 - **Resources** — live CR list for that CRD. The actual objects being reconciled.
 - **CR Detail** — single CR view. Status fields, conditions, and child Kubernetes resources created by the reconciler, grouped by kind with ready state and replica counts.
+- **[Generated Docs](./generated-docs.md)** — per-CRD documentation derived live from the running operator. Covers API shape, reconcile mode, operatorBox, RBAC, webhooks, protection, endpoints, and more.
 
 ---
 

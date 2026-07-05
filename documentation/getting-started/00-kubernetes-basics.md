@@ -1,6 +1,6 @@
 # Kubernetes, operators, and Orkestra
 
-For engineers who are new to Kubernetes or want a clear mental model before writing their first Katalog. If you already know what CRDs, operators, and reconciliation are, go straight to [Learning to Orkestrate](./index.md).
+For engineers who are new to Kubernetes or want a clear mental model before writing their first Katalog. If you already know what CRDs, operators, and reconciliation are, go straight to [Learning to Orkestrate](./01-learning-to-orkestrate/index.md).
 
 ---
 
@@ -178,6 +178,6 @@ spec:
 ## Further reading
 
 - [Kubernetes Basics](https://kubernetes.io/docs/tutorials/kubernetes-basics/) — hands-on introduction to Kubernetes
-- [Learning to Orkestrate](./index.md) — the map of all runnable examples
+- [Learning to Orkestrate](./01-learning-to-orkestrate/index.md) — the map of all runnable examples
 - [Writing your first Katalog](../03-writing-your-first-katalog.md) — go from nothing to a running operator in one file
 - [Migration Guide](./07-migration.md) — if you have an existing controller-runtime operator
