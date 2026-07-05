@@ -30,6 +30,7 @@ var (
 	pushNoSimulate    bool
 	pushE2ECluster    string
 	pushE2EUseCurrent bool
+	pushE2EWorkers    int
 )
 
 var pushCmd = &cobra.Command{
@@ -214,7 +215,7 @@ var pushCmd = &cobra.Command{
 					}
 				} else {
 					fmt.Printf("\nRunning E2E gate (%s)...\n", registry.FileE2E)
-					runner, err := e2e.New(e2eFile, pushE2ECluster, pushE2EUseCurrent, false, false, "", nil)
+					runner, err := e2e.New(e2eFile, e2e.Options{ClusterCtx: pushE2ECluster, UseCurrentCtx: pushE2EUseCurrent, Workers: pushE2EWorkers})
 					if err != nil {
 						return fmt.Errorf("e2e gate: %w\n\nUse --force or --no-e2e to skip", err)
 					}
@@ -318,6 +319,7 @@ func init() {
 	pushCmd.Flags().BoolVar(&pushNoSimulate, "no-simulate", false, "Skip the simulate gate even if simulate.yaml is present")
 	pushCmd.Flags().StringVar(&pushE2ECluster, "cluster", "", "Reuse an existing kind cluster context for the e2e gate (skips cluster creation)")
 	pushCmd.Flags().BoolVar(&pushE2EUseCurrent, "use-current", false, "Use the current kubeconfig context for the e2e gate (skips cluster creation)")
+	pushCmd.Flags().IntVar(&pushE2EWorkers, "workers", 0, "Number of kind worker nodes for the e2e gate cluster (0 = control-plane only)")
 	rootCmd.AddCommand(pushCmd)
 
 	// Shadow global flags

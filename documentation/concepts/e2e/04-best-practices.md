@@ -14,31 +14,102 @@ my-operator/
   e2e.yaml     ← here, not in a parent directory
 ```
 
-When a Komposer combines several Katalogs, write a suite file at the root that imports each sub-test. The sub-tests stay individually runnable. The suite gives CI one entry point.
+When a Komposer combines several Katalogs, write a suite file at the root that imports each sub-test via `imports:`. The sub-tests stay individually runnable. The suite gives CI one entry point.
 
 ---
 
-## Use imports instead of one large E2E
+## Compose long expect lists with `include:`
 
-Resist putting all assertions into a single `e2e.yaml`. A large file is hard to debug: when checkpoint 7 of 12 fails, you re-run the whole thing and wait through 1-6 again.
+As an operator matures, its `expect:` list grows. Resist leaving it all in one file — when checkpoint 7 of 15 fails, you re-read the whole thing to understand what phase you're in.
 
-Separate concerns into focused files and compose them:
+Split checkpoints by lifecycle phase and compose them with `include:`:
 
 ```yaml
-# operator/e2e.yaml — suite
-imports:
-  - ./e2e-basic.yaml        # core resources created
-  - ./e2e-once-secret.yaml  # once: semantics
-  - ./e2e-cleanup.yaml      # finalizer and deletion order
+# e2e.yaml — composed from phases
+expect:
+  - include: ./e2e/infra-ready.yaml   # resources created
+  - include: ./e2e/behavior.yaml      # business logic verified
+  - include: ./e2e/cleanup.yaml       # CR deleted, children gone
 ```
 
-Each file can be run in isolation during development (`ork e2e -f e2e-once-secret.yaml`) and run together in CI via the suite.
+Each file uses `expect:` as its root key:
+
+```yaml
+# e2e/cleanup.yaml
+expect:
+  - name: Children removed after CR deletion
+    after: cr-deleted
+    timeout: 30s
+    resources:
+      - kind: Deployment
+        name: my-app
+        namespace: default
+        count: 0
+```
+
+`ork validate` expands all includes before reporting — the checkpoint list and count reflect the full run order.
+
+**Put include files in a subfolder** (conventionally `e2e/`) to keep the root directory clean. The phase name is the filename: `infra-ready.yaml`, `failover.yaml`, `cleanup.yaml`. Each can be read, improved, and scaled independently without touching the others. Adding a new infrastructure assertion only means editing `infra-ready.yaml` — the other phases are unaffected.
 
 ---
 
-## Always include a `cr-deleted` cleanup checkpoint
+## Prefer DSL over raw `commands[].run`
 
-Every test should verify that child resources are cleaned up when the CR is deleted. Without this, the test passes even if the Deployment or Service leaked.
+`commands[].run` is a raw shell string. It works but it is opaque — it has no type safety, `ork validate` cannot check it, and error messages are raw shell output. Prefer the typed DSL subcommands whenever the operation maps to a known kubectl command:
+
+| Instead of | Use |
+|-----------|-----|
+| `kubectl get ... -o jsonpath=...` | `kubectl.get` with `field:` |
+| `kubectl logs -l app=...` | `kubectl.logs` with `labelSelector:` |
+| `kubectl delete pod $(kubectl get lease ...)` | `kubectl.delete` with `leaderElection:` |
+| `kubectl exec <pod> -- cat /etc/config` | `kubectl.exec` |
+| `kubectl port-forward ... & curl ... & kill` | `kubectl.port-forward` |
+
+Reserve `commands[].run` for things that genuinely need shell: complex conditionals, multi-step sequences, tool-specific invocations.
+
+---
+
+## Use `leaderElection:` for HA operators
+
+When your operator runs with `replicaCount > 1`, pod names change on every election. Never hardcode a pod name. Use `leaderElection:` on `kubectl.logs`, `kubectl.port-forward`, `kubectl.delete`, and `kubectl.exec` — Orkestra reads the Lease holder and targets the correct pod automatically.
+
+```yaml
+kubectl:
+  # Assert the leader's log output
+  logs:
+    - leaderElection:
+        lease: orkestra-konductor
+        namespace: orkestra-system
+      outputContains: "became konductor"
+
+  # Kill the leader pod by name — without knowing it in advance
+  delete:
+    - leaderElection:
+        lease: orkestra-konductor
+        namespace: orkestra-system
+
+  # Forward to the leader's HTTP endpoint
+  port-forward:
+    - leaderElection:
+        lease: orkestra-konductor
+      port: 8080
+      path: /health
+      jq: state
+      equals: "healthy"
+```
+
+This is the typed alternative to the shell anti-pattern:
+
+```bash
+# fragile — breaks when the pod restarts
+kubectl delete pod $(kubectl get lease my-lease -o jsonpath='{.spec.holderIdentity}') -n my-ns
+```
+
+---
+
+## Always include a cleanup checkpoint
+
+Every test should verify that child resources are cleaned up when the CR is deleted. Without this, the test passes even if a Deployment or Service leaked.
 
 ```yaml
 - name: Cleanup verified
@@ -63,6 +134,23 @@ Every test should verify that child resources are cleaned up when the CR is dele
 
 ---
 
+## Name checkpoints for the behavior, not the resource
+
+```yaml
+# bad — the resource type is already in the resources list
+- name: Deployment check
+
+# good — describes what the operator should have done
+- name: App deployed and serving traffic
+- name: Credentials not recreated on second apply
+- name: New leader serves authoritative state after failover
+- name: Children removed after CR deletion
+```
+
+The checkpoint name appears in pass/fail output. Make it answer "what behavior was verified?"
+
+---
+
 ## Set realistic timeouts
 
 Timeouts are per-checkpoint. Set them based on what that specific resource actually needs:
@@ -74,9 +162,9 @@ Timeouts are per-checkpoint. Set them based on what that specific resource actua
 | Deployment with fast image | 60–90s |
 | Deployment with slow pull | 120–180s |
 | StatefulSet | 120–300s |
-| Custom operator (depends on logic) | 60–120s |
+| In-cluster loop (e.g. CRD check every 90s) | 120s minimum |
 
-Too short: flaky tests. Too long: slow CI. A failing test with a 5-minute timeout is painful.
+Too short: flaky tests. Too long: slow CI. When a checkpoint depends on a background loop with a known tick interval, the timeout must exceed one full tick — not just the expected happy-path duration.
 
 ---
 
@@ -99,29 +187,13 @@ Any-match (`kind: Deployment, namespace: default, count: 0`) passes when there a
 
 ---
 
-## Name checkpoints for the behavior, not the resource
-
-```yaml
-# bad — the resource type is already in the resources list
-- name: Deployment check
-
-# good — describes what the operator should have done
-- name: App deployed and serving traffic
-- name: Credentials not recreated on second apply
-- name: Children removed after CR deletion
-```
-
-The checkpoint name appears in pass/fail output. Make it answer "what behavior was verified?"
-
----
-
 ## Run validate before cluster work
 
 ```bash
 ork validate -f e2e.yaml
 ```
 
-Validate catches file path errors, missing `after:` values, and invalid imports in milliseconds. There is no reason to provision a cluster before validation passes.
+Validate catches file path errors, missing `after:` values, invalid kubectl DSL, and broken `include:` references in milliseconds — without touching a cluster. There is no reason to provision a cluster before validation passes.
 
 In CI, add validate as a separate step before the e2e step:
 
@@ -143,6 +215,13 @@ In CI, add validate as a separate step before the e2e step:
 # GitHub Actions
 - name: Run E2E
   run: ork e2e -f e2e.yaml
+```
+
+For tests that require a multi-node cluster, use `--workers`:
+
+```yaml
+- name: Run E2E (HA)
+  run: ork e2e -f e2e.yaml --workers 2
 ```
 
 For parallel test jobs, pass `--cluster` with a unique name per job to avoid kind cluster name collisions:

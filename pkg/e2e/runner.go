@@ -51,6 +51,8 @@ type Runner struct {
 	keepCluster   bool
 	useCurrentCtx bool   // Default (false) - means whether to use the current context, skip cluster creation
 	clusterCtx    string // non-empty means use this context, skip cluster creation
+	workers       int    // number of kind worker nodes to provision (0 = control-plane only)
+	kindVersion   string // kind binary version to use ("" = DefaultKindVersion)
 
 	katalogFile string
 	crFile      string
@@ -75,8 +77,22 @@ type Runner struct {
 	sharedOrkestra bool
 }
 
+// Options configures a Runner. All fields are optional — zero values produce
+// the same behaviour as the previous positional defaults.
+type Options struct {
+	ClusterCtx    string   // use an existing kubectl context, skip cluster creation
+	UseCurrentCtx bool     // use the current kubectl context as-is
+	KeepCluster   bool     // do not delete the kind cluster after the run
+	Workers       int      // number of kind worker nodes (0 = control-plane only)
+	KindVersion   string   // kind binary version to download ("" = DefaultKindVersion)
+	DevServer     bool     // deploy the mock dev server into the cluster
+	OrkVersion    string   // Orkestra helm chart version to install
+	ValueFiles    []string // additional Helm values files
+	HelmArgs      []string // additional helm --set arguments
+}
+
 // New loads an E2E spec from a YAML file and constructs a Runner.
-func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster, devServer bool, orkestraVersion string, valueFiles []string, helmArgs ...string) (*Runner, error) {
+func New(e2eFile string, opts Options) (*Runner, error) {
 	data, err := os.ReadFile(e2eFile)
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", e2eFile, err)
@@ -94,25 +110,27 @@ func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster, devServer bool,
 	if err != nil {
 		return nil, fmt.Errorf("resolving e2e directory: %w", err)
 	}
-	allValueFiles := make([]string, 0, len(e2e.Spec.ValuesFiles)+len(valueFiles))
+	allValueFiles := make([]string, 0, len(e2e.Spec.ValuesFiles)+len(opts.ValueFiles))
 	for _, f := range e2e.Spec.ValuesFiles {
 		if !filepath.IsAbs(f) {
 			f = filepath.Join(e2eDir, f)
 		}
 		allValueFiles = append(allValueFiles, f)
 	}
-	allValueFiles = append(allValueFiles, valueFiles...)
+	allValueFiles = append(allValueFiles, opts.ValueFiles...)
 
 	r := &Runner{
 		e2e:              e2e,
 		e2eDir:           e2eDir,
-		keepCluster:      keepCluster,
-		clusterCtx:       clusterCtx,
-		useCurrentCtx:    useCurrentCtx,
-		devServer:        devServer,
-		orkestraVersion:  orkestraVersion,
+		keepCluster:      opts.KeepCluster,
+		clusterCtx:       opts.ClusterCtx,
+		useCurrentCtx:    opts.UseCurrentCtx,
+		workers:          opts.Workers,
+		kindVersion:      opts.KindVersion,
+		devServer:        opts.DevServer,
+		orkestraVersion:  opts.OrkVersion,
 		valueFiles:       allValueFiles,
-		helmArgs:         helmArgs,
+		helmArgs:         opts.HelmArgs,
 		kubernetesTarget: e2e.Spec.Custom != nil && e2e.Spec.Custom.Target == orktypes.CustomTargetKubernetes,
 	}
 
@@ -539,7 +557,7 @@ func (r *Runner) ensureCluster(ctx context.Context) error {
 		}
 	}
 
-	return ork.EnsureKindCluster(name)
+	return ork.EnsureKindCluster(name, r.workers, r.kindVersion)
 }
 
 // applyCRD applies the operator's CRD to the cluster and returns the paths applied.
@@ -917,7 +935,7 @@ func (r *Runner) runImports(ctx context.Context) []ImportResult {
 		// one so imports don't run alongside the parent's Orkestra install.
 		importCluster := r.clusterName() + "-imports"
 		fmt.Printf("→ Creating imports cluster '%s'...\n", importCluster)
-		if err := ork.EnsureKindCluster(importCluster); err != nil {
+		if err := ork.EnsureKindCluster(importCluster, r.workers, r.kindVersion); err != nil {
 			return []ImportResult{{Path: importCluster, Err: fmt.Errorf("creating imports cluster: %w", err)}}
 		}
 		if !r.keepCluster {
@@ -983,9 +1001,9 @@ func (r *Runner) runImports(ctx context.Context) []ImportResult {
 		var sub *Runner
 		var err error
 		if imp.FreshCluster {
-			sub, err = New(absPath, "", false, r.keepCluster, r.devServer, r.orkestraVersion, r.valueFiles)
+			sub, err = New(absPath, Options{KeepCluster: r.keepCluster, Workers: r.workers, KindVersion: r.kindVersion, DevServer: r.devServer, OrkVersion: r.orkestraVersion, ValueFiles: r.valueFiles})
 		} else {
-			sub, err = New(absPath, "", true, false, r.devServer, r.orkestraVersion, r.valueFiles)
+			sub, err = New(absPath, Options{UseCurrentCtx: true, Workers: r.workers, KindVersion: r.kindVersion, DevServer: r.devServer, OrkVersion: r.orkestraVersion, ValueFiles: r.valueFiles})
 			if err == nil {
 				sub.sharedOrkestra = true
 			}

@@ -185,8 +185,15 @@ func validateKubectlDescribe(loc string, d orktypes.E2EKubectlDescribe) []error 
 
 func validateKubectlExec(loc string, e orktypes.E2EKubectlExec) []error {
 	var errs []error
-	if e.Name == "" && e.LabelSelector == "" {
-		errs = append(errs, fmt.Errorf("%s: name or labelSelector is required", loc))
+	if e.LeaderElection != nil {
+		if e.Name != "" || e.LabelSelector != "" {
+			errs = append(errs, fmt.Errorf("%s: leaderElection is mutually exclusive with name and labelSelector", loc))
+		}
+		if e.LeaderElection.Lease == "" {
+			errs = append(errs, fmt.Errorf("%s: leaderElection.lease is required", loc))
+		}
+	} else if e.Name == "" && e.LabelSelector == "" {
+		errs = append(errs, fmt.Errorf("%s: name, labelSelector, or leaderElection is required", loc))
 	}
 	if len(e.Command) == 0 {
 		errs = append(errs, fmt.Errorf("%s: command is required", loc))
@@ -218,11 +225,20 @@ func validateKubectlPortForward(loc string, p orktypes.E2EKubectlPortForward) []
 
 func validateKubectlDelete(loc string, d orktypes.E2EKubectlDelete) []error {
 	var errs []error
-	if d.File == "" && (d.Kind == "" || d.Name == "") {
-		errs = append(errs, fmt.Errorf("%s: file or (kind + name) is required", loc))
-	}
-	if d.File != "" && (d.Kind != "" || d.Name != "") {
-		errs = append(errs, fmt.Errorf("%s: file and kind/name are mutually exclusive", loc))
+	if d.LeaderElection != nil {
+		if d.File != "" || d.Kind != "" || d.Name != "" {
+			errs = append(errs, fmt.Errorf("%s: leaderElection is mutually exclusive with file, kind, and name", loc))
+		}
+		if d.LeaderElection.Lease == "" {
+			errs = append(errs, fmt.Errorf("%s: leaderElection.lease is required", loc))
+		}
+	} else {
+		if d.File == "" && (d.Kind == "" || d.Name == "") {
+			errs = append(errs, fmt.Errorf("%s: file or (kind + name) is required", loc))
+		}
+		if d.File != "" && (d.Kind != "" || d.Name != "") {
+			errs = append(errs, fmt.Errorf("%s: file and kind/name are mutually exclusive", loc))
+		}
 	}
 	return errs
 }

@@ -24,6 +24,8 @@ ork create cluster [flags]
 |------|---------|-------------|
 | `--name <name>` | `ork-playground` | Name of the kind cluster to create |
 | `--provider <provider>` | `kind` | Cluster provider — only `kind` is supported |
+| `--workers <n>` | `0` | Number of worker nodes to add (0 = control-plane only) |
+| `--version <version>` | `v0.27.0` | kind binary version to use (downloaded automatically if not in PATH) |
 
 #### Examples
 
@@ -39,11 +41,25 @@ Create a named cluster:
 ork create cluster --name ork-e2e
 ```
 
+Create a multi-node cluster (1 control-plane + 3 workers):
+
+```bash
+ork create cluster --workers 3
+```
+
+Pin to a specific kind version:
+
+```bash
+ork create cluster --version v0.26.0
+```
+
 #### Behavior
 
-- Creates the kind cluster and waits for it to be ready.
+- Creates the kind cluster and waits for all nodes to be ready.
 - Switches the active `kubectl` context to the new cluster (`kind-<name>`).
+- Downloads the kind binary if not found in `PATH` — cached at `~/.orkestra/bin/kind-<version>`.
 - Subsequent `ork run`, `ork e2e`, and `kubectl` commands operate against this cluster.
+- To remove the cluster: [`ork delete cluster --name <name>`](./delete.md).
 
 ---
 
@@ -118,3 +134,4 @@ ork create pattern --typed
 
 - `ork create cluster` is intended for local development and CI environments, not production.
 - Only the `kind` provider is supported. Other providers (minikube, k3s) are not yet available.
+- To delete a cluster created with this command, use [`ork delete cluster`](./delete.md).

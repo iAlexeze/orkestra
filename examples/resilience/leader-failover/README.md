@@ -216,7 +216,9 @@ Exercises the full arc — leader elected, CR reconciled, leader pod killed, new
 
 This example uses `custom.target: kubernetes` — the universal test harness that manages a kind cluster and runs any Kubernetes workload without assuming an Orkestra-managed install. Orkestra itself is installed via `setup.helm`, just like any other chart. For more: https://orkestra.sh/docs/guides/e2e-universal/
 
-Uses `leaderElection` on both `kubectl.port-forward` and `kubectl.logs` so assertions always target the current holder — the new pod after failover.
+Uses `leaderElection` on `kubectl.port-forward`, `kubectl.logs`, and `kubectl.delete` so assertions and the pod kill always target the current holder — the new pod after failover.
+
+The expect checkpoints are split across three files in `e2e/` and composed into [`e2e.yaml`](e2e.yaml) via `include:` — `infra-ready.yaml`, `failover.yaml`, and `cleanup.yaml`. Each can be read, improved, and scaled independently without touching the others. Adding a new infrastructure assertion (say, verifying a PDB exists before the failover) means editing `infra-ready.yaml` only — the failover and cleanup phases are unaffected.
 
 For more on testing leader-led deployments: https://orkestra.sh/docs/concepts/e2e/leader-led-deployments/
 

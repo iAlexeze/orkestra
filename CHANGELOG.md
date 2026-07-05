@@ -1,3 +1,55 @@
+## v0.7.10 [UNRELEASED] — E2E DSL extensions, cluster improvements
+
+### `leaderElection:` on `kubectl.delete` and `kubectl.exec`
+
+`leaderElection:` was previously supported only on `port-forward` and `logs`. It now works on `delete` and `exec` as well, completing all four kubectl subcommands.
+
+`kubectl.delete` with `leaderElection:` resolves the current Lease holder at test time and deletes the pod by name — without hardcoding it. The leader-failover example now uses this for its "Kill the konductor pod" step, replacing a raw shell command embedded in YAML.
+
+`kubectl.exec` with `leaderElection:` runs a command inside the leader pod.
+
+### `include:` composition for `expect:`
+
+Long `expect:` sections can now be split across files in an `e2e/` subfolder and composed with `include:`:
+
+```yaml
+expect:
+  - include: ./e2e/infra-ready.yaml
+  - include: ./e2e/failover.yaml
+  - include: ./e2e/cleanup.yaml
+```
+
+Each include file carries the `expect:` root key. Phases can be read, improved, and scaled independently without touching the others. The three resilience examples (`leader-failover`, `crd-missing-recovery`, `admission-protection`) are refactored to use this pattern.
+
+### Type rename: `E2EKubectlPortForwardLeaderElection` → `E2EKubectlLeaderElection`
+
+The type is now used by all four kubectl subcommands. The old name was misleading. YAML schema keys (`leaderElection:`) are unchanged.
+
+### `ork create cluster` — `--workers` and `--version`
+
+`--workers <n>` provisions `n` worker nodes in addition to the control-plane. `--version <v>` selects which kind release to download and cache at `~/.orkestra/bin/kind-<version>`; previously hardcoded to `v0.27.0`. An explicit `--version` skips any `kind` binary already in PATH and uses the versioned cache entry. The same `--workers` flag is accepted on `ork e2e` and `ork push`.
+
+### `ork delete cluster`
+
+New command — the complement to `ork create cluster`. Deletes a kind cluster by name:
+
+```bash
+ork delete cluster
+ork delete cluster --name ork-e2e
+```
+
+### `e2e.New` Options struct
+
+`New(e2eFile string, opts Options)` replaces a long positional parameter list. `Workers` and `KindVersion` propagate into sub-runner `New` calls for imports.
+
+### Bug fixes
+
+- **Node-ready race**: `waitForNodesReady` checked the condition *type* (`Ready`) not its *status* (`True`). A node could be type=Ready status=False and still be reported ready. Replaced with `kubectl wait --for=condition=Ready node --all`.
+- **`--version` silently ignored when kind is in PATH**: `resolveKind` always checked PATH first regardless of the version flag. Fixed: empty version checks PATH then falls back to default; non-empty version skips PATH entirely.
+- **Spinner output leaking during setup waits**: `WaitForResource` used `.Run()` for ready checks, letting `kubectl rollout status` and `kubectl wait` write progress to the terminal while the spinner goroutine was running. Replaced with `.Output()`. `helm repo add/update` had the same issue during the Installing spinner.
+
+---
+
 ## v0.7.9 — Reconciler configuration, user-defined profiles, kubectl DSL, and resilience examples
 
 ### Resilience pack — new sub-examples

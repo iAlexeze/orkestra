@@ -229,6 +229,8 @@ All health endpoint assertions use **leader election** to resolve the port-forwa
 
 The degradation and re-activation checkpoints use `timeout: 120s`. Orkestra's in-cluster CRD check loop runs every 90 seconds — the timeout must exceed one full tick or the assertion fires before detection has a chance to run. (Locally with `ork run`, the loop runs every 10s so the default 60s timeout is fine.)
 
+The expect checkpoints are split across four files in `e2e/` and composed into [`e2e.yaml`](e2e.yaml) via `include:` — `health-check.yaml`, `crd-loss.yaml`, `recovery.yaml`, and `cleanup.yaml`. Each phase can be read, improved, and scaled independently without touching the others.
+
 For more: https://orkestra.sh/docs/concepts/e2e/leader-led-deployments/
 
 ---
