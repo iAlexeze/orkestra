@@ -185,6 +185,61 @@ func pvcNames(resolver *orktmpl.Resolver, srcs []orktypes.PVCTemplateSource) []r
 	return names
 }
 
+func networkPolicyNames(resolver *orktmpl.Resolver, srcs []orktypes.NetworkPolicyTemplateSource) []resolvedChildName {
+	expanded := ExpandForEachNetworkPolicies(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
+		if n, ok := resolveName(resolver, s.Name, s.Namespace); ok {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
+func resourceQuotaNames(resolver *orktmpl.Resolver, srcs []orktypes.ResourceQuotaTemplateSource) []resolvedChildName {
+	expanded := ExpandForEachResourceQuotas(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
+		if n, ok := resolveName(resolver, s.Name, s.Namespace); ok {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
+func limitRangeNames(resolver *orktmpl.Resolver, srcs []orktypes.LimitRangeTemplateSource) []resolvedChildName {
+	expanded := ExpandForEachLimitRanges(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
+		if n, ok := resolveName(resolver, s.Name, s.Namespace); ok {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
+func clusterRoleNames(resolver *orktmpl.Resolver, srcs []orktypes.ClusterRoleTemplateSource) []resolvedChildName {
+	expanded := ExpandForEachClusterRoles(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
+		if n, ok := resolveName(resolver, s.Name, ""); ok {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
+func clusterRoleBindingNames(resolver *orktmpl.Resolver, srcs []orktypes.ClusterRoleBindingTemplateSource) []resolvedChildName {
+	expanded := ExpandForEachClusterRoleBindings(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
+		if n, ok := resolveName(resolver, s.Name, ""); ok {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
 func pvNames(resolver *orktmpl.Resolver, srcs []orktypes.PVTemplateSource) []resolvedChildName {
 	expanded := ExpandForEachPVs(resolver, srcs)
 	names := make([]resolvedChildName, 0, len(expanded))

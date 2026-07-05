@@ -160,23 +160,23 @@ func (r *GenericReconciler[PTR]) runResourceGroup(
 		return err
 	}
 	if err := runners.RunNetworkPolicies(ctx, kube, resolver, obj,
-		t.NetworkPolicies, update, guard); err != nil {
+		children.ExpandForEachNetworkPolicies(resolver, t.NetworkPolicies), update, guard); err != nil {
 		return err
 	}
 	if err := runners.RunResourceQuotas(ctx, kube, resolver, obj,
-		t.ResourceQuotas, update, guard); err != nil {
+		children.ExpandForEachResourceQuotas(resolver, t.ResourceQuotas), update, guard); err != nil {
 		return err
 	}
 	if err := runners.RunLimitRanges(ctx, kube, resolver, obj,
-		t.LimitRanges, update, guard); err != nil {
+		children.ExpandForEachLimitRanges(resolver, t.LimitRanges), update, guard); err != nil {
 		return err
 	}
 	if err := runners.RunClusterRoles(ctx, kube, resolver, obj,
-		t.ClusterRoles, update); err != nil {
+		children.ExpandForEachClusterRoles(resolver, t.ClusterRoles), update); err != nil {
 		return err
 	}
 	if err := runners.RunClusterRoleBindings(ctx, kube, resolver, obj,
-		t.ClusterRoleBindings, update); err != nil {
+		children.ExpandForEachClusterRoleBindings(resolver, t.ClusterRoleBindings), update); err != nil {
 		return err
 	}
 	if err := runners.RunServiceAccounts(ctx, kube, resolver, obj,

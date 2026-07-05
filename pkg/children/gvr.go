@@ -28,6 +28,8 @@ var (
 	DaemonSetGVR               = gvrOrPanic("daemonset")
 	ReplicaSetGVR              = gvrOrPanic("replicaset")
 	NetworkPolicyGVR           = gvrOrPanic("networkpolicy")
+	ResourceQuotaGVR           = gvrOrPanic("resourcequota")
+	LimitRangeGVR              = gvrOrPanic("limitrange")
 	RoleGVR                    = gvrOrPanic("role")
 	RoleBindingGVR             = gvrOrPanic("rolebinding")
 	ClusterRoleGVR             = gvrOrPanic("clusterrole")
@@ -74,6 +76,8 @@ func ChildGVRs() []struct {
 		{DaemonSetGVR, "daemonset"},
 		{ReplicaSetGVR, "replicaset"},
 		{NetworkPolicyGVR, "networkpolicy"},
+		{ResourceQuotaGVR, "resourcequota"},
+		{LimitRangeGVR, "limitrange"},
 		{RoleGVR, "role"},
 		{RoleBindingGVR, "rolebinding"},
 		{ClusterRoleGVR, "clusterrole"},

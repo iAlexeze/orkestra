@@ -478,6 +478,79 @@ func ExpandForEachPods(
 	)
 }
 
+func ExpandForEachNetworkPolicies(
+	resolver *orktmpl.Resolver,
+	srcs []orktypes.NetworkPolicyTemplateSource,
+) []orktypes.NetworkPolicyTemplateSource {
+	return expandForEach(resolver, srcs,
+		func(s orktypes.NetworkPolicyTemplateSource) *orktypes.ForEachSpec { return s.ForEach },
+		func(ir *orktmpl.Resolver, src orktypes.NetworkPolicyTemplateSource) orktypes.NetworkPolicyTemplateSource {
+			src.ForEach = nil
+			src.Name, _ = ir.Resolve(src.Name)
+			src.Namespace, _ = ir.Resolve(src.Namespace)
+			return src
+		},
+	)
+}
+
+func ExpandForEachResourceQuotas(
+	resolver *orktmpl.Resolver,
+	srcs []orktypes.ResourceQuotaTemplateSource,
+) []orktypes.ResourceQuotaTemplateSource {
+	return expandForEach(resolver, srcs,
+		func(s orktypes.ResourceQuotaTemplateSource) *orktypes.ForEachSpec { return s.ForEach },
+		func(ir *orktmpl.Resolver, src orktypes.ResourceQuotaTemplateSource) orktypes.ResourceQuotaTemplateSource {
+			src.ForEach = nil
+			src.Name, _ = ir.Resolve(src.Name)
+			src.Namespace, _ = ir.Resolve(src.Namespace)
+			return src
+		},
+	)
+}
+
+func ExpandForEachLimitRanges(
+	resolver *orktmpl.Resolver,
+	srcs []orktypes.LimitRangeTemplateSource,
+) []orktypes.LimitRangeTemplateSource {
+	return expandForEach(resolver, srcs,
+		func(s orktypes.LimitRangeTemplateSource) *orktypes.ForEachSpec { return s.ForEach },
+		func(ir *orktmpl.Resolver, src orktypes.LimitRangeTemplateSource) orktypes.LimitRangeTemplateSource {
+			src.ForEach = nil
+			src.Name, _ = ir.Resolve(src.Name)
+			src.Namespace, _ = ir.Resolve(src.Namespace)
+			return src
+		},
+	)
+}
+
+func ExpandForEachClusterRoles(
+	resolver *orktmpl.Resolver,
+	srcs []orktypes.ClusterRoleTemplateSource,
+) []orktypes.ClusterRoleTemplateSource {
+	return expandForEach(resolver, srcs,
+		func(s orktypes.ClusterRoleTemplateSource) *orktypes.ForEachSpec { return s.ForEach },
+		func(ir *orktmpl.Resolver, src orktypes.ClusterRoleTemplateSource) orktypes.ClusterRoleTemplateSource {
+			src.ForEach = nil
+			src.Name, _ = ir.Resolve(src.Name)
+			return src
+		},
+	)
+}
+
+func ExpandForEachClusterRoleBindings(
+	resolver *orktmpl.Resolver,
+	srcs []orktypes.ClusterRoleBindingTemplateSource,
+) []orktypes.ClusterRoleBindingTemplateSource {
+	return expandForEach(resolver, srcs,
+		func(s orktypes.ClusterRoleBindingTemplateSource) *orktypes.ForEachSpec { return s.ForEach },
+		func(ir *orktmpl.Resolver, src orktypes.ClusterRoleBindingTemplateSource) orktypes.ClusterRoleBindingTemplateSource {
+			src.ForEach = nil
+			src.Name, _ = ir.Resolve(src.Name)
+			return src
+		},
+	)
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal helpers
 // ─────────────────────────────────────────────────────────────────────────────
