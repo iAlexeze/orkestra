@@ -8,18 +8,41 @@ import (
 
 // Markdown renders the result as a GitHub-flavoured markdown summary block.
 func (r *Result) Markdown() string {
+	var passed, failed []CaseResult
+	for _, c := range r.Cases {
+		if c.Passed {
+			passed = append(passed, c)
+		} else {
+			failed = append(failed, c)
+		}
+	}
+
 	var b strings.Builder
 	b.WriteString("## E2E Results: " + r.Name + "\n\n")
-	b.WriteString("| | Test | Time |\n")
-	b.WriteString("|---|---|---|\n")
-	for _, c := range r.Cases {
-		icon := "✅"
-		if !c.Passed {
-			icon = "❌"
+
+	if len(passed) > 0 {
+		b.WriteString("| Passed | Test | Time |\n")
+		b.WriteString("|---|---|---|\n")
+		for _, c := range passed {
+			b.WriteString(fmt.Sprintf("| ✅ | %s | %s |\n", c.Name, c.Elapsed.Round(time.Millisecond)))
 		}
-		b.WriteString(fmt.Sprintf("| %s | %s | %s |\n", icon, c.Name, c.Elapsed.Round(time.Millisecond)))
+		b.WriteString("\n")
 	}
-	b.WriteString("\n**" + r.Summary() + "**\n")
+
+	if len(failed) > 0 {
+		b.WriteString("| Failed | Test | Time | Error |\n")
+		b.WriteString("|---|---|---|---|\n")
+		for _, c := range failed {
+			msg := ""
+			if c.Err != nil {
+				msg = strings.ReplaceAll(strings.TrimSpace(c.Err.Error()), "\n", ". ")
+			}
+			b.WriteString(fmt.Sprintf("| ❌ | %s | %s | %s |\n", c.Name, c.Elapsed.Round(time.Millisecond), msg))
+		}
+		b.WriteString("\n")
+	}
+
+	b.WriteString("**" + r.Summary() + "**\n")
 	return b.String()
 }
 
