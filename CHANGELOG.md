@@ -92,6 +92,59 @@ New documentation page in `documentation/orkestra-core/03-controlcenter/generate
 - **`--version` silently ignored when kind is in PATH**: `resolveKind` always checked PATH first regardless of the version flag. Fixed: empty version checks PATH then falls back to default; non-empty version skips PATH entirely.
 - **Spinner output leaking during setup waits**: `WaitForResource` used `.Run()` for ready checks, letting `kubectl rollout status` and `kubectl wait` write progress to the terminal while the spinner goroutine was running. Replaced with `.Output()`. `helm repo add/update` had the same issue during the Installing spinner.
 
+### `ork e2e --report-file`
+
+`--report-file <path>` writes results as a GFM markdown table after every run. The file contains two tables — passed cases (icon, test, time) and failed cases (icon, test, time, error) — with a summary line. Newlines in error messages are replaced with `. ` so the table renders correctly.
+
+```bash
+ork e2e --report-file results.md
+ork e2e --report-file "$GITHUB_STEP_SUMMARY"   # render directly in GitHub Actions
+```
+
+Terminal output is now also split: passed cases print first, then failed cases with the full error indented line-by-line — consistent with how most language test frameworks present results.
+
+### `spec.onFailure` and per-expectation `onFailure`
+
+Two levels of diagnostic output when a test fails:
+
+**`spec.onFailure`** — runs once after all expectations complete, when at least one failed. Use for a global cluster snapshot.
+
+**`expect[].onFailure`** — runs immediately when that specific checkpoint fails, before moving to the next. Use to capture state at the moment of failure.
+
+Both accept the same DSL:
+
+```yaml
+spec:
+  onFailure:
+    kubectl:
+      logs:
+        - labelSelector: app=my-operator
+          namespace: default
+          since: 2m
+    commands:
+      - kubectl get pods -A -o wide
+
+  expect:
+    - name: Operator reaches Ready
+      after: cr-applied
+      timeout: 120s
+      kubectl:
+        get:
+          - kind: MyResource
+            name: my-cr
+            namespace: default
+            field: .status.phase
+            equals: Ready
+      onFailure:
+        kubectl:
+          describe:
+            - kind: Deployment
+              name: my-operator
+              namespace: default
+```
+
+Assertion fields on the `kubectl:` structs are present but never evaluated — output is always printed. `onFailure` never blocks teardown.
+
 ---
 
 ## v0.7.9 — Reconciler configuration, user-defined profiles, kubectl DSL, and resilience examples

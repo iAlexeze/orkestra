@@ -302,6 +302,19 @@ type E2ESpec struct {
 
 	// Expect is the list of expectations to check after each lifecycle event.
 	Expect []E2EExpectation `yaml:"expect"`
+
+	// OnFailure declares kubectl operations and commands to run and print to the
+	// terminal when any expectation fails. Uses the same kubectl: DSL as expect
+	// entries — assertions are never evaluated; output is always printed.
+	OnFailure *E2EOnFailure `yaml:"onFailure,omitempty"`
+}
+
+// E2EOnFailure declares diagnostic operations to run when any expectation fails.
+// kubectl: accepts the same DSL as expect entries; assertion fields are ignored.
+// commands: are raw shell strings run via sh -c.
+type E2EOnFailure struct {
+	Kubectl  *E2EKubectl `yaml:"kubectl,omitempty"`
+	Commands []string    `yaml:"commands,omitempty"`
 }
 
 // E2EInit selects a built-in example pack as the test source.
@@ -372,6 +385,10 @@ type E2EExpectation struct {
 	// describe, exec, port-forward. Compiles to kubectl invocations internally.
 	// Use commands: for anything that doesn't fit a subcommand.
 	Kubectl *E2EKubectl `yaml:"kubectl,omitempty"`
+
+	// OnFailure declares diagnostic operations to run immediately when this
+	// specific expectation fails. Runs before moving to the next expectation.
+	OnFailure *E2EOnFailure `yaml:"onFailure,omitempty"`
 }
 
 // E2EResourceCheck asserts the state of any Kubernetes resource.

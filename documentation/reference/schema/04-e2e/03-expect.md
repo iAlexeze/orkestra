@@ -29,6 +29,7 @@ expect:
 | `resources` | no | Resource state assertions, polled until passing. |
 | `commands` | no | Shell command assertions, run in the same polling loop. |
 | `kubectl` | no | Structured kubectl subcommand assertions. See [kubectl block](07-kubectl.md). |
+| `onFailure` | no | Diagnostic kubectl and shell commands to run and print when this specific checkpoint fails. See [Per-expectation onFailure](#per-expectation-onfailure). |
 | `include` | no | Path to a YAML file containing a bare list of checkpoints to expand in place. See [Composing expectations](#composing-expectations-with-include). |
 
 ---
@@ -37,6 +38,7 @@ expect:
 
 | Value | When it triggers |
 |-------|-----------------|
+| `setup-complete` | After all setup steps finish, before the CR is applied. Use for Kubernetes workloads that are not operators — where setup is the thing under test, not a CR lifecycle. |
 | `cr-applied` | After the CR has been applied and the initial reconcile has started. |
 | `cr-deleted` | After the CR has been deleted and finalizer cleanup has run. |
 
@@ -97,6 +99,52 @@ commands:
 | `notEquals` | no | Output must not exactly match this string. |
 | `greaterThan` | no | Output (trimmed, parsed as a number) must be greater than this value. |
 | `lessThan` | no | Output (trimmed, parsed as a number) must be less than this value. |
+
+---
+
+## Per-expectation `onFailure`
+
+A checkpoint can declare its own `onFailure:` block. When that specific checkpoint fails, its `onFailure` diagnostics run immediately — before the next checkpoint is evaluated. This lets you capture cluster state at the moment of failure, when it is most informative.
+
+```yaml
+expect:
+  - name: Both probes reach Ready status
+    after: cr-applied
+    timeout: 120s
+    kubectl:
+      get:
+        - kind: E2EProbe
+          name: my-probe-server
+          namespace: default
+          field: .status.phase
+          equals: Ready
+    onFailure:
+      kubectl:
+        get:
+          - kind: E2EProbe
+            name: my-probe-server
+            namespace: default
+        describe:
+          - kind: Deployment
+            name: my-probe-server
+            namespace: default
+      commands:
+        - kubectl get pods -n default -o wide
+```
+
+| Field | Description |
+|-------|-------------|
+| `kubectl` | Accepts the full `kubectl:` DSL (`get`, `logs`, `describe`, `events`, `exec`). Assertion fields are ignored — output is printed. |
+| `commands` | List of shell strings run via `sh -c`. Output is printed to the terminal. |
+
+The per-expectation `onFailure` is complementary to `spec.onFailure`. The difference:
+
+| | When it runs |
+|---|---|
+| `expect[].onFailure` | Immediately after that checkpoint fails — cluster state reflects the failure context |
+| `spec.onFailure` | Once at the end, after all expectations complete — useful for a global summary |
+
+→ See [spec.onFailure in 01-spec.md](01-spec.md#speconfailure) for the spec-level variant.
 
 ---
 

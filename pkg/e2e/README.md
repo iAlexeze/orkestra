@@ -104,6 +104,21 @@ if k := exp.Kubectl; k != nil {
 
 Without this, an expectation that uses only the new subcommand fails validation with "must have at least one resource, command, or kubectl check" even though the YAML is correct.
 
-**6. Fixture — [`pkg/e2e/fixture/e2e.yaml`](./fixture/e2e.yaml)**
+**6. `onFailure` — `pkg/e2e/onfailure.go`**
+
+Add a `printOnFailureMyCmd` block inside `printOnFailureKubectl`. Build the same args as `checkKubectlMyCmd` and pass them to `printDiag` — no assertion logic:
+
+```go
+// kubectl my-cmd
+for _, e := range k.MyCmd {
+    args := []string{"my-cmd", ...}
+    a := args
+    printDiag("kubectl "+strings.Join(a, " "), func() (string, error) {
+        return runKubectl(ctx, workDir, a...)
+    })
+}
+```
+
+**7. Fixture — [`pkg/e2e/fixture/e2e.yaml`](./fixture/e2e.yaml)**
 
 Add a checkpoint that exercises the new subcommand end-to-end against the `E2EProbe` operator. See [fixture/README.md](fixture/README.md) for details.

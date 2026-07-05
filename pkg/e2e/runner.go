@@ -451,6 +451,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 			})
 			if verifyErr != nil {
 				fmt.Printf("  %s %s (%s): %v\n", orkutils.FailureMark(), exp.Name, caseElapsed.Round(time.Millisecond), verifyErr)
+				runOnFailure(ctx, exp.OnFailure, r.e2eDir)
 			} else {
 				fmt.Printf("  %s %s (%s)\n", orkutils.SuccessMark(), exp.Name, caseElapsed.Round(time.Millisecond))
 			}
@@ -495,6 +496,10 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 		fmt.Printf("\n  %s\n", result.Summary())
 		if clusterInfo != "" {
 			fmt.Printf("  Cluster: %s (%s)\n", clusterInfo, r.provider())
+		}
+
+		if len(failures) > 0 {
+			runOnFailure(ctx, r.e2e.Spec.OnFailure, r.e2eDir)
 		}
 
 		if r.reportFile != "" {

@@ -74,6 +74,21 @@ spec:
             namespace: default
             field: .status.phase
             equals: Ready
+      onFailure:
+        kubectl:
+          get:
+            - kind: E2EProbe
+              name: my-probe-server
+              namespace: default
+            - kind: E2EProbe
+              name: my-probe-exec
+              namespace: default
+          describe:
+            - kind: Deployment
+              name: my-probe-server
+              namespace: default
+        commands:
+          - kubectl get pods -n default -o wide
 
     - name: Field assertions on Deployments and Services
       after: cr-applied
@@ -305,6 +320,51 @@ spec:
           name: my-probe-exec
           namespace: default
           count: 0
+
+  # ── onFailure ───────────────────────────────────────────────────────────────
+  # Diagnostic commands printed to the terminal when any expectation fails.
+  # Assertions are never evaluated here — output is always printed.
+  onFailure:
+    kubectl:
+      # kubectl get
+      get:
+        - kind: E2EProbe
+          name: my-probe-server
+          namespace: default
+        - kind: E2EProbe
+          name: my-probe-exec
+          namespace: default
+      # kubectl logs
+      logs:
+        - labelSelector: orkestra-owner=my-probe-server
+          namespace: default
+          since: 2m
+        - labelSelector: orkestra-owner=my-probe-exec
+          namespace: default
+          since: 2m
+      # kubectl describe
+      describe:
+        - kind: Deployment
+          name: my-probe-server
+          namespace: default
+        - kind: Deployment
+          name: my-probe-exec
+          namespace: default
+      # kubectl events
+      events:
+        - kind: Deployment
+          name: my-probe-server
+          namespace: default
+        - kind: Deployment
+          name: my-probe-exec
+          namespace: default
+      # kubectl exec
+      exec:
+        - labelSelector: orkestra-owner=my-probe-exec
+          namespace: default
+          command: [sh, -c, "echo on-failure-exec-ok"]
+    commands:
+      - kubectl get pods -n default -o wide
 ```
 
 ---

@@ -27,6 +27,8 @@ The unit tests in `pkg/e2e/` verify the runner and validator logic in isolation.
 | `kubectl.apply` | Apply a ConfigMap inline | inline manifest + follow-up `kubectl.get` |
 | `kubectl.patch` | Patch server probe and assert | merge patch on CR spec field |
 | `commands:` | Arbitrary commands still work | raw kubectl alongside the DSL |
+| `onFailure:` (spec-level) | Diagnostics printed when any expectation fails | get, logs, describe, events, exec + raw command |
+| `onFailure:` (per-expectation) | Diagnostics printed immediately when that expectation fails | get, describe + raw command on "Both probes reach Ready status" |
 
 ---
 
@@ -69,5 +71,6 @@ The `E2EProbe` CRD creates one `Deployment` and one `Service` per CR. Two CRs ar
 1. Implement the subcommand in `pkg/e2e/verify.go` and `pkg/e2e/validate.go`
 2. Add the type to `pkg/types/e2e.go` and wire it into `E2EKubectl`
 3. Add a checkpoint to `e2e.yaml` that exercises it
-4. Update the table above
-5. Update `documentation/reference/schema/04-e2e/07-kubectl.md` with the field reference
+4. Add the subcommand to the `onFailure:` block in `e2e.yaml`
+5. Update the table above
+6. Update `documentation/reference/schema/04-e2e/07-kubectl.md` with the field reference
