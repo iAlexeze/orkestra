@@ -29,7 +29,7 @@ resources:
       subjects:
         - kind: ServiceAccount
           name: "{{ .metadata.name }}-{{ .ns }}-sa"
-          namespace: "{{ .ns }}"
+          namespace: default
 
   serviceAccounts:
     - name: "{{ .metadata.name }}-{{ .ns }}-sa"

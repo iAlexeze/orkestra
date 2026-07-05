@@ -8,7 +8,7 @@ spec:
     kind: Tenant
     plural: tenants
     singular: tenant
-  scope: Namespaced
+  scope: Cluster
   versions:
     - name: v1alpha1
       served: true
