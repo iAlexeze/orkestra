@@ -63,7 +63,7 @@ spec:
             timeout: 120s
 
   expect:
-    - include: ./infra-ready.yaml
+    - include: ./e2e/infra-ready.yaml
 
     - name: Ingress not created (controlCenter.ingress.enabled defaults to false)
       after: setup-complete
@@ -139,4 +139,4 @@ spec:
             path: /katalog/website
             outputContains: "Website CRD, GVK: demo.orkestra.io/v1alpha1, Kind=Website"
 
-    - include: ./cleanup.yaml
+    - include: ./e2e/cleanup.yaml
