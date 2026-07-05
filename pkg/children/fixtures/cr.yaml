@@ -1,0 +1,15 @@
+apiVersion: test.orkestra.io/v1alpha1
+kind: Tenant
+metadata:
+  name: acme
+  namespace: default
+spec:
+  namespaces:
+    - acme-dev
+    - acme-staging
+  roles:
+    - developer
+    - reviewer
+  apps:
+    - api
+    - worker
