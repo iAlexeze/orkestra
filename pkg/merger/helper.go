@@ -141,13 +141,14 @@ func gitClone(repo, dst, ref string) error {
 	return nil
 }
 
-// isFileMotif returns true when a motif reference is a local file path
-// (starts with ./, ../, or /). OCI references (ghcr.io/...) and URLs
-// (https://...) do not match and are left unchanged by the caller.
+// isFileMotif returns true when a motif reference is a local file path.
+// Matches ./, ../, absolute paths, and bare relative paths (e.g. "motifs/foo/motif.yaml").
+// OCI references (ghcr.io/...) and URLs (https://...) do not match.
 func isFileMotif(motif string) bool {
 	return strings.HasPrefix(motif, "./") ||
 		strings.HasPrefix(motif, "../") ||
-		filepath.IsAbs(motif)
+		filepath.IsAbs(motif) ||
+		(!strings.Contains(motif, "://") && !strings.Contains(motif, ":") && strings.Contains(motif, "/"))
 }
 
 // unused but kept for completeness
