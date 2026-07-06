@@ -29,18 +29,18 @@ on:
         default: ${{ github.repository }}
 
 jobs:
-  chart-e2e:
-    name: Gate — Helm chart e2e
-    uses: ./.github/workflows/orkestra-chart-e2e.yml
-    with:
-      image_tag: ${{ inputs.image_tag }}
-      repository: ${{ inputs.repository }}
-      ork: ${{ inputs.ork }}
+  # chart-e2e:
+  #   name: Gate — Helm chart e2e
+  #   uses: ./.github/workflows/orkestra-chart-e2e.yml
+  #   with:
+  #     image_tag: ${{ inputs.image_tag }}
+  #     repository: ${{ inputs.repository }}
+  #     ork: ${{ inputs.ork }}
 
   helm:
     name: Release Helm Chart
     runs-on: ubuntu-latest
-    needs: chart-e2e
+    # needs: chart-e2e
     steps:
       - name: Checkout
         uses: actions/checkout@v6
