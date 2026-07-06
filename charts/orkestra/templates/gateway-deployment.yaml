@@ -15,6 +15,7 @@ metadata:
   labels:
     {{- include "orkestra.labels" . | nindent 4 }}
     app.kubernetes.io/component: gateway
+    orkestra.orkspace.io/komponent: gateway
 spec:
   replicas: {{ .Values.gateway.replicaCount }}
   selector:

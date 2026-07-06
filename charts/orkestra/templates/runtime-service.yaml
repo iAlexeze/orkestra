@@ -8,6 +8,7 @@ metadata:
   labels:
     {{- include "orkestra.labels" . | nindent 4 }}
     app.kubernetes.io/component: runtime
+    orkestra.orkspace.io/komponent: runtime
   {{- with .Values.runtime.service.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}

@@ -21,6 +21,7 @@ metadata:
   labels:
     {{- include "orkestra.labels" . | nindent 4 }}
     app.kubernetes.io/component: controlcenter
+    orkestra.orkspace.io/komponent: control-center
 spec:
   replicas: {{ .Values.controlCenter.replicaCount }}
   selector:
