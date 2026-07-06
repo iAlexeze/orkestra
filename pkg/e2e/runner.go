@@ -36,6 +36,9 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	orkutils "github.com/orkspace/orkestra/pkg/utils"
 	"gopkg.in/yaml.v3"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
@@ -79,6 +82,12 @@ type Runner struct {
 	// It also suppresses all sync/health-check output — only the coordinator's single
 	// install and uninstall messages are visible.
 	sharedOrkestra bool
+
+	// cs and cfg are the Go Kubernetes client and REST config, built once after the
+	// cluster context is ready. Used for operations that don't need kubectl:
+	// Lease reads, port-forward+HTTP, SubjectAccessReview.
+	cs  kubernetes.Interface
+	cfg *rest.Config
 }
 
 // Options configures a Runner. All fields are optional — zero values produce
@@ -249,6 +258,9 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 	// ── 1. Cluster ───────────────────────────────────────────────────────
 	if err := r.ensureCluster(ctx); err != nil {
 		return nil, fmt.Errorf("cluster: %w", err)
+	}
+	if err := r.buildClient(); err != nil {
+		return nil, fmt.Errorf("k8s client: %w", err)
 	}
 
 	// Steps 2–9 are skipped for pure aggregators (no spec — imports only).
@@ -440,7 +452,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 			}
 			fmt.Printf("  Waiting for %q (timeout: %s)...\n", exp.Name, to)
 			caseStart := time.Now()
-			verifyErr := verifyExpectation(ctx, exp, r.e2eDir)
+			verifyErr := verifyExpectation(ctx, exp, r.e2eDir, r.cs, r.cfg)
 			caseElapsed := time.Since(caseStart)
 
 			cases = append(cases, CaseResult{
@@ -451,7 +463,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 			})
 			if verifyErr != nil {
 				fmt.Printf("  %s %s (%s): %v\n", orkutils.FailureMark(), exp.Name, caseElapsed.Round(time.Millisecond), verifyErr)
-				runOnFailure(ctx, exp.OnFailure, r.e2eDir)
+				runOnFailure(ctx, exp.OnFailure, r.e2eDir, r.cs)
 			} else {
 				fmt.Printf("  %s %s (%s)\n", orkutils.SuccessMark(), exp.Name, caseElapsed.Round(time.Millisecond))
 			}
@@ -499,7 +511,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 		}
 
 		if len(failures) > 0 {
-			runOnFailure(ctx, r.e2e.Spec.OnFailure, r.e2eDir)
+			runOnFailure(ctx, r.e2e.Spec.OnFailure, r.e2eDir, r.cs)
 		}
 
 		if r.reportFile != "" {
@@ -558,6 +570,25 @@ func resolveGatewayEnabled(katalogFile string) (bool, error) {
 		return false, err
 	}
 	return raw.Gateway != nil, nil
+}
+
+// buildClient constructs the Go Kubernetes client and REST config from the active
+// kubeconfig after the cluster context has been established by ensureCluster.
+func (r *Runner) buildClient() error {
+	cfg, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		clientcmd.NewDefaultClientConfigLoadingRules(),
+		&clientcmd.ConfigOverrides{},
+	).ClientConfig()
+	if err != nil {
+		return err
+	}
+	cs, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return err
+	}
+	r.cfg = cfg
+	r.cs = cs
+	return nil
 }
 
 // ensureCluster sets up the cluster according to the spec.

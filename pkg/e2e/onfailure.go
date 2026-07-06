@@ -7,12 +7,13 @@ import (
 	"strings"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"k8s.io/client-go/kubernetes"
 )
 
 // runOnFailure runs all onFailure commands and kubectl operations, printing
 // their output to the terminal. Never fails — diagnostics must not interrupt
 // the teardown path.
-func runOnFailure(ctx context.Context, f *orktypes.E2EOnFailure, workDir string) {
+func runOnFailure(ctx context.Context, f *orktypes.E2EOnFailure, workDir string, cs kubernetes.Interface) {
 	if f == nil {
 		return
 	}
@@ -26,13 +27,13 @@ func runOnFailure(ctx context.Context, f *orktypes.E2EOnFailure, workDir string)
 	}
 
 	if f.Kubectl != nil {
-		printOnFailureKubectl(ctx, f.Kubectl, workDir)
+		printOnFailureKubectl(ctx, f.Kubectl, workDir, cs)
 	}
 }
 
 // printOnFailureKubectl prints diagnostic output for each supported kubectl subcommand.
 // Assertion fields on the DSL structs are ignored — output is always printed.
-func printOnFailureKubectl(ctx context.Context, k *orktypes.E2EKubectl, workDir string) {
+func printOnFailureKubectl(ctx context.Context, k *orktypes.E2EKubectl, workDir string, cs kubernetes.Interface) {
 	// kubectl get
 	for _, e := range k.Get {
 		ns := e.Namespace
@@ -67,7 +68,7 @@ func printOnFailureKubectl(ctx context.Context, k *orktypes.E2EKubectl, workDir 
 		}
 		args := []string{"logs", "-n", ns}
 		if e.LeaderElection != nil {
-			if pod, leaseNs, err := resolveLeaderHolder(ctx, e.LeaderElection, ns, workDir); err == nil {
+			if pod, leaseNs, err := resolveLeaderHolder(ctx, cs, e.LeaderElection, ns); err == nil {
 				args = []string{"logs", "-n", leaseNs, pod}
 			}
 		} else if e.LabelSelector != "" {
@@ -126,7 +127,7 @@ func printOnFailureKubectl(ctx context.Context, k *orktypes.E2EKubectl, workDir 
 		}
 		var podName string
 		if e.LeaderElection != nil {
-			if pod, leaseNs, err := resolveLeaderHolder(ctx, e.LeaderElection, ns, workDir); err == nil {
+			if pod, leaseNs, err := resolveLeaderHolder(ctx, cs, e.LeaderElection, ns); err == nil {
 				podName = pod
 				ns = leaseNs
 			}
