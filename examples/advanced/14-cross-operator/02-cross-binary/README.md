@@ -114,7 +114,7 @@ Consumer resolved the endpoint through the HTTP API. The `cacheFor: 15s` means O
 Check Producer Orkestra's access log or the Control Center in `producer-system`:
 
 ```bash
-kubectl port-forward svc/orkestra-cc -n producer-system 8081:8081
+ork proxy -n producer-system
 ```
 
 Open [http://localhost:8081](http://localhost:8081) → **Producer** → any CR → **API Calls** panel shows the Consumer cross-read requests with timestamps and cache hits.

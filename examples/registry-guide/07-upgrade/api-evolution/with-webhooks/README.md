@@ -127,8 +127,8 @@ Both CRs — one written in v1 format, one in v2 format — produce identical De
 Open the Control Center for live stats:
 
 ```bash
-kubectl port-forward svc/orkestra-cc 8081:8081 -n orkestra-system
-# username:password → orkestra
+ork proxy
+# open http://localhost:8081
 ```
 
 ---

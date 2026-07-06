@@ -196,9 +196,9 @@ curl localhost:8080/metrics | grep website
 ```
 
 !!! tip "Port-forwarding in-cluster"
-    When Orkestra runs in a cluster, port-forward before hitting the endpoints:
+    When Orkestra runs in a cluster, forward the ports before hitting the endpoints:
     ```bash
-    kubectl port-forward svc/orkestra-runtime 8080:8080 -n orkestra-system
+    ork proxy
     ```
 
 The most common issues:

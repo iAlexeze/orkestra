@@ -234,7 +234,7 @@ After installing, Orkestra exposes:
 ### Runtime Endpoints
 
 ```bash
-kubectl port-forward svc/orkestra-runtime 8080:8080 -n orkestra-system
+ork proxy
 
 curl localhost:8080/health          # liveness
 curl localhost:8080/ready           # readiness
@@ -245,7 +245,7 @@ curl localhost:8080/katalog | jq    # all CRDs
 ### Control Center Endpoints
 
 ```bash
-kubectl port-forward svc/orkestra-cc 8081:8081 -n orkestra-system
+ork proxy
 
 open http://localhost:8081/controlcenter
 ```

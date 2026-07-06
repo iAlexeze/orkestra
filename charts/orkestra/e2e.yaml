@@ -140,3 +140,28 @@ spec:
             outputContains: "Website CRD, GVK: demo.orkestra.io/v1alpha1, Kind=Website"
 
     - include: ./e2e/cleanup.yaml
+
+  onFailure:
+    kubectl:
+      logs:
+        - leaderElection:
+            lease: orkestra-konductor
+          namespace: orkestra-system
+          since: 5m
+        - labelSelector: app.kubernetes.io/component=gateway
+          namespace: orkestra-system
+          since: 5m
+      describe:
+        - kind: Deployment
+          name: orkestra-runtime
+          namespace: orkestra-system
+        - kind: Deployment
+          name: orkestra-gateway
+          namespace: orkestra-system
+      events:
+        - kind: Deployment
+          name: orkestra-runtime
+          namespace: orkestra-system
+        - kind: Deployment
+          name: orkestra-gateway
+          namespace: orkestra-system

@@ -3,7 +3,7 @@
 
 ### `ork proxy` — port-forward for Helm-deployed Orkestra
 
-`ork proxy` replaces manual `kubectl port-forward` calls when working with a deployed Orkestra. It discovers components by the `orkestra.orkspace.io/komponent` label, resolves the Runtime leader via the `orkestra-konductor` Lease, and reconnects automatically on pod replacement (rollouts, leader failover).
+Inspired by `kubectl proxy`, `ork proxy` replaces manual `kubectl port-forward` calls when working with a deployed Orkestra. It discovers components by the `orkestra.orkspace.io/komponent` label, resolves the Runtime leader via the `orkestra-konductor` Lease, and reconnects automatically on pod replacement (rollouts, leader failover).
 
 ```bash
 ork proxy                        # Forward Runtime, Control Center, and Gateway

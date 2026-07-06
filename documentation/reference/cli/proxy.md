@@ -9,7 +9,7 @@ ork proxy --for runtime,cc
 ork proxy -n my-platform-ns
 ```
 
-`ork proxy` replaces manual `kubectl port-forward` invocations when working with a Helm-deployed Orkestra. It discovers each component by its `orkestra.orkspace.io/komponent` label, resolves the right pod, and keeps all forwards alive with automatic reconnection. For the Runtime, it resolves the elected leader via the `orkestra-konductor` Lease so requests always reach the pod with authoritative state.
+Inspired by `kubectl proxy`, `ork proxy` replaces manual `kubectl port-forward` invocations when working with a Helm-deployed Orkestra. It discovers each component by its `orkestra.orkspace.io/komponent` label, resolves the right pod, and keeps all forwards alive with automatic reconnection. For the Runtime, it resolves the elected leader via the `orkestra-konductor` Lease so requests always reach the pod with authoritative state.
 
 ---
 

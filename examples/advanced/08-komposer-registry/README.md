@@ -239,7 +239,7 @@ helm upgrade --install orkestra orkestra/orkestra \
 ### 4. Verify both CRDs are managed
 
 ```bash
-kubectl port-forward svc/orkestra-runtime 8080:8080 -n orkestra-system &
+ork proxy
 
 curl localhost:8080/katalog | jq '.crds[] | {name: .name, workers: .workers,}'
 ```
@@ -256,8 +256,8 @@ Expected:
 ```bash
 kubectl apply -f cr.yaml
 
-# portforward to view the control center
-kubectl port-forward svc/orkestra-cc 8081:8081 -n orkestra-system &
+# open the control center
+ork proxy
 ```
 
 Open http://localhost:8081
