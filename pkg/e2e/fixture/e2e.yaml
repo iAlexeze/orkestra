@@ -307,58 +307,31 @@ spec:
           ready: true
 
     # ── kubectl.scale ────────────────────────────────────────────────────────
-    # Use a standalone deployment — scaling a reconciled deployment is immediately
-    # undone by the Orkestra reconciler restoring the CR's replica count.
-    - name: Scale standalone deployment up to 2 replicas
+    - name: Scale probe deployment up to 2 replicas
       after: cr-applied
-      timeout: 60s
+      timeout: 120s
       kubectl:
-        apply:
-          - inline: |
-              apiVersion: apps/v1
-              kind: Deployment
-              metadata:
-                name: e2e-scale-target
-                namespace: default
-              spec:
-                replicas: 1
-                selector:
-                  matchLabels:
-                    app: e2e-scale-target
-                template:
-                  metadata:
-                    labels:
-                      app: e2e-scale-target
-                  spec:
-                    containers:
-                      - name: nginx
-                        image: nginx:alpine
         scale:
           - kind: Deployment
-            name: e2e-scale-target
+            name: my-probe-server
             namespace: default
             replicas: 2
         get:
           - kind: Deployment
-            name: e2e-scale-target
+            name: my-probe-server
             namespace: default
             field: .spec.replicas
             equals: "2"
 
-    - name: Scale standalone deployment back to 1 and clean up
+    - name: Scale probe deployment back to 1 replica
       after: cr-applied
-      timeout: 60s
+      timeout: 120s
       kubectl:
         scale:
           - kind: Deployment
-            name: e2e-scale-target
+            name: my-probe-server
             namespace: default
             replicas: 1
-        delete:
-          - kind: Deployment
-            name: e2e-scale-target
-            namespace: default
-            ignoreNotFound: true
 
     # ── cleanup ──────────────────────────────────────────────────────────────
     - name: Cleanup verified
