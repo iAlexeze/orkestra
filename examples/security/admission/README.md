@@ -260,7 +260,7 @@ minimal-platform   development   2          Running   15s
 > **The Control Center is the best place to inspect what is happening.** Port-forward and open it:
 
 ```bash
-kubectl port-forward svc/orkestra-cc -n orkestra-system 8081:8081
+ork proxy
 ```
 
 Open [http://localhost:8081](http://localhost:8081).

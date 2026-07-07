@@ -45,6 +45,7 @@ Select a command to view its full documentation.
 
 | Command | Description |
 |--------|-------------|
+| [`ork proxy`](./proxy.md) | Forward deployed Orkestra component ports to localhost |
 | [`ork control`](./control.md) | Start the Orkestra Control Center web UI |
 | [`ork diff`](./diff.md) | Show a colorized unified diff between two files |
 | [`ork notes`](./notes.md) | Browse and search built-in Katalog template functions |

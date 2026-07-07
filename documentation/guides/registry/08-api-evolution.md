@@ -92,8 +92,12 @@ kubectl get webapps.v2.rkguide.demo my-webapp -o yaml | grep -A4 expose:
 **Observe conversions:**
 
 ```bash
-kubectl port-forward svc/orkestra-gateway 8080:8080 -n orkestra-system &
-curl localhost:8080/katalog/webapp-v2 | jq '.conversion'
+# In a separate terminal:
+ork proxy --for gateway
+```
+
+```bash
+curl localhost:8443/katalog/webapp-v2 | jq '.conversion'
 # {"enabled":true,"total":4,"failures":0,"avgLatencyMs":0.62}
 ```
 

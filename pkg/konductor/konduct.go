@@ -11,6 +11,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,7 +62,7 @@ func NewKonductorElection(
 	}
 
 	ko := &KonductorElection{
-		name:  "orkestra-konductor",
+		name:  orktypes.KonductorLeaseName,
 		event: event,
 		kube:  kube,
 		run:   run,

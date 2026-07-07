@@ -286,7 +286,8 @@ func validateE2EFile(path string) error {
 			if k := exp.Kubectl; k != nil {
 				kubectlCount = len(k.Get) + len(k.Logs) + len(k.Describe) + len(k.Exec) +
 					len(k.PortForward) + len(k.Apply) + len(k.Delete) + len(k.Patch) +
-					len(k.Events) + len(k.Auth) + len(k.Cp) + len(k.Top)
+					len(k.Events) + len(k.Auth) + len(k.Cp) + len(k.Top) +
+					len(k.Restart) + len(k.Scale)
 			}
 			if len(exp.Resources) == 0 && len(exp.Commands) == 0 && kubectlCount == 0 {
 				errs = append(errs, fmt.Sprintf("spec.expect[%d] (%q): must have at least one resource, command, or kubectl check", i, exp.Name))

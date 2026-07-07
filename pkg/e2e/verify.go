@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +16,13 @@ import (
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	orkutils "github.com/orkspace/orkestra/pkg/utils"
+	authorizationv1 "k8s.io/api/authorization/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/portforward"
+	"k8s.io/client-go/transport/spdy"
 )
 
 const portForwardTimeout = 15 * time.Second
@@ -21,7 +30,7 @@ const portForwardTimeout = 15 * time.Second
 // verifyExpectation polls until all conditions pass or timeout expires.
 // workDir is the working directory for command checks — relative paths in
 // commands and resource file refs resolve from there.
-func verifyExpectation(ctx context.Context, exp orktypes.E2EExpectation, workDir string) error {
+func verifyExpectation(ctx context.Context, exp orktypes.E2EExpectation, workDir string, cs kubernetes.Interface, cfg *rest.Config) error {
 	if exp.Wait != "" {
 		if d, err := time.ParseDuration(exp.Wait); err == nil && d > 0 {
 			select {
@@ -42,11 +51,11 @@ func verifyExpectation(ctx context.Context, exp orktypes.E2EExpectation, workDir
 	defer ticker.Stop()
 
 	for {
-		if err := checkAll(ctx, exp, workDir); err == nil {
+		if err := checkAll(ctx, exp, workDir, cs, cfg); err == nil {
 			return nil
 		}
 		if time.Now().After(deadline) {
-			return fmt.Errorf("timeout after %s waiting for %q: %w", timeout, exp.Name, checkAll(ctx, exp, workDir))
+			return fmt.Errorf("timeout after %s waiting for %q: %w", timeout, exp.Name, checkAll(ctx, exp, workDir, cs, cfg))
 		}
 		select {
 		case <-ctx.Done():
@@ -56,7 +65,7 @@ func verifyExpectation(ctx context.Context, exp orktypes.E2EExpectation, workDir
 	}
 }
 
-func checkAll(ctx context.Context, exp orktypes.E2EExpectation, workDir string) error {
+func checkAll(ctx context.Context, exp orktypes.E2EExpectation, workDir string, cs kubernetes.Interface, cfg *rest.Config) error {
 	// Commands run before resources so that action commands (e.g. cleanup deletes)
 	// execute before the resource state is checked.
 	for _, cmd := range exp.Commands {
@@ -65,7 +74,7 @@ func checkAll(ctx context.Context, exp orktypes.E2EExpectation, workDir string) 
 		}
 	}
 	if exp.Kubectl != nil {
-		if err := checkKubectl(ctx, exp.Kubectl, workDir); err != nil {
+		if err := checkKubectl(ctx, exp.Kubectl, workDir, cs, cfg); err != nil {
 			return err
 		}
 	}
@@ -240,14 +249,14 @@ func applyAssertions(output string, a assertions) error {
 }
 
 // checkKubectl runs all kubectl DSL subcommands in the block.
-func checkKubectl(ctx context.Context, k *orktypes.E2EKubectl, workDir string) error {
+func checkKubectl(ctx context.Context, k *orktypes.E2EKubectl, workDir string, cs kubernetes.Interface, cfg *rest.Config) error {
 	for i, e := range k.Apply {
 		if err := checkKubectlApply(ctx, e, workDir); err != nil {
 			return fmt.Errorf("kubectl.apply[%d]: %w", i, err)
 		}
 	}
 	for i, e := range k.Delete {
-		if err := checkKubectlDelete(ctx, e, workDir); err != nil {
+		if err := checkKubectlDelete(ctx, cs, e, workDir); err != nil {
 			return fmt.Errorf("kubectl.delete[%d]: %w", i, err)
 		}
 	}
@@ -262,7 +271,7 @@ func checkKubectl(ctx context.Context, k *orktypes.E2EKubectl, workDir string) e
 		}
 	}
 	for i, e := range k.Logs {
-		if err := checkKubectlLogs(ctx, e, workDir); err != nil {
+		if err := checkKubectlLogs(ctx, cs, e, workDir); err != nil {
 			return fmt.Errorf("kubectl.logs[%d]: %w", i, err)
 		}
 	}
@@ -272,12 +281,12 @@ func checkKubectl(ctx context.Context, k *orktypes.E2EKubectl, workDir string) e
 		}
 	}
 	for i, e := range k.Exec {
-		if err := checkKubectlExec(ctx, e, workDir); err != nil {
+		if err := checkKubectlExec(ctx, cs, e, workDir); err != nil {
 			return fmt.Errorf("kubectl.exec[%d]: %w", i, err)
 		}
 	}
 	for i, e := range k.PortForward {
-		if err := checkKubectlPortForward(ctx, e, workDir); err != nil {
+		if err := checkKubectlPortForward(ctx, cs, cfg, e, workDir); err != nil {
 			return fmt.Errorf("kubectl.port-forward[%d]: %w", i, err)
 		}
 	}
@@ -287,7 +296,7 @@ func checkKubectl(ctx context.Context, k *orktypes.E2EKubectl, workDir string) e
 		}
 	}
 	for i, e := range k.Auth {
-		if err := checkKubectlAuth(ctx, e, workDir); err != nil {
+		if err := checkKubectlAuth(ctx, cs, e); err != nil {
 			return fmt.Errorf("kubectl.auth[%d]: %w", i, err)
 		}
 	}
@@ -301,17 +310,62 @@ func checkKubectl(ctx context.Context, k *orktypes.E2EKubectl, workDir string) e
 			return fmt.Errorf("kubectl.top[%d]: %w", i, err)
 		}
 	}
+	for i, e := range k.Restart {
+		if err := checkKubectlRestart(ctx, e, workDir); err != nil {
+			return fmt.Errorf("kubectl.restart[%d]: %w", i, err)
+		}
+	}
+	for i, e := range k.Scale {
+		if err := checkKubectlScale(ctx, e, workDir); err != nil {
+			return fmt.Errorf("kubectl.scale[%d]: %w", i, err)
+		}
+	}
 	return nil
 }
 
-func checkKubectlDelete(ctx context.Context, e orktypes.E2EKubectlDelete, workDir string) error {
+func checkKubectlRestart(ctx context.Context, e orktypes.E2EKubectlRestart, workDir string) error {
+	ns := e.Namespace
+	if ns == "" {
+		ns = "default"
+	}
+	target := e.Kind + "/" + e.Name
+	if _, err := runKubectl(ctx, workDir, "rollout", "restart", target, "-n", ns); err != nil {
+		return fmt.Errorf("kubectl rollout restart %s: %w", target, err)
+	}
+	if e.Ready == nil || *e.Ready {
+		if out, err := runKubectl(ctx, workDir, "rollout", "status", target, "-n", ns); err != nil {
+			return fmt.Errorf("kubectl rollout status %s: %s", target, out)
+		}
+	}
+	return nil
+}
+
+func checkKubectlScale(ctx context.Context, e orktypes.E2EKubectlScale, workDir string) error {
+	ns := e.Namespace
+	if ns == "" {
+		ns = "default"
+	}
+	target := e.Kind + "/" + e.Name
+	replicas := fmt.Sprintf("--replicas=%d", e.Replicas)
+	if _, err := runKubectl(ctx, workDir, "scale", target, replicas, "-n", ns); err != nil {
+		return fmt.Errorf("kubectl scale %s: %w", target, err)
+	}
+	if e.Ready == nil || *e.Ready {
+		if out, err := runKubectl(ctx, workDir, "rollout", "status", target, "-n", ns); err != nil {
+			return fmt.Errorf("kubectl rollout status %s: %s", target, out)
+		}
+	}
+	return nil
+}
+
+func checkKubectlDelete(ctx context.Context, cs kubernetes.Interface, e orktypes.E2EKubectlDelete, workDir string) error {
 	var args []string
 	if e.LeaderElection != nil {
 		ns := e.Namespace
 		if ns == "" {
 			ns = "default"
 		}
-		pod, leaseNs, err := resolveLeaderHolder(ctx, e.LeaderElection, ns, workDir)
+		pod, leaseNs, err := resolveLeaderHolder(ctx, cs, e.LeaderElection, ns)
 		if err != nil {
 			return fmt.Errorf("kubectl delete: %w", err)
 		}
@@ -433,21 +487,22 @@ func checkKubectlGet(ctx context.Context, e orktypes.E2EKubectlGet, workDir stri
 // resolveLeaderHolder looks up the holder of a Kubernetes Lease and returns the
 // pod name and the namespace the lease lives in. leaseNs defaults to ns when
 // the LeaderElection struct leaves it empty.
-func resolveLeaderHolder(ctx context.Context, le *orktypes.E2EKubectlLeaderElection, ns, workDir string) (pod, leaseNs string, err error) {
+func resolveLeaderHolder(ctx context.Context, cs kubernetes.Interface, le *orktypes.E2EKubectlLeaderElection, ns string) (pod, leaseNs string, err error) {
 	leaseNs = le.Namespace
 	if leaseNs == "" {
 		leaseNs = ns
 	}
-	holder, err := runKubectl(ctx, workDir,
-		"get", "lease", le.Lease, "-n", leaseNs,
-		"-o", "jsonpath={.spec.holderIdentity}")
-	if err != nil || strings.TrimSpace(holder) == "" {
+	lease, err := cs.CoordinationV1().Leases(leaseNs).Get(ctx, le.Lease, metav1.GetOptions{})
+	if err != nil {
+		return "", leaseNs, fmt.Errorf("lease %s/%s: %w", leaseNs, le.Lease, err)
+	}
+	if lease.Spec.HolderIdentity == nil || strings.TrimSpace(*lease.Spec.HolderIdentity) == "" {
 		return "", leaseNs, fmt.Errorf("lease %s/%s has no holder yet", leaseNs, le.Lease)
 	}
-	return strings.TrimSpace(holder), leaseNs, nil
+	return strings.TrimSpace(*lease.Spec.HolderIdentity), leaseNs, nil
 }
 
-func checkKubectlLogs(ctx context.Context, e orktypes.E2EKubectlLogs, workDir string) error {
+func checkKubectlLogs(ctx context.Context, cs kubernetes.Interface, e orktypes.E2EKubectlLogs, workDir string) error {
 	ns := e.Namespace
 	if ns == "" {
 		ns = "default"
@@ -455,7 +510,7 @@ func checkKubectlLogs(ctx context.Context, e orktypes.E2EKubectlLogs, workDir st
 
 	args := []string{"logs", "-n", ns}
 	if e.LeaderElection != nil {
-		pod, leaseNs, err := resolveLeaderHolder(ctx, e.LeaderElection, ns, workDir)
+		pod, leaseNs, err := resolveLeaderHolder(ctx, cs, e.LeaderElection, ns)
 		if err != nil {
 			return fmt.Errorf("kubectl logs: %w", err)
 		}
@@ -512,7 +567,7 @@ func checkKubectlDescribe(ctx context.Context, e orktypes.E2EKubectlDescribe, wo
 	return nil
 }
 
-func checkKubectlExec(ctx context.Context, e orktypes.E2EKubectlExec, workDir string) error {
+func checkKubectlExec(ctx context.Context, cs kubernetes.Interface, e orktypes.E2EKubectlExec, workDir string) error {
 	ns := e.Namespace
 	if ns == "" {
 		ns = "default"
@@ -522,7 +577,7 @@ func checkKubectlExec(ctx context.Context, e orktypes.E2EKubectlExec, workDir st
 	if e.LeaderElection != nil {
 		var leaseNs string
 		var err error
-		pod, leaseNs, err = resolveLeaderHolder(ctx, e.LeaderElection, ns, workDir)
+		pod, leaseNs, err = resolveLeaderHolder(ctx, cs, e.LeaderElection, ns)
 		if err != nil {
 			return fmt.Errorf("kubectl exec: %w", err)
 		}
@@ -563,80 +618,110 @@ func checkKubectlExec(ctx context.Context, e orktypes.E2EKubectlExec, workDir st
 	return nil
 }
 
-func checkKubectlPortForward(ctx context.Context, e orktypes.E2EKubectlPortForward, workDir string) error {
+func checkKubectlPortForward(ctx context.Context, cs kubernetes.Interface, cfg *rest.Config, e orktypes.E2EKubectlPortForward, workDir string) error {
 	ns := e.Namespace
 	if ns == "" {
 		ns = "default"
 	}
 
-	var target string
+	// Resolve to a pod — the k8s portforward API operates on pods, not services.
+	var pod, podNs string
 	if e.LeaderElection != nil {
-		leaseNs := e.LeaderElection.Namespace
-		if leaseNs == "" {
-			leaseNs = ns
+		p, ln, err := resolveLeaderHolder(ctx, cs, e.LeaderElection, ns)
+		if err != nil {
+			return fmt.Errorf("port-forward: %w", err)
 		}
-		holder, err := runKubectl(ctx, workDir,
-			"get", "lease", e.LeaderElection.Lease, "-n", leaseNs,
-			"-o", "jsonpath={.spec.holderIdentity}")
-		if err != nil || strings.TrimSpace(holder) == "" {
-			return fmt.Errorf("kubectl port-forward: lease %s/%s has no holder yet", leaseNs, e.LeaderElection.Lease)
-		}
-		target = "pod/" + strings.TrimSpace(holder)
+		pod, podNs = p, ln
 	} else if e.Service != "" {
-		target = "svc/" + e.Service
+		p, err := resolveServicePod(ctx, cs, ns, e.Service)
+		if err != nil {
+			return fmt.Errorf("port-forward svc/%s: %w", e.Service, err)
+		}
+		pod, podNs = p, ns
 	} else {
-		target = e.Pod
+		pod, podNs = e.Pod, ns
 	}
 
-	return doPortForwardCurl(ctx, e, ns, target, workDir)
-}
-
-// doPortForwardCurl opens a port-forward, optionally waits, runs curl, extracts,
-// and asserts the response in one shot.
-func doPortForwardCurl(ctx context.Context, e orktypes.E2EKubectlPortForward, ns, target, workDir string) error {
-	raw, err := doPortForwardCurlRaw(ctx, e, ns, target, workDir)
+	raw, err := doPortForwardGoRaw(ctx, cfg, podNs, pod, e, workDir)
 	if err != nil {
 		return err
 	}
 	if e.StatusCode != 0 {
-		got := strings.TrimSpace(raw)
-		want := strconv.Itoa(e.StatusCode)
-		if got != want {
-			return fmt.Errorf("kubectl port-forward %s%s: expected HTTP %s, got %s", target, e.Path, want, got)
+		got, _ := strconv.Atoi(strings.TrimSpace(raw))
+		if got != e.StatusCode {
+			return fmt.Errorf("port-forward pod/%s%s: expected HTTP %d, got %s", pod, e.Path, e.StatusCode, raw)
 		}
 		return nil
 	}
-	return assertPortForwardOutput(ctx, workDir, raw, e, target)
+	return assertPortForwardOutput(ctx, workDir, raw, e, "pod/"+pod)
 }
 
-// doPortForwardCurlRaw opens a port-forward and returns the raw curl output.
-func doPortForwardCurlRaw(ctx context.Context, e orktypes.E2EKubectlPortForward, ns, target, workDir string) (string, error) {
+// resolveServicePod returns a running pod name backing the given service.
+func resolveServicePod(ctx context.Context, cs kubernetes.Interface, ns, svcName string) (string, error) {
+	svc, err := cs.CoreV1().Services(ns).Get(ctx, svcName, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("get service %s: %w", svcName, err)
+	}
+	if len(svc.Spec.Selector) == 0 {
+		return "", fmt.Errorf("service %s has no selector", svcName)
+	}
+	var parts []string
+	for k, v := range svc.Spec.Selector {
+		parts = append(parts, k+"="+v)
+	}
+	pods, err := cs.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{LabelSelector: strings.Join(parts, ",")})
+	if err != nil {
+		return "", fmt.Errorf("list pods for %s: %w", svcName, err)
+	}
+	for _, p := range pods.Items {
+		if p.Status.Phase == corev1.PodRunning {
+			return p.Name, nil
+		}
+	}
+	return "", fmt.Errorf("no running pod for service %s", svcName)
+}
+
+// doPortForwardGoRaw opens a Go port-forward to a pod, makes an HTTP request,
+// and returns the raw response body (or status code string when e.StatusCode != 0).
+func doPortForwardGoRaw(ctx context.Context, cfg *rest.Config, ns, pod string, e orktypes.E2EKubectlPortForward, workDir string) (string, error) {
 	localPort, err := freeLocalPort()
 	if err != nil {
-		return "", fmt.Errorf("kubectl port-forward %s: could not find free local port: %w", target, err)
+		return "", fmt.Errorf("port-forward: free port: %w", err)
 	}
-	pfArgs := []string{"port-forward", "-n", ns, target,
-		fmt.Sprintf("%s:%d", localPort, e.Port)}
 
-	pfCmd := exec.CommandContext(ctx, "kubectl", pfArgs...)
-	if workDir != "" {
-		pfCmd.Dir = workDir
+	pfURL := fmt.Sprintf("%s/api/v1/namespaces/%s/pods/%s/portforward", cfg.Host, ns, pod)
+	req, err := http.NewRequest(http.MethodPost, pfURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("port-forward url: %w", err)
 	}
-	if err := pfCmd.Start(); err != nil {
-		return "", fmt.Errorf("kubectl port-forward %s: %w", target, err)
+	transport, upgrader, err := spdy.RoundTripperFor(cfg)
+	if err != nil {
+		return "", fmt.Errorf("port-forward transport: %w", err)
 	}
-	defer func() { _ = pfCmd.Process.Kill() }()
+	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, req.URL)
 
-	// Poll until port is open (max 15s).
-	addr := "localhost:" + localPort
-	deadline := time.Now().Add(portForwardTimeout)
-	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", addr, time.Second)
-		if err == nil {
-			_ = conn.Close()
-			break
-		}
-		time.Sleep(300 * time.Millisecond)
+	stopChan := make(chan struct{})
+	readyChan := make(chan struct{}, 1)
+	fw, err := portforward.New(dialer,
+		[]string{fmt.Sprintf("%s:%d", localPort, e.Port)},
+		stopChan, readyChan, io.Discard, io.Discard,
+	)
+	if err != nil {
+		return "", fmt.Errorf("port-forward: %w", err)
+	}
+
+	fwErrCh := make(chan error, 1)
+	go func() { fwErrCh <- fw.ForwardPorts() }()
+	defer close(stopChan)
+
+	select {
+	case <-readyChan:
+	case err := <-fwErrCh:
+		return "", fmt.Errorf("port-forward pod/%s: %w", pod, err)
+	case <-time.After(portForwardTimeout):
+		return "", fmt.Errorf("port-forward pod/%s: timed out waiting for ready", pod)
+	case <-ctx.Done():
+		return "", ctx.Err()
 	}
 
 	if e.Path == "" {
@@ -657,24 +742,29 @@ func doPortForwardCurlRaw(ctx context.Context, e orktypes.E2EKubectlPortForward,
 	if method == "" {
 		method = "GET"
 	}
-	url := fmt.Sprintf("http://localhost:%s%s", localPort, e.Path)
-	curlArgs := []string{"-s", "-X", method}
-	if e.StatusCode != 0 {
-		curlArgs = append(curlArgs, "-o", "/dev/null", "-w", "%{http_code}")
-	}
-	curlArgs = append(curlArgs, url)
+	reqURL := fmt.Sprintf("http://localhost:%s%s", localPort, e.Path)
+	sp := orkutils.StartSpinner(fmt.Sprintf("%s %s (→ pod/%s)", method, reqURL, pod))
 
-	sp := orkutils.StartSpinner(fmt.Sprintf("curl %s (→ %s)", url, target))
-	curlCmd := exec.CommandContext(ctx, "curl", curlArgs...)
-	if workDir != "" {
-		curlCmd.Dir = workDir
+	httpReq, err := http.NewRequestWithContext(ctx, method, reqURL, nil)
+	if err != nil {
+		sp.Stop()
+		return "", fmt.Errorf("port-forward request: %w", err)
 	}
-	curlOut, err := curlCmd.CombinedOutput()
+	resp, err := http.DefaultClient.Do(httpReq)
 	sp.Stop()
 	if err != nil {
-		return "", fmt.Errorf("curl %s: %w\noutput: %s", url, err, strings.TrimSpace(string(curlOut)))
+		return "", fmt.Errorf("port-forward %s: %w", reqURL, err)
 	}
-	return strings.TrimSpace(string(curlOut)), nil
+	defer resp.Body.Close()
+
+	if e.StatusCode != 0 {
+		return strconv.Itoa(resp.StatusCode), nil
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("port-forward %s: reading response: %w", reqURL, err)
+	}
+	return strings.TrimSpace(string(body)), nil
 }
 
 // assertPortForwardOutput applies jq/yq extraction and assertions to raw curl output.
@@ -706,23 +796,46 @@ func checkKubectlEvents(ctx context.Context, e orktypes.E2EKubectlEvents, workDi
 	return nil
 }
 
-func checkKubectlAuth(ctx context.Context, e orktypes.E2EKubectlAuth, workDir string) error {
-	args := []string{"auth", "can-i", e.Verb, e.Resource}
-	if e.Namespace != "" {
-		args = append(args, "-n", e.Namespace)
+func checkKubectlAuth(ctx context.Context, cs kubernetes.Interface, e orktypes.E2EKubectlAuth) error {
+	attrs := &authorizationv1.ResourceAttributes{
+		Verb:      e.Verb,
+		Resource:  e.Resource,
+		Namespace: e.Namespace,
 	}
-	if e.As != "" {
-		args = append(args, "--as", e.As)
+
+	var allowed bool
+	if e.As == "" {
+		// No impersonation: use SelfSubjectAccessReview (what kubectl auth can-i does by default).
+		ssar := &authorizationv1.SelfSubjectAccessReview{
+			Spec: authorizationv1.SelfSubjectAccessReviewSpec{
+				ResourceAttributes: attrs,
+			},
+		}
+		result, err := cs.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, ssar, metav1.CreateOptions{})
+		if err != nil {
+			return fmt.Errorf("auth can-i %s %s: %w", e.Verb, e.Resource, err)
+		}
+		allowed = result.Status.Allowed
+	} else {
+		sar := &authorizationv1.SubjectAccessReview{
+			Spec: authorizationv1.SubjectAccessReviewSpec{
+				ResourceAttributes: attrs,
+				User:               e.As,
+			},
+		}
+		result, err := cs.AuthorizationV1().SubjectAccessReviews().Create(ctx, sar, metav1.CreateOptions{})
+		if err != nil {
+			return fmt.Errorf("auth can-i %s %s --as %s: %w", e.Verb, e.Resource, e.As, err)
+		}
+		allowed = result.Status.Allowed
 	}
-	// can-i exits 1 when the answer is "no" — treat as non-error so assertions decide.
-	cmd := exec.CommandContext(ctx, "kubectl", args...)
-	if workDir != "" {
-		cmd.Dir = workDir
+
+	out := "no"
+	if allowed {
+		out = "yes"
 	}
-	raw, _ := cmd.CombinedOutput()
-	out := strings.TrimSpace(string(raw))
 	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan}); err != nil {
-		return fmt.Errorf("kubectl auth can-i %s %s: %w\noutput: %s", e.Verb, e.Resource, err, out)
+		return fmt.Errorf("auth can-i %s %s: %w\nresult: %s", e.Verb, e.Resource, err, out)
 	}
 	return nil
 }

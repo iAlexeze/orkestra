@@ -1,5 +1,63 @@
-## v0.7.10 — E2E DSL extensions, cluster improvements, endpoint control, children forEach fixes
+## v0.7.10 — E2E DSL extensions, cluster improvements, endpoint control, children forEach fixes, ork proxy
 
+
+### `ork proxy` — port-forward for Helm-deployed Orkestra
+
+Inspired by `kubectl proxy`, `ork proxy` replaces manual `kubectl port-forward` calls when working with a deployed Orkestra. It discovers components by the `orkestra.orkspace.io/komponent` label, resolves the Runtime leader via the `orkestra-konductor` Lease, and reconnects automatically on pod replacement (rollouts, leader failover).
+
+```bash
+ork proxy                        # Forward Runtime, Control Center, and Gateway
+ork proxy --for cc               # Control Center only
+ork proxy --for runtime,cc       # Runtime and Control Center
+ork proxy -n my-platform-ns      # Custom namespace
+ork proxy --runtime-port 9090    # Remap a port to avoid conflicts
+```
+
+The Runtime forward always targets the **leader pod** — not a random replica — so the forwarded connection reaches the replica with authoritative reconciler state. Port conflicts are caught before any tunnel opens. The `--for` flag uses the same vocabulary as `ork generate bundle --for`.
+
+
+### E2E: kubectl subprocess calls migrated to Go client
+
+Three operations in the e2e runner previously shelled out to `kubectl`. They now use the Go client directly, removing the `kubectl` install requirement for these paths:
+
+- **Leader Lease resolution** (`leaderElection:` on `port-forward`, `logs`, `exec`, `delete`) — `CoordinationV1().Leases().Get()` instead of `kubectl get lease -o jsonpath`
+- **Auth checks** (`kubectl.auth`) — `SelfSubjectAccessReview` when no `--as` is set (matching `kubectl auth can-i` default behaviour); `SubjectAccessReview` with `User` when `--as` is specified. The previous `SubjectAccessReview` with an empty user field was rejected by the API server.
+- **Port-forward assertions** (`kubectl.port-forward`) — SPDY portforward via `k8s.io/client-go/tools/portforward` + `net/http`. Uses `readyChan` for an exact ready signal instead of the old curl-retry polling loop.
+
+
+### Fix: kind node readiness spinner
+
+The spinner during `ork e2e` cluster setup was interleaving kubectl output on the same terminal line. Node readiness output is now captured via `os.Pipe` and never written to the terminal. The spinner updates with `(N/total)` progress as each node becomes ready and marks success once all nodes are up.
+
+
+### `kubectl.restart` and `kubectl.scale` — new E2E DSL subcommands
+
+Two new mutation subcommands under `kubectl:` for steps that need to trigger a rollout or change replica count as part of a test sequence.
+
+**`kubectl.restart`** calls `kubectl rollout restart` and waits for the rollout to complete (`ready: true` by default):
+
+```yaml
+kubectl:
+  restart:
+    - kind: Deployment
+      name: my-app
+      namespace: default
+```
+
+**`kubectl.scale`** calls `kubectl scale --replicas=N` and waits for the rollout to settle:
+
+```yaml
+kubectl:
+  scale:
+    - kind: Deployment
+      name: my-app
+      namespace: default
+      replicas: 3
+```
+
+Both support `ready: false` to skip the rollout status wait. Neither appears in `onFailure` diagnostics — mutations do not belong in the diagnostic path.
+
+Typical use: disabling deletion protection for e2e cleanup (patch ConfigMap → `kubectl.restart` gateway so housekeeper starts with `enabled: false` and removes the ValidatingWebhookConfiguration).
 
 ### `leaderElection:` on `kubectl.delete` and `kubectl.exec`
 

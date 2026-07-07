@@ -185,7 +185,7 @@ Nothing is deleted. There is nothing to clean up.
 ## Inspect the live state
 
 ```bash
-kubectl port-forward svc/orkestra-cc -n orkestra-system 8081:8081
+ork proxy
 # open http://localhost:8081
 ```
 

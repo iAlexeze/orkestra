@@ -118,7 +118,7 @@ Same cluster. Same runtime binary. Same motif underneath. Different probe paths 
 ## Control Center
 
 ```bash
-kubectl port-forward svc/orkestra-cc -n orkestra-system 8081:8081
+ork proxy
 # open http://localhost:8081
 ```
 

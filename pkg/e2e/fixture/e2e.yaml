@@ -291,6 +291,48 @@ spec:
         - run: kubectl get e2eprobe -n default -o name
           outputContains: my-probe-server
 
+    # ── kubectl.restart ──────────────────────────────────────────────────────
+    - name: Rollout restart recovers the probe deployment
+      after: cr-applied
+      timeout: 120s
+      kubectl:
+        restart:
+          - kind: Deployment
+            name: my-probe-server
+            namespace: default
+      resources:
+        - kind: Deployment
+          name: my-probe-server
+          namespace: default
+          ready: true
+
+    # ── kubectl.scale ────────────────────────────────────────────────────────
+    - name: Scale probe deployment up to 2 replicas
+      after: cr-applied
+      timeout: 120s
+      kubectl:
+        scale:
+          - kind: Deployment
+            name: my-probe-server
+            namespace: default
+            replicas: 2
+        get:
+          - kind: Deployment
+            name: my-probe-server
+            namespace: default
+            field: .spec.replicas
+            equals: "2"
+
+    - name: Scale probe deployment back to 1 replica
+      after: cr-applied
+      timeout: 120s
+      kubectl:
+        scale:
+          - kind: Deployment
+            name: my-probe-server
+            namespace: default
+            replicas: 1
+
     # ── cleanup ──────────────────────────────────────────────────────────────
     - name: Cleanup verified
       after: cr-deleted

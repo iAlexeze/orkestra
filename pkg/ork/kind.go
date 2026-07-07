@@ -1,6 +1,7 @@
 package ork
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"net/http"
@@ -40,8 +41,12 @@ func EnsureKindCluster(name string, workers int, version string) error {
 	}
 
 	label := fmt.Sprintf("'%s'", name)
+	workerText := "workers"
+	if workers == 1 {
+		workerText = "worker"
+	}
 	if workers > 0 {
-		label = fmt.Sprintf("'%s' (%d worker(s))", name, workers)
+		label = fmt.Sprintf("'%s' (%d %s)", name, workers, workerText)
 	}
 	fmt.Printf("  → Creating local cluster %s...\n", label)
 
@@ -63,13 +68,18 @@ func EnsureKindCluster(name string, workers int, version string) error {
 	}
 	fmt.Printf("  %s Cluster '%s' ready\n", utils.SuccessMark(), name)
 
+	total := workers + 1 // workers + control-plane
+	ready := 0
 	spin := utils.StartSpinner("   → Waiting for nodes to be ready...")
 	defer spin.Failure()
-	if err := waitForNodesReady(5 * time.Minute); err != nil {
+	if err := waitForNodesReady(5*time.Minute, func(_ string) {
+		ready++
+		spin.Update(fmt.Sprintf("   → Waiting for nodes to be ready... (%d/%d)", ready, total))
+	}); err != nil {
 		return err
 	}
+	spin.Update(fmt.Sprintf("Nodes ready (%d/%d)", total, total))
 	spin.Success()
-	fmt.Printf("  %s Nodes ready\n", utils.SuccessMark())
 	return useKindContext(name)
 }
 
@@ -166,12 +176,46 @@ func writeKindConfig(workers int) (string, error) {
 	return f.Name(), nil
 }
 
-func waitForNodesReady(timeout time.Duration) error {
+func waitForNodesReady(timeout time.Duration, onNodeReady func(nodeName string)) error {
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		return fmt.Errorf("pipe: %w", err)
+	}
+
 	cmd := exec.Command("kubectl", "wait", "--for=condition=Ready",
 		"node", "--all", fmt.Sprintf("--timeout=%ds", int(timeout.Seconds())))
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
+	cmd.Stdout = pw
+	cmd.Stderr = pw
+
+	if err := cmd.Start(); err != nil {
+		pw.Close()
+		pr.Close()
+		return fmt.Errorf("kubectl wait: %w", err)
+	}
+
+	// Read per-node "condition met" lines without writing to terminal.
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		scanner := bufio.NewScanner(pr)
+		for scanner.Scan() {
+			line := scanner.Text()
+			// kubectl prints: "node/ork-playground-worker condition met"
+			if strings.Contains(line, "condition met") {
+				parts := strings.Fields(line)
+				if len(parts) > 0 && onNodeReady != nil {
+					onNodeReady(strings.TrimPrefix(parts[0], "node/"))
+				}
+			}
+		}
+	}()
+
+	runErr := cmd.Wait()
+	pw.Close()
+	<-done
+	pr.Close()
+
+	if runErr != nil {
 		return fmt.Errorf("nodes not ready after %s", timeout)
 	}
 	return nil

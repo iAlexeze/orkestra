@@ -8,6 +8,7 @@ metadata:
   labels:
     {{- include "orkestra.labels" . | nindent 4 }}
     app.kubernetes.io/component: gateway
+    orkestra.orkspace.io/komponent: gateway
   {{- with .Values.gateway.service.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}

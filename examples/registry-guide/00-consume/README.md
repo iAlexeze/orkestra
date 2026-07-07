@@ -168,7 +168,7 @@ kubectl get statefulset my-postgres-postgres -n default
 ```
 
 ```bash
-kubectl port-forward svc/orkestra-cc -n orkestra-system 8081:8081
+ork proxy
 # open http://localhost:8081 to see the live reconcile state
 ```
 

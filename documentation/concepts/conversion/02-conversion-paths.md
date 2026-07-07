@@ -101,9 +101,9 @@ cronjob-v1:
 ## Observing conversions
 
 ```bash
-kubectl port-forward svc/orkestra-gateway 8080:8080 -n orkestra-system
+ork proxy --for gateway
 
-curl localhost:8080/katalog/cronjob-v2 | jq '.conversion'
+curl localhost:8443/katalog/cronjob-v2 | jq '.conversion'
 ```
 
 ```json

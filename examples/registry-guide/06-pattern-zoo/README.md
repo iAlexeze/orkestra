@@ -131,7 +131,7 @@ kubectl get postgres,mysql,mongodb,redis,kafka,rabbitmq,applications,webapp,cach
 ## Observe the platform in the Control Center
 
 ```bash
-kubectl port-forward svc/orkestra-cc -n orkestra-system 8081:8081
+ork proxy
 # open http://localhost:8081
 ```
 

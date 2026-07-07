@@ -465,6 +465,18 @@ type E2EKubectl struct {
 	// Requires metrics-server; installed automatically when entries are present.
 	// Generates: kubectl top <kind> [-n <ns>] [<name> | -l <selector>] [--containers]
 	Top []E2EKubectlTop `yaml:"top,omitempty"`
+
+	// Restart triggers a rollout restart of a Deployment, StatefulSet, or DaemonSet.
+	// Generates: kubectl rollout restart <kind>/<name> -n <ns>
+	// Waits for the rollout to complete when ready: true (default).
+	// The expect step's timeout governs how long to wait.
+	Restart []E2EKubectlRestart `yaml:"restart,omitempty"`
+
+	// Scale sets the replica count on a Deployment, StatefulSet, or ReplicaSet.
+	// Generates: kubectl scale <kind>/<name> --replicas=<n> -n <ns>
+	// Waits for the rollout to complete when ready: true (default).
+	// The expect step's timeout governs how long to wait.
+	Scale []E2EKubectlScale `yaml:"scale,omitempty"`
 }
 
 // E2EKubectlGet asserts a field value on a Kubernetes resource.
@@ -791,4 +803,30 @@ type E2EKubectlPortForward struct {
 	// body is discarded and only the numeric status is checked (e.g. 404, 200).
 	// Cannot be combined with JQ, YQ, Equals, or OutputContains.
 	StatusCode int `yaml:"statusCode,omitempty"`
+}
+
+// E2EKubectlRestart triggers a rollout restart of a Deployment, StatefulSet, or DaemonSet.
+type E2EKubectlRestart struct {
+	// Kind is the resource kind: Deployment, StatefulSet, or DaemonSet.
+	Kind string `yaml:"kind"`
+	// Name is the resource name.
+	Name string `yaml:"name"`
+	// Namespace to target. Defaults to "default".
+	Namespace string `yaml:"namespace,omitempty"`
+	// Ready waits for the rollout to complete after the restart. Defaults to true.
+	Ready *bool `yaml:"ready,omitempty"`
+}
+
+// E2EKubectlScale sets the replica count on a Deployment, StatefulSet, or ReplicaSet.
+type E2EKubectlScale struct {
+	// Kind is the resource kind: Deployment, StatefulSet, or ReplicaSet.
+	Kind string `yaml:"kind"`
+	// Name is the resource name.
+	Name string `yaml:"name"`
+	// Namespace to target. Defaults to "default".
+	Namespace string `yaml:"namespace,omitempty"`
+	// Replicas is the desired replica count.
+	Replicas int `yaml:"replicas"`
+	// Ready waits for the rollout to complete after scaling. Defaults to true.
+	Ready *bool `yaml:"ready,omitempty"`
 }

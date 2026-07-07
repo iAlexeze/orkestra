@@ -581,4 +581,48 @@ expect:
 
 ---
 
+## kubectl.restart
+
+Trigger a rollout restart of a Deployment, StatefulSet, or DaemonSet. By default waits for the rollout to complete — the expect step's `timeout` governs how long.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `kind` | string | yes | Resource kind: `Deployment`, `StatefulSet`, or `DaemonSet` |
+| `name` | string | yes | Resource name |
+| `namespace` | string | no | Namespace. Defaults to `default` |
+| `ready` | bool | no | Wait for rollout to complete. Defaults to `true` |
+
+```yaml
+kubectl:
+  restart:
+    - kind: Deployment
+      name: orkestra-gateway
+      namespace: orkestra-system
+```
+
+---
+
+## kubectl.scale
+
+Set the replica count on a Deployment, StatefulSet, or ReplicaSet. By default waits for the rollout to complete — the expect step's `timeout` governs how long.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `kind` | string | yes | Resource kind: `Deployment`, `StatefulSet`, or `ReplicaSet` |
+| `name` | string | yes | Resource name |
+| `namespace` | string | no | Namespace. Defaults to `default` |
+| `replicas` | int | yes | Desired replica count |
+| `ready` | bool | no | Wait for rollout to complete. Defaults to `true` |
+
+```yaml
+kubectl:
+  scale:
+    - kind: Deployment
+      name: my-app
+      namespace: default
+      replicas: 3
+```
+
+---
+
 → Back: [06-discovery.md](06-discovery.md) | [Schema index](index.md)

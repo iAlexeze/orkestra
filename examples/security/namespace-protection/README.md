@@ -196,7 +196,7 @@ This means two independent layers must both fail before a rule is violated. The 
 Port-forward to the Orkestra Control Center:
 
 ```bash
-kubectl port-forward svc/orkestra-cc -n orkestra-system 8081:8081
+ork proxy
 ```
 
 Open [http://localhost:8081](http://localhost:8081).
