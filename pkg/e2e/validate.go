@@ -121,6 +121,12 @@ func ValidateKubectl(expects []orktypes.E2EExpectation) []error {
 		for j, t := range exp.Kubectl.Top {
 			errs = append(errs, validateKubectlTop(loc("top", j), t)...)
 		}
+		for j, r := range exp.Kubectl.Restart {
+			errs = append(errs, validateKubectlRestart(loc("restart", j), r)...)
+		}
+		for j, s := range exp.Kubectl.Scale {
+			errs = append(errs, validateKubectlScale(loc("scale", j), s)...)
+		}
 	}
 	return errs
 }
@@ -325,6 +331,28 @@ func validateKubectlTop(loc string, t orktypes.E2EKubectlTop) []error {
 	}
 	if !hasAssertion(assertions{Equals: t.Equals, NotEquals: t.NotEquals, OutputContains: t.OutputContains, OutputNotContains: t.OutputNotContains, GreaterThan: t.GreaterThan, LessThan: t.LessThan}) {
 		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
+	}
+	return errs
+}
+
+func validateKubectlRestart(loc string, r orktypes.E2EKubectlRestart) []error {
+	var errs []error
+	if r.Kind == "" {
+		errs = append(errs, fmt.Errorf("%s: kind is required", loc))
+	}
+	if r.Name == "" {
+		errs = append(errs, fmt.Errorf("%s: name is required", loc))
+	}
+	return errs
+}
+
+func validateKubectlScale(loc string, s orktypes.E2EKubectlScale) []error {
+	var errs []error
+	if s.Kind == "" {
+		errs = append(errs, fmt.Errorf("%s: kind is required", loc))
+	}
+	if s.Name == "" {
+		errs = append(errs, fmt.Errorf("%s: name is required", loc))
 	}
 	return errs
 }

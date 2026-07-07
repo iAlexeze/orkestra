@@ -310,6 +310,51 @@ func checkKubectl(ctx context.Context, k *orktypes.E2EKubectl, workDir string, c
 			return fmt.Errorf("kubectl.top[%d]: %w", i, err)
 		}
 	}
+	for i, e := range k.Restart {
+		if err := checkKubectlRestart(ctx, e, workDir); err != nil {
+			return fmt.Errorf("kubectl.restart[%d]: %w", i, err)
+		}
+	}
+	for i, e := range k.Scale {
+		if err := checkKubectlScale(ctx, e, workDir); err != nil {
+			return fmt.Errorf("kubectl.scale[%d]: %w", i, err)
+		}
+	}
+	return nil
+}
+
+func checkKubectlRestart(ctx context.Context, e orktypes.E2EKubectlRestart, workDir string) error {
+	ns := e.Namespace
+	if ns == "" {
+		ns = "default"
+	}
+	target := e.Kind + "/" + e.Name
+	if _, err := runKubectl(ctx, workDir, "rollout", "restart", target, "-n", ns); err != nil {
+		return fmt.Errorf("kubectl rollout restart %s: %w", target, err)
+	}
+	if e.Ready == nil || *e.Ready {
+		if out, err := runKubectl(ctx, workDir, "rollout", "status", target, "-n", ns); err != nil {
+			return fmt.Errorf("kubectl rollout status %s: %s", target, out)
+		}
+	}
+	return nil
+}
+
+func checkKubectlScale(ctx context.Context, e orktypes.E2EKubectlScale, workDir string) error {
+	ns := e.Namespace
+	if ns == "" {
+		ns = "default"
+	}
+	target := e.Kind + "/" + e.Name
+	replicas := fmt.Sprintf("--replicas=%d", e.Replicas)
+	if _, err := runKubectl(ctx, workDir, "scale", target, replicas, "-n", ns); err != nil {
+		return fmt.Errorf("kubectl scale %s: %w", target, err)
+	}
+	if e.Ready == nil || *e.Ready {
+		if out, err := runKubectl(ctx, workDir, "rollout", "status", target, "-n", ns); err != nil {
+			return fmt.Errorf("kubectl rollout status %s: %s", target, out)
+		}
+	}
 	return nil
 }
 

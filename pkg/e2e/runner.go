@@ -452,7 +452,21 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 			}
 			fmt.Printf("  Waiting for %q (timeout: %s)...\n", exp.Name, to)
 			caseStart := time.Now()
+			waitDone := make(chan struct{})
+			go func() {
+				t := time.NewTicker(10 * time.Second)
+				defer t.Stop()
+				for {
+					select {
+					case <-waitDone:
+						return
+					case <-t.C:
+						fmt.Printf("    still waiting [%s]...\n", time.Since(caseStart).Round(time.Second))
+					}
+				}
+			}()
 			verifyErr := verifyExpectation(ctx, exp, r.e2eDir, r.cs, r.cfg)
+			close(waitDone)
 			caseElapsed := time.Since(caseStart)
 
 			cases = append(cases, CaseResult{

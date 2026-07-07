@@ -30,6 +30,35 @@ Three operations in the e2e runner previously shelled out to `kubectl`. They now
 The spinner during `ork e2e` cluster setup was interleaving kubectl output on the same terminal line. Node readiness output is now captured via `os.Pipe` and never written to the terminal. The spinner updates with `(N/total)` progress as each node becomes ready and marks success once all nodes are up.
 
 
+### `kubectl.restart` and `kubectl.scale` — new E2E DSL subcommands
+
+Two new mutation subcommands under `kubectl:` for steps that need to trigger a rollout or change replica count as part of a test sequence.
+
+**`kubectl.restart`** calls `kubectl rollout restart` and waits for the rollout to complete (`ready: true` by default):
+
+```yaml
+kubectl:
+  restart:
+    - kind: Deployment
+      name: my-app
+      namespace: default
+```
+
+**`kubectl.scale`** calls `kubectl scale --replicas=N` and waits for the rollout to settle:
+
+```yaml
+kubectl:
+  scale:
+    - kind: Deployment
+      name: my-app
+      namespace: default
+      replicas: 3
+```
+
+Both support `ready: false` to skip the rollout status wait. Neither appears in `onFailure` diagnostics — mutations do not belong in the diagnostic path.
+
+Typical use: disabling deletion protection for e2e cleanup (patch ConfigMap → `kubectl.restart` gateway so housekeeper starts with `enabled: false` and removes the ValidatingWebhookConfiguration).
+
 ### `leaderElection:` on `kubectl.delete` and `kubectl.exec`
 
 `leaderElection:` was previously supported only on `port-forward` and `logs`. It now works on `delete` and `exec` as well, completing all four kubectl subcommands.
