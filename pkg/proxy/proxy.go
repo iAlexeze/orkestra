@@ -1,15 +1,17 @@
-//go:build !runtime && !gateway
-
 package proxy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/orkspace/orkestra/pkg/utils"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
@@ -23,22 +25,39 @@ type ForwardTarget struct {
 	Namespace string
 	LocalPort int
 	Scheme    string // "http" or "https"
-	ViaLease  bool   // true for Runtime: resolve pod from Lease
+	ViaLease  bool   // true for Runtime: resolve pod from Lease, probe health before declaring connected
 }
 
 // RunAll discovers and forwards all targets, printing status to out.
-// It blocks until ctx is cancelled, then closes all forwards cleanly.
+// It blocks until ctx is cancelled or all targets report not-deployed.
 func RunAll(ctx context.Context, cfg *rest.Config, cs kubernetes.Interface, targets []ForwardTarget, out io.Writer) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	notDeployed := make(chan struct{}, len(targets))
 	for _, t := range targets {
 		go func(t ForwardTarget) {
-			forwardWithReconnect(ctx, cfg, cs, t, out)
+			forwardWithReconnect(ctx, cfg, cs, t, out, notDeployed)
 		}(t)
 	}
+
+	// Exit early if every target reports not-deployed.
+	go func() {
+		for range targets {
+			select {
+			case <-notDeployed:
+			case <-ctx.Done():
+				return
+			}
+		}
+		cancel()
+	}()
+
 	<-ctx.Done()
 }
 
-func forwardWithReconnect(ctx context.Context, cfg *rest.Config, cs kubernetes.Interface, t ForwardTarget, out io.Writer) {
-	first := true
+func forwardWithReconnect(ctx context.Context, cfg *rest.Config, cs kubernetes.Interface, t ForwardTarget, out io.Writer, notDeployed chan<- struct{}) {
+	var prevPod string
 	for {
 		select {
 		case <-ctx.Done():
@@ -46,35 +65,53 @@ func forwardWithReconnect(ctx context.Context, cfg *rest.Config, cs kubernetes.I
 		default:
 		}
 
+		// Show reconnecting line once per retry cycle (not on first attempt).
+		if prevPod != "" {
+			fmt.Fprintf(out, "  %s %-14s reconnecting...  (was %s)\n", utils.Yellow("↺"), t.Label, prevPod)
+		}
+
 		pod, ns, err := resolveTarget(ctx, cs, t)
 		if err != nil {
-			if first {
-				fmt.Fprintf(out, "  %s %-14s %v\n", utils.Yellow("✗"), t.Label, err)
-				first = false
-			}
-			select {
-			case <-ctx.Done():
+			fmt.Fprintf(out, "  %s %-14s %v\n", utils.Yellow("✗"), t.Label, err)
+			if isNotDeployed(err) {
+				notDeployed <- struct{}{}
 				return
-			case <-time.After(2 * time.Second):
 			}
+			sleep(ctx, 2*time.Second)
 			continue
 		}
 
-		if first {
+		stop, done, err := startForward(ctx, cfg, ns, pod, t.LocalPort, int(resolveRemotePort(t)))
+		if err != nil {
+			sleep(ctx, 2*time.Second)
+			continue
+		}
+
+		// For lease-based targets (Runtime), probe health before declaring connected.
+		// The SPDY handshake can succeed against a dead pod while the Lease transition
+		// is in progress — probing confirms the pod is actually serving.
+		// Loop until the probe passes or ctx is cancelled (no fixed timeout).
+		if t.ViaLease && !probeReady(ctx, t.Scheme, t.LocalPort) {
+			stop()
+			<-done
+			sleep(ctx, 2*time.Second)
+			continue
+		}
+
+		if prevPod == "" {
 			fmt.Fprintf(out, "  %s %-14s %s://localhost:%d   (%s)\n", utils.Green("✓"), t.Label, t.Scheme, t.LocalPort, pod)
-			first = false
 		} else {
 			fmt.Fprintf(out, "  %s %-14s %s://localhost:%d   (%s)  [reconnected]\n", utils.Green("✓"), t.Label, t.Scheme, t.LocalPort, pod)
 		}
+		prevPod = pod
 
-		err = forward(ctx, cfg, ns, pod, t.LocalPort, int(resolveRemotePort(t)))
-		if err != nil && ctx.Err() == nil {
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(2 * time.Second):
-			}
-		}
+		// Watch the pod independently so that when it disappears we call stop()
+		// immediately rather than waiting for traffic to surface the broken tunnel.
+		watchCtx, watchCancel := context.WithCancel(ctx)
+		go watchPod(watchCtx, cs, t.Namespace, pod, stop)
+		<-done
+		watchCancel()
+		stop()
 	}
 }
 
@@ -84,7 +121,7 @@ func resolveTarget(ctx context.Context, cs kubernetes.Interface, t ForwardTarget
 		return "", "", err
 	}
 	if svc == nil {
-		return "", "", fmt.Errorf("not deployed in %s", t.Namespace)
+		return "", "", fmt.Errorf("not deployed in %s: %w", t.Namespace, errNotDeployed)
 	}
 
 	if t.ViaLease {
@@ -102,13 +139,7 @@ func resolveTarget(ctx context.Context, cs kubernetes.Interface, t ForwardTarget
 }
 
 // resolveRemotePort returns the container port for the target.
-// For Gateway we forward to the http port by default; https is on a different local port.
 func resolveRemotePort(t ForwardTarget) int32 {
-	// Service port == container port for all Orkestra components (see charts).
-	// The caller sets LocalPort to the desired local port; remote is always the service port.
-	// We rediscover via FindService to get the actual port — but for simplicity we use
-	// the local port as the remote port since they are the same by default.
-	// Custom local ports (--runtime-port etc.) do not change the remote port.
 	switch t.Komponent {
 	case KomponentRuntime:
 		return 8080
@@ -120,29 +151,31 @@ func resolveRemotePort(t ForwardTarget) int32 {
 	return int32(t.LocalPort)
 }
 
-func forward(ctx context.Context, cfg *rest.Config, ns, pod string, localPort, remotePort int) error {
-	url := cfg.Host
-	// Build the portforward URL: /api/v1/namespaces/{ns}/pods/{pod}/portforward
-	// We use the REST client URL builder via a round-about but stable approach.
-	// restclient is used only to form the URL; the SPDY transport is separate.
-	pfURL := fmt.Sprintf("%s/api/v1/namespaces/%s/pods/%s/portforward", url, ns, pod)
-	parsedURL, err := http.NewRequest(http.MethodPost, pfURL, nil)
+// startForward establishes a SPDY port-forward and returns once the tunnel is ready.
+// The caller must call stop() when done, and drain done to avoid goroutine leak.
+func startForward(ctx context.Context, cfg *rest.Config, ns, pod string, localPort, remotePort int) (stop func(), done <-chan error, err error) {
+	pfURL := fmt.Sprintf("%s/api/v1/namespaces/%s/pods/%s/portforward", cfg.Host, ns, pod)
+	req, err := http.NewRequest(http.MethodPost, pfURL, nil)
 	if err != nil {
-		return fmt.Errorf("build portforward url: %w", err)
+		return nil, nil, fmt.Errorf("build portforward url: %w", err)
 	}
 
 	transport, upgrader, err := spdy.RoundTripperFor(cfg)
 	if err != nil {
-		return fmt.Errorf("spdy transport: %w", err)
+		return nil, nil, fmt.Errorf("spdy transport: %w", err)
 	}
-	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, parsedURL.URL)
+	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, req.URL)
 
 	stopChan := make(chan struct{})
 	readyChan := make(chan struct{}, 1)
+	errChan := make(chan error, 1)
+
+	var once sync.Once
+	stopFn := func() { once.Do(func() { close(stopChan) }) }
 
 	go func() {
 		<-ctx.Done()
-		close(stopChan)
+		stopFn()
 	}()
 
 	fw, err := portforward.New(dialer,
@@ -151,7 +184,76 @@ func forward(ctx context.Context, cfg *rest.Config, ns, pod string, localPort, r
 		io.Discard, io.Discard,
 	)
 	if err != nil {
-		return fmt.Errorf("portforward: %w", err)
+		stopFn()
+		return nil, nil, fmt.Errorf("portforward: %w", err)
 	}
-	return fw.ForwardPorts()
+
+	go func() {
+		errChan <- fw.ForwardPorts()
+	}()
+
+	// Wait for the tunnel to be ready before returning.
+	select {
+	case <-readyChan:
+	case err := <-errChan:
+		stopFn()
+		return nil, nil, err
+	case <-ctx.Done():
+		stopFn()
+		return nil, nil, ctx.Err()
+	}
+
+	return stopFn, errChan, nil
+}
+
+// probeReady polls scheme://localhost:port/health until it returns 2xx or ctx is cancelled.
+func probeReady(ctx context.Context, scheme string, port int) bool {
+	url := fmt.Sprintf("%s://localhost:%d/health", scheme, port)
+	client := &http.Client{Timeout: 2 * time.Second}
+	for {
+		select {
+		case <-ctx.Done():
+			return false
+		default:
+		}
+		resp, err := client.Get(url)
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode < 300 {
+				return true
+			}
+		}
+		sleep(ctx, 500*time.Millisecond)
+	}
+}
+
+// watchPod polls the given pod every 3 seconds and calls stop() as soon as
+// the pod is no longer Running, triggering proactive reconnection.
+func watchPod(ctx context.Context, cs kubernetes.Interface, ns, pod string, stop func()) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(3 * time.Second):
+		}
+		p, err := cs.CoreV1().Pods(ns).Get(ctx, pod, metav1.GetOptions{})
+		if err != nil || p.Status.Phase != corev1.PodRunning {
+			stop()
+			return
+		}
+	}
+}
+
+var errNotDeployed = errors.New("not deployed")
+
+func isNotDeployed(err error) bool {
+	return errors.Is(err, errNotDeployed)
+}
+
+// sleep waits for d or until ctx is cancelled.
+func sleep(ctx context.Context, d time.Duration) {
+	select {
+	case <-ctx.Done():
+	case <-time.After(d):
+	}
 }

@@ -1,5 +1,3 @@
-//go:build !runtime && !gateway
-
 package proxy
 
 import (
@@ -10,6 +8,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 const (
@@ -19,8 +19,7 @@ const (
 	KomponentCC      = "control-center"
 	KomponentGateway = "gateway"
 
-	// runtimeLeaseName is the coordination.k8s.io/v1 Lease that holds the Runtime leader identity.
-	runtimeLeaseName = "orkestra-konductor"
+	runtimeLeaseName = orktypes.KonductorLeaseName
 )
 
 // FoundService is a discovered Orkestra service and its port.

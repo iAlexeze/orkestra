@@ -20,16 +20,23 @@ type ForwardTarget struct {
 Each target runs in a dedicated goroutine via `forwardWithReconnect`. The loop:
 
 1. Calls `resolveTarget` to find the pod to forward to (Lease for Runtime, service selector for CC/Gateway)
-2. Establishes the portforward via `k8s.io/client-go/tools/portforward`
-3. When the connection drops (pod restart, leader election) — detects the error, waits 2 seconds, and re-resolves from step 1
-4. Exits cleanly when the context is cancelled (Ctrl+C)
+2. Calls `startForward` — sets up the SPDY tunnel and returns once the tunnel is ready (`readyChan` signalled), along with a `stop` func and a `done` channel
+3. For `ViaLease` targets (Runtime): calls `probeReady`, which polls `scheme://localhost:port/health` until it returns 2xx or the context is cancelled. This guards against the SPDY handshake succeeding against a dead pod while the Lease transition is still in progress.
+4. Prints `✓ Label  http://localhost:PORT  (pod-name)` once confirmed connected
+5. Starts `watchPod` in a separate goroutine, which polls the pod every 3 seconds. When the pod is no longer Running, it calls `stop()` immediately — proactive disconnect detection without waiting for traffic to surface the broken tunnel.
+6. Blocks on `<-done` until the forward drops
+7. Prints `↺ Label  reconnecting...  (was pod-name)` and loops from step 1
 
-The first successful connection prints `✓ Label  http://localhost:PORT   (pod-name)`. Subsequent reconnects print `[reconnected]`.
+If a target is not deployed (`FindService` returns nil), the goroutine prints `✗ Label  not deployed in <ns>` and exits. It does not retry — not-deployed is treated as a permanent state for the lifetime of the `ork proxy` invocation.
+
+## Not-deployed exit
+
+`RunAll` exits without waiting for Ctrl+C if every target reports not-deployed. Each goroutine signals a shared `notDeployed` channel on exit; a counter goroutine cancels the shared context when all signals are received.
 
 ## Port conflict detection
 
-Before opening any forward, `CheckPort` attempts to bind the local port. If the port is already in use it prints `✗ Label  port N in use — use --label-port to set an alternative` and returns an error. Other components are not affected.
+Before opening any forward, `CheckPort` attempts to bind the local port. If the port is already in use it prints `✗ Label  port N in use — use --label-port to set an alternative` and returns an error before any tunnel is opened.
 
 ## Clean shutdown
 
-`RunAll` launches all goroutines then blocks on `<-ctx.Done()`. When the context is cancelled (Ctrl+C or SIGTERM), each goroutine's `stopChan` is closed, which causes `portforward.ForwardPorts()` to return, unwinding the goroutine.
+`RunAll` blocks on `<-ctx.Done()`. On Ctrl+C or SIGTERM the context is cancelled, which stops all `watchPod` goroutines, unblocks `probeReady`, and causes each `startForward` goroutine's context-linked stop to fire, unwinding all SPDY tunnels.

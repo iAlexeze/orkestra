@@ -65,8 +65,9 @@ ork proxy --context staging-context
 4. For CC and Gateway: selects a running pod from the Service's selector
 5. Pre-checks that each local port is free — errors before opening any tunnel
 6. Opens a SPDY port-forward per component and prints the local URL
-7. Reconnects automatically if a pod is replaced (rollout, leader failover)
-8. Exits cleanly on `Ctrl+C`
+7. Watches each forwarded pod independently — when a pod disappears, reconnection starts immediately without waiting for traffic to surface the broken tunnel
+8. For Runtime: probes `/health` after the tunnel is established to confirm the new leader is serving before declaring connected (guards against the Lease transition window)
+9. Exits cleanly on `Ctrl+C`, or automatically if no selected components are deployed
 
 ---
 

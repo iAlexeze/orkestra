@@ -1,5 +1,3 @@
-//go:build !runtime && !gateway
-
 package proxy
 
 import (
