@@ -249,20 +249,33 @@ func applyAssertions(output string, a assertions) error {
 }
 
 // checkKubectl runs all kubectl DSL subcommands in the block.
+// Order: mutations first (apply → patch → restart → scale → delete), then assertions
+// (get, logs, describe, …). This mirrors the commands: ordering rule — actions
+// before checks — so that mutations take effect before assertions evaluate them.
 func checkKubectl(ctx context.Context, k *orktypes.E2EKubectl, workDir string, cs kubernetes.Interface, cfg *rest.Config) error {
 	for i, e := range k.Apply {
 		if err := checkKubectlApply(ctx, e, workDir); err != nil {
 			return fmt.Errorf("kubectl.apply[%d]: %w", i, err)
 		}
 	}
-	for i, e := range k.Delete {
-		if err := checkKubectlDelete(ctx, cs, e, workDir); err != nil {
-			return fmt.Errorf("kubectl.delete[%d]: %w", i, err)
-		}
-	}
 	for i, e := range k.Patch {
 		if err := checkKubectlPatch(ctx, e, workDir); err != nil {
 			return fmt.Errorf("kubectl.patch[%d]: %w", i, err)
+		}
+	}
+	for i, e := range k.Restart {
+		if err := checkKubectlRestart(ctx, e, workDir); err != nil {
+			return fmt.Errorf("kubectl.restart[%d]: %w", i, err)
+		}
+	}
+	for i, e := range k.Scale {
+		if err := checkKubectlScale(ctx, e, workDir); err != nil {
+			return fmt.Errorf("kubectl.scale[%d]: %w", i, err)
+		}
+	}
+	for i, e := range k.Delete {
+		if err := checkKubectlDelete(ctx, cs, e, workDir); err != nil {
+			return fmt.Errorf("kubectl.delete[%d]: %w", i, err)
 		}
 	}
 	for i, e := range k.Get {
@@ -308,16 +321,6 @@ func checkKubectl(ctx context.Context, k *orktypes.E2EKubectl, workDir string, c
 	for i, e := range k.Top {
 		if err := checkKubectlTop(ctx, e, workDir); err != nil {
 			return fmt.Errorf("kubectl.top[%d]: %w", i, err)
-		}
-	}
-	for i, e := range k.Restart {
-		if err := checkKubectlRestart(ctx, e, workDir); err != nil {
-			return fmt.Errorf("kubectl.restart[%d]: %w", i, err)
-		}
-	}
-	for i, e := range k.Scale {
-		if err := checkKubectlScale(ctx, e, workDir); err != nil {
-			return fmt.Errorf("kubectl.scale[%d]: %w", i, err)
 		}
 	}
 	return nil

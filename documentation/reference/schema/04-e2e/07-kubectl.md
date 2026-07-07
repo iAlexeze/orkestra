@@ -29,6 +29,19 @@ expect:
 
 All subcommands in a `kubectl:` block are checked in the same polling loop as `resources:` and `commands:`. All must pass for the checkpoint to pass.
 
+### Execution order
+
+Within a single `kubectl:` block, subcommands always execute in this fixed order regardless of how they appear in the YAML:
+
+1. **`apply`** — create or update resources
+2. **`patch`** — modify fields on existing resources
+3. **`restart`** — trigger a rollout restart
+4. **`scale`** — change replica count
+5. **`delete`** — remove resources
+6. **`get`**, **`logs`**, **`describe`**, **`exec`**, **`port-forward`**, **`events`**, **`auth`**, **`cp`**, **`top`** — assertions (read-only)
+
+Mutations always run before assertions so that state changes take effect before they are evaluated. Within mutations, the order is create → modify → destroy — so you can `scale` a resource in the same block that later `delete`s it.
+
 ---
 
 ## Assertion fields
