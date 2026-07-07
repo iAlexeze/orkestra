@@ -65,6 +65,10 @@ type Runner struct {
 	// devServer deploys the mock dev server into the cluster as part of setup.
 	devServer bool
 
+	// reportFile is the path to write the markdown results report to.
+	// Empty means no file is written (stdout only).
+	reportFile string
+
 	// kubernetesTarget skips bundle generation and Orkestra helm install/uninstall.
 	// Set when spec.custom.target == "kubernetes" — the file is the source of truth.
 	kubernetesTarget bool
@@ -89,6 +93,7 @@ type Options struct {
 	OrkVersion    string   // Orkestra helm chart version to install
 	ValueFiles    []string // additional Helm values files
 	HelmArgs      []string // additional helm --set arguments
+	ReportFile    string   // write results as markdown to this path (in addition to stdout)
 }
 
 // New loads an E2E spec from a YAML file and constructs a Runner.
@@ -128,6 +133,7 @@ func New(e2eFile string, opts Options) (*Runner, error) {
 		workers:          opts.Workers,
 		kindVersion:      opts.KindVersion,
 		devServer:        opts.DevServer,
+		reportFile:       opts.ReportFile,
 		orkestraVersion:  opts.OrkVersion,
 		valueFiles:       allValueFiles,
 		helmArgs:         opts.HelmArgs,
@@ -445,6 +451,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 			})
 			if verifyErr != nil {
 				fmt.Printf("  %s %s (%s): %v\n", orkutils.FailureMark(), exp.Name, caseElapsed.Round(time.Millisecond), verifyErr)
+				runOnFailure(ctx, exp.OnFailure, r.e2eDir)
 			} else {
 				fmt.Printf("  %s %s (%s)\n", orkutils.SuccessMark(), exp.Name, caseElapsed.Round(time.Millisecond))
 			}
@@ -460,17 +467,47 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 	// ── Report ───────────────────────────────────────────────────────────
 	if !isPureAgg {
 		fmt.Printf("\nE2E Results: %s\n\n", name)
+
 		for _, c := range cases {
 			if c.Passed {
 				fmt.Printf("  %s %-40s (%s)\n", orkutils.SuccessMark(), c.Name, c.Elapsed.Round(time.Millisecond))
-			} else {
-				fmt.Printf("  %s %-40s (%s)\n", orkutils.FailureMark(), c.Name, c.Elapsed.Round(time.Millisecond))
 			}
 		}
+
+		var failures []CaseResult
+		for _, c := range cases {
+			if !c.Passed {
+				failures = append(failures, c)
+			}
+		}
+		if len(failures) > 0 {
+			fmt.Printf("\n")
+			for _, c := range failures {
+				fmt.Printf("  %s %-40s (%s)\n", orkutils.FailureMark(), c.Name, c.Elapsed.Round(time.Millisecond))
+				if c.Err != nil {
+					for _, line := range strings.Split(strings.TrimSpace(c.Err.Error()), "\n") {
+						fmt.Printf("      %s\n", line)
+					}
+				}
+			}
+		}
+
 		clusterInfo := r.clusterName()
 		fmt.Printf("\n  %s\n", result.Summary())
 		if clusterInfo != "" {
 			fmt.Printf("  Cluster: %s (%s)\n", clusterInfo, r.provider())
+		}
+
+		if len(failures) > 0 {
+			runOnFailure(ctx, r.e2e.Spec.OnFailure, r.e2eDir)
+		}
+
+		if r.reportFile != "" {
+			if err := os.WriteFile(r.reportFile, []byte(result.Markdown()), 0644); err != nil {
+				fmt.Printf("  ! could not write report file: %v\n", err)
+			} else {
+				fmt.Printf("  Report written to %s\n", r.reportFile)
+			}
 		}
 	}
 

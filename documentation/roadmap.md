@@ -1,6 +1,6 @@
 # Roadmap
 
-*Last updated: June 2026*
+*Last updated: July 2026*
 
 ---
 
@@ -181,6 +181,31 @@ registry:
 A policy can import other published policies. If two imported policies conflict on the same rule, the aggregation fails — no silent merge, no last-one-wins. Policies attached to a Komposer are authoritative: built-in rules can be overridden by the policy author, but org-wide policy rules cannot be overridden downstream.
 
 If `policy.yaml` is present when a pattern is pushed, it is embedded in the OCI artifact and enforced automatically when consumers run `ork lint` against that pattern — no `--policy` flag required.
+
+### Concurrent E2E imports
+
+`ork e2e` files with `imports:` are aggregators — they run independent E2E specs sequentially today. The improvement makes concurrency the default: imports run in parallel unless they declare `dependsOn:` to another import.
+
+For Orkestra operator imports, Orkestra is installed once per namespace rather than once per cluster. Each import gets its own namespace-scoped Orkestra instance, isolated state, and independent assertion loop. The coordinator manages the shared cluster and tears down each namespace after its import completes.
+
+For `custom.target: kubernetes` imports there is no Orkestra installation — each import applies and asserts against its own set of resources. Concurrency there is straightforward and requires no cross-import coordination.
+
+The practical effect: a suite of 10 independent E2E specs that today takes 10 × test-time runs in approximately 1 × test-time. CI feedback for full suite runs drops from tens of minutes to the time of the slowest single import.
+
+---
+
+### ork plan — deeper intent analysis
+
+`ork plan` exists today and shows a diff between the current katalog and the running state. It is useful but limited — it does not yet explain *why* resources will change, surface drift from outside reconcile, or show which CRs will be affected by a template change.
+
+Planned improvements:
+
+- **Intent diff** — distinguish a template change that affects 3 of 12 CRs from one that affects all of them. Show which CRs are affected and how.
+- **Drift detection** — detect resources that exist in the cluster but are no longer declared in the Katalog. Surface them as orphans before apply, not after.
+- **Dependency impact** — when a Katalog change affects a dependency, surface the downstream CRDs that will re-reconcile as a result.
+- **Structured output** — `--output json` for CI integration; diff summaries as GitHub step comments via `ork-action`.
+
+Until these land, `ork plan` is a basic diff — helpful for catching renames and field changes, not yet suitable as a full pre-apply review gate.
 
 ### ork lint
 

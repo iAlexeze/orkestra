@@ -60,6 +60,7 @@ Discovery mode — runs all *e2e.yaml files found recursively (skips pure aggreg
 		wait, _ := cmd.Flags().GetString("wait")
 		skipRaw, _ := cmd.Flags().GetStringSlice("skip")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		reportFile, _ := cmd.Flags().GetString("report-file")
 
 		// Discovery mode: -f ./... or -f ./some/path/...
 		if strings.HasSuffix(file, "/...") || file == "./..." || file == "..." {
@@ -77,7 +78,7 @@ Discovery mode — runs all *e2e.yaml files found recursively (skips pure aggreg
 			return validateE2EFile(file)
 		}
 
-		runner, err := e2e.New(file, e2e.Options{ClusterCtx: clusterCtx, UseCurrentCtx: useCurrentCtx, KeepCluster: keepCluster, Workers: workers, DevServer: devServer, OrkVersion: version, ValueFiles: valuesFiles, HelmArgs: helmArgs})
+		runner, err := e2e.New(file, e2e.Options{ClusterCtx: clusterCtx, UseCurrentCtx: useCurrentCtx, KeepCluster: keepCluster, Workers: workers, DevServer: devServer, OrkVersion: version, ValueFiles: valuesFiles, HelmArgs: helmArgs, ReportFile: reportFile})
 		if err != nil {
 			return err
 		}
@@ -476,6 +477,7 @@ func init() {
 	e2eCmd.Flags().String("wait", "", "Duration to wait between discovered tests (e.g. 2s). Only applies in ./... discovery mode.")
 	e2eCmd.Flags().StringSlice("skip", []string{}, "Comma-separated path patterns to skip during ./... discovery (e.g. vendor,testdata)")
 	e2eCmd.Flags().Bool("dry-run", false, "Print what would run without executing. Single file: runs validate. ./...: lists discovered files.")
+	e2eCmd.Flags().String("report-file", "", "Write test results as markdown to this file (e.g. $GITHUB_STEP_SUMMARY). Results are always printed to stdout.")
 
 	// Shadow global flags
 	e2eCmd.Flags().Bool("debug", false, "")

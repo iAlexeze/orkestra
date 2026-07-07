@@ -6,8 +6,8 @@ description: >-
   namespace protection with admission webhooks, and observe everything in the
   Control Center. Runtime and Gateway deploy independently.
 type: application
-version: 1.7.8
-appVersion: "0.7.9"
+version: 1.7.10
+appVersion: "0.7.10"
 
 keywords:
   - orkestra
@@ -65,18 +65,16 @@ annotations:
       url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
   artifacthub.io/changes: |
     - kind: added
-      description: "NetworkPolicy, ResourceQuota, LimitRange, ClusterRole, ClusterRoleBinding as first-class resource types"
+      description: "ork e2e: --report-file flag writes results as GFM markdown tables (passed + failed with error column)"
     - kind: added
-      description: "networkpolicy profiles: deny-all, deny-all-ingress, deny-all-egress, allow-same-namespace, allow-dns-egress"
+      description: "ork e2e: spec.onFailure — diagnostic kubectl and shell commands printed when any expectation fails"
     - kind: added
-      description: "resourcequota profiles: small, medium, large, xlarge"
+      description: "ork e2e: per-expectation onFailure — diagnostics printed immediately when that specific checkpoint fails"
     - kind: added
-      description: "gateway PodDisruptionBudget (enabled by default)"
-    - kind: added
-      description: "ork e2e: per-entry wait on setup.apply and setup.helm entries"
-    - kind: added
-      description: "ork e2e: setup-complete lifecycle event — assert infrastructure before any CR is applied"
+      description: "ork e2e: terminal output split — passed cases first, failed cases with indented error detail"
     - kind: fixed
-      description: "ork simulate: cross-namespace copy resources auto-skipped with an explanatory note instead of erroring"
+      description: "forEach silently no-op on NetworkPolicy, ResourceQuota, LimitRange, ClusterRole, ClusterRoleBinding"
     - kind: fixed
-      description: "namespace owned by CR now deleted when CR is removed"
+      description: "NetworkPolicy, ResourceQuota, LimitRange, ClusterRole, ClusterRoleBinding not tracked as children in CR detail"
+    - kind: fixed
+      description: "isFileMotif: bare relative motif paths not recognised as file paths"

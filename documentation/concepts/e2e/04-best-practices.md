@@ -134,6 +134,57 @@ Every test should verify that child resources are cleaned up when the CR is dele
 
 ---
 
+## Add `onFailure` to your hardest checkpoints
+
+When a test fails in CI you have no shell access — you rely entirely on what was printed. Without `onFailure`, a timeout failure shows you only the assertion that timed out. With it, you see pod logs, describe output, and events captured at the exact moment of failure.
+
+Add per-expectation `onFailure` to checkpoints that are slow, involve async state, or interact with external dependencies. Collect the state most relevant to that specific assertion — not a generic dump:
+
+```yaml
+- name: Operator reaches Ready
+  after: cr-applied
+  timeout: 120s
+  kubectl:
+    get:
+      - kind: MyApp
+        name: my-app
+        namespace: default
+        field: .status.phase
+        equals: Ready
+  onFailure:
+    kubectl:
+      logs:
+        - labelSelector: app=my-operator
+          namespace: default
+          since: 3m
+      describe:
+        - kind: MyApp
+          name: my-app
+          namespace: default
+```
+
+Use `spec.onFailure` as a global fallback — a broad cluster snapshot that runs once after all checkpoints complete, regardless of which one failed:
+
+```yaml
+spec:
+  onFailure:
+    kubectl:
+      get:
+        - kind: MyApp
+          name: my-app
+          namespace: default
+      events:
+        - kind: Deployment
+          name: my-app
+          namespace: default
+    commands:
+      - kubectl get pods -A -o wide
+```
+
+The two levels complement each other: per-expectation captures focused state at the moment of failure; spec-level captures the broad picture after the full run.
+
+---
+
 ## Name checkpoints for the behavior, not the resource
 
 ```yaml

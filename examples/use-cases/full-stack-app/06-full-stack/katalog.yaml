@@ -10,12 +10,57 @@ metadata:
 
 spec:
   crds:
+    # managed-database:
+    #   crdFile: ../03-cross-crd/crd-managed-database.yaml
+    #   crFiles: 
+    #     - ../03-cross-crd/database-cr.yaml
+    #   operatorBox:
+    #     reconciler:
+    #       workers: 2
+    #       resync: 30s
+    #     onCreate:
+    #       deployments:
+    #         - name: "{{ .metadata.name }}-postgres"
+    #           image: "postgres:17"
+    #           env:
+    #             - name: POSTGRES_PASSWORD
+    #               value: "postgres"
+    #             - name: POSTGRES_USER
+    #               value: "postgres"
+    #             - name: POSTGRES_DB
+    #               value: "postgres"
+
+    #       services:
+    #         - name: "{{ .metadata.name }}-postgres"
+    #           port: "5432"
+    #           reconcile: true
+
+    #     status:
+    #       fields:
+    #         - path: phase
+    #           value: "Pending"
+    #           when:
+    #             - field: status.phase
+    #               operator: notExists
+    #         - path: resourceExists
+    #           value: "ResourceExists"
+    #           when:
+    #             - field: "{{ resourceExists .children.deployment }}"
+    #               equals: "true"
+    #         - path: phase
+    #           value: "Ready"
+    #           when:
+    #             - field: "{{ allReplicasReady .children.deployment }}"
+    #               equals: "true"
+    #         - path: endpoint
+    #           value: "{{ .metadata.name }}-postgres.{{ .metadata.namespace }}.svc.cluster.local:5432"
+    #         - path: replicasReady
+    #           value: "{{ allReplicasReady .children.deployment }}"
+    #         - path: resourceExists
+    #           value: "{{ resourceExists .children.deployment }}"
+
     full-stack-app:
       crdFile: ./crd.yaml
-      setup:
-        - ../03-cross-crd/crd-managed-database.yaml
-        - ../03-cross-crd/database-cr.yaml
-
       dependsOn:
         managed-database: healthy
 

@@ -6,6 +6,46 @@ import (
 	"time"
 )
 
+// Markdown renders the result as a GitHub-flavoured markdown summary block.
+func (r *Result) Markdown() string {
+	var passed, failed []CaseResult
+	for _, c := range r.Cases {
+		if c.Passed {
+			passed = append(passed, c)
+		} else {
+			failed = append(failed, c)
+		}
+	}
+
+	var b strings.Builder
+	b.WriteString("## E2E Results: " + r.Name + "\n\n")
+
+	if len(passed) > 0 {
+		b.WriteString("| Passed | Test | Time |\n")
+		b.WriteString("|---|---|---|\n")
+		for _, c := range passed {
+			b.WriteString(fmt.Sprintf("| ✅ | %s | %s |\n", c.Name, c.Elapsed.Round(time.Millisecond)))
+		}
+		b.WriteString("\n")
+	}
+
+	if len(failed) > 0 {
+		b.WriteString("| Failed | Test | Time | Error |\n")
+		b.WriteString("|---|---|---|---|\n")
+		for _, c := range failed {
+			msg := ""
+			if c.Err != nil {
+				msg = strings.ReplaceAll(strings.TrimSpace(c.Err.Error()), "\n", ". ")
+			}
+			b.WriteString(fmt.Sprintf("| ❌ | %s | %s | %s |\n", c.Name, c.Elapsed.Round(time.Millisecond), msg))
+		}
+		b.WriteString("\n")
+	}
+
+	b.WriteString("**" + r.Summary() + "**\n")
+	return b.String()
+}
+
 // Result holds the outcome of a complete E2E run.
 // It is returned by Run and consumed by ork push to embed
 // verification metadata into OCI annotations.

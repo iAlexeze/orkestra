@@ -1,4 +1,4 @@
-## v0.7.10 [UNRELEASED] — E2E DSL extensions, cluster improvements, endpoint control
+## v0.7.10 — E2E DSL extensions, cluster improvements, endpoint control, children forEach fixes
 
 
 ### `leaderElection:` on `kubectl.delete` and `kubectl.exec`
@@ -82,9 +82,68 @@ New documentation page in `documentation/orkestra-core/03-controlcenter/generate
 
 ### Bug fixes
 
+- **`forEach:` silently no-op on NetworkPolicy, ResourceQuota, LimitRange, ClusterRole, ClusterRoleBinding**: `forEach:` support for these five resource types was deferred from v0.7.8 when they were first introduced. A declared `forEach:` block was silently dropped — no expansion, no error. Fixed: `ExpandForEach*` wrappers added in `pkg/children/foreach.go`; runner calls in `run_template_reconcile.go` now pass through the expand step.
+- **`ForEach` field missing on NetworkPolicy, ResourceQuota, LimitRange, ClusterRole, ClusterRoleBinding template sources**: `forEach:` was undeclared on these types — any YAML using it would be silently ignored. Fixed: `ForEach *ForEachSpec` added to all five structs.
+- **NetworkPolicy invisible to child tracker**: `mergeTemplates` in `pkg/children/read.go` merged all v0.7.8 resources except `NetworkPolicies` — they never appeared in the CR detail children map. Fixed.
+- **ResourceQuota and LimitRange invisible to CR detail view**: `ResourceQuotaGVR` and `LimitRangeGVR` were absent from `pkg/children/gvr.go` — these resources could not be read back as children after reconcile. Fixed: GVR vars and `ChildGVRs()` entries added.
+- **NetworkPolicy, ResourceQuota, LimitRange, ClusterRole, ClusterRoleBinding not tracked as children**: No `*Names` helper or `children.go` read block existed for any of the five types. Fixed: helpers and read blocks added; resources now appear in CR detail and the Control Center Resources tab.
+
 - **Node-ready race**: `waitForNodesReady` checked the condition *type* (`Ready`) not its *status* (`True`). A node could be type=Ready status=False and still be reported ready. Replaced with `kubectl wait --for=condition=Ready node --all`.
 - **`--version` silently ignored when kind is in PATH**: `resolveKind` always checked PATH first regardless of the version flag. Fixed: empty version checks PATH then falls back to default; non-empty version skips PATH entirely.
 - **Spinner output leaking during setup waits**: `WaitForResource` used `.Run()` for ready checks, letting `kubectl rollout status` and `kubectl wait` write progress to the terminal while the spinner goroutine was running. Replaced with `.Output()`. `helm repo add/update` had the same issue during the Installing spinner.
+
+### `ork e2e --report-file`
+
+`--report-file <path>` writes results as a GFM markdown table after every run. The file contains two tables — passed cases (icon, test, time) and failed cases (icon, test, time, error) — with a summary line. Newlines in error messages are replaced with `. ` so the table renders correctly.
+
+```bash
+ork e2e --report-file results.md
+ork e2e --report-file "$GITHUB_STEP_SUMMARY"   # render directly in GitHub Actions
+```
+
+Terminal output is now also split: passed cases print first, then failed cases with the full error indented line-by-line — consistent with how most language test frameworks present results.
+
+### `spec.onFailure` and per-expectation `onFailure`
+
+Two levels of diagnostic output when a test fails:
+
+**`spec.onFailure`** — runs once after all expectations complete, when at least one failed. Use for a global cluster snapshot.
+
+**`expect[].onFailure`** — runs immediately when that specific checkpoint fails, before moving to the next. Use to capture state at the moment of failure.
+
+Both accept the same DSL:
+
+```yaml
+spec:
+  onFailure:
+    kubectl:
+      logs:
+        - labelSelector: app=my-operator
+          namespace: default
+          since: 2m
+    commands:
+      - kubectl get pods -A -o wide
+
+  expect:
+    - name: Operator reaches Ready
+      after: cr-applied
+      timeout: 120s
+      kubectl:
+        get:
+          - kind: MyResource
+            name: my-cr
+            namespace: default
+            field: .status.phase
+            equals: Ready
+      onFailure:
+        kubectl:
+          describe:
+            - kind: Deployment
+              name: my-operator
+              namespace: default
+```
+
+Assertion fields on the `kubectl:` structs are present but never evaluated — output is always printed. `onFailure` never blocks teardown.
 
 ---
 
