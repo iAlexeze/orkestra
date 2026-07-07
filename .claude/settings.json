@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go get *)",
+      "Bash(ork proxy *)",
+      "Bash(ork e2e *)",
+      "Bash(helm template *)",
+      "Bash(git push *)",
+      "Bash(mv /home/alex_eze/orkestra/unknown/claude/sessions/feat-template-e2e /home/alex_eze/orkestra/unknown/claude/sessions/feat-e2e-notes)",
+      "Bash(cp /home/alex_eze/orkestra/unknown/claude/sessions/post-0.7.9-improvements/temporal-pack.md /home/alex_eze/orkestra/unknown/claude/sessions/feat-e2e-notes/temporal-pack.md)",
+      "Bash(kubectl get *)",
+      "Bash(gh pr *)",
+      "Bash(git revert *)"
+    ]
+  }
+}
