@@ -64,13 +64,15 @@ type CRDMode string
 type DependencyCondtion string
 
 const (
+	// KonductorLeaseName is the coordination.k8s.io/v1 Lease that holds the Runtime leader identity.
+	KonductorLeaseName = "orkestra-konductor"
+
 	CRDModeTyped   CRDMode = "typed"
 	CRDModeDynamic CRDMode = "dynamic"
 
-	DependencyConditionStarted DependencyCondtion = "started"
-	DependencyConditionHealthy DependencyCondtion = "healthy"
-
-	// Future
+	// DependencyCondtion values — gate a CRD's reconcile on the state of its dependencies.
+	DependencyConditionStarted  DependencyCondtion = "started"
+	DependencyConditionHealthy  DependencyCondtion = "healthy"
 	DependencyCondtionPending   DependencyCondtion = "pending"
 	DependencyCondtionReady     DependencyCondtion = "ready"
 	DependencyConditionDegraded DependencyCondtion = "degraded"
