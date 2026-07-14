@@ -87,6 +87,7 @@ func (k *Katalog) KomposeRuntimeKatalog(
 ) (map[string]orktypes.CRDEntry, error) {
 
 	k.Spec = m.ToSpec()
+	k.Spec.Imports = m.ToSpecImports()
 	k.Security = m.ToSecurity()
 	k.Gateway = m.ToGateway()
 	k.Notification = m.ToNotification()
@@ -122,7 +123,12 @@ func (k *Katalog) KomposeRuntimeKatalog(
 		k.enabledCRDs[name] = entry
 	}
 
-	// Expand Motif imports declared in each operatorBox
+	// Expand spec.imports — merge profiles into the Katalog-wide ProfileRegistry
+	if err := k.expandKatalogImports(); err != nil {
+		return nil, err
+	}
+
+	// Expand Motif imports declared in each operatorBox (resources, status, admission only)
 	if err := k.expandMotifImports(); err != nil {
 		return nil, err
 	}

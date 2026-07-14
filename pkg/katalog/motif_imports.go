@@ -1,8 +1,14 @@
 // pkg/katalog/motif_imports.go
 //
-// Expands imports: blocks at the CRD level (spec.crds[].imports).
-// Each import loads the referenced Motif, binds its inputs from with:,
-// and merges the expanded resources, status, and admission rules into the CRD.
+// Two import paths:
+//
+//	spec.imports (Katalog-wide) — expandKatalogImports
+//	  Merges only profiles: from each Motif into the Katalog ProfileRegistry.
+//	  Resources, status, and admission in the Motif are ignored at this level.
+//
+//	spec.crds[name].imports (CRD-scoped) — expandMotifImports
+//	  Merges resources, status, and admission into the target CRD.
+//	  Profiles in the Motif are ignored at this level.
 package katalog
 
 import (
@@ -11,6 +17,26 @@ import (
 	"github.com/orkspace/orkestra/pkg/motif"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
+
+// expandKatalogImports resolves spec.imports entries on the Katalog.
+// For each import, only the profiles: block from the expanded Motif is merged
+// into the Katalog-wide ProfileRegistry. Resources, status, and admission are ignored.
+func (k *Katalog) expandKatalogImports() error {
+	for i, imp := range k.Spec.Imports {
+		expanded, err := k.loadAndExpandImport(&imp)
+		if err != nil {
+			return fmt.Errorf("spec.imports[%d]: %w", i, err)
+		}
+		if !expanded.Profiles.IsEmpty() {
+			merged, err := k.Profiles.Merge(expanded.Profiles, fmt.Sprintf("spec.imports[%d] motif %q", i, expanded.Name))
+			if err != nil {
+				return fmt.Errorf("spec.imports[%d]: merging profiles from motif %q: %w", i, expanded.Name, err)
+			}
+			k.Profiles = merged
+		}
+	}
+	return nil
+}
 
 // expandMotifImports resolves all imports entries across enabled CRDs.
 // For each import, it expands the motif and merges the result into the CRD entry.
@@ -86,16 +112,6 @@ func (k *Katalog) mergeExpandedMotif(entry *orktypes.CRDEntry, expanded *motif.E
 		if entry.OperatorBox.Status.Conditions == nil && expanded.Status.Conditions != nil {
 			entry.OperatorBox.Status.Conditions = expanded.Status.Conditions
 		}
-	}
-
-	// Merge user-defined profiles from the motif into the katalog registry.
-	// Conflict (same class, same name in both) is a hard error.
-	if !expanded.Profiles.IsEmpty() {
-		merged, err := k.Profiles.Merge(expanded.Profiles, fmt.Sprintf("motif %q", expanded.Name))
-		if err != nil {
-			return err
-		}
-		k.Profiles = merged
 	}
 
 	// Merge admission (validation + mutation) rules – these are at CRD level, not operatorBox
