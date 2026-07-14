@@ -37,12 +37,48 @@ type Resolver struct {
 	ownerName      string
 	ownerNamespace string
 	profiles       orktypes.ProfileRegistry
+	// mergedFuncs is set by WithUserNotes and contains orkNotes + user-defined notes.
+	// When nil, Resolve() uses the package-level orkNotes FuncMap directly.
+	mergedFuncs template.FuncMap
 }
 
 // WithProfiles attaches a user-defined profile registry to the resolver.
 // Call this after NewResolver when the katalog declares a profiles: block.
 func (r *Resolver) WithProfiles(reg orktypes.ProfileRegistry) *Resolver {
 	r.profiles = reg
+	return r
+}
+
+// WithUserNotes registers user-defined notes from the Katalog's NoteRegistry.
+// Each note's Expression is compiled as a Go template and registered under its
+// Name in the resolver's FuncMap. Calling {{ noteName }} in any template
+// evaluates the expression against the current CR's data.
+// Built-in notes remain available; user notes may call built-in notes and
+// each other inside their expressions.
+func (r *Resolver) WithUserNotes(reg orktypes.NoteRegistry) *Resolver {
+	if reg.IsEmpty() {
+		return r
+	}
+	// merged holds built-ins + user notes. Closures capture it by reference
+	// so all user notes see the complete FuncMap (including each other) at eval time.
+	merged := make(template.FuncMap, len(orkNotes)+len(reg))
+	for k, v := range orkNotes {
+		merged[k] = v
+	}
+	for _, n := range reg {
+		expr := n.Expression // capture by value, not loop variable
+		merged[n.Name] = func() string {
+			tmpl, err := template.New("").Option("missingkey=zero").Funcs(merged).Parse(expr)
+			if err != nil {
+				return ""
+			}
+			var buf bytes.Buffer
+			_ = tmpl.Execute(&buf, r.data)
+			out := strings.TrimSpace(buf.String())
+			return strings.ReplaceAll(out, "<no value>", "")
+		}
+	}
+	r.mergedFuncs = merged
 	return r
 }
 
@@ -128,8 +164,12 @@ func (r *Resolver) Resolve(value string) (string, error) {
 		return value, nil
 	}
 
+	funcs := orkNotes
+	if r.mergedFuncs != nil {
+		funcs = r.mergedFuncs
+	}
 	tmpl, err := template.New("f").Option("missingkey=zero").
-		Funcs(orkNotes). // ← notes registered here
+		Funcs(funcs).
 		Parse(value)
 	if err != nil {
 		return "", fmt.Errorf("parsing %q: %w", value, err)
