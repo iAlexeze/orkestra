@@ -134,6 +134,105 @@ spec:
 
 ---
 
+### `weekday`
+
+Return `true` when the current UTC day is Monday through Friday. Use in `when:` conditions or status fields to gate resources on business days.
+
+Keywords: time, weekday, businessday, monday, friday, boolean, window
+
+```yaml
+status:
+  fields:
+    - path: phase
+      value: "Active"
+      when:
+        - field: "{{ weekday }}"
+          equals: "true"
+    - path: phase
+      value: "Suspended"
+```
+
+---
+
+### `weekend`
+
+Return `true` when the current UTC day is Saturday or Sunday. The exact complement of `weekday`.
+
+Keywords: time, weekend, saturday, sunday, boolean, offpeak
+
+```yaml
+status:
+  fields:
+    - path: phase
+      value: "Weekend"
+      when:
+        - field: "{{ weekend }}"
+          equals: "true"
+```
+
+---
+
+### `timeInWindow`
+
+Return `true` when the current UTC time falls within the window `[after, before)`. Both arguments must be `"HH:MM"` strings. Returns `false` for malformed input.
+
+Keywords: time, window, businesshours, after, before, boolean, schedule
+
+```yaml
+status:
+  fields:
+    - path: phase
+      value: "Active"
+      when:
+        - field: "{{ timeInWindow \"09:00\" \"18:00\" }}"
+          equals: "true"
+    - path: phase
+      value: "Suspended"
+
+# Combine with weekday for a full business-hours check:
+# {{ and (timeInWindow "09:00" "18:00") weekday }}
+```
+
+---
+
+### `timeNotInWindow`
+
+Return `true` when the current UTC time is outside the window `[after, before)`. The exact complement of `timeInWindow`. Useful for maintenance-window logic where the resource should exist only when the window is closed.
+
+Keywords: time, window, maintenance, outside, boolean, complement
+
+```yaml
+status:
+  fields:
+    - path: maintenanceActive
+      value: "true"
+      when:
+        - field: "{{ timeNotInWindow \"02:00\" \"04:00\" }}"
+          equals: "false"
+```
+
+---
+
+### `nextCron`
+
+Return the next scheduled fire time for a standard 5-field cron expression as an RFC3339 string. Returns `""` for invalid expressions.
+
+Keywords: time, cron, next, schedule, rfc3339, string, transition
+
+```yaml
+status:
+  fields:
+    - path: nextMaintenance
+      value: "{{ nextCron \"0 2 * * 0\" }}"
+      # → "2026-07-19T02:00:00Z"  (next Sunday 02:00 UTC)
+
+    - path: nextDeploy
+      value: "{{ nextCron \"0 9 * * 1\" }}"
+      # → next Monday 09:00 UTC
+```
+
+---
+
 ## Quick reference
 
 | Note | Accepts | Returns | Notes |
@@ -145,3 +244,8 @@ spec:
 | `durationSeconds` | `duration string` | `int64` | Go duration → seconds |
 | `durationAdd` | `a, b string` | `string` | sum of two Go durations |
 | `durationValid` | `duration string` | `bool` | `false` for `"5d"` — Go has no days |
+| `weekday` | — | `bool` | `true` Mon–Fri UTC |
+| `weekend` | — | `bool` | `true` Sat–Sun UTC |
+| `timeInWindow` | `after, before string` | `bool` | `true` when now is in `[HH:MM, HH:MM)` UTC |
+| `timeNotInWindow` | `after, before string` | `bool` | complement of `timeInWindow` |
+| `nextCron` | `expr string` | `string` | next RFC3339 fire time for a 5-field cron |

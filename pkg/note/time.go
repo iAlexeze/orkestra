@@ -5,13 +5,18 @@ import (
 	"math"
 	"text/template"
 	"time"
+
+	"github.com/robfig/cron/v3"
 )
 
-// ime notes
+// Time notes
 // - timeAgo
 // - timeSince
 // - isExpired
 // - timeFormat
+// - weekday / weekend
+// - timeInWindow / timeNotInWindow
+// - nextCron
 
 func timeNotes() template.FuncMap {
 	return template.FuncMap{
@@ -22,6 +27,11 @@ func timeNotes() template.FuncMap {
 		"durationSeconds": noteDurationSeconds,
 		"durationAdd":     noteDurationAdd,
 		"durationValid":   noteDurationValid,
+		"weekday":         noteWeekday,
+		"weekend":         noteWeekend,
+		"timeInWindow":    noteTimeInWindow,
+		"timeNotInWindow": noteTimeNotInWindow,
+		"nextCron":        noteNextCron,
 	}
 }
 
@@ -158,4 +168,68 @@ func noteDurationValid(s string) bool {
 	}
 	_, err := time.ParseDuration(s)
 	return err == nil
+}
+
+// noteWeekday returns true when the current day (UTC) is Monday through Friday.
+//
+//	{{ weekday }}  → true on a Tuesday, false on a Saturday
+func noteWeekday() bool {
+	wd := time.Now().UTC().Weekday()
+	return wd >= time.Monday && wd <= time.Friday
+}
+
+// noteWeekend returns true when the current day (UTC) is Saturday or Sunday.
+//
+//	{{ weekend }}  → true on a Sunday, false on a Wednesday
+func noteWeekend() bool {
+	wd := time.Now().UTC().Weekday()
+	return wd == time.Saturday || wd == time.Sunday
+}
+
+// noteTimeInWindow returns true when the current UTC time falls within the
+// window [after, before). Both arguments must be "HH:MM" strings.
+// Returns false for malformed input.
+//
+//	{{ timeInWindow "09:00" "18:00" }}  → true at 14:30 UTC, false at 22:00 UTC
+func noteTimeInWindow(after, before string) bool {
+	now := time.Now().UTC()
+	a, err := parseHHMMNote(after, now)
+	if err != nil {
+		return false
+	}
+	b, err := parseHHMMNote(before, now)
+	if err != nil {
+		return false
+	}
+	return !now.Before(a) && now.Before(b)
+}
+
+// noteTimeNotInWindow returns true when the current UTC time is outside the
+// window [after, before). It is the exact complement of timeInWindow.
+//
+//	{{ timeNotInWindow "02:00" "04:00" }}  → true at 10:00 UTC (maintenance window closed)
+func noteTimeNotInWindow(after, before string) bool {
+	return !noteTimeInWindow(after, before)
+}
+
+// noteNextCron returns the next scheduled fire time for a standard 5-field cron
+// expression as an RFC3339 string. Returns "" for invalid expressions.
+//
+//	{{ nextCron "0 9 * * 1" }}  → "2026-07-14T09:00:00Z"  (next Monday 09:00 UTC)
+//	{{ nextCron "0 2 * * 0" }}  → next Sunday 02:00 UTC
+func noteNextCron(expr string) string {
+	schedule, err := cron.ParseStandard(expr)
+	if err != nil {
+		return ""
+	}
+	return schedule.Next(time.Now().UTC()).UTC().Format(time.RFC3339)
+}
+
+// parseHHMMNote parses a "HH:MM" string anchored to the date of now (UTC).
+func parseHHMMNote(s string, now time.Time) (time.Time, error) {
+	t, err := time.Parse("15:04", s)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid time %q: expected HH:MM", s)
+	}
+	return time.Date(now.Year(), now.Month(), now.Day(), t.Hour(), t.Minute(), 0, 0, time.UTC), nil
 }

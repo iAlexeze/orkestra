@@ -1491,6 +1491,13 @@ var BuiltinNotes = []NoteInfo{
 		Keywords:    []string{"time", "expired", "expiry", "rotation", "ttl", "boolean", "when", "condition"},
 	},
 	{
+		Name:        "nextCron",
+		Domain:      "time",
+		Description: "Return the next scheduled fire time for a standard 5-field cron expression as an RFC3339 string. Returns `\"\"` for invalid expressions.",
+		Example:     "status:\n  fields:\n    - path: nextMaintenance\n      value: \"{{ nextCron \\\"0 2 * * 0\\\" }}\"\n      # → \"2026-07-19T02:00:00Z\"  (next Sunday 02:00 UTC)\n\n    - path: nextDeploy\n      value: \"{{ nextCron \\\"0 9 * * 1\\\" }}\"\n      # → next Monday 09:00 UTC",
+		Keywords:    []string{"time", "cron", "next", "schedule", "rfc3339", "string", "transition"},
+	},
+	{
 		Name:        "timeAgo",
 		Domain:      "time",
 		Description: "Return a human-readable elapsed-time string from a timestamp. Outputs seconds, minutes, hours, or days depending on magnitude.",
@@ -1505,11 +1512,39 @@ var BuiltinNotes = []NoteInfo{
 		Keywords:    []string{"time", "format", "layout", "display", "readable", "string", "date"},
 	},
 	{
+		Name:        "timeInWindow",
+		Domain:      "time",
+		Description: "Return `true` when the current UTC time falls within the window `[after, before)`. Both arguments must be `\"HH:MM\"` strings. Returns `false` for malformed input.",
+		Example:     "status:\n  fields:\n    - path: phase\n      value: \"Active\"\n      when:\n        - field: \"{{ timeInWindow \\\"09:00\\\" \\\"18:00\\\" }}\"\n          equals: \"true\"\n    - path: phase\n      value: \"Suspended\"\n\n# Combine with weekday for a full business-hours check:\n# {{ and (timeInWindow \"09:00\" \"18:00\") weekday }}",
+		Keywords:    []string{"time", "window", "businesshours", "after", "before", "boolean", "schedule"},
+	},
+	{
+		Name:        "timeNotInWindow",
+		Domain:      "time",
+		Description: "Return `true` when the current UTC time is outside the window `[after, before)`. The exact complement of `timeInWindow`. Useful for maintenance-window logic where the resource should exist only when the window is closed.",
+		Example:     "status:\n  fields:\n    - path: maintenanceActive\n      value: \"true\"\n      when:\n        - field: \"{{ timeNotInWindow \\\"02:00\\\" \\\"04:00\\\" }}\"\n          equals: \"false\"",
+		Keywords:    []string{"time", "window", "maintenance", "outside", "boolean", "complement"},
+	},
+	{
 		Name:        "timeSince",
 		Domain:      "time",
 		Description: "Return the number of seconds elapsed since a timestamp as an integer. Use for programmatic comparisons in `when:` conditions.",
 		Example:     "# Gate rotation on time elapsed (30 days = 2592000 seconds)\nwhen:\n  - field: \"{{ timeSince (index .metadata.annotations \\\"myorg.io/last-rotated\\\") }}\"\n    operator: gte\n    value: \"2592000\"",
 		Keywords:    []string{"time", "since", "seconds", "elapsed", "duration", "int", "compare"},
+	},
+	{
+		Name:        "weekday",
+		Domain:      "time",
+		Description: "Return `true` when the current UTC day is Monday through Friday. Use in `when:` conditions or status fields to gate resources on business days.",
+		Example:     "status:\n  fields:\n    - path: phase\n      value: \"Active\"\n      when:\n        - field: \"{{ weekday }}\"\n          equals: \"true\"\n    - path: phase\n      value: \"Suspended\"",
+		Keywords:    []string{"time", "weekday", "businessday", "monday", "friday", "boolean", "window"},
+	},
+	{
+		Name:        "weekend",
+		Domain:      "time",
+		Description: "Return `true` when the current UTC day is Saturday or Sunday. The exact complement of `weekday`.",
+		Example:     "status:\n  fields:\n    - path: phase\n      value: \"Weekend\"\n      when:\n        - field: \"{{ weekend }}\"\n          equals: \"true\"",
+		Keywords:    []string{"time", "weekend", "saturday", "sunday", "boolean", "offpeak"},
 	},
 	{
 		Name:        "isEmpty",
