@@ -1,3 +1,47 @@
+## [UNRELEASED] v0.7.11
+
+
+### Fix: `ork patterns` surfaces auth errors instead of silently showing 0 patterns
+
+`ork patterns` without a valid GHCR login previously rendered an empty table ("0 patterns") with no explanation. The catalog listing API requires auth even on public registries — unlike `ork run` which uses anonymous artifact pulls — so the two commands appeared to behave differently without any hint as to why.
+
+The error is now written to stderr with a login hint:
+
+```
+warning: could not list patterns from ghcr.io/orkspace/orkestra-registry/patterns/katalogs
+  → unauthorized: authentication required
+  hint: try logging in with: docker login ghcr.io
+```
+
+Same fix applied to the motif URL listing path.
+
+
+### `spec.imports` — katalog-wide profile scoping for Motifs
+
+Profiles declared in a Motif can now be imported at the Katalog level via `spec.imports`, making them available to every CRD in the Katalog:
+
+```yaml
+spec:
+  imports:
+    - motif: ./org-standards.yaml
+  crds:
+    application:
+      operatorBox:
+        onCreate:
+          deployments:
+            - resources:
+                profile: org-standard   # ✓ available to all CRDs
+    database:
+      operatorBox:
+        onCreate:
+          deployments:
+            - resources:
+                profile: org-standard   # ✓ same profile, no import needed here
+```
+
+`spec.crds[name].imports` still works for resources, status, and admission — profiles declared in those Motifs are ignored at the CRD level. This removes the previous behaviour where profiles from a CRD-level import leaked into the Katalog-wide registry, which caused conflicts when more than one CRD imported the same Motif.
+
+
 ## v0.7.10 — E2E DSL extensions, cluster improvements, endpoint control, children forEach fixes, ork proxy
 
 
