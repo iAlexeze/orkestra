@@ -15,6 +15,11 @@ All timestamp notes accept RFC3339, RFC3339Nano, `2006-01-02T15:04:05Z`, and `YY
 | `durationSeconds` | Parse a Go duration string and return the total number of seconds as an integer. |
 | `durationAdd` | Add two Go duration strings and return the result as a canonical duration string. |
 | `durationValid` | Return `true` when the string is a valid Go duration. |
+| `weekday` | Return `true` when the current UTC day is Monday through Friday. |
+| `weekend` | Return `true` when the current UTC day is Saturday or Sunday. |
+| `timeInWindow` | Return `true` when the current UTC time falls within the window `[after, before)`. |
+| `timeNotInWindow` | Return `true` when the current UTC time is outside the window `[after, before)`. |
+| `nextCron` | Return the next scheduled fire time for a standard 5-field cron expression as an RFC3339 string. |
 
 ## Examples
 
@@ -83,4 +88,58 @@ spec:
           deny:
             - field: "{{ durationValid .spec.rotationPeriod }}"
               equals: "false"
+
+# weekday
+status:
+  fields:
+    - path: phase
+      value: "Active"
+      when:
+        - field: "{{ weekday }}"
+          equals: "true"
+    - path: phase
+      value: "Suspended"
+
+# weekend
+status:
+  fields:
+    - path: phase
+      value: "Weekend"
+      when:
+        - field: "{{ weekend }}"
+          equals: "true"
+
+# timeInWindow
+status:
+  fields:
+    - path: phase
+      value: "Active"
+      when:
+        - field: "{{ timeInWindow \"09:00\" \"18:00\" }}"
+          equals: "true"
+    - path: phase
+      value: "Suspended"
+
+# Combine with weekday for a full business-hours check:
+# {{ and (timeInWindow "09:00" "18:00") weekday }}
+
+# timeNotInWindow
+status:
+  fields:
+    - path: maintenanceActive
+      value: "true"
+      when:
+        - field: "{{ timeNotInWindow \"02:00\" \"04:00\" }}"
+          equals: "false"
+
+# nextCron
+status:
+  fields:
+    - path: nextMaintenance
+      value: "{{ nextCron \"0 2 * * 0\" }}"
+      # → "2026-07-19T02:00:00Z"  (next Sunday 02:00 UTC)
+
+    - path: nextDeploy
+      value: "{{ nextCron \"0 9 * * 1\" }}"
+      # → next Monday 09:00 UTC
 ```

@@ -27,7 +27,13 @@ operatorBox:
 
 Both can be combined. The overall result is: `when` AND `anyOf`.
 
-## Condition fields
+---
+
+## Condition kinds
+
+### Field conditions
+
+Compare a dot-notation path into the CR against a value.
 
 | Field | Required | Description |
 |-------|----------|-------------|
@@ -38,7 +44,7 @@ Both can be combined. The overall result is: `when` AND `anyOf`.
 
 *Use either the `operator`+`value` form or a shorthand form — not both.
 
-## Operators
+#### Operators
 
 | Operator | Shorthand | Description |
 |----------|-----------|-------------|
@@ -52,7 +58,7 @@ Both can be combined. The overall result is: `when` AND `anyOf`.
 | `prefix` | `prefix` | Field starts with the value |
 | `suffix` | `suffix` | Field ends with the value |
 
-## Shorthand form
+#### Shorthand form
 
 ```yaml
 when:
@@ -64,7 +70,7 @@ when:
     valueType: int
 ```
 
-## Explicit form
+#### Explicit form
 
 ```yaml
 when:
@@ -73,5 +79,92 @@ when:
     value: "3"
     valueType: int
 ```
+
+---
+
+### Time conditions
+
+Evaluate against the current wall clock (UTC). No `field:` key — mutually exclusive with field conditions.
+
+#### `time:`
+
+Active when the current clock time falls within the declared window.
+
+```yaml
+when:
+  - time:
+      after: "09:00"
+      before: "18:00"
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `after` | no | Active at or after this time. Format: `HH:MM` (24h, UTC). |
+| `before` | no | Active at or before this time. Format: `HH:MM` (24h, UTC). |
+
+Both `after` and `before` may be set together. Either may be omitted.
+
+#### `dayOfWeek:`
+
+Active on the declared set of days.
+
+```yaml
+when:
+  - dayOfWeek:
+      weekday: true          # Mon–Fri shorthand
+```
+
+```yaml
+when:
+  - dayOfWeek:
+      weekend: true          # Sat–Sun shorthand
+```
+
+```yaml
+when:
+  - dayOfWeek:
+      in: [Monday, Wednesday, Friday]
+```
+
+```yaml
+when:
+  - dayOfWeek:
+      notIn: [Saturday, Sunday]
+```
+
+| Field | Mutually exclusive with | Description |
+|-------|------------------------|-------------|
+| `weekday` | `weekend`, `in`, `notIn` | `true` → active Mon–Fri; `false` → active Sat–Sun |
+| `weekend` | `weekday`, `in`, `notIn` | `true` → active Sat–Sun; `false` → active Mon–Fri |
+| `in` | `weekday`, `weekend`, `notIn` | Active on these days (full English names) |
+| `notIn` | `weekday`, `weekend`, `in` | Active on all days except these |
+
+Exactly one field must be set. Day names are case-insensitive (`monday`, `Monday`, and `MONDAY` are equivalent).
+
+**Combined example** — business hours only (weekday AND time window):
+
+```yaml
+when:
+  - time:
+      after: "09:00"
+      before: "18:00"
+  - dayOfWeek:
+      weekday: true
+```
+
+#### `cron:`
+
+Active when a cron-defined window is open. The window opens at each cron fire and stays open for `duration`.
+
+```yaml
+when:
+  - cron: "0 2 * * 0"
+    duration: 2h
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `cron` | yes | Standard cron expression (5-field: min hour dom month dow) |
+| `duration` | no | How long the window stays open after each fire. Default: `60s`. |
 
 ---

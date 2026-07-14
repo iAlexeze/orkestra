@@ -118,6 +118,14 @@ The [Health Subsystem](health-subsystem/) is Orkestra's liveness, readiness, and
 
 ---
 
+## Time-Dependent Workloads
+
+[Time-Dependent Workloads](temporal/) covers operators that change behavior based on wall-clock time — without CronJobs or external schedulers. Business hours provisioning, maintenance windows, regional peak scaling — all driven by built-in time notes re-evaluated on every reconcile.
+
+→ [Read: Time-Dependent Workloads](temporal/)
+
+---
+
 ## Conditionals
 
 [Conditionals](conditional/) are the logic layer — `when:` and `anyOf:` blocks that control when a resource is created, when a status field is written, and how multi-phase async workflows sequence themselves. Works in Katalogs and Motifs.
