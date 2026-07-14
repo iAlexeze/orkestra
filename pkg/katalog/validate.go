@@ -190,6 +190,12 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// 26c. Validate user-defined notes (uniqueness, valid template, shadowing)
+	// -------------------------------------------------------------------------
+	if err := k.validateUserNotes(); err != nil {
+		return nil, err
+	}
+
 	// 26b. Validate HPA Behavior Profiles
 	// -------------------------------------------------------------------------
 	if err := k.validateHPABehaviorProfiles(); err != nil {

@@ -184,7 +184,16 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 	m.providers = doc.Providers
 	m.gateway = doc.Gateway
 	m.profiles = doc.Profiles
-	m.specImports = doc.Spec.Imports
+	m.notes = doc.Notes
+	// Resolve spec.imports motif file paths to absolute, same as CRD-level imports above.
+	specImports := make([]orktypes.MotifImport, len(doc.Spec.Imports))
+	copy(specImports, doc.Spec.Imports)
+	for i, imp := range specImports {
+		if isFileMotif(imp.Motif) && !filepath.IsAbs(imp.Motif) {
+			specImports[i].Motif = filepath.Join(katalogDir, imp.Motif)
+		}
+	}
+	m.specImports = specImports
 
 	return result, nil
 }
@@ -210,6 +219,8 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 	var accProviders []orktypes.KatalogProviderRequirement
 	var accProfiles orktypes.ProfileRegistry
 	var accSpecImports []orktypes.MotifImport
+	var accNotes orktypes.NoteRegistry
+	notesSeen := make(map[string]string) // note name → import label, for cross-Katalog conflict detection
 
 	// ── Step 1: registry imports ─────────────────────────────────────────────
 	if doc.Imports != nil {
@@ -235,8 +246,17 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 			accSecurity = mergeKatalogSecurity(accSecurity, m.security)
 			accNotification = mergeKatalogNotification(accNotification, m.notification)
 			accProviders = append(accProviders, m.providers...)
-			accProfiles, _ = accProfiles.Merge(m.profiles, fmt.Sprintf("registry:%d", i))
+			merged, err := accProfiles.Merge(m.profiles, fmt.Sprintf("registry:%d", i))
+			if err != nil {
+				return nil, fmt.Errorf("%q imports.registry[%d]: profiles: %w", path, i, err)
+			}
+			accProfiles = merged
 			accSpecImports = append(accSpecImports, m.specImports...)
+			mergedNotes, err := accNotes.MergeImport(m.notes, fmt.Sprintf("registry:%d", i), notesSeen)
+			if err != nil {
+				return nil, fmt.Errorf("%q imports.registry[%d]: notes: %w", path, i, err)
+			}
+			accNotes = mergedNotes
 			logger.Debug().
 				Str("import", fmt.Sprintf("registry:%d", i)).
 				Msg("merger: accumulated security, notification, and providers from registry import")
@@ -283,8 +303,17 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 			accSecurity = mergeKatalogSecurity(accSecurity, m.security)
 			accNotification = mergeKatalogNotification(accNotification, m.notification)
 			accProviders = append(accProviders, m.providers...)
-			accProfiles, _ = accProfiles.Merge(m.profiles, "file:"+resolved)
+			merged, err := accProfiles.Merge(m.profiles, "file:"+resolved)
+			if err != nil {
+				return nil, fmt.Errorf("%q imports.files[%q]: profiles: %w", path, resolved, err)
+			}
+			accProfiles = merged
 			accSpecImports = append(accSpecImports, m.specImports...)
+			mergedNotes, err := accNotes.MergeImport(m.notes, "file:"+resolved, notesSeen)
+			if err != nil {
+				return nil, fmt.Errorf("%q imports.files[%q]: notes: %w", path, resolved, err)
+			}
+			accNotes = mergedNotes
 			logger.Debug().
 				Str("import", "file:"+resolved).
 				Msg("merger: accumulated security, notification, and providers from file import")
@@ -309,8 +338,17 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 			accSecurity = mergeKatalogSecurity(accSecurity, m.security)
 			accNotification = mergeKatalogNotification(accNotification, m.notification)
 			accProviders = append(accProviders, m.providers...)
-			accProfiles, _ = accProfiles.Merge(m.profiles, srcName)
+			merged, err := accProfiles.Merge(m.profiles, srcName)
+			if err != nil {
+				return nil, fmt.Errorf("%q imports.helm[%d]: profiles: %w", path, i, err)
+			}
+			accProfiles = merged
 			accSpecImports = append(accSpecImports, m.specImports...)
+			mergedNotes, err := accNotes.MergeImport(m.notes, srcName, notesSeen)
+			if err != nil {
+				return nil, fmt.Errorf("%q imports.helm[%d]: notes: %w", path, i, err)
+			}
+			accNotes = mergedNotes
 			logger.Debug().
 				Str("import", srcName).
 				Msg("merger: accumulated security, notification, and providers from helm import")
@@ -410,9 +448,21 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 		m.gateway = doc.Gateway
 	}
 
-	merged, _ := accProfiles.Merge(doc.Profiles, path)
-	m.profiles = merged
-	m.specImports = append(accSpecImports, doc.Spec.Imports...)
+	mergedProfiles, err := accProfiles.Merge(doc.Profiles, path)
+	if err != nil {
+		return nil, fmt.Errorf("%q: profiles: %w", path, err)
+	}
+	m.profiles = mergedProfiles
+
+	if len(doc.Spec.Imports) > 0 {
+		return nil, fmt.Errorf("%q: Komposer does not support spec.imports — declare notes: and profiles: inline to override Katalog-wide settings", path)
+	}
+	m.specImports = accSpecImports
+	mergedNotes, err := doc.Notes.Merge(accNotes, "katalog")
+	if err != nil {
+		return nil, fmt.Errorf("%q: notes: %w", path, err)
+	}
+	m.notes = mergedNotes
 
 	logger.Debug().
 		Str("path", path).

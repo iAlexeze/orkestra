@@ -3,36 +3,48 @@
 // Two import paths:
 //
 //	spec.imports (Katalog-wide) — expandKatalogImports
-//	  Merges only profiles: from each Motif into the Katalog ProfileRegistry.
+//	  Merges profiles: and notes: from each Motif into the Katalog-wide registries.
 //	  Resources, status, and admission in the Motif are ignored at this level.
 //
 //	spec.crds[name].imports (CRD-scoped) — expandMotifImports
 //	  Merges resources, status, and admission into the target CRD.
-//	  Profiles in the Motif are ignored at this level.
+//	  Profiles and notes in the Motif are ignored at this level.
 package katalog
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
 
 	"github.com/orkspace/orkestra/pkg/motif"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // expandKatalogImports resolves spec.imports entries on the Katalog.
-// For each import, only the profiles: block from the expanded Motif is merged
-// into the Katalog-wide ProfileRegistry. Resources, status, and admission are ignored.
+// For each import, profiles: and notes: from the expanded Motif are merged
+// into the Katalog-wide ProfileRegistry and NoteRegistry respectively.
+// Resources, status, and admission are ignored at this level.
 func (k *Katalog) expandKatalogImports() error {
+	seen := make(map[string]string) // note name → motif label, for conflict detection
 	for i, imp := range k.Spec.Imports {
 		expanded, err := k.loadAndExpandImport(&imp)
 		if err != nil {
 			return fmt.Errorf("spec.imports[%d]: %w", i, err)
 		}
+		label := fmt.Sprintf("spec.imports[%d] motif %q", i, expanded.Name)
 		if !expanded.Profiles.IsEmpty() {
-			merged, err := k.Profiles.Merge(expanded.Profiles, fmt.Sprintf("spec.imports[%d] motif %q", i, expanded.Name))
+			merged, err := k.Profiles.Merge(expanded.Profiles, label)
 			if err != nil {
 				return fmt.Errorf("spec.imports[%d]: merging profiles from motif %q: %w", i, expanded.Name, err)
 			}
 			k.Profiles = merged
+		}
+		if !expanded.Notes.IsEmpty() {
+			merged, err := k.Notes.MergeImport(expanded.Notes, label, seen)
+			if err != nil {
+				return fmt.Errorf("spec.imports[%d]: merging notes from motif %q: %w", i, expanded.Name, err)
+			}
+			k.Notes = merged
 		}
 	}
 	return nil
@@ -72,8 +84,18 @@ func (k *Katalog) expandMotifImports() error {
 
 // loadAndExpandImport loads the motif from its source (file, OCI, Git) and expands
 // it using the provided bindings. Returns the expanded motif or an error.
+//
+// Relative file paths (./foo, ../foo, foo.yaml) are resolved against k.katalogDir
+// so the path is stable regardless of which directory ork simulate / ork run is
+// invoked from. This mirrors how crdFile paths are resolved in crdfile.go.
 func (k *Katalog) loadAndExpandImport(imp *orktypes.MotifImport) (*motif.ExpandedMotif, error) {
-	m, err := motif.LoadImport(imp)
+	resolved := imp
+	if k.katalogDir != "" && isRelativeMotifPath(imp.Motif) && !filepath.IsAbs(imp.Motif) {
+		copy := *imp
+		copy.Motif = filepath.Join(k.katalogDir, imp.Motif)
+		resolved = &copy
+	}
+	m, err := motif.LoadImport(resolved)
 	if err != nil {
 		return nil, fmt.Errorf("loading motif %q: %w", imp.Motif, err)
 	}
@@ -82,6 +104,15 @@ func (k *Katalog) loadAndExpandImport(imp *orktypes.MotifImport) (*motif.Expande
 		return nil, fmt.Errorf("expanding motif %q: %w", imp.Motif, err)
 	}
 	return expanded, nil
+}
+
+// isRelativeMotifPath reports whether ref is a local file reference that needs
+// directory anchoring. Mirrors the isFilePath logic in pkg/motif/loader.go.
+func isRelativeMotifPath(ref string) bool {
+	if strings.HasPrefix(ref, "./") || strings.HasPrefix(ref, "../") {
+		return true
+	}
+	return strings.HasSuffix(ref, ".yaml") || strings.HasSuffix(ref, ".yml")
 }
 
 // mergeExpandedMotif merges the resources, status, and admission rules from an
