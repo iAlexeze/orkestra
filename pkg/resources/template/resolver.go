@@ -67,15 +67,22 @@ func (r *Resolver) WithUserNotes(reg orktypes.NoteRegistry) *Resolver {
 	}
 	for _, n := range reg {
 		expr := n.Expression // capture by value, not loop variable
-		merged[n.Name] = func() string {
+		merged[n.Name] = func() interface{} {
 			tmpl, err := template.New("").Option("missingkey=zero").Funcs(merged).Parse(expr)
 			if err != nil {
 				return ""
 			}
 			var buf bytes.Buffer
 			_ = tmpl.Execute(&buf, r.data)
-			out := strings.TrimSpace(buf.String())
-			return strings.ReplaceAll(out, "<no value>", "")
+			out := strings.TrimSpace(strings.ReplaceAll(buf.String(), "<no value>", ""))
+			switch out {
+			case "true":
+				return true
+			case "false":
+				return false
+			default:
+				return out
+			}
 		}
 	}
 	r.mergedFuncs = merged

@@ -23,6 +23,18 @@ func (k *Katalog) validateUserNotes() error {
 	}
 
 	builtins := note.Map()
+
+	// Pre-build stubs for every user-defined note so cross-references resolve
+	// during template parsing. Matches runtime behaviour where the full funcmap
+	// (built-ins + all user notes) is assembled before any expression runs.
+	funcMap := make(template.FuncMap, len(builtins)+len(reg))
+	for k, v := range builtins {
+		funcMap[k] = v
+	}
+	for _, n := range reg {
+		funcMap[n.Name] = func() string { return "" }
+	}
+
 	seen := make(map[string]bool, len(reg))
 
 	for i, n := range reg {
@@ -37,7 +49,7 @@ func (k *Katalog) validateUserNotes() error {
 		}
 		seen[n.Name] = true
 
-		if _, err := template.New("").Funcs(builtins).Parse(n.Expression); err != nil {
+		if _, err := template.New("").Funcs(funcMap).Parse(n.Expression); err != nil {
 			return fmt.Errorf("notes %q: invalid expression: %w", n.Name, err)
 		}
 
