@@ -379,9 +379,23 @@ func evalTimeWindow(tw *TimeWindow, now time.Time) bool {
 	return true
 }
 
+// EvalDayOfWeekAt is the exported entry point for tests that need a fixed clock.
+func EvalDayOfWeekAt(d *DayOfWeekCondition, now time.Time) bool {
+	return evalDayOfWeek(d, now)
+}
+
 // evalDayOfWeek returns true when today matches the declared day constraint.
 func evalDayOfWeek(d *DayOfWeekCondition, now time.Time) bool {
-	today := now.Weekday().String()
+	wd := now.Weekday()
+	if d.Weekday != nil {
+		isWeekday := wd >= time.Monday && wd <= time.Friday
+		return *d.Weekday == isWeekday
+	}
+	if d.Weekend != nil {
+		isWeekend := wd == time.Saturday || wd == time.Sunday
+		return *d.Weekend == isWeekend
+	}
+	today := wd.String()
 	if len(d.In) > 0 {
 		for _, day := range d.In {
 			if strings.EqualFold(day, today) {

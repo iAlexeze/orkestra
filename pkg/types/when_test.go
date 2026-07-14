@@ -500,6 +500,57 @@ func TestEvaluateOneCond_DayOfWeek_NotInNoMatch_ReturnsTrue(t *testing.T) {
 	assert.True(t, orktypes.EvaluateOneCond(nil, c, nil))
 }
 
+func TestEvaluateOneCond_DayOfWeek_WeekdayTrue_OnWeekday(t *testing.T) {
+	b := true
+	c := orktypes.Condition{DayOfWeek: &orktypes.DayOfWeekCondition{Weekday: &b}}
+	// Monday is a weekday — must pass
+	got := orktypes.EvalDayOfWeekAt(c.DayOfWeek, mustParseTime("2026-07-13T12:00:00Z")) // Monday
+	assert.True(t, got)
+}
+
+func TestEvaluateOneCond_DayOfWeek_WeekdayTrue_OnWeekend(t *testing.T) {
+	b := true
+	c := orktypes.Condition{DayOfWeek: &orktypes.DayOfWeekCondition{Weekday: &b}}
+	// Saturday is not a weekday — must fail
+	got := orktypes.EvalDayOfWeekAt(c.DayOfWeek, mustParseTime("2026-07-12T12:00:00Z")) // Saturday
+	assert.False(t, got)
+}
+
+func TestEvaluateOneCond_DayOfWeek_WeekendTrue_OnWeekend(t *testing.T) {
+	b := true
+	c := orktypes.Condition{DayOfWeek: &orktypes.DayOfWeekCondition{Weekend: &b}}
+	got := orktypes.EvalDayOfWeekAt(c.DayOfWeek, mustParseTime("2026-07-12T12:00:00Z")) // Saturday
+	assert.True(t, got)
+}
+
+func TestEvaluateOneCond_DayOfWeek_WeekendTrue_OnWeekday(t *testing.T) {
+	b := true
+	c := orktypes.Condition{DayOfWeek: &orktypes.DayOfWeekCondition{Weekend: &b}}
+	got := orktypes.EvalDayOfWeekAt(c.DayOfWeek, mustParseTime("2026-07-14T12:00:00Z")) // Monday
+	assert.False(t, got)
+}
+
+func TestEvaluateOneCond_DayOfWeek_WeekdayAndWeekend_MutuallyExclusive(t *testing.T) {
+	b := true
+	// weekday: true on a weekday, weekend: true on a weekend — never both true simultaneously
+	mon := mustParseTime("2026-07-13T12:00:00Z")
+	sat := mustParseTime("2026-07-12T12:00:00Z")
+	weekdayCond := &orktypes.DayOfWeekCondition{Weekday: &b}
+	weekendCond := &orktypes.DayOfWeekCondition{Weekend: &b}
+	assert.True(t, orktypes.EvalDayOfWeekAt(weekdayCond, mon))
+	assert.False(t, orktypes.EvalDayOfWeekAt(weekendCond, mon))
+	assert.False(t, orktypes.EvalDayOfWeekAt(weekdayCond, sat))
+	assert.True(t, orktypes.EvalDayOfWeekAt(weekendCond, sat))
+}
+
+func mustParseTime(s string) time.Time {
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
+
 // ── EvaluateOneCond — cron (stateless fallback) ───────────────────────────────
 
 func TestEvaluateOneCond_CronStateless_InvalidExpr(t *testing.T) {
