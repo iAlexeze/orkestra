@@ -45,13 +45,16 @@ var patternsCmd = &cobra.Command{
 			entries = idx.Entries
 			latestUpdatedAt = idx.UpdatedAt
 		} else {
+			var listErrs []string
 			if !onlyMotifs {
 				patURL := os.Getenv(registry.EnvPatternRegistry)
 				if patURL == "" {
 					patURL = registry.DefaultPatternRegistry
 				}
-				idx, _ := client.List(cmd.Context(), patURL)
-				if idx != nil {
+				idx, err := client.List(cmd.Context(), patURL)
+				if err != nil {
+					listErrs = append(listErrs, fmt.Sprintf("  patterns: %s", registryErrSummary(err)))
+				} else if idx != nil {
 					entries = append(entries, idx.Entries...)
 					if idx.UpdatedAt > latestUpdatedAt {
 						latestUpdatedAt = idx.UpdatedAt
@@ -63,12 +66,24 @@ var patternsCmd = &cobra.Command{
 				if motifURL == "" {
 					motifURL = registry.DefaultMotifRegistry
 				}
-				idx, _ := client.List(cmd.Context(), motifURL)
-				if idx != nil {
+				idx, err := client.List(cmd.Context(), motifURL)
+				if err != nil {
+					listErrs = append(listErrs, fmt.Sprintf("  motifs:   %s", registryErrSummary(err)))
+				} else if idx != nil {
 					entries = append(entries, idx.Entries...)
 					if idx.UpdatedAt > latestUpdatedAt {
 						latestUpdatedAt = idx.UpdatedAt
 					}
+				}
+			}
+			if len(listErrs) > 0 {
+				fmt.Fprintf(os.Stderr, "warning: registry listing failed:\n")
+				for _, e := range listErrs {
+					fmt.Fprintln(os.Stderr, e)
+				}
+				fmt.Fprintf(os.Stderr, "hint: try logging in with: docker login ghcr.io\n\n")
+				if len(entries) == 0 {
+					return nil
 				}
 			}
 		}
@@ -139,6 +154,15 @@ var patternsCmd = &cobra.Command{
 		fmt.Println()
 		return nil
 	},
+}
+
+// registryErrSummary extracts the last meaningful line from a verbose ORAS error.
+func registryErrSummary(err error) string {
+	msg := err.Error()
+	if idx := strings.LastIndex(msg, ": "); idx >= 0 {
+		return msg[idx+2:]
+	}
+	return msg
 }
 
 func init() {

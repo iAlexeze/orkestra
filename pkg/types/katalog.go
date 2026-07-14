@@ -247,6 +247,12 @@ type HelmSource struct {
 // KatalogSpec holds the actual CRD definitions.
 // This is what the merger produces after resolving all sources.
 type KatalogSpec struct {
+	// Imports declares Motifs whose profiles are merged into the Katalog-wide
+	// ProfileRegistry. Only profiles: from each Motif are consumed here;
+	// resources, status, and admission declarations in the Motif are ignored
+	// at this level. Use spec.crds[name].imports for those.
+	Imports []MotifImport `yaml:"imports,omitempty"`
+
 	// Finalizers — Katalog-level finalizers applied to all CRDs
 	// unless overridden at the CRD level.
 	Finalizers []string `yaml:"finalizers,omitempty"`

@@ -30,7 +30,36 @@ If a Katalog pattern directory contains a `motif.yaml`, `ork push` pushes both �
 
 ## Importing into a Katalog
 
-Motifs are imported at the CRD level, alongside `operatorBox`:
+There are two import levels. Which one you use depends on what you need from the Motif.
+
+### `spec.imports` — Katalog-wide profiles
+
+Use this when the Motif declares `profiles:` that should be available to every CRD in the Katalog. Only the `profiles:` block is consumed here; resources, status, and admission in the Motif are ignored at this level.
+
+```yaml
+spec:
+  imports:
+    - motif: ./motifs/org-standards.yaml
+    - motif: oci://ghcr.io/myorg/motifs/resource-profiles:v1
+
+  crds:
+    application:
+      operatorBox:
+        onCreate:
+          deployments:
+            - resources:
+                profile: org-standard    # profile from spec.imports motif
+    database:
+      operatorBox:
+        onCreate:
+          deployments:
+            - resources:
+                profile: org-standard    # same profile, available to all CRDs
+```
+
+### `spec.crds[name].imports` — CRD-scoped resources
+
+Use this when the Motif declares resources, status fields, or admission rules that should apply to a specific CRD. Profiles in the Motif are ignored at this level.
 
 ```yaml
 spec:
@@ -45,6 +74,21 @@ spec:
 ```
 
 `with:` values are Go templates evaluated in the CR's reconcile context. Required inputs not present in `with:` are caught at startup — not at reconcile time.
+
+### Using the same Motif at both levels
+
+A Motif that declares both profiles and resources can be imported at both levels simultaneously. Each import point takes only what belongs there:
+
+```yaml
+spec:
+  imports:
+    - motif: ./org-standards.yaml   # takes: profiles
+
+  crds:
+    application:
+      imports:
+        - motif: ./org-standards.yaml   # takes: resources, admission
+```
 
 ## Conditional resources
 

@@ -184,6 +184,7 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 	m.providers = doc.Providers
 	m.gateway = doc.Gateway
 	m.profiles = doc.Profiles
+	m.specImports = doc.Spec.Imports
 
 	return result, nil
 }
@@ -208,6 +209,7 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 	var accNotification *orktypes.KatalogNotification
 	var accProviders []orktypes.KatalogProviderRequirement
 	var accProfiles orktypes.ProfileRegistry
+	var accSpecImports []orktypes.MotifImport
 
 	// ── Step 1: registry imports ─────────────────────────────────────────────
 	if doc.Imports != nil {
@@ -234,6 +236,7 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 			accNotification = mergeKatalogNotification(accNotification, m.notification)
 			accProviders = append(accProviders, m.providers...)
 			accProfiles, _ = accProfiles.Merge(m.profiles, fmt.Sprintf("registry:%d", i))
+			accSpecImports = append(accSpecImports, m.specImports...)
 			logger.Debug().
 				Str("import", fmt.Sprintf("registry:%d", i)).
 				Msg("merger: accumulated security, notification, and providers from registry import")
@@ -281,6 +284,7 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 			accNotification = mergeKatalogNotification(accNotification, m.notification)
 			accProviders = append(accProviders, m.providers...)
 			accProfiles, _ = accProfiles.Merge(m.profiles, "file:"+resolved)
+			accSpecImports = append(accSpecImports, m.specImports...)
 			logger.Debug().
 				Str("import", "file:"+resolved).
 				Msg("merger: accumulated security, notification, and providers from file import")
@@ -306,6 +310,7 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 			accNotification = mergeKatalogNotification(accNotification, m.notification)
 			accProviders = append(accProviders, m.providers...)
 			accProfiles, _ = accProfiles.Merge(m.profiles, srcName)
+			accSpecImports = append(accSpecImports, m.specImports...)
 			logger.Debug().
 				Str("import", srcName).
 				Msg("merger: accumulated security, notification, and providers from helm import")
@@ -407,6 +412,7 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 
 	merged, _ := accProfiles.Merge(doc.Profiles, path)
 	m.profiles = merged
+	m.specImports = append(accSpecImports, doc.Spec.Imports...)
 
 	logger.Debug().
 		Str("path", path).
