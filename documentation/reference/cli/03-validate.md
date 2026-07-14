@@ -11,6 +11,9 @@ ork validate --file <path>
 | Flag | Description |
 |------|-------------|
 | `--file` | Path or URL to a Katalog or Komposer (repeatable) |
+| `--notes` | Print the merged user-defined note registry after validation |
+| `--profiles` | Print the merged user-defined profile registry after validation |
+| `--full` | Show per-CRD permissions, dependency graph, and system-level RBAC |
 
 ## Examples
 
