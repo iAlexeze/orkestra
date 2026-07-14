@@ -9,7 +9,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/note"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/spf13/cobra"
 )
 
@@ -26,6 +28,23 @@ in every Katalog expression.
 	RunE: func(cmd *cobra.Command, args []string) error {
 		domain, _ := cmd.Flags().GetString("domain")
 		noPager, _ := cmd.Flags().GetBool("no-pager")
+		files, _ := cmd.Flags().GetStringSlice("file")
+		expanded := parseFilePaths(files)
+
+		// When -f is provided, show user-defined notes from the Katalog.
+		if len(expanded) > 0 {
+			m := merger.New(expanded...)
+			if err := m.Merge(); err != nil {
+				return fmt.Errorf("loading katalog: %w", err)
+			}
+			reg := m.ToNotes()
+			if reg.IsEmpty() {
+				fmt.Println("No user-defined notes declared in this Katalog.")
+				return nil
+			}
+			return printUserNoteTable(reg, noPager)
+		}
+
 		var notes []note.NoteInfo
 		if domain != "" {
 			notes = note.ListByDomain(domain)
@@ -183,6 +202,26 @@ func page(content string, noPager bool) error {
 		fmt.Print(content)
 	}
 	return nil
+}
+
+func printUserNoteTable(reg orktypes.NoteRegistry, noPager bool) error {
+	var sb strings.Builder
+	w := tabwriter.NewWriter(&sb, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(w, "NAME\tEXPRESSION\tDESCRIPTION")
+	fmt.Fprintln(w, "────\t──────────\t───────────")
+	for _, n := range reg {
+		expr := n.Expression
+		if len(expr) > 60 {
+			expr = expr[:57] + "..."
+		}
+		desc := n.Description
+		if len(desc) > 50 {
+			desc = desc[:47] + "..."
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\n", n.Name, expr, desc)
+	}
+	w.Flush()
+	return page(sb.String(), noPager)
 }
 
 func isTerminal() bool {

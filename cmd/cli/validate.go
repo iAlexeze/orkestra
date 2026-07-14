@@ -184,6 +184,16 @@ Examples:
 			fmt.Println()
 		}
 
+		showNotes, _ := cmd.Flags().GetBool("notes")
+		if showNotes {
+			printValidateNotes(k.Notes)
+		}
+
+		showProfiles, _ := cmd.Flags().GetBool("profiles")
+		if showProfiles {
+			printValidateProfiles(k.Profiles)
+		}
+
 		return nil
 	},
 }
@@ -620,11 +630,82 @@ func motifResourceSummary(m *orktypes.Motif) string {
 	return strings.Join(parts, " ")
 }
 
+func printValidateProfiles(reg orktypes.ProfileRegistry) {
+	if reg.IsEmpty() {
+		return
+	}
+	type entry struct{ kind, name string }
+	var entries []entry
+	for _, p := range reg.Resources {
+		entries = append(entries, entry{"resources", p.Name})
+	}
+	for _, p := range reg.ContainerSecurity {
+		entries = append(entries, entry{"containerSecurity", p.Name})
+	}
+	for _, p := range reg.PodSecurity {
+		entries = append(entries, entry{"podSecurity", p.Name})
+	}
+	for _, p := range reg.HPA {
+		entries = append(entries, entry{"hpa", p.Name})
+	}
+	for _, p := range reg.PDB {
+		entries = append(entries, entry{"pdb", p.Name})
+	}
+	for _, p := range reg.RollingUpdate {
+		entries = append(entries, entry{"rollingUpdate", p.Name})
+	}
+	for _, p := range reg.Reconciler {
+		entries = append(entries, entry{"reconciler", p.Name})
+	}
+	for _, p := range reg.NetworkPolicies {
+		entries = append(entries, entry{"networkPolicies", p.Name})
+	}
+	for _, p := range reg.ResourceQuotas {
+		entries = append(entries, entry{"resourceQuotas", p.Name})
+	}
+	for _, p := range reg.LimitRanges {
+		entries = append(entries, entry{"limitRanges", p.Name})
+	}
+	for _, p := range reg.Probes {
+		entries = append(entries, entry{"probes", p.Name})
+	}
+	maxLen := 0
+	for _, e := range entries {
+		if l := len(e.kind); l > maxLen {
+			maxLen = l
+		}
+	}
+	fmt.Println()
+	fmt.Printf("%s\n", bold(fmt.Sprintf("Profiles (%d)", len(entries))))
+	for _, e := range entries {
+		fmt.Printf("  %s   %s\n", padRight(cyan(e.kind), maxLen), gray(e.name))
+	}
+}
+
+func printValidateNotes(reg orktypes.NoteRegistry) {
+	if reg.IsEmpty() {
+		return
+	}
+	maxLen := 0
+	for _, n := range reg {
+		if l := len(n.Name); l > maxLen {
+			maxLen = l
+		}
+	}
+	fmt.Println()
+	fmt.Printf("%s\n", bold(fmt.Sprintf("Notes (%d)", len(reg))))
+	for _, n := range reg {
+		fmt.Printf("  %s   %s\n", padRight(cyan(n.Name), maxLen), gray(n.Expression))
+	}
+}
+
 func init() {
 	rootCmd.AddCommand(validateCmd)
 
 	validateCmd.Flags().StringSliceP("file", "f", nil, "Path to an Orkestra pattern (repeatable or comma-separated)")
 	validateCmd.Flags().Bool("full", false, "Show per-CRD permissions, dependency graph, and system-level RBAC")
+	validateCmd.Flags().Bool("notes", false, "Print the merged user-defined note registry after validation")
+	validateCmd.Flags().Bool("profiles", false, "Print the merged user-defined profile registry after validation")
 
 	// Shadow global flags so they don't appear under `ork validate`
 	validateCmd.Flags().Bool("debug", false, "")
