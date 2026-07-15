@@ -107,6 +107,14 @@ func RunReplicaSets(
 				}
 			}
 		}
+
+		// Workload autoscale — evaluated on every reconcile after create/update.
+		if src.Autoscale != nil {
+			if err := EvaluateWorkloadAutoscaleReplicaSet(ctx, kube, resolver,
+				owner.GetName(), ns, name, src.Autoscale); err != nil {
+				return fmt.Errorf("replicasets[%d].autoscale: %w", i, err)
+			}
+		}
 	}
 
 	return nil

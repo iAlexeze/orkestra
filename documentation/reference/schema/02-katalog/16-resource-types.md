@@ -88,8 +88,6 @@ The following fields are accepted in the YAML and parsed without error, but Orke
 | `priorityLevelConfigurations` | `PriorityLevelConfiguration` | Planned |
 | `runtimeClasses` | `RuntimeClass` | Planned |
 | `podSecurityPolicies` | `PodSecurityPolicy` (deprecated) | No plan — PSP is removed in Kubernetes 1.25+ |
-| `volumes` | Pod volume definitions | Future — injected into pod specs |
-| `volumeMounts` | Container volume mounts | Future — injected into container specs |
 
 !!! tip "Using an unsupported type now"
     For any resource type not in the supported list, use `custom:` with the full YAML structure. Orkestra applies it via the dynamic client against the cluster API. See [13-external.md](13-external.md) for details on combining external API calls with custom resources.

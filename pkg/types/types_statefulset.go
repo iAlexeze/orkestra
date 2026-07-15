@@ -85,6 +85,9 @@ type StatefulSetTemplateSource struct {
 	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
 
+	// Autoscale declares workload autoscaling behaviour for this StatefulSet.
+	Autoscale *WorkloadAutoscale `yaml:"autoscale,omitempty" json:"autoscale,omitempty"`
+
 	// Probes — startup, liveness, and readiness probe configuration.
 	Probes *ProbesConfig `yaml:"probes,omitempty" json:"probes,omitempty"`
 

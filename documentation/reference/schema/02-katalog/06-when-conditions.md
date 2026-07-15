@@ -168,3 +168,21 @@ when:
 | `duration` | no | How long the window stays open after each fire. Default: `60s`. |
 
 ---
+
+## `negate`
+
+Inverts the result of any condition. Applies to field conditions, `time:`, `dayOfWeek:`, and `cron:`.
+
+```yaml
+when:
+  - dayOfWeek:
+      weekday: true
+    negate: true        # passes on weekends
+
+  - time:
+      after: "09:00"
+      before: "18:00"
+    negate: true        # passes outside the window
+```
+
+`negate` is a top-level field on the condition — it inverts whatever the condition evaluates to, regardless of kind.

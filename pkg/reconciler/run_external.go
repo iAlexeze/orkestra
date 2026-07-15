@@ -29,6 +29,7 @@ package reconciler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -111,12 +112,21 @@ func runExternal(
 		// Execute the call
 		result := executeHTTPCall(ctx, call, resolvedURL, resolvedBody, resolvedToken)
 
-		results[call.Name] = map[string]interface{}{
+		entry := map[string]interface{}{
 			"status": result.Status,
 			"body":   result.Body,
 			"error":  result.Error,
 			"called": "true",
 		}
+		if result.Body != "" {
+			var parsed map[string]interface{}
+			if err := json.Unmarshal([]byte(result.Body), &parsed); err == nil {
+				for k, v := range parsed {
+					entry[k] = v
+				}
+			}
+		}
+		results[call.Name] = entry
 
 		metrics.RecordExternalCall(gvk, call.Name, resolvedURL, result.DurationSeconds, result.Error, result.StatusCode)
 

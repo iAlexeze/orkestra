@@ -75,11 +75,13 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	drifted := false
 	updated := existing.DeepCopy()
 
-	// Replicas
-	if existing.Spec.Replicas == nil || *existing.Spec.Replicas != *desired.Spec.Replicas {
-		updated.Spec.Replicas = desired.Spec.Replicas
-		drifted = true
-		logger.Info().Str("statefulset", spec.Name).Msg("statefulset replicas drifted")
+	// Replicas — skip when autoscaler owns spec.replicas to avoid fighting it.
+	if !spec.HasAutoscale {
+		if existing.Spec.Replicas == nil || *existing.Spec.Replicas != *desired.Spec.Replicas {
+			updated.Spec.Replicas = desired.Spec.Replicas
+			drifted = true
+			logger.Info().Str("statefulset", spec.Name).Msg("statefulset replicas drifted")
+		}
 	}
 
 	// Labels
@@ -166,6 +168,7 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string, reg orkty
 		Image:           src.Image,
 		ServiceName:     src.ServiceName,
 		Replicas:        common.ParseReplicas(src.Replicas),
+		HasAutoscale:    src.Autoscale != nil,
 		Labels:          make(map[string]string),
 		Annotations:     make(map[string]string),
 		Env:             src.Env,

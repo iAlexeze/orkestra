@@ -20,6 +20,10 @@ type ResolvedDeploymentSpec struct {
 	// Replicas — number of pod replicas. Default: 1.
 	Replicas int32
 
+	// HasAutoscale — when true, the workload autoscaler owns spec.replicas.
+	// The drift check skips replicas so the reconciler does not fight the autoscaler.
+	HasAutoscale bool
+
 	// Port — container port. 0 means no port exposed.
 	Port int32
 

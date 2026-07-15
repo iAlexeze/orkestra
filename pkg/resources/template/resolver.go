@@ -424,6 +424,8 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 		return resolved, fmt.Errorf("deployment.volumeMounts: %w", err)
 	}
 
+	resolved.Autoscale = src.Autoscale
+
 	return resolved, nil
 }
 
@@ -562,6 +564,8 @@ func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSour
 	if resolved.VolumeMounts, err = r.resolveVolumeMounts(src.VolumeMounts); err != nil {
 		return resolved, fmt.Errorf("replicaset.volumeMounts: %w", err)
 	}
+
+	resolved.Autoscale = src.Autoscale
 
 	return resolved, nil
 }
@@ -1387,6 +1391,8 @@ func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSo
 	if resolved.VolumeMounts, err = r.resolveVolumeMounts(src.VolumeMounts); err != nil {
 		return resolved, fmt.Errorf("statefulset.volumeMounts: %w", err)
 	}
+
+	resolved.Autoscale = src.Autoscale
 
 	return resolved, nil
 }

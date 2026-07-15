@@ -84,7 +84,7 @@ The status updates on every reconcile. Control Center shows the live state witho
 
 ---
 
-## Three common patterns
+## Four common patterns
 
 ### Business hours — provision and deprovision on a schedule
 
@@ -97,6 +97,10 @@ Databases need a weekly window for vacuuming, reindexing, or backups. Read repli
 ### Regional peak — per-timezone replica scaling
 
 A CDN edge, API gateway, or cache layer that serves multiple timezones. Each region's deployment scales up during local business hours and scales down overnight — all from a single operator, no per-region CronJobs.
+
+### Workload autoscaling — replica count driven by time conditions
+
+`autoscale:` on a Deployment declaration uses `when: time:` and `when: dayOfWeek:` as scaling conditions. Instead of creating or removing the Deployment, it patches `spec.replicas` — scaling to a higher count during peak and a lower count off-peak. A `cooldown` prevents oscillation at window boundaries. See [Workload Autoscaler](../workload-autoscaler/) for the full model.
 
 ---
 

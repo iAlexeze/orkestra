@@ -1,3 +1,59 @@
+## [UNRELEASED] v0.7.12
+
+
+### Workload autoscaler — replica control driven by time, external metrics, or cross-operator state
+
+Adds an `autoscale:` block to `deployments:`, `statefulsets:`, and `replicasets:` declarations. On every reconcile, the autoscaler evaluates scale-up and scale-down conditions and patches `spec.replicas` when they pass. The reconciler's drift correction is suppressed for any workload that declares `autoscale:` so the two never fight.
+
+```yaml
+deployments:
+  - name: "{{ .metadata.name }}"
+    replicas: 2          # baseline — used as the starting point, not enforced once autoscale owns replicas
+    autoscale:
+      min: 2
+      max: 10
+      cooldown: 3m       # minimum gap between any two scale events
+      scaleUp:
+        conditions:
+          when:
+            - field: external.queue.queue.pendingJobs
+              greaterThan: "100"
+        increment: 2     # step scaling — adds 2 replicas per tick
+      scaleDown:
+        conditions:
+          when:
+            - field: external.queue.queue.pendingJobs
+              lessThan: "20"
+        decrement: 1
+```
+
+**Scale modes** — each direction supports either step or jump scaling:
+
+- `increment: N` / `decrement: N` — add or remove N replicas per tick, clamped to `min`/`max`
+- `target: N` — jump directly to N replicas in one reconcile
+
+**Condition sources** — any data in the resolver context is a valid scaling signal:
+
+- `time:` / `dayOfWeek:` — time-window and weekday conditions (built-in notes: `weekday`, `weekend`, `timeInWindow`, `nextCron`)
+- `field:` referencing `external.*` — scale on live HTTP metrics fetched via `external:` each reconcile
+- `field:` referencing `cross.*` — scale on a sibling CRD's status fields via `cross:` (informer cache, no HTTP call)
+
+**`negate: true` on any condition** — inverts the result, enabling "not in business hours" and similar patterns without writing a separate note:
+
+```yaml
+when:
+  - dayOfWeek:
+      weekday: true
+    negate: true   # passes on weekends
+```
+
+**External JSON auto-parsing** — when an `external:` call returns a JSON object body, top-level keys are merged into `external.<name>` so nested fields are navigable with dot-path syntax (`external.queue.queue.pendingJobs`).
+
+**`ork validate`** — validates `autoscale:` declarations: checks that `min ≤ max`, that each direction has exactly one of `target`, `increment`, or `decrement`, and that `cooldown` is a valid duration.
+
+**Dev server `/workload-metrics`** — `ork run --dev-server` exposes a stateful metrics endpoint for testing external API autoscale locally. `POST /workload-metrics/flip` toggles between low-load (8 pending jobs) and high-load (152 pending jobs) without touching the cluster.
+
+
 ## [UNRELEASED] v0.7.11
 
 
