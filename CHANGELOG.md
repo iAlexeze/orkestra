@@ -1,7 +1,34 @@
-## [UNRELEASED] v0.7.12
+## v0.7.11 — Workload autoscaler, user-defined notes, and three new example packs
 
 
-### Workload autoscaler — replica control driven by time, external metrics, or cross-operator state
+### Notes — the template vocabulary of a Katalog
+
+```bash
+ork init --pack intermediate/09-notes
+```
+
+Four sub-examples: built-in notes for live cluster queries and fallbacks (`01-built-in`), user-defined notes declared inline (`02-user-defined`), notes packaged into a Motif for team distribution via `spec.imports` (`03-motifs`), and Komposer-level note override (`04-komposer`). A root `simulate.yaml` and `e2e.yaml` run all four in sequence.
+
+
+### Temporal — time-dependent or time-aware operators
+
+```bash
+ork init --pack use-cases/temporal
+```
+
+Four sub-examples: business-hours provisioning (`01-business-hours`), weekly maintenance window (`02-maintenance-window`), per-region peak-hour replica scaling (`03-regional-peak`), and business-hours autoscaling driven by a user-defined note (`04-autoscale`). No CronJobs in any example.
+
+
+### Workload Autoscaler — replica control driven by time, external metrics, or cross-operator state
+
+```bash
+ork init --pack use-cases/workload-autoscaler
+```
+
+Three sub-examples: time-based jump scaling (`01-time-based`), external API step scaling via `external:` with the dev server (`02-external-api`), and cross-operator step scaling via `cross:` reading a sibling CRD's queue depth (`03-cross-operator`).
+
+
+### `autoscale:` — replica control for Deployments, StatefulSets, and ReplicaSets
 
 Adds an `autoscale:` block to `deployments:`, `statefulsets:`, and `replicasets:` declarations. On every reconcile, the autoscaler evaluates scale-up and scale-down conditions and patches `spec.replicas` when they pass. The reconciler's drift correction is suppressed for any workload that declares `autoscale:` so the two never fight.
 
@@ -52,10 +79,6 @@ when:
 **`ork validate`** — validates `autoscale:` declarations: checks that `min ≤ max`, that each direction has exactly one of `target`, `increment`, or `decrement`, and that `cooldown` is a valid duration.
 
 **Dev server `/workload-metrics`** — `ork run --dev-server` exposes a stateful metrics endpoint for testing external API autoscale locally. `POST /workload-metrics/flip` toggles between low-load (8 pending jobs) and high-load (152 pending jobs) without touching the cluster.
-
-
-## [UNRELEASED] v0.7.11
-
 
 ### User-defined notes — named template expressions for Katalogs and Motifs
 

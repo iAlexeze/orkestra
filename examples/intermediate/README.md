@@ -17,6 +17,7 @@ ork init --pack intermediate
 | [06 — Basic Komposer](06-komposer-basic/README.md) | Two Katalogs composed into one runtime. `spec.crds` overrides for per-environment tuning without modifying the base Katalog. |
 | [07 — CRD File](07-crd-file/README.md) | `crdFile` in the Katalog — two CRDs declared inline, applied automatically before reconcile loops start. No manual `kubectl apply -f crd.yaml` needed. |
 | [08 — Declarative State Machine](08-state-machine/README.md) | A multi-step pipeline operator with `when:` on status fields. Phase transitions, Job creation, and terminal states — no Go, no binary build. |
+| [09 — Notes](09-notes/README.md) | Built-in and user-defined notes — the template vocabulary of a Katalog. Reading live cluster state, fallback values, and naming your own expressions for reuse. |
 
 ---
 
@@ -58,7 +59,7 @@ Every example ships with a runnable `e2e.yaml`. Run a single example end-to-end:
 cd 04-multi-resource && ork e2e
 ```
 
-Or run the full intermediate suite — all five examples in one kind cluster:
+Or run the full intermediate suite — all examples in one kind cluster:
 
 ```bash
 ork e2e -f e2e.yaml

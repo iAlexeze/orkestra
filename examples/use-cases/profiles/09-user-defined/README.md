@@ -48,8 +48,10 @@ Only `profiles:` from the Motif is consumed at `spec.imports`. Resources, status
 
 ## Step 1 — Validate
 
+Validate and inspect the full merged profile registry:
+
 ```bash
-ork validate
+ork validate --profiles
 ```
 
 ## Step 2 — Simulate
