@@ -36,6 +36,14 @@ The [Operator Autoscaler](operator-autoscaler/) is a built-in subsystem that dyn
 
 ---
 
+## Workload Autoscaler
+
+The [Workload Autoscaler](workload-autoscaler/) scales the Deployments your operator manages — based on time, external queue depth, sibling operator metrics, or any combination. One field on a Deployment declaration. No KEDA, no ScaledObject, no gRPC scaler plugin.
+
+→ [Read: Workload Autoscaler](workload-autoscaler/)
+
+---
+
 ## OperatorBox
 
 _CRDs in. Operators out._
