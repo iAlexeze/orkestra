@@ -326,7 +326,26 @@ The same name in different classes is not a conflict — `resourceQuotas.medium`
 
 ## ork validate output
 
-When a Motif declares profiles, `ork validate` shows them alongside resources:
+Pass `--profiles` when validating a Katalog to print the merged profile registry — your inline declarations plus anything imported from Motifs:
+
+```bash
+ork validate --profiles
+```
+
+```text
+Profiles (9)
+  resources           team-api
+  containerSecurity   team-baseline
+  podSecurity         team-nonroot
+  hpa                 team-conservative
+  hpa                 team-responsive
+  networkPolicies     team-deny-all
+  networkPolicies     team-allow-internal
+  networkPolicies     team-allow-dns
+  probes              team-standard
+```
+
+When validating a Motif directly, `ork validate` shows profiles alongside resources in the summary:
 
 ```text
 ● tenant-isolation

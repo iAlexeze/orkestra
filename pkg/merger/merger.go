@@ -57,8 +57,11 @@ type Merger struct {
 	profiles orktypes.ProfileRegistry
 
 	// specImports holds the spec.imports motif list from the loaded Katalog.
-	// These are motifs whose profiles are merged at the Katalog level, not the CRD level.
+	// These are motifs whose profiles and notes are merged at the Katalog level.
 	specImports []orktypes.MotifImport
+
+	// notes holds the Katalog-level user-defined note registry.
+	notes orktypes.NoteRegistry
 
 	// projects holds the merged projectInfo configuration of the final katalog
 	projects map[string]interface{}
@@ -387,6 +390,13 @@ func (m *Merger) ToProfiles() orktypes.ProfileRegistry {
 func (m *Merger) ToSpecImports() []orktypes.MotifImport {
 	m.mustBeMerged()
 	return m.specImports
+}
+
+// ToNotes returns the Katalog-level user-defined note registry.
+// Used by KomposeRuntimeKatalog to populate Katalog.Notes.
+func (m *Merger) ToNotes() orktypes.NoteRegistry {
+	m.mustBeMerged()
+	return m.notes
 }
 
 // ToProjectInfo returns merged project information of the merged result

@@ -1,6 +1,52 @@
 ## [UNRELEASED] v0.7.11
 
 
+### User-defined notes — named template expressions for Katalogs and Motifs
+
+Adds a `notes:` block to Katalog and Motif. Each entry is a named Go template expression that becomes a callable function in every `{{ }}` context across the Katalog — status fields, when: conditions, onReconcile templates, normalize rules.
+
+```yaml
+notes:
+  - name: serviceHost
+    description: Fully-qualified cluster hostname for this workload
+    expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+
+  - name: fullImage
+    expression: "{{ .spec.image }}:{{ .spec.tag | default \"latest\" }}"
+
+spec:
+  crds:
+    workload:
+      operatorBox:
+        status:
+          fields:
+            - path: host
+              value: "{{ serviceHost }}"   # calls the note
+        onReconcile:
+          deployments:
+            - image: "{{ fullImage }}"
+```
+
+Notes declared in a Motif are distributed the same way as profiles — via `spec.imports` at the Katalog level, available to every CRD without re-declaring them:
+
+```yaml
+spec:
+  imports:
+    - motif: ./org-standards.yaml   # contributes notes and profiles Katalog-wide
+```
+
+A Komposer can override any note inline without touching the Katalog:
+
+```yaml
+# komposer.yaml
+notes:
+  - name: serviceHost
+    expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.prod-cluster.example.com"
+```
+
+**CLI:** `ork validate --notes` prints the merged note registry after validation. `ork notes -f katalog.yaml` appends user-defined notes to the built-in catalog.
+
+
 ### Fix: `ork patterns` surfaces auth errors instead of silently showing 0 patterns
 
 `ork patterns` without a valid GHCR login previously rendered an empty table ("0 patterns") with no explanation. The catalog listing API requires auth even on public registries — unlike `ork run` which uses anonymous artifact pulls — so the two commands appeared to behave differently without any hint as to why.

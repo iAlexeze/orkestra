@@ -58,6 +58,11 @@ type KatalogFile struct {
 	// and the Komposer's own teams win on name conflict.
 	Notification *KatalogNotification `yaml:"notification,omitempty"`
 
+	// Notes declares user-defined note functions available to all CRDs in this Katalog.
+	// Notes are named template expressions that compose built-in notes and Go template
+	// syntax. Once declared, a note is callable by name in any template expression.
+	Notes NoteRegistry `yaml:"notes,omitempty"`
+
 	// Profiles declares named profiles available to all CRDs in this Katalog.
 	// Profiles are resolved before built-in Orkestra profiles at both validate
 	// and reconcile time. Template expressions in profile field values are

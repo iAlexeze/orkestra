@@ -34,6 +34,20 @@ onCreate:
         password: "{{ randomAlphanumeric 32 }}"
 ```
 
+## User-defined notes
+
+Teams can define their own notes in a Katalog's `notes:` block or in a Motif imported via `spec.imports`. User-defined notes call built-ins and each other, and are available everywhere built-in notes are.
+
+```yaml
+notes:
+  - name: fullImage
+    expression: "{{ .spec.image }}:{{ .spec.tag | default \"latest\" }}"
+  - name: serviceHost
+    expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+```
+
+See [documentation/concepts/notes/](../../documentation/concepts/notes/index.md) for the full guide.
+
 ## Developer documentation
 
 Complete documentation is in [docs/](docs/README.md).

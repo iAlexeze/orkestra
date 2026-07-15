@@ -92,11 +92,7 @@ func (r *Resolver) WithItem(value interface{}, as string, index int) *Resolver {
 	if as != "" && as != "item" {
 		newData[as] = value
 	}
-	return &Resolver{
-		data:           newData,
-		ownerName:      r.ownerName,
-		ownerNamespace: r.ownerNamespace,
-	}
+	return r.copyWith(newData)
 }
 
 // WithItemAndValue is the map-forEach variant of WithItem.
@@ -113,11 +109,7 @@ func (r *Resolver) WithItemAndValue(key interface{}, value interface{}, as strin
 	if as != "" && as != "item" {
 		newData[as] = key
 	}
-	return &Resolver{
-		data:           newData,
-		ownerName:      r.ownerName,
-		ownerNamespace: r.ownerNamespace,
-	}
+	return r.copyWith(newData)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -150,11 +142,7 @@ func (r *Resolver) WithExternal(results map[string]interface{}) *Resolver {
 	}
 	newData := r.shallowCopy()
 	newData["external"] = results
-	return &Resolver{
-		data:           newData,
-		ownerName:      r.ownerName,
-		ownerNamespace: r.ownerNamespace,
-	}
+	return r.copyWith(newData)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -187,11 +175,7 @@ func (r *Resolver) WithCross(data map[string]interface{}) *Resolver {
 	}
 	newData := r.shallowCopy()
 	newData["cross"] = data
-	return &Resolver{
-		data:           newData,
-		ownerName:      r.ownerName,
-		ownerNamespace: r.ownerNamespace,
-	}
+	return r.copyWith(newData)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -225,11 +209,7 @@ func (r *Resolver) WithGit(data map[string]interface{}) *Resolver {
 	}
 	newData := r.shallowCopy()
 	newData["git"] = data
-	return &Resolver{
-		data:           newData,
-		ownerName:      r.ownerName,
-		ownerNamespace: r.ownerNamespace,
-	}
+	return r.copyWith(newData)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -262,11 +242,7 @@ func (r *Resolver) WithDocker(data map[string]interface{}) *Resolver {
 	}
 	newData := r.shallowCopy()
 	newData["docker"] = data
-	return &Resolver{
-		data:           newData,
-		ownerName:      r.ownerName,
-		ownerNamespace: r.ownerNamespace,
-	}
+	return r.copyWith(newData)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -283,11 +259,7 @@ func (r *Resolver) WithDocker(data map[string]interface{}) *Resolver {
 func (r *Resolver) WithSpecOverride(spec map[string]interface{}) *Resolver {
 	newData := r.shallowCopy()
 	newData["spec"] = spec
-	return &Resolver{
-		data:           newData,
-		ownerName:      r.ownerName,
-		ownerNamespace: r.ownerNamespace,
-	}
+	return r.copyWith(newData)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -314,11 +286,7 @@ func (r *Resolver) WithPrevious(previous map[string]interface{}) *Resolver {
 	}
 	newData := r.shallowCopy()
 	newData["previous"] = previous
-	return &Resolver{
-		data:           newData,
-		ownerName:      r.ownerName,
-		ownerNamespace: r.ownerNamespace,
-	}
+	return r.copyWith(newData)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -343,11 +311,7 @@ func (r *Resolver) WithMetrics(metrics map[string]interface{}) *Resolver {
 	}
 	newData := r.shallowCopy()
 	newData["metrics"] = metrics
-	return &Resolver{
-		data:           newData,
-		ownerName:      r.ownerName,
-		ownerNamespace: r.ownerNamespace,
-	}
+	return r.copyWith(newData)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -379,11 +343,7 @@ func (r *Resolver) WithHealth(health map[string]interface{}) *Resolver {
 	}
 	newData := r.shallowCopy()
 	newData["health"] = health
-	return &Resolver{
-		data:           newData,
-		ownerName:      r.ownerName,
-		ownerNamespace: r.ownerNamespace,
-	}
+	return r.copyWith(newData)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -399,4 +359,18 @@ func (r *Resolver) shallowCopy() map[string]interface{} {
 		newData[k] = v
 	}
 	return newData
+}
+
+// copyWith returns a new Resolver with newData as its data map and all other
+// fields (mergedFuncs, profiles, ownerName, ownerNamespace) inherited from r.
+// All With* methods must use this instead of &Resolver{...} so that user-defined
+// notes and profiles are not silently dropped when the resolver is extended.
+func (r *Resolver) copyWith(newData map[string]interface{}) *Resolver {
+	return &Resolver{
+		data:           newData,
+		ownerName:      r.ownerName,
+		ownerNamespace: r.ownerNamespace,
+		profiles:       r.profiles,
+		mergedFuncs:    r.mergedFuncs,
+	}
 }

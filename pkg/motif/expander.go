@@ -36,8 +36,11 @@ type ExpandedMotif struct {
 	OnReconcile *orktypes.HookTemplates
 	Status      *orktypes.StatusConfig
 	Admission   *orktypes.Admission
+	// Notes carries user-defined notes declared in the motif.
+	// Merged into the Katalog's NoteRegistry during expandKatalogImports.
+	Notes orktypes.NoteRegistry
 	// Profiles carries user-defined profiles declared in the motif.
-	// Merged into the katalog's ProfileRegistry during expandMotifImports.
+	// Merged into the Katalog's ProfileRegistry during expandKatalogImports.
 	Profiles orktypes.ProfileRegistry
 }
 
@@ -142,6 +145,7 @@ func Expand(m *orktypes.Motif, bindings map[string]string) (*ExpandedMotif, erro
 		OnReconcile: onReconcile,
 		Status:      status,
 		Admission:   admission,
+		Notes:       m.Notes,
 		Profiles:    m.Profiles,
 	}, nil
 }

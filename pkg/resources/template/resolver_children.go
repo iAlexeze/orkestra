@@ -26,9 +26,5 @@ func (r *Resolver) WithChildren(children map[string]interface{}) *Resolver {
 	// top-level key only.
 	newData := r.shallowCopy()
 	newData["children"] = children
-	return &Resolver{
-		data:           newData,
-		ownerName:      r.ownerName,
-		ownerNamespace: r.ownerNamespace,
-	}
+	return r.copyWith(newData)
 }

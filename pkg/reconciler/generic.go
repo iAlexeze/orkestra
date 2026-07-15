@@ -307,6 +307,9 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	if r.kat != nil && !r.kat.Profiles.IsEmpty() {
 		resolver = resolver.WithProfiles(r.kat.Profiles)
 	}
+	if r.kat != nil && !r.kat.Notes.IsEmpty() {
+		resolver = resolver.WithUserNotes(r.kat.Notes)
+	}
 
 	// ──────────────────────────────────────────────────────────────────────────────
 	// GVK FIX: typed objects from the informer cache may arrive without a valid
