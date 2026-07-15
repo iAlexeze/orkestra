@@ -21,6 +21,8 @@ ork init my-operator --pack use-cases
 | [enrich](./enrich/) | Data injection | Inject data from external sources into CR status via `resolver:` |
 | [normalize](./normalize/) | Input canonicalization | Validate and normalise CR fields before reconciliation |
 | [profiles](./profiles/) | Environment profiles | Apply different resource configurations based on environment |
+| [temporal](./temporal/) | Time-dependent workloads | `timeInWindow`, `weekday`, `nextCron` — schedule-driven provisioning, maintenance windows, per-timezone scaling |
+| [workload-autoscaler](./workload-autoscaler/) | Declarative replica autoscaling | `autoscale:` on a Deployment — time, external, and cross-operator signals; no KEDA, no ScaledObject |
 
 ---
 
