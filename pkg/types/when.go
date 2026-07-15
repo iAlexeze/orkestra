@@ -83,6 +83,14 @@ func EvaluateWhen(data map[string]interface{}, allOf []Condition, anyOf []Condit
 // Time-based conditions (time:, dayOfWeek:, cron:) are evaluated against the
 // current wall clock — they do not reference the data map.
 func EvaluateOneCond(data map[string]interface{}, cond Condition, eval TemplateEvaluator) bool {
+	result := evaluateOneCond(data, cond, eval)
+	if cond.Negate {
+		return !result
+	}
+	return result
+}
+
+func evaluateOneCond(data map[string]interface{}, cond Condition, eval TemplateEvaluator) bool {
 	// ── Time-based conditions ─────────────────────────────────────────────────
 
 	if cond.Time != nil {

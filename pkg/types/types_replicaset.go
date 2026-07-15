@@ -119,6 +119,9 @@ type ReplicaSetTemplateSource struct {
 	// ForEach declares dynamic expansion over a list field.
 	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
 
+	// Autoscale declares workload autoscaling behaviour for this ReplicaSet.
+	Autoscale *WorkloadAutoscale `yaml:"autoscale,omitempty" json:"autoscale,omitempty"`
+
 	// AnyOf holds OR conditions — at least one must pass for this resource.
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 
