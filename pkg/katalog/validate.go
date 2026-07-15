@@ -243,5 +243,12 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 33. Validate workload autoscale blocks on Deployment declarations
+	// -------------------------------------------------------------------------
+	if err := k.validateWorkloadAutoscale(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }
