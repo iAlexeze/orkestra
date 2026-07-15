@@ -14,3 +14,5 @@ imports:
   - ./06-komposer-basic/e2e.yaml
   - ./07-crd-file/e2e.yaml
   - ./08-state-machine/e2e.yaml
+  - ./09-notes/01-built-in/e2e.yaml
+  - ./09-notes/02-user-defined/e2e.yaml
