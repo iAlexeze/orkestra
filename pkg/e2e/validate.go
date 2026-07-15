@@ -151,8 +151,8 @@ func validateKubectlGet(loc string, g orktypes.E2EKubectlGet) []error {
 	if g.YQ != "" && g.Format != "yaml" {
 		errs = append(errs, fmt.Errorf("%s: yq requires format: yaml", loc))
 	}
-	if !hasAssertion(assertions{Equals: g.Equals, NotEquals: g.NotEquals, OutputContains: g.OutputContains, OutputNotContains: g.OutputNotContains, GreaterThan: g.GreaterThan, LessThan: g.LessThan}) {
-		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
+	if !hasAssertion(assertions{Equals: g.Equals, NotEquals: g.NotEquals, OutputContains: g.OutputContains, OutputNotContains: g.OutputNotContains, GreaterThan: g.GreaterThan, LessThan: g.LessThan, OneOf: g.OneOf}) {
+		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains, oneOf)", loc))
 	}
 	return errs
 }
@@ -169,8 +169,8 @@ func validateKubectlLogs(loc string, l orktypes.E2EKubectlLogs) []error {
 	} else if l.Name == "" && l.LabelSelector == "" {
 		errs = append(errs, fmt.Errorf("%s: name, labelSelector, or leaderElection is required", loc))
 	}
-	if !hasAssertion(assertions{Equals: l.Equals, NotEquals: l.NotEquals, OutputContains: l.OutputContains, OutputNotContains: l.OutputNotContains, GreaterThan: l.GreaterThan, LessThan: l.LessThan}) {
-		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
+	if !hasAssertion(assertions{Equals: l.Equals, NotEquals: l.NotEquals, OutputContains: l.OutputContains, OutputNotContains: l.OutputNotContains, GreaterThan: l.GreaterThan, LessThan: l.LessThan, OneOf: l.OneOf}) {
+		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains, oneOf)", loc))
 	}
 	return errs
 }
@@ -183,8 +183,8 @@ func validateKubectlDescribe(loc string, d orktypes.E2EKubectlDescribe) []error 
 	if d.Name == "" && d.LabelSelector == "" {
 		errs = append(errs, fmt.Errorf("%s: name or labelSelector is required", loc))
 	}
-	if !hasAssertion(assertions{Equals: d.Equals, NotEquals: d.NotEquals, OutputContains: d.OutputContains, OutputNotContains: d.OutputNotContains, GreaterThan: d.GreaterThan, LessThan: d.LessThan}) {
-		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
+	if !hasAssertion(assertions{Equals: d.Equals, NotEquals: d.NotEquals, OutputContains: d.OutputContains, OutputNotContains: d.OutputNotContains, GreaterThan: d.GreaterThan, LessThan: d.LessThan, OneOf: d.OneOf}) {
+		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains, oneOf)", loc))
 	}
 	return errs
 }
@@ -204,8 +204,8 @@ func validateKubectlExec(loc string, e orktypes.E2EKubectlExec) []error {
 	if len(e.Command) == 0 {
 		errs = append(errs, fmt.Errorf("%s: command is required", loc))
 	}
-	if !hasAssertion(assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan}) {
-		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
+	if !hasAssertion(assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan, OneOf: e.OneOf}) {
+		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains, oneOf)", loc))
 	}
 	return errs
 }
@@ -222,7 +222,7 @@ func validateKubectlPortForward(loc string, p orktypes.E2EKubectlPortForward) []
 	if p.Port <= 0 {
 		errs = append(errs, fmt.Errorf("%s: port must be > 0", loc))
 	}
-	hasAny := hasAssertion(assertions{Equals: p.Equals, NotEquals: p.NotEquals, OutputContains: p.OutputContains, OutputNotContains: p.OutputNotContains, GreaterThan: p.GreaterThan, LessThan: p.LessThan})
+	hasAny := hasAssertion(assertions{Equals: p.Equals, NotEquals: p.NotEquals, OutputContains: p.OutputContains, OutputNotContains: p.OutputNotContains, GreaterThan: p.GreaterThan, LessThan: p.LessThan, OneOf: p.OneOf})
 	if hasAny && p.Path == "" {
 		errs = append(errs, fmt.Errorf("%s: path is required when assertions are set", loc))
 	}
@@ -285,8 +285,13 @@ func validateKubectlEvents(loc string, e orktypes.E2EKubectlEvents) []error {
 	if e.Name == "" {
 		errs = append(errs, fmt.Errorf("%s: name is required", loc))
 	}
-	if !hasAssertion(assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan}) {
-		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
+	if !hasAssertion(assertions{
+		Equals: e.Equals, NotEquals: e.NotEquals,
+		OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains,
+		GreaterThan: e.GreaterThan, LessThan: e.LessThan,
+		OneOf: e.OneOf,
+	}) {
+		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains, oneOf)", loc))
 	}
 	return errs
 }
@@ -299,8 +304,11 @@ func validateKubectlAuth(loc string, a orktypes.E2EKubectlAuth) []error {
 	if a.Resource == "" {
 		errs = append(errs, fmt.Errorf("%s: resource is required", loc))
 	}
-	if !hasAssertion(assertions{Equals: a.Equals, NotEquals: a.NotEquals, OutputContains: a.OutputContains, OutputNotContains: a.OutputNotContains, GreaterThan: a.GreaterThan, LessThan: a.LessThan}) {
-		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
+	if !hasAssertion(assertions{
+		Equals: a.Equals, NotEquals: a.NotEquals,
+		OutputContains: a.OutputContains, OutputNotContains: a.OutputNotContains,
+		GreaterThan: a.GreaterThan, LessThan: a.LessThan, OneOf: a.OneOf}) {
+		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains, oneOf)", loc))
 	}
 	return errs
 }
@@ -313,8 +321,8 @@ func validateKubectlCp(loc string, c orktypes.E2EKubectlCp) []error {
 	if c.Src == "" {
 		errs = append(errs, fmt.Errorf("%s: src is required", loc))
 	}
-	if !hasAssertion(assertions{Equals: c.Equals, NotEquals: c.NotEquals, OutputContains: c.OutputContains, OutputNotContains: c.OutputNotContains, GreaterThan: c.GreaterThan, LessThan: c.LessThan}) {
-		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
+	if !hasAssertion(assertions{Equals: c.Equals, NotEquals: c.NotEquals, OutputContains: c.OutputContains, OutputNotContains: c.OutputNotContains, GreaterThan: c.GreaterThan, LessThan: c.LessThan, OneOf: c.OneOf}) {
+		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains, oneOf)", loc))
 	}
 	return errs
 }
@@ -329,8 +337,8 @@ func validateKubectlTop(loc string, t orktypes.E2EKubectlTop) []error {
 			errs = append(errs, fmt.Errorf("%s: kind must be pod or node, got %q", loc, t.Kind))
 		}
 	}
-	if !hasAssertion(assertions{Equals: t.Equals, NotEquals: t.NotEquals, OutputContains: t.OutputContains, OutputNotContains: t.OutputNotContains, GreaterThan: t.GreaterThan, LessThan: t.LessThan}) {
-		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains)", loc))
+	if !hasAssertion(assertions{Equals: t.Equals, NotEquals: t.NotEquals, OutputContains: t.OutputContains, OutputNotContains: t.OutputNotContains, GreaterThan: t.GreaterThan, LessThan: t.LessThan, OneOf: t.OneOf}) {
+		errs = append(errs, fmt.Errorf("%s: at least one assertion required (equals, notEquals, outputContains, outputNotContains, oneOf)", loc))
 	}
 	return errs
 }
@@ -358,5 +366,5 @@ func validateKubectlScale(loc string, s orktypes.E2EKubectlScale) []error {
 }
 
 func hasAssertion(a assertions) bool {
-	return a.Equals != "" || a.NotEquals != "" || a.OutputContains != "" || a.OutputNotContains != "" || a.GreaterThan != "" || a.LessThan != ""
+	return a.Equals != "" || a.NotEquals != "" || a.OutputContains != "" || a.OutputNotContains != "" || a.GreaterThan != "" || a.LessThan != "" || len(a.OneOf) > 0
 }
