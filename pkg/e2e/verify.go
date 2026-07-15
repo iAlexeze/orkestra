@@ -202,6 +202,7 @@ type assertions struct {
 	OutputNotContains string
 	GreaterThan       string
 	LessThan          string
+	OneOf             []string
 }
 
 // applyAssertions checks all assertion fields against output.
@@ -220,6 +221,15 @@ func applyAssertions(output string, a assertions) error {
 	}
 	if a.NotEquals != "" && trimmed == a.NotEquals {
 		return fmt.Errorf("output must not equal %q", a.NotEquals)
+	}
+	if len(a.OneOf) > 0 {
+		for _, v := range a.OneOf {
+			if trimmed == v {
+				goto oneOfPassed
+			}
+		}
+		return fmt.Errorf("output: want one of %v, got %q", a.OneOf, trimmed)
+	oneOfPassed:
 	}
 	if a.GreaterThan != "" || a.LessThan != "" {
 		got, err := strconv.ParseFloat(trimmed, 64)
@@ -481,7 +491,7 @@ func checkKubectlGet(ctx context.Context, e orktypes.E2EKubectlGet, workDir stri
 		return fmt.Errorf("kubectl get %s/%s: %w", e.Kind, e.Name, err)
 	}
 
-	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan}); err != nil {
+	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan, OneOf: e.OneOf}); err != nil {
 		return fmt.Errorf("kubectl get %s/%s: %w\noutput: %s", e.Kind, e.Name, err, out)
 	}
 	return nil
@@ -540,7 +550,7 @@ func checkKubectlLogs(ctx context.Context, cs kubernetes.Interface, e orktypes.E
 		return fmt.Errorf("kubectl logs: %w", err)
 	}
 
-	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan}); err != nil {
+	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan, OneOf: e.OneOf}); err != nil {
 		return fmt.Errorf("kubectl logs: %w\noutput: %s", err, out)
 	}
 	return nil
@@ -564,7 +574,7 @@ func checkKubectlDescribe(ctx context.Context, e orktypes.E2EKubectlDescribe, wo
 		return fmt.Errorf("kubectl describe %s: %s", e.Kind, out)
 	}
 
-	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan}); err != nil {
+	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan, OneOf: e.OneOf}); err != nil {
 		return fmt.Errorf("kubectl describe %s: %w\noutput: %s", e.Kind, err, out)
 	}
 	return nil
@@ -615,7 +625,7 @@ func checkKubectlExec(ctx context.Context, cs kubernetes.Interface, e orktypes.E
 		return fmt.Errorf("kubectl exec %s: %w", pod, err)
 	}
 
-	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan}); err != nil {
+	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan, OneOf: e.OneOf}); err != nil {
 		return fmt.Errorf("kubectl exec %s: %w\noutput: %s", pod, err, out)
 	}
 	return nil
@@ -777,7 +787,7 @@ func assertPortForwardOutput(ctx context.Context, workDir, raw string, e orktype
 		return fmt.Errorf("kubectl port-forward %s%s: %w", target, e.Path, err)
 	}
 
-	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan}); err != nil {
+	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan, OneOf: e.OneOf}); err != nil {
 		return fmt.Errorf("kubectl port-forward %s%s: %w\noutput: %s", target, e.Path, err, out)
 	}
 	return nil
@@ -793,7 +803,7 @@ func checkKubectlEvents(ctx context.Context, e orktypes.E2EKubectlEvents, workDi
 	if err != nil {
 		return fmt.Errorf("kubectl events %s/%s: %s", e.Kind, e.Name, out)
 	}
-	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan}); err != nil {
+	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan, OneOf: e.OneOf}); err != nil {
 		return fmt.Errorf("kubectl events %s/%s: %w\noutput: %s", e.Kind, e.Name, err, out)
 	}
 	return nil
@@ -837,7 +847,7 @@ func checkKubectlAuth(ctx context.Context, cs kubernetes.Interface, e orktypes.E
 	if allowed {
 		out = "yes"
 	}
-	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan}); err != nil {
+	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan, OneOf: e.OneOf}); err != nil {
 		return fmt.Errorf("auth can-i %s %s: %w\nresult: %s", e.Verb, e.Resource, err, out)
 	}
 	return nil
@@ -887,7 +897,7 @@ func checkKubectlCp(ctx context.Context, e orktypes.E2EKubectlCp, workDir string
 		return fmt.Errorf("kubectl cp %s: %w", src, err)
 	}
 
-	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan}); err != nil {
+	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan, OneOf: e.OneOf}); err != nil {
 		return fmt.Errorf("kubectl cp %s: %w\noutput: %s", src, err, out)
 	}
 	return nil
@@ -917,7 +927,7 @@ func checkKubectlTop(ctx context.Context, e orktypes.E2EKubectlTop, workDir stri
 	if err != nil {
 		return fmt.Errorf("kubectl top %s: %s", kind, out)
 	}
-	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan}); err != nil {
+	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, GreaterThan: e.GreaterThan, LessThan: e.LessThan, OneOf: e.OneOf}); err != nil {
 		return fmt.Errorf("kubectl top %s: %w\noutput: %s", kind, err, out)
 	}
 	return nil

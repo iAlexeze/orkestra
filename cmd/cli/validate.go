@@ -117,6 +117,19 @@ Examples:
 		}
 
 		full, _ := cmd.Flags().GetBool("full")
+		showNotes, _ := cmd.Flags().GetBool("notes")
+		showProfiles, _ := cmd.Flags().GetBool("profiles")
+
+		// --notes / --profiles: quiet mode — skip full validate output, print only that registry.
+		if showNotes || showProfiles {
+			if showNotes {
+				printValidateNotes(k.Notes)
+			}
+			if showProfiles {
+				printValidateProfiles(k.Profiles)
+			}
+			return nil
+		}
 
 		var perCRDPerms map[string][]rbacv1.PolicyRule
 		if full {
@@ -169,11 +182,14 @@ Examples:
 		crdText := "CRDs"
 		if (builtIn + custom) == 1 {
 			crdText = "CRD"
-
 		}
 
 		fmt.Println(strings.Repeat("─", 60))
 		fmt.Printf("%d %s valid (%d built-in, %d custom)\n", len(entries), crdText, builtIn, custom)
+
+		for _, w := range k.CronConditionWarnings() {
+			fmt.Printf("\n%s  %s\n", yellow("⚠"), w)
+		}
 
 		if full {
 			if dd := k.DependencyDisplayData(); dd != nil {
@@ -184,15 +200,9 @@ Examples:
 			fmt.Println()
 		}
 
-		showNotes, _ := cmd.Flags().GetBool("notes")
-		if showNotes {
-			printValidateNotes(k.Notes)
-		}
-
-		showProfiles, _ := cmd.Flags().GetBool("profiles")
-		if showProfiles {
-			printValidateProfiles(k.Profiles)
-		}
+		// Always print non-empty registries inline.
+		printValidateNotes(k.Notes)
+		printValidateProfiles(k.Profiles)
 
 		return nil
 	},
@@ -704,8 +714,8 @@ func init() {
 
 	validateCmd.Flags().StringSliceP("file", "f", nil, "Path to an Orkestra pattern (repeatable or comma-separated)")
 	validateCmd.Flags().Bool("full", false, "Show per-CRD permissions, dependency graph, and system-level RBAC")
-	validateCmd.Flags().Bool("notes", false, "Print the merged user-defined note registry after validation")
-	validateCmd.Flags().Bool("profiles", false, "Print the merged user-defined profile registry after validation")
+	validateCmd.Flags().Bool("notes", false, "Quiet mode: print only the merged note registry, skip full validate output")
+	validateCmd.Flags().Bool("profiles", false, "Quiet mode: print only the merged profile registry, skip full validate output")
 
 	// Shadow global flags so they don't appear under `ork validate`
 	validateCmd.Flags().Bool("debug", false, "")

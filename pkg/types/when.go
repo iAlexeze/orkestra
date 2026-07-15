@@ -111,6 +111,7 @@ func evaluateOneCond(data map[string]interface{}, cond Condition, eval TemplateE
 			}
 		}
 		// Stateless fallback: window open if a cron fire occurred within duration.
+		// When duration is unset, defaults to one natural period of the schedule.
 		return evalCronWindow(cond.Cron, cond.Duration.Duration, time.Now())
 	}
 
@@ -425,16 +426,21 @@ func evalDayOfWeek(d *DayOfWeekCondition, now time.Time) bool {
 
 // evalCronWindow returns true when a cron-defined window is currently open.
 // The window opens at each cron fire and stays open for duration.
-// When duration is zero a 60s default is used — callers should always set it.
+// When duration is zero the window defaults to one natural period of the schedule
+// (the interval between two consecutive future fires), so the condition stays open
+// from the previous fire until the next one regardless of the reconcile interval.
 func evalCronWindow(cronExpr string, duration time.Duration, now time.Time) bool {
 	schedule, err := cron.ParseStandard(cronExpr)
 	if err != nil {
 		return false
 	}
 	if duration == 0 {
-		duration = 60 * time.Second
+		// Derive the natural period from two consecutive fires.
+		next := schedule.Next(now)
+		period := schedule.Next(next).Sub(next)
+		duration = period
 	}
-	// Find the most recent fire before now.
+	// Window is open if a fire occurred within the last duration.
 	prev := schedule.Next(now.Add(-duration))
 	return !prev.After(now)
 }

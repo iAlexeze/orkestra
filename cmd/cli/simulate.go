@@ -180,6 +180,7 @@ func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *
 	if len(crdEntry.OperatorBox.Cross) > 0 && len(opts.Peers) == 0 {
 		fmt.Printf("  %s cross: peer CRs not provided — cross.* fields will be empty (add sibling CRs to the CR file)\n", dim("note:"))
 	}
+	printSimulateAutoscaleSummary(crdEntry)
 	fmt.Println()
 
 	spin := StartSpinner(fmt.Sprintf("Running %d cycles...", maxCycles))
@@ -337,6 +338,46 @@ func printAssertions(errs []simulate.AssertionError, expect *orktypes.SimulateEx
 		fmt.Printf("  %s\n\n", red("FAIL"))
 	} else {
 		fmt.Printf("  %s\n\n", green("PASS"))
+	}
+}
+
+// printSimulateAutoscaleSummary prints a one-line autoscale marker for each workload
+// that declares autoscale:, so the policy is visible in simulate output.
+func printSimulateAutoscaleSummary(entry orktypes.CRDEntry) {
+	type workload struct {
+		name      string
+		autoscale *orktypes.WorkloadAutoscale
+	}
+	var workloads []workload
+	for _, ht := range []*orktypes.HookTemplates{entry.OperatorBox.OnCreate, entry.OperatorBox.OnReconcile} {
+		if ht == nil {
+			continue
+		}
+		for _, d := range ht.Deployments {
+			if d.Autoscale != nil {
+				workloads = append(workloads, workload{d.Name, d.Autoscale})
+			}
+		}
+		for _, s := range ht.StatefulSets {
+			if s.Autoscale != nil {
+				workloads = append(workloads, workload{s.Name, s.Autoscale})
+			}
+		}
+		for _, r := range ht.ReplicaSets {
+			if r.Autoscale != nil {
+				workloads = append(workloads, workload{r.Name, r.Autoscale})
+			}
+		}
+	}
+	for _, w := range workloads {
+		a := w.autoscale
+		min := int32(0)
+		if a.Min != nil {
+			min = *a.Min
+		}
+		cooldown := a.EffectiveCooldown().Duration.String()
+		fmt.Printf("  %s %s  %s\n", dim("autoscale:"), gray(w.name),
+			gray(fmt.Sprintf("min=%d max=%d cooldown=%s", min, a.Max, cooldown)))
 	}
 }
 

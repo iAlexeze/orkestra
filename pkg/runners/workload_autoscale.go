@@ -83,15 +83,25 @@ func evaluateWorkloadAutoscaleForKind(
 		Logger()
 
 	// ── Cooldown check ────────────────────────────────────────────────────────
+	// sync.Map is the fast path; the annotation on the workload is the durable
+	// fallback that survives restarts. Both are checked; the most recent wins.
 	key := cooldownKey(ns, crName, resourceName)
 	cooldown := cfg.EffectiveCooldown().Duration
+
+	var lastScale time.Time
 	if v, ok := cooldownState.Load(key); ok {
-		if last, ok := v.(time.Time); ok {
-			if time.Since(last) < cooldown {
-				log.Debug().Dur("remaining", cooldown-time.Since(last)).Msg("autoscale: in cooldown")
-				return nil
-			}
+		if t, ok := v.(time.Time); ok {
+			lastScale = t
 		}
+	}
+	if annotationTime, err := readCooldownAnnotation(ctx, kube, ns, resourceName, kind); err == nil {
+		if annotationTime.After(lastScale) {
+			lastScale = annotationTime
+		}
+	}
+	if !lastScale.IsZero() && time.Since(lastScale) < cooldown {
+		log.Debug().Dur("remaining", cooldown-time.Since(lastScale)).Msg("autoscale: in cooldown")
+		return nil
 	}
 
 	// ── Fetch current replicas ────────────────────────────────────────────────
@@ -120,7 +130,9 @@ func evaluateWorkloadAutoscaleForKind(
 				if err := patchReplicas(ctx, kube, ns, resourceName, target, kind); err != nil {
 					return err
 				}
-				cooldownState.Store(key, time.Now())
+				now := time.Now()
+				cooldownState.Store(key, now)
+				_ = writeCooldownAnnotation(ctx, kube, ns, resourceName, kind, now)
 				return nil
 			}
 		}
@@ -136,7 +148,9 @@ func evaluateWorkloadAutoscaleForKind(
 				if err := patchReplicas(ctx, kube, ns, resourceName, target, kind); err != nil {
 					return err
 				}
-				cooldownState.Store(key, time.Now())
+				now := time.Now()
+				cooldownState.Store(key, now)
+				_ = writeCooldownAnnotation(ctx, kube, ns, resourceName, kind, now)
 			}
 		}
 	}
@@ -172,6 +186,80 @@ func resolveTarget(current, bound int32, dir *orktypes.WorkloadScaleDirection, s
 		return t
 	}
 	return current
+}
+
+const cooldownAnnotation = "orkestra.orkspace.io/last-scale-event"
+
+// readCooldownAnnotation reads the last scale event time from the workload annotation.
+// Returns zero time if the annotation is absent or unparseable.
+func readCooldownAnnotation(ctx context.Context, kube kubeclient.KubeClient, ns, name string, kind WorkloadKind) (time.Time, error) {
+	var annotations map[string]string
+	switch kind {
+	case WorkloadKindStatefulSet:
+		obj, err := kube.Clientset().AppsV1().StatefulSets(ns).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return time.Time{}, err
+		}
+		annotations = obj.Annotations
+	case WorkloadKindReplicaSet:
+		obj, err := kube.Clientset().AppsV1().ReplicaSets(ns).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return time.Time{}, err
+		}
+		annotations = obj.Annotations
+	default:
+		obj, err := kube.Clientset().AppsV1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return time.Time{}, err
+		}
+		annotations = obj.Annotations
+	}
+	v, ok := annotations[cooldownAnnotation]
+	if !ok {
+		return time.Time{}, nil
+	}
+	return time.Parse(time.RFC3339, v)
+}
+
+// writeCooldownAnnotation stamps the last scale event time onto the workload annotation.
+// Errors are non-fatal — the sync.Map remains the authoritative in-process state.
+func writeCooldownAnnotation(ctx context.Context, kube kubeclient.KubeClient, ns, name string, kind WorkloadKind, t time.Time) error {
+	v := t.UTC().Format(time.RFC3339)
+	switch kind {
+	case WorkloadKindStatefulSet:
+		obj, err := kube.Clientset().AppsV1().StatefulSets(ns).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if obj.Annotations == nil {
+			obj.Annotations = make(map[string]string)
+		}
+		obj.Annotations[cooldownAnnotation] = v
+		_, err = kube.Clientset().AppsV1().StatefulSets(ns).Update(ctx, obj, metav1.UpdateOptions{})
+		return err
+	case WorkloadKindReplicaSet:
+		obj, err := kube.Clientset().AppsV1().ReplicaSets(ns).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if obj.Annotations == nil {
+			obj.Annotations = make(map[string]string)
+		}
+		obj.Annotations[cooldownAnnotation] = v
+		_, err = kube.Clientset().AppsV1().ReplicaSets(ns).Update(ctx, obj, metav1.UpdateOptions{})
+		return err
+	default:
+		obj, err := kube.Clientset().AppsV1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if obj.Annotations == nil {
+			obj.Annotations = make(map[string]string)
+		}
+		obj.Annotations[cooldownAnnotation] = v
+		_, err = kube.Clientset().AppsV1().Deployments(ns).Update(ctx, obj, metav1.UpdateOptions{})
+		return err
+	}
 }
 
 func getCurrentReplicas(ctx context.Context, kube kubeclient.KubeClient, ns, name string, kind WorkloadKind) (int32, error) {

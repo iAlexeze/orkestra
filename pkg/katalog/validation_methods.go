@@ -608,6 +608,11 @@ func (k *Katalog) validateHPAReference() error {
 }
 
 func validateOneHPARef(crdName, hpaName string, ref orktypes.ScaleTargetRef) error {
+	// Default apiVersion for the three core scalable workload kinds.
+	appsV1Kinds := map[string]bool{"Deployment": true, "StatefulSet": true, "ReplicaSet": true}
+	if ref.APIVersion == "" && appsV1Kinds[ref.Kind] {
+		ref.APIVersion = "apps/v1"
+	}
 	if ref.APIVersion == "" {
 		return fmt.Errorf(
 			"invalid HPA ScaleTargetRef in CRD %q (hpa %q): missing apiVersion\n\n"+
