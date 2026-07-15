@@ -12,6 +12,8 @@ import (
 func registerHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/autoscale-metrics/flip", handle(autoscaleMetricsFlipHandler))
 	mux.HandleFunc("/autoscale-metrics", handle(autoscaleMetricsHandler))
+	mux.HandleFunc("/workload-metrics/flip", handle(workloadMetricsFlipHandler))
+	mux.HandleFunc("/workload-metrics", handle(workloadMetricsHandler))
 	mux.HandleFunc("/health", handle(healthHandler))
 	mux.HandleFunc("/ready", handle(readyHandler))
 	mux.HandleFunc("/started", handle(startedHandler))
@@ -368,6 +370,49 @@ func autoscaleMetricsFlipHandler(w http.ResponseWriter, _ *http.Request) {
 	state := "baseline"
 	if flipped {
 		state = "overloaded"
+	}
+	writePlain(w, http.StatusOK, state)
+}
+
+// workloadMetricsHandler serves GET /workload-metrics.
+// Returns a baseline (low load) or high-load worker pool metrics payload
+// depending on the current flip state. Used by workload autoscaler examples.
+func workloadMetricsHandler(w http.ResponseWriter, _ *http.Request) {
+	workloadMetricsMu.Lock()
+	flipped := workloadMetricsFlipped
+	workloadMetricsMu.Unlock()
+
+	var m map[string]interface{}
+	if flipped {
+		m = map[string]interface{}{
+			"pendingJobs":    152,
+			"processingRate": 38,
+			"errorRate":      2,
+			"workerUtilPct":  94,
+		}
+	} else {
+		m = map[string]interface{}{
+			"pendingJobs":    8,
+			"processingRate": 120,
+			"errorRate":      0,
+			"workerUtilPct":  22,
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"queue": m})
+}
+
+// workloadMetricsFlipHandler serves POST /workload-metrics/flip.
+// Toggles between baseline and high-load payload; returns the new state.
+func workloadMetricsFlipHandler(w http.ResponseWriter, _ *http.Request) {
+	workloadMetricsMu.Lock()
+	workloadMetricsFlipped = !workloadMetricsFlipped
+	flipped := workloadMetricsFlipped
+	workloadMetricsMu.Unlock()
+
+	state := "baseline"
+	if flipped {
+		state = "high-load"
 	}
 	writePlain(w, http.StatusOK, state)
 }

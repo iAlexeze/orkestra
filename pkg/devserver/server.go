@@ -36,6 +36,13 @@ var (
 	autoscaleMu      sync.Mutex
 )
 
+// workloadMetricsFlipped tracks whether /workload-metrics is returning the
+// high-load payload. Toggled via POST /workload-metrics/flip.
+var (
+	workloadMetricsFlipped bool
+	workloadMetricsMu      sync.Mutex
+)
+
 // certGet returns whether the cert is currently issued (true) or pending (false).
 func certGet(name string) bool {
 	if v, ok := certState.Load(name); ok {
@@ -118,5 +125,7 @@ func printDevBanner(port int) {
 	fmt.Printf("  POST /certs/:name/toggle        → flip cert between issued and pending\n")
 	fmt.Printf("  GET  /autoscale-metrics         → payment system metrics (baseline: low queueDepth)\n")
 	fmt.Printf("  POST /autoscale-metrics/flip    → toggle between baseline and overloaded payload\n")
+	fmt.Printf("  GET  /workload-metrics          → worker pool metrics (baseline: low pendingJobs)\n")
+	fmt.Printf("  POST /workload-metrics/flip     → toggle between baseline and high-load payload\n")
 	fmt.Printf("──────────────────────────────────────────\n\n")
 }
