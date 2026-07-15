@@ -85,6 +85,14 @@ func RunStatefulSets(
 				}
 			}
 		}
+
+		// Workload autoscale — evaluated on every reconcile after create/update.
+		if src.Autoscale != nil {
+			if err := EvaluateWorkloadAutoscaleStatefulSet(ctx, kube, resolver,
+				owner.GetName(), ns, name, src.Autoscale); err != nil {
+				return fmt.Errorf("statefulsets[%d].autoscale: %w", i, err)
+			}
+		}
 	}
 	return nil
 }

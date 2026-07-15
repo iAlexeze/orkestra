@@ -105,6 +105,14 @@ func RunDeployments(
 				}
 			}
 		}
+
+		// Workload autoscale — evaluated on every reconcile after create/update.
+		if src.Autoscale != nil {
+			if err := EvaluateWorkloadAutoscaleDeployment(ctx, kube, resolver,
+				owner.GetName(), ns, name, src.Autoscale); err != nil {
+				return fmt.Errorf("deployments[%d].autoscale: %w", i, err)
+			}
+		}
 	}
 	return nil
 }

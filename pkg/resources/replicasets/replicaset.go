@@ -88,11 +88,13 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	drifted := false
 	updated := existing.DeepCopy()
 
-	// Replicas
-	if existing.Spec.Replicas == nil || *existing.Spec.Replicas != spec.Replicas {
-		updated.Spec.Replicas = desired.Spec.Replicas
-		drifted = true
-		logger.Info().Str("replicaset", spec.Name).Int32("desired", spec.Replicas).Msg("replicaset replicas drifted")
+	// Replicas — skip when autoscaler owns spec.replicas to avoid fighting it.
+	if !spec.HasAutoscale {
+		if existing.Spec.Replicas == nil || *existing.Spec.Replicas != spec.Replicas {
+			updated.Spec.Replicas = desired.Spec.Replicas
+			drifted = true
+			logger.Info().Str("replicaset", spec.Name).Int32("desired", spec.Replicas).Msg("replicaset replicas drifted")
+		}
 	}
 
 	// Labels
@@ -215,6 +217,7 @@ func Resolve(src orktypes.ReplicaSetTemplateSource, ownerName string, reg orktyp
 	}
 
 	spec.Replicas = common.ParseReplicas(src.Replicas)
+	spec.HasAutoscale = src.Autoscale != nil
 
 	if src.Port != "" {
 		if p, err := strconv.ParseInt(src.Port, 10, 32); err == nil {
