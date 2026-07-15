@@ -84,7 +84,7 @@ type Condition struct {
 
 	// Cron — a standard cron expression (5-field) that defines when the
 	// window opens. Duration defines how long the window stays open.
-	// Without Duration, the window closes after one evaluation interval.
+	// Without Duration, the window stays open until the next fire. Add Duration to close it sooner.
 	Cron string `yaml:"cron,omitempty" json:"cron,omitempty"`
 
 	// Duration — how long a cron-opened window remains active.

@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/motif"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
@@ -72,6 +73,18 @@ func (k *Katalog) expandMotifImports() error {
 			if err := k.mergeExpandedMotif(&entry, expanded); err != nil {
 				return fmt.Errorf("CRD %q: operatorBox.imports[%d]: merging motif %q: %w",
 					name, i, imp.Motif, err)
+			}
+			if !expanded.Profiles.IsEmpty() {
+				logger.Warn().Msgf(
+					"warning: CRD %q: import[%d] motif %q: profiles: are ignored at CRD-level imports — use spec.imports to apply profiles Katalog-wide",
+					name, i, expanded.Name,
+				)
+			}
+			if !expanded.Notes.IsEmpty() {
+				logger.Warn().Msgf(
+					"warning: CRD %q: import[%d] motif %q: notes: are ignored at CRD-level imports — use spec.imports to apply notes Katalog-wide",
+					name, i, expanded.Name,
+				)
 			}
 		}
 

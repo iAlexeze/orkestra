@@ -128,6 +128,58 @@ func TestValidateWorkloadAutoscaleSpec_ScaleDownTargetExceedsMax(t *testing.T) {
 	}
 }
 
+func TestValidateAutoscaleHPAConflict_Detected(t *testing.T) {
+	hpas := []orktypes.HPATemplateSource{
+		{
+			Name:           "{{ .metadata.name }}-hpa",
+			ScaleTargetRef: orktypes.ScaleTargetRef{Kind: "Deployment", Name: "{{ .metadata.name }}"},
+		},
+	}
+	err := validateAutoscaleHPAConflict("mydb", "{{ .metadata.name }}", hpas)
+	if err == nil {
+		t.Fatal("expected error when autoscale conflicts with sibling HPA")
+	}
+}
+
+func TestValidateAutoscaleHPAConflict_DifferentTarget(t *testing.T) {
+	hpas := []orktypes.HPATemplateSource{
+		{
+			Name:           "other-hpa",
+			ScaleTargetRef: orktypes.ScaleTargetRef{Kind: "Deployment", Name: "other-deployment"},
+		},
+	}
+	err := validateAutoscaleHPAConflict("mydb", "{{ .metadata.name }}", hpas)
+	if err != nil {
+		t.Fatalf("unexpected error for non-conflicting HPA: %v", err)
+	}
+}
+
+func TestValidateAutoscaleHPAConflict_StatefulSetKindDetected(t *testing.T) {
+	hpas := []orktypes.HPATemplateSource{
+		{
+			Name:           "sts-hpa",
+			ScaleTargetRef: orktypes.ScaleTargetRef{Kind: "StatefulSet", Name: "{{ .metadata.name }}"},
+		},
+	}
+	err := validateAutoscaleHPAConflict("mydb", "{{ .metadata.name }}", hpas)
+	if err == nil {
+		t.Fatal("expected error: StatefulSet HPA conflicts with autoscale: on the same workload name")
+	}
+}
+
+func TestValidateAutoscaleHPAConflict_UnrelatedKindIgnored(t *testing.T) {
+	hpas := []orktypes.HPATemplateSource{
+		{
+			Name:           "custom-hpa",
+			ScaleTargetRef: orktypes.ScaleTargetRef{Kind: "CustomWorkload", Name: "{{ .metadata.name }}"},
+		},
+	}
+	err := validateAutoscaleHPAConflict("mydb", "{{ .metadata.name }}", hpas)
+	if err != nil {
+		t.Fatalf("unexpected error: unknown kind should not be flagged: %v", err)
+	}
+}
+
 // TestValidateWorkloadAutoscale_OnReconcileOnly ensures the method does not
 // panic when a CRD has onReconcile but no onCreate block (nil OnCreate).
 func TestValidateWorkloadAutoscale_OnReconcileOnly(t *testing.T) {
