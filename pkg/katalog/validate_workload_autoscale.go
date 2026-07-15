@@ -46,17 +46,17 @@ func validateWorkloadAutoscaleSpec(crdName, depName string, cfg *orktypes.Worklo
 		return fmt.Errorf("%s: min (%d) must be less than max (%d)", loc, *cfg.Min, cfg.Max)
 	}
 
-	if err := validateScaleDirection(loc+".scaleUp", cfg.ScaleUp); err != nil {
+	if err := validateScaleDirection(loc+".scaleUp", cfg.ScaleUp, cfg.Max); err != nil {
 		return err
 	}
-	if err := validateScaleDirection(loc+".scaleDown", cfg.ScaleDown); err != nil {
+	if err := validateScaleDirection(loc+".scaleDown", cfg.ScaleDown, cfg.Max); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func validateScaleDirection(loc string, dir *orktypes.WorkloadScaleDirection) error {
+func validateScaleDirection(loc string, dir *orktypes.WorkloadScaleDirection, max ...int32) error {
 	if dir == nil {
 		return nil
 	}
@@ -64,6 +64,15 @@ func validateScaleDirection(loc string, dir *orktypes.WorkloadScaleDirection) er
 	hasStep := dir.Increment != nil || dir.Decrement != nil
 	if hasTarget && hasStep {
 		return fmt.Errorf("%s: target and increment/decrement are mutually exclusive", loc)
+	}
+	if hasTarget && len(max) > 0 {
+		t := *dir.Target
+		if t > max[0] {
+			return fmt.Errorf("%s: target (%d) exceeds max (%d)", loc, t, max[0])
+		}
+		if t < 0 {
+			return fmt.Errorf("%s: target (%d) must be >= 0", loc, t)
+		}
 	}
 	return nil
 }

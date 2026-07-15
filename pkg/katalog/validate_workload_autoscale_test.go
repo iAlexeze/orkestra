@@ -77,6 +77,57 @@ func TestValidateScaleDirection_NilIsValid(t *testing.T) {
 	}
 }
 
+func TestValidateScaleDirection_ScaleUpTargetExceedsMax(t *testing.T) {
+	err := validateScaleDirection("scaleUp", &orktypes.WorkloadScaleDirection{
+		Target: ptr32(80),
+	}, 8)
+	if err == nil {
+		t.Fatal("expected error when scaleUp target exceeds max")
+	}
+}
+
+func TestValidateScaleDirection_ScaleDownTargetExceedsMax(t *testing.T) {
+	err := validateScaleDirection("scaleDown", &orktypes.WorkloadScaleDirection{
+		Target: ptr32(20),
+	}, 8)
+	if err == nil {
+		t.Fatal("expected error when scaleDown target exceeds max")
+	}
+}
+
+func TestValidateScaleDirection_NegativeTarget(t *testing.T) {
+	err := validateScaleDirection("scaleDown", &orktypes.WorkloadScaleDirection{
+		Target: ptr32(-1),
+	}, 8)
+	if err == nil {
+		t.Fatal("expected error when target is negative")
+	}
+}
+
+func TestValidateWorkloadAutoscaleSpec_ScaleUpTargetExceedsMax(t *testing.T) {
+	err := validateWorkloadAutoscaleSpec("mydb", "app", &orktypes.WorkloadAutoscale{
+		Max: 8,
+		ScaleUp: &orktypes.WorkloadScaleDirection{
+			Target: ptr32(80),
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error when scaleUp target exceeds max")
+	}
+}
+
+func TestValidateWorkloadAutoscaleSpec_ScaleDownTargetExceedsMax(t *testing.T) {
+	err := validateWorkloadAutoscaleSpec("mydb", "app", &orktypes.WorkloadAutoscale{
+		Max: 8,
+		ScaleDown: &orktypes.WorkloadScaleDirection{
+			Target: ptr32(20),
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error when scaleDown target exceeds max")
+	}
+}
+
 // TestValidateWorkloadAutoscale_OnReconcileOnly ensures the method does not
 // panic when a CRD has onReconcile but no onCreate block (nil OnCreate).
 func TestValidateWorkloadAutoscale_OnReconcileOnly(t *testing.T) {
