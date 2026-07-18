@@ -228,4 +228,4 @@ The `[%d]` index tells operators exactly which declaration in the YAML failed.
 
 ---
 
-→ Back: [README](../README.md)
+→ Next: [02 — Garbage Collection](02-garbage-collection.md)

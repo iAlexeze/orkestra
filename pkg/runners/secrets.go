@@ -102,7 +102,7 @@ func RunSecrets(
 		if src.Once && !update && !src.Reconcile {
 			if src.RotateAfter != "" {
 				// Rotation mode: check if the Secret has exceeded its threshold
-				needsRotation, err := secretNeedsRotation(ctx, kube, ns, name, src.RotateAfter)
+				needsRotation, err := SecretNeedsRotation(ctx, kube, ns, name, src.RotateAfter)
 				if err != nil {
 					return fmt.Errorf("secrets[%d]: rotation check: %w", i, err)
 				}
@@ -111,13 +111,13 @@ func RunSecrets(
 						Str("secret", name).
 						Str("rotateAfter", src.RotateAfter).
 						Msg("secret rotation threshold exceeded — regenerating")
-					if err := deleteSecretForRotation(ctx, kube, ns, name); err != nil {
+					if err := DeleteSecretForRotation(ctx, kube, ns, name); err != nil {
 						return fmt.Errorf("secrets[%d]: rotation delete: %w", i, err)
 					}
 					// Fall through to create with fresh values
 				} else {
 					// Check plain existence (Secret may not exist yet)
-					exists, err := secretExists(ctx, kube, ns, name)
+					exists, err := SecretExists(ctx, kube, ns, name)
 					if err != nil {
 						return fmt.Errorf("secrets[%d]: existence check: %w", i, err)
 					}
@@ -134,7 +134,7 @@ func RunSecrets(
 				if src.Reconcile {
 					logOnceReconcileConflict(ctx, name)
 				} else {
-					exists, err := secretExists(ctx, kube, ns, name)
+					exists, err := SecretExists(ctx, kube, ns, name)
 					if err != nil {
 						return fmt.Errorf("secrets[%d]: once: existence check: %w", i, err)
 					}
@@ -178,9 +178,9 @@ func RunSecrets(
 
 		// Attach rotation annotation when rotateAfter is declared
 		if src.RotateAfter != "" && spec.Annotations == nil {
-			spec.Annotations = generationAnnotations(src.RotateAfter)
+			spec.Annotations = GenerationAnnotations(src.RotateAfter)
 		} else if src.RotateAfter != "" {
-			for k, v := range generationAnnotations(src.RotateAfter) {
+			for k, v := range GenerationAnnotations(src.RotateAfter) {
 				spec.Annotations[k] = v
 			}
 		}
