@@ -3,6 +3,7 @@ package customresources
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -115,8 +116,11 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		return fmt.Errorf("custom.Create: checking existence of %q: %w", name, err)
 	}
 	if err == nil {
-		// Resource already exists — enforce spec so OnCreate is idempotent.
-		return Update(ctx, kube, owner, spec, labelMgr, shouldProtect)
+		logger.Debug().
+			Str("custom", name).
+			Str("namespace", namespace).
+			Msg("custom resource already exists — skipping create")
+		return nil
 	}
 
 	// Build unstructured object
@@ -384,6 +388,16 @@ func buildUnstructured(spec ResolvedCustomResourceSpec, owner domain.Object, gvk
 	}
 	if spec.Status != nil {
 		u.Object["status"] = spec.Status
+	}
+
+	// yaml.v3 decodes integer literals as Go int, but k8s fake client's DeepCopy
+	// only handles JSON-native types (float64 for numbers, not int). A JSON
+	// round-trip normalises the entire object map before it reaches the client.
+	if raw, err := json.Marshal(u.Object); err == nil {
+		var normalised map[string]any
+		if json.Unmarshal(raw, &normalised) == nil {
+			u.Object = normalised
+		}
 	}
 
 	return u

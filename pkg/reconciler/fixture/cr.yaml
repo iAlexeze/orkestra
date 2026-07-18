@@ -1,4 +1,9 @@
 apiVersion: reconciler.orkestra.io/v1alpha1
+kind: ReconcilerSuite
+metadata:
+  name: probe-suite
+---
+apiVersion: reconciler.orkestra.io/v1alpha1
 kind: ReconcilerProbe
 metadata:
   name: probe
@@ -7,7 +12,7 @@ spec:
   image: nginx:1.25
   replicas: 1
   port: 8080
-  tier: premiumc
+  tier: premium
   schedule: "*/15 * * * *"
   extraLabels:
     - "team=platform"

@@ -1,0 +1,32 @@
+x-base-op: &base-op
+  cycle: 1
+  verb: create
+
+ops:
+  # API Network Resources
+  - <<: *base-op
+    resource: services
+    name: acme-api-svc
+  - <<: *base-op
+    resource: ingresses
+    name: acme-api-ingress
+  - <<: *base-op
+    resource: horizontalpodautoscalers
+    name: acme-api-hpa
+  - <<: *base-op
+    resource: poddisruptionbudgets
+    name: acme-api-pdb
+  
+  # Worker Network Resources
+  - <<: *base-op
+    resource: services
+    name: acme-worker-svc
+  - <<: *base-op
+    resource: ingresses
+    name: acme-worker-ingress
+  - <<: *base-op
+    resource: horizontalpodautoscalers
+    name: acme-worker-hpa
+  - <<: *base-op
+    resource: poddisruptionbudgets
+    name: acme-worker-pdb

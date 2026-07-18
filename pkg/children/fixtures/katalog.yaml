@@ -20,3 +20,14 @@ spec:
         - motif: motifs/04-network/motif.yaml
         - motif: motifs/05-config/motif.yaml
         - motif: motifs/06-storage/motif.yaml
+        - motif: motifs/07-custom/motif.yaml
+
+    tenant-plan:
+      apiTypes:
+        group: test.orkestra.io
+        version: v1alpha1
+        kind: TenantPlan
+        plural: tenantplans
+
+      imports:
+        - motif: motifs/08-plan/motif.yaml
