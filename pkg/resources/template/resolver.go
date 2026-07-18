@@ -61,11 +61,11 @@ func (r *Resolver) WithUserNotes(reg orktypes.NoteRegistry) *Resolver {
 	}
 	// merged holds built-ins + user notes. Closures capture it by reference
 	// so all user notes see the complete FuncMap (including each other) at eval time.
-	merged := make(template.FuncMap, len(orkNotes)+len(reg))
+	merged := make(template.FuncMap, len(orkNotes)+len(reg.Functions))
 	for k, v := range orkNotes {
 		merged[k] = v
 	}
-	for _, n := range reg {
+	for _, n := range reg.Functions {
 		expr := n.Expression // capture by value, not loop variable
 		merged[n.Name] = func() interface{} {
 			tmpl, err := template.New("").Option("missingkey=zero").Funcs(merged).Parse(expr)

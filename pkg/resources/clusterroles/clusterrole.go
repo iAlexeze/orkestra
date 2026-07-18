@@ -12,6 +12,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/resources/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,7 +48,7 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		return nil
 	}
 
-	cr := buildClusterRole(spec)
+	cr := buildClusterRole(owner, spec)
 
 	_, err = kube.Clientset().RbacV1().ClusterRoles().Create(ctx, cr, metav1.CreateOptions{})
 	if err != nil {
@@ -172,17 +173,27 @@ func Resolve(src orktypes.ClusterRoleTemplateSource, ownerName string) ResolvedC
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-func buildClusterRole(spec ResolvedClusterRoleSpec) *rbacv1.ClusterRole {
-	return &rbacv1.ClusterRole{
+func buildClusterRole(owner domain.Object, spec ResolvedClusterRoleSpec) *rbacv1.ClusterRole {
+	cr := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   spec.Name,
 			Labels: spec.Labels,
-			// No OwnerReference: ClusterRoles are cluster-scoped; a namespace-scoped CR
-			// cannot own a cluster-scoped resource. Ownership is tracked via the
-			// OrkestraOwner label; cleanup is performed explicitly via DeleteIfOwned.
 		},
 		Rules: spec.Rules,
 	}
+	if owner.GetNamespace() == "" {
+		cr.OwnerReferences = []metav1.OwnerReference{
+			{
+				APIVersion:         owner.GetObjectKind().GroupVersionKind().GroupVersion().String(),
+				Kind:               owner.GetObjectKind().GroupVersionKind().Kind,
+				Name:               owner.GetName(),
+				UID:                owner.GetUID(),
+				Controller:         utils.BoolPtr(true),
+				BlockOwnerDeletion: utils.BoolPtr(true),
+			},
+		}
+	}
+	return cr
 }
 
 func validateSpec(spec ResolvedClusterRoleSpec) error {

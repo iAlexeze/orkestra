@@ -4,6 +4,7 @@ package rolebindings
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
@@ -94,6 +95,14 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 			return fmt.Errorf("rolebinding.Update: deleting stale binding %q: %w", spec.Name, delErr)
 		}
 		return Create(ctx, kube, owner, spec)
+	}
+
+	if reflect.DeepEqual(existing.Subjects, spec.Subjects) {
+		logger.Debug().
+			Str("rolebinding", spec.Name).
+			Str("namespace", namespace).
+			Msg("rolebinding in sync — no update needed")
+		return nil
 	}
 
 	existing.Subjects = spec.Subjects

@@ -4,6 +4,7 @@ package roles
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
@@ -84,6 +85,14 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 			return Create(ctx, kube, owner, spec)
 		}
 		return fmt.Errorf("role.Update: getting %q: %w", spec.Name, err)
+	}
+
+	if reflect.DeepEqual(existing.Rules, spec.Rules) {
+		logger.Debug().
+			Str("role", spec.Name).
+			Str("namespace", namespace).
+			Msg("role in sync — no update needed")
+		return nil
 	}
 
 	existing.Rules = spec.Rules

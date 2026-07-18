@@ -137,8 +137,17 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		return fmt.Errorf("secret.Update: resolving data for %q: %w", spec.Name, err)
 	}
 
-	// Check if data has changed
-	if secretDataEqual(existing.Data, data) && stringDataEqual(existing.StringData, stringData) {
+	// k8s stores StringData as base64-encoded Data on write and never echoes
+	// StringData back on read. Normalise both sides to []byte so the comparison
+	// is stable across the StringData→Data round-trip.
+	effective := make(map[string][]byte, len(data)+len(stringData))
+	for k, v := range data {
+		effective[k] = v
+	}
+	for k, v := range stringData {
+		effective[k] = []byte(v)
+	}
+	if secretDataEqual(existing.Data, effective) {
 		logger.Debug().
 			Str("secret", spec.Name).
 			Str("namespace", namespace).

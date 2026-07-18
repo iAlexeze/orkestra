@@ -11,6 +11,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/resources/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -192,8 +193,18 @@ func buildPV(owner domain.Object, spec ResolvedPVSpec) *corev1.PersistentVolume 
 		}
 	}
 
-	// PVs are cluster-scoped; label with owner for DeleteIfOwned.
-	_ = owner
+	if owner.GetNamespace() == "" {
+		pv.OwnerReferences = []metav1.OwnerReference{
+			{
+				APIVersion:         owner.GetObjectKind().GroupVersionKind().GroupVersion().String(),
+				Kind:               owner.GetObjectKind().GroupVersionKind().Kind,
+				Name:               owner.GetName(),
+				UID:                owner.GetUID(),
+				Controller:         utils.BoolPtr(true),
+				BlockOwnerDeletion: utils.BoolPtr(true),
+			},
+		}
+	}
 
 	return pv
 }
