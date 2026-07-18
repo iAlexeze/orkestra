@@ -150,6 +150,11 @@ type ValidationRule struct {
 
 // ValidationConfig holds all validation rules for a CRD.
 type ValidationConfig struct {
+	// Include is a path (relative to the katalog file) to a YAML file whose
+	// top-level value is a list of ValidationRule entries. Expanded at load
+	// time — included rules come first, inline rules append after.
+	Include string `yaml:"include,omitempty" json:"include,omitempty"`
+
 	// Rules — evaluated in declaration order.
 	// All rules are evaluated before returning — all violations are reported
 	// together so the user can fix everything in one cycle.
@@ -228,6 +233,11 @@ type MutationRule struct {
 
 // MutationConfig holds all mutation rules for a CRD.
 type MutationConfig struct {
+	// Include is a path (relative to the katalog file) to a YAML file whose
+	// top-level value is a list of MutationRule entries. Expanded at load
+	// time — included rules come first, inline rules append after.
+	Include string `yaml:"include,omitempty" json:"include,omitempty"`
+
 	// Rules — applied in declaration order.
 	Rules []MutationRule `yaml:"rules,omitempty" json:"rules,omitempty"`
 

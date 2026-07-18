@@ -42,7 +42,10 @@ type SimulateExpect struct {
 
 // SimulateOpRule asserts that at least one recorded op in the given cycle
 // matches all non-empty fields. count overrides the minimum (default ≥1).
+// When include is set the entry is replaced by the ops: list in the referenced
+// file; all other fields must be empty in that case.
 type SimulateOpRule struct {
+	Include  string `yaml:"include,omitempty"` // path to a file with an ops: list
 	Cycle    int    `yaml:"cycle"`
 	Verb     string `yaml:"verb"`            // create | update | delete | patch
 	Resource string `yaml:"resource"`        // deployments | statefulsets | etc.
