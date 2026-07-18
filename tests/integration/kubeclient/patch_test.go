@@ -61,7 +61,7 @@ func TestPatchFinalizers_AddFinalizer(t *testing.T) {
 	obj := createProbe(t, ctx, "fin-add", "default")
 
 	finalizers := []string{"orkestra.io/cleanup"}
-	if err := kube.PatchFinalizers(ctx, obj, probeGVR, finalizers); err != nil {
+	if err := kube.PatchFinalizers(ctx, obj, finalizers); err != nil {
 		t.Fatalf("PatchFinalizers: %v", err)
 	}
 
@@ -82,13 +82,13 @@ func TestPatchFinalizers_RemoveFinalizer(t *testing.T) {
 	obj := createProbe(t, ctx, "fin-remove", "default")
 
 	// Add first
-	if err := kube.PatchFinalizers(ctx, obj, probeGVR, []string{"orkestra.io/cleanup"}); err != nil {
+	if err := kube.PatchFinalizers(ctx, obj, []string{"orkestra.io/cleanup"}); err != nil {
 		t.Fatalf("add: %v", err)
 	}
 
 	// Fetch fresh — PatchFinalizers reads name/namespace from the object passed in,
 	// not resourceVersion, so the original obj is fine for the remove call
-	if err := kube.PatchFinalizers(ctx, obj, probeGVR, []string{}); err != nil {
+	if err := kube.PatchFinalizers(ctx, obj, []string{}); err != nil {
 		t.Fatalf("remove: %v", err)
 	}
 
@@ -109,10 +109,10 @@ func TestPatchFinalizers_Idempotent(t *testing.T) {
 
 	finalizers := []string{"orkestra.io/cleanup"}
 	// Patch twice with same value — must not error
-	if err := kube.PatchFinalizers(ctx, obj, probeGVR, finalizers); err != nil {
+	if err := kube.PatchFinalizers(ctx, obj, finalizers); err != nil {
 		t.Fatalf("first patch: %v", err)
 	}
-	if err := kube.PatchFinalizers(ctx, obj, probeGVR, finalizers); err != nil {
+	if err := kube.PatchFinalizers(ctx, obj, finalizers); err != nil {
 		t.Fatalf("second patch (idempotent): %v", err)
 	}
 
@@ -129,7 +129,7 @@ func TestPatchFinalizers_DoesNotTouchOtherFields(t *testing.T) {
 	kube := newKube(t)
 	obj := createProbe(t, ctx, "fin-isolation", "default")
 
-	if err := kube.PatchFinalizers(ctx, obj, probeGVR, []string{"orkestra.io/test"}); err != nil {
+	if err := kube.PatchFinalizers(ctx, obj, []string{"orkestra.io/test"}); err != nil {
 		t.Fatalf("patch: %v", err)
 	}
 
@@ -151,7 +151,7 @@ func TestPatchLabels_AddsLabels(t *testing.T) {
 	obj := createProbe(t, ctx, "lbl-add", "default")
 
 	labels := map[string]string{"env": "test", "managed-by": "orkestra"}
-	if err := kube.PatchLabels(ctx, obj, probeGVR, nil, labels); err != nil {
+	if err := kube.PatchLabels(ctx, obj, nil, labels); err != nil {
 		t.Fatalf("PatchLabels: %v", err)
 	}
 
@@ -184,7 +184,7 @@ func TestPatchLabels_DoesNotRemoveExistingLabels(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 
-	if err := kube.PatchLabels(ctx, created, probeGVR, nil, map[string]string{"new": "label"}); err != nil {
+	if err := kube.PatchLabels(ctx, created, nil, map[string]string{"new": "label"}); err != nil {
 		t.Fatalf("PatchLabels: %v", err)
 	}
 
@@ -211,7 +211,7 @@ func TestPatchStatus_SetsStatusFields(t *testing.T) {
 		"phase":   "Running",
 		"message": "all good",
 	}
-	if err := kube.PatchStatus(ctx, obj, probeGVR, status); err != nil {
+	if err := kube.PatchStatus(ctx, obj, status); err != nil {
 		t.Fatalf("PatchStatus: %v", err)
 	}
 
@@ -230,7 +230,7 @@ func TestPatchStatus_EmptyFieldsIsNoOp(t *testing.T) {
 	obj := createProbe(t, ctx, "status-noop", "default")
 
 	// PatchStatus with empty map must return nil and touch nothing
-	if err := kube.PatchStatus(ctx, obj, probeGVR, map[string]interface{}{}); err != nil {
+	if err := kube.PatchStatus(ctx, obj, map[string]interface{}{}); err != nil {
 		t.Errorf("empty PatchStatus must not error: %v", err)
 	}
 }
@@ -240,7 +240,7 @@ func TestPatchStatus_DoesNotTouchSpec(t *testing.T) {
 	kube := newKube(t)
 	obj := createProbe(t, ctx, "status-isolation", "default")
 
-	if err := kube.PatchStatus(ctx, obj, probeGVR, map[string]interface{}{"phase": "Ready"}); err != nil {
+	if err := kube.PatchStatus(ctx, obj, map[string]interface{}{"phase": "Ready"}); err != nil {
 		t.Fatalf("PatchStatus: %v", err)
 	}
 
