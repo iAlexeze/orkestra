@@ -33,7 +33,6 @@ website/resources/
 # Generated
 zz_generated_rbac.yaml
 *.tgz
-rbac.yaml
 bundle.yaml
 configmap.yaml
 DEPLOY.md

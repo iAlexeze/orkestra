@@ -1,6 +1,6 @@
 ---
 title: "Declarative Operators: A New Model for Kubernetes Extensibility"
-date: 2026-06-27
+date: 2026-07-15
 weight: 1
 ---
 
@@ -175,7 +175,7 @@ cluster already holds the CRD schema. Orkestra reads it at startup via the
 discovery API. The user does not need to replicate it in Go structs.
 
 Second, it enables watching any CRD — including ones the operator does not
-own. A Katalog entry with `kind: Deployment` and no `apiTypes.location` is
+own. A Katalog entry with `kind: Deployment` is
 sufficient for Orkestra to watch all Deployments in the cluster. The cluster
 knows the schema. Orkestra asks for it.
 
@@ -199,10 +199,9 @@ deployments:
 ```
 
 The resolver resolves each field against the CR's unstructured map before
-calling the OrkestraRegistry. The OrkestraRegistry handles the Kubernetes
+calling the resource runners. The resource runners handle the Kubernetes
 API calls — create, update, delete, owner references, idempotency — for
-each resource type. Adding a new resource type to the registry is a single
-file addition.
+each resource type. Adding a new resource type is a single file addition.
 
 ### 3.4 Dependency Ordering
 
@@ -274,7 +273,6 @@ imports:
       version: 2.1.0
   registry:
     - url: oci://ghcr.io/orkspace/registry/application:v1.4.0
-      oci: true
 spec:
   crds:
     # Inline override — wins on name conflict with any source
@@ -293,6 +291,12 @@ This is the pattern that Helm brought to deployment manifests, applied to
 operator behavior. Platform teams publish Katalogs. Application teams
 compose and selectively override.
 
+Reusable resource blueprints — security postures, probe configurations,
+RBAC rules, rolling update strategies — are packaged as Motifs: versioned
+OCI artifacts that any Katalog can import. A Motif contributes resources,
+status fields, and admission rules without requiring a fork of the source
+Katalog. The composition is additive, not inherited.
+
 ### 3.6 Observability
 
 Every CRD managed by Orkestra automatically exposes:
@@ -310,7 +314,7 @@ Five metrics, all per-CRD, all labeled by full GVK:
 controller_reconcile_total{crd, result}
 controller_reconcile_duration_seconds{crd}
 controller_queue_depth{crd}
-controller_workers_active{crd}
+controller_workers_processing{crd}
 controller_resource_count{crd}
 ```
 
@@ -319,9 +323,153 @@ model. Separate operators cannot provide it.
 
 ---
 
-## 4. Multi-Version CRDs: Declarative Conversion
+## 4. Distribution, Lifecycle, and Supply Chain Integrity
 
-### 4.1 The Standard Approach
+### 4.1 Operators as OCI Artifacts
+
+A declarative operator is data. Data has a natural distribution model:
+artifact registries. Orkestra uses OCI — the same layer that stores
+container images and Helm charts — to distribute operator behavior.
+
+```bash
+ork push postgres:v14 ./patterns/postgres/
+```
+
+This publishes the Katalog, its Motifs, and its test suite as a single
+versioned OCI artifact. Any Orkestra runtime can pull and run it:
+
+```bash
+ork run postgres:v14
+```
+
+The artifact is YAML. It is human-readable. Its behavior is knowable
+before deployment — not inferred from a binary, not approximated from
+source code, but directly readable in the artifact itself.
+
+### 4.2 Verified Behavior at Publish Time
+
+`ork push` does not simply package files. It gates publication on two
+automated verification steps:
+
+**`ork simulate`** runs the real reconciler against an in-memory Kubernetes
+cluster. The reconciler processes CRs, the resource runners execute, and
+the output — which resources were created, updated, or deleted, in which
+reconcile cycle — is compared against declared expectations in
+`simulate.yaml`. If any assertion fails, the push is blocked. No cluster
+required; the entire verification runs in memory, typically in under a second.
+
+**`ork e2e`** provisions a real kind cluster, deploys the operator, applies
+CRs, and verifies behavior against actual scheduling, webhooks, and API
+server responses. This is the outer gate: behavior verified against
+infrastructure, not just logic.
+
+Both results are baked into OCI annotations attached to the published artifact:
+
+```text
+io.orkestra.simulate.status      passed
+io.orkestra.simulate.assertions  12
+io.orkestra.e2e.status           verified
+io.orkestra.e2e.assertions       8
+```
+
+These annotations travel with the artifact. They cannot be separated from
+it. A consumer inspecting the artifact sees exactly what was verified, to
+what level, before making any decision about whether to import it.
+
+### 4.3 Supply Chain Integrity
+
+Binary operator distribution has no provenance story. A consumer pulls an
+image, trusts the tag, and deploys it. There is no portable record of what
+behavior was verified before the image was published. There is no mechanism
+to inspect what the operator will do before it runs.
+
+The Orkestra model provides supply chain integrity as a structural
+consequence of the artifact model, not as an add-on.
+
+The pattern is YAML — reviewable at any point in the supply chain. The
+behavior is knowable before deployment. The verification record is
+immutable and attached to the artifact:
+
+```bash
+ork inspect postgres:v14
+```
+
+```text
+postgres:v14
+  simulate   passed   12 assertions
+  e2e        verified  8 assertions
+  typed      false
+  deprecated false
+```
+
+`ork inspect` shows this proof before any pull, before any import, before
+any deployment decision. A consumer choosing between `postgres:v13` and
+`postgres:v14` can read what each carries. A platform team evaluating a
+community-published pattern can see what was verified before importing it
+into their runtime.
+
+The artifact does not ask for trust. It presents its evidence.
+
+### 4.4 Lifecycle Without a Lifecycle System
+
+Traditional operator ecosystems require a separate lifecycle system — OLM
+installs, manages, upgrades, and deprecates operator binaries as a second
+layer of infrastructure on top of Kubernetes. When the unit of distribution
+is a binary, lifecycle management is necessarily external.
+
+When the unit is a YAML artifact, lifecycle is a property of the artifact
+itself.
+
+**Upgrade** is a version bump in the Komposer:
+
+```yaml
+imports:
+  registry:
+    - url: postgres:v14   # was v13
+```
+
+The same push pipeline runs. The new artifact carries its own simulation
+and e2e proof. Upgrade is not a ceremony. It is the same production model,
+applied again.
+
+**Deprecation** is declared directly in the Katalog:
+
+```yaml
+metadata:
+  name: postgres
+  deprecation:
+    migratedTo: postgres:v2.0.0
+    message: "Use v2.0.0 — improved connection pooling and status reporting"
+```
+
+The deprecation travels with the artifact. Every consumer who runs
+`ork inspect`, `ork validate`, or `ork patterns` sees the warning and the
+migration target. The pattern remains in the registry for compatibility — it
+is not deleted — but it is clearly marked at every touchpoint.
+
+**Deletion protection** is a continuously enforced property, not a
+one-time webhook registration. The reconciler applies and maintains the
+protection label on every managed resource every reconcile cycle. If the
+label is removed manually, the next reconcile restores it. The webhook
+enforces deletion at admission time; the reconciler enforces label state
+at runtime. Neither can be bypassed without changing the Katalog:
+
+```yaml
+security:
+  deletionProtection:
+    enabled: true
+```
+
+No separate deployment. No separate CRDs. No lifecycle stack to upgrade.
+The lifecycle, the security posture, the protection — all expressed in the
+same artifact language as the operator itself. OLM solved the right problem
+for its era. Orkestra makes the problem not exist.
+
+---
+
+## 5. Multi-Version CRDs: Declarative Conversion
+
+### 5.1 The Standard Approach
 
 Kubernetes CRDs support multiple API versions through a conversion webhook.
 When a client requests a version different from the storage version, the API
@@ -334,7 +482,7 @@ the CRD to point to the webhook, and maintaining conversion logic as versions
 evolve. For a change as simple as adding a field, this infrastructure overhead
 frequently exceeds the development cost of the change itself.
 
-### 4.2 Conversion as a Consequence of the Super-Operator Model
+### 5.2 Conversion as a Consequence of the Super-Operator Model
 
 The super-operator model makes declarative conversion architecturally natural.
 Each version of a CRD is a separate Katalog entry with its own complete
@@ -374,7 +522,7 @@ handler resolves each path's spec template against the source object and
 returns the converted objects. The CRD's `conversion` block points to this
 endpoint.
 
-### 4.3 Production Results
+### 5.3 Production Results
 
 The following is from a live deployment managing both versions of the
 Website CRD:
@@ -405,9 +553,9 @@ Zero TLS certificates to manage.
 
 ---
 
-## 5. Addressing the One-Operator-Per-CRD Principle
+## 6. Addressing the One-Operator-Per-CRD Principle
 
-### 5.1 The Principle is Correct
+### 6.1 The Principle is Correct
 
 The Operator SDK best practices document states: "Avoid a design solution
 where more than one Kind is reconciled by the same controller." The concerns
@@ -416,7 +564,7 @@ preventing unexpected side effects between CRDs.
 
 These concerns are valid. Orkestra does not disagree with them.
 
-### 5.2 The Principle Refers to Reconciler Logic, Not Process Boundaries
+### 6.2 The Principle Refers to Reconciler Logic, Not Process Boundaries
 
 The Operator SDK's concerns are about reconciler logic — that a reconciler
 for `Website` should not contain logic for `Database`. Orkestra enforces
@@ -438,7 +586,7 @@ sharing infrastructure.
 No one argues that `kube-controller-manager` violates good design. Orkestra
 applies the same principle to user-defined operators.
 
-### 5.3 The Shared Failure Domain
+### 6.3 The Shared Failure Domain
 
 The legitimate remaining concern is that a single process is a single failure
 domain. If the Orkestra process crashes, all CRD operators stop together.
@@ -455,12 +603,12 @@ reconciler does not crash the `Database` reconciler.
 
 ---
 
-## 6. What This Replaces
+## 7. What This Replaces
 
 | Traditional | Orkestra |
 |---|---|
 | Go operator binary per CRD | Katalog YAML |
-| Kubebuilder scaffolding | `ork init` |
+| Operator scaffolding | `ork create pattern` |
 | One deployment per CRD | One runtime per operator surface |
 | Per-operator health endpoints | Unified `/katalog/*` API |
 | Per-operator metrics (or none) | Unified per-CRD metrics |
@@ -468,10 +616,14 @@ reconciler does not crash the `Database` reconciler.
 | Helm chart per operator | Komposer |
 | Conversion webhook binary + TLS | Conversion rules in Katalog |
 | Operator sprawl | One runtime |
+| OLM / separate lifecycle system | Lifecycle declared in the Katalog |
+| Pull and trust the binary | `ork inspect` — proof before pull |
+| Unverified distribution | Simulate + e2e proof baked into OCI annotations |
+| Deploy, configure, restart | `ork run postgres:v2.0.0` |
 
 ---
 
-## 7. Conclusion
+## 8. Conclusion
 
 The operator pattern is the right abstraction for Kubernetes extensibility.
 The requirement to implement one binary per CRD has been a constraint of
