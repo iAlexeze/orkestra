@@ -1099,6 +1099,13 @@ var BuiltinNotes = []NoteInfo{
 		Keywords:    []string{"random", "secret", "token", "hex", "generate", "crypto", "api-key", "session"},
 	},
 	{
+		Name:        "uuidv4",
+		Domain:      "random",
+		Description: "Generate a random UUID v4 string in standard `8-4-4-4-12` hex format. Same entropy as `randomHex 16`, formatted as a UUID for systems that expect that shape.",
+		Example:     "# value: \"{{ uuidv4 }}\"\n# → \"f47ac10b-58cc-4372-a567-0e02b2c3d479\"",
+		Keywords:    []string{"random", "uuid", "secret", "token", "id", "identifier", "generate", "crypto"},
+	},
+	{
 		Name:        "allReplicasReady",
 		Domain:      "replica",
 		Description: "Return `true` when `status.readyReplicas == spec.replicas`. The canonical rollout-complete gate. Returns `true` when scaled to zero (desired=0 and ready=0).",

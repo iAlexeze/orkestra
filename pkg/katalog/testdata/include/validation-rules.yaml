@@ -1,0 +1,10 @@
+rules:
+  - field: spec.team
+    operator: exists
+    message: "spec.team is required"
+    action: deny
+  - field: spec.environment
+    operator: in
+    value: "staging,production"
+    message: "spec.environment must be staging or production"
+    action: deny

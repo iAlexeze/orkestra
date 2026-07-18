@@ -40,10 +40,11 @@ Teams can define their own notes in a Katalog's `notes:` block or in a Motif imp
 
 ```yaml
 notes:
-  - name: fullImage
-    expression: "{{ .spec.image }}:{{ .spec.tag | default \"latest\" }}"
-  - name: serviceHost
-    expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+  functions:
+    - name: fullImage
+      expression: "{{ .spec.image }}:{{ .spec.tag | default \"latest\" }}"
+    - name: serviceHost
+      expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
 ```
 
 See [documentation/concepts/notes/](../../documentation/concepts/notes/index.md) for the full guide.

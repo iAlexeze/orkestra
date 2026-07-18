@@ -36,7 +36,14 @@ func Load(path string) (*orktypes.Motif, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading motif %s: %w", path, err)
 	}
-	return parse(data)
+	m, err := parse(data)
+	if err != nil {
+		return nil, err
+	}
+	if err := expandIncludes(m, filepath.Dir(path)); err != nil {
+		return nil, fmt.Errorf("motif %s: %w", path, err)
+	}
+	return m, nil
 }
 
 // LoadImport resolves and loads a Motif from a MotifImport declaration.

@@ -1,0 +1,17 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: test
+spec:
+  crds:
+    platform:
+      apiTypes:
+        group: platform.orkestra.io
+        version: v1alpha1
+        kind: Platform
+        plural: platforms
+      mutation:
+        include: ./mutation-rules.yaml
+        rules:
+          - field: spec.logLevel
+            default: info
