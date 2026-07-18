@@ -35,12 +35,13 @@ User-defined notes let teams name an expression once and reuse it everywhere. Th
 ```yaml
 # katalog.yaml
 notes:
-  - name: fullImage
-    description: Combine image and tag into a qualified reference
-    expression: "{{ .spec.image }}:{{ .spec.tag | default \"latest\" }}"
+  functions:
+    - name: fullImage
+      description: Combine image and tag into a qualified reference
+      expression: "{{ .spec.image }}:{{ .spec.tag | default \"latest\" }}"
 
-  - name: serviceHost
-    expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+    - name: serviceHost
+      expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
 ```
 
 Once declared, call them anywhere:
@@ -63,10 +64,11 @@ kind: Motif
 metadata:
   name: team-notes
 notes:
-  - name: fullImage
-    expression: "{{ .spec.image }}:{{ .spec.tag | default \"latest\" }}"
-  - name: appLabel
-    expression: "{{ .metadata.namespace }}-{{ .metadata.name }}"
+  functions:
+    - name: fullImage
+      expression: "{{ .spec.image }}:{{ .spec.tag | default \"latest\" }}"
+    - name: appLabel
+      expression: "{{ .metadata.namespace }}-{{ .metadata.name }}"
 ```
 
 ```yaml
@@ -83,16 +85,17 @@ This is the same distribution path that [profiles](../profiles/10-user-defined-p
 | Situation | Result |
 |-----------|--------|
 | Two `spec.imports` Motifs declare the same note name | Hard error at startup |
-| Inline `notes:` and a Motif import declare the same name | Local wins silently |
+| Inline `notes.functions:` and a Motif import declare the same name | Local wins silently |
 | Note name matches a built-in | Warning logged; `shadow: true` silences it |
 
 ### Shadowing a built-in
 
 ```yaml
 notes:
-  - name: default
-    expression: "{{ .spec.fallbackImage }}"
-    shadow: true   # acknowledges the override
+  functions:
+    - name: default
+      expression: "{{ .spec.fallbackImage }}"
+      shadow: true   # acknowledges the override
 ```
 
 ---

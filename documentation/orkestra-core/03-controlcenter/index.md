@@ -77,3 +77,38 @@ Control Center (port 8081)
 ```
 
 Each runtime exposes `/katalog`, `/katalog/{crd}`, and `/katalog/{crd}/health`. The Control Center polls these and renders the results. It holds no state of its own.
+
+---
+
+## The Control Center as an IDP
+
+When a CRD entry has `idp.enabled: true` in its Katalog, the Control Center gains a `[+ Create]` button for that CRD:
+
+```text
+┌────────────────────────────────────────────────────┐
+│  Application    3 CRs    ● Healthy    [+ Create]   │
+└────────────────────────────────────────────────────┘
+```
+
+Clicking it opens a form generated directly from the CRD's OpenAPI schema and the `idp.fields` presentation hints declared in the Katalog — field labels, placeholders, and input order. No separate form builder. No schema duplication.
+
+```yaml
+spec:
+  crds:
+    application:
+      idp:
+        enabled: true
+        fields:
+          environment:
+            label: "Environment"
+            hint: "Production deployments require platform-team review"
+            order: 1
+          image:
+            label: "Container Image"
+            placeholder: "ghcr.io/myorg/myapp:v1.0.0"
+            order: 2
+```
+
+Submitting the form posts to the gateway Apply API. Every enforcement rule — admission, namespace protection, deletion protection — applies the same way as `kubectl apply`. The Control Center is one delivery path; CI pipelines, Terraform, and curl are others. The runtime does not distinguish between them.
+
+→ [Internal Developer Platform concept](../../concepts/idp/index.md)

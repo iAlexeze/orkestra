@@ -6,6 +6,7 @@ Random notes generate cryptographically secure random values. They are designed 
 
 | Note | Description |
 |------|-------------|
+| `uuidv4` | Generate a random UUID v4 string in standard `8-4-4-4-12` hex format. |
 | `randomAlphanumeric` | Generate a cryptographically random alphanumeric string of exactly `n` characters. |
 | `randomHex` | Generate `n` random bytes and return them as a hex-encoded string. |
 | `randomBase64` | Generate `n` random bytes and return them as a URL-safe base64 string. |
@@ -13,6 +14,10 @@ Random notes generate cryptographically secure random values. They are designed 
 ## Examples
 
 ```yaml
+# uuidv4
+# value: "{{ uuidv4 }}"
+# → "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+
 # randomAlphanumeric
 # value: "{{ randomAlphanumeric 32 }}"
 # → "k7Xm3pQs9vR2nTwY8cL1jF6bH0dE4gA5"

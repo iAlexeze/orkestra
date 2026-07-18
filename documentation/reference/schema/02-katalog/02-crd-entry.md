@@ -188,6 +188,64 @@ imports:
 
 → Full Motif import schema: [motif.md](../01-motif/index.md)
 
+## `idp`
+
+Controls whether this CRD is exposed through the Gateway Apply API and the Control Center's IDP form. Requires `gateway.applyAPI.enabled: true` at the Katalog level.
+
+```yaml
+spec:
+  crds:
+    application:
+      idp:
+        enabled: true         # false by default — no Create button without this
+        fields:               # optional — or include: ./idp/application.yaml
+          environment:
+            label: "Environment"
+            hint: "Production deployments require platform team approval"
+            placeholder: "staging"
+            order: 1
+          image:
+            label: "Container Image"
+            placeholder: "ghcr.io/myorg/myapp:v1.0.0"
+            order: 2
+```
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `enabled` | `false` | `true` — this CRD gets a **[+ Create]** button in the Control Center and its schema is served at `GET /api/v1/schema/{kind}`. `false` (default) — the CRD is not exposed via the Apply API IDP surface. |
+| `fields` | — | Optional form hints. Each key matches a field name in the CRD spec. Missing keys are rendered from the schema `description` and property name alone. |
+| `include` | — | Path (relative to the katalog file) to a YAML file containing a `fields:` key. Use instead of inline `fields:` to keep the Katalog compact. Inline `fields:` take precedence — included keys that appear in both are overridden by the inline value. Expanded at load time. |
+
+`idp/apprequest.yaml` (the include file):
+
+```yaml
+fields:
+  environment:
+    label: "Environment"
+    hint: "Production deployments require platform team approval"
+    order: 1
+  image:
+    label: "Container Image"
+    placeholder: "ghcr.io/myorg/myapp:v1.0.0"
+    order: 2
+```
+
+### `idp.fields.<name>`
+
+| Field | Description |
+|-------|-------------|
+| `label` | Display label for the form field. Overrides the schema `description`. |
+| `hint` | Tooltip or helper text shown below the field. |
+| `placeholder` | Input placeholder value. |
+| `order` | Tab order in the form. Fields without `order` follow fields with it. |
+
+Without any `idp:` block on the CRD entry, the CRD is not exposed via the Apply API regardless of what the Katalog-level `gateway.applyAPI` config says.
+
+→ [17-katalog-applyapi.md](17-katalog-applyapi.md) — Katalog-level Apply API config
+→ [concepts/idp](../../../concepts/idp/) — conceptual overview
+
+---
+
 ## Sub-schemas
 
 | Field | Reference |
