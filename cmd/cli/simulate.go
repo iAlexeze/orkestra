@@ -219,7 +219,7 @@ func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *
 	}
 
 	for _, cycle := range result.Cycles {
-		meaningful := filterOps(cycle.Ops, "create", "update", "delete", "patch")
+		meaningful := filterOps(cycle.Ops, "create", "update", "delete", "patch", "apply")
 		if len(meaningful) == 0 && cycle.Error == nil {
 			continue
 		}
@@ -404,6 +404,8 @@ func printCycleOps(ops []simulate.Op) {
 			seen[key].hasCreate = true
 		case "delete":
 			seen[key].hasDelete = true
+		case "apply":
+			// SSA ops display as ~ (changed), same as update/patch
 		}
 	}
 	for _, key := range order {
@@ -530,6 +532,10 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 		return fmt.Errorf("%s: missing spec", path)
 	}
 
+	if err := validateSimulateFileQuiet(path); err != nil {
+		return err
+	}
+
 	if err := orktypes.ExpandSimulateOpsIncludes(doc.Spec.Expect, dir); err != nil {
 		return fmt.Errorf("expanding simulate ops includes in %s: %w", path, err)
 	}
@@ -548,6 +554,7 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 	if err := m.Merge(); err != nil {
 		return fmt.Errorf("merging Katalog: %w", err)
 	}
+
 	kat, err := katalog.BuildExpanded(kfg, m)
 	if err != nil {
 		var typedErr *katalog.TypedOperatorError
