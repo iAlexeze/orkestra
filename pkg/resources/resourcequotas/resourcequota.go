@@ -3,10 +3,11 @@ package resourcequotas
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"reflect"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -18,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 // ResolvedResourceQuotaSpec is the fully resolved ResourceQuota specification.
@@ -73,54 +75,46 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update reconciles an existing ResourceQuota to match the resolved spec.
-// If it does not exist, creates it.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedResourceQuotaSpec) error {
+// Apply creates or updates a ResourceQuota using Server-Side Apply.
+// Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedResourceQuotaSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
 	}
 
-	existing, err := kube.Clientset().CoreV1().ResourceQuotas(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info().
-				Str("resourcequota", spec.Name).
-				Str("namespace", namespace).
-				Msg("resourcequota not found during reconcile — recreating")
-			return Create(ctx, kube, owner, spec)
-		}
-		return fmt.Errorf("resourcequota.Update: getting %q: %w", spec.Name, err)
-	}
-
 	hard, err := resolveHard(ctx, kube, spec, owner)
 	if err != nil {
-		return fmt.Errorf("resourcequota.Update: resolving hard limits: %w", err)
+		return fmt.Errorf("resourcequota.Apply: resolving hard limits: %w", err)
 	}
 
-	desired := buildResourceList(hard)
-	if reflect.DeepEqual(existing.Spec.Hard, desired) {
-		logger.Debug().
-			Str("resourcequota", spec.Name).
-			Str("namespace", namespace).
-			Msg("resourcequota in sync — no update needed")
-		return nil
-	}
+	rq := buildResourceQuota(owner, spec, namespace, hard)
+	rq.TypeMeta = metav1.TypeMeta{APIVersion: "v1", Kind: "ResourceQuota"}
 
-	updated := existing.DeepCopy()
-	updated.Spec.Hard = desired
-
-	_, err = kube.Clientset().CoreV1().ResourceQuotas(namespace).Update(ctx, updated, metav1.UpdateOptions{})
+	body, err := json.Marshal(rq)
 	if err != nil {
-		return fmt.Errorf("resourcequota.Update: updating %q: %w", spec.Name, err)
+		return fmt.Errorf("resourcequota.Apply: marshal: %w", err)
 	}
 
-	logger.Info().
+	if _, err = kube.Clientset().CoreV1().ResourceQuotas(namespace).Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		return fmt.Errorf("resourcequota.Apply: %w", err)
+	}
+
+	logger.Debug().
 		Str("resourcequota", spec.Name).
 		Str("namespace", namespace).
-		Msg("resourcequota updated")
+		Str("owner", owner.GetName()).
+		Msg("resourcequota applied")
 
 	return nil
+}
+
+// Update applies the ResourceQuota via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedResourceQuotaSpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the ResourceQuota if it exists.

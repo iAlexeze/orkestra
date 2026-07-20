@@ -3,10 +3,12 @@ package secrets
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -16,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 // ResolvedSecretSpec is the fully resolved Secret specification.
@@ -106,12 +109,11 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update reconciles an existing Secret to match the resolved spec.
-// When FromSecret is set, re-syncs data from the source Secret on every reconcile.
-// If the Secret does not exist, creates it.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedSecretSpec) error {
+// Apply creates or updates a Secret using Server-Side Apply.
+// Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedSecretSpec) error {
 	if err := validateSpec(spec); err != nil {
-		return fmt.Errorf("secret.Update: invalid spec: %w", err)
+		return fmt.Errorf("secret.Apply: invalid spec: %w", err)
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
@@ -119,57 +121,38 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		return err
 	}
 
-	existing, err := kube.Clientset().CoreV1().Secrets(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info().
-				Str("secret", spec.Name).
-				Str("namespace", namespace).
-				Msg("secret not found during reconcile — recreating")
-			return Create(ctx, kube, owner, spec)
-		}
-		return fmt.Errorf("secret.Update: getting secret %q: %w", spec.Name, err)
-	}
-
-	// Re-resolve data — picks up changes in the source Secret
 	data, stringData, err := resolveData(ctx, kube, spec, owner)
 	if err != nil {
-		return fmt.Errorf("secret.Update: resolving data for %q: %w", spec.Name, err)
+		return fmt.Errorf("secret.Apply: resolving data for %q: %w", spec.Name, err)
 	}
 
-	// k8s stores StringData as base64-encoded Data on write and never echoes
-	// StringData back on read. Normalise both sides to []byte so the comparison
-	// is stable across the StringData→Data round-trip.
-	effective := make(map[string][]byte, len(data)+len(stringData))
-	for k, v := range data {
-		effective[k] = v
-	}
-	for k, v := range stringData {
-		effective[k] = []byte(v)
-	}
-	if secretDataEqual(existing.Data, effective) {
-		logger.Debug().
-			Str("secret", spec.Name).
-			Str("namespace", namespace).
-			Msg("secret in sync — no update needed")
-		return nil
-	}
+	secret := buildSecret(owner, spec, namespace, data, stringData)
+	secret.TypeMeta = metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"}
 
-	updated := existing.DeepCopy()
-	updated.Data = data
-	updated.StringData = stringData
-
-	_, err = kube.Clientset().CoreV1().Secrets(namespace).Update(ctx, updated, metav1.UpdateOptions{})
+	body, err := json.Marshal(secret)
 	if err != nil {
-		return fmt.Errorf("secret.Update: updating secret %q: %w", spec.Name, err)
+		return fmt.Errorf("secret.Apply: marshal: %w", err)
 	}
 
-	logger.Info().
+	if _, err = kube.Clientset().CoreV1().Secrets(namespace).Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		return fmt.Errorf("secret.Apply: %w", err)
+	}
+
+	logger.Debug().
 		Str("secret", spec.Name).
 		Str("namespace", namespace).
-		Msg("secret updated")
+		Str("owner", owner.GetName()).
+		Msg("secret applied")
 
 	return nil
+}
+
+// Update applies the Secret via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedSecretSpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the Secret if it exists.
@@ -394,29 +377,4 @@ func validateSpec(spec ResolvedSecretSpec) error {
 		return fmt.Errorf("one of fromSecret or data must be declared")
 	}
 	return nil
-}
-
-func secretDataEqual(a, b map[string][]byte) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for k, va := range a {
-		vb, ok := b[k]
-		if !ok || string(va) != string(vb) {
-			return false
-		}
-	}
-	return true
-}
-
-func stringDataEqual(a, b map[string]string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for k, va := range a {
-		if b[k] != va {
-			return false
-		}
-	}
-	return true
 }

@@ -3,10 +3,11 @@ package configmaps
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"reflect"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -16,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 // ResolvedConfigMapSpec is the fully resolved ConfigMap specification.
@@ -93,12 +95,11 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update reconciles an existing ConfigMap to match the resolved spec.
-// Re-syncs data from FromConfigMap on every reconcile if set.
-// If ConfigMap does not exist, creates it.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedConfigMapSpec) error {
+// Apply creates or updates a ConfigMap using Server-Side Apply.
+// Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedConfigMapSpec) error {
 	if err := validateSpec(spec); err != nil {
-		return fmt.Errorf("configmap.Update: %w", err)
+		return fmt.Errorf("configmap.Apply: %w", err)
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
@@ -106,45 +107,38 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		return err
 	}
 
-	existing, err := kube.Clientset().CoreV1().ConfigMaps(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info().
-				Str("configmap", spec.Name).
-				Str("namespace", namespace).
-				Msg("configmap not found during reconcile — recreating")
-			return Create(ctx, kube, owner, spec)
-		}
-		return fmt.Errorf("configmap.Update: getting %q: %w", spec.Name, err)
-	}
-
 	data, err := resolveData(ctx, kube, spec, owner)
 	if err != nil {
-		return fmt.Errorf("configmap.Update: resolving data: %w", err)
+		return fmt.Errorf("configmap.Apply: resolving data: %w", err)
 	}
 
-	if reflect.DeepEqual(existing.Data, data) {
-		logger.Debug().
-			Str("configmap", spec.Name).
-			Str("namespace", namespace).
-			Msg("configmap in sync — no update needed")
-		return nil
-	}
+	cm := buildConfigMap(owner, spec, namespace, data)
+	cm.TypeMeta = metav1.TypeMeta{APIVersion: "v1", Kind: "ConfigMap"}
 
-	updated := existing.DeepCopy()
-	updated.Data = data
-
-	_, err = kube.Clientset().CoreV1().ConfigMaps(namespace).Update(ctx, updated, metav1.UpdateOptions{})
+	body, err := json.Marshal(cm)
 	if err != nil {
-		return fmt.Errorf("configmap.Update: updating %q: %w", spec.Name, err)
+		return fmt.Errorf("configmap.Apply: marshal: %w", err)
 	}
 
-	logger.Info().
+	if _, err = kube.Clientset().CoreV1().ConfigMaps(namespace).Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		return fmt.Errorf("configmap.Apply: %w", err)
+	}
+
+	logger.Debug().
 		Str("configmap", spec.Name).
 		Str("namespace", namespace).
-		Msg("configmap updated")
+		Str("owner", owner.GetName()).
+		Msg("configmap applied")
 
 	return nil
+}
+
+// Update applies the ConfigMap via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedConfigMapSpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the ConfigMap if it exists.

@@ -3,10 +3,12 @@ package hpas
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -19,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 // Create creates an HPA owned by the CR if it does not already exist.
@@ -61,12 +64,11 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update reconciles an existing HPA to match the resolved spec.
-// Patches min/max replicas and CPU target when drift is detected.
-// If the HPA does not exist, creates it.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedHPASpec) error {
+// Apply creates or updates an HPA using Server-Side Apply.
+// Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedHPASpec) error {
 	if err := validateSpec(spec); err != nil {
-		return fmt.Errorf("hpa.Update: invalid spec: %w", err)
+		return fmt.Errorf("hpa.Apply: invalid spec: %w", err)
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
@@ -74,60 +76,33 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		return err
 	}
 
-	existing, err := kube.Clientset().AutoscalingV2().HorizontalPodAutoscalers(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
+	hpa := buildHPA(owner, spec, namespace)
+	hpa.TypeMeta = metav1.TypeMeta{APIVersion: "autoscaling/v2", Kind: "HorizontalPodAutoscaler"}
+
+	body, err := json.Marshal(hpa)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info().
-				Str("hpa", spec.Name).
-				Str("namespace", namespace).
-				Msg("hpa not found during reconcile — recreating")
-			return Create(ctx, kube, owner, spec)
-		}
-		return fmt.Errorf("hpa.Update: getting hpa %q: %w", spec.Name, err)
+		return fmt.Errorf("hpa.Apply: marshal: %w", err)
 	}
 
-	drifted := false
-	updated := existing.DeepCopy()
-
-	minR := spec.MinReplicas
-	if existing.Spec.MinReplicas == nil || *existing.Spec.MinReplicas != minR {
-		updated.Spec.MinReplicas = &minR
-		drifted = true
-		logger.Info().Str("hpa", spec.Name).Int32("desired", minR).Msg("hpa minReplicas drifted")
+	if _, err = kube.Clientset().AutoscalingV2().HorizontalPodAutoscalers(namespace).Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		return fmt.Errorf("hpa.Apply: %w", err)
 	}
 
-	if existing.Spec.MaxReplicas != spec.MaxReplicas {
-		updated.Spec.MaxReplicas = spec.MaxReplicas
-		drifted = true
-		logger.Info().Str("hpa", spec.Name).Int32("desired", spec.MaxReplicas).Msg("hpa maxReplicas drifted")
-	}
-
-	var desiredBehavior *autoscalingv2.HorizontalPodAutoscalerBehavior
-	if spec.Behavior != nil {
-		desiredBehavior = buildK8sBehavior(spec.Behavior)
-	}
-	if !behaviorEqual(existing.Spec.Behavior, desiredBehavior) {
-		updated.Spec.Behavior = desiredBehavior
-		drifted = true
-		logger.Info().Str("hpa", spec.Name).Msg("hpa behavior drifted")
-	}
-
-	if !drifted {
-		logger.Debug().Str("hpa", spec.Name).Msg("hpa in sync — no update needed")
-		return nil
-	}
-
-	_, err = kube.Clientset().AutoscalingV2().HorizontalPodAutoscalers(namespace).Update(ctx, updated, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("hpa.Update: updating hpa %q: %w", spec.Name, err)
-	}
-
-	logger.Info().
+	logger.Debug().
 		Str("hpa", spec.Name).
 		Str("namespace", namespace).
-		Msg("hpa updated")
+		Str("owner", owner.GetName()).
+		Msg("hpa applied")
 
 	return nil
+}
+
+// Update applies the HPA via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedHPASpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the HPA if it exists.

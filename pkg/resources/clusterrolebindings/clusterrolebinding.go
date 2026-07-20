@@ -3,10 +3,11 @@ package clusterrolebindings
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"reflect"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -16,6 +17,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 // ResolvedClusterRoleBindingSpec is the fully resolved ClusterRoleBinding specification.
@@ -64,51 +66,48 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update applies the desired subjects to an existing ClusterRoleBinding.
-// RoleRef is immutable in Kubernetes — if it changed the binding is deleted and recreated.
-// If it does not exist, creates it.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedClusterRoleBindingSpec) error {
+// Apply creates or updates a ClusterRoleBinding using Server-Side Apply.
+// RoleRef is immutable — if SSA is rejected due to a changed roleRef,
+// the binding is deleted and recreated.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedClusterRoleBindingSpec) error {
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
 	}
 
-	existing, err := kube.Clientset().RbacV1().ClusterRoleBindings().Get(ctx, spec.Name, metav1.GetOptions{})
+	crb := buildClusterRoleBinding(owner, spec)
+	crb.TypeMeta = metav1.TypeMeta{APIVersion: "rbac.authorization.k8s.io/v1", Kind: "ClusterRoleBinding"}
+
+	body, err := json.Marshal(crb)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		return fmt.Errorf("clusterrolebinding.Apply: marshal: %w", err)
+	}
+
+	if _, err = kube.Clientset().RbacV1().ClusterRoleBindings().Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		if errors.IsInvalid(err) {
+			// roleRef is immutable — delete and recreate.
+			logger.Info().Str("clusterrolebinding", spec.Name).Msg("clusterrolebinding roleRef drifted — delete+recreate")
+			if delErr := kube.Clientset().RbacV1().ClusterRoleBindings().Delete(ctx, spec.Name, metav1.DeleteOptions{}); delErr != nil && !errors.IsNotFound(delErr) {
+				return fmt.Errorf("clusterrolebinding.Apply: deleting stale binding %q: %w", spec.Name, delErr)
+			}
 			return Create(ctx, kube, owner, spec)
 		}
-		return fmt.Errorf("clusterrolebinding.Update: getting %q: %w", spec.Name, err)
+		return fmt.Errorf("clusterrolebinding.Apply: %w", err)
 	}
 
-	// roleRef is immutable — recreate if it changed
-	if existing.RoleRef.Name != spec.RoleRef.Name || existing.RoleRef.Kind != spec.RoleRef.Kind {
-		if delErr := kube.Clientset().RbacV1().ClusterRoleBindings().Delete(ctx, spec.Name, metav1.DeleteOptions{}); delErr != nil && !errors.IsNotFound(delErr) {
-			return fmt.Errorf("clusterrolebinding.Update: deleting stale binding %q: %w", spec.Name, delErr)
-		}
-		return Create(ctx, kube, owner, spec)
-	}
-
-	if reflect.DeepEqual(existing.Subjects, spec.Subjects) && reflect.DeepEqual(existing.Labels, spec.Labels) {
-		logger.Debug().
-			Str("clusterrolebinding", spec.Name).
-			Msg("clusterrolebinding in sync — no update needed")
-		return nil
-	}
-
-	existing.Subjects = spec.Subjects
-	existing.Labels = spec.Labels
-
-	_, err = kube.Clientset().RbacV1().ClusterRoleBindings().Update(ctx, existing, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("clusterrolebinding.Update: updating %q: %w", spec.Name, err)
-	}
-
-	logger.Info().
+	logger.Debug().
 		Str("clusterrolebinding", spec.Name).
 		Str("owner", owner.GetName()).
-		Msg("clusterrolebinding updated")
+		Msg("clusterrolebinding applied")
 
 	return nil
+}
+
+// Update applies the ClusterRoleBinding via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedClusterRoleBindingSpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the ClusterRoleBinding if it exists.

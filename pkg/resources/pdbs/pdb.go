@@ -3,11 +3,13 @@ package pdbs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -19,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -62,12 +65,11 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update reconciles an existing PDB to match the resolved spec.
-// PDB spec is largely immutable after creation — drift is handled by
-// delete-and-recreate. If the PDB does not exist, creates it.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPDBSpec) error {
+// Apply creates or updates a PodDisruptionBudget using Server-Side Apply.
+// PDB selectors are immutable — if SSA is rejected, falls back to delete + recreate.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPDBSpec) error {
 	if err := validateSpec(spec); err != nil {
-		return fmt.Errorf("pdb.Update: invalid spec: %w", err)
+		return fmt.Errorf("pdb.Apply: invalid spec: %w", err)
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
@@ -75,49 +77,40 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		return err
 	}
 
-	existing, err := kube.Clientset().PolicyV1().PodDisruptionBudgets(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
+	pdb := buildPDB(owner, spec, namespace)
+	pdb.TypeMeta = metav1.TypeMeta{APIVersion: "policy/v1", Kind: "PodDisruptionBudget"}
+
+	body, err := json.Marshal(pdb)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info().
-				Str("pdb", spec.Name).
-				Str("namespace", namespace).
-				Msg("pdb not found during reconcile — recreating")
+		return fmt.Errorf("pdb.Apply: marshal: %w", err)
+	}
+
+	if _, err = kube.Clientset().PolicyV1().PodDisruptionBudgets(namespace).Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		if errors.IsInvalid(err) {
+			logger.Info().Str("pdb", spec.Name).Msg("pdb selector immutable — delete+recreate")
+			if delErr := kube.Clientset().PolicyV1().PodDisruptionBudgets(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{}); delErr != nil && !errors.IsNotFound(delErr) {
+				return fmt.Errorf("pdb.Apply: deleting stale pdb %q: %w", spec.Name, delErr)
+			}
 			return Create(ctx, kube, owner, spec)
 		}
-		return fmt.Errorf("pdb.Update: getting pdb %q: %w", spec.Name, err)
+		return fmt.Errorf("pdb.Apply: %w", err)
 	}
 
-	desired := buildPDB(owner, spec, namespace)
-	drifted := false
+	logger.Debug().
+		Str("pdb", spec.Name).
+		Str("namespace", namespace).
+		Str("owner", owner.GetName()).
+		Msg("pdb applied")
 
-	// Check MinAvailable drift
-	desiredMin := desired.Spec.MinAvailable
-	if (desiredMin == nil) != (existing.Spec.MinAvailable == nil) ||
-		(desiredMin != nil && existing.Spec.MinAvailable != nil &&
-			desiredMin.String() != existing.Spec.MinAvailable.String()) {
-		drifted = true
-	}
+	return nil
+}
 
-	// Check MaxUnavailable drift
-	desiredMax := desired.Spec.MaxUnavailable
-	if (desiredMax == nil) != (existing.Spec.MaxUnavailable == nil) ||
-		(desiredMax != nil && existing.Spec.MaxUnavailable != nil &&
-			desiredMax.String() != existing.Spec.MaxUnavailable.String()) {
-		drifted = true
-	}
-
-	if !drifted {
-		logger.Debug().Str("pdb", spec.Name).Msg("pdb in sync — no update needed")
-		return nil
-	}
-
-	// PDB spec fields are immutable — delete and recreate on drift.
-	logger.Info().Str("pdb", spec.Name).Msg("pdb drifted — recreating")
-	if err := kube.Clientset().PolicyV1().PodDisruptionBudgets(namespace).
-		Delete(ctx, spec.Name, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("pdb.Update: deleting drifted pdb %q: %w", spec.Name, err)
-	}
-	return Create(ctx, kube, owner, spec)
+// Update applies the PDB via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPDBSpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the PDB if it exists.

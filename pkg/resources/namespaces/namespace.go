@@ -3,9 +3,11 @@ package namespaces
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -15,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 // ResolvedNamespaceSpec is the fully resolved Namespace specification.
@@ -77,51 +80,43 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update reconciles an existing Namespace to match the resolved spec.
-// Handles drift — if replicas or image have changed, patches the Namespace.
-// If the Namespace does not exist, creates it.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedNamespaceSpec) error {
+// Apply creates or updates a Namespace using Server-Side Apply.
+// Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedNamespaceSpec) error {
 	if err := validateSpec(spec); err != nil {
-		return fmt.Errorf("namespace.Update: invalid spec: %w", err)
+		return fmt.Errorf("namespace.Apply: invalid spec: %w", err)
 	}
 
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
 	}
 
-	existing, err := kube.Clientset().CoreV1().Namespaces().Get(ctx, spec.Name, metav1.GetOptions{})
+	ns := buildNamespace(owner, spec)
+	ns.TypeMeta = metav1.TypeMeta{APIVersion: "v1", Kind: "Namespace"}
+
+	body, err := json.Marshal(ns)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info().
-				Str("namespace", spec.Name).
-				Msg("namespace not found during reconcile — recreating")
-			return Create(ctx, kube, owner, spec)
-		}
-		return fmt.Errorf("namespace.Update: getting namespace %q: %w", spec.Name, err)
+		return fmt.Errorf("namespace.Apply: marshal: %w", err)
 	}
 
-	// Check for drift — replicas and image are the reconcilable fields
-	drifted := false
-	updated := existing.DeepCopy()
-
-	if !common.LabelsEqual(existing.Labels, spec.Labels) {
-		updated.Labels = spec.Labels
-		drifted = true
+	if _, err = kube.Clientset().CoreV1().Namespaces().Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		return fmt.Errorf("namespace.Apply: %w", err)
 	}
 
-	if !drifted {
-		logger.Debug().
-			Str("namespace", spec.Name).
-			Msg("namespace in sync — no update needed")
-		return nil
-	}
-
-	_, err = kube.Clientset().CoreV1().Namespaces().Update(ctx, updated, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("namespace.Update: updating namespace %q: %w", spec.Name, err)
-	}
+	logger.Debug().
+		Str("namespace", spec.Name).
+		Str("owner", owner.GetName()).
+		Msg("namespace applied")
 
 	return nil
+}
+
+// Update applies the Namespace via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedNamespaceSpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the Namespace if it exists.
