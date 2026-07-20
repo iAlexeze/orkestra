@@ -1,7 +1,6 @@
 package katalog_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
@@ -18,33 +17,29 @@ func contains(slice []string, s string) bool {
 
 func mustParseTestdata(t *testing.T, name string) *katalog.Katalog {
 	t.Helper()
-	data, err := os.ReadFile("testdata/" + name)
+	k, err := katalog.ParseFile("testdata/" + name)
 	if err != nil {
-		t.Fatalf("read testdata/%s: %v", name, err)
-	}
-	k, err := katalog.ParseBytes(data, "testdata")
-	if err != nil {
-		t.Fatalf("ParseBytes testdata/%s: %v", name, err)
+		t.Fatalf("ParseFile testdata/%s: %v", name, err)
 	}
 	return k
 }
 
 func TestWebhookResources_NoRules(t *testing.T) {
-	k := mustParseTestdata(t, "webhooks-no-rules.yaml")
+	k := mustParseTestdata(t, "webhooks/webhooks-no-rules.yaml")
 	if got := k.WebhookResources(); len(got) != 0 {
 		t.Fatalf("expected no webhook resources, got %v", got)
 	}
 }
 
 func TestWebhookResources_EnabledNoRules(t *testing.T) {
-	k := mustParseTestdata(t, "webhooks-no-rules.yaml")
+	k := mustParseTestdata(t, "webhooks/webhooks-no-rules.yaml")
 	if got := k.WebhookResources(); len(got) != 0 {
 		t.Fatalf("expected no webhook resources with admission enabled but no rules, got %v", got)
 	}
 }
 
 func TestWebhookResources_ValidationOnly(t *testing.T) {
-	k := mustParseTestdata(t, "webhooks-validation.yaml")
+	k := mustParseTestdata(t, "webhooks/webhooks-validation.yaml")
 	got := k.WebhookResources()
 	if !contains(got, "validatingwebhookconfigurations") {
 		t.Fatalf("expected validatingwebhookconfigurations, got %v", got)
@@ -55,7 +50,7 @@ func TestWebhookResources_ValidationOnly(t *testing.T) {
 }
 
 func TestWebhookResources_MutationOnly(t *testing.T) {
-	k := mustParseTestdata(t, "webhooks-mutation.yaml")
+	k := mustParseTestdata(t, "webhooks/webhooks-mutation.yaml")
 	got := k.WebhookResources()
 	if !contains(got, "mutatingwebhookconfigurations") {
 		t.Fatalf("expected mutatingwebhookconfigurations, got %v", got)
@@ -66,7 +61,7 @@ func TestWebhookResources_MutationOnly(t *testing.T) {
 }
 
 func TestWebhookResources_BothValidationAndMutation(t *testing.T) {
-	k := mustParseTestdata(t, "webhooks-both.yaml")
+	k := mustParseTestdata(t, "webhooks/webhooks-both.yaml")
 	got := k.WebhookResources()
 	if !contains(got, "validatingwebhookconfigurations") || !contains(got, "mutatingwebhookconfigurations") {
 		t.Fatalf("expected both webhook resources, got %v", got)
@@ -74,7 +69,7 @@ func TestWebhookResources_BothValidationAndMutation(t *testing.T) {
 }
 
 func TestGenerateRBACRules_CustomResources(t *testing.T) {
-	k := mustParseTestdata(t, "custom-rbac.yaml")
+	k := mustParseTestdata(t, "rbac/custom-rbac.yaml")
 	rules := k.GenerateRBACRules()
 
 	want := map[string]string{
@@ -96,7 +91,7 @@ func TestGenerateRBACRules_CustomResources(t *testing.T) {
 }
 
 func TestGenerateRBACRules_CustomResources_Dedup(t *testing.T) {
-	k := mustParseTestdata(t, "custom-rbac-dedup.yaml")
+	k := mustParseTestdata(t, "rbac/custom-rbac-dedup.yaml")
 	rules := k.GenerateRBACRules()
 
 	count := 0

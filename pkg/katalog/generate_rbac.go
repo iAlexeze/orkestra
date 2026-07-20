@@ -374,6 +374,35 @@ func (k *Katalog) GenerateGatewayRBACRules() []rbacv1.PolicyRule {
 	}
 
 	// ───────────────────────────────────────────────
+	// Apply API — secretRef token bootstrap/rotation
+	// ───────────────────────────────────────────────
+	// get: read existing token; create: self-bootstrap when Secret is absent.
+	// Uses the same annotation-based rotation as pkg/runners secrets_once.go.
+	if k.HasApplyAPISecretRefs() {
+		rules = append(rules, rbacv1.PolicyRule{
+			APIGroups: []string{""},
+			Resources: []string{"secrets"},
+			Verbs:     []string{"get", "create"},
+		})
+	}
+
+	// ───────────────────────────────────────────────
+	// Apply API — CR create/update/delete/get/list
+	// ───────────────────────────────────────────────
+	if k.HasIDPEnabled() {
+		for _, crd := range k.Enabled() {
+			if crd.IDP == nil || !crd.IDP.Enabled {
+				continue
+			}
+			rules = append(rules, rbacv1.PolicyRule{
+				APIGroups: []string{crd.APITypes.Group},
+				Resources: []string{crd.APITypes.Plural},
+				Verbs:     []string{"get", "list", "create", "update", "patch", "delete"},
+			})
+		}
+	}
+
+	// ───────────────────────────────────────────────
 	// CRD CA bundle patching (conversion webhooks)
 	// ───────────────────────────────────────────────
 	for _, crd := range k.Enabled() {
