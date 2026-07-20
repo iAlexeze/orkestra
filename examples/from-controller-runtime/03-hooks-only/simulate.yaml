@@ -17,8 +17,8 @@ spec:
     noErrors: true
     ops:
       - cycle: 1
-        verb: create
+        verb: apply
         resource: deployments
       - cycle: 1
-        verb: create
+        verb: apply
         resource: services

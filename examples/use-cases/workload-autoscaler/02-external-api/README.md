@@ -135,7 +135,7 @@ The external call resolves before deployment evaluation. `external.queue.queue.p
 ## E2E
 
 ```bash
-ork e2e
+ork e2e --dev-server
 ```
 
 ---

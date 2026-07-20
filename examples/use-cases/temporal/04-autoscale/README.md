@@ -32,8 +32,9 @@ The replica count changes automatically on the next resync after the window open
 
 ```yaml
 notes:
-  - name: inBusinessHours
-    expression: '{{ and weekday (timeInWindow "09:00" "18:00") }}'
+  functions:
+    - name: inBusinessHours
+      expression: '{{ and weekday (timeInWindow "09:00" "18:00") }}'
 ```
 
 It composes two built-in time notes — `weekday` and `timeInWindow` — into a single named boolean. Both `scaleUp` and `scaleDown` reference it, so the business hours rule lives in one place.

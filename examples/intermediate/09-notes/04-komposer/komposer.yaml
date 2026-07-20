@@ -16,6 +16,7 @@ imports:
 # Here serviceHost is redeclared with a production-specific cluster domain.
 # The appLabel and fullImage notes come unchanged from the imported Motif.
 notes:
-  - name: serviceHost
-    description: Production-qualified hostname for this service
-    expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.prod-cluster.example.com"
+  functions:
+    - name: serviceHost
+      description: Production-qualified hostname for this service
+      expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.prod-cluster.example.com"

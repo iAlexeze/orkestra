@@ -17,21 +17,21 @@ spec:
     noErrors: true
     ops:
       - cycle: 1
-        verb: create
+        verb: apply
         resource: deployments
         name: my-cdn-edge-us-east
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: deployments
         name: my-cdn-edge-eu-central
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: deployments
         name: my-cdn-edge-apac
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: configmaps
         name: my-cdn-edge-routing

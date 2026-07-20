@@ -9,17 +9,18 @@ metadata:
     No runbook, no human intervention — the operator owns the full lifecycle.
 
 notes:
-  - name: inMaintenance
-    description: True during the weekly maintenance window (Sun 02:00–04:00 UTC)
-    expression: '{{ and weekend (timeInWindow "02:00" "04:00") }}'
+  functions:
+    - name: inMaintenance
+      description: True during the weekly maintenance window (Sun 02:00–04:00 UTC)
+      expression: '{{ and weekend (timeInWindow "02:00" "04:00") }}'
 
-  - name: nextMaintenance
-    description: Next maintenance window start time (RFC3339)
-    expression: '{{ nextCron "0 2 * * 0" }}'
+    - name: nextMaintenance
+      description: Next maintenance window start time (RFC3339)
+      expression: '{{ nextCron "0 2 * * 0" }}'
 
-  - name: activeReplicas
-    description: Desired read-replica count — zero during maintenance, spec value otherwise
-    expression: '{{ if inMaintenance }}0{{ else }}{{ .spec.readReplicas | default 2 }}{{ end }}'
+    - name: activeReplicas
+      description: Desired read-replica count — zero during maintenance, spec value otherwise
+      expression: '{{ if inMaintenance }}0{{ else }}{{ .spec.readReplicas | default 2 }}{{ end }}'
 
 spec:
   crds:

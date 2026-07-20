@@ -47,6 +47,7 @@ spec:
               replicas: "{{ default .spec.replicas 1 }}"
 
 notes:
-  - name: serviceHost
-    description: Fully-qualified hostname for this workload
-    expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+  functions:
+    - name: serviceHost
+      description: Fully-qualified hostname for this workload
+      expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"

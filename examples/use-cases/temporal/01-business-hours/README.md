@@ -51,11 +51,12 @@ Two user-defined notes give the status fields their vocabulary:
 
 ```yaml
 notes:
-  - name: inBusinessHours
-    expression: '{{ and weekday (timeInWindow "09:00" "18:00") }}'
+  functions:
+    - name: inBusinessHours
+      expression: '{{ and weekday (timeInWindow "09:00" "18:00") }}'
 
-  - name: nextBusinessHour
-    expression: '{{ nextCron "0 9 * * 1-5" }}'
+    - name: nextBusinessHour
+      expression: '{{ nextCron "0 9 * * 1-5" }}'
 ```
 
 The status updates on every resync — so Control Center always shows when the environment resumes, even at 3am on a Sunday.

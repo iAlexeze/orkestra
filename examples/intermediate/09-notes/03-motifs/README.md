@@ -30,11 +30,12 @@ See the [Motif publishing guide](https://orkestra.sh/docs/orkestra-registry/moti
 
 ```yaml
 notes:
-  - name: fullImage
-    expression: "{{ .spec.image }}:{{ .spec.tag | default \"latest\" }}"
+  functions:
+    - name: fullImage
+      expression: "{{ .spec.image }}:{{ .spec.tag | default \"latest\" }}"
 
-  - name: appLabel
-    expression: "{{ .metadata.namespace }}-{{ .metadata.name }}"
+    - name: appLabel
+      expression: "{{ .metadata.namespace }}-{{ .metadata.name }}"
 ```
 
 `katalog.yaml` imports the Motif via `spec.imports` and adds one inline note:
@@ -45,8 +46,9 @@ spec:
     - motif: ./motifs/motif.yaml
 
 notes:
-  - name: serviceHost
-    expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+  functions:
+    - name: serviceHost
+      expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
 ```
 
 All three notes are now available in every template expression in the Katalog:

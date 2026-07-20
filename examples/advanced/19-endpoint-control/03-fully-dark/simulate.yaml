@@ -19,12 +19,12 @@ spec:
       keyrotation:
         ops:
           - cycle: 1
-            verb: create
+            verb: apply
             resource: secrets
             name: platform-key-key
       auditlog:
         ops:
           - cycle: 1
-            verb: create
+            verb: apply
             resource: configmaps
             name: platform-key-log

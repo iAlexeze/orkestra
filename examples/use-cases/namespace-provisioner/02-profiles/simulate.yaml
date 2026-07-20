@@ -27,26 +27,26 @@ spec:
         name: beta-operator
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: resourcequotas
         name: beta-quota
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: networkpolicies
         name: beta-deny-all
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: networkpolicies
         name: beta-allow-dns
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: clusterroles
         name: beta-ns-admin
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: clusterrolebindings
         name: beta-ns-admin-binding

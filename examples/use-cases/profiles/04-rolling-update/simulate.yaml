@@ -15,16 +15,16 @@ spec:
     steady: true
     ops:
       - cycle: 1
-        verb: create
+        verb: apply
         resource: deployments
         name: my-service-safe
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: deployments
         name: my-service-fast
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: deployments
         name: my-service-bg

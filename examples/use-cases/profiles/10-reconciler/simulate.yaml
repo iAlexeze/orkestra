@@ -16,6 +16,6 @@ spec:
     steady: true
     ops:
       - cycle: 1
-        verb: create
+        verb: apply
         resource: deployments
         name: my-service

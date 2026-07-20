@@ -36,14 +36,15 @@ Three user-defined notes drive the behavior:
 
 ```yaml
 notes:
-  - name: inMaintenance
-    expression: '{{ and weekend (timeInWindow "02:00" "04:00") }}'
+  functions:
+    - name: inMaintenance
+      expression: '{{ and weekend (timeInWindow "02:00" "04:00") }}'
 
-  - name: nextMaintenance
-    expression: '{{ nextCron "0 2 * * 0" }}'
+    - name: nextMaintenance
+      expression: '{{ nextCron "0 2 * * 0" }}'
 
-  - name: activeReplicas
-    expression: "{{ if inMaintenance }}0{{ else }}{{ .spec.readReplicas | default 3 }}{{ end }}"
+    - name: activeReplicas
+      expression: "{{ if inMaintenance }}0{{ else }}{{ .spec.readReplicas | default 3 }}{{ end }}"
 ```
 
 `activeReplicas` flows into the StatefulSet replica count and the ConfigMap in one place each — no duplication:
