@@ -152,7 +152,6 @@ const (
 	// FinalizerOrkestra ensures cleanup runs before a CR is removed.
 	FinalizerOrkestra = "orkestra.orkspace.io/finalizer"
 
-	// NsCleanupFinalizer added to CR to ensure namespaces are cleared
-	// when CR is deleted
-	NsCleanupFinalizer = "orkestra.orkspace.io/namespace-cleanup"
+	// CleanupFinalizer ensures cluster-scoped GC runs before a CR is removed.
+	CleanupFinalizer = "orkestra.orkspace.io/cleanup"
 )
