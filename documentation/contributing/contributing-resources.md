@@ -1,37 +1,37 @@
 # Contributing to pkg/resources
 
-The registry is the library of built-in Kubernetes resource handlers Orkestra knows how to create, update, and delete on behalf of an operator. Each resource type lives in its own subdirectory.
+The registry is the library of built-in Kubernetes resource handlers Orkestra knows how to create, apply (SSA), and delete on behalf of an operator. Each resource type lives in its own subdirectory.
 
 ---
 
 ## What exists
 
-| Directory | Resource | Status |
-|-----------|----------|--------|
-| `deployments/` | `apps/v1 Deployment` | Complete |
-| `services/` | `v1 Service` | Complete (minor TODOs in edge cases) |
-| `configmaps/` | `v1 ConfigMap` | Complete |
-| `secrets/` | `v1 Secret` | Complete |
-| `statefulsets/` | `apps/v1 StatefulSet` | Complete |
-| `jobs/` | `batch/v1 Job` | Complete |
-| `cronjobs/` | `batch/v1 CronJob` | Complete |
-| `replicasets/` | `apps/v1 ReplicaSet` | Complete |
-| `ingresses/` | `networking.k8s.io/v1 Ingress` | Implemented — needs tests |
-| `hpas/` | `autoscaling/v2 HPA` | Implemented — needs tests |
-| `pdbs/` | `policy/v1 PodDisruptionBudget` | Implemented — needs tests |
-| `pvcs/` | `v1 PersistentVolumeClaim` | Implemented — needs tests |
-| `pvs/` | `v1 PersistentVolume` | Implemented — needs tests |
-| `namespaces/` | `v1 Namespace` | Implemented — cleanup on delete not yet working |
-| `roles/` | `rbac/v1 Role` | Implemented — needs tests |
-| `rolebindings/` | `rbac/v1 RoleBinding` | Implemented — needs tests |
-| `clusterroles/` | `rbac/v1 ClusterRole` | Implemented — needs tests |
-| `clusterrolebindings/` | `rbac/v1 ClusterRoleBinding` | Implemented — needs tests |
-| `serviceaccounts/` | `v1 ServiceAccount` | Implemented — needs tests |
-| `networkpolicies/` | `networking.k8s.io/v1 NetworkPolicy` | Implemented — needs tests |
-| `resourcequotas/` | `v1 ResourceQuota` | Implemented — needs tests |
-| `limitranges/` | `v1 LimitRange` | Implemented — needs tests |
-| `customresources/` | Dynamic CR via `dynamic` client | Implemented |
-| `pods/` | `v1 Pod` | Implemented |
+| Directory | Resource | Notes |
+|-----------|----------|-------|
+| `deployments/` | `apps/v1 Deployment` | SSA |
+| `services/` | `v1 Service` | SSA |
+| `configmaps/` | `v1 ConfigMap` | SSA |
+| `secrets/` | `v1 Secret` | SSA |
+| `statefulsets/` | `apps/v1 StatefulSet` | SSA |
+| `jobs/` | `batch/v1 Job` | Create-only |
+| `cronjobs/` | `batch/v1 CronJob` | SSA |
+| `replicasets/` | `apps/v1 ReplicaSet` | SSA |
+| `ingresses/` | `networking.k8s.io/v1 Ingress` | SSA — needs tests |
+| `hpas/` | `autoscaling/v2 HPA` | SSA — needs tests |
+| `pdbs/` | `policy/v1 PodDisruptionBudget` | SSA with immutable-selector fallback — needs tests |
+| `pvcs/` | `v1 PersistentVolumeClaim` | Create-only — needs tests |
+| `pvs/` | `v1 PersistentVolume` | SSA (cluster-scoped) — needs tests |
+| `namespaces/` | `v1 Namespace` | SSA — needs tests |
+| `roles/` | `rbac/v1 Role` | SSA — needs tests |
+| `rolebindings/` | `rbac/v1 RoleBinding` | SSA with immutable-roleRef fallback — needs tests |
+| `clusterroles/` | `rbac/v1 ClusterRole` | SSA (cluster-scoped) — needs tests |
+| `clusterrolebindings/` | `rbac/v1 ClusterRoleBinding` | SSA with immutable-roleRef fallback (cluster-scoped) — needs tests |
+| `serviceaccounts/` | `v1 ServiceAccount` | Create-only — needs tests |
+| `networkpolicies/` | `networking.k8s.io/v1 NetworkPolicy` | SSA — needs tests |
+| `resourcequotas/` | `v1 ResourceQuota` | SSA — needs tests |
+| `limitranges/` | `v1 LimitRange` | SSA — needs tests |
+| `pods/` | `v1 Pod` | SSA with immutable-spec fallback — needs tests |
+| `customresources/` | Dynamic CR via `dynamic` client | Create-only |
 
 ---
 
@@ -76,19 +76,38 @@ Follow the pattern of any complete resource (e.g., `deployments/`):
 
 ```text
 pkg/resources/<resourcename>/
-  <resourcename>.go   — Create, Update, Delete, Resolve functions
+  <resourcename>.go   — Create, Apply, Update, Delete, Resolve functions
   types.go            — ResolvedSpec struct
 ```
 
-### 2. Implement four functions
+### 2. Implement five functions
 
 ```go
 func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedSpec) error
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedSpec) error
 func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedSpec) error
 func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedSpec) error
+func Resolve(src orktypes.MyResourceSource, ownerName string) ResolvedSpec
 ```
 
-All three are idempotent. `Create` does nothing if the resource exists. `Delete` does nothing if it does not.
+**`Create`** — checks existence, calls the k8s Create API if absent. No-op if the resource already exists. Used for `onCreate:` hooks.
+
+**`Apply`** — Server-Side Apply via `ApplyPatchType`. Build the object, set `TypeMeta` (`APIVersion` + `Kind`), marshal to JSON, then patch:
+
+```go
+obj.TypeMeta = metav1.TypeMeta{APIVersion: "apps/v1", Kind: "Deployment"}
+body, _ := json.Marshal(obj)
+kube.Clientset().AppsV1().Deployments(ns).Patch(
+    ctx, spec.Name, k8stypes.ApplyPatchType, body,
+    metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+)
+```
+
+If the resource has immutable fields (pods, pdbs), catch `errors.IsInvalid` and fall back to `Delete` + `Create`.
+
+**`Update`** — delegates to `Apply`. Kept so existing callers do not need to change.
+
+**`Delete`** — no-op if the resource does not exist.
 
 ### 3. Add a resolver in `template/resolver.go`
 
@@ -100,15 +119,15 @@ Use `r.Resolve(expr)` for any field that may contain a `{{ .spec.something }}` e
 
 ### 4. Write the runner in `pkg/runners/`
 
-Create `pkg/runners/myresources.go` — see [pkg/runners/docs/01-runner-contract.md](../../pkg/runners/docs/01-runner-contract.md) for the canonical shape. Then wire it into `pkg/reconciler/run_template_reconcile.go` via `runners.RunMyResources(...)` and add `expandForEachMyResources` to `run_foreach.go`.
+Create `pkg/runners/myresources.go` — see [pkg/runners/docs/01-runner-contract.md](https://github.com/orkspace/orkestra/blob/main/pkg/runners/docs/01-runner-contract.md) for the canonical shape. Then wire it into `pkg/reconciler/run_template_reconcile.go` via `runners.RunMyResources(...)` and add `expandForEachMyResources` to `run_foreach.go`.
 
-The full end-to-end walkthrough is in [pkg/reconciler/docs/07-adding-a-resource.md](../../pkg/reconciler/docs/07-adding-a-resource.md).
+The full end-to-end walkthrough is in [pkg/reconciler/docs/07-adding-a-resource.md](https://github.com/orkspace/orkestra/blob/main/pkg/reconciler/docs/07-adding-a-resource.md).
 
 ### 5. Write tests
 
 Every resource needs tests covering:
 - `Create` — resource created; already exists (no-op)
-- `Update` — drift detected and applied; no drift (no-op)
+- `Apply` — SSA patch issued; immutable-field fallback (delete + recreate) if applicable
 - `Delete` — resource exists (deleted); does not exist (no-op)
 
 Use the `pkg/simulate` harness and a fake clientset (`kubeclient.NewFakeClientset()`).

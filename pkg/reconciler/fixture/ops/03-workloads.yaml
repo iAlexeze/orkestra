@@ -1,6 +1,6 @@
 x-base-op: &base-op
   cycle: 1
-  verb: create
+  verb: apply
 
 ops:
   # Workload Controllers
@@ -19,6 +19,7 @@ ops:
   
   # Batch Jobs
   - <<: *base-op
+    verb: create
     resource: jobs
     name: probe-init
   - <<: *base-op
@@ -43,6 +44,7 @@ ops:
     resource: persistentvolumes
     name: probe-pv
   - <<: *base-op
+    verb: create
     resource: persistentvolumeclaims
     name: probe-pvc
   

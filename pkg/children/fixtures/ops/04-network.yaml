@@ -1,6 +1,6 @@
 x-base-op: &base-op
   cycle: 1
-  verb: create
+  verb: apply
 
 ops:
   # API Network Resources

@@ -14,6 +14,6 @@ spec:
     noErrors: true
     ops:
       - cycle: 1
-        verb: create
+        verb: apply
         resource: configmaps
         name: my-monitor-monitor-config

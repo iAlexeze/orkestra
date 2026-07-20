@@ -5,10 +5,10 @@ expect:
     resources:
       - kind: ReconcilerSuite
         name: probe-suite
+        namespace: default
         count: 0
       - kind: ReconcilerProbe
         name: probe
-        namespace: default
         count: 0
       - kind: Namespace
         name: probe-ns

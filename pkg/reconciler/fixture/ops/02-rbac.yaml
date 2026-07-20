@@ -1,6 +1,6 @@
 x-base-op: &base-op
   cycle: 1
-  verb: create
+  verb: apply
 
 ops:
   # Cluster-level RBAC
@@ -13,6 +13,7 @@ ops:
   
   # Namespace-level RBAC
   - <<: *base-op
+    verb: create
     resource: serviceaccounts
     name: probe-sa
   - <<: *base-op

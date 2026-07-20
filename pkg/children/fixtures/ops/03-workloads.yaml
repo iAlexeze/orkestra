@@ -1,6 +1,6 @@
 x-base-op: &base-op
   cycle: 1
-  verb: create
+  verb: apply
 
 ops:
   # API Workloads
@@ -17,6 +17,7 @@ ops:
     resource: pods
     name: acme-api-pod
   - <<: *base-op
+    verb: create
     resource: jobs
     name: acme-api-job
   - <<: *base-op
@@ -37,6 +38,7 @@ ops:
     resource: pods
     name: acme-worker-pod
   - <<: *base-op
+    verb: create
     resource: jobs
     name: acme-worker-job
   - <<: *base-op

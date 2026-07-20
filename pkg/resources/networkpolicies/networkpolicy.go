@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -19,6 +20,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -76,53 +78,45 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update reconciles an existing NetworkPolicy to match the resolved spec.
-// If it does not exist, creates it.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedNetworkPolicySpec) error {
+// Apply creates or updates a NetworkPolicy using Server-Side Apply.
+// Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedNetworkPolicySpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
 	}
 
-	existing, err := kube.Clientset().NetworkingV1().NetworkPolicies(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
+	np, err := buildNetworkPolicy(ctx, kube, owner, spec, namespace)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info().
-				Str("networkpolicy", spec.Name).
-				Str("namespace", namespace).
-				Msg("networkpolicy not found during reconcile — recreating")
-			return Create(ctx, kube, owner, spec)
-		}
-		return fmt.Errorf("networkpolicy.Update: getting %q: %w", spec.Name, err)
+		return fmt.Errorf("networkpolicy.Apply: building %q: %w", spec.Name, err)
 	}
 
-	desired, err := buildNetworkPolicy(ctx, kube, owner, spec, namespace)
+	np.TypeMeta = metav1.TypeMeta{APIVersion: "networking.k8s.io/v1", Kind: "NetworkPolicy"}
+
+	body, err := json.Marshal(np)
 	if err != nil {
-		return fmt.Errorf("networkpolicy.Update: building %q: %w", spec.Name, err)
+		return fmt.Errorf("networkpolicy.Apply: marshal: %w", err)
 	}
 
-	if specsEqual(existing.Spec, desired.Spec) {
-		logger.Debug().
-			Str("networkpolicy", spec.Name).
-			Str("namespace", namespace).
-			Msg("networkpolicy in sync — no update needed")
-		return nil
+	if _, err = kube.Clientset().NetworkingV1().NetworkPolicies(namespace).Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		return fmt.Errorf("networkpolicy.Apply: %w", err)
 	}
 
-	updated := existing.DeepCopy()
-	updated.Spec = desired.Spec
-
-	_, err = kube.Clientset().NetworkingV1().NetworkPolicies(namespace).Update(ctx, updated, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("networkpolicy.Update: updating %q: %w", spec.Name, err)
-	}
-
-	logger.Info().
+	logger.Debug().
 		Str("networkpolicy", spec.Name).
 		Str("namespace", namespace).
-		Msg("networkpolicy updated")
+		Str("owner", owner.GetName()).
+		Msg("networkpolicy applied")
 
 	return nil
+}
+
+// Update applies the NetworkPolicy via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedNetworkPolicySpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the NetworkPolicy if it exists.

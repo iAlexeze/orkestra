@@ -3,11 +3,13 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -18,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -62,12 +65,11 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update reconciles an existing Service to match the resolved spec.
-// Services are largely immutable on type/selector — only port changes are patched.
-// If the Service does not exist, creates it.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedServiceSpec) error {
+// Apply creates or updates a Service using Server-Side Apply.
+// Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedServiceSpec) error {
 	if err := validateSpec(spec); err != nil {
-		return fmt.Errorf("service.Update: invalid spec: %w", err)
+		return fmt.Errorf("service.Apply: invalid spec: %w", err)
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
@@ -75,60 +77,33 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		return err
 	}
 
-	existing, err := kube.Clientset().CoreV1().Services(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
+	svc := buildService(owner, spec, namespace)
+	svc.TypeMeta = metav1.TypeMeta{APIVersion: "v1", Kind: "Service"}
+
+	body, err := json.Marshal(svc)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info().
-				Str("service", spec.Name).
-				Str("namespace", namespace).
-				Msg("service not found during reconcile — recreating")
-			return Create(ctx, kube, owner, spec)
-		}
-		return fmt.Errorf("service.Update: getting service %q: %w", spec.Name, err)
+		return fmt.Errorf("service.Apply: marshal: %w", err)
 	}
 
-	// Check port drift
-	drifted := false
-	updated := existing.DeepCopy()
-
-	// port
-	if len(existing.Spec.Ports) > 0 && existing.Spec.Ports[0].Port != spec.Port {
-		updated.Spec.Ports[0].Port = spec.Port
-		drifted = true
-		logger.Info().
-			Str("service", spec.Name).
-			Int32("desired", spec.Port).
-			Msg("service port drifted")
+	if _, err = kube.Clientset().CoreV1().Services(namespace).Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		return fmt.Errorf("service.Apply: %w", err)
 	}
 
-	// target port
-	if len(existing.Spec.Ports) > 0 && existing.Spec.Ports[0].TargetPort.IntVal != spec.TargetPort {
-		updated.Spec.Ports[0].TargetPort = intstr.FromInt(int(spec.TargetPort))
-		drifted = true
-		logger.Info().
-			Str("service", spec.Name).
-			Int32("desired", spec.TargetPort).
-			Msg("service target port drifted")
-	}
-
-	if !drifted {
-		logger.Debug().
-			Str("service", spec.Name).
-			Msg("service in sync — no update needed")
-		return nil
-	}
-
-	_, err = kube.Clientset().CoreV1().Services(namespace).Update(ctx, updated, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("service.Update: updating service %q: %w", spec.Name, err)
-	}
-
-	logger.Info().
+	logger.Debug().
 		Str("service", spec.Name).
 		Str("namespace", namespace).
-		Msg("service updated")
+		Str("owner", owner.GetName()).
+		Msg("service applied")
 
 	return nil
+}
+
+// Update applies the Service via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedServiceSpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the Service if it exists.

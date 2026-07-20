@@ -14,8 +14,9 @@ Add a `notes:` block to the Katalog:
 
 ```yaml
 notes:
-  - name: serviceHost
-    expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+  functions:
+    - name: serviceHost
+      expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
 ```
 
 Then call it anywhere built-in notes are available:

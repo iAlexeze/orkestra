@@ -2,7 +2,9 @@
 
 `include:` splits one logical unit across multiple files. The Katalog, Motif, E2E, or Simulate and its include files are one thing — same directory, same version, same lifecycle. After expansion the `include:` field is cleared and the runtime sees a single merged declaration.
 
-It is authoring ergonomics, not reuse. When a block grows long, split it. When E2E checkpoints grow long, extract them. No artifact, no version, no distribution.
+It is authoring ergonomics, not reuse. When a block grows long, split it. No artifact, no version, no distribution.
+
+`include:` is supported across all nine major blocks. It was originally available only in `e2e expect:`; it now covers every block that can grow long — admission, status, notes, profiles, and simulate ops.
 
 A natural extension is to organise by **domain** rather than by block type — putting every concern for a given resource group (assertions, admission, status) in one folder so a domain-scoped change touches only that folder.
 

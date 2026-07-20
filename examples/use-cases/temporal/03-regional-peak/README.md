@@ -43,19 +43,20 @@ Six user-defined notes — three peak flags, three replica counts that reference
 
 ```yaml
 notes:
-  - name: usEastPeak
-    expression: '{{ timeInWindow "14:00" "22:00" }}'
-  - name: euCentralPeak
-    expression: '{{ timeInWindow "08:00" "16:00" }}'
-  - name: apacPeak
-    expression: '{{ timeInWindow "00:00" "08:00" }}'
+  functions:
+    - name: usEastPeak
+      expression: '{{ timeInWindow "14:00" "22:00" }}'
+    - name: euCentralPeak
+      expression: '{{ timeInWindow "08:00" "16:00" }}'
+    - name: apacPeak
+      expression: '{{ timeInWindow "00:00" "08:00" }}'
 
-  - name: usEastReplicas
-    expression: "{{ if usEastPeak }}{{ .spec.peakReplicas | default 8 }}{{ else }}{{ .spec.baseReplicas | default 2 }}{{ end }}"
-  - name: euCentralReplicas
-    expression: "{{ if euCentralPeak }}{{ .spec.peakReplicas | default 8 }}{{ else }}{{ .spec.baseReplicas | default 2 }}{{ end }}"
-  - name: apacReplicas
-    expression: "{{ if apacPeak }}{{ .spec.peakReplicas | default 8 }}{{ else }}{{ .spec.baseReplicas | default 2 }}{{ end }}"
+    - name: usEastReplicas
+      expression: "{{ if usEastPeak }}{{ .spec.peakReplicas | default 8 }}{{ else }}{{ .spec.baseReplicas | default 2 }}{{ end }}"
+    - name: euCentralReplicas
+      expression: "{{ if euCentralPeak }}{{ .spec.peakReplicas | default 8 }}{{ else }}{{ .spec.baseReplicas | default 2 }}{{ end }}"
+    - name: apacReplicas
+      expression: "{{ if apacPeak }}{{ .spec.peakReplicas | default 8 }}{{ else }}{{ .spec.baseReplicas | default 2 }}{{ end }}"
 ```
 
 Each Deployment uses its region's replica note. `reconcile: true` means the operator patches the replica count on every resync — not just on create:

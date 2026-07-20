@@ -8,9 +8,10 @@ metadata:
     convergence on every resync using the workload autoscaler.
 
 notes:
-  - name: inBusinessHours
-    description: True during business hours (Mon–Fri 09:00–18:00 UTC)
-    expression: '{{ and weekday (timeInWindow "09:00" "18:00") }}'
+  functions:
+    - name: inBusinessHours
+      description: True during business hours (Mon–Fri 09:00–18:00 UTC)
+      expression: '{{ and weekday (timeInWindow "09:00" "18:00") }}'
 
 spec:
   crds:

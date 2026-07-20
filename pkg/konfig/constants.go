@@ -6,6 +6,10 @@ const (
 	Ork         = "ork"
 	OrkOperator = "orkestra-operator"
 
+	// SSA field managers
+	FieldManagerRuntime = "orkestra-runtime"
+	FieldManagerGateway = "orkestra-gateway"
+
 	// Environment
 	DevShort     = "dev"
 	StagingShort = "uat"

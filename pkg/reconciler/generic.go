@@ -181,15 +181,12 @@ func NewGenericReconciler[PTR domain.Object](
 	autoMet := autoscaler.NewAutoMetrics(sem)
 
 	box := crd.OperatorBox
-	// Auto-inject a system finalizer when namespaces are declared in any hook phase.
-	// Namespaces are cluster-scoped and are not garbage-collected via owner references,
-	// so explicit cleanup in handleDeletion is required. The finalizer ensures the
-	// CR is not deleted before the cleanup runs, even when the user does not declare
-	// any finalizers in the katalog.
-	if box.HasNamespaceDeclarations() {
-		if !slices.Contains(box.Finalizers, labels.NsCleanupFinalizer) {
-			box.Finalizers = append(box.Finalizers, labels.NsCleanupFinalizer)
-		}
+	// Always inject a system finalizer so handleDeletion runs before the CR is removed.
+	// This guarantees explicit GC for cluster-scoped resources (Namespaces, ClusterRoles,
+	// ClusterRoleBindings, PVs, cluster-scoped custom resources) that Kubernetes GC
+	// cannot cascade through owner references.
+	if !slices.Contains(box.Finalizers, labels.CleanupFinalizer) {
+		box.Finalizers = append(box.Finalizers, labels.CleanupFinalizer)
 	}
 
 	r := &GenericReconciler[PTR]{

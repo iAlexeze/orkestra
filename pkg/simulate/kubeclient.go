@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
@@ -56,7 +57,7 @@ func NewFakeKubeclient(scheme *runtime.Scheme) *FakeKubeclient {
 		f.mu.Lock()
 		f.ops = append(f.ops, Op{
 			Cycle:     f.currentCycle,
-			Verb:      action.GetVerb(),
+			Verb:      verbFromAction(action),
 			Resource:  action.GetResource().Resource,
 			Namespace: action.GetNamespace(),
 			Name:      nameFromAction(action),
@@ -77,7 +78,7 @@ func NewFakeKubeclient(scheme *runtime.Scheme) *FakeKubeclient {
 		f.mu.Lock()
 		f.ops = append(f.ops, Op{
 			Cycle:     f.currentCycle,
-			Verb:      action.GetVerb(),
+			Verb:      verbFromAction(action),
 			Resource:  action.GetResource().Resource,
 			Namespace: action.GetNamespace(),
 			Name:      nameFromAction(action),
@@ -143,6 +144,17 @@ func (f *FakeKubeclient) MarkDeploymentReady(namespace, name string) {
 	}
 	f.clientset.AppsV1().Deployments(namespace).UpdateStatus(
 		context.Background(), dep, metav1.UpdateOptions{})
+}
+
+// verbFromAction returns "apply" for Server-Side Apply patch operations,
+// "patch" for all other patch types, and the raw verb for everything else.
+func verbFromAction(action k8stesting.Action) string {
+	if pa, ok := action.(k8stesting.PatchAction); ok {
+		if pa.GetPatchType() == k8stypes.ApplyPatchType {
+			return "apply"
+		}
+	}
+	return action.GetVerb()
 }
 
 // nameFromAction extracts the resource name from a test action.

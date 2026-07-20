@@ -1,24 +1,22 @@
 ## v0.7.12 — [UNRELEASED]
 
-### `include:` extended to simulate ops
+### `include:` extended to all major Katalog blocks
 
-The `ops:` list in `ork simulate` now supports `include:` entries. An entry `{include: ./ops/workloads.yaml}` is expanded in place before assertions run — same expand-and-clear pattern used in `e2e expect:`, `validation.include`, `status.include`, and six other blocks. The included file uses `ops:` as its root key.
+Previously `include:` was only supported in `e2e expect:`. It now works across `validation.rules`, `mutation.rules`, `conversion.paths`, `status.fields`, `notes.functions`, `profiles`, `idp.fields`, and `simulate ops:`.
 
-```yaml
-# simulate.yaml
-spec:
-  expect:
-    ops:
-      - include: ./ops/01-infra.yaml
-      - include: ./ops/02-rbac.yaml
-      - include: ./ops/03-workloads.yaml
-```
+Each include file uses the same root key as the inline block and is expanded in place before the runtime sees the declaration. See `documentation/concepts/composition/02-include.md` for the full reference and domain layout pattern.
 
-Operators with large fixture ops lists can now split by domain — one file per resource group — so a change to workload assertions touches only `ops/03-workloads.yaml`. The domain layout pattern is documented in `documentation/concepts/composition/02-include.md`.
+### Server-Side Apply for all resource packages
 
-### Cluster-scoped GC extended to ClusterRoles, ClusterRoleBindings, and PersistentVolumes
+Every reconcilable resource package now uses Kubernetes Server-Side Apply (`ApplyPatchType`, `fieldManager: orkestra-runtime`, `force: true`) instead of Get → compare → Update. `Update` delegates to the new `Apply` function; callers are unchanged.
 
-Kubernetes GC does not cascade owner references from namespace-scoped CRs to cluster-scoped resources. Previously only Namespaces were explicitly cleaned up on CR deletion. `runners.DeleteOwnedClusterScopedResources` now covers Namespaces, ClusterRoles, ClusterRoleBindings, PersistentVolumes, and cluster-scoped custom resources.
+This eliminates false-positive drift from k8s-injected defaults (SA token volumes, `imagePullPolicy`, `Protocol: TCP`, default security contexts) and resolves KI-002 resource-version conflicts caused by the status-patch → immediate-reconcile race. Jobs, ServiceAccounts, and PVCs keep `Create` semantics — their specs are immutable or managed externally.
+
+### Cluster-scoped GC and always-on finalizer
+
+`runners.DeleteOwnedClusterScopedResources` now covers Namespaces, ClusterRoles, ClusterRoleBindings, PersistentVolumes, and cluster-scoped custom resources. Previously only Namespaces were explicitly cleaned up on CR deletion.
+
+Every operator now receives the `orkestra.orkspace.io/cleanup` finalizer unconditionally. Previously the finalizer was only injected when the operator declared Namespace resources. Without it, a CR with cluster-scoped `custom:` children (e.g. a namespaced CR spawning a cluster-scoped child via `custom:`) was deleted by Kubernetes before the explicit GC runner could fire, leaving orphaned cluster-scoped resources.
 
 ---
 

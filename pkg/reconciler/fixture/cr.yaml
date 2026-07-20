@@ -2,12 +2,12 @@ apiVersion: reconciler.orkestra.io/v1alpha1
 kind: ReconcilerSuite
 metadata:
   name: probe-suite
+  namespace: default
 ---
 apiVersion: reconciler.orkestra.io/v1alpha1
 kind: ReconcilerProbe
 metadata:
   name: probe
-  namespace: default
 spec:
   image: nginx:1.25
   replicas: 1

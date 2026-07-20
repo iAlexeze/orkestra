@@ -389,6 +389,40 @@ func (k *Katalog) IsGatewayEnabled() bool {
 	return k.Gateway != nil && (k.Gateway.Enabled || k.Gateway.Endpoint != "")
 }
 
+// IsApplyAPIEnabled reports whether the Gateway Apply API flag is set.
+func (k *Katalog) IsApplyAPIEnabled() bool {
+	return k.Gateway != nil && k.Gateway.ApplyAPI != nil && k.Gateway.ApplyAPI.Enabled
+}
+
+// HasApplyAPISecretRefs reports whether any Apply API token entry uses secretRef.
+// Used by GenerateGatewayRBACRules to add secrets get/create permissions.
+func (k *Katalog) HasApplyAPISecretRefs() bool {
+	if !k.IsApplyAPIEnabled() {
+		return false
+	}
+	for _, t := range k.Gateway.ApplyAPI.Auth.Tokens {
+		if t.SecretRef != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// HasIDPEnabled reports whether the Apply API is enabled and at least one CRD
+// has idp.enabled: true. This is the activation gate — callers should use this,
+// not IsApplyAPIEnabled, to decide whether to register IDP routes or RBAC.
+func (k *Katalog) HasIDPEnabled() bool {
+	if !k.IsApplyAPIEnabled() {
+		return false
+	}
+	for _, crd := range k.Enabled() {
+		if crd.IDP != nil && crd.IDP.Enabled {
+			return true
+		}
+	}
+	return false
+}
+
 // IsStandaloneGateway reports whether this Katalog is deployed as a standalone
 // gateway with no companion runtime operator.
 //

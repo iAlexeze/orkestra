@@ -9,19 +9,24 @@ templates. There is no meaningful way to unit-test them: the logic that matters
 — template rendering, server-side apply, status propagation, condition evaluation
 — only works against a real API server. Mocking it tests the mock, not Orkestra.
 
-This fixture is the right vehicle. It declares a `ReconcilerSuite` CRD (cluster-scoped)
-and a `ReconcilerProbe` CRD. A single `ReconcilerSuite` CR is the test entry point:
-its operator creates a `ReconcilerProbe` via `custom:`, and the probe's operator then
-triggers every supported resource block in one reconcile cycle. This exercises the full
-`custom:` child chain — creation, reconciliation, and cluster-scoped GC on delete —
-alongside all other resource types. Failures surface as a missing resource, a wrong
-status field, or an operator crash, all observable without reading code.
+This fixture is the right vehicle. It declares a `ReconcilerSuite` CRD (namespaced,
+in `default`) and a `ReconcilerProbe` CRD (cluster-scoped). A single `ReconcilerSuite`
+CR is the test entry point: its operator creates a `ReconcilerProbe` via `custom:`, and
+the probe's operator then triggers every supported resource block in one reconcile cycle.
+
+The scope split is intentional: Kubernetes GC cannot cascade owner references from a
+namespaced owner to a cluster-scoped dependent, so deleting the suite exercises the
+explicit `runners.DeleteOwnedClusterScopedResources` path. The probe is cluster-scoped
+so it can own resources in `probe-ns` without cross-namespace owner reference issues.
+
+Failures surface as a missing resource, a wrong status field, or an operator crash, all
+observable without reading code.
 
 ## What each block covers
 
 | Block in `katalog.yaml`        | What it exercises                          |
 |--------------------------------|--------------------------------------------|
-| `custom:` (ReconcilerSuite)    | Cluster-scoped CR creating a child CR      |
+| `custom:` (ReconcilerSuite)    | Namespaced CR creating a cluster-scoped child; exercises explicit GC on deletion |
 | `validation.rules`             | Admission validation                       |
 | `mutation.rules`               | Admission mutation (default injection)     |
 | `namespaces`                   | Namespace creation                         |
@@ -76,7 +81,7 @@ ork e2e -f pkg/reconciler/fixture/e2e.yaml --use-current
 ## Adding a new resource type
 
 1. Add a block to the appropriate fixture motif in
-   [pkg/children/fixtures/motifs/](../../children/fixtures/motifs/). Name resources
+   [pkg/reconciler/fixture/motifs/](./motifs/). Name resources
    `{{ .metadata.name }}-<type>` to avoid collisions.
 2. Add a row to the table above.
 3. Add a `create` op to [simulate.yaml](./simulate.yaml) for the new resource type.

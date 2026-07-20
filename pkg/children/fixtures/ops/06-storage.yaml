@@ -1,17 +1,19 @@
 x-base-op: &base-op
   cycle: 1
-  verb: create
+  verb: apply
 
 ops:
   - <<: *base-op
     resource: persistentvolumes
     name: acme-api-pv
   - <<: *base-op
+    verb: create
     resource: persistentvolumeclaims
     name: acme-acme-dev-pvc  
   - <<: *base-op
     resource: persistentvolumes
     name: acme-worker-pv
   - <<: *base-op
+    verb: create
     resource: persistentvolumeclaims
     name: acme-acme-staging-pvc

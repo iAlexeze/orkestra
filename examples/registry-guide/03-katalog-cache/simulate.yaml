@@ -17,18 +17,18 @@ spec:
     noErrors: true
     ops:
       - cycle: 1
-        verb: create
+        verb: apply
         resource: statefulsets
         name: my-cache
       - cycle: 1
-        verb: create
+        verb: apply
         resource: services
         name: my-cache-headless
       - cycle: 1
-        verb: create
+        verb: apply
         resource: services
         name: my-cache-svc
       - cycle: 1
-        verb: create
+        verb: apply
         resource: configmaps
         name: my-cache-config     # planned: connection info ConfigMap — not yet in motif

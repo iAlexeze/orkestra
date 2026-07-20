@@ -172,21 +172,6 @@ func (c *CRDEntry) HasAnyServiceAccounts() bool {
 	return false
 }
 
-// HasNamespaceDeclarations reports whether any hook phase declares Namespace resources.
-// Used to determine whether to auto-inject a cleanup finalizer.
-func (b OperatorBoxConfig) HasNamespaceDeclarations() bool {
-	if b.OnCreate != nil && len(b.OnCreate.Namespaces) > 0 {
-		return true
-	}
-	if b.OnReconcile != nil && len(b.OnReconcile.Namespaces) > 0 {
-		return true
-	}
-	if b.OnDelete != nil && len(b.OnDelete.Namespaces) > 0 {
-		return true
-	}
-	return false
-}
-
 // HasAnyIngresses reports whether this CRD defines any Ingresses
 // in either OnCreate or OnReconcile phases.
 func (c *CRDEntry) HasAnyIngresses() bool {

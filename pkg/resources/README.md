@@ -33,11 +33,12 @@ pkg/resources/
 └── template/        ← Resolver: evaluates Go templates against live CR fields
 ```
 
-Each resource subdirectory exports four functions:
+Each resource subdirectory exports five functions:
 
 ```go
 Create(ctx, kube, owner, spec) error   // idempotent — no-op if exists
-Update(ctx, kube, owner, spec) error   // drift correction — creates if missing
+Apply(ctx, kube, owner, spec) error    // Server-Side Apply — create or update via SSA
+Update(ctx, kube, owner, spec) error   // delegates to Apply
 Delete(ctx, kube, owner, spec) error   // idempotent — no-op if absent
 Resolve(src, ownerName) ResolvedSpec   // applies defaults and system labels
 ```
@@ -46,10 +47,13 @@ Resolve(src, ownerName) ResolvedSpec   // applies defaults and system labels
 
 ## The contract
 
-- **Create** — sets owner references and system labels (`managed-by: orkestra`, `orkestra-owner: <cr-name>`). No-op if the resource already exists.
-- **Update** — corrects drift. Creates the resource if it does not exist. Updates it if fields have changed.
+- **Create** — sets owner references and system labels (`managed-by: orkestra`, `orkestra-owner: <cr-name>`). No-op if the resource already exists. Used for resources that are never updated after creation (`onCreate:` hooks).
+- **Apply** — Server-Side Apply via `ApplyPatchType` with `fieldManager: orkestra-runtime`. Sends only the fields Orkestra declares; k8s-injected defaults (token volumes, security contexts, etc.) belong to a different field manager and are untouched. Idempotent — safe to call on every reconcile. Used by `onReconcile:` hooks.
+- **Update** — delegates to `Apply`. Kept for backward compatibility with existing callers.
 - **Delete** — no-op if the resource does not exist.
 - **Resolve** — takes a template source (with potentially unresolved field values) and returns a fully resolved spec.
+
+Resources that use **Create-only** semantics (no Apply): `jobs`, `serviceaccounts`, `pvcs` — their specs are immutable or managed externally after creation.
 
 All functions receive a `kubeclient.KubeClient` and a `domain.Object` (the owner CR). They never assume the owner's concrete type.
 

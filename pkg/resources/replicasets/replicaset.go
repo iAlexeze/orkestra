@@ -3,10 +3,12 @@ package replicasets
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -18,6 +20,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 // Create creates a ReplicaSet owned by the CR if it does not already exist.
@@ -60,11 +63,11 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update reconciles an existing ReplicaSet to match the resolved spec.
-// Handles drift — if replicas or image have changed, patches the ReplicaSet.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedReplicaSetSpec) error {
+// Apply creates or updates a ReplicaSet using Server-Side Apply.
+// Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedReplicaSetSpec) error {
 	if err := validateSpec(spec); err != nil {
-		return fmt.Errorf("replicaset.Update: invalid spec: %w", err)
+		return fmt.Errorf("replicaset.Apply: invalid spec: %w", err)
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
@@ -72,76 +75,33 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		return err
 	}
 
-	existing, err := kube.Clientset().AppsV1().ReplicaSets(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
+	rs := buildReplicaSet(owner, spec, namespace)
+	rs.TypeMeta = metav1.TypeMeta{APIVersion: "apps/v1", Kind: "ReplicaSet"}
+
+	body, err := json.Marshal(rs)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info().
-				Str("replicaset", spec.Name).
-				Str("namespace", namespace).
-				Msg("replicaset not found during reconcile — recreating")
-			return Create(ctx, kube, owner, spec)
-		}
-		return fmt.Errorf("replicaset.Update: getting replicaset %q: %w", spec.Name, err)
+		return fmt.Errorf("replicaset.Apply: marshal: %w", err)
 	}
 
-	desired := buildReplicaSet(owner, spec, namespace)
-	drifted := false
-	updated := existing.DeepCopy()
-
-	// Replicas — skip when autoscaler owns spec.replicas to avoid fighting it.
-	if !spec.HasAutoscale {
-		if existing.Spec.Replicas == nil || *existing.Spec.Replicas != spec.Replicas {
-			updated.Spec.Replicas = desired.Spec.Replicas
-			drifted = true
-			logger.Info().Str("replicaset", spec.Name).Int32("desired", spec.Replicas).Msg("replicaset replicas drifted")
-		}
+	if _, err = kube.Clientset().AppsV1().ReplicaSets(namespace).Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		return fmt.Errorf("replicaset.Apply: %w", err)
 	}
 
-	// Labels
-	if !common.LabelsEqual(existing.Labels, desired.Labels) {
-		updated.Labels = desired.Labels
-		drifted = true
-	}
-
-	// Resources
-	if spec.Resources != nil {
-		desiredRes := common.BuildResourceRequirements(spec.Resources)
-		var existingRes corev1.ResourceRequirements
-		if len(existing.Spec.Template.Spec.Containers) > 0 {
-			existingRes = existing.Spec.Template.Spec.Containers[0].Resources
-		}
-		if !common.ResourceRequirementsEqual(existingRes, desiredRes) {
-			updated.Spec.Template.Spec.Containers[0].Resources = desiredRes
-			drifted = true
-			logger.Info().Str("replicaset", spec.Name).Msg("replicaset resources drifted")
-		}
-	}
-
-	if len(updated.Spec.Template.Spec.Containers) > 0 && len(desired.Spec.Template.Spec.Containers) > 0 {
-		if common.SyncContainerSpec(&updated.Spec.Template.Spec.Containers[0], desired.Spec.Template.Spec.Containers[0]) {
-			drifted = true
-		}
-	}
-	if common.SyncPodSpec(&updated.Spec.Template.Spec, desired.Spec.Template.Spec) {
-		drifted = true
-	}
-
-	if !drifted {
-		logger.Debug().Str("replicaset", spec.Name).Msg("replicaset in sync — no update needed")
-		return nil
-	}
-
-	_, err = kube.Clientset().AppsV1().ReplicaSets(namespace).Update(ctx, updated, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("replicaset.Update: updating replicaset %q: %w", spec.Name, err)
-	}
-
-	logger.Info().
+	logger.Debug().
 		Str("replicaset", spec.Name).
 		Str("namespace", namespace).
-		Msg("replicaset updated")
+		Str("owner", owner.GetName()).
+		Msg("replicaset applied")
 
 	return nil
+}
+
+// Update applies the ReplicaSet via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedReplicaSetSpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the ReplicaSet if it exists.

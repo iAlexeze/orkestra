@@ -28,6 +28,6 @@ spec:
       tenant-plan:
         ops:
           - cycle: 1
-            verb: create
+            verb: apply
             resource: configmaps
             name: acme-plan-config

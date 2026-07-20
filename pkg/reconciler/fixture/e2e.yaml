@@ -36,7 +36,6 @@ spec:
       get:
         - kind: ReconcilerProbe
           name: probe
-          namespace: default
       describe:
         - kind: Deployment
           name: probe-app

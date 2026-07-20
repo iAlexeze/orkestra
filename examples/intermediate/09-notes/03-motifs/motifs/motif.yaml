@@ -8,10 +8,11 @@ metadata:
     these notes inside any template expression.
 
 notes:
-  - name: fullImage
-    description: Combine spec.image and spec.tag into a qualified image reference
-    expression: "{{ .spec.image }}:{{ .spec.tag | default \"latest\" }}"
+  functions:
+    - name: fullImage
+      description: Combine spec.image and spec.tag into a qualified image reference
+      expression: "{{ .spec.image }}:{{ .spec.tag | default \"latest\" }}"
 
-  - name: appLabel
-    description: Standard label value combining namespace and name
-    expression: "{{ .metadata.namespace }}-{{ .metadata.name }}"
+    - name: appLabel
+      description: Standard label value combining namespace and name
+      expression: "{{ .metadata.namespace }}-{{ .metadata.name }}"

@@ -2,7 +2,7 @@ apiVersion: orkestra.orkspace.io/v1
 kind: Simulate
 metadata:
   name: resource-probe-sim
-  description: Verify the ResourceProbe hook fires — all 23 resource types created on cycle 1
+  description: Verify the ResourceProbe hook fires — all 23 resource types applied on cycle 1
 
 spec:
   katalog: ./katalog.yaml

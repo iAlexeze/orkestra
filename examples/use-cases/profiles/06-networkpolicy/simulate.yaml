@@ -15,26 +15,26 @@ spec:
     steady: true
     ops:
       - cycle: 1
-        verb: create
+        verb: apply
         resource: networkpolicies
         name: my-service-deny-all
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: networkpolicies
         name: my-service-deny-ingress
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: networkpolicies
         name: my-service-deny-egress
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: networkpolicies
         name: my-service-allow-same-ns
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: networkpolicies
         name: my-service-allow-dns

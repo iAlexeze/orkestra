@@ -3,10 +3,11 @@ package roles
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"reflect"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -16,6 +17,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 // ResolvedRoleSpec is the fully resolved Role specification.
@@ -72,44 +74,41 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update applies the desired rules to an existing Role.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedRoleSpec) error {
+// Apply creates or updates a Role using Server-Side Apply.
+// Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedRoleSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
 	}
 
-	existing, err := kube.Clientset().RbacV1().Roles(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
+	role := buildRole(owner, spec, namespace)
+	role.TypeMeta = metav1.TypeMeta{APIVersion: "rbac.authorization.k8s.io/v1", Kind: "Role"}
+
+	body, err := json.Marshal(role)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			return Create(ctx, kube, owner, spec)
-		}
-		return fmt.Errorf("role.Update: getting %q: %w", spec.Name, err)
+		return fmt.Errorf("role.Apply: marshal: %w", err)
 	}
 
-	if reflect.DeepEqual(existing.Rules, spec.Rules) {
-		logger.Debug().
-			Str("role", spec.Name).
-			Str("namespace", namespace).
-			Msg("role in sync — no update needed")
-		return nil
+	if _, err = kube.Clientset().RbacV1().Roles(namespace).Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		return fmt.Errorf("role.Apply: %w", err)
 	}
 
-	existing.Rules = spec.Rules
-	existing.Labels = spec.Labels
-
-	_, err = kube.Clientset().RbacV1().Roles(namespace).Update(ctx, existing, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("role.Update: updating role %q in %q: %w", spec.Name, namespace, err)
-	}
-
-	logger.Info().
+	logger.Debug().
 		Str("role", spec.Name).
 		Str("namespace", namespace).
 		Str("owner", owner.GetName()).
-		Msg("role updated")
+		Msg("role applied")
 
 	return nil
+}
+
+// Update applies the Role via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedRoleSpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the Role if it exists.

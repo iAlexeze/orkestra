@@ -14,10 +14,10 @@ spec:
     noErrors: true
     ops:
       - cycle: 1
-        verb: create
+        verb: apply
         resource: deployments
         name: composed-site-deployment
       - cycle: 1
-        verb: create
+        verb: apply
         resource: services
         name: composed-site-svc

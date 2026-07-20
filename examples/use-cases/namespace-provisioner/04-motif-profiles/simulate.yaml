@@ -26,51 +26,51 @@ spec:
         name: delta-operator
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: networkpolicies
         name: delta-deny-all
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: networkpolicies
         name: delta-allow-dns
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: networkpolicies
         name: delta-allow-monitoring
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: resourcequotas
         name: delta-quota
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: limitranges
         name: delta-container-limits
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: deployments
         name: delta-ns-agent
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: horizontalpodautoscalers
         name: delta-ns-agent-hpa
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: poddisruptionbudgets
         name: delta-ns-agent-pdb
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: clusterroles
         name: delta-ns-admin
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: clusterrolebindings
         name: delta-ns-admin-binding

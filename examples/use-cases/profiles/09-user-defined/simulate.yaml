@@ -17,31 +17,31 @@ spec:
     steady: true
     ops:
       - cycle: 1
-        verb: create
+        verb: apply
         resource: deployments
         name: my-service
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: networkpolicies
         name: my-service-deny-all
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: networkpolicies
         name: my-service-allow-internal
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: networkpolicies
         name: my-service-allow-dns
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: horizontalpodautoscalers
         name: my-service-hpa-conservative
 
       - cycle: 1
-        verb: create
+        verb: apply
         resource: horizontalpodautoscalers
         name: my-service-hpa-responsive

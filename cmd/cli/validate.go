@@ -412,9 +412,19 @@ func validateE2EFile(path string) error {
 
 // validateSimulateFile validates a Simulate spec file and prints a summary.
 func validateSimulateFile(path string) error {
-	fmt.Println()
-	fmt.Println(bold("Validating Simulate..."))
-	fmt.Println()
+	return validateSimulateFileOpts(path, false)
+}
+
+func validateSimulateFileQuiet(path string) error {
+	return validateSimulateFileOpts(path, true)
+}
+
+func validateSimulateFileOpts(path string, quiet bool) error {
+	if !quiet {
+		fmt.Println()
+		fmt.Println(bold("Validating Simulate..."))
+		fmt.Println()
+	}
 
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -463,14 +473,20 @@ func validateSimulateFile(path string) error {
 			if expandErr := orktypes.ExpandSimulateOpsIncludes(doc.Spec.Expect, baseDir); expandErr != nil {
 				errs = append(errs, "expanding ops includes: "+expandErr.Error())
 			}
-			validVerbs := map[string]bool{"create": true, "update": true, "delete": true, "patch": true}
+			validVerbs := map[string]bool{
+				"create": true,
+				"apply":  true,
+				"update": true,
+				"delete": true,
+				"patch":  true,
+			}
 			validateOpRules := func(rules []orktypes.SimulateOpRule, prefix string) {
 				for i, rule := range rules {
 					switch {
 					case rule.Verb == "" || rule.Resource == "":
 						errs = append(errs, fmt.Sprintf("%s[%d]: verb and resource are required", prefix, i))
 					case !validVerbs[rule.Verb]:
-						errs = append(errs, fmt.Sprintf("%s[%d]: invalid verb %q (must be create, update, delete, or patch)", prefix, i, rule.Verb))
+						errs = append(errs, fmt.Sprintf("%s[%d]: invalid verb %q (must be create, apply, update, delete, or patch)", prefix, i, rule.Verb))
 					}
 				}
 			}
@@ -487,12 +503,18 @@ func validateSimulateFile(path string) error {
 	}
 
 	if len(errs) > 0 {
-		for _, e := range errs {
-			fmt.Printf("  %s %s\n", failureMark(), e)
+		if !quiet {
+			for _, e := range errs {
+				fmt.Printf("  %s %s\n", failureMark(), e)
+			}
+			fmt.Println()
+			fmt.Println(strings.Repeat("─", 60))
 		}
-		fmt.Println()
-		fmt.Println(strings.Repeat("─", 60))
 		return fmt.Errorf("%d validation error(s) in %s", len(errs), path)
+	}
+
+	if quiet {
+		return nil
 	}
 
 	// Success — print structured summary matching the Katalog/E2E style.

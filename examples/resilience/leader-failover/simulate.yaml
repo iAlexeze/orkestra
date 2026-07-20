@@ -17,10 +17,10 @@ spec:
     noErrors: true
     ops:
       - cycle: 1
-        verb: create
+        verb: apply
         resource: statefulsets
         name: my-chain
       - cycle: 1
-        verb: create
+        verb: apply
         resource: services
         name: my-chain-rpc
