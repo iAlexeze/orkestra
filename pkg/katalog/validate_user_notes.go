@@ -27,17 +27,17 @@ func (k *Katalog) validateUserNotes() error {
 	// Pre-build stubs for every user-defined note so cross-references resolve
 	// during template parsing. Matches runtime behaviour where the full funcmap
 	// (built-ins + all user notes) is assembled before any expression runs.
-	funcMap := make(template.FuncMap, len(builtins)+len(reg))
+	funcMap := make(template.FuncMap, len(builtins)+len(reg.Functions))
 	for k, v := range builtins {
 		funcMap[k] = v
 	}
-	for _, n := range reg {
+	for _, n := range reg.Functions {
 		funcMap[n.Name] = func() string { return "" }
 	}
 
-	seen := make(map[string]bool, len(reg))
+	seen := make(map[string]bool, len(reg.Functions))
 
-	for i, n := range reg {
+	for i, n := range reg.Functions {
 		if n.Name == "" {
 			return fmt.Errorf("notes[%d]: name must not be empty", i)
 		}

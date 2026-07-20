@@ -20,6 +20,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/notification"
 	orkqueue "github.com/orkspace/orkestra/pkg/queue"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
+	"github.com/orkspace/orkestra/pkg/runners"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -689,13 +690,13 @@ func (r *GenericReconciler[PTR]) handleDeletion(ctx context.Context, resolver *o
 		}
 	}
 
-	// Namespaces require explicit deletion regardless of whether an onDelete block exists:
-	// they are cluster-scoped and the GC does not cascade through owner references on them.
+	// Cluster-scoped resources require explicit deletion regardless of whether an
+	// onDelete block exists: the GC does not cascade through owner references on them.
 	// runTemplateOnDelete already handles this when OnDelete is set; run it here for all
 	// other cases (no onDelete block, or Go hook path).
 	if r.operatorBox.OnDelete == nil {
 		if kube, ok := kubeclient.FromContext(ctx); ok {
-			if err := deleteOwnedNamespaces(ctx, kube, resolver, obj, r.operatorBox); err != nil {
+			if err := runners.DeleteOwnedClusterScopedResources(ctx, kube, resolver, obj, r.operatorBox); err != nil {
 				return fmt.Errorf("namespace cleanup: %w", err)
 			}
 		}

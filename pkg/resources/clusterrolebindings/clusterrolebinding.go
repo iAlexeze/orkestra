@@ -12,6 +12,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/resources/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,7 +49,7 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		return nil
 	}
 
-	crb := buildClusterRoleBinding(spec)
+	crb := buildClusterRoleBinding(owner, spec)
 
 	_, err = kube.Clientset().RbacV1().ClusterRoleBindings().Create(ctx, crb, metav1.CreateOptions{})
 	if err != nil {
@@ -191,18 +192,28 @@ func Resolve(src orktypes.ClusterRoleBindingTemplateSource, ownerName string) Re
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-func buildClusterRoleBinding(spec ResolvedClusterRoleBindingSpec) *rbacv1.ClusterRoleBinding {
-	return &rbacv1.ClusterRoleBinding{
+func buildClusterRoleBinding(owner domain.Object, spec ResolvedClusterRoleBindingSpec) *rbacv1.ClusterRoleBinding {
+	crb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   spec.Name,
 			Labels: spec.Labels,
-			// No OwnerReference: ClusterRoleBindings are cluster-scoped; a namespace-scoped CR
-			// cannot own a cluster-scoped resource. Ownership is tracked via the
-			// OrkestraOwner label; cleanup is performed explicitly via DeleteIfOwned.
 		},
 		RoleRef:  spec.RoleRef,
 		Subjects: spec.Subjects,
 	}
+	if owner.GetNamespace() == "" {
+		crb.OwnerReferences = []metav1.OwnerReference{
+			{
+				APIVersion:         owner.GetObjectKind().GroupVersionKind().GroupVersion().String(),
+				Kind:               owner.GetObjectKind().GroupVersionKind().Kind,
+				Name:               owner.GetName(),
+				UID:                owner.GetUID(),
+				Controller:         utils.BoolPtr(true),
+				BlockOwnerDeletion: utils.BoolPtr(true),
+			},
+		}
+	}
+	return crb
 }
 
 func validateSpec(spec ResolvedClusterRoleBindingSpec) error {

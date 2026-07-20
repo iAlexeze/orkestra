@@ -39,7 +39,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// secretNeedsRotation returns true when the Secret exists but has exceeded
+// SecretNeedsRotation returns true when the Secret exists but has exceeded
 // its rotation threshold. Reads the generated-at annotation and compares
 // to the declared rotateAfter duration.
 //
@@ -47,7 +47,7 @@ import (
 //   - rotateAfter is not set
 //   - Secret does not exist
 //   - Generated-at annotation is missing or unparseable → regenerate to be safe
-func secretNeedsRotation(ctx context.Context, kube kubeclient.KubeClient, namespace, name, rotateAfter string) (bool, error) {
+func SecretNeedsRotation(ctx context.Context, kube kubeclient.KubeClient, namespace, name, rotateAfter string) (bool, error) {
 	if rotateAfter == "" {
 		return false, nil
 	}
@@ -93,10 +93,10 @@ func annotateSecret(ctx context.Context, kube kubeclient.KubeClient, namespace, 
 	return err
 }
 
-// deleteSecretForRotation deletes a Secret so it can be recreated with fresh values.
-// Called when secretNeedsRotation returns true. The next create call in run_secrets.go
+// DeleteSecretForRotation deletes a Secret so it can be recreated with fresh values.
+// Called when SecretNeedsRotation returns true. The next create call
 // then generates new credentials and annotates with the current time.
-func deleteSecretForRotation(ctx context.Context, kube kubeclient.KubeClient, namespace, name string) error {
+func DeleteSecretForRotation(ctx context.Context, kube kubeclient.KubeClient, namespace, name string) error {
 	err := kube.Clientset().CoreV1().Secrets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !IsNotFoundErr(err) {
 		return fmt.Errorf("deleting secret %s/%s for rotation: %w", namespace, name, err)
@@ -104,8 +104,8 @@ func deleteSecretForRotation(ctx context.Context, kube kubeclient.KubeClient, na
 	return nil
 }
 
-// generationAnnotations returns the annotations to add to a freshly generated Secret.
-func generationAnnotations(rotateAfter string) map[string]string {
+// GenerationAnnotations returns the annotations to add to a freshly generated Secret.
+func GenerationAnnotations(rotateAfter string) map[string]string {
 	annotations := map[string]string{
 		orktypes.AnnotationGeneratedAt: time.Now().UTC().Format(time.RFC3339),
 	}
@@ -128,7 +128,7 @@ func createTLSSecret(
 		name = owner.GetName() + "-orkestra-tls"
 	}
 
-	annotations := generationAnnotations(rotateAfter)
+	annotations := GenerationAnnotations(rotateAfter)
 
 	controller := true
 	blockOwner := true

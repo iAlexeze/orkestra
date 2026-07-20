@@ -530,6 +530,10 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 		return fmt.Errorf("%s: missing spec", path)
 	}
 
+	if err := orktypes.ExpandSimulateOpsIncludes(doc.Spec.Expect, dir); err != nil {
+		return fmt.Errorf("expanding simulate ops includes in %s: %w", path, err)
+	}
+
 	cycles := doc.Spec.Cycles
 	if cycles <= 0 {
 		cycles = maxCycles

@@ -11,6 +11,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/resources/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -196,20 +197,29 @@ func Resolve(src orktypes.NamespaceTemplateSource, ownerName string) ResolvedNam
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-func buildNamespace(_ domain.Object, spec ResolvedNamespaceSpec) *corev1.Namespace {
-	return &corev1.Namespace{
+func buildNamespace(owner domain.Object, spec ResolvedNamespaceSpec) *corev1.Namespace {
+	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   spec.Name,
 			Labels: spec.Labels,
-
-			// TODO: Cleanup doesn't work yet
-			// No OwnerReference: Namespaces are cluster-scoped; a namespace-scoped CR
-			// cannot be a GC owner of a cluster-scoped resource. Setting one causes the
-			// GC to treat the namespace as orphaned (owner not found at cluster level)
-			// and delete it immediately. Ownership is tracked via the LabelOrkestraOwner
-			// label; cleanup is performed explicitly by deleteOwnedNamespaces on delete.
 		},
 	}
+	// Cluster-scoped owners can hold owner references on cluster-scoped resources.
+	// Namespace-scoped owners cannot — GC would treat the namespace as orphaned and
+	// delete it immediately. Fall back to label-based tracking in that case.
+	if owner.GetNamespace() == "" {
+		ns.OwnerReferences = []metav1.OwnerReference{
+			{
+				APIVersion:         owner.GetObjectKind().GroupVersionKind().GroupVersion().String(),
+				Kind:               owner.GetObjectKind().GroupVersionKind().Kind,
+				Name:               owner.GetName(),
+				UID:                owner.GetUID(),
+				Controller:         utils.BoolPtr(true),
+				BlockOwnerDeletion: utils.BoolPtr(true),
+			},
+		}
+	}
+	return ns
 }
 
 func validateSpec(spec ResolvedNamespaceSpec) error {

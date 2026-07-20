@@ -1,100 +1,85 @@
 # pkg/reconciler/fixture
 
-Living integration fixture for the reconciler's `run_*` resource types.
+Living integration fixture for the reconciler's resource types.
 
 ## Why this exists
 
-The `run_*` functions in `pkg/reconciler/` apply Kubernetes resources from
-katalog templates. There is no meaningful way to unit-test them: the logic that
-matters — template rendering, server-side apply, status propagation, condition
-evaluation — only works against a real API server. Mocking it tests the mock,
-not Orkestra.
+The runner functions in `pkg/runner/` apply Kubernetes resources from katalog
+templates. There is no meaningful way to unit-test them: the logic that matters
+— template rendering, server-side apply, status propagation, condition evaluation
+— only works against a real API server. Mocking it tests the mock, not Orkestra.
 
-This fixture is the right vehicle. It declares one `ReconcilerProbe` CRD and a
-companion CR that triggers every supported `run_*` code path in a single
-reconcile cycle. Failures surface as a missing resource, a wrong status field,
-or an operator crash — all observable without reading code.
+This fixture is the right vehicle. It declares a `ReconcilerSuite` CRD (cluster-scoped)
+and a `ReconcilerProbe` CRD. A single `ReconcilerSuite` CR is the test entry point:
+its operator creates a `ReconcilerProbe` via `custom:`, and the probe's operator then
+triggers every supported resource block in one reconcile cycle. This exercises the full
+`custom:` child chain — creation, reconciliation, and cluster-scoped GC on delete —
+alongside all other resource types. Failures surface as a missing resource, a wrong
+status field, or an operator crash, all observable without reading code.
 
 ## What each block covers
 
-| Block in `katalog.yaml`            | `run_*` file exercised                |
-|------------------------------------|---------------------------------------|
-| `validation.rules`                 | `run_validations.go`                  |
-| `mutation.rules`                   | `run_mutations.go`                    |
-| `serviceAccounts`                  | `run_serviceaccounts.go`              |
-| `configMaps`                       | `run_configmaps.go`                   |
-| `secrets` (once: true)             | `run_secrets.go`, `run_secrets_once.go` |
-| `deployments` (main)               | `run_deployments.go`                  |
-| `services`                         | `run_services.go`                     |
-| `cronJobs`                         | `run_cronjobs.go`                     |
-| `jobs`                             | `run_jobs.go`                         |
-| `deployments` with `when:`         | `run_deployments.go` + `conditions.go` |
-| `status.fields`                    | `run_status.go`                       |
+| Block in `katalog.yaml`        | What it exercises                          |
+|--------------------------------|--------------------------------------------|
+| `custom:` (ReconcilerSuite)    | Cluster-scoped CR creating a child CR      |
+| `validation.rules`             | Admission validation                       |
+| `mutation.rules`               | Admission mutation (default injection)     |
+| `namespaces`                   | Namespace creation                         |
+| `secrets` (`once: true`)       | Secret generation, idempotency             |
+| `configMaps`                   | ConfigMap with template values             |
+| `networkPolicies`              | Inline deny-all NetworkPolicy              |
+| `resourceQuotas`               | Inline ResourceQuota with hard limits      |
+| `limitRanges`                  | Container default limits                   |
+| `clusterRoles`                 | Cluster-scoped RBAC role                   |
+| `clusterRoleBindings`          | Cluster-scoped RBAC binding                |
+| `serviceAccounts`              | ServiceAccount creation                    |
+| `roles`                        | Namespaced RBAC role                       |
+| `roleBindings`                 | Namespaced RBAC binding                    |
+| `replicaSets`                  | ReplicaSet creation                        |
+| `deployments` (main)           | Deployment with env + serviceAccountName   |
+| `deployments` with `when:`     | Conditional resource (`tier=premium` only) |
+| `services`                     | Service with port mapping                  |
+| `jobs`                         | One-shot Job                               |
+| `cronJobs`                     | CronJob with schedule                      |
+| `statefulSets`                 | StatefulSet creation                       |
+| `persistentVolumes`            | Cluster-scoped PV with hostPath            |
+| `persistentVolumeClaims`       | PVC creation                               |
+| `ingresses`                    | Ingress with host routing                  |
+| `hpa`                          | HorizontalPodAutoscaler targeting probe-app |
+| `pdb`                          | PodDisruptionBudget targeting probe-app    |
+| `pods`                         | Direct Pod creation                        |
+| `status.fields`                | Status propagation and template evaluation |
 
-Resource types not yet in the fixture (PR welcome):
-`statefulSets`, `ingresses`, `hpa`, `pdb`, `persistentVolumeClaims`,
-`namespaces`, `replicaSets`, `run_foreach.go`, `run_cross.go`
+## Running
 
-## Running locally
-
-Requires: `kind`, `helm`, `kubectl`, `ork` — all installed and on `$PATH`.
-
-```bash
-# From the repo root
-make test-fixture-reconciler
-```
-
-That target:
-1. Creates a kind cluster (`orkestra-reconciler-fixture`)
-2. Applies `fixture/crd.yaml`
-3. Generates and applies the Orkestra bundle from `fixture/katalog.yaml`
-4. Installs Orkestra via the local Helm chart
-5. Applies `fixture/cr.yaml`
-6. Waits for `status.phase` to be set
-7. Asserts expected resources exist
-8. Deletes the cluster
-
-To iterate manually without tearing down the cluster:
+Run simulate first — it exercises the real reconciler in-memory and is fast:
 
 ```bash
-ork create cluster --name orkestra-reconciler-fixture
-
-kubectl apply -f pkg/reconciler/fixture/crd.yaml
-ork generate bundle --file pkg/reconciler/fixture/katalog.yaml | kubectl apply -f -
-
-helm upgrade --install orkestra charts/orkestra
-
-kubectl apply -f pkg/reconciler/fixture/cr.yaml
-kubectl get reconcilerprobe probe -o yaml -w
+ork simulate -f pkg/reconciler/fixture/simulate.yaml
 ```
 
-Clean up:
+For full cluster verification:
 
 ```bash
-cd pkg/reconciler/fixture && bash cleanup.sh
-
-kind delete orkestra-reconciler-fixture
+ork e2e -f pkg/reconciler/fixture/e2e.yaml --workers 3
 ```
 
-## Adding a new `run_*`
+`ork e2e` creates the kind cluster, installs Orkestra, applies the CRD and CR,
+runs all assertions, and tears down the cluster.
 
-When you add a new resource type to the reconciler (e.g. `run_widgets.go`):
+To reuse an existing cluster during iteration:
 
-1. **Add a block to `katalog.yaml`** that exercises it. Use the existing blocks
-   as a template. Name resources `{{ .metadata.name }}-widget` to avoid collisions.
+```bash
+ork e2e -f pkg/reconciler/fixture/e2e.yaml --use-current
+```
 
-2. **Add a row to the table above** so the coverage map stays accurate.
+## Adding a new resource type
 
-3. **Add an assertion** in the CI workflow
-   (`.github/workflows/validate-pr.yml`, job `fixture-tests`) that confirms the
-   resource was created:
-   ```yaml
-   - name: Assert Widget created
-     run: kubectl get widget probe-widget
-   ```
-
-4. **Run `make test-fixture-reconciler` locally** before opening the PR.
-
-The fixture is the contract that a new `run_*` function works end-to-end.
-If the block renders and the resource appears, the function works. If Orkestra
-crashes or the resource is absent, the function has a bug.
+1. Add a block to the appropriate fixture motif in
+   [pkg/children/fixtures/motifs/](../../children/fixtures/motifs/). Name resources
+   `{{ .metadata.name }}-<type>` to avoid collisions.
+2. Add a row to the table above.
+3. Add a `create` op to [simulate.yaml](./simulate.yaml) for the new resource type.
+4. Add a `resources:` assertion to the `All resources created` checkpoint in
+   [e2e/01-resources.yaml](./e2e/01-resources.yaml).
+5. Run `ork e2e -f pkg/reconciler/fixture/simulate.yaml` locally before opening the PR.

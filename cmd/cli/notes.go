@@ -209,7 +209,7 @@ func printUserNoteTable(reg orktypes.NoteRegistry, noPager bool) error {
 	w := tabwriter.NewWriter(&sb, 0, 0, 3, ' ', 0)
 	fmt.Fprintln(w, "NAME\tEXPRESSION\tDESCRIPTION")
 	fmt.Fprintln(w, "────\t──────────\t───────────")
-	for _, n := range reg {
+	for _, n := range reg.Functions {
 		expr := n.Expression
 		if len(expr) > 60 {
 			expr = expr[:57] + "..."

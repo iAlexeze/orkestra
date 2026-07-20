@@ -4,6 +4,7 @@ package cronjobs
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -206,11 +207,11 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 			logger.Info().Str("cronjob", spec.Name).
 				Str("desired", spec.Image).Msg("cronjob image drifted")
 		}
-		if len(spec.Command) > 0 {
+		if len(spec.Command) > 0 && !reflect.DeepEqual(container.Command, spec.Command) {
 			container.Command = spec.Command
 			drifted = true
 		}
-		if len(spec.Args) > 0 {
+		if len(spec.Args) > 0 && !reflect.DeepEqual(container.Args, spec.Args) {
 			container.Args = spec.Args
 			drifted = true
 		}

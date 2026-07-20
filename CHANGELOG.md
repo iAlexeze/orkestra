@@ -1,3 +1,27 @@
+## v0.7.12 — [UNRELEASED]
+
+### `include:` extended to simulate ops
+
+The `ops:` list in `ork simulate` now supports `include:` entries. An entry `{include: ./ops/workloads.yaml}` is expanded in place before assertions run — same expand-and-clear pattern used in `e2e expect:`, `validation.include`, `status.include`, and six other blocks. The included file uses `ops:` as its root key.
+
+```yaml
+# simulate.yaml
+spec:
+  expect:
+    ops:
+      - include: ./ops/01-infra.yaml
+      - include: ./ops/02-rbac.yaml
+      - include: ./ops/03-workloads.yaml
+```
+
+Operators with large fixture ops lists can now split by domain — one file per resource group — so a change to workload assertions touches only `ops/03-workloads.yaml`. The domain layout pattern is documented in `documentation/concepts/composition/02-include.md`.
+
+### Cluster-scoped GC extended to ClusterRoles, ClusterRoleBindings, and PersistentVolumes
+
+Kubernetes GC does not cascade owner references from namespace-scoped CRs to cluster-scoped resources. Previously only Namespaces were explicitly cleaned up on CR deletion. `runners.DeleteOwnedClusterScopedResources` now covers Namespaces, ClusterRoles, ClusterRoleBindings, PersistentVolumes, and cluster-scoped custom resources.
+
+---
+
 ## v0.7.11 — Workload autoscaler, user-defined notes, and three new example packs
 
 

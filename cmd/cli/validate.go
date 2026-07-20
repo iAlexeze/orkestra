@@ -460,22 +460,28 @@ func validateSimulateFile(path string) error {
 			errs = append(errs, "spec.cr not found: "+doc.Spec.CR)
 		}
 		if doc.Spec.Expect != nil {
+			if expandErr := orktypes.ExpandSimulateOpsIncludes(doc.Spec.Expect, baseDir); expandErr != nil {
+				errs = append(errs, "expanding ops includes: "+expandErr.Error())
+			}
 			validVerbs := map[string]bool{"create": true, "update": true, "delete": true, "patch": true}
-			for i, rule := range doc.Spec.Expect.Ops {
-				switch {
-				case rule.Verb == "" || rule.Resource == "":
-					errs = append(errs, fmt.Sprintf("expect.ops[%d]: verb and resource are required", i))
-				case !validVerbs[rule.Verb]:
-					errs = append(errs, fmt.Sprintf("expect.ops[%d]: invalid verb %q (must be create, update, delete, or patch)", i, rule.Verb))
+			validateOpRules := func(rules []orktypes.SimulateOpRule, prefix string) {
+				for i, rule := range rules {
+					switch {
+					case rule.Verb == "" || rule.Resource == "":
+						errs = append(errs, fmt.Sprintf("%s[%d]: verb and resource are required", prefix, i))
+					case !validVerbs[rule.Verb]:
+						errs = append(errs, fmt.Sprintf("%s[%d]: invalid verb %q (must be create, update, delete, or patch)", prefix, i, rule.Verb))
+					}
 				}
 			}
-			for i, rule := range doc.Spec.Expect.Absent {
-				switch {
-				case rule.Verb == "" || rule.Resource == "":
-					errs = append(errs, fmt.Sprintf("expect.absent[%d]: verb and resource are required", i))
-				case !validVerbs[rule.Verb]:
-					errs = append(errs, fmt.Sprintf("expect.absent[%d]: invalid verb %q (must be create, update, delete, or patch)", i, rule.Verb))
+			validateOpRules(doc.Spec.Expect.Ops, "expect.ops")
+			validateOpRules(doc.Spec.Expect.Absent, "expect.absent")
+			for crdName, sub := range doc.Spec.Expect.CRDs {
+				if sub == nil {
+					continue
 				}
+				validateOpRules(sub.Ops, fmt.Sprintf("expect.crds[%s].ops", crdName))
+				validateOpRules(sub.Absent, fmt.Sprintf("expect.crds[%s].absent", crdName))
 			}
 		}
 	}
@@ -510,9 +516,21 @@ func validateSimulateFile(path string) error {
 		fmt.Printf("    %s\n", gray(fmt.Sprintf("cr      : %s", doc.Spec.CR)))
 		fmt.Printf("    %s\n", gray(fmt.Sprintf("cycles  : %d", cycles)))
 		if doc.Spec.Expect != nil {
-			fmt.Printf("    %s\n", gray(fmt.Sprintf("ops     : %d rule(s)", len(doc.Spec.Expect.Ops))))
-			if len(doc.Spec.Expect.Absent) > 0 {
-				fmt.Printf("    %s\n", gray(fmt.Sprintf("absent  : %d rule(s)", len(doc.Spec.Expect.Absent))))
+			totalOps := len(doc.Spec.Expect.Ops)
+			totalAbsent := len(doc.Spec.Expect.Absent)
+			for _, sub := range doc.Spec.Expect.CRDs {
+				if sub == nil {
+					continue
+				}
+				totalOps += len(sub.Ops)
+				totalAbsent += len(sub.Absent)
+			}
+			fmt.Printf("    %s\n", gray(fmt.Sprintf("ops     : %d rule(s)", totalOps)))
+			if totalAbsent > 0 {
+				fmt.Printf("    %s\n", gray(fmt.Sprintf("absent  : %d rule(s)", totalAbsent)))
+			}
+			if len(doc.Spec.Expect.CRDs) > 0 {
+				fmt.Printf("    %s\n", gray(fmt.Sprintf("crds    : %d scoped", len(doc.Spec.Expect.CRDs))))
 			}
 		}
 	}
@@ -525,6 +543,11 @@ func validateSimulateFile(path string) error {
 		ops := 0
 		if doc.Spec.Expect != nil {
 			ops = len(doc.Spec.Expect.Ops)
+			for _, sub := range doc.Spec.Expect.CRDs {
+				if sub != nil {
+					ops += len(sub.Ops)
+				}
+			}
 		}
 		fmt.Printf("Simulate is valid (%d op rule(s))\n", ops)
 	}
@@ -697,14 +720,14 @@ func printValidateNotes(reg orktypes.NoteRegistry) {
 		return
 	}
 	maxLen := 0
-	for _, n := range reg {
+	for _, n := range reg.Functions {
 		if l := len(n.Name); l > maxLen {
 			maxLen = l
 		}
 	}
 	fmt.Println()
-	fmt.Printf("%s\n", bold(fmt.Sprintf("Notes (%d)", len(reg))))
-	for _, n := range reg {
+	fmt.Printf("%s\n", bold(fmt.Sprintf("Notes (%d)", len(reg.Functions))))
+	for _, n := range reg.Functions {
 		fmt.Printf("  %s   %s\n", padRight(cyan(n.Name), maxLen), gray(n.Expression))
 	}
 }

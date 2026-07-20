@@ -1,0 +1,20 @@
+x-base-op: &base-op
+  cycle: 1
+  verb: create
+
+ops:
+  # DEV Environment
+  - <<: *base-op
+    resource: configmaps
+    name: acme-acme-dev-config
+  - <<: *base-op
+    resource: secrets
+    name: acme-acme-dev-secret
+  
+  # STAGING Environment
+  - <<: *base-op
+    resource: configmaps
+    name: acme-acme-staging-config
+  - <<: *base-op
+    resource: secrets
+    name: acme-acme-staging-secret

@@ -163,3 +163,11 @@ The [Health Subsystem](health-subsystem/) is Orkestra's liveness, readiness, and
 [Declarative E2E](e2e/) is how Orkestra verifies an operator against a real cluster — one YAML file, no test framework, no Go. Every learning example ships with a runnable `e2e.yaml`. The `imports:` field composes focused per-Katalog tests into suites that a single `ork e2e` command runs end to end.
 
 → [Read: Declarative End-to-End Testing](e2e/)
+
+---
+
+## Internal Developer Platform
+
+An [Internal Developer Platform](idp/) built on Orkestra is not a separate application. It is the gateway, a Katalog with two config fields enabled, and optionally a form in the Control Center. The Gateway Apply API is a CRUD REST surface for CRs — any HTTP client can create, read, or delete the resources your operator manages, without kubeconfig or kubectl.
+
+→ [Read: Internal Developer Platform](idp/)

@@ -23,6 +23,37 @@ validation:
       action: warn
 ```
 
+## `validation.include`
+
+Pull rules from an external file to keep the Katalog compact. The file contains a `rules:` key with the same list structure as inline rules.
+
+```yaml
+validation:
+  include: ./admission/apprequest.yaml   # relative to the katalog file
+  rules:
+    - field: spec.tier                   # appended after included rules
+      operator: in
+      value: "free,pro,enterprise"
+      action: deny
+```
+
+`admission/apprequest.yaml`:
+
+```yaml
+rules:
+  - field: spec.team
+    operator: exists
+    message: "spec.team is required"
+    action: deny
+  - field: spec.environment
+    operator: in
+    value: "staging,production"
+    message: "spec.environment must be staging or production"
+    action: deny
+```
+
+Included rules come first. Inline `rules:` append after. The `include:` path is resolved relative to the katalog file's directory — the katalog can be run from any working directory. The field is cleared from the runtime bundle after expansion.
+
 ## `validation.rules`
 
 Each rule describes one check. Rules are evaluated in order.

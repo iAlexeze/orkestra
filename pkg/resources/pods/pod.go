@@ -92,23 +92,33 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	if len(existing.Spec.Containers) > 0 && len(desired.Spec.Containers) > 0 {
 		ec := existing.Spec.Containers[0]
 		dc := desired.Spec.Containers[0]
+		// Declared-intent guards: only check fields the template explicitly set.
+		// k8s injects defaults (service-account token mounts, etc.) that must not
+		// be treated as drift when the template leaves those fields empty.
+		envDrifted := (len(dc.Env) > 0 || len(ec.Env) > 0) && !reflect.DeepEqual(ec.Env, dc.Env)
+		envFromDrifted := len(dc.EnvFrom) > 0 && !reflect.DeepEqual(ec.EnvFrom, dc.EnvFrom)
+		mountsDrifted := len(dc.VolumeMounts) > 0 && !reflect.DeepEqual(ec.VolumeMounts, dc.VolumeMounts)
+		containerScDrifted := dc.SecurityContext != nil && !reflect.DeepEqual(ec.SecurityContext, dc.SecurityContext)
 		if ec.Image != dc.Image ||
 			!common.ResourceRequirementsEqual(ec.Resources, dc.Resources) ||
-			!reflect.DeepEqual(ec.Env, dc.Env) ||
-			!reflect.DeepEqual(ec.EnvFrom, dc.EnvFrom) ||
-			!reflect.DeepEqual(ec.VolumeMounts, dc.VolumeMounts) ||
+			envDrifted ||
+			envFromDrifted ||
+			mountsDrifted ||
 			!reflect.DeepEqual(ec.LivenessProbe, dc.LivenessProbe) ||
 			!reflect.DeepEqual(ec.ReadinessProbe, dc.ReadinessProbe) ||
 			!reflect.DeepEqual(ec.StartupProbe, dc.StartupProbe) ||
-			!reflect.DeepEqual(ec.SecurityContext, dc.SecurityContext) {
+			containerScDrifted {
 			logger.Info().Str("pod", spec.Name).Msg("pod container spec drifted — deleting and recreating")
 			needsRecreate = true
 		}
 	}
 	if !needsRecreate {
-		if !reflect.DeepEqual(existing.Spec.Volumes, desired.Spec.Volumes) ||
-			!reflect.DeepEqual(existing.Spec.SecurityContext, desired.Spec.SecurityContext) ||
-			existing.Spec.ServiceAccountName != desired.Spec.ServiceAccountName {
+		// Only check volumes when the template declares them — k8s always injects
+		// a projected service-account token volume that must not trigger drift.
+		volumesDrifted := len(desired.Spec.Volumes) > 0 && !reflect.DeepEqual(existing.Spec.Volumes, desired.Spec.Volumes)
+		saDrifted := desired.Spec.ServiceAccountName != "" && existing.Spec.ServiceAccountName != desired.Spec.ServiceAccountName
+		scDrifted := desired.Spec.SecurityContext != nil && !reflect.DeepEqual(existing.Spec.SecurityContext, desired.Spec.SecurityContext)
+		if volumesDrifted || scDrifted || saDrifted {
 			logger.Info().Str("pod", spec.Name).Msg("pod spec drifted — deleting and recreating")
 			needsRecreate = true
 		}

@@ -1,0 +1,18 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: test
+spec:
+  crds:
+    platform:
+      apiTypes:
+        group: platform.orkestra.io
+        version: v1alpha1
+        kind: Platform
+        plural: platforms
+      operatorBox:
+        status:
+          include: ./status-fields.yaml
+          fields:
+            - path: environment
+              value: "{{ .spec.environment }}"

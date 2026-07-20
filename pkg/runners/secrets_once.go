@@ -42,10 +42,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// secretExists checks whether a Secret with the given name exists in the namespace.
+// SecretExists checks whether a Secret with the given name exists in the namespace.
 // Uses ResourceVersion: "0" to read from the API server watch cache (not etcd).
 // Returns true if the secret exists, false on NotFound, error on API failure.
-func secretExists(ctx context.Context, kube kubeclient.KubeClient, namespace, name string) (bool, error) {
+func SecretExists(ctx context.Context, kube kubeclient.KubeClient, namespace, name string) (bool, error) {
 	_, err := kube.Clientset().CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{
 		ResourceVersion: "0", // watch cache — avoids etcd round-trip
 	})

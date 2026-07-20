@@ -1,13 +1,6 @@
 # pkg/children fixtures
 
-Living integration fixture for the `forEach` expansion and child tracking paths in `pkg/children`.
-
-## Why this exists
-
-The `ExpandForEach*`, `*Names`, and child tracking blocks in `pkg/children/` only work against
-a real API server — there is nothing meaningful to unit-test. The expansion is correct when the
-right resources appear in the cluster with the right names, and wrong when they are missing or
-named incorrectly. This fixture makes that check fast and repeatable without reading code.
+Living integration fixture for the `forEach` expansion, `custom:` child creation, and child tracking paths in `pkg/children`.
 
 ## What each motif covers
 
@@ -19,32 +12,27 @@ named incorrectly. This fixture makes that check fast and repeatable without rea
 | `motifs/04-network/` | `Service`, `Ingress`, `HPA`, `PDB` |
 | `motifs/05-config/` | `ConfigMap`, `Secret` |
 | `motifs/06-storage/` | `PersistentVolume`, `PersistentVolumeClaim` |
+| `motifs/07-custom/` | `TenantPlan` via `custom:` — custom child CR creation |
+| `motifs/08-plan/` | `ConfigMap` — TenantPlan's own operator output |
 
-All templates use `forEach:` — the fixture exercises the full expand → name → track path for every type.
+Motifs 01–06 use `forEach:` to exercise the full expand → name → track path. Motif 07 exercises `custom:` — a single child CR (`TenantPlan`) that is itself an Orkestra-managed CRD, with its own operator declared in motif 08. This covers the full chain: parent creates custom child → child's operator runs → child's resources are asserted and cleaned up.
 
-## Running locally
+## Running
 
-Requires: `kind`, `kubectl`, `ork` — all installed and on `$PATH`.
+Commands must be run from inside this directory.
 
-Commands must be run from inside this directory (motif paths resolve relative to the working directory).
-
-```bash
-cd pkg/children/fixtures
-
-ork run --dev
-```
-
-`--dev` creates a local kind cluster named `orkestra-playground` if one does not exist.
-
-After the `acme` Tenant CR reconciles, verify:
+### Verify expansion in-memory — fast, no cluster needed
 
 ```bash
-kubectl get networkpolicies,resourcequotas,limitranges -n acme-dev
-kubectl get networkpolicies,resourcequotas,limitranges -n acme-staging
-kubectl get clusterroles,clusterrolebindings | grep acme
-kubectl get deployments,statefulsets,services,hpa,pdb -n default | grep acme
-kubectl get pv,pvc -A | grep acme
+ork simulate -f pkg/children/fixtures/simulate.yaml
 ```
+
+### Full cluster test 
+```bash
+ork e2e -f pkg/children/fixtures/e2e.yaml --workers 3
+```
+
+Creates a kind cluster, applies the CR, asserts all resources
 
 ## Adding a new child resource type
 
@@ -52,7 +40,7 @@ When you add a new resource type to `pkg/children/` (new `ExpandForEach*`, GVR, 
 
 1. **Add it to the appropriate motif** in `motifs/` — or create a new motif if it belongs to a new group.
 2. **Run `ork validate`** — confirms the schema is correct.
-3. **Run `ork run`** — confirms resources are created with the right names.
-4. **Add a row to the table above** so the coverage map stays accurate.
-
-This fixture is the final checkpoint before a children PR is ready.
+3. **Add an op to `simulate.yaml`** — one `verb: create` entry for the new resource type.
+4. **Run `ork simulate`** — confirms expansion fires in-memory.
+5. **Add assertions to `e2e/01-resources.yaml`** — one entry per expanded name.
+6. **Add a row to the table above** so the coverage map stays accurate.

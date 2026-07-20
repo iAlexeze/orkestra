@@ -102,6 +102,13 @@ func (k *Katalog) KomposeRuntimeKatalog(
 	k.konfig = kfg
 	k.katalogDir = m.FirstEntryDir()
 
+	if err := orktypes.ExpandNotesInclude(&k.Notes, k.katalogDir); err != nil {
+		return nil, fmt.Errorf("notes: %w", err)
+	}
+	if err := orktypes.ExpandProfileInclude(&k.Profiles, k.katalogDir); err != nil {
+		return nil, fmt.Errorf("profiles: %w", err)
+	}
+
 	for name, entry := range k.enabledCRDs {
 		// Populate APITypes from crdFile before enrichment so isFullySpecified sees
 		// the correct values. crdFile is the source of truth — overwrites any apiTypes.
@@ -113,6 +120,25 @@ func (k *Katalog) KomposeRuntimeKatalog(
 				return nil, fmt.Errorf("CRD %q: %w", name, err)
 			}
 			entry.CRDFile = ""
+		}
+
+		// Expand idp.include before enrichment so field hints are fully resolved.
+		if err := populateIDPFieldsFromInclude(&entry, k.katalogDir); err != nil {
+			return nil, fmt.Errorf("CRD %q: %w", name, err)
+		}
+
+		// Expand validation.include, mutation.include, conversion.include and status.include.
+		if err := populateValidationRulesFromInclude(&entry, k.katalogDir); err != nil {
+			return nil, fmt.Errorf("CRD %q: %w", name, err)
+		}
+		if err := populateMutationRulesFromInclude(&entry, k.katalogDir); err != nil {
+			return nil, fmt.Errorf("CRD %q: %w", name, err)
+		}
+		if err := populateConversionPathsFromInclude(&entry, k.katalogDir); err != nil {
+			return nil, fmt.Errorf("CRD %q: %w", name, err)
+		}
+		if err := populateStatusFieldsFromInclude(&entry, k.katalogDir); err != nil {
+			return nil, fmt.Errorf("CRD %q: %w", name, err)
 		}
 
 		// Enrich enabled CRDs

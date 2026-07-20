@@ -1,0 +1,55 @@
+x-base-op: &base-op
+  cycle: 1
+  verb: create
+
+ops:
+  # Workload Controllers
+  - <<: *base-op
+    resource: replicasets
+    name: probe-rs
+  - <<: *base-op
+    resource: deployments
+    name: probe-app
+  - <<: *base-op
+    resource: deployments
+    name: probe-premium
+  - <<: *base-op
+    resource: statefulsets
+    name: probe-sts
+  
+  # Batch Jobs
+  - <<: *base-op
+    resource: jobs
+    name: probe-init
+  - <<: *base-op
+    resource: cronjobs
+    name: probe-cron
+  
+  # Pods
+  - <<: *base-op
+    resource: pods
+    name: probe-pod
+  
+  # Networking
+  - <<: *base-op
+    resource: services
+    name: probe-svc
+  - <<: *base-op
+    resource: ingresses
+    name: probe-ing
+  
+  # Storage
+  - <<: *base-op
+    resource: persistentvolumes
+    name: probe-pv
+  - <<: *base-op
+    resource: persistentvolumeclaims
+    name: probe-pvc
+  
+  # Autoscaling & Resilience
+  - <<: *base-op
+    resource: horizontalpodautoscalers
+    name: probe-hpa
+  - <<: *base-op
+    resource: poddisruptionbudgets
+    name: probe-pdb

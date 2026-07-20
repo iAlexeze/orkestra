@@ -551,6 +551,7 @@ type CRDSummaryResponse struct {
 	DeletionProtection       bool               `json:"deletionProtection"`
 	ProviderCount            int                `json:"providerCount,omitempty"`
 	KatalogNamespace         string             `json:"katalogNamespace,omitempty"`
+	IDPEnabled               bool               `json:"idpEnabled,omitempty"`
 }
 
 type OperatorBoxSummary struct {
@@ -671,6 +672,7 @@ func BuildKatalogHandler(
 				ErrorRate:        h.ErrorRatePercent(),
 				CrossAccess:      crd.CrossAccess == nil || *crd.CrossAccess,
 				KatalogNamespace: crd.KatalogNamespace,
+				IDPEnabled:       crd.IDP != nil && crd.IDP.Enabled,
 				Endpoints: EndpointInfo{
 					Health:        "/katalog/" + strings.ToLower(crd.Name) + "/health",
 					Info:          "/katalog/" + strings.ToLower(crd.Name),

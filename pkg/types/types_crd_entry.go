@@ -268,6 +268,44 @@ type CRDEntry struct {
 	// into OnReconcile at Katalog load time.
 	// Required inputs not provided in with: are a validation error.
 	Imports []MotifImport `yaml:"imports,omitempty" json:"imports,omitempty"`
+
+	// IDP exposes this CRD through the Gateway Apply API as a developer portal
+	// surface. When enabled, the Control Center renders a [+ Create] button for
+	// this CRD and serves its schema via GET /api/v1/schema/{kind}.
+	IDP *IDPConfig `yaml:"idp,omitempty" json:"idp,omitempty"`
+}
+
+// IDPConfig declares IDP exposure settings for a CRD entry.
+type IDPConfig struct {
+	// Enabled surfaces this CRD in the Control Center as a self-service form.
+	// Requires gateway.applyAPI.enabled: true on the Katalog.
+	// Default: false.
+	Enabled bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+
+	// Include is a path (relative to the katalog file) to a YAML file whose
+	// top-level keys are IDPFieldConfig entries. Expanded at load time — the
+	// result is merged into Fields, with inline Fields taking precedence.
+	Include string `yaml:"include,omitempty" json:"include,omitempty"`
+
+	// Fields provides presentation hints layered on top of the CRD's OpenAPI
+	// schema. Each key matches a field path in spec. Hints are merged with the
+	// schema at GET /api/v1/schema/{kind} time — they do not replace the schema.
+	Fields map[string]IDPFieldConfig `yaml:"fields,omitempty" json:"fields,omitempty"`
+}
+
+// IDPFieldConfig holds display hints for one spec field in the IDP form.
+type IDPFieldConfig struct {
+	// Label overrides the field name in the rendered form.
+	Label string `yaml:"label,omitempty" json:"label,omitempty"`
+
+	// Placeholder is the input placeholder text.
+	Placeholder string `yaml:"placeholder,omitempty" json:"placeholder,omitempty"`
+
+	// Hint is descriptive text rendered below the field.
+	Hint string `yaml:"hint,omitempty" json:"hint,omitempty"`
+
+	// Order controls tab order in the rendered form. Lower values appear first.
+	Order int `yaml:"order,omitempty" json:"order,omitempty"`
 }
 
 type ConversionVersionSpec struct {

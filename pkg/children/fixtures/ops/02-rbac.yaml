@@ -1,0 +1,40 @@
+x-base-op: &base-op
+  cycle: 1
+  verb: create
+
+ops:
+  # Cluster-wide RBAC
+  - <<: *base-op
+    resource: clusterroles
+    name: acme-developer
+  - <<: *base-op
+    resource: clusterroles
+    name: acme-reviewer
+  - <<: *base-op
+    resource: clusterrolebindings
+    name: acme-developer-binding
+  - <<: *base-op
+    resource: clusterrolebindings
+    name: acme-reviewer-binding
+  
+  # DEV Environment
+  - <<: *base-op
+    resource: serviceaccounts
+    name: acme-acme-dev-sa
+  - <<: *base-op
+    resource: roles
+    name: acme-acme-dev-role
+  - <<: *base-op
+    resource: rolebindings
+    name: acme-acme-dev-rolebinding
+  
+  # STAGING Environment
+  - <<: *base-op
+    resource: serviceaccounts
+    name: acme-acme-staging-sa
+  - <<: *base-op
+    resource: roles
+    name: acme-acme-staging-role
+  - <<: *base-op
+    resource: rolebindings
+    name: acme-acme-staging-rolebinding

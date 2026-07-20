@@ -26,9 +26,10 @@ profiles:                              # optional → see profiles schema
   podSecurity: [...]
 
 notes:                                 # optional — user-defined template functions
-  - name: fullImage
-    description: string
-    expression: '{{ .spec.image }}:{{ .spec.tag | default "latest" }}'
+  functions:
+    - name: fullImage
+      description: string
+      expression: '{{ .spec.image }}:{{ .spec.tag | default "latest" }}'
 
 spec:
   finalizers:                          # optional — applied to every CRD
@@ -84,15 +85,16 @@ User-defined template functions, available in every `{{ }}` expression in this K
 
 ```yaml
 notes:
-  - name: fullImage
-    description: Qualified image reference combining image and tag
-    expression: "{{ .spec.image }}:{{ .spec.tag | default \"latest\" }}"
+  functions:
+    - name: fullImage
+      description: Qualified image reference combining image and tag
+      expression: "{{ .spec.image }}:{{ .spec.tag | default \"latest\" }}"
 
-  - name: inBusinessHours
-    expression: '{{ and weekday (timeInWindow "09:00" "18:00") }}'
+    - name: inBusinessHours
+      expression: '{{ and weekday (timeInWindow "09:00" "18:00") }}'
 
-  - name: statusLabel
-    expression: "{{ if inBusinessHours }}Active{{ else }}Suspended{{ end }}"
+    - name: statusLabel
+      expression: "{{ if inBusinessHours }}Active{{ else }}Suspended{{ end }}"
 ```
 
 | Field | Required | Description |
@@ -101,7 +103,7 @@ notes:
 | `expression` | yes | Go template expression. May call built-in notes and other user-defined notes. |
 | `description` | no | Human-readable description. Shown in `ork validate --notes`. |
 
-Notes are pure: same input → same output. They may call any built-in note and any other user-defined note declared in the same `notes:` block (order-independent).
+Notes are pure: same input → same output. They may call any built-in note and any other user-defined note declared in the same `notes.functions:` block (order-independent).
 
 → Full reference: [Notes concept](../../../concepts/notes/index.md)
 

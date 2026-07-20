@@ -43,8 +43,9 @@ profiles:                              # optional → see profiles schema
   podSecurity: [...]
 
 notes:                                 # optional — user-defined template functions
-  - name: serviceHost
-    expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+  functions:
+    - name: serviceHost
+      expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
 
 inputs:
   - name: image
@@ -173,13 +174,14 @@ ork patterns --kind Motif
 
 ## `notes`
 
-A Motif can declare user-defined template functions in a `notes:` block. When the Katalog imports the Motif, its notes are merged into the Katalog's FuncMap alongside the Katalog's own notes and all built-ins.
+A Motif can declare user-defined template functions in a `notes.functions:` block. When the Katalog imports the Motif, its notes are merged into the Katalog's FuncMap alongside the Katalog's own notes and all built-ins.
 
 ```yaml
 notes:
-  - name: serviceHost
-    description: Cluster-local service hostname
-    expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+  functions:
+    - name: serviceHost
+      description: Cluster-local service hostname
+      expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
 ```
 
 | Field | Required | Description |

@@ -11,10 +11,11 @@ kind: Katalog
 metadata:
   name: noted
 notes:
-  - name: host
-    expression: "{{ .metadata.name }}.cluster.local"
-  - name: img
-    expression: "{{ .spec.image }}:latest"
+  functions:
+    - name: host
+      expression: "{{ .metadata.name }}.cluster.local"
+    - name: img
+      expression: "{{ .spec.image }}:latest"
 spec:
   crds:
     widget:
@@ -35,11 +36,11 @@ func TestKatalog_InlineNotes_ForwardedToToNotes(t *testing.T) {
 	}
 
 	notes := m.ToNotes()
-	if len(notes) != 2 {
-		t.Fatalf("expected 2 notes, got %d", len(notes))
+	if len(notes.Functions) != 2 {
+		t.Fatalf("expected 2 notes, got %d", len(notes.Functions))
 	}
 	names := map[string]bool{}
-	for _, n := range notes {
+	for _, n := range notes.Functions {
 		names[n.Name] = true
 	}
 	if !names["host"] {
@@ -56,7 +57,7 @@ func TestKomposer_InlineNotes_ForwardedToToNotes(t *testing.T) {
 	dir := t.TempDir()
 	katalogPath := writeTempKatalog(t, dir, "katalog.yaml", katalogWithNotesYAML)
 
-	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: k\nnotes:\n  - name: env\n    expression: \"prod\"\nimports:\n  files:\n    - url: " + katalogPath + "\n"
+	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: k\nnotes:\n  functions:\n    - name: env\n      expression: \"prod\"\nimports:\n  files:\n    - url: " + katalogPath + "\n"
 	komposerPath := writeTempKatalog(t, dir, "komposer.yaml", komposer)
 
 	m := New(komposerPath)
@@ -66,7 +67,7 @@ func TestKomposer_InlineNotes_ForwardedToToNotes(t *testing.T) {
 
 	notes := m.ToNotes()
 	names := map[string]bool{}
-	for _, n := range notes {
+	for _, n := range notes.Functions {
 		names[n.Name] = true
 	}
 	if !names["env"] {
@@ -86,7 +87,7 @@ func TestKomposer_InlineNotes_OverrideKatalogNote(t *testing.T) {
 	katalogPath := writeTempKatalog(t, dir, "katalog.yaml", katalogWithNotesYAML)
 
 	// host is also declared in the Katalog; Komposer's value must win (appended last).
-	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: k\nnotes:\n  - name: host\n    expression: \"{{ .metadata.name }}.prod.example.com\"\nimports:\n  files:\n    - url: " + katalogPath + "\n"
+	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: k\nnotes:\n  functions:\n    - name: host\n      expression: \"{{ .metadata.name }}.prod.example.com\"\nimports:\n  files:\n    - url: " + katalogPath + "\n"
 	komposerPath := writeTempKatalog(t, dir, "komposer.yaml", komposer)
 
 	m := New(komposerPath)
@@ -98,7 +99,7 @@ func TestKomposer_InlineNotes_OverrideKatalogNote(t *testing.T) {
 	// The Komposer note is appended after Katalog notes, so it appears last in the registry.
 	// Confirm the last entry for 'host' comes from the Komposer.
 	var lastHost string
-	for _, n := range notes {
+	for _, n := range notes.Functions {
 		if n.Name == "host" {
 			lastHost = n.Expression
 		}
@@ -120,8 +121,9 @@ kind: Katalog
 metadata:
   name: src1
 notes:
-  - name: host
-    expression: "{{ .metadata.name }}.src1.local"
+  functions:
+    - name: host
+      expression: "{{ .metadata.name }}.src1.local"
 spec:
   crds:
     alpha:
@@ -134,8 +136,9 @@ kind: Katalog
 metadata:
   name: src2
 notes:
-  - name: host
-    expression: "{{ .metadata.name }}.src2.local"
+  functions:
+    - name: host
+      expression: "{{ .metadata.name }}.src2.local"
 spec:
   crds:
     beta:
