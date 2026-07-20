@@ -27,6 +27,8 @@ All requests arrive at `ControlCenter.ServeHTTP`, which strips the `/controlcent
 | `POST /api/instances` | `handleAddInstance` | — (JSON) |
 | `PUT /api/instances/{url}` | `handleUpdateInstance` | — (JSON) |
 | `DELETE /api/instances/{url}` | `handleDeleteInstance` | — (JSON) |
+| `GET /api/idp/schema/{kind}` | `handleIDPSchema` | — (JSON proxy) |
+| `POST /api/idp/apply` | `handleIDPApply` | — (JSON proxy) |
 
 ## Katalog sub-routing
 
@@ -51,6 +53,12 @@ len(crParts) == 3  →  namespaced CR detail       (/cr/{ns}/{name})
 ## Proxy endpoints
 
 `/raw` and `/enriched` sub-paths on both katalog and CRD routes proxy the request directly to the Orkestra runtime and pipe the JSON response body back to the browser. They are used by the YAML viewer modal in the UI. The proxying is done by `proxyJSON`, which issues a plain `http.Get` to the runtime URL and copies the body.
+
+## IDP proxy endpoints
+
+`/api/idp/schema/{kind}` and `/api/idp/apply` are server-side proxies to the companion gateway's Apply API. The CC holds the `GATEWAY_TOKEN` bearer token; the browser never sees it. All IDP form traffic flows through these two routes — schema fetch and CR apply — so the gateway can be behind a different origin without CORS or token-exposure issues.
+
+`handleIDPSchema` forwards `GET {gatewayEndpoint}/api/v1/schema/{kind}`. `handleIDPApply` forwards `POST {gatewayEndpoint}/api/v1/apply` with the request body unchanged. Both respond with the gateway's status code and JSON body verbatim.
 
 ## Template rendering
 

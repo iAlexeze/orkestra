@@ -91,6 +91,11 @@
             <span class="cc-badge cc-badge-neutral">{{ .Total }} resource{{ if ne .Total 1 }}s{{ end }}</span>
           </div>
         </div>
+        {{ if .IdpEnabled }}
+        <a href="cr/create" class="cc-btn cc-btn-primary">+ Create</a>
+        {{ else }}
+        <button class="cc-btn cc-btn-disabled" disabled title="IDP not enabled for this CRD. Set idp.enabled: true in the Katalog to allow browser-based CR creation.">+ Create</button>
+        {{ end }}
       </div>
 
       {{ if eq .Total 0 }}

@@ -24,10 +24,11 @@ type CRSummary struct {
 
 // CRListResponse is returned by GET /katalog/{crd}/cr.
 type CRListResponse struct {
-	CRD   string      `json:"crd"`
-	GVK   string      `json:"gvk"`
-	Total int         `json:"total"`
-	Items []CRSummary `json:"items"`
+	CRD         string      `json:"crd"`
+	GVK         string      `json:"gvk"`
+	Total       int         `json:"total"`
+	Items       []CRSummary `json:"items"`
+	IsKonductor bool        `json:"isKonductor"`
 }
 
 // ChildSummary is a condensed view of one child resource.
@@ -56,6 +57,7 @@ type CRDetailResponse struct {
 	Status            map[string]interface{}     `json:"status,omitempty"`
 	Children          map[string]json.RawMessage `json:"children,omitempty"`
 	EventsEndpoint    string                     `json:"eventsEndpoint"`
+	IsKonductor       bool                       `json:"isKonductor"`
 }
 
 // ChildGroup is the normalised view of children grouped by kind.
@@ -133,13 +135,15 @@ type CREventsResponse struct {
 
 // CRListView is the data passed to cr_list.html.
 type CRListView struct {
-	KatalogName string // e.g. "demo"
-	Instance    string // Orkestra instance URL
-	CRDName     string // e.g. "pipeline"
-	GVK         string // e.g. "demo.orkestra.io/v1alpha1, Kind=Pipeline"
-	Total       int
-	Items       []CRSummary
-	BackURL     string // back to /katalog/{crd}
+	KatalogName     string // e.g. "demo"
+	Instance        string // Orkestra instance URL
+	CRDName         string // e.g. "pipeline"
+	GVK             string // e.g. "demo.orkestra.io/v1alpha1, Kind=Pipeline"
+	Total           int
+	Items           []CRSummary
+	BackURL         string // back to /katalog/{crd}
+	IdpEnabled      bool   // true when this CRD has idp.enabled: true in the Katalog
+	GatewayEndpoint string // base URL of the companion gateway; empty when no gateway
 }
 
 // CRDetailView is the data passed to cr_detail.html.

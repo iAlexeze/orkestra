@@ -1,5 +1,57 @@
 ## v0.7.12 — [UNRELEASED]
 
+### Gateway Apply API
+
+Three new endpoints served by the gateway process when `gateway.applyAPI.enabled: true`:
+
+- `POST /api/v1/apply` — server-side apply a CR body; returns `accepted`, `name`, `namespace`, `resourceVersion`
+- `GET /api/v1/resources/{kind}/{ns}[/{name}]` — read or list CRs without kubeconfig
+- `DELETE /api/v1/resources/{kind}/{ns}/{name}` — delete a CR
+- `GET /api/v1/schema/{kind}` — return the CRD's spec properties with `idp.fields` hints merged in; only available when `idp.enabled: true`
+
+All routes require a bearer token. Tokens are declared in `gateway.applyAPI.auth.tokens` and can reference a `secretRef` (self-bootstrapped by the gateway on first start if the Secret does not exist) or an environment variable.
+
+### IDP — developer self-service in the Control Center
+
+`idp.enabled: true` on a CRD entry surfaces a **[+ Create]** button in the Control Center. The button links to a full-page form that reads field labels, hints, placeholders, and order from `idp.fields` via the gateway's `/api/v1/schema/{kind}` endpoint. The gateway token is injected server-side — the browser never sees it.
+
+```yaml
+gateway:
+  applyAPI:
+    enabled: true
+    auth:
+      tokens:
+        - name: control-center
+          secretRef:
+            name: ork-apply-token
+            key: token
+
+spec:
+  crds:
+    apprequest:
+      idp:
+        enabled: true
+        fields:
+          team:
+            label: "Team"
+            placeholder: "team-payments"
+            order: 1
+          environment:
+            label: "Environment"
+            hint: "staging or production"
+            order: 2
+```
+
+Set `controlCenter.gatewayToken.secretRef.name` in the Helm values to inject the token into the Control Center.
+
+### CR list and detail are now leader-pinned
+
+The runtime's `/katalog/{crd}/cr` and `/katalog/{crd}/cr/{ns}/{name}` responses now include `isKonductor: true` when served by the leader pod. The Control Center retries these requests up to three times until it gets a leader response, then falls back to the last available result. Previously, multi-replica deployments could show an empty CR list or "CR not found" when the Service routed to a follower pod.
+
+### Gateway RBAC — least-privilege `customresourcedefinitions get`
+
+When `idp.enabled: true` on a CRD, the generated RBAC bundle now includes a `get` rule on `apiextensions.k8s.io/customresourcedefinitions` scoped to that CRD's full resource name (`{plural}.{group}`). This allows the gateway to read the OpenAPI schema for the `/api/v1/schema/{kind}` endpoint without cluster-wide CRD read access.
+
 ### `include:` extended to all major Katalog blocks
 
 Previously `include:` was only supported in `e2e expect:`. It now works across `validation.rules`, `mutation.rules`, `conversion.paths`, `status.fields`, `notes.functions`, `profiles`, `idp.fields`, and `simulate ops:`.

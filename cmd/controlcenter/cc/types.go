@@ -125,6 +125,7 @@ type KatalogResponse struct {
 	Projects           map[string]ProjectInfoSummary      `json:"projects,omitempty"`
 	Namespaces         map[string]KatalogNamespaceSummary `json:"namespaces,omitempty"`
 	GatewayEndpoint    string                             `json:"gatewayEndpoint,omitempty"`
+	IdpEnabled         bool                               `json:"idpEnabled,omitempty"`
 }
 
 // GatewayKatalogResponse mirrors the response served at GET /katalog by the
@@ -244,6 +245,30 @@ type CRDSummary struct {
 	ProviderCount            int          `json:"providerCount,omitempty"`
 	KatalogNamespace         string       `json:"katalogNamespace,omitempty"`
 	Endpoints                EndpointInfo `json:"endpoints,omitempty"`
+	IdpEnabled               bool         `json:"idpEnabled,omitempty"`
+}
+
+// IDPField is one rendered field in the IDP create form.
+type IDPField struct {
+	Name        string
+	Label       string
+	InputType   string // "text" | "number" | "select" | "checkbox"
+	Placeholder string
+	Hint        string
+	Enum        []string
+	Required    bool
+}
+
+// IDPFormData is the view model for idp_form.html.
+type IDPFormData struct {
+	KatalogName string
+	CRDName     string
+	Kind        string
+	APIVersion  string
+	BackURL     string
+	Namespaced  bool
+	Fields      []IDPField
+	Error       string
 }
 
 // CRDHealth is the response from the /katalog/{crd}/health endpoint
