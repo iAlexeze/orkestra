@@ -471,11 +471,11 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 			)
 			hs.Register(
 				"/katalog/"+crdName+"/cr",
-				kordinator.BuildCRListHandler(crd, inf),
+				kordinator.BuildCRListHandler(crd, inf, orkHealth),
 			)
 			hs.Register(
 				"/katalog/"+crdName+"/cr/",
-				kordinator.BuildCRDetailAndEventsHandler(crd, inf, kube, crd.OperatorBox),
+				kordinator.BuildCRDetailAndEventsHandler(crd, inf, kube, crd.OperatorBox, orkHealth),
 			)
 		}
 

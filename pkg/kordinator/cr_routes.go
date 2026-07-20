@@ -39,16 +39,13 @@ func RegisterCRRoutes(
 	inf cache.SharedIndexInformer,
 	kube *kubeclient.Kubeclient,
 	rc orktypes.OperatorBoxConfig,
+	o *OrkestraHealth,
 ) {
 	name := strings.ToLower(crd.Name)
 	crBase := "/katalog/" + name + "/cr"
 
-	// List all CRs — exact match on /cr
-	mux.Handle(crBase, BuildCRListHandler(crd, inf))
-
-	// Detail and events — prefix match on /cr/ to capture name segments
-	// The detail handler parses the remaining path segments itself.
-	mux.Handle(crBase+"/", crDetailRouter(crd, inf, kube, rc))
+	mux.Handle(crBase, BuildCRListHandler(crd, inf, o))
+	mux.Handle(crBase+"/", crDetailRouter(crd, inf, kube, rc, o))
 }
 
 // crDetailRouter is an http.Handler that dispatches between:
@@ -56,16 +53,14 @@ func RegisterCRRoutes(
 //   - /katalog/{crd}/cr/{namespace}/{name}     → detail (namespaced)
 //   - /katalog/{crd}/cr/{name}/events          → events
 //   - /katalog/{crd}/cr/{namespace}/{name}/events → events
-//
-// The mux strips the /katalog/{crd}/cr/ prefix via the registered pattern,
-// leaving just the path suffix for this handler to parse.
 func crDetailRouter(
 	crd orktypes.CRDEntry,
 	inf cache.SharedIndexInformer,
 	kube *kubeclient.Kubeclient,
 	rc orktypes.OperatorBoxConfig,
+	o *OrkestraHealth,
 ) http.Handler {
-	detailHandler := BuildCRDetailHandler(crd, inf, kube, rc)
+	detailHandler := BuildCRDetailHandler(crd, inf, kube, rc, o)
 	eventsHandler := BuildCREventsHandler(crd, kube)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
