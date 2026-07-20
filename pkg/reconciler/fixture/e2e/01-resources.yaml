@@ -5,9 +5,9 @@ expect:
     resources:
       - kind: ReconcilerSuite
         name: probe-suite
+        namespace: default
       - kind: ReconcilerProbe
         name: probe
-        namespace: default
       - kind: Namespace
         name: probe-ns
       - kind: Secret

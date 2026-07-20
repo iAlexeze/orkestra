@@ -33,8 +33,7 @@ spec:
               kind: ReconcilerProbe
               metadata:
                 name: probe
-                namespace: default
-                namespaced: true
+                namespaced: false
               spec:
                 image: nginx:1.25
                 replicas: 1

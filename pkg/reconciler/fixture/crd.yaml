@@ -45,7 +45,7 @@ spec:
             status:
               type: object
               x-kubernetes-preserve-unknown-fields: true
-  scope: Namespaced
+  scope: Cluster
   names:
     plural: reconcilerprobes
     singular: reconcilerprobe
@@ -59,7 +59,7 @@ metadata:
   name: reconcilersuites.reconciler.orkestra.io
 spec:
   group: reconciler.orkestra.io
-  scope: Cluster
+  scope: Namespaced
   names:
     plural: reconcilersuites
     singular: reconcilersuite

@@ -1,10 +1,11 @@
 x-base-op: &base-op
   cycle: 1
-  verb: create
+  verb: apply
 
 ops:
   # DEV Environment
   - <<: *base-op
+    verb: create
     resource: namespaces
     name: acme-dev
   - <<: *base-op
@@ -19,6 +20,7 @@ ops:
   
   # STAGING Environment
   - <<: *base-op
+    verb: create
     resource: namespaces
     name: acme-staging
   - <<: *base-op
