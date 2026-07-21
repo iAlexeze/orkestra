@@ -134,7 +134,7 @@ jobs:
     runs-on: ubuntu-latest
     if: >
       github.event_name == 'workflow_dispatch' ||
-      contains(github.event.pull_request.changed_files, 'pkg/reconciler/')
+      contains(github.event.pull_request.changed_files, 'pkg/runtime/reconciler/')
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -154,12 +154,12 @@ jobs:
           cluster_name: orkestra-reconciler-fixture
 
       - name: Apply CRD
-        run: kubectl apply -f pkg/reconciler/fixture/crd.yaml
+        run: kubectl apply -f pkg/runtime/reconciler/fixture/crd.yaml
 
       - name: Generate and apply bundle
         run: |
           $HOME/.orkestra/bin/ork bundle \
-            --file pkg/reconciler/fixture/katalog.yaml | kubectl apply -f -
+            --file pkg/runtime/reconciler/fixture/katalog.yaml | kubectl apply -f -
 
       - name: Install Orkestra via Helm
         run: |
@@ -168,7 +168,7 @@ jobs:
             --wait --timeout 120s
 
       - name: Apply CR
-        run: kubectl apply -f pkg/reconciler/fixture/cr.yaml
+        run: kubectl apply -f pkg/runtime/reconciler/fixture/cr.yaml
 
       - name: Wait for status
         run: |

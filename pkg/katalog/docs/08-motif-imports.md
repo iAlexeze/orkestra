@@ -119,7 +119,7 @@ If the new field should be shared across all CRDs (like profiles and notes):
 6. Add it to `Katalog` struct (`pkg/katalog/type.go`) and wire from merger in `parser.go`
 7. Expand it in `expandKatalogImports` (`pkg/katalog/motif_imports.go`)
 8. Attach it to the `Resolver` via a `With*()` method (`pkg/resources/template/resolver.go`)
-9. Call `With*()` in `pkg/reconciler/generic.go` alongside `WithProfiles` and `WithUserNotes`
+9. Call `With*()` in `pkg/runtime/reconciler/generic.go` alongside `WithProfiles` and `WithUserNotes`
 
 If the new field should be CRD-scoped (like resources, status, admission):
 

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/orkspace/orkestra/pkg/informer"
+	"github.com/orkspace/orkestra/pkg/runtime/informer"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 

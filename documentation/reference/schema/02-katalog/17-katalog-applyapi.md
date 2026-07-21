@@ -34,7 +34,7 @@ A list of bearer token entries. Every Apply API request must include `Authorizat
 | `secretRef.name` | — | Kubernetes Secret name to read the token value from. |
 | `secretRef.key` | — | Key within the Secret. |
 | `secretRef.namespace` | — | Secret namespace. Defaults to Orkestra's own namespace. |
-| `secretRef.rotateAfter` | — | Duration (e.g. `90d`, `720h`). Gateway checks the `generated-at` annotation on the Secret; when expired, deletes and recreates it with a new `uuidv4` token. Uses the same rotation machinery as `pkg/runners`. |
+| `secretRef.rotateAfter` | — | Duration (e.g. `90d`, `720h`). Gateway checks the `generated-at` annotation on the Secret; when expired, deletes and recreates it with a new `uuidv4` token. Uses the same rotation machinery as `pkg/runtime/runners`. |
 | `token` | — | `${ENV_VAR}` reference. Expanded at startup. For local development with `ork run` — export the variable before running. Literal values are not accepted. |
 
 One of `secretRef` or `token` is required per entry. `secretRef` is the production pattern — the gateway reads the Secret at startup using its in-cluster ServiceAccount. If the Secret does not exist and `secretRef` is configured, the gateway creates it with a generated `uuidv4` token.
