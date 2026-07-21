@@ -52,6 +52,57 @@ The runtime's `/katalog/{crd}/cr` and `/katalog/{crd}/cr/{ns}/{name}` responses 
 
 When `idp.enabled: true` on a CRD, the generated RBAC bundle now includes a `get` rule on `apiextensions.k8s.io/customresourcedefinitions` scoped to that CRD's full resource name (`{plural}.{group}`). This allows the gateway to read the OpenAPI schema for the `/api/v1/schema/{kind}` endpoint without cluster-wide CRD read access.
 
+### Conditional validation and mutation rules
+
+`when:` and `anyOf:` conditions are now supported on `validation.rules` and `mutation.rules` entries. A rule whose conditions do not match is skipped entirely — no violation is recorded, no log entry is emitted.
+
+```yaml
+validation:
+  rules:
+    - field: spec.domain
+      operator: exists
+      message: "spec.domain is required for cert workloads"
+      action: deny
+      when:
+        - field: spec.workloadType
+          equals: cert
+
+    - field: spec.repoURL
+      operator: exists
+      message: "spec.repoURL is required for app and monitoring workloads"
+      action: deny
+      anyOf:
+        - field: spec.workloadType
+          equals: app
+        - field: spec.workloadType
+          equals: monitoring
+```
+
+Conditions are evaluated using the same `EvaluateWhen` engine as template `when:` blocks. Works for both typed and unstructured CRDs — the typed CRD limitation (previously documented as "use Go hooks") is removed. Both `applyReconcileTimeValidation` and `applyReconcileTimeMutation` now use `resolver.Data()` which handles typed CRDs via JSON round-trip.
+
+Admission webhook rules honour `when:` and `anyOf:` in the same way as reconcile-time rules.
+
+### `idp.fields.<name>.required` — browser-native form field enforcement
+
+Setting `required: true` on an IDP field marks it as mandatory in the Control Center form. The browser enforces it natively — the label shows an asterisk and the form cannot be submitted while the field is empty. Fields hidden by a `when:` or `anyOf:` condition are automatically excluded from browser constraint validation.
+
+```yaml
+idp:
+  fields:
+    productionApproval:
+      label: "Production Approval Ticket"
+      required: true
+      when:
+        - field: environment
+          equals: production
+```
+
+`required` in IDP is a form UX annotation only — it does not affect the Apply API or the admission webhook. For server-side enforcement use `validation.rules` with `action: deny`.
+
+### `include:` strict YAML parsing
+
+All `include:` expansion functions now use `StrictUnmarshal` (unknown fields produce errors). Previously, a typo in an included YAML file caused the field to be silently dropped; `ork validate` now surfaces these as clear errors before any cluster is involved.
+
 ### `include:` extended to all major Katalog blocks
 
 Previously `include:` was only supported in `e2e expect:`. It now works across `validation.rules`, `mutation.rules`, `conversion.paths`, `status.fields`, `notes.functions`, `profiles`, `idp.fields`, and `simulate ops:`.
