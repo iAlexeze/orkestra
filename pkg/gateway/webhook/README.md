@@ -1,4 +1,4 @@
-# pkg/webhook
+# pkg/gateway/webhook
 
 The webhook package owns Orkestra's entire HTTPS admission and conversion surface. It implements `domain.Komponent` so it is managed by the same lifecycle supervisor that manages all other runtime components.
 
@@ -68,7 +68,7 @@ Certificates are provisioned by `cmd/internal.ensureSecurity` before `Start()` i
 Three modes (handled by `ensureSecurity`, not this package):
 
 1. **External** — user provides `TLS_CERT` / `TLS_KEY` env vars pointing to existing files.
-2. **Self-signed** — Orkestra generates a self-signed bundle via `pkg/certmanager` and stores it in the `orkestra-tls` Secret.
+2. **Self-signed** — Orkestra generates a self-signed bundle via `pkg/gateway/certmanager` and stores it in the `orkestra-tls` Secret.
 
 The webhook server itself never generates certificates.
 

@@ -55,11 +55,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 
-	"github.com/orkspace/orkestra/pkg/certmanager"
+	"github.com/orkspace/orkestra/pkg/gateway/certmanager"
 	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/metrics"
-	"github.com/orkspace/orkestra/pkg/notification"
+	"github.com/orkspace/orkestra/pkg/gateway/notification"
 )
 
 const (

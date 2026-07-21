@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/certmanager"
+	"github.com/orkspace/orkestra/pkg/gateway/certmanager"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orkingress "github.com/orkspace/orkestra/pkg/resources/ingresses"

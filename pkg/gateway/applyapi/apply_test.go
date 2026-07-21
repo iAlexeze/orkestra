@@ -1,4 +1,4 @@
-package apply
+package applyapi
 
 import (
 	"bytes"
@@ -16,8 +16,8 @@ import (
 // don't exercise the forceConflict path.
 func noopLookup(_ string) *orktypes.CRDEntry { return nil }
 
-func TestHandler_MethodNotAllowed(t *testing.T) {
-	h := Handler(nil, noopLookup)
+func TestApplyHandler_MethodNotAllowed(t *testing.T) {
+	h := applyHandler(nil, noopLookup)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/apply", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -26,8 +26,8 @@ func TestHandler_MethodNotAllowed(t *testing.T) {
 	}
 }
 
-func TestHandler_InvalidJSON(t *testing.T) {
-	h := Handler(nil, noopLookup)
+func TestApplyHandler_InvalidJSON(t *testing.T) {
+	h := applyHandler(nil, noopLookup)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/apply", strings.NewReader("not-json"))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -46,8 +46,8 @@ func TestHandler_InvalidJSON(t *testing.T) {
 	}
 }
 
-func TestHandler_EmptyBody(t *testing.T) {
-	h := Handler(nil, noopLookup)
+func TestApplyHandler_EmptyBody(t *testing.T) {
+	h := applyHandler(nil, noopLookup)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/apply", bytes.NewReader([]byte{}))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)

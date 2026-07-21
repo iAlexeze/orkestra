@@ -17,7 +17,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
-	"github.com/orkspace/orkestra/pkg/notification"
+	"github.com/orkspace/orkestra/pkg/gateway/notification"
 	orkqueue "github.com/orkspace/orkestra/pkg/queue"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	"github.com/orkspace/orkestra/pkg/runners"

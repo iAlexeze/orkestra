@@ -1,4 +1,4 @@
-package schema
+package applyapi
 
 import (
 	"encoding/json"
@@ -30,8 +30,8 @@ func idpEntry(kind string) *orktypes.CRDEntry {
 
 func noopLister() []*orktypes.CRDEntry { return nil }
 
-func TestHandler_MethodNotAllowed(t *testing.T) {
-	h := Handler(nil, func(kind string) *orktypes.CRDEntry { return nil }, noopLister)
+func TestSchemaHandler_MethodNotAllowed(t *testing.T) {
+	h := schemaHandler(nil, func(kind string) *orktypes.CRDEntry { return nil }, noopLister)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/schema/Platform", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -40,11 +40,11 @@ func TestHandler_MethodNotAllowed(t *testing.T) {
 	}
 }
 
-func TestHandler_IDPNotEnabled(t *testing.T) {
+func TestSchemaHandler_IDPNotEnabled(t *testing.T) {
 	lookup := func(kind string) *orktypes.CRDEntry {
 		return &orktypes.CRDEntry{IDP: &orktypes.IDPConfig{Enabled: false}}
 	}
-	h := Handler(nil, lookup, noopLister)
+	h := schemaHandler(nil, lookup, noopLister)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema/Platform", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -53,8 +53,8 @@ func TestHandler_IDPNotEnabled(t *testing.T) {
 	}
 }
 
-func TestHandler_UnknownKind(t *testing.T) {
-	h := Handler(nil, func(kind string) *orktypes.CRDEntry { return nil }, noopLister)
+func TestSchemaHandler_UnknownKind(t *testing.T) {
+	h := schemaHandler(nil, func(kind string) *orktypes.CRDEntry { return nil }, noopLister)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema/Unknown", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -63,8 +63,8 @@ func TestHandler_UnknownKind(t *testing.T) {
 	}
 }
 
-func TestHandler_Catalog_Empty(t *testing.T) {
-	h := Handler(nil, func(kind string) *orktypes.CRDEntry { return nil }, noopLister)
+func TestSchemaHandler_Catalog_Empty(t *testing.T) {
+	h := schemaHandler(nil, func(kind string) *orktypes.CRDEntry { return nil }, noopLister)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema/", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -83,7 +83,7 @@ func TestHandler_Catalog_Empty(t *testing.T) {
 	}
 }
 
-func TestHandler_Catalog_WithEntries(t *testing.T) {
+func TestSchemaHandler_Catalog_WithEntries(t *testing.T) {
 	appEntry := &orktypes.CRDEntry{
 		Name: "apprequests",
 		APITypes: orktypes.APITypes{
@@ -114,7 +114,7 @@ func TestHandler_Catalog_WithEntries(t *testing.T) {
 		},
 	}
 	lister := func() []*orktypes.CRDEntry { return []*orktypes.CRDEntry{appEntry, dbEntry} }
-	h := Handler(nil, func(kind string) *orktypes.CRDEntry { return nil }, lister)
+	h := schemaHandler(nil, func(kind string) *orktypes.CRDEntry { return nil }, lister)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema/", nil)
 	rr := httptest.NewRecorder()

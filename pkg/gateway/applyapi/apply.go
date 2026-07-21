@@ -8,7 +8,7 @@
 // rules when enabled; the reconciler enforces them otherwise. This handler's
 // only job is to accept a CR body, apply it via server-side apply, and return
 // a structured result.
-package apply
+package applyapi
 
 import (
 	"encoding/json"
@@ -65,7 +65,7 @@ type ApplyViolation struct {
 
 // Handler returns the http.HandlerFunc for POST /api/v1/apply.
 // The auth middleware must wrap this handler before registration.
-func Handler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes.CRDEntry) http.HandlerFunc {
+func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes.CRDEntry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

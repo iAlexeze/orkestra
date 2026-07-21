@@ -1,17 +1,18 @@
-// pkg/gateway/server.go
+// pkg/gateway/applyapi/server.go
 //
 // ApplyAPIServer wires the Apply API handlers onto a health.HealthServer.
 // Called from cmd/internal/gateway.go after the kubeclient is ready.
 //
 // Route layout:
 //
-//	POST   /api/v1/apply                               → apply.Handler
-//	GET    /api/v1/resources/{kind}/{ns}[/{name}]      → resources.Handler
-//	DELETE /api/v1/resources/{kind}/{ns}/{name}        → resources.Handler
-//	GET    /api/v1/schema/{kind}                       → schema.Handler
+//	POST   /api/v1/apply                          → applyHandler
+//	GET    /api/v1/resources/{kind}/{ns}[/{name}] → resourcesHandler
+//	DELETE /api/v1/resources/{kind}/{ns}/{name}   → resourcesHandler
+//	GET    /api/v1/schema/                        → schemaHandler (service catalog — IDP-enabled CRDs)
+//	GET    /api/v1/schema/{kind}                  → schemaHandler (CRD schema + idpFields)
 //
 // All routes are wrapped by AuthMiddleware before registration.
-package gateway
+package applyapi
 
 import (
 	"context"
@@ -21,9 +22,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/orkspace/orkestra/pkg/gateway/apply"
-	"github.com/orkspace/orkestra/pkg/gateway/resources"
-	gatewayschema "github.com/orkspace/orkestra/pkg/gateway/schema"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -71,20 +69,20 @@ func (s *ApplyAPIServer) Register(reg Registrar) {
 	}
 
 	// POST /api/v1/apply
-	reg.Register("/api/v1/apply", auth(apply.Handler(s.kube, s.buildCRDLookup())))
+	reg.Register("/api/v1/apply", auth(applyHandler(s.kube, s.buildCRDLookup())))
 
 	// GET/DELETE /api/v1/resources/...
-	reg.Register("/api/v1/resources/", auth(resources.Handler(s.kube, s.buildKindMapper())))
+	reg.Register("/api/v1/resources/", auth(resourcesHandler(s.kube, s.buildKindMapper())))
 
 	// GET /api/v1/schema/...
-	reg.Register("/api/v1/schema/", auth(gatewayschema.Handler(s.kube, s.buildCRDLookup(), s.buildCatalogLister())))
+	reg.Register("/api/v1/schema/", auth(schemaHandler(s.kube, s.buildCRDLookup(), s.buildCatalogLister())))
 
 	logger.Info().Msg("apply API routes registered: /api/v1/apply, /api/v1/resources/, /api/v1/schema/")
 }
 
 // buildKindMapper returns a KindMapper that resolves kind/plural names to GVRs
 // from the Katalog's enabled CRDs.
-func (s *ApplyAPIServer) buildKindMapper() resources.KindMapper {
+func (s *ApplyAPIServer) buildKindMapper() KindMapper {
 	index := make(map[string]schema.GroupVersionResource)
 	if s.kat == nil {
 		return func(kind string) (schema.GroupVersionResource, error) {
@@ -107,7 +105,7 @@ func (s *ApplyAPIServer) buildKindMapper() resources.KindMapper {
 }
 
 // buildCatalogLister returns a CatalogLister of all IDP-enabled CRDEntries.
-func (s *ApplyAPIServer) buildCatalogLister() gatewayschema.CatalogLister {
+func (s *ApplyAPIServer) buildCatalogLister() CatalogLister {
 	if s.kat == nil {
 		return func() []*orktypes.CRDEntry { return nil }
 	}
@@ -125,7 +123,7 @@ func (s *ApplyAPIServer) buildCatalogLister() gatewayschema.CatalogLister {
 
 // buildCRDLookup returns a CRDLookup that finds a CRDEntry by kind name.
 // Only returns entries where idp.enabled: true.
-func (s *ApplyAPIServer) buildCRDLookup() gatewayschema.CRDLookup {
+func (s *ApplyAPIServer) buildCRDLookup() CRDLookup {
 	index := make(map[string]*orktypes.CRDEntry)
 	if s.kat == nil {
 		return func(kind string) *orktypes.CRDEntry { return nil }

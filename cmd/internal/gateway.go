@@ -13,18 +13,18 @@ import (
 	"strings"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/certmanager"
-	applygateway "github.com/orkspace/orkestra/pkg/gateway"
+	applygateway "github.com/orkspace/orkestra/pkg/gateway/applyapi"
+	"github.com/orkspace/orkestra/pkg/gateway/certmanager"
+	gwhandlers "github.com/orkspace/orkestra/pkg/gateway/handlers"
+	"github.com/orkspace/orkestra/pkg/gateway/webhook"
 	"github.com/orkspace/orkestra/pkg/health"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
-	"github.com/orkspace/orkestra/pkg/kordinator"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/merger"
 	ork "github.com/orkspace/orkestra/pkg/orkestra"
 	"github.com/orkspace/orkestra/pkg/utils"
-	"github.com/orkspace/orkestra/pkg/webhook"
 )
 
 // KonductGateway starts the gateway — TLS + WebhookServer only.
@@ -102,19 +102,19 @@ func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	// ── 7. /katalog routes — gateway serves its own stats surface ────────────
 	// The control center discovers this endpoint via the "gatewayEndpoint" field
 	// in the runtime /katalog response and merges per-CRD stats by GVR key.
-	hs.Register("/katalog", kordinator.BuildGatewayKatalogHandler(kat, ws))
+	hs.Register("/katalog", gwhandlers.BuildGatewayKatalogHandler(kat, ws))
 
 	// ── /notify — receives pre-throttled notification events from the runtime ─
 	// The runtime builds and throttle-checks events; the gateway owns dispatch
 	// (SMTP, Slack). Registering here keeps all external I/O off the runtime path.
-	hs.Register("/notify", kordinator.BuildNotifyHandler(kat))
+	hs.Register("/notify", gwhandlers.BuildNotifyHandler(kat))
 	for _, crd := range kat.Enabled() {
 		crdName := strings.ToLower(crd.Name)
 		gvr := crd.GVR()
 		gvrKey := webhook.GVRKey(gvr.Group, gvr.Version, gvr.Resource)
 		hs.Register(
 			"/katalog/"+crdName,
-			kordinator.BuildGatewayCRDHandler(crd.Name, crd.GVKString(), gvr.String(), gvrKey, ws, kat),
+			gwhandlers.BuildGatewayCRDHandler(crd.Name, crd.GVKString(), gvr.String(), gvrKey, ws, kat),
 		)
 	}
 	logger.Debug().Msg("gateway /katalog routes registered")

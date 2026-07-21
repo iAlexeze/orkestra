@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/orkspace/orkestra/pkg/certmanager"
+	"github.com/orkspace/orkestra/pkg/gateway/certmanager"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
@@ -35,7 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 
-	"github.com/orkspace/orkestra/pkg/webhook"
+	"github.com/orkspace/orkestra/pkg/gateway/webhook"
 )
 
 // ensureSecurity applies TLS certificates when security features

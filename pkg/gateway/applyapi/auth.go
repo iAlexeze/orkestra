@@ -12,7 +12,7 @@
 //
 // Self-bootstrap and rotation reuse pkg/runners exported helpers so the
 // annotation-based rotation clock is identical to operator-managed secrets.
-package gateway
+package applyapi
 
 import (
 	"context"

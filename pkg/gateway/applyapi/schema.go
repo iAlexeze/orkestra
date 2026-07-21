@@ -6,7 +6,7 @@
 // Only served for CRDs where idp.enabled: true.
 // The Control Center uses these endpoints to render the [+ Create] form
 // and the service catalog picker.
-package schema
+package applyapi
 
 import (
 	"context"
@@ -59,7 +59,7 @@ var crdGVR = schema.GroupVersionResource{
 
 // Handler returns the http.HandlerFunc for GET /api/v1/schema/ and /api/v1/schema/{kind}.
 // The auth middleware must wrap this handler before registration.
-func Handler(kube kubeclient.KubeClient, lookup CRDLookup, list CatalogLister) http.HandlerFunc {
+func schemaHandler(kube kubeclient.KubeClient, lookup CRDLookup, list CatalogLister) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

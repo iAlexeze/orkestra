@@ -14,7 +14,7 @@
 // per-CRD by GVR string ("group/version/resource") — the canonical key used by
 // both processes.  Neither process pushes to the other; each is independently
 // queryable.
-package kordinator
+package handlers
 
 import (
 	"net/http"
@@ -35,6 +35,58 @@ type GatewayStatsProvider interface {
 	NamespaceStatsFor(gvrKey string) *health.NamespaceProtectionStats
 	InfraProtectionStats() *health.DeletionProtectionStats
 	HousekeeperStats() *health.WebhookStats
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Per-field stat response types (JSON shapes shared with the runtime /katalog)
+// ─────────────────────────────────────────────────────────────────────────────
+
+type AdmissionStatsResponse struct {
+	WebhooksEnabled   bool    `json:"webhooksEnabled"`
+	ValidationTotal   int64   `json:"validationTotal"`
+	ValidationAllowed int64   `json:"validationAllowed"`
+	ValidationDenied  int64   `json:"validationDenied"`
+	ValidationWarned  int64   `json:"validationWarned"`
+	ValAvgLatencyMs   float64 `json:"valAvgLatencyMs"`
+	ValP95LatencyMs   float64 `json:"valP95LatencyMs"`
+	ValMaxLatencyMs   float64 `json:"valMaxLatencyMs"`
+	MutationTotal     int64   `json:"mutationTotal"`
+	MutationApplied   int64   `json:"mutationApplied"`
+	MutationSkipped   int64   `json:"mutationSkipped"`
+	MutAvgLatencyMs   float64 `json:"mutAvgLatencyMs"`
+	MutP95LatencyMs   float64 `json:"mutP95LatencyMs"`
+	MutMaxLatencyMs   float64 `json:"mutMaxLatencyMs"`
+}
+
+type ConversionStatsResponse struct {
+	Enabled      bool  `json:"enabled"`
+	Total        int64 `json:"total"`
+	Success      int64 `json:"success"`
+	Failures     int64 `json:"failures"`
+	AvgLatencyMs int64 `json:"avgLatencyMs"`
+	P95LatencyMs int64 `json:"p95LatencyMs"`
+}
+
+type DeletionProtectionStatsResponse struct {
+	Enabled bool  `json:"enabled"`
+	Total   int64 `json:"total"`
+	Blocked int64 `json:"blocked"`
+	Allowed int64 `json:"allowed"`
+}
+
+type NamespaceProtectionResponse struct {
+	Enabled              bool     `json:"enabled"`
+	HasNamespaceRules    bool     `json:"hasNamespaceRules"`
+	Total                int64    `json:"total"`
+	Blocked              int64    `json:"blocked"`
+	Allowed              int64    `json:"allowed"`
+	AllowedNamespaces    []string `json:"allowedNamespaces,omitempty"`
+	RestrictedNamespaces []string `json:"restrictedNamespaces,omitempty"`
+}
+
+type HousekeeperStats struct {
+	Reconciled int64 `json:"reconciled"`
+	Failed     int64 `json:"failed"`
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

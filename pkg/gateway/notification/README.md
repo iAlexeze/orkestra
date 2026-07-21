@@ -1,4 +1,4 @@
-# pkg/notification
+# pkg/gateway/notification
 
 The notification package dispatches alerts when a Katalog condition evaluates to true. It supports email (SMTP) and Slack channels, with per-team interval enforcement to prevent alert floods. Dispatch is handled by a `Notifier` interface with two implementations: `DirectNotifier` sends directly to SMTP/Slack (standalone mode or local dev), and `GatewayNotifier` POSTs an `Event` payload to the Orkestra gateway's `/notify` endpoint (in-cluster default).
 
