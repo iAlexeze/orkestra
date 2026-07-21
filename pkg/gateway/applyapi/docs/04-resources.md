@@ -2,7 +2,7 @@
 
 ## Two endpoints for two audiences
 
-The runtime already serves rich CR data via `pkg/kordinator`:
+The runtime already serves rich CR data via `pkg/runtime/kordinator`:
 
 ```
 GET /katalog/{crd}/cr/{namespace}/{name}   — full detail: ready state, children, events
