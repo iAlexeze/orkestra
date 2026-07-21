@@ -1,6 +1,6 @@
 # 02 — Stats Types
 
-The health package defines the stats types that the webhook package writes to and the kordinator reads when building the `/katalog/{crd}` API response. Keeping these types here avoids importing `pkg/webhook` from `pkg/kordinator`.
+The health package defines the stats types that the webhook package writes to and the kordinator reads when building the `/katalog/{crd}` API response. Keeping these types here avoids importing `pkg/webhook` from `pkg/runtime/kordinator`.
 
 ## Rolling window
 
@@ -72,6 +72,6 @@ snap := ws.GetStats()
 
 ## Ownership
 
-The `pkg/webhook` package holds the live instances and writes to them. The `pkg/kordinator` package reads snapshots to build the `/katalog/{crd}` response. This package defines the types.
+The `pkg/webhook` package holds the live instances and writes to them. The `pkg/runtime/kordinator` package reads snapshots to build the `/katalog/{crd}` response. This package defines the types.
 
 → Next: [03-routes.md](03-routes.md)

@@ -64,8 +64,8 @@ All functions receive a `kubeclient.KubeClient` and a `domain.Object` (the owner
 1. Create `pkg/resources/<kind>/` with `<kind>.go` and `types.go`.
 2. Add the template source struct to `pkg/types/types_hook_templates.go`.
 3. Add a resolver method in `pkg/resources/template/resolver.go`.
-4. Add the runner in `pkg/reconciler/run_<kind>.go`.
-5. Call the runner from `pkg/reconciler/generic.go`.
+4. Add the runner in `pkg/runtime/reconciler/run_<kind>.go`.
+5. Call the runner from `pkg/runtime/reconciler/generic.go`.
 
 See `pkg/resources/deployments/` for a complete example.
 

@@ -19,8 +19,8 @@ This is the core design work that would make rollback genuinely useful.
 ## What is currently wired
 
 - `pkg/types/rollback.go` — `RollbackBlock`, `RollbackTrigger` structs and YAML schema
-- `pkg/reconciler/generic.go` — rollback gate (Phase 1), failure history tracking, `runRollback`, `isRollbackActive`, snapshot writes
-- `pkg/kordinator/crd_health.go` — `rollbackTriggerFn` / `rollbackClearFn` callbacks so CRD health tracks rollback state
+- `pkg/runtime/reconciler/generic.go` — rollback gate (Phase 1), failure history tracking, `runRollback`, `isRollbackActive`, snapshot writes
+- `pkg/runtime/kordinator/crd_health.go` — `rollbackTriggerFn` / `rollbackClearFn` callbacks so CRD health tracks rollback state
 
 The consecutive-failure trigger and the snapshot/re-apply cycle work for reconcile-level errors. The gap is that "reconcile succeeded" and "child resources are healthy" are not the same thing.
 
@@ -81,6 +81,6 @@ The `.previous.*` context is hydrated from the `orkestra.orkspace.io/previous-sp
 | File | Role |
 |------|------|
 | `pkg/types/rollback.go` | Struct definitions and YAML schema |
-| `pkg/reconciler/generic.go` | Gate (Phase 1), `runRollback`, `shouldTriggerRollback`, snapshot |
+| `pkg/runtime/reconciler/generic.go` | Gate (Phase 1), `runRollback`, `shouldTriggerRollback`, snapshot |
 | `pkg/plan/` | Resource drift and child status tracking |
-| `pkg/kordinator/crd_health.go` | Health callbacks for rollback state |
+| `pkg/runtime/kordinator/crd_health.go` | Health callbacks for rollback state |

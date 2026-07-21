@@ -56,7 +56,7 @@ The value must always be an `${ENV_VAR}` reference — Orkestra does not accept 
 
 ### Self-bootstrap and rotation
 
-When a `secretRef` is configured, the gateway runs the same `once: true` + `rotateAfter` flow that `pkg/runners` uses for operator-managed secrets — via the same functions (`secretExists`, `secretNeedsRotation`, `deleteSecretForRotation`, `generationAnnotations`).
+When a `secretRef` is configured, the gateway runs the same `once: true` + `rotateAfter` flow that `pkg/runtime/runners` uses for operator-managed secrets — via the same functions (`secretExists`, `secretNeedsRotation`, `deleteSecretForRotation`, `generationAnnotations`).
 
 ```yaml
 gateway:
@@ -82,7 +82,7 @@ gateway starts
        └─ Secret exists, no rotateAfter → read token, proceed
 ```
 
-The `generated-at` and `rotate-after` annotations written onto the Secret are the same ones `pkg/runners` uses — the rotation clock works identically to operator-managed credentials.
+The `generated-at` and `rotate-after` annotations written onto the Secret are the same ones `pkg/runtime/runners` uses — the rotation clock works identically to operator-managed credentials.
 
 To pin a specific token: create the Secret before the gateway starts. The gateway finds it, annotates it (starting the rotation clock from now), and proceeds. To force immediate rotation: delete the Secret and restart.
 

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/orkspace/orkestra/pkg/kordinator"
+	"github.com/orkspace/orkestra/pkg/runtime/kordinator"
 )
 
 func TestCRDActivation_InitialState_NotHealthy(t *testing.T) {

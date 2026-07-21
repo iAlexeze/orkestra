@@ -10,7 +10,7 @@
 // The resolved values are stored in TokenSet, which the auth middleware uses
 // to validate incoming Authorization: Bearer <token> headers.
 //
-// Self-bootstrap and rotation reuse pkg/runners exported helpers so the
+// Self-bootstrap and rotation reuse pkg/secrets helpers so the
 // annotation-based rotation clock is identical to operator-managed secrets.
 package applyapi
 
@@ -28,7 +28,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
-	"github.com/orkspace/orkestra/pkg/runners"
+	"github.com/orkspace/orkestra/pkg/secrets"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
@@ -82,7 +82,7 @@ func LoadTokens(ctx context.Context, tokens []orktypes.ApplyAPIToken, kube kubec
 }
 
 // resolveSecretRef reads the token from a Kubernetes Secret, creating or
-// rotating it as needed using the same annotation-based rotation as pkg/runners.
+// rotating it as needed using the same annotation-based rotation as pkg/secrets.
 func resolveSecretRef(ctx context.Context, ref *orktypes.ApplyAPISecretRef, kube kubeclient.KubeClient, ownNamespace string) (string, error) {
 	ns := ref.Namespace
 	if ns == "" {
@@ -92,7 +92,7 @@ func resolveSecretRef(ctx context.Context, ref *orktypes.ApplyAPISecretRef, kube
 	// Rotation check: if the Secret exists and rotateAfter has elapsed, delete it
 	// so the create step below regenerates it with a fresh token.
 	if ref.RotateAfter != "" {
-		needsRotation, err := runners.SecretNeedsRotation(ctx, kube, ns, ref.Name, ref.RotateAfter)
+		needsRotation, err := secrets.SecretNeedsRotation(ctx, kube, ns, ref.Name, ref.RotateAfter)
 		if err != nil {
 			return "", fmt.Errorf("checking rotation for %s/%s: %w", ns, ref.Name, err)
 		}
@@ -102,14 +102,14 @@ func resolveSecretRef(ctx context.Context, ref *orktypes.ApplyAPISecretRef, kube
 				Str("namespace", ns).
 				Str("rotateAfter", ref.RotateAfter).
 				Msg("apply API token rotation: deleting expired secret")
-			if err := runners.DeleteSecretForRotation(ctx, kube, ns, ref.Name); err != nil {
+			if err := secrets.DeleteSecretForRotation(ctx, kube, ns, ref.Name); err != nil {
 				return "", fmt.Errorf("rotating %s/%s: %w", ns, ref.Name, err)
 			}
 		}
 	}
 
 	// Read or bootstrap: check existence, create if missing.
-	exists, err := runners.SecretExists(ctx, kube, ns, ref.Name)
+	exists, err := secrets.SecretExists(ctx, kube, ns, ref.Name)
 	if err != nil {
 		return "", fmt.Errorf("checking secret %s/%s: %w", ns, ref.Name, err)
 	}
@@ -135,7 +135,7 @@ func resolveSecretRef(ctx context.Context, ref *orktypes.ApplyAPISecretRef, kube
 // createTokenSecret creates a new Kubernetes Secret with the given token value
 // and generation annotations for the rotation clock.
 func createTokenSecret(ctx context.Context, kube kubeclient.KubeClient, ns, name, key, token, rotateAfter string) error {
-	annotations := runners.GenerationAnnotations(rotateAfter)
+	annotations := secrets.GenerationAnnotations(rotateAfter)
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,

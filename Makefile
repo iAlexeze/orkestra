@@ -356,10 +356,10 @@ test-fixture-note:
 test-fixture-reconciler:
 	@echo "── Reconciler fixture test ────────────────────────────────────"
 	@bash scripts/setup-kind.sh $(FIXTURE_RECONCILER_CLUSTER)
-	@kubectl apply -f pkg/reconciler/fixture/crd.yaml
-	@ork generate bundle --file pkg/reconciler/fixture/katalog.yaml | kubectl apply -f -
+	@kubectl apply -f pkg/runtime/reconciler/fixture/crd.yaml
+	@ork generate bundle --file pkg/runtime/reconciler/fixture/katalog.yaml | kubectl apply -f -
 	@helm install orkestra $(HELM_CHART) --namespace orkestra-system --wait --timeout 120s
-	@kubectl apply -f pkg/reconciler/fixture/cr.yaml
+	@kubectl apply -f pkg/runtime/reconciler/fixture/cr.yaml
 	@kubectl wait reconcilerprobe/probe --for=jsonpath='{.status.tier}'=premium \
 	    --timeout=120s || kubectl get reconcilerprobe probe -o yaml
 	@kubectl get deployment probe-app

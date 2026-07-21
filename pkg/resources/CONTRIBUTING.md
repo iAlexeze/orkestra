@@ -25,7 +25,7 @@ Follow the steps outlined in the [README](./README.md). Make sure to:
 - Implement `Create`, `Apply`, `Update` (delegates to `Apply`), `Delete`, and `Resolve` in your subdirectory.
 - Set `TypeMeta` (`APIVersion` + `Kind`) before marshaling in `Apply` — required for SSA.
 - Add a resolver method in `template/resolver.go`.
-- Add a runner in `pkg/reconciler/`.
+- Add a runner in `pkg/runtime/reconciler/`.
 - Wire the runner in `generic.go`.
 - Write unit tests covering all functions.
 

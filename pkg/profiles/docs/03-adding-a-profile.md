@@ -197,7 +197,7 @@ Profile string `yaml:"profile,omitempty" json:"profile,omitempty"`
 
 **6. Update `pkg/resources/<resource>/<resource>.go`** — add `reg orktypes.ProfileRegistry` as a third parameter to `Resolve()` and apply the profile when `src.Profile != ""`.
 
-**7. Update `pkg/runners/<resource>.go`** — pass `resolver.Profiles()` to `Resolve()`.
+**7. Update `pkg/runtime/runners/<resource>.go`** — pass `resolver.Profiles()` to `Resolve()`.
 
 **8. Add `pkg/katalog/validate_<resource>_profile.go`** — `validate<Resource>Profiles()` using `Collect<Resource>ProfileEntries()`. Call it from `ValidateConfig()` in `validate.go`.
 

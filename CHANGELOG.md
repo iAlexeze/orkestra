@@ -1,4 +1,4 @@
-## v0.7.12 — [UNRELEASED]
+## v0.7.12 — Gateway Apply API, IDP, and codebase clarity [UNRELEASED]
 
 ### Gateway Apply API
 
@@ -120,6 +120,26 @@ This eliminates false-positive drift from k8s-injected defaults (SA token volume
 `runners.DeleteOwnedClusterScopedResources` now covers Namespaces, ClusterRoles, ClusterRoleBindings, PersistentVolumes, and cluster-scoped custom resources. Previously only Namespaces were explicitly cleaned up on CR deletion.
 
 Every operator now receives the `orkestra.orkspace.io/cleanup` finalizer unconditionally. Previously the finalizer was only injected when the operator declared Namespace resources. Without it, a CR with cluster-scoped `custom:` children (e.g. a namespaced CR spawning a cluster-scoped child via `custom:`) was deleted by Kubernetes before the explicit GC runner could fire, leaving orphaned cluster-scoped resources.
+
+### Codebase restructure — gateway and runtime under domain packages
+
+Orkestra's packages are now organised by component. No API or behaviour changes — import paths only.
+
+**Gateway** — all gateway concerns consolidated under `pkg/gateway/`:
+→ `pkg/webhook` → `pkg/gateway/webhook`
+→ `pkg/notification` → `pkg/gateway/notification`
+→ `pkg/certmanager` → `pkg/gateway/certmanager`
+
+**Runtime** — all runtime-only packages under `pkg/runtime/`:
+→ `pkg/reconciler` → `pkg/runtime/reconciler`
+→ `pkg/kordinator` → `pkg/runtime/kordinator`
+→ `pkg/konductor` → `pkg/runtime/konductor`
+→ `pkg/informer` → `pkg/runtime/informer`
+→ `pkg/runners` → `pkg/runtime/runners`
+→ `pkg/autoscaler` → `pkg/runtime/autoscaler`
+→ `pkg/queue` → `pkg/runtime/queue`
+
+New shared package `pkg/secrets` extracts secret lifecycle helpers used by both the runtime and the gateway Apply API.
 
 ---
 
