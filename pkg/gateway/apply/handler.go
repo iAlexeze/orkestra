@@ -26,6 +26,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 )
 
@@ -64,7 +65,7 @@ type ApplyViolation struct {
 
 // Handler returns the http.HandlerFunc for POST /api/v1/apply.
 // The auth middleware must wrap this handler before registration.
-func Handler(kube kubeclient.KubeClient) http.HandlerFunc {
+func Handler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes.CRDEntry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -97,10 +98,19 @@ func Handler(kube kubeclient.KubeClient) http.HandlerFunc {
 		}
 
 		dryRun := r.URL.Query().Get("dryRun") == "true"
+		overwrite := r.URL.Query().Get("overwrite") == "true"
+
+		// CRD-level forceConflict is a katalog declaration; ?overwrite=true is a
+		// per-request override. Either one sets Force=true.
+		if !overwrite {
+			if crd := lookup(obj.GetKind()); crd != nil && crd.IDP != nil {
+				overwrite = crd.IDP.ForceConflict
+			}
+		}
 
 		patchOpts := metav1.PatchOptions{
 			FieldManager: konfig.FieldManagerGateway,
-			Force:        boolPtr(true),
+			Force:        boolPtr(overwrite),
 		}
 		if dryRun {
 			patchOpts.DryRun = []string{metav1.DryRunAll}

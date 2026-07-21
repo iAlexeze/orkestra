@@ -245,6 +245,7 @@ spec:
 | `ignoreFields` | — | Dot-notation field paths excluded from the IDP form. Use for internal or platform-managed fields that should not be visible to users. |
 | `fields` | — | Optional form hints. Each key matches a field name in the CRD spec. Missing keys are rendered from the OpenAPI schema alone. |
 | `include` | — | Path (relative to the katalog file) to a YAML file containing a `fields:` key. Inline `fields:` take precedence over included values. Expanded at load time. |
+| `forceConflict` | `false` | When `true`, every Apply API request for this CRD uses `Force: true` on server-side apply — the gateway takes ownership of any conflicting fields rather than surfacing a conflict error. Equivalent to `helm --force-conflict`. Callers can still override per-request with `?overwrite=true`. |
 
 `idp/platformresource.yaml` (the include file):
 
@@ -272,6 +273,7 @@ fields:
 | `order` | Sort order within the form. Fields without `order` follow fields that have it. |
 | `when` | All conditions must pass for this field to be shown (AND). Uses the same `Condition` type as resource templates — see [06-when-conditions.md](06-when-conditions.md). Evaluated client-side in the Control Center; gateway/admission is the backstop. |
 | `anyOf` | At least one condition must pass for this field to be shown (OR). When both `when` and `anyOf` are declared, both blocks must pass. |
+| `required` | When `true`, marks the field as mandatory in the IDP form. The browser enforces this natively — the label shows an asterisk and the form cannot be submitted while the field is empty. Has no effect on fields currently hidden by a `when:` or `anyOf:` condition. For server-side enforcement use `validation.rules` with `action: deny`. |
 | `disabled` | Non-empty string — field is rendered greyed-out with this message. Useful for platform-managed fields that should be visible but not editable. |
 
 Without any `idp:` block on the CRD entry, the CRD is not exposed via the Apply API regardless of what the Katalog-level `gateway.applyAPI` config says.

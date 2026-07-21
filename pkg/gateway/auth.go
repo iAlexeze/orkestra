@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/runners"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -140,6 +141,7 @@ func createTokenSecret(ctx context.Context, kube kubeclient.KubeClient, ns, name
 			Name:        name,
 			Namespace:   ns,
 			Annotations: annotations,
+			Labels:      orklabels.WithDeletionProtection(orklabels.OrkestraResourceLabels()),
 		},
 		Type: corev1.SecretTypeOpaque,
 		StringData: map[string]string{

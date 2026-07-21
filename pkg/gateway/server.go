@@ -71,7 +71,7 @@ func (s *ApplyAPIServer) Register(reg Registrar) {
 	}
 
 	// POST /api/v1/apply
-	reg.Register("/api/v1/apply", auth(apply.Handler(s.kube)))
+	reg.Register("/api/v1/apply", auth(apply.Handler(s.kube, s.buildCRDLookup())))
 
 	// GET/DELETE /api/v1/resources/...
 	reg.Register("/api/v1/resources/", auth(resources.Handler(s.kube, s.buildKindMapper())))

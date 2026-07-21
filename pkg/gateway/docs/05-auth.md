@@ -20,19 +20,39 @@ gateway:
             name: ork-tf-token
             key: token
 
-        - name: local-dev
-          token: "${ORK_DEV_TOKEN}"   # env var expansion — no literal values accepted
+        - name: ci-injected
+          token: "${ORK_CI_TOKEN}"   # env var expansion — no literal values accepted
 ```
 
-`name` is for logging and audit. `secretRef` is the in-cluster production pattern — the gateway reads the Secret at startup using its ServiceAccount. `token` accepts `${ENV_VAR}` references for local development with `ork run` where no cluster Secret exists. Literal values are not accepted.
+`name` is for logging and audit. `secretRef` is the standard pattern — the gateway reads or self-bootstraps the Secret at startup using its ServiceAccount. `token` accepts `${ENV_VAR}` references expanded at startup; set the variable via `extraEnv` in the Helm values for both the gateway and the control center deployments (see `charts/orkestra/values.yaml`). Literal values are not accepted.
 
 The auth middleware matches the `Bearer` value against all configured tokens. No token — 401. No match — 401. Match — the request proceeds with the token name attached to the context for logging.
 
 ### secretRef vs token
 
-`secretRef` reads the token from a Kubernetes Secret at startup — the value never appears in the Katalog YAML, is rotatable independently, and is RBAC-scoped to the gateway's ServiceAccount. Use this in production.
+`secretRef` reads the token from a Kubernetes Secret at startup — the value never appears in the Katalog YAML, is rotatable independently, and is RBAC-scoped to the gateway's ServiceAccount. This is the recommended pattern.
 
-`token: "${ENV_VAR}"` expands an environment variable at startup. Use this for local development: export the variable, then `ork run`. The value must always be an env var reference — Orkestra does not accept literal sensitive values in YAML.
+`token: "${ENV_VAR}"` expands an environment variable at startup. Use this when you manage the token externally (e.g. injected from a secrets manager at deploy time). Set the variable in `gateway.extraEnv` and `controlCenter.extraEnv` in your Helm values:
+
+```yaml
+gateway:
+  extraEnv:
+    - name: ORK_CI_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: my-token-secret
+          key: token
+
+controlCenter:
+  extraEnv:
+    - name: ORK_CI_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: my-token-secret
+          key: token
+```
+
+The value must always be an `${ENV_VAR}` reference — Orkestra does not accept literal sensitive values in YAML.
 
 ### Self-bootstrap and rotation
 

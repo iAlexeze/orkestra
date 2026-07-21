@@ -27,15 +27,31 @@ Apply uses the dynamic client with field manager `orkestra-gateway`:
 ```go
 client.Resource(gvr).
     Namespace(obj.GetNamespace()).
-    Apply(ctx, obj.GetName(), obj, metav1.ApplyOptions{
+    Patch(ctx, obj.GetName(), ApplyPatchType, body, metav1.PatchOptions{
         FieldManager: "orkestra-gateway",
-        Force:        false,
+        Force:        overwrite, // false by default; true when ?overwrite=true
     })
 ```
 
-`Force: false` — the apply is rejected if another manager owns a conflicting field. This surfaces merge conflicts as structured errors rather than silently overwriting. The exact response shape for conflicts is an open question in the spec (see [gateway-apply-api-spec.md](../../../unknown/claude/sessions/post-0.7.9-improvements/undone/gateway-apply-api-spec.md)).
+By default `Force` is `false` — if another field manager owns a conflicting field, SSA returns an error. This surfaces merge conflicts as structured errors rather than silently taking ownership. Pass `?overwrite=true` to set `Force: true` and claim ownership of conflicting fields.
 
 SSA is idempotent — re-applying the same CR body with the same field values is a no-op. Callers do not need to check "does it exist" before applying.
+
+### Conflict response
+
+When `Force: false` (the default) and SSA detects a field manager conflict, the Kubernetes API server returns a structured `Status` error. The Apply API translates it directly:
+
+```json
+{
+  "status": "error",
+  "message": "Apply failed with 1 conflict: conflict with \"kubectl-client-side-apply\" ...",
+  "violations": [
+    {"field": "spec.replicas", "message": "conflict with \"kubectl-client-side-apply\""}
+  ]
+}
+```
+
+Pass `?overwrite=true` to take ownership of the conflicting fields and proceed.
 
 ## Successful response
 

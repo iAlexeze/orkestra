@@ -304,6 +304,13 @@ type IDPConfig struct {
 	// Description is a short human-readable summary shown in the service catalog.
 	// Falls back to the CRD-level description when not set.
 	Description string `yaml:"description,omitempty" json:"description,omitempty"`
+
+	// ForceConflict, when true, sets Force: true on every server-side apply
+	// for this CRD — the gateway takes ownership of any conflicting fields
+	// rather than surfacing a conflict error. Equivalent to helm --force-conflict.
+	// Can be overridden per-request with ?overwrite=true regardless of this setting.
+	// Default: false.
+	ForceConflict bool `yaml:"forceConflict,omitempty" json:"forceConflict,omitempty"`
 }
 
 // IDPFieldConfig holds display hints for one spec field in the IDP form.
