@@ -98,6 +98,17 @@
       font-size: 13px;
       margin-bottom: 20px;
     }
+    .idp-warning {
+      padding: 12px 16px;
+      border-radius: 6px;
+      background: rgba(234,179,8,0.1);
+      border: 1px solid rgba(234,179,8,0.3);
+      color: var(--text-warning, #facc15);
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+    .idp-warning ul { margin: 6px 0 0 16px; padding: 0; }
+    .idp-warning li { margin-bottom: 2px; }
     .idp-preview-banner {
       padding: 12px 16px;
       border-radius: 6px;
@@ -372,13 +383,19 @@
 
     function showStatus(ok, msg, preview) {
       status.style.display = 'block';
-      if (preview) {
-        status.className = 'idp-preview-banner';
-        status.innerHTML = '<strong>Preview:</strong> ' + msg;
-      } else {
-        status.className = ok ? 'idp-success' : 'idp-error';
-        status.textContent = msg;
-      }
+      status.className = ok ? 'idp-success' : 'idp-error';
+      var icon = ok ? '✓' : '✗';
+      var label = preview ? icon + ' Preview: ' : icon + ' ';
+      status.innerHTML = '<strong>' + label + '</strong>' + msg;
+      window.scrollTo(0, 0);
+    }
+
+    function showWarnings(warnings) {
+      if (!warnings || warnings.length === 0) return;
+      status.style.display = 'block';
+      status.className = 'idp-warning';
+      var items = warnings.map(function (w) { return '<li>' + w + '</li>'; }).join('');
+      status.innerHTML = '<strong>⚠ Warning' + (warnings.length > 1 ? 's' : '') + '</strong><ul>' + items + '</ul>';
       window.scrollTo(0, 0);
     }
 
@@ -425,7 +442,16 @@
 
         if (dryRun) {
           if (res.ok || (res.body && res.body.accepted)) {
-            showStatus(true, 'Looks good — no admission errors detected.', true);
+            var warns = res.body && res.body.warnings;
+            if (warns && warns.length > 0) {
+              status.style.display = 'block';
+              status.className = 'idp-warning';
+              var items = warns.map(function (w) { return '<li>' + w + '</li>'; }).join('');
+              status.innerHTML = '<strong>⚠ Preview — accepted with warning' + (warns.length > 1 ? 's' : '') + '</strong><ul>' + items + '</ul>';
+              window.scrollTo(0, 0);
+            } else {
+              showStatus(true, 'Looks good — no admission errors detected.', true);
+            }
           } else {
             var msg = (res.body && (res.body.message || res.body.error)) || 'Would be rejected (' + res.status + ')';
             showStatus(false, msg, true);
@@ -435,7 +461,12 @@
         }
 
         if (res.ok || res.status === 200 || res.status === 201) {
-          window.location.href = backURL;
+          var warns = res.body && res.body.warnings;
+          if (warns && warns.length > 0) {
+            showWarnings(warns);
+          } else {
+            window.location.href = backURL;
+          }
         } else {
           var msg = (res.body && (res.body.message || res.body.error)) || 'Request failed (' + res.status + ')';
           showStatus(false, msg, false);

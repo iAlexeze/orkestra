@@ -16,12 +16,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/dynamic"
 
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
@@ -48,6 +50,9 @@ type ApplyResponse struct {
 	ResourceVersion string `json:"resourceVersion,omitempty"`
 	// Message carries the rejection reason on Accepted=false.
 	Message string `json:"message,omitempty"`
+	// Warnings is a list of advisory messages returned by the admission webhook
+	// even when the request was accepted. Mirrors the kubectl warning experience.
+	Warnings []string `json:"warnings,omitempty"`
 	// Violations is a structured list of field-level errors from admission or
 	// validation. Populated when Accepted=false and kubernetes returns Status details.
 	Violations []ApplyViolation `json:"violations,omitempty"`
@@ -61,6 +66,41 @@ type ApplyViolation struct {
 	Message string `json:"message"`
 	// Severity is "error" (blocks apply) or "warning" (informational).
 	Severity string `json:"severity,omitempty"`
+}
+
+// warningCapture collects Kubernetes API server warnings from a single request.
+// It implements rest.WarningHandler and is safe for concurrent use.
+type warningCapture struct {
+	mu       sync.Mutex
+	warnings []string
+}
+
+func (c *warningCapture) HandleWarningHeader(_ int, _ string, message string) {
+	c.mu.Lock()
+	c.warnings = append(c.warnings, message)
+	c.mu.Unlock()
+}
+
+func (c *warningCapture) collect() []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]string(nil), c.warnings...)
+}
+
+// scopedDynamic returns a dynamic client that routes warnings to capture
+// while reusing the existing HTTP transport from kube.
+func scopedDynamic(kube kubeclient.KubeClient, capture *warningCapture) dynamic.Interface {
+	cfg := kube.RestConfig()
+	if cfg == nil {
+		return kube.DynamicClient()
+	}
+	copy := *cfg
+	copy.WarningHandler = capture
+	d, err := dynamic.NewForConfig(&copy)
+	if err != nil {
+		return kube.DynamicClient()
+	}
+	return d
 }
 
 // Handler returns the http.HandlerFunc for POST /api/v1/apply.
@@ -117,7 +157,8 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 		}
 
 		ns := obj.GetNamespace()
-		result, err := kube.DynamicClient().
+		capture := &warningCapture{}
+		result, err := scopedDynamic(kube, capture).
 			Resource(gvr).
 			Namespace(ns).
 			Patch(r.Context(), obj.GetName(), k8stypes.ApplyPatchType, body, patchOpts)
@@ -131,6 +172,7 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 			utils.WriteJSON(w, http.StatusUnprocessableEntity, ApplyResponse{
 				DryRun:     dryRun,
 				Message:    err.Error(),
+				Warnings:   capture.collect(),
 				Violations: extractViolations(err),
 			})
 			return
@@ -144,6 +186,7 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 			Kind:            result.GetKind(),
 			APIVersion:      result.GetAPIVersion(),
 			ResourceVersion: result.GetResourceVersion(),
+			Warnings:        capture.collect(),
 		})
 	}
 }
