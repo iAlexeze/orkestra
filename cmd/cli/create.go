@@ -5,7 +5,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/orkspace/orkestra/pkg/ork"
+	"github.com/orkspace/orkestra/pkg/tools/cluster"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +34,7 @@ Downloads kind automatically if not found in PATH.
 		}
 
 		fmt.Printf("→ Creating cluster '%s'...\n", name)
-		if err := ork.EnsureKindCluster(name, workers, version); err != nil {
+		if err := cluster.EnsureKindCluster(name, workers, version); err != nil {
 			return err
 		}
 		fmt.Printf("\nCluster '%s' is ready.\n", name)
@@ -50,7 +50,7 @@ func init() {
 	createClusterCmd.Flags().String("name", "ork-playground", "Cluster name")
 	createClusterCmd.Flags().String("provider", "kind", "Cluster provider (only 'kind' is supported)")
 	createClusterCmd.Flags().Int("workers", 0, "Number of kind worker nodes (default: 0, control-plane only)")
-	createClusterCmd.Flags().String("version", "", "kind version to use (default: "+ork.DefaultKindVersion+")")
+	createClusterCmd.Flags().String("version", "", "kind version to use (default: "+cluster.DefaultKindVersion+")")
 
 	// Shadow global flags
 	createCmd.PersistentFlags().StringSlice("file", nil, "")

@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/orkspace/orkestra/pkg/e2e"
+	"github.com/orkspace/orkestra/pkg/registry/e2e"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"gopkg.in/yaml.v3"
 

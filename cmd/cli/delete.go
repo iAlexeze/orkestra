@@ -5,7 +5,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/orkspace/orkestra/pkg/ork"
+	"github.com/orkspace/orkestra/pkg/tools/cluster"
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +25,7 @@ var deleteClusterCmd = &cobra.Command{
 		name, _ := cmd.Flags().GetString("name")
 
 		fmt.Printf("→ Deleting cluster '%s'...\n", name)
-		if err := ork.DeleteKindCluster(name); err != nil {
+		if err := cluster.DeleteKindCluster(name); err != nil {
 			return err
 		}
 		fmt.Printf("Cluster '%s' deleted.\n", name)

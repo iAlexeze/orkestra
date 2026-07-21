@@ -28,7 +28,7 @@ Resources are the inverse: they are CRD-specific by definition. A PostgreSQL Mot
 Both levels call through `loadAndExpandImport` → `motif.LoadImport` → `motif.Expand`, which returns an `ExpandedMotif`:
 
 ```go
-// pkg/motif/expander.go
+// pkg/registry/motif/expander.go
 type ExpandedMotif struct {
     Name        string
     OnCreate    *orktypes.HookTemplates   // → spec.crds[name].imports only
@@ -112,7 +112,7 @@ The merged result is then handed to the Katalog parser via `m.ToSpecImports()`, 
 If the new field should be shared across all CRDs (like profiles and notes):
 
 1. Add the field to `orktypes.Motif` (`pkg/types/motif.go`)
-2. Add the field to `ExpandedMotif` (`pkg/motif/expander.go`) and populate it in `Expand()`
+2. Add the field to `ExpandedMotif` (`pkg/registry/motif/expander.go`) and populate it in `Expand()`
 3. Add the field to `orktypes.NoteRegistry`-style type in `pkg/types/`
 4. Add the `notes`-equivalent field to `Merger` (`pkg/merger/merger.go`) with a `To*()` method
 5. Accumulate it in the three source blocks of `loadKomposer` in `pkg/merger/file.go`

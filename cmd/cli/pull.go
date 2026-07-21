@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/orkspace/orkestra/pkg/merger"
-	"github.com/orkspace/orkestra/pkg/motif"
+	"github.com/orkspace/orkestra/pkg/registry/motif"
 	"github.com/orkspace/orkestra/pkg/registry"
 	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"

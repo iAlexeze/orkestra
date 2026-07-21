@@ -33,23 +33,27 @@ outputs without talking to Kubernetes or the filesystem, it belongs here.
 
 | Package | Coverage | What is tested |
 |---------|----------|----------------|
-| `pkg/health` | 77.9% | Admission stats, conversion stats, deletion/namespace protection stats |
-| `pkg/certmanager` | 71.4% | Certificate lifecycle |
-| `pkg/note` | 68.0% | Note catalog lookups |
-| `pkg/utils` | 60.9% | Template rendering, merge helpers, YAML formatting |
-| `pkg/queue` | 56.9% | Workqueue enqueue/dequeue/depth/shutdown |
-| `pkg/types` | 47.9% | Type conversions, tag handling |
-| `pkg/generate` | 39.3% | Pure code-gen helpers (spec path extraction, type inference, alias dedup) |
-| `pkg/webhook` | 27.2% | Admission webhook routing |
-| `pkg/merger` | 25.3% | Katalog/Komposer merge, provider/security/notification accumulation |
+| `pkg/profiles` | 91.1% | Profile resolution and overlay |
+| `pkg/health` | 77.8% | Admission stats, conversion stats, deletion/namespace protection stats |
+| `pkg/note` | 72.9% | Note catalog lookups |
+| `pkg/gateway/certmanager` | 71.6% | Certificate lifecycle |
+| `pkg/runtime/queue` | 56.9% | Workqueue enqueue/dequeue/depth/shutdown |
+| `pkg/registry/motif` | 51.4% | Motif loading, validation, expansion |
+| `pkg/utils` | 47.8% | Template rendering, merge helpers, YAML formatting |
+| `pkg/tools/generate` | 40.7% | Pure code-gen helpers (spec path extraction, type inference, alias dedup) |
+| `pkg/gateway/applyapi` | 37.7% | Apply API auth and token resolution |
+| `pkg/merger` | 25.6% | Katalog/Komposer merge, provider/security/notification accumulation |
 | `pkg/metrics` | 24.7% | Prometheus counter/gauge wrappers |
-| `pkg/informer` | 15.0% | Namespace filter logic, GVK normalization |
-| `pkg/kordinator` | 12.4% | Parent-ready extraction, condition parsing |
-| `pkg/reconciler` | 8.7% | Validation rule pipelines |
-| `pkg/kubeclient` | 2.0% | Context wiring (patch operations covered by integration tests) |
+| `pkg/tools/migrate` | 82.7% | Reconcile method migration to Orkestra constructor signature |
+| `pkg/gateway/webhook` | 18.8% | Admission webhook routing |
+| `pkg/registry` | 17.1% | OCI push/pull, reference resolution, artifact kind detection |
+| `pkg/runtime/informer` | 15.0% | Namespace filter logic, GVK normalization |
+| `pkg/runtime/reconciler` | 14.0% | Validation rule pipelines, rollback gate |
+| `pkg/runtime/kordinator` | 10.9% | Parent-ready extraction, condition parsing |
+| `pkg/kubeclient` | 1.3% | Context wiring (patch operations covered by integration tests) |
 
 **Total unit coverage: ~20%** — the headline number is dragged down by large
-packages (`provider/*`, `orkestra-registry/*`, `registry`) that contain almost
+packages (`provider/*`, `registry`) that contain almost
 no testable pure logic; they are I/O and wiring. Every package that does contain
 pure logic has meaningful coverage.
 
@@ -185,24 +189,31 @@ tests/
 │   ├── informer/            envtest  — namespace filter drops blocked events
 │   ├── komposer/            file-based — merger field accumulation
 │   ├── kubeclient/          envtest  — patch merge-patch semantics
-│   ├── reconciler/          file-based — validation rule pipelines
 │   └── testenv/             shared envtest lifecycle (Start / Stop)
 │
 ├── fixtures/
-│   ├── crds/
-│   │   ├── probe-crd.yaml   Probe CRD (integration.orkestra.io/v1) used by kubeclient + informer tests
-│   │   ├── orkapp-crd.yaml
-│   │   └── website-crd.yaml
-│   └── katalogs/
-│       ├── website.yaml
-│       ├── dependencies.yaml
-│       └── komposer.yaml
+│   └── crds/
+│       └── probe-crd.yaml   Probe CRD (integration.orkestra.io/v1) used by kubeclient + informer tests
 │
 └── helpers/
     ├── fake_kubeclient.go   Kubeclient backed by a fake clientset
     ├── fake_informer.go     Minimal informer stub for unit tests
     └── testutils.go         Shared assertion helpers
 ```
+
+Per-package fixtures (living integration specs that run with `ork simulate` / `ork e2e`) live alongside the package they test:
+
+| Package | Fixture path |
+|---------|-------------|
+| `pkg/runtime/reconciler` | `pkg/runtime/reconciler/fixture/` |
+| `pkg/registry/e2e` | `pkg/registry/e2e/fixture/` |
+| `pkg/children` | `pkg/children/fixtures/` |
+| `pkg/gateway` | `pkg/gateway/*/fixture/` |
+| `pkg/resources` | `pkg/resources/*/` |
+| `pkg/note` | `pkg/note/fixture/` |
+| `pkg/runtime/informer` | planned |
+| `pkg/runtime/kordinator` | planned |
+| `pkg/kubeclient` | planned |
 
 ---
 

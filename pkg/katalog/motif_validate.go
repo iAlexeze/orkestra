@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/orkspace/orkestra/pkg/motif"
+	"github.com/orkspace/orkestra/pkg/registry/motif"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 

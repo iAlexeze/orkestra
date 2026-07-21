@@ -10,4 +10,4 @@ ork generate registry -f katalog.yaml
 
 The file wires Go types and hook/constructor functions into the Orkestra runtime's type registries (`ObjectRegistry`, `ListRegistry`, `HookRegistry`, `ReconcilerRegistry`). Without it, typed CRDs cannot be decoded and custom reconcile logic is not called.
 
-For a full explanation of what gets generated and why, see [pkg/generate/docs/03-type-registry.md](../generate/docs/03-type-registry.md).
+For a full explanation of what gets generated and why, see [pkg/tools/generate/docs/03-type-registry.md](../tools/generate/docs/03-type-registry.md).

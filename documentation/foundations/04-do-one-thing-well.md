@@ -14,7 +14,7 @@ The principle is not a design guideline applied at the architecture level and th
 
 `main.go` is 11 lines of actual code. It loads configuration, initializes a context, and calls `cli.Execute`. That is all it does — because it is the entry point, not the program. The program lives in the packages.
 
-Each package has one job: `pkg/konfig` loads and validates configuration, `pkg/logger` provides structured logging, `pkg/merger` resolves and merges Katalog sources, `pkg/simulate` runs the in-memory reconcile loop, `pkg/registry` handles OCI push and pull. None of them know about each other unless the dependency is explicit and necessary.
+Each package has one job: `pkg/konfig` loads and validates configuration, `pkg/logger` provides structured logging, `pkg/merger` resolves and merges Katalog sources, `pkg/registry/simulate` runs the in-memory reconcile loop, `pkg/registry` handles OCI push and pull. None of them know about each other unless the dependency is explicit and necessary.
 
 The CLI commands `(cmd/cli)` are thin wires between user input and package logic. A command parses flags, calls a package function, and formats the result. It does not contain business logic.
 

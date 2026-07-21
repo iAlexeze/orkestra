@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
-	"github.com/orkspace/orkestra/pkg/plan"
+	"github.com/orkspace/orkestra/pkg/tools/plan"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"

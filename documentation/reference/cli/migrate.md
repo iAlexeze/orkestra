@@ -76,7 +76,7 @@ Items that need manual attention:
 6. Delete `main.go`, scheme registration, and manager setup
 7. Run `go mod tidy`
 
-→ Full review checklist: [pkg/migrate/README.md](https://github.com/orkspace/orkestra/blob/main/pkg/migrate/README.md)
+→ Full review checklist: [pkg/tools/migrate/README.md](https://github.com/orkspace/orkestra/blob/main/pkg/tools/migrate/README.md)
 
 ## Context
 
