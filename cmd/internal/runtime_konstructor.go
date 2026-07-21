@@ -428,7 +428,6 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 	//   /katalog                    		→ all CRDs, dependency graph, health summary
 	orkHealth := kordinator.NewOrkestraHealth()
 
-	deletionProtectedCRDs := kat.DeletionProtectedCRDNames()
 	for _, crd := range kat.Enabled() {
 		gvk := crd.GVKString()
 		crdHealth := crdHealthMap[gvk]
@@ -440,9 +439,6 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 		if !crd.IsEnabledAllEndpoints() {
 			continue
 		}
-
-		crdKey := crd.APITypes.Plural + "." + crd.APITypes.Group
-		_, isDeletionProtected := deletionProtectedCRDs[crdKey]
 
 		if crd.IsHealthEnabled() {
 			hs.Register(
@@ -457,16 +453,7 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 				kordinator.BuildCRDInfoHandler(
 					crd, kfg, inf, crdHealth,
 					orkHealth,
-					nil, // conversion stats — live in gateway process
-					nil, // admission stats — live in gateway process
-					nil, // protection stats — live in gateway process
-					nil, // webhook stats — live in gateway process
 					providerStatsMap[gvk],
-					nil, // namespace stats — live in gateway process
-					isDeletionProtected,
-					kat.IsNamespaceProtectionEnabled(),
-					kat.IsConversionEnabled(),
-					kat.IsAdmissionEnabled(),
 				),
 			)
 			hs.Register(

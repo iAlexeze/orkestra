@@ -136,11 +136,6 @@ type CRDInfoResponse struct {
 	Started             bool                             `json:"started"`
 	Pending             bool                             `json:"pending"`
 	ErrorRate           float64                          `json:"errorRate"`
-	Conversion          *ConversionStatsResponse         `json:"conversion,omitempty"`
-	Admission           *AdmissionStatsResponse          `json:"admission,omitempty"`
-	DeletionProtection  *DeletionProtectionStatsResponse `json:"deletionProtection,omitempty"`
-	NamespaceProtection *NamespaceProtectionResponse     `json:"namespaceProtection,omitempty"`
-	HousekeeperStats    *HousekeeperStats                `json:"housekeeperStats,omitempty"`
 	Providers           []ProviderInfoResponse           `json:"providers,omitempty"`
 	RBAC                RBACInfo                         `json:"rbac,omitempty"`
 	AutoscalerEnabled   bool                             `json:"autoscalerEnabled,omitempty"`
@@ -180,58 +175,6 @@ type ConstructorInfo struct {
 	Function   string `json:"function,omitempty"`
 }
 
-type ConversionStatsResponse struct {
-	Enabled      bool  `json:"enabled"`
-	Total        int64 `json:"total"`
-	Success      int64 `json:"success"`
-	Failures     int64 `json:"failures"`
-	AvgLatencyMs int64 `json:"avgLatencyMs"`
-	P95LatencyMs int64 `json:"p95LatencyMs"`
-}
-
-type AdmissionStatsResponse struct {
-	WebhooksEnabled   bool    `json:"webhooksEnabled"`
-	ValidationTotal   int64   `json:"validationTotal"`
-	ValidationAllowed int64   `json:"validationAllowed"`
-	ValidationDenied  int64   `json:"validationDenied"`
-	ValidationWarned  int64   `json:"validationWarned"`
-	ValAvgLatencyMs   float64 `json:"valAvgLatencyMs"`
-	ValP95LatencyMs   float64 `json:"valP95LatencyMs"`
-	ValMaxLatencyMs   float64 `json:"valMaxLatencyMs"`
-	MutationTotal     int64   `json:"mutationTotal"`
-	MutationApplied   int64   `json:"mutationApplied"`
-	MutationSkipped   int64   `json:"mutationSkipped"`
-	MutAvgLatencyMs   float64 `json:"mutAvgLatencyMs"`
-	MutP95LatencyMs   float64 `json:"mutP95LatencyMs"`
-	MutMaxLatencyMs   float64 `json:"mutMaxLatencyMs"`
-}
-
-// DeletionProtectionStatsResponse exposes deletion protection status for the CRD detail view.
-// All counts are cumulative since operator startup.
-type DeletionProtectionStatsResponse struct {
-	Enabled bool  `json:"enabled"`
-	Total   int64 `json:"total"`   // total DELETE admission reviews received
-	Blocked int64 `json:"blocked"` // DELETE requests denied
-	Allowed int64 `json:"allowed"` // DELETE requests allowed through
-}
-
-// NamespaceProtectionResponse exposes namespace protection status for the CRD detail view.
-type NamespaceProtectionResponse struct {
-	Enabled              bool     `json:"enabled"`
-	HasNamespaceRules    bool     `json:"hasNamespaceRules"`
-	Total                int64    `json:"total"`
-	Blocked              int64    `json:"blocked"`
-	Allowed              int64    `json:"allowed"`
-	AllowedNamespaces    []string `json:"allowedNamespaces,omitempty"`    // non-nil only when allowedNamespaces: is declared
-	RestrictedNamespaces []string `json:"restrictedNamespaces,omitempty"` // non-nil only when restrictedNamespaces: is declared
-}
-
-// HousekeeperStats tracks reconciliation counters for the housekeeper.
-type HousekeeperStats struct {
-	Reconciled int64 // total successful reconciliation cycles
-	Failed     int64 // reconciliation attempts that encountered errors
-}
-
 // ProviderInfoResponse exposes per-provider metadata and error rate for one CRD.
 // No auth, URLs, or credentials are exposed — metadata only.
 type ProviderInfoResponse struct {
@@ -264,16 +207,7 @@ func BuildCRDInfoHandler(
 	inf cache.SharedIndexInformer,
 	h *CRDHealth,
 	o *OrkestraHealth,
-	convStats *health.ConversionStats,
-	admStats *health.AdmissionStats,
-	protStats *health.DeletionProtectionStats,
-	housekeeperStats *health.WebhookStats,
 	provStats *health.ProviderStats,
-	nsStats *health.NamespaceProtectionStats,
-	isDeletionProtected bool,
-	isNamespaceProtected bool,
-	isConversionEnabled bool,
-	isAdmissionEnabled bool,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		v := resolveCRDDisplayValues(crd, kfg, inf)
@@ -361,79 +295,6 @@ func BuildCRDInfoHandler(
 		if crd.HasRollbackRules() {
 			stats := h.RollbackStats()
 			response.Rollback = &stats
-		}
-
-		// Version conversion statistics
-		if convStats != nil && crd.InvolvedInConversion() {
-			snapshot := convStats.GetStats()
-			response.Conversion = &ConversionStatsResponse{
-				Enabled:      isConversionEnabled,
-				Total:        snapshot.TotalRequests,
-				Success:      snapshot.SuccessRequests,
-				Failures:     snapshot.FailedRequests,
-				AvgLatencyMs: snapshot.AvgLatency.Milliseconds(),
-				P95LatencyMs: snapshot.P95Latency.Milliseconds(),
-			}
-		}
-
-		// Admission stats
-		if admStats != nil {
-			snap := admStats.GetStats(crd.Webhooks.WebhookValidationEnabled() || crd.Webhooks.WebhookMutationEnabled())
-			response.Admission = &AdmissionStatsResponse{
-				WebhooksEnabled:   isAdmissionEnabled,
-				ValidationTotal:   snap.ValidationTotal,
-				ValidationAllowed: snap.ValidationAllowed,
-				ValidationDenied:  snap.ValidationDenied,
-				ValidationWarned:  snap.ValidationWarned,
-				ValAvgLatencyMs:   snap.ValAvgLatencyMs,
-				ValP95LatencyMs:   snap.ValP95LatencyMs,
-				ValMaxLatencyMs:   snap.ValMaxLatencyMs,
-				MutationTotal:     snap.MutationTotal,
-				MutationApplied:   snap.MutationApplied,
-				MutationSkipped:   snap.MutationSkipped,
-				MutAvgLatencyMs:   snap.MutAvgLatencyMs,
-				MutP95LatencyMs:   snap.MutP95LatencyMs,
-				MutMaxLatencyMs:   snap.MutMaxLatencyMs,
-			}
-		}
-
-		// Protection stats
-		if protStats != nil {
-			snap := protStats.GetStats()
-			response.DeletionProtection = &DeletionProtectionStatsResponse{
-				Enabled: isDeletionProtected,
-				Total:   snap.TotalRequests,
-				Blocked: snap.Blocked,
-				Allowed: snap.Allowed,
-			}
-		} else {
-			response.DeletionProtection = &DeletionProtectionStatsResponse{Enabled: isDeletionProtected}
-		}
-
-		// Namespace protection stats — shown conditionally when namespace rules are declared
-		if crd.HasNamespaceRules() {
-			nsr := &NamespaceProtectionResponse{
-				Enabled:              isNamespaceProtected,
-				HasNamespaceRules:    crd.HasNamespaceRules(),
-				AllowedNamespaces:    []string(crd.AllAllowedNamespaces()),
-				RestrictedNamespaces: []string(crd.AllRestrictedNamespaces()),
-			}
-			if nsStats != nil {
-				snap := nsStats.GetStats()
-				nsr.Total = snap.TotalRequests
-				nsr.Blocked = snap.Blocked
-				nsr.Allowed = snap.Allowed
-			}
-			response.NamespaceProtection = nsr
-		}
-
-		// Housekeeper stats
-		if housekeeperStats != nil {
-			snap := housekeeperStats.GetStats()
-			response.HousekeeperStats = &HousekeeperStats{
-				Reconciled: snap.Reconciled,
-				Failed:     snap.Failed,
-			}
 		}
 
 		// Provider stats
