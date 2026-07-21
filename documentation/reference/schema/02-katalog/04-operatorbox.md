@@ -17,6 +17,9 @@ operatorBox:
       resources:
         - kind: StatefulSet
         - kind: Service
+      args:
+        readReplicaCount: 2
+        backupEnabled: true
 
     # Custom reconciler (default: false)
     constructor:
@@ -26,6 +29,9 @@ operatorBox:
       resources:
         - kind: StatefulSet
         - kind: Service
+      args:
+        maxRetries: 3
+        timeoutSeconds: 300
 
   finalizers:
     - example.io/cleanup
@@ -76,9 +82,71 @@ operatorBox:
         - kind: StatefulSet
         - kind: Service
         - kind: CronJob
+      args:                                    # arbitrary key/value pairs — see below
+        readReplicaCount: 2
+        backupEnabled: true
+        replicationMode: async
 ```
 
 Requires typed mode (`apiTypes.location` set) and `ork generate registry`.
+
+#### `reconciler.hooks.args`
+
+Key/value pairs declared in the Katalog and delivered to the hook function at reconcile time via `kube.Args()`. Values may be strings, booleans, integers, or nested maps.
+
+**String values support Go template expressions.** The GenericReconciler evaluates them against the current CR before the hook runs — the full note FuncMap is available (`default`, `upper`, `lower`, etc.).
+
+```yaml
+hooks:
+  args:
+    # Static — passed through as-is; type is preserved.
+    readReplicaCount: 2
+    backupEnabled: true
+    replicationMode: async
+    # Dynamic — evaluated per-CR at reconcile time.
+    region: "{{ default \"us-east-1\" .spec.region }}"
+    backupScheduleHour: "{{ default \"2\" .spec.backupScheduleHour }}"
+    database:
+      engine: "{{ default \"postgres\" .spec.engine }}"
+      version: "{{ default \"14\" .spec.version }}"
+```
+
+The hook sees fully-resolved values — no template syntax, no extra wiring:
+
+```go
+func onReconcile(ctx context.Context, obj *apiv1.Database) error {
+    kube, _ := kubeclient.FromContext(ctx)
+    region          := kube.Args().String("region")           // "eu-west-1" (from spec) or "us-east-1" (default)
+    replicas        := kube.Args().Int("readReplicaCount")    // 2
+    backupEnabled   := kube.Args().Bool("backupEnabled")      // true
+    db              := kube.Args().Sub("database")
+    engine          := db.String("engine")                    // "postgres" or spec value
+    _ = region; _ = replicas; _ = backupEnabled; _ = engine
+    return nil
+}
+```
+
+Or bind the whole map to a typed struct:
+
+```go
+type HookArgs struct {
+    Region           string `json:"region"`
+    ReadReplicaCount int    `json:"readReplicaCount"`
+    BackupEnabled    bool   `json:"backupEnabled"`
+}
+
+func onReconcile(ctx context.Context, obj *apiv1.Database) error {
+    kube, _ := kubeclient.FromContext(ctx)
+    var cfg HookArgs
+    if err := kube.Args().BindArgs(&cfg); err != nil {
+        return err
+    }
+    // use cfg.Region, cfg.ReadReplicaCount, cfg.BackupEnabled
+    return nil
+}
+```
+
+`kube.Args()` always returns a non-nil `Args` — absent keys return zero values, so no nil checks are needed.
 
 #### `reconciler.hooks.runHooksFirst`
 
@@ -111,7 +179,33 @@ operatorBox:
       resources:
         - kind: StatefulSet
         - kind: Service
+      args:
+        maxRetries: 3
+        timeoutSeconds: 300
+        notifyOnSuccess: true
 ```
+
+#### `reconciler.constructor.args`
+
+Key/value pairs delivered to the constructor function via `kube.Args()`. The constructor receives `kube` with args already attached — no additional wiring required.
+
+String values support Go template expressions, but because the constructor owns its reconcile loop, it evaluates them itself by calling `kube.ScopedFor(resolver.TemplateEvaluator())` after building its own resolver:
+
+```go
+func (r *PipelineReconciler) Reconcile(ctx context.Context, obj domain.Object) error {
+    resolver := template.NewResolver(ctx, obj)
+    kube := r.kube.ScopedFor(resolver.TemplateEvaluator())  // resolve {{ }} in args
+    ns         := kube.Args().String("namespace")            // now the CR's namespace
+    source     := kube.Args().String("source")               // upper-cased from spec
+    maxRetries := kube.Args().Int("maxRetries")              // static, passes through
+    _ = ns; _ = source; _ = maxRetries
+    return nil
+}
+```
+
+Integers and booleans have no template syntax — YAML parsed them as native types, so `ScopedFor` returns them as-is. Nested maps are recursed into: every string inside a nested map is evaluated; the map container itself is not a template.
+
+`args` follow the same accessor rules as `reconciler.hooks.args` — see above.
 
 ## `finalizers`
 

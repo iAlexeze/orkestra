@@ -44,6 +44,9 @@ type FakeKubeclient struct {
 	mu           sync.Mutex
 	ops          []Op
 	currentCycle int
+
+	rawArgs map[string]interface{}
+	args    kubeclient.Args
 }
 
 func NewFakeKubeclient(scheme *runtime.Scheme) *FakeKubeclient {
@@ -98,6 +101,32 @@ func (f *FakeKubeclient) Clientset() kubernetes.Interface  { return f.clientset 
 func (f *FakeKubeclient) DynamicClient() dynamic.Interface { return f.dynamic }
 func (f *FakeKubeclient) Mapper() meta.RESTMapper          { return f.mapper }
 func (f *FakeKubeclient) RestConfig() *rest.Config         { return nil }
+
+func (f *FakeKubeclient) Args() kubeclient.Args {
+	if f.args != nil {
+		return f.args
+	}
+	if f.rawArgs != nil {
+		return kubeclient.Args(f.rawArgs)
+	}
+	return kubeclient.Args{}
+}
+
+func (f *FakeKubeclient) WithArgs(args kubeclient.Args) kubeclient.KubeClient {
+	cp := *f
+	cp.rawArgs = map[string]interface{}(args)
+	cp.args = nil
+	return &cp
+}
+
+func (f *FakeKubeclient) ScopedFor(eval func(string) (string, bool)) kubeclient.KubeClient {
+	cp := *f
+	if len(f.rawArgs) == 0 {
+		return &cp
+	}
+	cp.args = kubeclient.ResolveArgsMap(f.rawArgs, eval)
+	return &cp
+}
 
 // AdvanceCycle increments the cycle counter. Call between simulated reconciles.
 func (f *FakeKubeclient) AdvanceCycle() {

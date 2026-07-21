@@ -115,6 +115,29 @@ Every reconcilable resource package now uses Kubernetes Server-Side Apply (`Appl
 
 This eliminates false-positive drift from k8s-injected defaults (SA token volumes, `imagePullPolicy`, `Protocol: TCP`, default security contexts) and resolves KI-002 resource-version conflicts caused by the status-patch → immediate-reconcile race. Jobs, ServiceAccounts, and PVCs keep `Create` semantics — their specs are immutable or managed externally.
 
+### Hook and constructor args — per-CRD configuration with template support
+
+`args:` is a free-form key/value map declared under `reconciler.hooks` or `reconciler.constructor` in katalog.yaml. Orkestra attaches it to the `KubeClient` before calling the hook or constructor function; the author reads it via `kube.Args()`.
+
+```yaml
+operatorBox:
+  reconciler:
+    hooks:
+      function: DatabaseHooks
+      args:
+        readReplicaCount: 2
+        backupEnabled: true
+        region: '{{ default "us-east-1" .spec.region }}'
+        database:
+          engine: '{{ default "postgres" .spec.engine }}'
+```
+
+**String values support Go template expressions.** The GenericReconciler evaluates them against the current CR before the hook runs — the full note FuncMap (`default`, `upper`, `lower`, etc.) is available. Nested maps are walked recursively so any string inside them is also evaluated. Integers and booleans have no template syntax and pass through as their native types.
+
+Constructor authors call `kube.ScopedFor(resolver.TemplateEvaluator())` themselves at reconcile time for the same capability with full control over timing.
+
+The primary use case is **configuration reusability**: one binary, one constructor, many Katalog deployments — each with different args. Tier routing (`starter` / `standard` / `enterprise`), region configuration, feature flags, and per-tenant dynamic values all live in YAML with no code changes. See `documentation/concepts/typed-operators/06-reusability.md`.
+
 ### Cluster-scoped GC and always-on finalizer
 
 `runners.DeleteOwnedClusterScopedResources` now covers Namespaces, ClusterRoles, ClusterRoleBindings, PersistentVolumes, and cluster-scoped custom resources. Previously only Namespaces were explicitly cleaned up on CR deletion.

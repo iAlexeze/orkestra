@@ -308,6 +308,9 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	if r.kat != nil && !r.kat.Notes.IsEmpty() {
 		resolver = resolver.WithUserNotes(r.kat.Notes)
 	}
+	// Replace base kube in context with a scoped copy that has hooks.args
+	// template expressions evaluated against this CR's resolver (full note FuncMap).
+	ctx = kubeclient.WithKubeclient(ctx, r.kube.ScopedFor(resolver.TemplateEvaluator()))
 
 	// ──────────────────────────────────────────────────────────────────────────────
 	// GVK FIX: typed objects from the informer cache may arrive without a valid
@@ -326,7 +329,6 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	// typed object presented to hooks and child‑resource creation carries a
 	// complete TypeMeta.
 	//
-	// See: https://github.com/orkspace/orkestra/issues/85
 	// ──────────────────────────────────────────────────────────────────────────────
 	if obj.GetObjectKind().GroupVersionKind().Empty() {
 		obj.GetObjectKind().SetGroupVersionKind(schema.GroupVersionKind{
