@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/orkspace/orkestra/pkg/devserver"
+	"github.com/orkspace/orkestra/pkg/tools/devserver"
 )
 
 func main() {

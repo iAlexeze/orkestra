@@ -9,7 +9,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/orkspace/orkestra/pkg/proxy"
+	"github.com/orkspace/orkestra/pkg/tools/proxy"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"

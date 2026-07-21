@@ -17,7 +17,7 @@ import (
 	"strings"
 
 	"github.com/orkspace/orkestra/pkg/logger"
-	"github.com/orkspace/orkestra/pkg/motif"
+	"github.com/orkspace/orkestra/pkg/registry/motif"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 

@@ -4,7 +4,7 @@ One file that exercises every `expect:` subcommand — `resources`, `commands`,
 and every `kubectl:` subcommand. Use it as the canonical reference for what a
 fully-featured E2E looks like.
 
-Source: [`pkg/e2e/fixture/e2e.yaml`](https://github.com/orkspace/orkestra/blob/main/pkg/e2e/fixture/e2e.yaml)
+Source: [`pkg/registry/e2e/fixture/e2e.yaml`](https://github.com/orkspace/orkestra/blob/main/pkg/registry/e2e/fixture/e2e.yaml)
 
 ---
 
@@ -461,7 +461,7 @@ Two CRs run in parallel from `cr.yaml` (multi-document):
 | `my-probe-server` | `ghcr.io/orkspace/orkestra-dev-server:latest` | 9999 | Port-forward and JSON endpoint assertions |
 | `my-probe-exec` | `nginx:alpine` | 80 | Exec assertions — nginx has `sh`, the devserver is distroless |
 
-See [`pkg/e2e/fixture/README.md`](https://github.com/orkspace/orkestra/blob/main/pkg/e2e/fixture/README.md) for
+See [`pkg/registry/e2e/fixture/README.md`](https://github.com/orkspace/orkestra/blob/main/pkg/registry/e2e/fixture/README.md) for
 instructions on running this fixture and the rule for adding new subcommands.
 
 ---

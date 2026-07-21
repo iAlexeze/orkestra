@@ -33,7 +33,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/orkspace/orkestra/pkg/generate"
+	"github.com/orkspace/orkestra/pkg/tools/generate"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"

@@ -32,7 +32,7 @@ The consecutive-failure trigger and the snapshot/re-apply cycle work for reconci
 
 Today rollback triggers on reconcile errors. It should also trigger on sustained child resource degradation — a Deployment that has been unavailable for longer than a threshold, a PVC that has been pending for too long.
 
-The `pkg/plan` package tracks resource drift. The reconciler checks child status in `patchStatusWithChildren`. The missing piece is a feedback loop: if child resource health degrades persistently after a spec change, treat that as a trigger.
+The `pkg/tools/plan` package tracks resource drift. The reconciler checks child status in `patchStatusWithChildren`. The missing piece is a feedback loop: if child resource health degrades persistently after a spec change, treat that as a trigger.
 
 ### 2. Template-level rollback, not spec-level
 
@@ -52,7 +52,7 @@ Rollback exits when the CR generation changes. The exit is not yet recorded as a
 
 ### 6. Test coverage
 
-`pkg/types/rollback_test.go` covers struct assertions. The simulate harness (`pkg/simulate`) can drive full reconcile-loop tests — a test that triggers N failures and asserts rollback activation and clearing would prevent regressions.
+`pkg/types/rollback_test.go` covers struct assertions. The simulate harness (`pkg/registry/simulate`) can drive full reconcile-loop tests — a test that triggers N failures and asserts rollback activation and clearing would prevent regressions.
 
 ---
 
@@ -82,5 +82,5 @@ The `.previous.*` context is hydrated from the `orkestra.orkspace.io/previous-sp
 |------|------|
 | `pkg/types/rollback.go` | Struct definitions and YAML schema |
 | `pkg/runtime/reconciler/generic.go` | Gate (Phase 1), `runRollback`, `shouldTriggerRollback`, snapshot |
-| `pkg/plan/` | Resource drift and child status tracking |
+| `pkg/tools/plan/` | Resource drift and child status tracking |
 | `pkg/runtime/kordinator/crd_health.go` | Health callbacks for rollback state |

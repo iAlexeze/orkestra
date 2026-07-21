@@ -11,10 +11,10 @@ import (
 
 	"path/filepath"
 
-	"github.com/orkspace/orkestra/pkg/e2e"
+	"github.com/orkspace/orkestra/pkg/registry/e2e"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
-	motifpkg "github.com/orkspace/orkestra/pkg/motif"
+	motifpkg "github.com/orkspace/orkestra/pkg/registry/motif"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	orkutils "github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"

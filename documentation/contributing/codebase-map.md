@@ -22,11 +22,11 @@ The reconciliation engine. Watches Kubernetes resources, runs operatorBox logic,
 | `pkg/kubeclient` | Core, dynamic, and apiextensions clients; REST mapper. |
 | `pkg/resources` | Built-in resource handlers: deployments, services, configMaps, jobs, etc. |
 | `pkg/merger` | Komposer — multi-source Katalog merging. |
-| `pkg/motif` | Motif expansion — assembles reusable resource building blocks at load time. |
+| `pkg/registry/motif` | Motif expansion — assembles reusable resource building blocks at load time. |
 | `pkg/webhook` | Admission and conversion webhook server. |
 | `pkg/certmanager` | TLS certificate provisioning for webhook servers. |
 | `pkg/runtime/reconciler` | Generic reconciler including typed and dynamic modes. |
-| `pkg/generate` | Code generation for `ork generate registry` and related commands. |
+| `pkg/tools/generate` | Code generation for `ork generate registry` and related commands. |
 | `pkg/typeregistry` | Generated stub — blank-imported by user `main.go` to wire typed extensions. |
 
 ### Gateway (`cmd/gateway`)
@@ -63,9 +63,9 @@ These are imported by more than one binary.
 | `pkg/event` | Kubernetes event recorder. |
 | `pkg/metrics` | Prometheus metrics stubs. |
 | `pkg/provider` | Cloud and database provider interface and implementations. |
-| `pkg/plan` | Plan/diff logic for operatorBox reconciliation. |
+| `pkg/tools/plan` | Plan/diff logic for operatorBox reconciliation. |
 | `pkg/registry` | Runtime-level type and hook registries. |
-| `pkg/simulate` | Test harness for reconciler unit tests. |
+| `pkg/registry/simulate` | Test harness for reconciler unit tests. |
 | `pkg/note` | Template note functions — Go helpers exposed as template variables so operators can surface replica counts, pod health, scaling state, and more in status fields without writing code. Every new note makes Orkestra more declarative. |
 | `pkg/notification` | Notification stack, throttle state, `DirectNotifier`, `GatewayNotifier`. |
 

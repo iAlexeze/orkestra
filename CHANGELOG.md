@@ -121,11 +121,11 @@ This eliminates false-positive drift from k8s-injected defaults (SA token volume
 
 Every operator now receives the `orkestra.orkspace.io/cleanup` finalizer unconditionally. Previously the finalizer was only injected when the operator declared Namespace resources. Without it, a CR with cluster-scoped `custom:` children (e.g. a namespaced CR spawning a cluster-scoped child via `custom:`) was deleted by Kubernetes before the explicit GC runner could fire, leaving orphaned cluster-scoped resources.
 
-### Codebase restructure — gateway and runtime under domain packages
+### Codebase restructure — packages organised by component
 
 Orkestra's packages are now organised by component. No API or behaviour changes — import paths only.
 
-**Gateway** — all gateway concerns consolidated under `pkg/gateway/`:
+**Gateway** — all gateway concerns under `pkg/gateway/`:
 → `pkg/webhook` → `pkg/gateway/webhook`
 → `pkg/notification` → `pkg/gateway/notification`
 → `pkg/certmanager` → `pkg/gateway/certmanager`
@@ -138,6 +138,19 @@ Orkestra's packages are now organised by component. No API or behaviour changes 
 → `pkg/runners` → `pkg/runtime/runners`
 → `pkg/autoscaler` → `pkg/runtime/autoscaler`
 → `pkg/queue` → `pkg/runtime/queue`
+
+**Registry** — simulate, e2e, and motif join `pkg/registry/`:
+→ `pkg/simulate` → `pkg/registry/simulate`
+→ `pkg/e2e` → `pkg/registry/e2e`
+→ `pkg/motif` → `pkg/registry/motif`
+
+**Tools** — CLI-support packages under `pkg/tools/`:
+→ `pkg/ork` → `pkg/tools/cluster` (package renamed to `cluster`)
+→ `pkg/generate` → `pkg/tools/generate`
+→ `pkg/migrate` → `pkg/tools/migrate`
+→ `pkg/plan` → `pkg/tools/plan`
+→ `pkg/devserver` → `pkg/tools/devserver`
+→ `pkg/proxy` → `pkg/tools/proxy`
 
 New shared package `pkg/secrets` extracts secret lifecycle helpers used by both the runtime and the gateway Apply API.
 
@@ -555,7 +568,7 @@ Caches have no TTL — entries persist until `ork pull -f komposer.yaml --refres
 
 - **Merger log noise**: git clone and Helm pull progress messages in `resolveGitChart` and `resolveRemoteChart` downgraded from `Info` to `Debug`. Only shown with `--debug`.
 - **charts/examples gitlink**: dangling gitlink (`mode 160000`) in the repository index with no `.gitmodules` caused `ork template` to fail on machines that cloned the repo via the merger. Re-added as regular tracked files.
-- **`.gitignore` bare `ork` pattern**: the entry `ork` matched `pkg/ork/` and blocked `pkg/ork/metrics.go` from being tracked. Changed to `/ork` (root-only).
+- **`.gitignore` bare `ork` pattern**: the entry `ork` matched `pkg/tools/cluster/` and blocked `pkg/tools/cluster/metrics.go` from being tracked. Changed to `/ork` (root-only).
 - **govulncheck in CI**: `go run golang.org/x/vuln/cmd/govulncheck@latest ./...` added to `validate-pr` workflow. `go install` + call-by-name was tried first but `GOPATH/bin` is not on `PATH` in CI runners.
 - **CVE dependency updates**: `x/crypto` → `v0.52.0`, `x/net` → `v0.55.0`, `containerd` → `v1.7.33`. Three remaining containerd advisories have `Fixed in: N/A` upstream and are not actionable.
 
@@ -744,7 +757,7 @@ expect:
 
 **Validator**: `ork validate` checks all `kubectl:` blocks — required fields, mutual exclusion, at least one assertion per entry, `jq`/`yq` format consistency, `top` kind must be `pod` or `node`.
 
-**Fixture**: `pkg/e2e/fixture/` is a living integration test with one checkpoint per subcommand. Rule: add a checkpoint when you add a subcommand.
+**Fixture**: `pkg/registry/e2e/fixture/` is a living integration test with one checkpoint per subcommand. Rule: add a checkpoint when you add a subcommand.
 
 ---
 
@@ -1168,7 +1181,7 @@ This release ships the first public early-access build of Orkestra. It focuses o
 
 ### Documentation
 
-- **`pkg/e2e` developer docs** — all four existing reference pages rewritten; three new pages: `05-imports.md`, `06-discovery.md`, `07-custom-operator.md`.
+- **`pkg/registry/e2e` developer docs** — all four existing reference pages rewritten; three new pages: `05-imports.md`, `06-discovery.md`, `07-custom-operator.md`.
 - **Schema docs** — `wait:` imports field and `spec.customOperator` documented.
 - **Getting-started** — CLI reference table updated; `ork run -f` note on optional `-f` when `katalog.yaml` is in the current directory.
 - **Blog** — `04-why-i-built-this.md`.
@@ -1266,7 +1279,7 @@ security:
 
 New command that runs the full operator reconcile loop against a fake in-memory cluster — no Kubernetes required. Give it a Katalog and a CR and it shows exactly which resources are created, updated, or deleted each cycle.
 
-- `pkg/simulate` — new package: `FakeKubeclient`, `Run`, `Result`, `CycleResult`, `Op`
+- `pkg/registry/simulate` — new package: `FakeKubeclient`, `Run`, `Result`, `CycleResult`, `Op`
 - Fake clientset uses `PrependReactor` so every k8s operation is recorded before the default object tracker handles it
 - CR is pre-seeded with managed labels and annotations so the reconciler's idempotency guards skip those patches every cycle
 - Deployment status is advanced to `Available` after cycle 1 to unblock state machines waiting on `AvailableReplicas`
@@ -1275,7 +1288,7 @@ New command that runs the full operator reconcile loop against a fake in-memory 
 - `+` shown for creates, `~` for updates, `-` for deletes; if a resource is both created and patched in one cycle (e.g. `reconcile: true`), only `+` is shown
 - Zerolog global logger is redirected to `io.Discard` during simulation so reconciler JSON logs don't pollute output
 - CR YAML is converted via `sigsyaml.YAMLToJSON` before unmarshalling to ensure numeric fields are `float64` (k8s `DeepCopyJSON` requirement)
-- Progressive documentation in `pkg/simulate/docs/` (output, steady state, limitations, internals)
+- Progressive documentation in `pkg/registry/simulate/docs/` (output, steady state, limitations, internals)
 
 ### **Added — `ork e2e` command**
 
@@ -1347,7 +1360,7 @@ Key components:
 - **Unified replica parsing (`pkg/resources/common/parse.go`)**
   Added `ParseReplicas(s string) int32` to unify replica string-to-int32 parsing across deployments, statefulsets, replicasets, pods, jobs, and cronjobs.
 
-- **Motif input quoting fix (`pkg/motif/expander.go`)**
+- **Motif input quoting fix (`pkg/registry/motif/expander.go`)**
   `renderInputs` now strips YAML quotes for inputs declared as `type: integer` or `type: bool`, preventing the `Invalid value: "string"` class of errors when Orkestra-rendered values are applied to strictly-typed CRD fields.
 
 ### **Impact**

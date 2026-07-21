@@ -130,7 +130,7 @@ Every resource needs tests covering:
 - `Apply` — SSA patch issued; immutable-field fallback (delete + recreate) if applicable
 - `Delete` — resource exists (deleted); does not exist (no-op)
 
-Use the `pkg/simulate` harness and a fake clientset (`kubeclient.NewFakeClientset()`).
+Use the `pkg/registry/simulate` harness and a fake clientset (`kubeclient.NewFakeClientset()`).
 
 ---
 

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/orkspace/orkestra/pkg/migrate"
+	"github.com/orkspace/orkestra/pkg/tools/migrate"
 	"github.com/orkspace/orkestra/pkg/version"
 	"github.com/spf13/cobra"
 )
