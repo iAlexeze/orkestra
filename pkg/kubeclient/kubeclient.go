@@ -32,7 +32,7 @@ type Kubeclient struct {
 	dynamic    dynamic.Interface
 	apiext     apiextclientset.Interface
 	Info       *CRDInfo
-	started    atomic.Bool
+	started    *atomic.Bool
 	mapper     meta.RESTMapper
 
 	// Starter konfig
@@ -78,9 +78,10 @@ func NewKubeclient(kfg *konfig.Konfig, scheme *runtime.Scheme) *Kubeclient {
 	}
 
 	return &Kubeclient{
-		name:   "kubeclient",
-		scheme: scheme,
-		konfig: kfg,
+		name:    "kubeclient",
+		scheme:  scheme,
+		konfig:  kfg,
+		started: new(atomic.Bool),
 	}
 }
 
