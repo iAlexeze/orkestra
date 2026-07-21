@@ -3,6 +3,7 @@ package apply
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -68,5 +69,48 @@ func TestApplyResponse_JSON(t *testing.T) {
 	}
 	if got.Name != "my-app" || got.Namespace != "team-payments" || !got.Accepted {
 		t.Errorf("round-trip mismatch: %+v", got)
+	}
+}
+
+func TestApplyResponse_DryRunAndViolations(t *testing.T) {
+	resp := ApplyResponse{
+		Accepted: false,
+		DryRun:   true,
+		Message:  "admission webhook denied the request",
+		Violations: []ApplyViolation{
+			{Field: "spec.environment", Message: "must be staging or production", Severity: "error"},
+			{Field: "spec.team", Message: "required field", Severity: "error"},
+		},
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var got ApplyResponse
+	if err := json.Unmarshal(b, &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if got.Accepted {
+		t.Error("Accepted should be false")
+	}
+	if !got.DryRun {
+		t.Error("DryRun should be true")
+	}
+	if len(got.Violations) != 2 {
+		t.Fatalf("Violations len = %d, want 2", len(got.Violations))
+	}
+	if got.Violations[0].Field != "spec.environment" {
+		t.Errorf("Violations[0].Field = %q", got.Violations[0].Field)
+	}
+	if got.Violations[0].Severity != "error" {
+		t.Errorf("Violations[0].Severity = %q", got.Violations[0].Severity)
+	}
+}
+
+func TestExtractViolations_NoStatusError(t *testing.T) {
+	// A plain error produces no violations.
+	vs := extractViolations(fmt.Errorf("some error"))
+	if len(vs) != 0 {
+		t.Errorf("expected no violations for plain error, got %v", vs)
 	}
 }

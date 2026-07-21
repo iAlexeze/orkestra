@@ -975,7 +975,7 @@ func (cc *ControlCenter) handleIDPCreateForm(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	fields, fetchErr := cc.fetchIDPFields(inst, crdName, kind)
+	sections, fetchErr := cc.fetchIDPFields(inst, crdName, kind)
 	data := IDPFormData{
 		KatalogName: katalogName,
 		CRDName:     crdName,
@@ -983,7 +983,7 @@ func (cc *ControlCenter) handleIDPCreateForm(w http.ResponseWriter, r *http.Requ
 		APIVersion:  apiVersion,
 		BackURL:     backURL,
 		Namespaced:  crdSummary.Namespaced,
-		Fields:      fields,
+		Sections:    sections,
 	}
 	if fetchErr != nil {
 		data.Error = "Could not load schema: " + fetchErr.Error()
@@ -994,7 +994,7 @@ func (cc *ControlCenter) handleIDPCreateForm(w http.ResponseWriter, r *http.Requ
 // fetchIDPFields fetches the CRD schema from the gateway. The gateway merges
 // the OpenAPI spec properties with idp.fields hints (labels, hints, order)
 // from the Katalog, so a single call is enough.
-func (cc *ControlCenter) fetchIDPFields(inst *Instance, crdName, kind string) ([]IDPField, error) {
+func (cc *ControlCenter) fetchIDPFields(inst *Instance, crdName, kind string) ([]IDPSection, error) {
 	if inst.GatewayEndpoint == "" {
 		return nil, fmt.Errorf("no gateway endpoint configured")
 	}
@@ -1019,16 +1019,23 @@ func (cc *ControlCenter) fetchIDPFields(inst *Instance, crdName, kind string) ([
 	// SchemaResponse mirrors pkg/gateway/schema.SchemaResponse.
 	var schemaResp struct {
 		Properties map[string]struct {
-			Type        string   `json:"type"`
-			Enum        []string `json:"enum"`
-			Description string   `json:"description"`
+			Type        string      `json:"type"`
+			Enum        []string    `json:"enum"`
+			Description string      `json:"description"`
+			Default     interface{} `json:"default"`
 		} `json:"properties"`
-		Required  []string `json:"required"`
-		IDPFields map[string]struct {
-			Label       string `json:"label"`
-			Placeholder string `json:"placeholder"`
-			Hint        string `json:"hint"`
-			Order       int    `json:"order"`
+		Required     []string `json:"required"`
+		IgnoreFields []string `json:"ignoreFields"`
+		IDPFields    map[string]struct {
+			Label       string            `json:"label"`
+			Placeholder string            `json:"placeholder"`
+			Hint        string            `json:"hint"`
+			Order       int               `json:"order"`
+			Category    string            `json:"category"`
+			Required    bool              `json:"required"`
+			Disabled    string            `json:"disabled"`
+			When        []json.RawMessage `json:"when"`
+			AnyOf       []json.RawMessage `json:"anyOf"`
 		} `json:"idpFields"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&schemaResp); err != nil {
@@ -1039,6 +1046,10 @@ func (cc *ControlCenter) fetchIDPFields(inst *Instance, crdName, kind string) ([
 	for _, name := range schemaResp.Required {
 		requiredSet[name] = true
 	}
+	ignoreSet := map[string]bool{}
+	for _, name := range schemaResp.IgnoreFields {
+		ignoreSet[name] = true
+	}
 
 	type orderedField struct {
 		field IDPField
@@ -1047,6 +1058,9 @@ func (cc *ControlCenter) fetchIDPFields(inst *Instance, crdName, kind string) ([
 	var ordered []orderedField
 
 	for name, prop := range schemaResp.Properties {
+		if ignoreSet[name] {
+			continue
+		}
 		hint := schemaResp.IDPFields[name]
 		label := hint.Label
 		if label == "" {
@@ -1057,10 +1071,27 @@ func (cc *ControlCenter) fetchIDPFields(inst *Instance, crdName, kind string) ([
 			Label:       label,
 			Hint:        hint.Hint,
 			Placeholder: hint.Placeholder,
-			Required:    requiredSet[name],
+			Required:    requiredSet[name] || hint.Required,
+			Category:    hint.Category,
+			Disabled:    hint.Disabled,
 		}
 		if f.Hint == "" {
 			f.Hint = prop.Description
+		}
+		// Pre-populate from CRD schema default:
+		if prop.Default != nil {
+			f.Default = fmt.Sprintf("%v", prop.Default)
+		}
+		// Encode when/anyOf as JSON strings for the template to embed as data attributes.
+		if len(hint.When) > 0 {
+			if b, err := json.Marshal(hint.When); err == nil {
+				f.WhenJSON = string(b)
+			}
+		}
+		if len(hint.AnyOf) > 0 {
+			if b, err := json.Marshal(hint.AnyOf); err == nil {
+				f.AnyOfJSON = string(b)
+			}
 		}
 		switch {
 		case len(prop.Enum) > 0:
@@ -1089,11 +1120,20 @@ func (cc *ControlCenter) fetchIDPFields(inst *Instance, crdName, kind string) ([
 		}
 		return ordered[i].field.Name < ordered[j].field.Name
 	})
-	fields := make([]IDPField, len(ordered))
-	for i, o := range ordered {
-		fields[i] = o.field
+	// Group sorted fields into sections by Group name.
+	var sections []IDPSection
+	for _, o := range ordered {
+		f := o.field
+		title := f.Category
+		if title == "" {
+			title = "Spec"
+		}
+		if len(sections) == 0 || sections[len(sections)-1].Title != title {
+			sections = append(sections, IDPSection{Title: title})
+		}
+		sections[len(sections)-1].Fields = append(sections[len(sections)-1].Fields, f)
 	}
-	return fields, nil
+	return sections, nil
 }
 
 // handleIDPApplyForm processes the IDP form POST: builds a CR and forwards to the gateway.
@@ -1120,7 +1160,11 @@ func (cc *ControlCenter) handleIDPApplyForm(w http.ResponseWriter, r *http.Reque
 		"spec": body.Spec,
 	}
 	crJSON, _ := json.Marshal(cr)
-	cc.proxyIDPRequest(w, r, inst.GatewayEndpoint+"/api/v1/apply", http.MethodPost, bytes.NewReader(crJSON))
+	applyURL := inst.GatewayEndpoint + "/api/v1/apply"
+	if r.URL.Query().Get("dryRun") == "true" {
+		applyURL += "?dryRun=true"
+	}
+	cc.proxyIDPRequest(w, r, applyURL, http.MethodPost, bytes.NewReader(crJSON))
 }
 
 // idpParseGVK splits "group/version, Kind=Kind" into (kind, apiVersion).

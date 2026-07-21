@@ -77,7 +77,7 @@ func (s *ApplyAPIServer) Register(reg Registrar) {
 	reg.Register("/api/v1/resources/", auth(resources.Handler(s.kube, s.buildKindMapper())))
 
 	// GET /api/v1/schema/...
-	reg.Register("/api/v1/schema/", auth(gatewayschema.Handler(s.kube, s.buildCRDLookup())))
+	reg.Register("/api/v1/schema/", auth(gatewayschema.Handler(s.kube, s.buildCRDLookup(), s.buildCatalogLister())))
 
 	logger.Info().Msg("apply API routes registered: /api/v1/apply, /api/v1/resources/, /api/v1/schema/")
 }
@@ -106,6 +106,23 @@ func (s *ApplyAPIServer) buildKindMapper() resources.KindMapper {
 	}
 }
 
+// buildCatalogLister returns a CatalogLister of all IDP-enabled CRDEntries.
+func (s *ApplyAPIServer) buildCatalogLister() gatewayschema.CatalogLister {
+	if s.kat == nil {
+		return func() []*orktypes.CRDEntry { return nil }
+	}
+	var entries []*orktypes.CRDEntry
+	for i := range s.kat.Enabled() {
+		crd := s.kat.Enabled()[i]
+		if !crd.IDPEnabled() {
+			continue
+		}
+		crdCopy := crd
+		entries = append(entries, &crdCopy)
+	}
+	return func() []*orktypes.CRDEntry { return entries }
+}
+
 // buildCRDLookup returns a CRDLookup that finds a CRDEntry by kind name.
 // Only returns entries where idp.enabled: true.
 func (s *ApplyAPIServer) buildCRDLookup() gatewayschema.CRDLookup {
@@ -115,7 +132,7 @@ func (s *ApplyAPIServer) buildCRDLookup() gatewayschema.CRDLookup {
 	}
 	for i := range s.kat.Enabled() {
 		crd := s.kat.Enabled()[i]
-		if crd.IDP == nil || !crd.IDP.Enabled {
+		if !crd.IDPEnabled() {
 			continue
 		}
 		key := strings.ToLower(crd.APITypes.Kind)

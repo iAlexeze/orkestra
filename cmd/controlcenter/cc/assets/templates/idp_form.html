@@ -8,9 +8,7 @@
   <link rel="stylesheet" href="/controlcenter/assets/static/css/style.css">
   <script>(function(){var t=localStorage.getItem('cc-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
   <style>
-    .idp-form-wrap {
-      max-width: 640px;
-    }
+    .idp-form-wrap { max-width: 640px; }
     .idp-field {
       display: flex;
       flex-direction: column;
@@ -37,12 +35,21 @@
       transition: border-color 0.15s;
     }
     .idp-field input:focus,
-    .idp-field select:focus {
-      border-color: var(--accent);
-    }
+    .idp-field select:focus { border-color: var(--accent); }
     .idp-field .idp-hint {
       font-size: 12px;
       color: var(--text-muted);
+    }
+    .idp-field.idp-field-disabled input,
+    .idp-field.idp-field-disabled select,
+    .idp-field.idp-field-disabled label {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .idp-violation {
+      font-size: 12px;
+      color: var(--text-degraded, #f87171);
+      margin-top: 2px;
     }
     .idp-checkbox-row {
       display: flex;
@@ -91,6 +98,16 @@
       font-size: 13px;
       margin-bottom: 20px;
     }
+    .idp-preview-banner {
+      padding: 12px 16px;
+      border-radius: 6px;
+      background: rgba(99,102,241,0.1);
+      border: 1px solid rgba(99,102,241,0.3);
+      color: var(--text-primary);
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+    .idp-preview-banner strong { color: #818cf8; }
     #idp-status { display: none; }
     .cc-btn-loading { opacity: 0.7; pointer-events: none; }
   </style>
@@ -196,41 +213,64 @@
             {{ end }}
           </div>
 
-          <!-- Spec fields -->
+          <!-- Spec fields — one section per Group -->
+          {{ range .Sections }}
           <div class="idp-section">
-            <div class="idp-section-title">Spec</div>
+            <div class="idp-section-title">{{ .Title }}</div>
 
             {{ range .Fields }}
-            <div class="idp-field">
+            <div class="idp-field{{ if .Disabled }} idp-field-disabled{{ end }}"
+                 id="field-wrap-{{ .Name }}"
+                 {{ if .WhenJSON  }}data-when='{{ .WhenJSON }}'{{ end }}
+                 {{ if .AnyOfJSON }}data-anyof='{{ .AnyOfJSON }}'{{ end }}>
+
               {{ if eq .InputType "checkbox" }}
               <div class="idp-checkbox-row">
-                <input type="checkbox" id="field-{{ .Name }}" name="{{ .Name }}" data-type="boolean">
-                <label for="field-{{ .Name }}">{{ .Label }}</label>
+                <input type="checkbox" id="field-{{ .Name }}" name="{{ .Name }}" data-type="boolean"
+                  {{ if .Disabled }}disabled{{ end }}>
+                <label for="field-{{ .Name }}">{{ .Label }}{{ if .Required }} <span style="color:var(--text-muted)">*</span>{{ end }}</label>
               </div>
               {{ else if eq .InputType "select" }}
-              <label for="field-{{ .Name }}">{{ .Label }}</label>
-              <select id="field-{{ .Name }}" name="{{ .Name }}" data-type="string">
+              <label for="field-{{ .Name }}">{{ .Label }}{{ if .Required }} <span style="color:var(--text-muted)">*</span>{{ end }}</label>
+              <select id="field-{{ .Name }}" name="{{ .Name }}" data-type="string"
+                {{ if and .Required (not .Disabled) }}required{{ end }}
+                {{ if .Disabled }}disabled{{ end }}>
                 <option value="">— select —</option>
                 {{ range .Enum }}
                 <option value="{{ . }}">{{ . }}</option>
                 {{ end }}
               </select>
               {{ else if eq .InputType "number" }}
-              <label for="field-{{ .Name }}">{{ .Label }}</label>
+              <label for="field-{{ .Name }}">{{ .Label }}{{ if .Required }} <span style="color:var(--text-muted)">*</span>{{ end }}</label>
               <input type="number" id="field-{{ .Name }}" name="{{ .Name }}" data-type="number"
-                {{ if .Placeholder }}placeholder="{{ .Placeholder }}"{{ end }}>
+                {{ if .Placeholder }}placeholder="{{ .Placeholder }}"{{ end }}
+                {{ if .Default }}value="{{ .Default }}"{{ end }}
+                {{ if and .Required (not .Disabled) }}required{{ end }}
+                {{ if .Disabled }}disabled{{ end }}>
               {{ else }}
-              <label for="field-{{ .Name }}">{{ .Label }}</label>
+              <label for="field-{{ .Name }}">{{ .Label }}{{ if .Required }} <span style="color:var(--text-muted)">*</span>{{ end }}</label>
               <input type="text" id="field-{{ .Name }}" name="{{ .Name }}" data-type="string"
-                {{ if .Placeholder }}placeholder="{{ .Placeholder }}"{{ end }}>
+                {{ if .Placeholder }}placeholder="{{ .Placeholder }}"{{ end }}
+                {{ if .Default }}value="{{ .Default }}"{{ end }}
+                {{ if and .Required (not .Disabled) }}required{{ end }}
+                {{ if .Disabled }}disabled{{ end }}>
               {{ end }}
-              {{ if .Hint }}<span class="idp-hint">{{ .Hint }}</span>{{ end }}
+
+              {{ if .Disabled }}
+              <span class="idp-hint" style="color:var(--text-degraded,#f87171)">{{ .Disabled }}</span>
+              {{ else if .Hint }}
+              <span class="idp-hint">{{ .Hint }}</span>
+              {{ end }}
+              <span class="idp-violation" id="violation-{{ .Name }}" style="display:none"></span>
             </div>
             {{ end }}
+
           </div>
+          {{ end }}
 
           <div class="idp-actions">
             <button type="submit" id="idp-submit" class="cc-btn cc-btn-primary">Create</button>
+            <button type="button" id="idp-preview" class="cc-btn cc-btn-ghost">Preview</button>
             <a href="{{ .BackURL }}" class="cc-btn cc-btn-ghost">Cancel</a>
           </div>
         </form>
@@ -241,69 +281,176 @@
   <script src="/controlcenter/assets/static/js/controlcenter.js"></script>
   <script>
   (function () {
-    var form    = document.getElementById('idp-form');
-    var btn     = document.getElementById('idp-submit');
-    var status  = document.getElementById('idp-status');
-    var backURL = {{ .BackURL | js }};
+    var form       = document.getElementById('idp-form');
+    var btnSubmit  = document.getElementById('idp-submit');
+    var btnPreview = document.getElementById('idp-preview');
+    var status     = document.getElementById('idp-status');
+    var backURL    = {{ .BackURL | js }};
 
-    function showStatus(ok, msg) {
+    // ── Condition evaluation ────────────────────────────────────────────────
+    function evalCond(cond) {
+      if (cond.time) {
+        var now = new Date();
+        var hm  = now.getHours() * 60 + now.getMinutes();
+        if (cond.time.after) {
+          var p = cond.time.after.split(':');
+          if (hm < parseInt(p[0]) * 60 + parseInt(p[1])) return false;
+        }
+        if (cond.time.before) {
+          var p = cond.time.before.split(':');
+          if (hm >= parseInt(p[0]) * 60 + parseInt(p[1])) return false;
+        }
+      }
+      if (cond.dayOfWeek) {
+        var day = new Date().getDay();
+        var dow = cond.dayOfWeek;
+        var weekdays = [false,true,true,true,true,true,false];
+        if (dow.weekday === true  && !weekdays[day]) return false;
+        if (dow.weekend === true  &&  weekdays[day]) return false;
+        if (dow['in'] && dow['in'].length) {
+          var names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+          if (dow['in'].indexOf(names[day]) === -1) return false;
+        }
+        if (dow.notIn && dow.notIn.length) {
+          var names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+          if (dow.notIn.indexOf(names[day]) !== -1) return false;
+        }
+      }
+      if (cond.field) {
+        var el = document.getElementById('field-' + cond.field);
+        var val = el ? (el.type === 'checkbox' ? String(el.checked) : el.value) : '';
+        if (cond.equals    !== undefined && val !== cond.equals)                   return false;
+        if (cond.notEquals !== undefined && val === cond.notEquals)                return false;
+        if (cond.contains  !== undefined && val.indexOf(cond.contains) === -1)     return false;
+        if (cond.prefix    !== undefined && val.indexOf(cond.prefix)   !== 0)      return false;
+        if (cond.suffix    !== undefined && !val.endsWith(cond.suffix))            return false;
+      }
+      return cond.negate ? false : true;
+    }
+
+    function fieldVisible(wrap) {
+      var when  = wrap.dataset.when  ? JSON.parse(wrap.dataset.when)  : null;
+      var anyOf = wrap.dataset.anyof ? JSON.parse(wrap.dataset.anyof) : null;
+      if (when  && when.length  && !when.every(evalCond))  return false;
+      if (anyOf && anyOf.length && !anyOf.some(evalCond))  return false;
+      return true;
+    }
+
+    function applyVisibility() {
+      document.querySelectorAll('.idp-field[data-when], .idp-field[data-anyof]').forEach(function (wrap) {
+        wrap.style.display = fieldVisible(wrap) ? '' : 'none';
+      });
+    }
+
+    form.addEventListener('input',  applyVisibility);
+    form.addEventListener('change', applyVisibility);
+    applyVisibility();
+
+    // ── Violation display ───────────────────────────────────────────────────
+    function clearViolations() {
+      document.querySelectorAll('.idp-violation').forEach(function (el) {
+        el.style.display = 'none';
+        el.textContent = '';
+      });
+      document.querySelectorAll('.idp-field').forEach(function (el) {
+        el.style.outline = '';
+      });
+    }
+
+    function showViolations(violations) {
+      (violations || []).forEach(function (v) {
+        var name = v.field ? v.field.replace(/^spec\./, '') : '';
+        var el = name ? document.getElementById('violation-' + name) : null;
+        if (el) {
+          el.textContent = v.message;
+          el.style.display = '';
+          var wrap = document.getElementById('field-wrap-' + name);
+          if (wrap) wrap.style.outline = '1px solid var(--text-degraded, #f87171)';
+        }
+      });
+    }
+
+    function showStatus(ok, msg, preview) {
       status.style.display = 'block';
-      status.className = ok ? 'idp-success' : 'idp-error';
-      status.textContent = msg;
+      if (preview) {
+        status.className = 'idp-preview-banner';
+        status.innerHTML = '<strong>Preview:</strong> ' + msg;
+      } else {
+        status.className = ok ? 'idp-success' : 'idp-error';
+        status.textContent = msg;
+      }
       window.scrollTo(0, 0);
     }
 
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      btn.classList.add('cc-btn-loading');
-      btn.textContent = 'Creating…';
-      status.style.display = 'none';
-
-      var spec = {};
-      var name = '';
-      var namespace = '';
-
+    // ── Payload collection ──────────────────────────────────────────────────
+    function collectPayload() {
+      var spec = {}, name = '', namespace = '';
       form.querySelectorAll('input, select').forEach(function (el) {
         var n = el.name;
         if (!n) return;
         if (n === '__name')      { name = el.value.trim(); return; }
         if (n === '__namespace') { namespace = el.value.trim(); return; }
-
+        var wrap = document.getElementById('field-wrap-' + n);
+        if (wrap && wrap.style.display === 'none') return;
+        if (el.disabled) return;
         var t = el.getAttribute('data-type');
         var v = (t === 'boolean') ? el.checked
               : (t === 'number')  ? (el.value !== '' ? Number(el.value) : undefined)
               : el.value;
-        if (v !== undefined && v !== '') {
-          spec[n] = v;
-        }
+        if (v !== undefined && v !== '') spec[n] = v;
       });
+      return { name: name, namespace: namespace, spec: spec };
+    }
 
-      var payload = { name: name, namespace: namespace, spec: spec };
+    // ── Submit / Preview ────────────────────────────────────────────────────
+    function doSubmit(dryRun) {
+      var loading = dryRun ? btnPreview : btnSubmit;
+      loading.classList.add('cc-btn-loading');
+      loading.textContent = dryRun ? 'Checking…' : 'Creating…';
+      status.style.display = 'none';
+      clearViolations();
 
-      fetch(window.location.pathname, {
+      var url = window.location.pathname + (dryRun ? '?dryRun=true' : '');
+      fetch(url, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(payload),
+        body:    JSON.stringify(collectPayload()),
       })
       .then(function (r) {
         return r.json().then(function (body) { return { ok: r.ok, status: r.status, body: body }; });
       })
       .then(function (res) {
+        loading.classList.remove('cc-btn-loading');
+        loading.textContent = dryRun ? 'Preview' : 'Create';
+
+        if (dryRun) {
+          if (res.ok || (res.body && res.body.accepted)) {
+            showStatus(true, 'Looks good — no admission errors detected.', true);
+          } else {
+            var msg = (res.body && (res.body.message || res.body.error)) || 'Would be rejected (' + res.status + ')';
+            showStatus(false, msg, true);
+            if (res.body && res.body.violations) showViolations(res.body.violations);
+          }
+          return;
+        }
+
         if (res.ok || res.status === 200 || res.status === 201) {
           window.location.href = backURL;
         } else {
           var msg = (res.body && (res.body.message || res.body.error)) || 'Request failed (' + res.status + ')';
-          showStatus(false, msg);
-          btn.classList.remove('cc-btn-loading');
-          btn.textContent = 'Create';
+          showStatus(false, msg, false);
+          if (res.body && res.body.violations) showViolations(res.body.violations);
         }
       })
       .catch(function (err) {
-        showStatus(false, 'Network error: ' + err.message);
-        btn.classList.remove('cc-btn-loading');
-        btn.textContent = 'Create';
+        loading.classList.remove('cc-btn-loading');
+        loading.textContent = dryRun ? 'Preview' : 'Create';
+        showStatus(false, 'Network error: ' + err.message, dryRun);
       });
-    });
+    }
+
+    form.addEventListener('submit', function (e) { e.preventDefault(); doSubmit(false); });
+    btnPreview.addEventListener('click', function () { doSubmit(true); });
   })();
   </script>
 </body>

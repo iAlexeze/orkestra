@@ -12,10 +12,12 @@ package apply
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -29,8 +31,10 @@ import (
 
 // ApplyResponse is returned for every POST /api/v1/apply request.
 type ApplyResponse struct {
-	// Accepted is true when the CR was applied without error.
+	// Accepted is true when the CR was applied (or would be applied, for dry runs) without error.
 	Accepted bool `json:"accepted"`
+	// DryRun is true when the request was a dry-run preview (?dryRun=true).
+	DryRun bool `json:"dryRun,omitempty"`
 	// Name is the CR name as stored in Kubernetes.
 	Name string `json:"name,omitempty"`
 	// Namespace is the CR namespace.
@@ -43,6 +47,19 @@ type ApplyResponse struct {
 	ResourceVersion string `json:"resourceVersion,omitempty"`
 	// Message carries the rejection reason on Accepted=false.
 	Message string `json:"message,omitempty"`
+	// Violations is a structured list of field-level errors from admission or
+	// validation. Populated when Accepted=false and kubernetes returns Status details.
+	Violations []ApplyViolation `json:"violations,omitempty"`
+}
+
+// ApplyViolation is one field-level error returned from Kubernetes on a failed apply.
+type ApplyViolation struct {
+	// Field is the dot-notation path to the offending field (e.g. "spec.environment").
+	Field string `json:"field,omitempty"`
+	// Message is the human-readable error from Kubernetes or the admission webhook.
+	Message string `json:"message"`
+	// Severity is "error" (blocks apply) or "warning" (informational).
+	Severity string `json:"severity,omitempty"`
 }
 
 // Handler returns the http.HandlerFunc for POST /api/v1/apply.
@@ -79,29 +96,39 @@ func Handler(kube kubeclient.KubeClient) http.HandlerFunc {
 			return
 		}
 
+		dryRun := r.URL.Query().Get("dryRun") == "true"
+
+		patchOpts := metav1.PatchOptions{
+			FieldManager: konfig.FieldManagerGateway,
+			Force:        boolPtr(true),
+		}
+		if dryRun {
+			patchOpts.DryRun = []string{metav1.DryRunAll}
+		}
+
 		ns := obj.GetNamespace()
 		result, err := kube.DynamicClient().
 			Resource(gvr).
 			Namespace(ns).
-			Patch(r.Context(), obj.GetName(), k8stypes.ApplyPatchType, body, metav1.PatchOptions{
-				FieldManager: konfig.FieldManagerGateway,
-				Force:        boolPtr(true),
-			})
+			Patch(r.Context(), obj.GetName(), k8stypes.ApplyPatchType, body, patchOpts)
 		if err != nil {
 			logger.FromContext(r.Context()).Warn().
 				Str("kind", obj.GetKind()).
 				Str("name", obj.GetName()).
+				Bool("dryRun", dryRun).
 				Err(err).
 				Msg("apply API: SSA rejected")
-			status := http.StatusUnprocessableEntity
-			utils.WriteJSON(w, status, ApplyResponse{
-				Message: err.Error(),
+			utils.WriteJSON(w, http.StatusUnprocessableEntity, ApplyResponse{
+				DryRun:     dryRun,
+				Message:    err.Error(),
+				Violations: extractViolations(err),
 			})
 			return
 		}
 
 		utils.WriteJSON(w, http.StatusOK, ApplyResponse{
 			Accepted:        true,
+			DryRun:          dryRun,
 			Name:            result.GetName(),
 			Namespace:       result.GetNamespace(),
 			Kind:            result.GetKind(),
@@ -125,3 +152,32 @@ func resolveGVR(kube kubeclient.KubeClient, apiVersion, kind string) (schema.Gro
 }
 
 func boolPtr(b bool) *bool { return &b }
+
+// extractViolations pulls field-level causes out of a Kubernetes Status error.
+func extractViolations(err error) []ApplyViolation {
+	var statusErr *k8serrors.StatusError
+	if !errors.As(err, &statusErr) || statusErr.ErrStatus.Details == nil {
+		return nil
+	}
+	causes := statusErr.ErrStatus.Details.Causes
+	if len(causes) == 0 {
+		return nil
+	}
+	vs := make([]ApplyViolation, 0, len(causes))
+	for _, c := range causes {
+		v := ApplyViolation{
+			Field:   c.Field,
+			Message: c.Message,
+		}
+		if c.Type == metav1.CauseTypeFieldValueInvalid ||
+			c.Type == metav1.CauseTypeFieldValueRequired ||
+			c.Type == metav1.CauseTypeFieldValueDuplicate ||
+			c.Type == metav1.CauseTypeFieldValueNotSupported {
+			v.Severity = "error"
+		} else {
+			v.Severity = "warning"
+		}
+		vs = append(vs, v)
+	}
+	return vs
+}

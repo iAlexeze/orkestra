@@ -257,6 +257,17 @@ type IDPField struct {
 	Hint        string
 	Enum        []string
 	Required    bool
+	Default     string // pre-populated value from CRD schema default:
+	Category    string // section heading for visual grouping
+	WhenJSON    string // JSON array of Condition — all must be true (AND)
+	AnyOfJSON   string // JSON array of Condition — at least one must be true (OR)
+	Disabled    string // non-empty → greyed-out field with this message
+}
+
+// IDPSection is a group of fields sharing a section heading in the IDP form.
+type IDPSection struct {
+	Title  string
+	Fields []IDPField
 }
 
 // IDPFormData is the view model for idp_form.html.
@@ -267,7 +278,7 @@ type IDPFormData struct {
 	APIVersion  string
 	BackURL     string
 	Namespaced  bool
-	Fields      []IDPField
+	Sections    []IDPSection
 	Error       string
 }
 

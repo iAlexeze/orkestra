@@ -28,8 +28,10 @@ func idpEntry(kind string) *orktypes.CRDEntry {
 	}
 }
 
+func noopLister() []*orktypes.CRDEntry { return nil }
+
 func TestHandler_MethodNotAllowed(t *testing.T) {
-	h := Handler(nil, func(kind string) *orktypes.CRDEntry { return nil })
+	h := Handler(nil, func(kind string) *orktypes.CRDEntry { return nil }, noopLister)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/schema/Platform", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -38,21 +40,11 @@ func TestHandler_MethodNotAllowed(t *testing.T) {
 	}
 }
 
-func TestHandler_MissingKind(t *testing.T) {
-	h := Handler(nil, func(kind string) *orktypes.CRDEntry { return nil })
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema/", nil)
-	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, req)
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-}
-
 func TestHandler_IDPNotEnabled(t *testing.T) {
 	lookup := func(kind string) *orktypes.CRDEntry {
 		return &orktypes.CRDEntry{IDP: &orktypes.IDPConfig{Enabled: false}}
 	}
-	h := Handler(nil, lookup)
+	h := Handler(nil, lookup, noopLister)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema/Platform", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -62,7 +54,7 @@ func TestHandler_IDPNotEnabled(t *testing.T) {
 }
 
 func TestHandler_UnknownKind(t *testing.T) {
-	h := Handler(nil, func(kind string) *orktypes.CRDEntry { return nil })
+	h := Handler(nil, func(kind string) *orktypes.CRDEntry { return nil }, noopLister)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema/Unknown", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -71,10 +63,102 @@ func TestHandler_UnknownKind(t *testing.T) {
 	}
 }
 
+func TestHandler_Catalog_Empty(t *testing.T) {
+	h := Handler(nil, func(kind string) *orktypes.CRDEntry { return nil }, noopLister)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema/", nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rr.Code)
+	}
+	var cat CatalogResponse
+	if err := json.NewDecoder(rr.Body).Decode(&cat); err != nil {
+		t.Fatalf("decode catalog: %v", err)
+	}
+	if cat.Schemas == nil {
+		t.Error("Schemas should not be nil")
+	}
+	if len(cat.Schemas) != 0 {
+		t.Errorf("Schemas len = %d, want 0", len(cat.Schemas))
+	}
+}
+
+func TestHandler_Catalog_WithEntries(t *testing.T) {
+	appEntry := &orktypes.CRDEntry{
+		Name: "apprequests",
+		APITypes: orktypes.APITypes{
+			Group:   "platform.orkestra.io",
+			Version: "v1alpha1",
+			Kind:    "AppRequest",
+			Plural:  "apprequests",
+		},
+		IDP: &orktypes.IDPConfig{
+			Enabled:     true,
+			Category:    "Compute",
+			Description: "Self-service app deployment",
+		},
+	}
+	dbEntry := &orktypes.CRDEntry{
+		Name: "databases",
+		APITypes: orktypes.APITypes{
+			Group:   "platform.orkestra.io",
+			Version: "v1alpha1",
+			Kind:    "Database",
+			Plural:  "databases",
+		},
+		Description: "Managed database",
+		IDP: &orktypes.IDPConfig{
+			Enabled:  true,
+			Category: "Data",
+			// no IDP.Description — falls back to CRDEntry.Description
+		},
+	}
+	lister := func() []*orktypes.CRDEntry { return []*orktypes.CRDEntry{appEntry, dbEntry} }
+	h := Handler(nil, func(kind string) *orktypes.CRDEntry { return nil }, lister)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema/", nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rr.Code)
+	}
+	var cat CatalogResponse
+	if err := json.NewDecoder(rr.Body).Decode(&cat); err != nil {
+		t.Fatalf("decode catalog: %v", err)
+	}
+	if len(cat.Schemas) != 2 {
+		t.Fatalf("Schemas len = %d, want 2", len(cat.Schemas))
+	}
+
+	byKind := make(map[string]CatalogEntry)
+	for _, s := range cat.Schemas {
+		byKind[s.Kind] = s
+	}
+
+	app := byKind["AppRequest"]
+	if app.Category != "Compute" {
+		t.Errorf("AppRequest.Category = %q", app.Category)
+	}
+	if app.Description != "Self-service app deployment" {
+		t.Errorf("AppRequest.Description = %q", app.Description)
+	}
+
+	db := byKind["Database"]
+	if db.Category != "Data" {
+		t.Errorf("Database.Category = %q", db.Category)
+	}
+	if db.Description != "Managed database" {
+		t.Errorf("Database.Description = %q (want fallback from CRDEntry)", db.Description)
+	}
+}
+
 func TestSchemaResponse_JSON(t *testing.T) {
 	resp := SchemaResponse{
-		Kind:       "Platform",
-		APIVersion: "platform.orkestra.io/v1alpha1",
+		Kind:         "Platform",
+		APIVersion:   "platform.orkestra.io/v1alpha1",
+		Required:     []string{"team"},
+		IgnoreFields: []string{"internalId"},
 		Properties: map[string]interface{}{
 			"team": map[string]interface{}{"type": "string"},
 		},
@@ -95,6 +179,12 @@ func TestSchemaResponse_JSON(t *testing.T) {
 	}
 	if got.IDPFields["team"].Label != "Team" {
 		t.Errorf("IDPFields[team].Label = %q", got.IDPFields["team"].Label)
+	}
+	if len(got.Required) != 1 || got.Required[0] != "team" {
+		t.Errorf("Required = %v", got.Required)
+	}
+	if len(got.IgnoreFields) != 1 || got.IgnoreFields[0] != "internalId" {
+		t.Errorf("IgnoreFields = %v", got.IgnoreFields)
 	}
 }
 

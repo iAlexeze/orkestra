@@ -391,7 +391,7 @@ func (k *Katalog) GenerateGatewayRBACRules() []rbacv1.PolicyRule {
 	// ───────────────────────────────────────────────
 	if k.HasIDPEnabled() {
 		for _, crd := range k.Enabled() {
-			if crd.IDP == nil || !crd.IDP.Enabled {
+			if !crd.IDPEnabled() {
 				continue
 			}
 			rules = append(rules, rbacv1.PolicyRule{
