@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	sigs "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -18,6 +19,7 @@ type KubeClient interface {
 	Clientset() kubernetes.Interface
 	DynamicClient() dynamic.Interface
 	Mapper() meta.RESTMapper
+	RestConfig() *rest.Config
 
 	// CRUD — typed object operations for constructor reconcilers.
 	// Accepts sigs.k8s.io/controller-runtime/pkg/client.Object so reconcilers

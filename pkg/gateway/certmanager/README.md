@@ -1,4 +1,4 @@
-# pkg/certmanager
+# pkg/gateway/certmanager
 
 `certmanager` owns the TLS certificate lifecycle for Orkestra's webhook server. It generates self-signed certificates when the operator has not been given explicit TLS paths, stores them in a Kubernetes Secret, and cleans them up on graceful shutdown.
 

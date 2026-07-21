@@ -39,8 +39,8 @@ control center
 Both processes key their per-CRD stats by the GVR string
 (`"group/version/resource"`, e.g. `"demo.io/v1/websites"`).
 
-- `pkg/webhook` uses `crdGVRKey(group, version, resource)` when recording stats.
-- `pkg/kordinator` uses the same `gvrKey(group, version, resource)` helper when
+- `pkg/gateway/webhook` uses `crdGVRKey(group, version, resource)` when recording stats.
+- `pkg/gateway/handlers` uses the same `gvrKey(group, version, resource)` helper when
   building the response.
 - The control center matches entries by the `"gvr"` field in each CRD object.
 

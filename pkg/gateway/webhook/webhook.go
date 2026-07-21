@@ -173,6 +173,10 @@ type WebhookServer struct {
 
 	// Full konfig for namespace access during shutdown cleanup.
 	konfig *konfig.Konfig
+
+	// tokenReloader is called by the housekeeper when an Apply API token secret
+	// goes missing. Set via SetTokenReloader from the ApplyAPIServer.
+	tokenReloader func(ctx context.Context) error
 }
 
 // certSecretBundle carries the raw PEM bytes needed to restore the TLS Secret.
@@ -339,6 +343,13 @@ func (ws *WebhookServer) SetCertManager(m certManagerIface) {
 	ws.certMgr = m
 }
 
+// SetTokenReloader registers a callback that the housekeeper calls when an Apply API
+// token secret is found to be missing during reconciliation. The callback should
+// recreate any missing secrets and reload the in-memory token set.
+func (ws *WebhookServer) SetTokenReloader(fn func(ctx context.Context) error) {
+	ws.tokenReloader = fn
+}
+
 // SetCertBundle stores the TLS bundle and Secret coordinates so the housekeeper can
 // restore the Secret if it is deleted during a rollout. Only called when Orkestra
 // generated the certificates (not when the user provides TLS_CERT/TLS_KEY).
@@ -422,6 +433,14 @@ func (ws *WebhookServer) Start(ctx context.Context) error {
 		admissionRuleExists = true
 		startHTTPS = true
 		logger.Info().Str("endpoint", "/mutate").Msg("mutation endpoint registered")
+	}
+
+	// Start the housekeeper before the HTTPS gate — it manages token secrets and cert
+	// rotation regardless of whether any webhook endpoints are active.
+	if kat.IsHousekeeperEnabled() {
+		if err := ws.housekeeper(ws.ctx); err != nil {
+			logger.Error().Err(err).Msg("housekeeper failed to start")
+		}
 	}
 
 	if !startHTTPS {
@@ -549,13 +568,6 @@ func (ws *WebhookServer) Start(ctx context.Context) error {
 					Msg("strict mode protection webhook registered")
 			}
 		}()
-	}
-
-	// Start the housekeeper to keep webhook configurations in sync.
-	if kat.IsHousekeeperEnabled() {
-		if err := ws.housekeeper(ws.ctx); err != nil {
-			logger.Error().Err(err).Msg("housekeeper failed to start")
-		}
 	}
 
 	return nil

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/orkspace/orkestra/pkg/certmanager"
+	"github.com/orkspace/orkestra/pkg/gateway/certmanager"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"

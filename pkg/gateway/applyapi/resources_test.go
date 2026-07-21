@@ -1,4 +1,4 @@
-package resources
+package applyapi
 
 import (
 	"fmt"
@@ -42,11 +42,11 @@ func TestParsePath(t *testing.T) {
 	}
 }
 
-func TestHandler_UnknownKind(t *testing.T) {
+func TestResourcesHandler_UnknownKind(t *testing.T) {
 	errMapper := KindMapper(func(kind string) (schema.GroupVersionResource, error) {
 		return schema.GroupVersionResource{}, fmt.Errorf("no mapping for %q", kind)
 	})
-	h := Handler(nil, errMapper)
+	h := resourcesHandler(nil, errMapper)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/resources/unknown/default", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -55,8 +55,8 @@ func TestHandler_UnknownKind(t *testing.T) {
 	}
 }
 
-func TestHandler_MethodNotAllowed(t *testing.T) {
-	h := Handler(nil, func(kind string) (schema.GroupVersionResource, error) {
+func TestResourcesHandler_MethodNotAllowed(t *testing.T) {
+	h := resourcesHandler(nil, func(kind string) (schema.GroupVersionResource, error) {
 		return schema.GroupVersionResource{}, nil
 	})
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/resources/platform/default/x", nil)
@@ -67,8 +67,8 @@ func TestHandler_MethodNotAllowed(t *testing.T) {
 	}
 }
 
-func TestHandler_BadPath(t *testing.T) {
-	h := Handler(nil, func(kind string) (schema.GroupVersionResource, error) {
+func TestResourcesHandler_BadPath(t *testing.T) {
+	h := resourcesHandler(nil, func(kind string) (schema.GroupVersionResource, error) {
 		return schema.GroupVersionResource{}, nil
 	})
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/resources/onlyone", nil)
@@ -79,8 +79,8 @@ func TestHandler_BadPath(t *testing.T) {
 	}
 }
 
-func TestHandler_DeleteRequiresName(t *testing.T) {
-	h := Handler(nil, func(kind string) (schema.GroupVersionResource, error) {
+func TestResourcesHandler_DeleteRequiresName(t *testing.T) {
+	h := resourcesHandler(nil, func(kind string) (schema.GroupVersionResource, error) {
 		return schema.GroupVersionResource{Group: "test", Version: "v1", Resource: "things"}, nil
 	})
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/resources/thing/default", nil)

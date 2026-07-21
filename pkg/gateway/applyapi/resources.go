@@ -12,7 +12,7 @@
 // Deletion protection is enforced by the admission webhook when enabled.
 // This handler does not duplicate that check — it issues the DELETE and lets
 // Kubernetes reject it if the webhook blocks.
-package resources
+package applyapi
 
 import (
 	"fmt"
@@ -33,7 +33,7 @@ type KindMapper func(kind string) (schema.GroupVersionResource, error)
 // Handler returns the http.HandlerFunc for /api/v1/resources/... routes.
 // URL pattern: /api/v1/resources/{kind}/{namespace}[/{name}]
 // The auth middleware must wrap this handler before registration.
-func Handler(kube kubeclient.KubeClient, mapper KindMapper) http.HandlerFunc {
+func resourcesHandler(kube kubeclient.KubeClient, mapper KindMapper) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		kind, ns, name, err := parsePath(r.URL.Path)
 		if err != nil {

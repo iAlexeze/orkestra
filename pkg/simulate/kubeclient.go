@@ -19,6 +19,7 @@ import (
 	fakedynamic "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/rest"
 	k8stesting "k8s.io/client-go/testing"
 	sigs "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -96,6 +97,7 @@ func NewFakeKubeclient(scheme *runtime.Scheme) *FakeKubeclient {
 func (f *FakeKubeclient) Clientset() kubernetes.Interface  { return f.clientset }
 func (f *FakeKubeclient) DynamicClient() dynamic.Interface { return f.dynamic }
 func (f *FakeKubeclient) Mapper() meta.RESTMapper          { return f.mapper }
+func (f *FakeKubeclient) RestConfig() *rest.Config         { return nil }
 
 // AdvanceCycle increments the cycle counter. Call between simulated reconciles.
 func (f *FakeKubeclient) AdvanceCycle() {

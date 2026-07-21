@@ -1,11 +1,11 @@
-package kordinator
+package handlers
 
 import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/orkspace/orkestra/pkg/gateway/notification"
 	"github.com/orkspace/orkestra/pkg/katalog"
-	"github.com/orkspace/orkestra/pkg/notification"
 )
 
 // BuildNotifyHandler returns an http.HandlerFunc that receives a notification
