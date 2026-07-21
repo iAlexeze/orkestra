@@ -99,6 +99,151 @@ idp:
 	}
 }
 
+func TestIDPConfigIgnoreFieldsAndWhen(t *testing.T) {
+	input := `
+idp:
+  enabled: true
+  ignoreFields:
+    - internalId
+    - createdBy
+  category: "Compute"
+  description: "Self-service application deployment"
+  fields:
+    workloadType:
+      label: "Workload Type"
+      order: 1
+      category: "Basic"
+    repoURL:
+      label: "Repository URL"
+      order: 2
+      when:
+        - field: workloadType
+          equals: app
+    certIssuer:
+      label: "Issuer"
+      order: 2
+      when:
+        - field: workloadType
+          equals: cert
+        - field: workloadType
+          notEquals: app
+`
+	var entry CRDEntry
+	if err := yaml.Unmarshal([]byte(input), &entry); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	idp := entry.IDP
+	if idp == nil {
+		t.Fatal("IDP is nil")
+	}
+	if len(idp.IgnoreFields) != 2 || idp.IgnoreFields[0] != "internalId" {
+		t.Errorf("IgnoreFields = %v", idp.IgnoreFields)
+	}
+	if idp.Category != "Compute" {
+		t.Errorf("Category = %q", idp.Category)
+	}
+	if idp.Description != "Self-service application deployment" {
+		t.Errorf("Description = %q", idp.Description)
+	}
+
+	wt := idp.Fields["workloadType"]
+	if wt.Category != "Basic" {
+		t.Errorf("workloadType.Category = %q", wt.Category)
+	}
+	if len(wt.When) != 0 {
+		t.Errorf("workloadType should have no when conditions")
+	}
+
+	repo := idp.Fields["repoURL"]
+	if len(repo.When) != 1 {
+		t.Fatalf("repoURL.When len = %d, want 1", len(repo.When))
+	}
+	if repo.When[0].Field != "workloadType" || repo.When[0].Equals != "app" {
+		t.Errorf("repoURL.When[0] = %+v", repo.When[0])
+	}
+
+	cert := idp.Fields["certIssuer"]
+	if len(cert.When) != 2 {
+		t.Fatalf("certIssuer.When len = %d, want 2", len(cert.When))
+	}
+	if cert.When[1].NotEquals != "app" {
+		t.Errorf("certIssuer.When[1].NotEquals = %q", cert.When[1].NotEquals)
+	}
+
+	// time-based when uses the same Condition infrastructure
+	inputWithTime := `
+idp:
+  enabled: true
+  fields:
+    environment:
+      label: "Environment"
+      order: 1
+    prodDeploy:
+      label: "Production Deploy"
+      when:
+        - time:
+            after: "08:00"
+            before: "18:00"
+          dayOfWeek:
+            weekday: true
+`
+	var entryTime CRDEntry
+	if err := yaml.Unmarshal([]byte(inputWithTime), &entryTime); err != nil {
+		t.Fatalf("unmarshal time-when: %v", err)
+	}
+	pd := entryTime.IDP.Fields["prodDeploy"]
+	if len(pd.When) != 1 {
+		t.Fatalf("prodDeploy.When len = %d, want 1", len(pd.When))
+	}
+	if pd.When[0].Time == nil || pd.When[0].Time.After != "08:00" {
+		t.Errorf("prodDeploy.When[0].Time = %+v", pd.When[0].Time)
+	}
+	if pd.When[0].DayOfWeek == nil || pd.When[0].DayOfWeek.Weekday == nil {
+		t.Errorf("prodDeploy.When[0].DayOfWeek = %+v", pd.When[0].DayOfWeek)
+	}
+}
+
+func TestIDPFieldAnyOfAndDisabled(t *testing.T) {
+	input := `
+idp:
+  enabled: true
+  fields:
+    environment:
+      label: "Environment"
+      order: 1
+    prodDeploy:
+      label: "Production Deploy"
+      anyOf:
+        - time:
+            after: "08:00"
+            before: "18:00"
+        - dayOfWeek:
+            weekday: true
+    legacyFeature:
+      label: "Legacy Feature"
+      disabled: "Deprecated — use NewFeature instead"
+`
+	var entry CRDEntry
+	if err := yaml.Unmarshal([]byte(input), &entry); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	pd := entry.IDP.Fields["prodDeploy"]
+	if len(pd.AnyOf) != 2 {
+		t.Fatalf("prodDeploy.AnyOf len = %d, want 2", len(pd.AnyOf))
+	}
+	if pd.AnyOf[0].Time == nil || pd.AnyOf[0].Time.After != "08:00" {
+		t.Errorf("prodDeploy.AnyOf[0].Time = %+v", pd.AnyOf[0].Time)
+	}
+	if pd.AnyOf[1].DayOfWeek == nil || pd.AnyOf[1].DayOfWeek.Weekday == nil {
+		t.Errorf("prodDeploy.AnyOf[1].DayOfWeek = %+v", pd.AnyOf[1].DayOfWeek)
+	}
+
+	lf := entry.IDP.Fields["legacyFeature"]
+	if lf.Disabled != "Deprecated — use NewFeature instead" {
+		t.Errorf("legacyFeature.Disabled = %q", lf.Disabled)
+	}
+}
+
 func TestApplyAPITokenValidation(t *testing.T) {
 	cases := []struct {
 		name    string

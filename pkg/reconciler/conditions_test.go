@@ -5,73 +5,68 @@ import (
 	"testing"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-// buildUnstructured builds a minimal unstructured CR for condition tests.
-func buildUnstructured(spec map[string]interface{}) *unstructured.Unstructured {
-	return &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "demo.orkestra.io/v1alpha1",
-			"kind":       "Website",
-			"metadata": map[string]interface{}{
-				"name":      "my-website",
-				"namespace": "default",
-			},
-			"spec": spec,
+// buildData builds a minimal CR data map for condition tests.
+func buildData(spec map[string]interface{}) map[string]interface{} {
+	return map[string]interface{}{
+		"apiVersion": "demo.orkestra.io/v1alpha1",
+		"kind":       "Website",
+		"metadata": map[string]interface{}{
+			"name":      "my-website",
+			"namespace": "default",
 		},
+		"spec": spec,
 	}
 }
 
+func eval(data map[string]interface{}, conds []orktypes.Condition) bool {
+	return orktypes.EvaluateWhen(data, conds, nil, nil)
+}
+
 func TestEvaluateConditions_Empty(t *testing.T) {
-	obj := buildUnstructured(map[string]interface{}{})
-	if !evaluateConditions(obj, nil) {
-		t.Error("empty conditions should always return true")
+	data := buildData(map[string]interface{}{})
+	if !eval(data, nil) {
+		t.Error("nil conditions should always return true")
 	}
-	if !evaluateConditions(obj, []orktypes.Condition{}) {
+	if !eval(data, []orktypes.Condition{}) {
 		t.Error("empty slice should always return true")
 	}
 }
 
 func TestEvaluateConditions_EqualsShorthand(t *testing.T) {
-	obj := buildUnstructured(map[string]interface{}{"environment": "production"})
+	data := buildData(map[string]interface{}{"environment": "production"})
 
-	conds := []orktypes.Condition{{Field: "spec.environment", Equals: "production"}}
-	if !evaluateConditions(obj, conds) {
+	if !eval(data, []orktypes.Condition{{Field: "spec.environment", Equals: "production"}}) {
 		t.Error("equals shorthand should pass when value matches")
 	}
-
-	conds = []orktypes.Condition{{Field: "spec.environment", Equals: "staging"}}
-	if evaluateConditions(obj, conds) {
+	if eval(data, []orktypes.Condition{{Field: "spec.environment", Equals: "staging"}}) {
 		t.Error("equals shorthand should fail when value does not match")
 	}
 }
 
 func TestEvaluateConditions_AllMustPass(t *testing.T) {
-	obj := buildUnstructured(map[string]interface{}{
+	data := buildData(map[string]interface{}{
 		"environment": "production",
 		"enabled":     "true",
 	})
 
-	conds := []orktypes.Condition{
+	if !eval(data, []orktypes.Condition{
 		{Field: "spec.environment", Equals: "production"},
 		{Field: "spec.enabled", Equals: "true"},
-	}
-	if !evaluateConditions(obj, conds) {
+	}) {
 		t.Error("all conditions pass — should return true")
 	}
-
-	conds = []orktypes.Condition{
+	if eval(data, []orktypes.Condition{
 		{Field: "spec.environment", Equals: "production"},
 		{Field: "spec.enabled", Equals: "false"},
-	}
-	if evaluateConditions(obj, conds) {
+	}) {
 		t.Error("one condition fails — should return false")
 	}
 }
 
 func TestEvaluateConditions_Operators(t *testing.T) {
-	obj := buildUnstructured(map[string]interface{}{
+	data := buildData(map[string]interface{}{
 		"image":    "myorg/nginx:1.25",
 		"replicas": int64(5),
 		"logLevel": "info",
@@ -82,90 +77,41 @@ func TestEvaluateConditions_Operators(t *testing.T) {
 		cond   orktypes.Condition
 		expect bool
 	}{
-		{
-			name:   "prefix matches",
-			cond:   orktypes.Condition{Field: "spec.image", Operator: orktypes.ConditionPrefix, Value: "myorg/"},
-			expect: true,
-		},
-		{
-			name:   "prefix no match",
-			cond:   orktypes.Condition{Field: "spec.image", Operator: orktypes.ConditionPrefix, Value: "other/"},
-			expect: false,
-		},
-		{
-			name:   "suffix matches",
-			cond:   orktypes.Condition{Field: "spec.image", Operator: orktypes.ConditionSuffix, Value: ":1.25"},
-			expect: true,
-		},
-		{
-			name:   "contains matches",
-			cond:   orktypes.Condition{Field: "spec.image", Operator: orktypes.ConditionContains, Value: "nginx"},
-			expect: true,
-		},
-		{
-			name:   "notEquals matches",
-			cond:   orktypes.Condition{Field: "spec.logLevel", Operator: orktypes.ConditionNotEquals, Value: "debug"},
-			expect: true,
-		},
-		{
-			name:   "gt matches — 5 > 3",
-			cond:   orktypes.Condition{Field: "spec.replicas", Operator: orktypes.ConditionGt, Value: "3"},
-			expect: true,
-		},
-		{
-			name:   "gt fails — 5 not > 10",
-			cond:   orktypes.Condition{Field: "spec.replicas", Operator: orktypes.ConditionGt, Value: "10"},
-			expect: false,
-		},
-		{
-			name:   "lt matches — 5 < 10",
-			cond:   orktypes.Condition{Field: "spec.replicas", Operator: orktypes.ConditionLt, Value: "10"},
-			expect: true,
-		},
-		{
-			name:   "exists — present field",
-			cond:   orktypes.Condition{Field: "spec.image", Operator: orktypes.ConditionExists},
-			expect: true,
-		},
-		{
-			name:   "exists — absent field",
-			cond:   orktypes.Condition{Field: "spec.missing", Operator: orktypes.ConditionExists},
-			expect: false,
-		},
-		{
-			name:   "notExists — absent field",
-			cond:   orktypes.Condition{Field: "spec.missing", Operator: orktypes.ConditionNotExists},
-			expect: true,
-		},
-		{
-			name:   "notExists — present field",
-			cond:   orktypes.Condition{Field: "spec.image", Operator: orktypes.ConditionNotExists},
-			expect: false,
-		},
+		{"prefix matches", orktypes.Condition{Field: "spec.image", Operator: orktypes.ConditionPrefix, Value: "myorg/"}, true},
+		{"prefix no match", orktypes.Condition{Field: "spec.image", Operator: orktypes.ConditionPrefix, Value: "other/"}, false},
+		{"suffix matches", orktypes.Condition{Field: "spec.image", Operator: orktypes.ConditionSuffix, Value: ":1.25"}, true},
+		{"contains matches", orktypes.Condition{Field: "spec.image", Operator: orktypes.ConditionContains, Value: "nginx"}, true},
+		{"notEquals matches", orktypes.Condition{Field: "spec.logLevel", Operator: orktypes.ConditionNotEquals, Value: "debug"}, true},
+		{"gt matches — 5 > 3", orktypes.Condition{Field: "spec.replicas", Operator: orktypes.ConditionGt, Value: "3"}, true},
+		{"gt fails — 5 not > 10", orktypes.Condition{Field: "spec.replicas", Operator: orktypes.ConditionGt, Value: "10"}, false},
+		{"lt matches — 5 < 10", orktypes.Condition{Field: "spec.replicas", Operator: orktypes.ConditionLt, Value: "10"}, true},
+		{"exists — present field", orktypes.Condition{Field: "spec.image", Operator: orktypes.ConditionExists}, true},
+		{"exists — absent field", orktypes.Condition{Field: "spec.missing", Operator: orktypes.ConditionExists}, false},
+		{"notExists — absent field", orktypes.Condition{Field: "spec.missing", Operator: orktypes.ConditionNotExists}, true},
+		{"notExists — present field", orktypes.Condition{Field: "spec.image", Operator: orktypes.ConditionNotExists}, false},
+		{"in — value in list", orktypes.Condition{Field: "spec.logLevel", Operator: orktypes.ConditionIn, Value: "debug,info,warn"}, true},
+		{"in — value not in list", orktypes.Condition{Field: "spec.logLevel", Operator: orktypes.ConditionIn, Value: "debug,warn"}, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := evaluateConditions(obj, []orktypes.Condition{tt.cond})
-			if result != tt.expect {
-				t.Errorf("expected %v, got %v", tt.expect, result)
+			if eval(data, []orktypes.Condition{tt.cond}) != tt.expect {
+				t.Errorf("expected %v, got %v", tt.expect, !tt.expect)
 			}
 		})
 	}
 }
 
 func TestEvaluateConditions_NestedField(t *testing.T) {
-	obj := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"metadata": map[string]interface{}{
-				"labels": map[string]interface{}{
-					"tier": "premium",
-				},
+	data := map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"labels": map[string]interface{}{
+				"tier": "premium",
 			},
-			"spec": map[string]interface{}{
-				"database": map[string]interface{}{
-					"engine": "postgres",
-				},
+		},
+		"spec": map[string]interface{}{
+			"database": map[string]interface{}{
+				"engine": "postgres",
 			},
 		},
 	}
@@ -185,25 +131,43 @@ func TestEvaluateConditions_NestedField(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cond := orktypes.Condition{Field: tt.field, Equals: tt.equals}
-			result := evaluateConditions(obj, []orktypes.Condition{cond})
-			if result != tt.expect {
-				t.Errorf("expected %v, got %v", tt.expect, result)
+			if eval(data, []orktypes.Condition{cond}) != tt.expect {
+				t.Errorf("expected %v, got %v", tt.expect, !tt.expect)
 			}
 		})
 	}
 }
 
+func TestEvaluateConditions_AnyOf(t *testing.T) {
+	data := buildData(map[string]interface{}{"phase": "Failed"})
+
+	// anyOf — OR semantics
+	anyOf := []orktypes.Condition{
+		{Field: "spec.phase", Equals: "Failed"},
+		{Field: "spec.phase", Equals: "Succeeded"},
+	}
+	if !orktypes.EvaluateWhen(data, nil, anyOf, nil) {
+		t.Error("anyOf should pass when at least one condition matches")
+	}
+
+	anyOf = []orktypes.Condition{
+		{Field: "spec.phase", Equals: "Pending"},
+		{Field: "spec.phase", Equals: "Running"},
+	}
+	if orktypes.EvaluateWhen(data, nil, anyOf, nil) {
+		t.Error("anyOf should fail when no conditions match")
+	}
+}
+
 func TestResolveField_Types(t *testing.T) {
-	obj := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"spec": map[string]interface{}{
-				"stringVal":  "hello",
-				"intVal":     int64(42),
-				"floatVal":   float64(3.14),
-				"boolTrue":   true,
-				"boolFalse":  false,
-				"intAsFloat": float64(10),
-			},
+	data := map[string]interface{}{
+		"spec": map[string]interface{}{
+			"stringVal":  "hello",
+			"intVal":     int64(42),
+			"floatVal":   float64(3.14),
+			"boolTrue":   true,
+			"boolFalse":  false,
+			"intAsFloat": float64(10),
 		},
 	}
 
@@ -221,9 +185,12 @@ func TestResolveField_Types(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.field, func(t *testing.T) {
-			cond := orktypes.Condition{Field: tt.field, Equals: tt.expected}
-			if !evaluateConditions(obj, []orktypes.Condition{cond}) {
-				t.Errorf("field %q: expected value %q not matched", tt.field, tt.expected)
+			got, found := resolveField(data, tt.field)
+			if !found {
+				t.Fatalf("field %q not found", tt.field)
+			}
+			if got != tt.expected {
+				t.Errorf("field %q: got %q, want %q", tt.field, got, tt.expected)
 			}
 		})
 	}

@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"gopkg.in/yaml.v3"
+	orkutils "github.com/orkspace/orkestra/pkg/utils"
 )
 
 // ExpandStatusInclude resolves the status.include field by reading the
@@ -27,7 +27,7 @@ func ExpandStatusInclude(s *StatusConfig, baseDir string) error {
 	var f struct {
 		Fields []StatusFieldSpec `yaml:"fields"`
 	}
-	if err := yaml.Unmarshal(data, &f); err != nil {
+	if err := orkutils.StrictUnmarshal(data, &f); err != nil {
 		return fmt.Errorf("parsing status.include %q: %w", s.Include, err)
 	}
 	s.Fields = append(f.Fields, s.Fields...)
@@ -54,7 +54,7 @@ func ExpandValidationInclude(v *ValidationConfig, baseDir string) error {
 	var f struct {
 		Rules []ValidationRule `yaml:"rules"`
 	}
-	if err := yaml.Unmarshal(data, &f); err != nil {
+	if err := orkutils.StrictUnmarshal(data, &f); err != nil {
 		return fmt.Errorf("parsing validation.include %q: %w", v.Include, err)
 	}
 	v.Rules = append(f.Rules, v.Rules...)
@@ -81,7 +81,7 @@ func ExpandMutationInclude(mu *MutationConfig, baseDir string) error {
 	var f struct {
 		Rules []MutationRule `yaml:"rules"`
 	}
-	if err := yaml.Unmarshal(data, &f); err != nil {
+	if err := orkutils.StrictUnmarshal(data, &f); err != nil {
 		return fmt.Errorf("parsing mutation.include %q: %w", mu.Include, err)
 	}
 	mu.Rules = append(f.Rules, mu.Rules...)
@@ -108,7 +108,7 @@ func ExpandConversionInclude(co *CRDConversion, baseDir string) error {
 	var f struct {
 		Paths []ConversionPath `yaml:"paths"`
 	}
-	if err := yaml.Unmarshal(data, &f); err != nil {
+	if err := orkutils.StrictUnmarshal(data, &f); err != nil {
 		return fmt.Errorf("parsing conversion.include %q: %w", co.Include, err)
 	}
 	co.Paths = append(f.Paths, co.Paths...)
@@ -135,7 +135,7 @@ func ExpandNotesInclude(nr *NoteRegistry, baseDir string) error {
 	var f struct {
 		Functions []UserDefinedNote `yaml:"functions"`
 	}
-	if err := yaml.Unmarshal(data, &f); err != nil {
+	if err := orkutils.StrictUnmarshal(data, &f); err != nil {
 		return fmt.Errorf("parsing notes.include %q: %w", nr.Include, err)
 	}
 	nr.Functions = append(f.Functions, nr.Functions...)
@@ -162,7 +162,7 @@ func ExpandProfileInclude(r *ProfileRegistry, baseDir string) error {
 	var f struct {
 		Profiles ProfileRegistry `yaml:"profiles"`
 	}
-	if err := yaml.Unmarshal(data, &f); err != nil {
+	if err := orkutils.StrictUnmarshal(data, &f); err != nil {
 		return fmt.Errorf("parsing profiles.include %q: %w", r.Include, err)
 	}
 	p := f.Profiles
@@ -228,7 +228,7 @@ func expandOpRules(rules []SimulateOpRule, baseDir string) ([]SimulateOpRule, er
 		var f struct {
 			Ops []SimulateOpRule `yaml:"ops"`
 		}
-		if err := yaml.Unmarshal(data, &f); err != nil {
+		if err := orkutils.StrictUnmarshal(data, &f); err != nil {
 			return nil, fmt.Errorf("parsing ops include %q: %w", rule.Include, err)
 		}
 		expanded = append(expanded, f.Ops...)
@@ -255,7 +255,7 @@ func ExpandIDPInclude(idp *IDPConfig, baseDir string) error {
 	var f struct {
 		Fields map[string]IDPFieldConfig `yaml:"fields"`
 	}
-	if err := yaml.Unmarshal(data, &f); err != nil {
+	if err := orkutils.StrictUnmarshal(data, &f); err != nil {
 		return fmt.Errorf("parsing idp.include %q: %w", idp.Include, err)
 	}
 	merged := make(map[string]IDPFieldConfig, len(f.Fields)+len(idp.Fields))

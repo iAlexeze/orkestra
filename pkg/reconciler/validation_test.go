@@ -5,22 +5,18 @@ import (
 	"testing"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-// validationObj builds a minimal unstructured CR for validation tests.
-// Using a distinct helper name to avoid collision with buildUnstructured in conditions_test.go.
-func validationObj(spec map[string]interface{}) *unstructured.Unstructured {
-	return &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "demo.orkestra.io/v1",
-			"kind":       "Website",
-			"metadata": map[string]interface{}{
-				"name":      "test-site",
-				"namespace": "default",
-			},
-			"spec": spec,
+// validationObj builds a minimal CR data map for validation tests.
+func validationObj(spec map[string]interface{}) map[string]interface{} {
+	return map[string]interface{}{
+		"apiVersion": "demo.orkestra.io/v1",
+		"kind":       "Website",
+		"metadata": map[string]interface{}{
+			"name":      "test-site",
+			"namespace": "default",
 		},
+		"spec": spec,
 	}
 }
 

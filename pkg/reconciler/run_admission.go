@@ -2,8 +2,6 @@ package reconciler
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
@@ -11,42 +9,30 @@ import (
 )
 
 // applyReconcileTimeValidation evaluates validation rules against the live CR.
-// Deny rules return an error — reconcile halts and the error is recorded.
-// Warn rules log an advisory — reconcile continues.
-func (r *GenericReconciler[PTR]) applyReconcileTimeValidation(ctx context.Context, obj PTR) error {
+// Warn violations are logged as advisory — reconcile continues.
+// Deny violations halt reconcile — the caller patches status and returns the error.
+// Always returns the ValidationResult so the caller can pass it to patchStatusWithChildren.
+func (r *GenericReconciler[PTR]) applyReconcileTimeValidation(ctx context.Context, resolver *orktmpl.Resolver, obj PTR) (*ValidationResult, error) {
 	if r.crd.Validation == nil || len(r.crd.Validation.Rules) == 0 {
-		return nil
+		return nil, nil
 	}
 
-	result := runValidation(obj, r.crd.Validation, r.crd.APITypes.Kind)
-	if result.Passed {
-		return nil
+	result := runValidation(resolver.Data(), r.crd.Validation, r.crd.APITypes.Kind)
+
+	for _, w := range result.Warnings {
+		logger.FromContext(ctx).Warn().
+			Str("name", obj.GetName()).
+			Str("crd", r.crd.GVKString()).
+			Str("field", w.Field).
+			Str("message", w.Message).
+			Msg("reconcile validation: warn")
 	}
 
-	var denials []ValidationViolation
-
-	for _, v := range result.Violations {
-		action := validationRuleAction(r.crd.Validation, v.Field, v.Rule)
-		if action.IsWarn() {
-			logger.FromContext(ctx).Warn().
-				Str("name", obj.GetName()).
-				Str("field", v.Field).
-				Str("message", v.Message).
-				Msg("reconcile validation: warn")
-		} else {
-			denials = append(denials, v)
-		}
+	if result.Deny {
+		return result, result.DenialError()
 	}
 
-	if len(denials) > 0 {
-		msgs := make([]string, 0, len(denials))
-		for _, d := range denials {
-			msgs = append(msgs, fmt.Sprintf("field %q: %s", d.Field, d.Message))
-		}
-		return fmt.Errorf("validation denied: %s", strings.Join(msgs, "; "))
-	}
-
-	return nil
+	return result, nil
 }
 
 // applyReconcileTimeMutation applies mutation defaults to the CR and patches
