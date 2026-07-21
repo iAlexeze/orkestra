@@ -416,7 +416,7 @@ func (k *Katalog) HasIDPEnabled() bool {
 		return false
 	}
 	for _, crd := range k.Enabled() {
-		if crd.IDP != nil && crd.IDP.Enabled {
+		if crd.IDPEnabled() {
 			return true
 		}
 	}

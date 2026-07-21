@@ -68,10 +68,11 @@ type CRSummary struct {
 
 // CRListResponse is returned by GET /katalog/{crd}/cr.
 type CRListResponse struct {
-	CRD   string      `json:"crd"`
-	GVK   string      `json:"gvk"`
-	Total int         `json:"total"`
-	Items []CRSummary `json:"items"`
+	CRD         string      `json:"crd"`
+	GVK         string      `json:"gvk"`
+	Total       int         `json:"total"`
+	Items       []CRSummary `json:"items"`
+	IsKonductor bool        `json:"isKonductor"`
 }
 
 // ChildSummary is a condensed view of one child resource.
@@ -93,28 +94,16 @@ type CRDetailResponse struct {
 	Labels            map[string]string `json:"labels,omitempty"`
 	Annotations       map[string]string `json:"annotations,omitempty"`
 
-	// Ready reflects the Orkestra Ready condition.
-	// true = operator reconciled successfully.
-	// The CR may still be in a non-terminal phase (e.g. Running/build).
 	Ready        bool   `json:"ready"`
 	ReadyReason  string `json:"readyReason,omitempty"`
 	ReadyMessage string `json:"readyMessage,omitempty"`
 
-	// Status is the full status subresource as returned by the API server.
-	// Includes phase, conditions, and any declared status fields.
-	Status map[string]interface{} `json:"status,omitempty"`
-
-	// Children holds the child resources created by Orkestra for this CR.
-	// Keyed by lowercase kind (e.g. "deployment", "job", "cronjob").
-	// Value is a single ChildSummary when one child exists, []ChildSummary when multiple.
-	// Populated on demand from the API server — may be empty on first reconcile.
+	Status   map[string]interface{} `json:"status,omitempty"`
 	Children map[string]interface{} `json:"children"`
 
-	// EventsEndpoint is the URL to fetch recent events for this CR.
-	EventsEndpoint string `json:"eventsEndpoint"`
-
-	// Debug to know if it has templates
-	HasTemplateBlocks bool `json:"hasTemplateBlocks"`
+	EventsEndpoint    string `json:"eventsEndpoint"`
+	HasTemplateBlocks bool   `json:"hasTemplateBlocks"`
+	IsKonductor       bool   `json:"isKonductor"`
 }
 
 // CREvent is one Kubernetes event involving this CR or its children.
@@ -149,6 +138,7 @@ type CREventsResponse struct {
 func BuildCRListHandler(
 	crd orktypes.CRDEntry,
 	inf cache.SharedIndexInformer,
+	o *OrkestraHealth,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if inf == nil {
@@ -176,10 +166,11 @@ func BuildCRListHandler(
 		})
 
 		utils.WriteJSON(w, http.StatusOK, CRListResponse{
-			CRD:   crd.Name,
-			GVK:   crd.GVKString(),
-			Total: len(items),
-			Items: items,
+			CRD:         crd.Name,
+			GVK:         crd.GVKString(),
+			Total:       len(items),
+			Items:       items,
+			IsKonductor: o.IsKonductor(),
 		})
 	}
 }
@@ -201,6 +192,7 @@ func BuildCRDetailHandler(
 	inf cache.SharedIndexInformer,
 	kube *kubeclient.Kubeclient,
 	rc orktypes.OperatorBoxConfig,
+	o *OrkestraHealth,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if inf == nil {
@@ -210,16 +202,13 @@ func BuildCRDetailHandler(
 			return
 		}
 
-		// Parse name and optional namespace from the URL suffix.
-		// The mux strips /katalog/{crd}/cr/ before this handler is called,
-		// leaving either "name" or "namespace/name".
 		suffix := strings.TrimPrefix(r.URL.Path, "/")
 		parts := strings.SplitN(suffix, "/", 2)
 
 		var namespace, name string
 		switch len(parts) {
 		case 1:
-			name = parts[0] // cluster-scoped
+			name = parts[0]
 		case 2:
 			namespace = parts[0]
 			name = parts[1]
@@ -228,7 +217,6 @@ func BuildCRDetailHandler(
 			return
 		}
 
-		// Look up in informer cache — no API call
 		key := name
 		if namespace != "" {
 			key = namespace + "/" + name
@@ -249,15 +237,12 @@ func BuildCRDetailHandler(
 			return
 		}
 
-		// Read child resources — only queries types declared in the Katalog's
-		// templates. Results are served from a 30-second in-memory cache to
-		// avoid firing concurrent LISTs on every UI poll.
 		children := readChildrenForEndpoint(r.Context(), kube, objMap, rc)
-
-		// Build the events endpoint URL for this CR
 		eventsPath := buildEventsPath(crd, namespace, name)
 
-		utils.WriteJSON(w, http.StatusOK, buildCRDetail(objMap, children, eventsPath, crd.APITypes.Kind))
+		detail := buildCRDetail(objMap, children, eventsPath, crd.APITypes.Kind)
+		detail.IsKonductor = o.IsKonductor()
+		utils.WriteJSON(w, http.StatusOK, detail)
 	}
 }
 
@@ -269,8 +254,9 @@ func BuildCRDetailAndEventsHandler(
 	inf cache.SharedIndexInformer,
 	kube *kubeclient.Kubeclient,
 	rc orktypes.OperatorBoxConfig,
+	o *OrkestraHealth,
 ) http.HandlerFunc {
-	detail := BuildCRDetailHandler(crd, inf, kube, rc)
+	detail := BuildCRDetailHandler(crd, inf, kube, rc, o)
 	events := BuildCREventsHandler(crd, kube)
 
 	return func(w http.ResponseWriter, r *http.Request) {

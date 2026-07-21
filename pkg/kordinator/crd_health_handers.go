@@ -661,8 +661,8 @@ func BuildKatalogHandler(
 				OperatorBox: OperatorBoxSummary{
 					Type:           "generic",
 					HasTemplates:   crd.OperatorBox.OnCreate != nil,
-					HasHooks:       (crd.OperatorBox.Reconciler != nil && crd.OperatorBox.Reconciler.Hooks != nil) || crd.OperatorBox.HookFactory != nil,
-					HasConstructor: crd.OperatorBox.Constructor != nil,
+					HasHooks:       crd.HasHooks(),
+					HasConstructor: crd.HasConstructor(),
 				},
 				Healthy:          isHealthy,
 				Started:          isStarted,
@@ -670,9 +670,9 @@ func BuildKatalogHandler(
 				StartedAt:        h.StartedAt(),
 				Uptime:           h.Uptime(),
 				ErrorRate:        h.ErrorRatePercent(),
-				CrossAccess:      crd.CrossAccess == nil || *crd.CrossAccess,
+				CrossAccess:      crd.CrossAccessEnabled(),
 				KatalogNamespace: crd.KatalogNamespace,
-				IDPEnabled:       crd.IDP != nil && crd.IDP.Enabled,
+				IDPEnabled:       crd.IDPEnabled(),
 				Endpoints: EndpointInfo{
 					Health:        "/katalog/" + strings.ToLower(crd.Name) + "/health",
 					Info:          "/katalog/" + strings.ToLower(crd.Name),

@@ -78,7 +78,7 @@ func runCustomResources(
 			if _, mapErr := src.ResolveGVR(kube.Mapper()); mapErr != nil {
 				logger.FromContext(ctx).Warn().
 					Str("gvk", gvk.String()).
-					Msgf("custom[%d]: CRD not yet available — skipping until it appears", i)
+					Msgf("custom[%d]: CRD not yet available '%s' — skipping until it appears", i, gvk.String())
 				continue
 			}
 		}

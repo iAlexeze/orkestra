@@ -21,6 +21,27 @@ validation:
       prefix: "myregistry.example.com/"
       message: "image must come from the internal registry"
       action: warn
+
+    - field: spec.productionApproval
+      operator: exists
+      message: "production deploys require an approval ticket"
+      action: deny
+      when:
+        - field: spec.environment
+          equals: production
+
+    - field: spec.domain
+      operator: exists
+      message: "spec.domain is required for cert workloads"
+      action: deny
+      when:
+        - field: spec.workloadType
+          equals: cert
+      anyOf:
+        - field: spec.workloadType
+          equals: cert
+        - field: spec.workloadType
+          equals: monitoring
 ```
 
 ## `validation.include`
@@ -65,8 +86,12 @@ Each rule describes one check. Rules are evaluated in order.
 | `action` | no | `deny` (default) — reject; `warn` — allow but log a warning |
 | `operator` + `value` | yes* | Explicit comparison (see operators) |
 | `valueType` | no | `string` (default), `int`, `float`, `bool` |
+| `when` | no | All conditions must pass for this rule to be evaluated (AND). Empty means unconditional. |
+| `anyOf` | no | At least one condition must pass for this rule to be evaluated (OR). When both `when` and `anyOf` are declared, both blocks must pass. |
 
 *Use either an operator+value pair or a shorthand field.
+
+`when` and `anyOf` use the same `Condition` type as resource templates — see [06-when-conditions.md](06-when-conditions.md) for the full operator reference.
 
 ## Operators
 

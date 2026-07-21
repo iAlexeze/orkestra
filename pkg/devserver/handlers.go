@@ -32,6 +32,9 @@ func registerHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/v1/data/", handle(opaPolicyHandler))
 	// 09-cert-readiness
 	mux.HandleFunc("/certs/", handle(certsHandler))
+	// 04-jira-slack (idp example)
+	mux.HandleFunc("/jira/transition", handle(jiraTransitionHandler))
+	mux.HandleFunc("/slack/notify", handle(slackNotifyHandler))
 }
 
 // handle wraps a handler with debug logging.
@@ -288,6 +291,35 @@ func certsHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "unknown certs route"})
 	}
+}
+
+// POST /jira/transition → 200 Jira transition response.
+// Mimics the Jira REST API POST /rest/api/2/issue/{key}/transitions wire format.
+func jiraTransitionHandler(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		IssueKey   string `json:"issueKey"`
+		Transition string `json:"transition"`
+	}
+	json.NewDecoder(r.Body).Decode(&body) //nolint:errcheck
+	writeJSON(w, http.StatusOK, map[string]any{
+		"issueKey":   body.IssueKey,
+		"transition": body.Transition,
+		"status":     "transitioned",
+	})
+}
+
+// POST /slack/notify → 200 Slack acknowledgement.
+// Accepts the Slack incoming-webhook wire format (channel + text).
+func slackNotifyHandler(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Channel string `json:"channel"`
+		Text    string `json:"text"`
+	}
+	json.NewDecoder(r.Body).Decode(&body) //nolint:errcheck
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":      true,
+		"channel": body.Channel,
+	})
 }
 
 // flagsHandler routes /flags/* requests:

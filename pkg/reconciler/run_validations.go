@@ -6,12 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // ── Prometheus metrics ────────────────────────────────────────────────────────
@@ -83,21 +81,20 @@ func (r *ValidationResult) Error() error {
 // All rules are evaluated — multiple violations are collected and reported together.
 // Returns a ValidationResult. The caller decides whether to halt reconciliation.
 //
+// data is resolver.Data() — the full CR map, works for both typed and unstructured.
 // Called from generic.go before runTemplateReconcile (or after runMutation
 // when mutateFirst: true).
-func runValidation(obj domain.Object, cfg *orktypes.ValidationConfig, crdName string) *ValidationResult {
+func runValidation(data map[string]interface{}, cfg *orktypes.ValidationConfig, crdName string) *ValidationResult {
 	result := &ValidationResult{Passed: true}
 	if cfg == nil || len(cfg.Rules) == 0 {
 		return result
 	}
 
-	u, ok := toUnstructured(obj)
-	if !ok {
-		return result
-	}
-
 	for _, rule := range cfg.Rules {
-		violation := evaluateValidationRule(u, rule)
+		if !orktypes.EvaluateWhen(data, rule.When, rule.AnyOf, nil) {
+			continue
+		}
+		violation := evaluateValidationRule(data, rule)
 		if violation == nil {
 			continue
 		}
@@ -129,8 +126,6 @@ func runValidation(obj domain.Object, cfg *orktypes.ValidationConfig, crdName st
 	if result.Deny {
 		logger.Info().
 			Str("crd", crdName).
-			Str("name", obj.GetName()).
-			Str("namespace", obj.GetNamespace()).
 			Int("violations", len(result.Violations)).
 			Msg("validation: rules failed — reconciliation halted")
 	}
@@ -138,12 +133,12 @@ func runValidation(obj domain.Object, cfg *orktypes.ValidationConfig, crdName st
 	return result
 }
 
-// evaluateValidationRule evaluates one rule against the CR.
+// evaluateValidationRule evaluates one rule against the CR data map.
 // Returns a ValidationViolation if the rule fails, nil if it passes.
-func evaluateValidationRule(obj *unstructured.Unstructured, rule orktypes.ValidationRule) *ValidationViolation {
+func evaluateValidationRule(data map[string]interface{}, rule orktypes.ValidationRule) *ValidationViolation {
 	op, expected := resolveValidationOp(rule)
 
-	fieldVal, found := resolveField(obj.Object, rule.Field)
+	fieldVal, found := resolveField(data, rule.Field)
 
 	// Build a violation helper
 	fail := func() *ValidationViolation {

@@ -289,6 +289,24 @@ func (c *CRDEntry) IsInfoEnabled() bool {
 	return *c.Endpoints.Info
 }
 
+// CrossAccessEnabled reports whether cross: reads are permitted for this CRD.
+// Defaults to true when omitted.
+func (c *CRDEntry) CrossAccessEnabled() bool {
+	return c.CrossAccess == nil || *c.CrossAccess
+}
+
+// HasHooks reports whether this CRD has hooks wired — either a YAML-declared
+// hooks block or a Go-registered HookFactory.
+func (c *CRDEntry) HasHooks() bool {
+	r := c.OperatorBox.Reconciler
+	return (r != nil && r.Hooks != nil) || c.OperatorBox.HookFactory != nil
+}
+
+// HasConstructor reports whether a Go-registered constructor is wired for this CRD.
+func (c *CRDEntry) HasConstructor() bool {
+	return c.OperatorBox.Constructor != nil
+}
+
 // IsEnabledAllEndpoints reports whether the all endpoints are disabled for this CRD.
 // Defaults to false when omitted.
 func (c *CRDEntry) IsEnabledAllEndpoints() bool {

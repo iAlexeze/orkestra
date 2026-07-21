@@ -64,6 +64,7 @@ func main() {
 		Version:              version,
 		EnableRuntimeManager: kfg.EnableRuntimeManager,
 		NoLogin:              kfg.NoLogin,
+		GatewayToken:         kfg.GatewayToken,
 	})
 
 	// Setup routes

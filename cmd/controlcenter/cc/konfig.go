@@ -15,6 +15,7 @@ type ControlCenterKonfig struct {
 	URLs                 []string      `json:"urls"`
 	EnableRuntimeManager bool          `json:"enableRuntimeManager"`
 	NoLogin              bool          `json:"noLogin"`
+	GatewayToken         string        `json:"gatewayToken"`
 }
 
 func NewControlCenterKonfig() *ControlCenterKonfig {
@@ -30,6 +31,7 @@ func handleEnvVars() *ControlCenterKonfig {
 	loglevel := getStrEnv("LOG_LEVEL", "info")
 	refreshInterval := getDurEnv("REFRESH_INTERVAL", 15)
 	urls := splitEnv("ORK_URLS", []string{})
+	gatewayToken := getStrEnv("GATEWAY_TOKEN", "")
 
 	// PUBLIC_DEPLOYMENT=true is a shorthand that implies NO_LOGIN=true and
 	// ENABLE_RUNTIME_MANAGER=false. Individual vars can still override it.
@@ -46,6 +48,7 @@ func handleEnvVars() *ControlCenterKonfig {
 		URLs:                 urls,
 		EnableRuntimeManager: runtimeManager,
 		NoLogin:              noLogin,
+		GatewayToken:         gatewayToken,
 	}
 }
 

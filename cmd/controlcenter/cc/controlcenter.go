@@ -1,6 +1,7 @@
 package controlcenter
 
 import (
+	"bytes"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -32,6 +33,7 @@ type Config struct {
 	Version              string
 	EnableRuntimeManager bool
 	NoLogin              bool
+	GatewayToken         string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -53,12 +55,13 @@ type Instance struct {
 // ─────────────────────────────────────────────────────────────────────────────
 
 type ControlCenter struct {
-	urls        []string
-	instances   map[string]*Instance // keyed by URL
-	mu          sync.RWMutex
-	config      Config
-	ready       atomic.Bool
-	subscribers sync.Map // map[chan struct{}]struct{}
+	urls         []string
+	instances    map[string]*Instance // keyed by URL
+	mu           sync.RWMutex
+	config       Config
+	ready        atomic.Bool
+	subscribers  sync.Map // map[chan struct{}]struct{}
+	gatewayToken string
 }
 
 // New creates and starts a ControlCenter. Background fetches begin immediately.
@@ -87,9 +90,10 @@ func New(urls []string, config Config) *ControlCenter {
 		}
 	}
 	cc := &ControlCenter{
-		urls:      finalURLs,
-		instances: instances,
-		config:    config,
+		urls:         finalURLs,
+		instances:    instances,
+		config:       config,
+		gatewayToken: config.GatewayToken,
 	}
 	go cc.backgroundFetchLoop()
 	return cc
@@ -316,6 +320,13 @@ func (cc *ControlCenter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			cc.handleDocsLanding(w, r)
 		}
 
+	case path == "/api/idp/apply" && r.Method == http.MethodPost:
+		cc.handleIDPApply(w, r)
+
+	case strings.HasPrefix(path, "/api/idp/schema/"):
+		kind := strings.TrimPrefix(path, "/api/idp/schema/")
+		cc.handleIDPSchema(w, r, kind)
+
 	case strings.HasPrefix(path, "/katalog/"):
 		// Strip leading slash and split
 		parts := strings.Split(strings.Trim(path, "/"), "/")
@@ -386,6 +397,10 @@ func (cc *ControlCenter) routeCR(w http.ResponseWriter, r *http.Request, instanc
 		// /cr → list
 		cc.handleCRList(w, r, instanceURL, katalogName, crdName)
 	case 2:
+		if crParts[1] == "create" {
+			cc.handleIDPCreateForm(w, r, instanceURL, katalogName, crdName)
+			return
+		}
 		// /cr/{name} → cluster-scoped detail
 		cc.handleCRDetail(w, r, instanceURL, katalogName, crdName, "", crParts[1])
 	case 3:
@@ -832,15 +847,334 @@ func (cc *ControlCenter) handleCRList(w http.ResponseWriter, r *http.Request, in
 		return
 	}
 
+	var idpEnabled bool
+	var gatewayEndpoint string
+	cc.mu.RLock()
+	if inst, ok := cc.instances[instanceURL]; ok && inst.Katalog != nil {
+		gatewayEndpoint = inst.GatewayEndpoint
+		for _, crd := range inst.Katalog.CRDs {
+			if strings.EqualFold(crd.Name, crdName) {
+				idpEnabled = crd.IdpEnabled
+				break
+			}
+		}
+	}
+	cc.mu.RUnlock()
+
 	cc.renderTemplate(w, "cr_list.html", CRListView{
-		KatalogName: katalogName,
-		Instance:    instanceURL,
-		CRDName:     crdName,
-		GVK:         list.GVK,
-		Total:       list.Total,
-		Items:       list.Items,
-		BackURL:     fmt.Sprintf("/controlcenter/katalog/%s/crd/%s", katalogName, crdName),
+		KatalogName:     katalogName,
+		Instance:        instanceURL,
+		CRDName:         crdName,
+		GVK:             list.GVK,
+		Total:           list.Total,
+		Items:           list.Items,
+		BackURL:         fmt.Sprintf("/controlcenter/katalog/%s/crd/%s", katalogName, crdName),
+		IdpEnabled:      idpEnabled,
+		GatewayEndpoint: gatewayEndpoint,
 	})
+}
+
+// handleIDPSchema proxies GET /api/v1/schema/{kind} from the gateway.
+// The gateway token is stored server-side — the browser never sees it.
+func (cc *ControlCenter) handleIDPSchema(w http.ResponseWriter, r *http.Request, kind string) {
+	inst := cc.firstInstance()
+	if inst == nil || inst.GatewayEndpoint == "" {
+		http.Error(w, `{"error":"no gateway configured"}`, http.StatusServiceUnavailable)
+		return
+	}
+	cc.proxyIDPRequest(w, r, inst.GatewayEndpoint+"/api/v1/schema/"+kind, http.MethodGet, nil)
+}
+
+// handleIDPApply proxies POST /api/v1/apply to the gateway.
+func (cc *ControlCenter) handleIDPApply(w http.ResponseWriter, r *http.Request) {
+	inst := cc.firstInstance()
+	if inst == nil || inst.GatewayEndpoint == "" {
+		http.Error(w, `{"error":"no gateway configured"}`, http.StatusServiceUnavailable)
+		return
+	}
+	cc.proxyIDPRequest(w, r, inst.GatewayEndpoint+"/api/v1/apply", http.MethodPost, r.Body)
+}
+
+// proxyIDPRequest forwards an IDP request to the gateway with the stored bearer token.
+func (cc *ControlCenter) proxyIDPRequest(w http.ResponseWriter, _ *http.Request, target, method string, body io.Reader) {
+	req, err := http.NewRequest(method, target, body) //nolint:noctx
+	if err != nil {
+		http.Error(w, `{"error":"internal error"}`, http.StatusInternalServerError)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if cc.gatewayToken != "" {
+		req.Header.Set("Authorization", "Bearer "+cc.gatewayToken)
+	}
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		http.Error(w, `{"error":"gateway unreachable"}`, http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+	respBody, _ := io.ReadAll(resp.Body)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(resp.StatusCode)
+	// If the gateway returned plain text (e.g. "Unauthorized"), wrap it so the
+	// browser always receives valid JSON regardless of gateway error format.
+	if ct := resp.Header.Get("Content-Type"); !strings.Contains(ct, "application/json") {
+		fmt.Fprintf(w, `{"error":%q}`, strings.TrimSpace(string(respBody)))
+		return
+	}
+	w.Write(respBody) //nolint:errcheck
+}
+
+// firstInstance returns the first instance that has a loaded Katalog, or nil.
+func (cc *ControlCenter) firstInstance() *Instance {
+	cc.mu.RLock()
+	defer cc.mu.RUnlock()
+	for _, inst := range cc.instances {
+		if inst.Katalog != nil {
+			return inst
+		}
+	}
+	return nil
+}
+
+// instanceByURL returns the Instance for the given URL, or nil.
+func (cc *ControlCenter) instanceByURL(instanceURL string) *Instance {
+	cc.mu.RLock()
+	defer cc.mu.RUnlock()
+	inst := cc.instances[instanceURL]
+	return inst
+}
+
+// handleIDPCreateForm renders the IDP create form (GET) or applies the CR (POST).
+// Route: /katalog/{katalog}/crd/{crd}/cr/create
+func (cc *ControlCenter) handleIDPCreateForm(w http.ResponseWriter, r *http.Request, instanceURL, katalogName, crdName string) {
+	backURL := fmt.Sprintf("/controlcenter/katalog/%s/crd/%s/cr", katalogName, crdName)
+
+	inst := cc.instanceByURL(instanceURL)
+	if inst == nil || inst.Katalog == nil {
+		http.Redirect(w, r, backURL, http.StatusSeeOther)
+		return
+	}
+
+	var crdSummary *CRDSummary
+	for i := range inst.Katalog.CRDs {
+		if strings.EqualFold(inst.Katalog.CRDs[i].Name, crdName) {
+			crdSummary = &inst.Katalog.CRDs[i]
+			break
+		}
+	}
+	if crdSummary == nil || !crdSummary.IdpEnabled {
+		http.Redirect(w, r, backURL, http.StatusSeeOther)
+		return
+	}
+
+	kind, apiVersion := idpParseGVK(crdSummary.GVK)
+
+	if r.Method == http.MethodPost {
+		cc.handleIDPApplyForm(w, r, inst, kind, apiVersion)
+		return
+	}
+
+	sections, fetchErr := cc.fetchIDPFields(inst, crdName, kind)
+	data := IDPFormData{
+		KatalogName: katalogName,
+		CRDName:     crdName,
+		Kind:        kind,
+		APIVersion:  apiVersion,
+		BackURL:     backURL,
+		Namespaced:  crdSummary.Namespaced,
+		Sections:    sections,
+	}
+	if fetchErr != nil {
+		data.Error = "Could not load schema: " + fetchErr.Error()
+	}
+	cc.renderTemplate(w, "idp_form.html", data)
+}
+
+// fetchIDPFields fetches the CRD schema from the gateway. The gateway merges
+// the OpenAPI spec properties with idp.fields hints (labels, hints, order)
+// from the Katalog, so a single call is enough.
+func (cc *ControlCenter) fetchIDPFields(inst *Instance, crdName, kind string) ([]IDPSection, error) {
+	if inst.GatewayEndpoint == "" {
+		return nil, fmt.Errorf("no gateway endpoint configured")
+	}
+	if cc.gatewayToken == "" {
+		return nil, fmt.Errorf("GATEWAY_TOKEN not set")
+	}
+
+	// ── Schema + idpFields from a single gateway call ────────────────────────
+	req, _ := http.NewRequest(http.MethodGet, inst.GatewayEndpoint+"/api/v1/schema/"+strings.ToLower(kind), nil) //nolint:noctx
+	req.Header.Set("Authorization", "Bearer "+cc.gatewayToken)
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("%s", strings.TrimSpace(string(body)))
+	}
+
+	// SchemaResponse mirrors pkg/gateway/schema.SchemaResponse.
+	var schemaResp struct {
+		Properties map[string]struct {
+			Type        string      `json:"type"`
+			Enum        []string    `json:"enum"`
+			Description string      `json:"description"`
+			Default     interface{} `json:"default"`
+		} `json:"properties"`
+		Required     []string `json:"required"`
+		IgnoreFields []string `json:"ignoreFields"`
+		IDPFields    map[string]struct {
+			Label       string            `json:"label"`
+			Placeholder string            `json:"placeholder"`
+			Hint        string            `json:"hint"`
+			Order       int               `json:"order"`
+			Category    string            `json:"category"`
+			Required    bool              `json:"required"`
+			Disabled    string            `json:"disabled"`
+			When        []json.RawMessage `json:"when"`
+			AnyOf       []json.RawMessage `json:"anyOf"`
+		} `json:"idpFields"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&schemaResp); err != nil {
+		return nil, err
+	}
+
+	requiredSet := map[string]bool{}
+	for _, name := range schemaResp.Required {
+		requiredSet[name] = true
+	}
+	ignoreSet := map[string]bool{}
+	for _, name := range schemaResp.IgnoreFields {
+		ignoreSet[name] = true
+	}
+
+	type orderedField struct {
+		field IDPField
+		order int
+	}
+	var ordered []orderedField
+
+	for name, prop := range schemaResp.Properties {
+		if ignoreSet[name] {
+			continue
+		}
+		hint := schemaResp.IDPFields[name]
+		label := hint.Label
+		if label == "" {
+			label = strings.ToUpper(name[:1]) + name[1:]
+		}
+		f := IDPField{
+			Name:        name,
+			Label:       label,
+			Hint:        hint.Hint,
+			Placeholder: hint.Placeholder,
+			Required:    requiredSet[name] || hint.Required,
+			Category:    hint.Category,
+			Disabled:    hint.Disabled,
+		}
+		if f.Hint == "" {
+			f.Hint = prop.Description
+		}
+		// Pre-populate from CRD schema default:
+		if prop.Default != nil {
+			f.Default = fmt.Sprintf("%v", prop.Default)
+		}
+		// Encode when/anyOf as JSON strings for the template to embed as data attributes.
+		if len(hint.When) > 0 {
+			if b, err := json.Marshal(hint.When); err == nil {
+				f.WhenJSON = string(b)
+			}
+		}
+		if len(hint.AnyOf) > 0 {
+			if b, err := json.Marshal(hint.AnyOf); err == nil {
+				f.AnyOfJSON = string(b)
+			}
+		}
+		switch {
+		case len(prop.Enum) > 0:
+			f.InputType = "select"
+			f.Enum = prop.Enum
+		case prop.Type == "boolean":
+			f.InputType = "checkbox"
+		case prop.Type == "integer" || prop.Type == "number":
+			f.InputType = "number"
+		default:
+			f.InputType = "text"
+		}
+		ordered = append(ordered, orderedField{field: f, order: hint.Order})
+	}
+	sort.Slice(ordered, func(i, j int) bool {
+		oi, oj := ordered[i].order, ordered[j].order
+		// order: 0 means unset — sort after all explicitly ordered fields.
+		if oi == 0 && oj != 0 {
+			return false
+		}
+		if oi != 0 && oj == 0 {
+			return true
+		}
+		if oi != oj {
+			return oi < oj
+		}
+		return ordered[i].field.Name < ordered[j].field.Name
+	})
+	// Group sorted fields into sections by Group name.
+	var sections []IDPSection
+	for _, o := range ordered {
+		f := o.field
+		title := f.Category
+		if title == "" {
+			title = "Spec"
+		}
+		if len(sections) == 0 || sections[len(sections)-1].Title != title {
+			sections = append(sections, IDPSection{Title: title})
+		}
+		sections[len(sections)-1].Fields = append(sections[len(sections)-1].Fields, f)
+	}
+	return sections, nil
+}
+
+// handleIDPApplyForm processes the IDP form POST: builds a CR and forwards to the gateway.
+func (cc *ControlCenter) handleIDPApplyForm(w http.ResponseWriter, r *http.Request, inst *Instance, kind, apiVersion string) {
+	var body struct {
+		Name      string         `json:"name"`
+		Namespace string         `json:"namespace"`
+		Spec      map[string]any `json:"spec"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, `{"error":"invalid request body"}`)
+		return
+	}
+
+	cr := map[string]any{
+		"apiVersion": apiVersion,
+		"kind":       kind,
+		"metadata": map[string]any{
+			"name":      body.Name,
+			"namespace": body.Namespace,
+		},
+		"spec": body.Spec,
+	}
+	crJSON, _ := json.Marshal(cr)
+	applyURL := inst.GatewayEndpoint + "/api/v1/apply"
+	if r.URL.Query().Get("dryRun") == "true" {
+		applyURL += "?dryRun=true"
+	}
+	cc.proxyIDPRequest(w, r, applyURL, http.MethodPost, bytes.NewReader(crJSON))
+}
+
+// idpParseGVK splits "group/version, Kind=Kind" into (kind, apiVersion).
+func idpParseGVK(gvk string) (kind, apiVersion string) {
+	parts := strings.SplitN(gvk, ",", 2)
+	if len(parts) == 2 {
+		apiVersion = strings.TrimSpace(parts[0])
+		kind = strings.TrimPrefix(strings.TrimSpace(parts[1]), "Kind=")
+	}
+	return
 }
 
 // handleCRDetail renders one CR instance with its children and events.

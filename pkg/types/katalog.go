@@ -73,7 +73,8 @@ type ApplyAPIToken struct {
 	SecretRef *ApplyAPISecretRef `yaml:"secretRef,omitempty" json:"secretRef,omitempty"`
 
 	// Token is an ${ENV_VAR} reference expanded at startup.
-	// Only for local development with ork run. Literal values are not accepted.
+	// Set the variable via extraEnv in the gateway and controlCenter Helm values.
+	// Literal values are not accepted.
 	Token string `yaml:"token,omitempty" json:"token,omitempty"`
 }
 

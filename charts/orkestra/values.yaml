@@ -383,6 +383,13 @@ controlCenter:
     #  - podSelector:
     #      matchLabels:
     #        app: prometheus
+  # Gateway Apply API token for the Control Center IDP proxy.
+  # Point secretRef at the Secret the gateway auto-creates on first start.
+  # Leave name empty to disable (no GATEWAY_TOKEN env injected).
+  gatewayToken:
+    secretRef:
+      name: ""      # e.g. "ork-apply-token" (created by the gateway)
+      key: "token"
 
   extraEnv: []
   extraEnvFrom: []

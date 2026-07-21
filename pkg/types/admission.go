@@ -146,6 +146,14 @@ type ValidationRule struct {
 	Operator  ConditionOperator `yaml:"operator,omitempty" json:"operator,omitempty"`
 	Value     string            `yaml:"value,omitempty" json:"value,omitempty"`
 	ValueType string            `yaml:"valueType,omitempty"` // "string", "int" or "integer", "float" or "number", "bool" or "boolean"
+
+	// When — all conditions must pass for this rule to be evaluated (AND).
+	// Empty means unconditional.
+	When []Condition `yaml:"when,omitempty" json:"when,omitempty"`
+
+	// AnyOf — at least one condition must pass for this rule to be evaluated (OR).
+	// When both When and AnyOf are declared, both blocks must pass.
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 }
 
 // ValidationConfig holds all validation rules for a CRD.
@@ -229,6 +237,12 @@ type MutationRule struct {
 
 	// Value type
 	ValueType string `yaml:"valueType,omitempty"` // "string", "int" or "integer", "float" or "number", "bool" or "boolean"
+
+	// When — all conditions must pass for this rule to be applied (AND).
+	When []Condition `yaml:"when,omitempty" json:"when,omitempty"`
+
+	// AnyOf — at least one condition must pass for this rule to be applied (OR).
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 }
 
 // MutationConfig holds all mutation rules for a CRD.

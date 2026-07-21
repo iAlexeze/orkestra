@@ -127,5 +127,7 @@ func printDevBanner(port int) {
 	fmt.Printf("  POST /autoscale-metrics/flip    → toggle between baseline and overloaded payload\n")
 	fmt.Printf("  GET  /workload-metrics          → worker pool metrics (baseline: low pendingJobs)\n")
 	fmt.Printf("  POST /workload-metrics/flip     → toggle between baseline and high-load payload\n")
+	fmt.Printf("  POST /jira/transition           → Jira transition stub (issueKey + transition → transitioned)\n")
+	fmt.Printf("  POST /slack/notify              → Slack notify stub (channel + text → ok)\n")
 	fmt.Printf("──────────────────────────────────────────\n\n")
 }

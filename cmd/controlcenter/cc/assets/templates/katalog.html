@@ -358,9 +358,11 @@
               View Details
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </a>
-            <a href="/controlcenter/docs/{{ $.KatalogName }}/{{ .Name }}" class="cc-btn cc-btn-secondary" style="justify-content:center;font-size:12px;padding:6px 10px" title="View documentation">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            </a>
+            {{ if .IdpEnabled }}
+            <a href="/controlcenter/katalog/{{ $.KatalogName }}/crd/{{ .Name }}/cr/create" class="cc-btn cc-btn-primary" style="justify-content:center;font-size:12px;padding:6px 14px">+ Create</a>
+            {{ else }}
+            <button class="cc-btn cc-btn-disabled" disabled style="font-size:12px;padding:6px 14px" title="IDP not enabled for this CRD. Set idp.enabled: true in the Katalog to allow browser-based CR creation.">+ Create</button>
+            {{ end }}
           </div>
         </div>
         {{ end }}

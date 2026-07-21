@@ -391,13 +391,21 @@ func (k *Katalog) GenerateGatewayRBACRules() []rbacv1.PolicyRule {
 	// ───────────────────────────────────────────────
 	if k.HasIDPEnabled() {
 		for _, crd := range k.Enabled() {
-			if crd.IDP == nil || !crd.IDP.Enabled {
+			if !crd.IDPEnabled() {
 				continue
 			}
 			rules = append(rules, rbacv1.PolicyRule{
 				APIGroups: []string{crd.APITypes.Group},
 				Resources: []string{crd.APITypes.Plural},
 				Verbs:     []string{"get", "list", "create", "update", "patch", "delete"},
+			})
+			// Schema endpoint reads the CRD object to extract the OpenAPI spec.
+			// Scoped to the exact CRD name — least-privilege get only.
+			rules = append(rules, rbacv1.PolicyRule{
+				APIGroups:     []string{"apiextensions.k8s.io"},
+				Resources:     []string{"customresourcedefinitions"},
+				Verbs:         []string{"get"},
+				ResourceNames: []string{crd.APITypes.Plural + "." + crd.APITypes.Group},
 			})
 		}
 	}

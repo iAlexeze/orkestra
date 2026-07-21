@@ -292,6 +292,70 @@ Accepts a notification event body and dispatches it to the configured SMTP or Sl
 
 ---
 
+## Apply API endpoints
+
+Served by the gateway when `gateway.applyAPI.enabled: true` in the Katalog. All routes require `Authorization: Bearer <token>`.
+
+### `POST /api/v1/apply`
+
+Accepts any Kubernetes resource as JSON and applies it to the cluster via server-side apply (`fieldManager: orkestra-gateway`). Security is enforced by the existing webhook infrastructure — admission rules, namespace protection, and deletion protection all fire as normal before the write is accepted.
+
+**Request:**
+
+```json
+{
+  "apiVersion": "platform.myorg.io/v1",
+  "kind": "AppRequest",
+  "metadata": { "name": "payments-api", "namespace": "team-payments" },
+  "spec": { "environment": "production", "image": "ghcr.io/myorg/payments:v2.1.0", "replicas": 3 }
+}
+```
+
+**Response — applied:**
+
+```json
+{ "status": "applied", "resource": { "kind": "AppRequest", "name": "payments-api", "namespace": "team-payments", "uid": "abc-123" } }
+```
+
+**Response — rejected:**
+
+```json
+{ "status": "rejected", "reason": "AdmissionDenied", "violations": [{ "field": "spec.environment", "message": "must be one of: staging, production" }] }
+```
+
+---
+
+### `GET /api/v1/resources/{kind}/{namespace}/{name}`
+
+Returns the current CR state including Orkestra-managed status. Use this to poll after a `POST /api/v1/apply`.
+
+### `GET /api/v1/resources/{kind}/{namespace}`
+
+Returns all CR instances of this kind in the given namespace.
+
+### `DELETE /api/v1/resources/{kind}/{namespace}/{name}`
+
+Deletes a CR. Respects deletion protection — a protected CR returns a structured rejection rather than silently failing.
+
+---
+
+### `GET /api/v1/schema/{kind}`
+
+Returns the OpenAPI spec schema for the CRD's `spec` properties. Only served for CRDs where `idp.enabled: true`. Used by the Control Center IDP form to render inputs from the schema without any additional configuration.
+
+```json
+{
+  "properties": {
+    "environment": { "type": "string", "enum": ["staging", "production"] },
+    "image":       { "type": "string" },
+    "replicas":    { "type": "integer", "minimum": 1, "maximum": 20, "default": 2 }
+  },
+  "required": ["environment", "image"]
+}
+```
+
+---
+
 ## Control Center merge
 
 The runtime `/katalog` response includes a `gatewayEndpoint` field pointing to the gateway's `/katalog`. The Control Center reads both:

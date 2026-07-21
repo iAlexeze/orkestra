@@ -1,5 +1,108 @@
 ## v0.7.12 — [UNRELEASED]
 
+### Gateway Apply API
+
+Three new endpoints served by the gateway process when `gateway.applyAPI.enabled: true`:
+
+- `POST /api/v1/apply` — server-side apply a CR body; returns `accepted`, `name`, `namespace`, `resourceVersion`
+- `GET /api/v1/resources/{kind}/{ns}[/{name}]` — read or list CRs without kubeconfig
+- `DELETE /api/v1/resources/{kind}/{ns}/{name}` — delete a CR
+- `GET /api/v1/schema/{kind}` — return the CRD's spec properties with `idp.fields` hints merged in; only available when `idp.enabled: true`
+
+All routes require a bearer token. Tokens are declared in `gateway.applyAPI.auth.tokens` and can reference a `secretRef` (self-bootstrapped by the gateway on first start if the Secret does not exist) or an environment variable.
+
+### IDP — developer self-service in the Control Center
+
+`idp.enabled: true` on a CRD entry surfaces a **[+ Create]** button in the Control Center. The button links to a full-page form that reads field labels, hints, placeholders, and order from `idp.fields` via the gateway's `/api/v1/schema/{kind}` endpoint. The gateway token is injected server-side — the browser never sees it.
+
+```yaml
+gateway:
+  applyAPI:
+    enabled: true
+    auth:
+      tokens:
+        - name: control-center
+          secretRef:
+            name: ork-apply-token
+            key: token
+
+spec:
+  crds:
+    apprequest:
+      idp:
+        enabled: true
+        fields:
+          team:
+            label: "Team"
+            placeholder: "team-payments"
+            order: 1
+          environment:
+            label: "Environment"
+            hint: "staging or production"
+            order: 2
+```
+
+Set `controlCenter.gatewayToken.secretRef.name` in the Helm values to inject the token into the Control Center.
+
+### CR list and detail are now leader-pinned
+
+The runtime's `/katalog/{crd}/cr` and `/katalog/{crd}/cr/{ns}/{name}` responses now include `isKonductor: true` when served by the leader pod. The Control Center retries these requests up to three times until it gets a leader response, then falls back to the last available result. Previously, multi-replica deployments could show an empty CR list or "CR not found" when the Service routed to a follower pod.
+
+### Gateway RBAC — least-privilege `customresourcedefinitions get`
+
+When `idp.enabled: true` on a CRD, the generated RBAC bundle now includes a `get` rule on `apiextensions.k8s.io/customresourcedefinitions` scoped to that CRD's full resource name (`{plural}.{group}`). This allows the gateway to read the OpenAPI schema for the `/api/v1/schema/{kind}` endpoint without cluster-wide CRD read access.
+
+### Conditional validation and mutation rules
+
+`when:` and `anyOf:` conditions are now supported on `validation.rules` and `mutation.rules` entries. A rule whose conditions do not match is skipped entirely — no violation is recorded, no log entry is emitted.
+
+```yaml
+validation:
+  rules:
+    - field: spec.domain
+      operator: exists
+      message: "spec.domain is required for cert workloads"
+      action: deny
+      when:
+        - field: spec.workloadType
+          equals: cert
+
+    - field: spec.repoURL
+      operator: exists
+      message: "spec.repoURL is required for app and monitoring workloads"
+      action: deny
+      anyOf:
+        - field: spec.workloadType
+          equals: app
+        - field: spec.workloadType
+          equals: monitoring
+```
+
+Conditions are evaluated using the same `EvaluateWhen` engine as template `when:` blocks. Works for both typed and unstructured CRDs — the typed CRD limitation (previously documented as "use Go hooks") is removed. Both `applyReconcileTimeValidation` and `applyReconcileTimeMutation` now use `resolver.Data()` which handles typed CRDs via JSON round-trip.
+
+Admission webhook rules honour `when:` and `anyOf:` in the same way as reconcile-time rules.
+
+### `idp.fields.<name>.required` — browser-native form field enforcement
+
+Setting `required: true` on an IDP field marks it as mandatory in the Control Center form. The browser enforces it natively — the label shows an asterisk and the form cannot be submitted while the field is empty. Fields hidden by a `when:` or `anyOf:` condition are automatically excluded from browser constraint validation.
+
+```yaml
+idp:
+  fields:
+    productionApproval:
+      label: "Production Approval Ticket"
+      required: true
+      when:
+        - field: environment
+          equals: production
+```
+
+`required` in IDP is a form UX annotation only — it does not affect the Apply API or the admission webhook. For server-side enforcement use `validation.rules` with `action: deny`.
+
+### `include:` strict YAML parsing
+
+All `include:` expansion functions now use `StrictUnmarshal` (unknown fields produce errors). Previously, a typo in an included YAML file caused the field to be silently dropped; `ork validate` now surfaces these as clear errors before any cluster is involved.
+
 ### `include:` extended to all major Katalog blocks
 
 Previously `include:` was only supported in `e2e expect:`. It now works across `validation.rules`, `mutation.rules`, `conversion.paths`, `status.fields`, `notes.functions`, `profiles`, `idp.fields`, and `simulate ops:`.

@@ -496,27 +496,11 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 
 	var lastValResult *ValidationResult
 	if r.crd.HasValidationRules() {
-		vr := runValidation(obj, r.crd.Validation, r.crd.APITypes.Kind)
+		vr, valErr := r.applyReconcileTimeValidation(ctx, resolver, obj)
 		lastValResult = vr
-
-		// Warn violations: log and emit events but do NOT halt
-		for _, w := range vr.Warnings {
-			logger.FromContext(ctx).Warn().
-				Str("name", obj.GetName()).
-				Str("crd", r.crd.GVKString()).
-				Str("resource", obj.GetNamespace()+"/"+obj.GetName()).
-				Str("field", w.Field).
-				Str("message", w.Message).
-				Msg("reconcile validation: warn")
-			r.event.Eventf(obj, corev1.EventTypeWarning, "ValidationWarning",
-				fmt.Sprintf("field %q: %s", w.Field, w.Message))
-		}
-
-		// Deny violations: write condition and halt reconcile
-		if vr.Deny {
-			denialErr := vr.DenialError()
-			r.patchStatusWithChildren(ctx, obj, resolver, denialErr, vr)
-			return denialErr
+		if valErr != nil {
+			r.patchStatusWithChildren(ctx, obj, resolver, valErr, vr)
+			return valErr
 		}
 	}
 

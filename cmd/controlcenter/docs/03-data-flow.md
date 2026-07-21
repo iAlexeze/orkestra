@@ -21,13 +21,27 @@ All calls go through `cc/client.go`. The generic helper `getJSON[T]` handles JSO
 
 ## Gateway API endpoints
 
-When a runtime advertises a companion gateway via `"gatewayEndpoint"` in its `/katalog` response, the Control Center also queries the gateway for webhook stats:
+When a runtime advertises a companion gateway via `"gatewayEndpoint"` in its `/katalog` response, the Control Center also queries the gateway for webhook stats and (when IDP is enabled) proxies schema and apply requests:
 
 | Endpoint | Go type | Used by |
 |----------|---------|---------|
 | `GET /katalog/{crd}` | `GatewayCRDStats` | `handleCRDDetail` — merges admission, conversion, deletion/namespace protection stats |
+| `GET /api/v1/schema/{kind}` | raw JSON | `handleIDPSchema` — proxied to browser for IDP form rendering |
+| `POST /api/v1/apply` | raw JSON | `handleIDPApply` — proxied from IDP form submit |
 
-The gateway URL is stored on `Instance.GatewayEndpoint` when the runtime katalog is fetched. It is queried on-demand at CRD detail page load, not in the background loop. Gateway fetch failures are logged as warnings and do not degrade the CRD view.
+The gateway URL is stored on `Instance.GatewayEndpoint` when the runtime katalog is fetched. Webhook stats are queried on-demand at CRD detail page load. IDP schema and apply calls are proxied on-demand from the browser via the CC's `/api/idp/` routes — the CC adds the `Authorization: Bearer` header so the token stays server-side.
+
+## IDP mode
+
+When the runtime includes `idpEnabled: true` on a `CRDSummary` entry in the `/katalog` response, the CR list page for that CRD renders a `[+ Create]` button. Clicking it fetches the CRD schema from the gateway (via `/api/idp/schema/{kind}`) and renders a form. On submit the CC posts to `/api/idp/apply` which forwards to the gateway's `POST /api/v1/apply`.
+
+The `GATEWAY_TOKEN` env var on the CC is the bearer token sent to the gateway. The browser only ever talks to the CC — no cross-origin requests, no token exposure.
+
+```
+KatalogResponse.CRDs[].IdpEnabled  ← per-CRD flag from runtime /katalog
+KatalogResponse.GatewayEndpoint    ← stored on Instance; used by CC proxy handlers
+ControlCenter.gatewayToken         ← from GATEWAY_TOKEN env var; never sent to browser
+```
 
 ## Periodic fetch
 

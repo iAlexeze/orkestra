@@ -11,7 +11,7 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
-	// "github.com/orkspace/orkestra/pkg/metrics"
+	"github.com/orkspace/orkestra/pkg/metrics"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -66,14 +66,7 @@ func runMutation(
 		return result, nil
 	}
 
-	u, ok := toUnstructured(obj)
-	if !ok {
-		logger.Debug().
-			Str("crd", crdName).
-			Msg("mutation: typed object — skipping declarative mutation (use Go hooks)")
-		return result, nil
-	}
-
+	data := resolver.Data()
 	var err error
 
 	// patch accumulates all field changes.
@@ -83,9 +76,13 @@ func runMutation(
 	hasPatch := false
 
 	for _, rule := range cfg.Rules {
+		if !orktypes.EvaluateWhen(data, rule.When, rule.AnyOf, resolver.TemplateEvaluator()) {
+			continue
+		}
+
 		// currentVal is the string representation of the current field value.
 		// resolveField uses anyToString — so integers come back as "2", bools as "true".
-		currentVal, found := resolveField(u.Object, rule.Field)
+		currentVal, found := resolveField(data, rule.Field)
 
 		// ── Determine the mutation type and raw desired value ─────────────────
 		// rawVal preserves the YAML-native type (int64, bool, string).
@@ -119,7 +116,7 @@ func runMutation(
 			Type:     mutationType,
 		})
 
-		// metrics.RecordMutationFieldDetail(crdName, rule.Field, mutationType)
+		metrics.RecordMutationFieldDetail(crdName, rule.Field, mutationType)
 
 		logger.Debug().
 			Str("crd", crdName).
@@ -136,7 +133,7 @@ func runMutation(
 	}
 
 	// ── Apply patch ───────────────────────────────────────────────────────────
-	data, err := json.Marshal(patch)
+	patchBytes, err := json.Marshal(patch)
 	if err != nil {
 		return nil, fmt.Errorf("mutation: marshalling patch: %w", err)
 	}
@@ -145,7 +142,7 @@ func runMutation(
 	_, patchErr := kube.DynamicClient().
 		Resource(gvr).
 		Namespace(ns).
-		Patch(ctx, obj.GetName(), types.MergePatchType, data, metav1.PatchOptions{})
+		Patch(ctx, obj.GetName(), types.MergePatchType, patchBytes, metav1.PatchOptions{})
 
 	if patchErr != nil {
 		if errors.IsConflict(patchErr) {
@@ -159,7 +156,7 @@ func runMutation(
 	}
 
 	result.Applied = len(result.Changes)
-	// metrics.RecordMutationTotal(crdName)
+	metrics.RecordMutationTotal(crdName)
 
 	logger.Info().
 		Str("crd", crdName).

@@ -462,6 +462,10 @@ func parseMultiDocCRs(data []byte) map[string]*unstructured.Unstructured {
 		if err := dec.Decode(&node); err != nil {
 			break // EOF or parse error
 		}
+		// YAML → JSON → Unstructured: go-yaml can produce non-JSON types
+		// (!!timestamp, int64, map[interface{}]interface{}) that Unstructured's
+		// map[string]interface{} does not accept. YAMLToJSON normalises them to
+		// JSON-compatible types before json.Unmarshal populates the object.
 		b, err := yaml.Marshal(&node)
 		if err != nil {
 			continue

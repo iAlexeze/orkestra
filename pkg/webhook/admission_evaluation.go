@@ -28,6 +28,9 @@ func (ws *WebhookServer) evaluateValidationRules(
 	kindName string,
 ) (denials []validationViolation, warnings []validationViolation) {
 	for _, rule := range cfg.Rules {
+		if !orktypes.EvaluateWhen(obj, rule.When, rule.AnyOf, nil) {
+			continue
+		}
 		v := evaluateOneRule(obj, rule)
 		if v == nil {
 			continue
@@ -155,6 +158,9 @@ func (ws *WebhookServer) applyMutationRules(
 	var changes []fieldChange
 
 	for _, rule := range cfg.Rules {
+		if !orktypes.EvaluateWhen(obj, rule.When, rule.AnyOf, nil) {
+			continue
+		}
 		// Resolve raw value (string from template or static value) first
 		var rawResolved string
 		var changeType string
