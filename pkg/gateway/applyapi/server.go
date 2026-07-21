@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
@@ -36,6 +37,7 @@ type Registrar interface {
 
 // ApplyAPIServer holds the resolved token set and wired handlers.
 type ApplyAPIServer struct {
+	mu     sync.RWMutex
 	tokens *TokenSet
 	kube   kubeclient.KubeClient
 	kat    *katalog.Katalog
@@ -62,10 +64,41 @@ func NewApplyAPIServer(ctx context.Context, kat *katalog.Katalog, kube kubeclien
 	}, nil
 }
 
+// matches returns the token name for value, reading through the reload mutex.
+func (s *ApplyAPIServer) matches(value string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.tokens.Matches(value)
+}
+
+// ReloadTokens re-resolves all secretRef tokens (recreating any missing secrets)
+// and atomically replaces the in-memory TokenSet. Called by the housekeeper when
+// a token secret is found to be missing during reconciliation.
+func (s *ApplyAPIServer) ReloadTokens(ctx context.Context) error {
+	ts, err := LoadTokens(ctx, s.kat.Gateway.ApplyAPI.Auth.Tokens, s.kube, s.ownNS)
+	if err != nil {
+		return fmt.Errorf("reload apply API tokens: %w", err)
+	}
+	s.mu.Lock()
+	s.tokens = ts
+	s.mu.Unlock()
+	return nil
+}
+
 // Register wires all Apply API routes onto the given Registrar.
 func (s *ApplyAPIServer) Register(reg Registrar) {
+	// auth closes over s so that token lookups always read the current TokenSet
+	// even after a ReloadTokens call swaps the pointer.
 	auth := func(h http.Handler) http.HandlerFunc {
-		return AuthMiddleware(s.tokens, h).ServeHTTP
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			bearer := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			name := s.matches(strings.TrimSpace(bearer))
+			if name == "" {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+			h.ServeHTTP(w, r.WithContext(contextWithTokenName(r.Context(), name)))
+		})
 	}
 
 	// POST /api/v1/apply

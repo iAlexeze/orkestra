@@ -129,6 +129,7 @@ func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	}
 	if applyAPI != nil {
 		applyAPI.Register(hs)
+		ws.SetTokenReloader(applyAPI.ReloadTokens)
 	}
 
 	// ── 8. Komponent list ─────────────────────────────────────────────────────

@@ -56,10 +56,10 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/orkspace/orkestra/pkg/gateway/certmanager"
+	"github.com/orkspace/orkestra/pkg/gateway/notification"
 	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/metrics"
-	"github.com/orkspace/orkestra/pkg/gateway/notification"
 )
 
 const (
@@ -89,9 +89,10 @@ func (ws *WebhookServer) housekeeper(ctx context.Context) error {
 	hasNamespaceProtection := kat.IsNamespaceProtectionEnabled() && len(kat.NamespaceProtectionGVRs()) > 0
 	hasStrictMode := kat.IsStrictModeEnabled()
 	hasConversion := ws.convEnabled
+	hasIDP := kat.HasIDPEnabled()
 
-	if !hasAdmission && !hasDeletionProtection && !hasNamespaceProtection && !hasStrictMode && !hasConversion {
-		logger.Debug().Msg("housekeeper disabled: no admission, protection, or conversion declared")
+	if !hasAdmission && !hasDeletionProtection && !hasNamespaceProtection && !hasStrictMode && !hasConversion && !hasIDP {
+		logger.Debug().Msg("housekeeper disabled: no admission, protection, conversion, or IDP declared")
 		return nil
 	}
 
@@ -167,6 +168,8 @@ func (ws *WebhookServer) reconcileAll() {
 	// kept correct here throughout the deployment lifecycle.
 	ws.reconcileNamespaceLabels()
 	ws.reconcileCRDConversionWebhooks()
+
+	ws.reconcileTokenSecrets()
 }
 
 // reconcileCertSecret ensures the TLS Secret exists in the cluster and,
@@ -653,6 +656,64 @@ func (ws *WebhookServer) reconcileNamespaceProtectionWebhook() {
 			ws.webhookStats.RecordFailure()
 		}
 		metrics.RecordWebhookReconciliationFailure(namespaceProtection)
+	}
+}
+
+// reconcileTokenSecrets checks that every Apply API secretRef token secret exists.
+// If any are missing, the tokenReloader callback is invoked to recreate them and
+// refresh the in-memory token set. Detection relies on the safety ticker — token
+// secret deletion does not break in-flight requests (the TokenSet is in memory),
+// so the 30 s window is acceptable.
+func (ws *WebhookServer) reconcileTokenSecrets() {
+	if ws.kubeClient == nil || ws.katalog == nil || ws.konfig == nil {
+		return
+	}
+	kat := ws.katalog
+	if !kat.HasApplyAPISecretRefs() {
+		return
+	}
+
+	ownNS := ws.konfig.Cluster().Namespace()
+
+	ctx, cancel := context.WithTimeout(context.Background(), highTimeout)
+	defer cancel()
+
+	anyMissing := false
+	for _, t := range kat.Gateway.ApplyAPI.Auth.Tokens {
+		if t.SecretRef == nil {
+			continue
+		}
+		ns := t.SecretRef.Namespace
+		if ns == "" {
+			ns = ownNS
+		}
+		_, err := ws.kubeClient.CoreV1().Secrets(ns).Get(ctx, t.SecretRef.Name, metav1.GetOptions{})
+		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				logger.Warn().
+					Str("secret", t.SecretRef.Name).
+					Str("namespace", ns).
+					Str("token", t.Name).
+					Msg("housekeeper: apply API token secret missing — will reload")
+				anyMissing = true
+			} else {
+				logger.Error().Err(err).
+					Str("secret", t.SecretRef.Name).
+					Str("namespace", ns).
+					Msg("housekeeper: failed to check apply API token secret")
+				metrics.RecordWebhookReconciliationFailure("token-secret")
+			}
+		}
+	}
+
+	if anyMissing && ws.tokenReloader != nil {
+		if err := ws.tokenReloader(ctx); err != nil {
+			logger.Error().Err(err).Msg("housekeeper: apply API token reload failed")
+			metrics.RecordWebhookReconciliationFailure("token-secret")
+		} else {
+			logger.Info().Msg("housekeeper: apply API tokens reloaded")
+			metrics.RecordWebhookReconciled("token-secret")
+		}
 	}
 }
 

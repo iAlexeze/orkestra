@@ -94,7 +94,51 @@ To clean up after a `--use-current` run:
 bash pkg/gateway/fixture/cleanup.sh
 ```
 
-### Step 5 — conditional admission rules
+### Step 5 — token secret resilience
+
+Verify the housekeeper detects and recreates a deleted Apply API token secret.
+
+Deploy the fixture against a running cluster first:
+
+```bash
+ork generate bundle | kubectl apply -f -
+
+helm upgrade --install orkestra ~/orkestra/charts/orkestra \
+  --values ~/orkestra/unknown/values.yaml \
+  --namespace orkestra-system \
+  --create-namespace \
+  --set gateway.enabled=true \
+  --set controlCenter.gatewayToken.secretRef.name=ork-apply-token \
+  --wait --timeout 120s
+```
+
+Then delete the token secret — the housekeeper should recreate it within one safety
+ticker interval (default 30 s) with a fresh token value:
+
+```bash
+kubectl get secret ork-apply-token -n orkestra-system \
+  -o jsonpath='{.data.token}' | base64 -d && echo
+
+kubectl delete secret ork-apply-token -n orkestra-system
+
+kubectl get secret ork-apply-token -n orkestra-system
+```
+
+The gateway logs will show:
+
+```
+housekeeper: apply API token secret missing — will reload
+housekeeper: apply API tokens reloaded
+```
+
+After recreation the token value is new — compare it against the one captured above:
+
+```bash
+kubectl get secret ork-apply-token -n orkestra-system \
+  -o jsonpath='{.data.token}' | base64 -d
+```
+
+### Step 6 — conditional admission rules
 
 The CRs in [crs/](./crs/) each target one specific admission rule. Use them to
 verify conditional `when:`/`anyOf:` behaviour against a running cluster:
