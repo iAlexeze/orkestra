@@ -1,0 +1,21 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: informer-probe-approved
+  description: CR in allowed namespace (team-a) — reconciler runs, ConfigMap created
+
+spec:
+  katalog: ../katalog.yaml
+  cr: ../cr.yaml
+  cycles: 2
+
+  expect:
+    steady: true
+    noErrors: true
+    crds:
+      informer-probe:
+        ops:
+          - cycle: 1
+            verb: create
+            resource: configmaps
+            name: probe-allowed-config
