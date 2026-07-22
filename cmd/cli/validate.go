@@ -11,9 +11,9 @@ import (
 
 	"path/filepath"
 
-	"github.com/orkspace/orkestra/pkg/registry/e2e"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/registry/e2e"
 	motifpkg "github.com/orkspace/orkestra/pkg/registry/motif"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	orkutils "github.com/orkspace/orkestra/pkg/utils"
@@ -490,14 +490,24 @@ func validateSimulateFileOpts(path string, quiet bool) error {
 					}
 				}
 			}
+			validateAbsentRules := func(rules []orktypes.SimulateOpRule, prefix string) {
+				for i, rule := range rules {
+					switch {
+					case rule.Resource == "":
+						errs = append(errs, fmt.Sprintf("%s[%d]: resource is required", prefix, i))
+					case rule.Verb != "" && !validVerbs[rule.Verb]:
+						errs = append(errs, fmt.Sprintf("%s[%d]: invalid verb %q (must be create, apply, update, delete, or patch)", prefix, i, rule.Verb))
+					}
+				}
+			}
 			validateOpRules(doc.Spec.Expect.Ops, "expect.ops")
-			validateOpRules(doc.Spec.Expect.Absent, "expect.absent")
+			validateAbsentRules(doc.Spec.Expect.Absent, "expect.absent")
 			for crdName, sub := range doc.Spec.Expect.CRDs {
 				if sub == nil {
 					continue
 				}
 				validateOpRules(sub.Ops, fmt.Sprintf("expect.crds[%s].ops", crdName))
-				validateOpRules(sub.Absent, fmt.Sprintf("expect.crds[%s].absent", crdName))
+				validateAbsentRules(sub.Absent, fmt.Sprintf("expect.crds[%s].absent", crdName))
 			}
 		}
 	}
