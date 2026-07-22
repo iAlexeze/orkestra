@@ -203,6 +203,11 @@ type HookDeclaration struct {
 	// When false (default), declarative templates run first and the hook is
 	// additive — the 90/10 hybrid pattern.
 	RunHooksFirst bool `yaml:"runHooksFirst,omitempty" json:"runHooksFirst,omitempty"`
+
+	// Args — arbitrary key/value pairs passed to the hook at reconcile time.
+	// Read in the hook via kube.Args().String("key"), .Bool("key"), etc.
+	// or via kube.Args().BindArgs(&myStruct).
+	Args map[string]interface{} `yaml:"args,omitempty" json:"args,omitempty"`
 }
 
 // ConstructorDeclaration declares where a custom reconciler constructor lives.
@@ -228,6 +233,11 @@ type ConstructorDeclaration struct {
 
 	// Resources — Kubernetes resource types this constructor manages (used for RBAC generation).
 	Resources []ManagedResource `json:"resources,omitempty" yaml:"resources,omitempty"`
+
+	// Args — arbitrary key/value pairs passed to the constructor at startup.
+	// Read via kube.Args().String("key"), .Bool("key"), etc.
+	// or via kube.Args().BindArgs(&myStruct).
+	Args map[string]interface{} `yaml:"args,omitempty" json:"args,omitempty"`
 }
 
 // ManagedResource describes a Kubernetes resource type that a typed extension

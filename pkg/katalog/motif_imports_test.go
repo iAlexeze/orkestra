@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const profileMotifPath = "../motif/testdata/with-profiles.yaml"
+const profileMotifPath = "../registry/motif/testdata/with-profiles.yaml"
 
 // expandKatalogImports merges profiles from spec.imports into k.Profiles.
 func TestExpandKatalogImports_MergesProfiles(t *testing.T) {

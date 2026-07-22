@@ -34,20 +34,28 @@ type Op struct {
 	At        time.Time
 }
 
+// fakeShared holds the mutable, mutex-guarded state shared across all
+// WithArgs/ScopedFor copies of a FakeKubeclient.
+type fakeShared struct {
+	mu           sync.Mutex
+	ops          []Op
+	currentCycle int
+}
+
 // FakeKubeclient implements kubeclient.KubeClient using k8s fakes.
 // All operations are recorded in Ops() for simulation output.
 type FakeKubeclient struct {
 	clientset kubernetes.Interface
 	dynamic   dynamic.Interface
 	mapper    meta.RESTMapper
+	shared    *fakeShared
 
-	mu           sync.Mutex
-	ops          []Op
-	currentCycle int
+	rawArgs map[string]interface{}
+	args    kubeclient.Args
 }
 
 func NewFakeKubeclient(scheme *runtime.Scheme) *FakeKubeclient {
-	f := &FakeKubeclient{}
+	f := &FakeKubeclient{shared: &fakeShared{}}
 
 	cs := fake.NewClientset()
 	// PrependReactor intercepts every operation and records it before the
@@ -55,16 +63,16 @@ func NewFakeKubeclient(scheme *runtime.Scheme) *FakeKubeclient {
 	// chain AFTER the tracker, so it is never reached — PrependReactor is
 	// required here.
 	cs.Fake.PrependReactor("*", "*", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
-		f.mu.Lock()
-		f.ops = append(f.ops, Op{
-			Cycle:     f.currentCycle,
+		f.shared.mu.Lock()
+		f.shared.ops = append(f.shared.ops, Op{
+			Cycle:     f.shared.currentCycle,
 			Verb:      verbFromAction(action),
 			Resource:  action.GetResource().Resource,
 			Namespace: action.GetNamespace(),
 			Name:      nameFromAction(action),
 			At:        time.Now(),
 		})
-		f.mu.Unlock()
+		f.shared.mu.Unlock()
 		return false, nil, nil
 	})
 
@@ -76,16 +84,16 @@ func NewFakeKubeclient(scheme *runtime.Scheme) *FakeKubeclient {
 	// chain AFTER the tracker, so it is never reached — PrependReactor is
 	// required here.
 	dyn.Fake.PrependReactor("*", "*", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
-		f.mu.Lock()
-		f.ops = append(f.ops, Op{
-			Cycle:     f.currentCycle,
+		f.shared.mu.Lock()
+		f.shared.ops = append(f.shared.ops, Op{
+			Cycle:     f.shared.currentCycle,
 			Verb:      verbFromAction(action),
 			Resource:  action.GetResource().Resource,
 			Namespace: action.GetNamespace(),
 			Name:      nameFromAction(action),
 			At:        time.Now(),
 		})
-		f.mu.Unlock()
+		f.shared.mu.Unlock()
 		return false, nil, nil
 	})
 	f.dynamic = dyn
@@ -99,28 +107,54 @@ func (f *FakeKubeclient) DynamicClient() dynamic.Interface { return f.dynamic }
 func (f *FakeKubeclient) Mapper() meta.RESTMapper          { return f.mapper }
 func (f *FakeKubeclient) RestConfig() *rest.Config         { return nil }
 
+func (f *FakeKubeclient) Args() kubeclient.Args {
+	if f.args != nil {
+		return f.args
+	}
+	if f.rawArgs != nil {
+		return kubeclient.Args(f.rawArgs)
+	}
+	return kubeclient.Args{}
+}
+
+func (f *FakeKubeclient) WithArgs(args kubeclient.Args) kubeclient.KubeClient {
+	cp := *f
+	cp.rawArgs = map[string]interface{}(args)
+	cp.args = nil
+	return &cp
+}
+
+func (f *FakeKubeclient) ScopedFor(eval func(string) (string, bool)) kubeclient.KubeClient {
+	cp := *f
+	if len(f.rawArgs) == 0 {
+		return &cp
+	}
+	cp.args = kubeclient.ResolveArgsMap(f.rawArgs, eval)
+	return &cp
+}
+
 // AdvanceCycle increments the cycle counter. Call between simulated reconciles.
 func (f *FakeKubeclient) AdvanceCycle() {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.currentCycle++
+	f.shared.mu.Lock()
+	defer f.shared.mu.Unlock()
+	f.shared.currentCycle++
 }
 
 // Ops returns all recorded operations in order.
 func (f *FakeKubeclient) Ops() []Op {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	result := make([]Op, len(f.ops))
-	copy(result, f.ops)
+	f.shared.mu.Lock()
+	defer f.shared.mu.Unlock()
+	result := make([]Op, len(f.shared.ops))
+	copy(result, f.shared.ops)
 	return result
 }
 
 // OpsForCycle returns operations from one reconcile cycle.
 func (f *FakeKubeclient) OpsForCycle(cycle int) []Op {
-	f.mu.Lock()
-	defer f.mu.Unlock()
+	f.shared.mu.Lock()
+	defer f.shared.mu.Unlock()
 	var result []Op
-	for _, op := range f.ops {
+	for _, op := range f.shared.ops {
 		if op.Cycle == cycle {
 			result = append(result, op)
 		}
@@ -239,44 +273,44 @@ var _ kubeclient.KubeClient = (*FakeKubeclient)(nil)
 // takes the Create path on every simulated cycle, producing visible create ops.
 
 func (f *FakeKubeclient) Get(_ context.Context, namespace, name string, into sigs.Object) error {
-	f.mu.Lock()
-	f.ops = append(f.ops, Op{
-		Cycle:     f.currentCycle,
+	f.shared.mu.Lock()
+	f.shared.ops = append(f.shared.ops, Op{
+		Cycle:     f.shared.currentCycle,
 		Verb:      "get",
 		Resource:  resourceNameFromObject(into),
 		Namespace: namespace,
 		Name:      name,
 		At:        time.Now(),
 	})
-	f.mu.Unlock()
+	f.shared.mu.Unlock()
 	return fakeNotFound(name)
 }
 
 func (f *FakeKubeclient) Create(_ context.Context, obj sigs.Object) error {
-	f.mu.Lock()
-	f.ops = append(f.ops, Op{
-		Cycle:     f.currentCycle,
+	f.shared.mu.Lock()
+	f.shared.ops = append(f.shared.ops, Op{
+		Cycle:     f.shared.currentCycle,
 		Verb:      "create",
 		Resource:  resourceNameFromObject(obj),
 		Namespace: obj.GetNamespace(),
 		Name:      obj.GetName(),
 		At:        time.Now(),
 	})
-	f.mu.Unlock()
+	f.shared.mu.Unlock()
 	return nil
 }
 
 func (f *FakeKubeclient) Patch(_ context.Context, obj sigs.Object, _ kubeclient.Patch) error {
-	f.mu.Lock()
-	f.ops = append(f.ops, Op{
-		Cycle:     f.currentCycle,
+	f.shared.mu.Lock()
+	f.shared.ops = append(f.shared.ops, Op{
+		Cycle:     f.shared.currentCycle,
 		Verb:      "patch",
 		Resource:  resourceNameFromObject(obj),
 		Namespace: obj.GetNamespace(),
 		Name:      obj.GetName(),
 		At:        time.Now(),
 	})
-	f.mu.Unlock()
+	f.shared.mu.Unlock()
 	return nil
 }
 
@@ -297,15 +331,15 @@ func resourceNameFromObject(obj runtime.Object) string {
 // The fake dynamic client handles the underlying object storage.
 
 func (f *FakeKubeclient) PatchFinalizers(_ context.Context, obj runtime.Object, finalizers []string) error {
-	f.mu.Lock()
-	f.ops = append(f.ops, Op{
-		Cycle:    f.currentCycle,
+	f.shared.mu.Lock()
+	f.shared.ops = append(f.shared.ops, Op{
+		Cycle:    f.shared.currentCycle,
 		Verb:     "patch",
 		Resource: "finalizers",
 		Name:     nameFromRuntimeObject(obj),
 		At:       time.Now(),
 	})
-	f.mu.Unlock()
+	f.shared.mu.Unlock()
 	return nil
 }
 
@@ -313,15 +347,15 @@ func (f *FakeKubeclient) PatchLabels(_ context.Context, obj runtime.Object, base
 	if stringMapsEqual(base, desired) {
 		return nil
 	}
-	f.mu.Lock()
-	f.ops = append(f.ops, Op{
-		Cycle:    f.currentCycle,
+	f.shared.mu.Lock()
+	f.shared.ops = append(f.shared.ops, Op{
+		Cycle:    f.shared.currentCycle,
 		Verb:     "patch",
 		Resource: "labels",
 		Name:     nameFromRuntimeObject(obj),
 		At:       time.Now(),
 	})
-	f.mu.Unlock()
+	f.shared.mu.Unlock()
 	if mo, ok := obj.(metav1.Object); ok {
 		mo.SetLabels(desired)
 	}
@@ -329,15 +363,15 @@ func (f *FakeKubeclient) PatchLabels(_ context.Context, obj runtime.Object, base
 }
 
 func (f *FakeKubeclient) PatchAnnotations(_ context.Context, obj runtime.Object, annotations map[string]string) error {
-	f.mu.Lock()
-	f.ops = append(f.ops, Op{
-		Cycle:    f.currentCycle,
+	f.shared.mu.Lock()
+	f.shared.ops = append(f.shared.ops, Op{
+		Cycle:    f.shared.currentCycle,
 		Verb:     "patch",
 		Resource: "annotations",
 		Name:     nameFromRuntimeObject(obj),
 		At:       time.Now(),
 	})
-	f.mu.Unlock()
+	f.shared.mu.Unlock()
 	// Persist to the in-memory object so subsequent cycles see the update
 	// and the idempotency guard in ensureManagedAnnotations skips the patch.
 	if mo, ok := obj.(metav1.Object); ok {
@@ -347,15 +381,15 @@ func (f *FakeKubeclient) PatchAnnotations(_ context.Context, obj runtime.Object,
 }
 
 func (f *FakeKubeclient) PatchStatus(_ context.Context, obj domain.Object, _ map[string]interface{}) error {
-	f.mu.Lock()
-	f.ops = append(f.ops, Op{
-		Cycle:    f.currentCycle,
+	f.shared.mu.Lock()
+	f.shared.ops = append(f.shared.ops, Op{
+		Cycle:    f.shared.currentCycle,
 		Verb:     "patch",
 		Resource: "status",
 		Name:     obj.GetName(),
 		At:       time.Now(),
 	})
-	f.mu.Unlock()
+	f.shared.mu.Unlock()
 	return nil
 }
 

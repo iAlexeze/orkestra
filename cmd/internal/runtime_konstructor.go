@@ -372,13 +372,19 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 
 			logger.Debug().Str("gvk", gvk).Msg("wiring GenericReconciler factory")
 
+			// Attach hooks.args to a copy of the kube client; hooks read them via kube.Args().
+			var hookKube kubeclient.KubeClient = kube
+			if args := crd.HooksArgs(); len(args) > 0 {
+				hookKube = kube.WithArgs(kubeclient.Args(args))
+			}
+
 			pStats := providerStatsMap[gvk]
 			factory = func() domain.Reconciler {
 				return reconciler.NewGenericReconciler(
 					crd,
 					infCopy,
 					ev,
-					kube,
+					hookKube,
 					anyHooks,
 					func() domain.Object {
 						return objCopy.DeepCopyObject().(domain.Object)
@@ -399,8 +405,14 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 
 			logger.Debug().Str("gvk", gvk).Msg("wiring custom reconciler factory")
 
+			// Attach constructor.args to a copy of the kube client; the constructor reads them via kube.Args().
+			var ctorKube kubeclient.KubeClient = kube
+			if args := crd.ConstructorArgs(); len(args) > 0 {
+				ctorKube = kube.WithArgs(kubeclient.Args(args))
+			}
+
 			factory = func() domain.Reconciler {
-				return crd.OperatorBox.Constructor(kube, infCopy, ev)
+				return crd.OperatorBox.Constructor(ctorKube, infCopy, ev)
 			}
 		}
 

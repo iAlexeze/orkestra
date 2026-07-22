@@ -32,12 +32,19 @@ type Kubeclient struct {
 	dynamic    dynamic.Interface
 	apiext     apiextclientset.Interface
 	Info       *CRDInfo
-	started    atomic.Bool
+	started    *atomic.Bool
 	mapper     meta.RESTMapper
 
 	// Starter konfig
 	konfig *konfig.Konfig
 	scheme *runtime.Scheme
+
+	// rawArgs holds the template declarations from hooks.args or constructor.args.
+	// String values may contain {{ }} expressions resolved per-CR by ScopedFor.
+	rawArgs map[string]interface{}
+	// args holds the fully-evaluated args for the current reconcile scope.
+	// Set by ScopedFor; nil means fall back to rawArgs as-is.
+	args Args
 
 	// Testing
 	FakeClientset kubernetes.Interface
@@ -71,9 +78,10 @@ func NewKubeclient(kfg *konfig.Konfig, scheme *runtime.Scheme) *Kubeclient {
 	}
 
 	return &Kubeclient{
-		name:   "kubeclient",
-		scheme: scheme,
-		konfig: kfg,
+		name:    "kubeclient",
+		scheme:  scheme,
+		konfig:  kfg,
+		started: new(atomic.Bool),
 	}
 }
 
@@ -196,4 +204,39 @@ func (k *Kubeclient) ApiextensionsClient() apiextclientset.Interface { return k.
 // New fake client
 func NewFakeClientset() kubernetes.Interface {
 	return fake.NewClientset()
+}
+
+// Args returns the resolved args for the current reconcile scope.
+// If ScopedFor has been called, returns the per-CR evaluated args.
+// Otherwise returns the raw (unevaluated) args from the Katalog declaration.
+func (k *Kubeclient) Args() Args {
+	if k.args != nil {
+		return k.args
+	}
+	if k.rawArgs != nil {
+		return Args(k.rawArgs)
+	}
+	return Args{}
+}
+
+// WithArgs returns a shallow copy of the Kubeclient with the given args stored
+// as rawArgs. Used by the runtime to attach katalog-declared args before a hook
+// or constructor is called; ScopedFor then evaluates templates at reconcile time.
+func (k *Kubeclient) WithArgs(args Args) KubeClient {
+	cp := *k
+	cp.rawArgs = map[string]interface{}(args)
+	cp.args = nil
+	return &cp
+}
+
+// ScopedFor evaluates template expressions in rawArgs using eval and returns a
+// copy with the resolved args attached. Called by GenericReconciler after building
+// the per-CR resolver so hook authors see evaluated args automatically.
+func (k *Kubeclient) ScopedFor(eval func(string) (string, bool)) KubeClient {
+	cp := *k
+	if len(k.rawArgs) == 0 {
+		return &cp
+	}
+	cp.args = ResolveArgsMap(k.rawArgs, eval)
+	return &cp
 }
