@@ -262,7 +262,7 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: spec.Labels,
+					Labels: podTemplateLabels(spec.Labels, owner.GetName()),
 				},
 				Spec: corev1.PodSpec{
 					ImagePullSecrets:   common.ToPullSecrets(spec.ImagePullSecrets),
@@ -359,6 +359,17 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 	}
 
 	return d
+}
+
+// podTemplateLabels merges user-supplied labels with the selector label so the
+// pod template always satisfies the Deployment's matchLabels constraint.
+func podTemplateLabels(userLabels map[string]string, ownerName string) map[string]string {
+	out := make(map[string]string, len(userLabels)+1)
+	for k, v := range userLabels {
+		out[k] = v
+	}
+	out["orkestra-owner"] = ownerName
+	return out
 }
 
 func validateSpec(spec ResolvedDeploymentSpec) error {

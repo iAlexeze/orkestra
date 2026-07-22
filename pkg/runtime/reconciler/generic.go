@@ -308,6 +308,16 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	if r.kat != nil && !r.kat.Notes.IsEmpty() {
 		resolver = resolver.WithUserNotes(r.kat.Notes)
 	}
+	// Run hook-declared external calls before ScopedFor so their results are
+	// available as .external.<name>.* when args template expressions are evaluated.
+	// This gives typed hooks access to external systems without needing an HTTP
+	// client — the runtime makes the calls, the hook reads the results via kube.Args().
+	if r.crd.HasHooksExternal() {
+		resolver, err = runExternal(ctx, r.crd.GVKString(), resolver, r.crd.HooksExternal())
+		if err != nil {
+			return err
+		}
+	}
 	// Replace base kube in context with a scoped copy that has hooks.args
 	// template expressions evaluated against this CR's resolver (full note FuncMap).
 	ctx = kubeclient.WithKubeclient(ctx, r.kube.ScopedFor(resolver.TemplateEvaluator()))

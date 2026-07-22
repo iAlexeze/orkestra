@@ -208,6 +208,21 @@ type HookDeclaration struct {
 	// Read in the hook via kube.Args().String("key"), .Bool("key"), etc.
 	// or via kube.Args().BindArgs(&myStruct).
 	Args map[string]interface{} `yaml:"args,omitempty" json:"args,omitempty"`
+
+	// External — HTTP calls the runtime executes before invoking the hook.
+	// Results are injected into the resolver under .external.<name>.* so
+	// args template expressions can reference them:
+	//
+	//   external:
+	//     - name: flags
+	//       url: "{{ .spec.serviceUrl }}/flags/{{ .metadata.name }}/v2Enabled"
+	//       method: GET
+	//       continueOnError: true
+	//   args:
+	//     featureEnabled: '{{ .external.flags.body }}'
+	//
+	// The hook reads kube.Args().String("featureEnabled") — no HTTP client needed.
+	External []ExternalCallSpec `yaml:"external,omitempty" json:"external,omitempty"`
 }
 
 // ConstructorDeclaration declares where a custom reconciler constructor lives.

@@ -316,6 +316,20 @@ func (c *CRDEntry) HooksArgs() map[string]interface{} {
 	return nil
 }
 
+// HooksExternal returns the external call specs declared under reconciler.hooks.external.
+// Returns nil when no hooks declaration or no external calls are declared.
+func (c *CRDEntry) HooksExternal() []ExternalCallSpec {
+	if r := c.OperatorBox.Reconciler; r != nil && r.Hooks != nil {
+		return r.Hooks.External
+	}
+	return nil
+}
+
+// HasHooksExternal reports whether the CRD declares any external calls under reconciler.hooks.external.
+func (c *CRDEntry) HasHooksExternal() bool {
+	return len(c.HooksExternal()) > 0
+}
+
 // ConstructorArgs returns the args declared under reconciler.constructor.args in the Katalog.
 // Returns nil when no constructor declaration or no args are present.
 func (c *CRDEntry) ConstructorArgs() map[string]interface{} {

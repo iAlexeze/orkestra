@@ -3,6 +3,7 @@ package kubeclient
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 )
 
@@ -29,8 +30,9 @@ func (a Args) Bool(key string) bool {
 }
 
 // Int returns the value for key as an int.
-// YAML unmarshals integers as int, int64, or float64 depending on the
-// decoder; all three are tried so callers never need to cast themselves.
+// YAML unmarshals integers as int, int64, or float64 depending on the decoder;
+// all three are tried. Template-evaluated args arrive as strings — those are
+// parsed with strconv so {{ default "3" .spec.replicas }} works naturally.
 func (a Args) Int(key string) int {
 	switch v := a[key].(type) {
 	case int:
@@ -39,6 +41,10 @@ func (a Args) Int(key string) int {
 		return int(v)
 	case float64:
 		return int(v)
+	case string:
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
 	}
 	return 0
 }
