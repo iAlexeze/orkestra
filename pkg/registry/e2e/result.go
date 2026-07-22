@@ -129,7 +129,8 @@ func (r *Result) Duration() string {
 
 // Summary returns a one-line result string, e.g. "3 passed, 0 failed, 1 skipped (45s)".
 func (r *Result) Summary() string {
-	s := fmt.Sprintf("%d passed, %d failed", r.Passed(), r.Failed())
+	total := len(r.Cases)
+	s := fmt.Sprintf("%d of %d passed", r.Passed(), total)
 	if n := r.Skipped(); n > 0 {
 		s += fmt.Sprintf(", %d skipped", n)
 	}
