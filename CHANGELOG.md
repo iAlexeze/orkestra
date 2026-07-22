@@ -138,6 +138,22 @@ Constructor authors call `kube.ScopedFor(resolver.TemplateEvaluator())` themselv
 
 The primary use case is **configuration reusability**: one binary, one constructor, many Katalog deployments — each with different args. Tier routing (`starter` / `standard` / `enterprise`), region configuration, feature flags, and per-tenant dynamic values all live in YAML with no code changes. See `documentation/concepts/typed-operators/06-reusability.md`.
 
+**`external:` under `hooks:`** — hooks can now declare HTTP calls alongside `args:` in the Katalog. The runtime executes them before invoking the hook, injects the results into the resolver, and makes them available to `args:` template expressions as `.external.<name>.*`. The hook reads the result via `kube.Args()` with no HTTP client or flag-service SDK in hook code.
+
+```yaml
+hooks:
+  external:
+    - name: flags
+      url: "{{ .spec.serviceUrl }}/flags/{{ .metadata.name }}/v2Enabled"
+      method: GET
+      continueOnError: true
+      timeout: 5s
+  args:
+    featureEnabled: '{{ .external.flags.body }}'
+```
+
+All `external:` capabilities available to declarative operators — `when:`, `anyOf:`, `continueOnError`, timeout — apply to hook external calls without additional plumbing. Constructor authors who need external data make the call themselves and pass the URL via `args:`.
+
 ### Cluster-scoped GC and always-on finalizer
 
 `runners.DeleteOwnedClusterScopedResources` now covers Namespaces, ClusterRoles, ClusterRoleBindings, PersistentVolumes, and cluster-scoped custom resources. Previously only Namespaces were explicitly cleaned up on CR deletion.

@@ -8,11 +8,14 @@ import (
 
 // Markdown renders the result as a GitHub-flavoured markdown summary block.
 func (r *Result) Markdown() string {
-	var passed, failed []CaseResult
+	var passed, failed, skipped []CaseResult
 	for _, c := range r.Cases {
-		if c.Passed {
+		switch {
+		case c.Skipped:
+			skipped = append(skipped, c)
+		case c.Passed:
 			passed = append(passed, c)
-		} else {
+		default:
 			failed = append(failed, c)
 		}
 	}
@@ -42,6 +45,15 @@ func (r *Result) Markdown() string {
 		b.WriteString("\n")
 	}
 
+	if len(skipped) > 0 {
+		b.WriteString("| Skipped | Test |\n")
+		b.WriteString("|---|---|\n")
+		for _, c := range skipped {
+			b.WriteString(fmt.Sprintf("| ⏭ | %s |\n", c.Name))
+		}
+		b.WriteString("\n")
+	}
+
 	b.WriteString("**" + r.Summary() + "**\n")
 	return b.String()
 }
@@ -59,14 +71,15 @@ type Result struct {
 type CaseResult struct {
 	Name    string
 	Passed  bool
+	Skipped bool
 	Elapsed time.Duration
 	Err     error
 }
 
-// AllPassed returns true when every expectation passed.
+// AllPassed returns true when every non-skipped expectation passed.
 func (r *Result) AllPassed() bool {
 	for _, c := range r.Cases {
-		if !c.Passed {
+		if !c.Passed && !c.Skipped {
 			return false
 		}
 	}
@@ -84,6 +97,28 @@ func (r *Result) Passed() int {
 	return n
 }
 
+// Skipped returns the number of skipped expectations.
+func (r *Result) Skipped() int {
+	n := 0
+	for _, c := range r.Cases {
+		if c.Skipped {
+			n++
+		}
+	}
+	return n
+}
+
+// Failed returns the number of failed expectations.
+func (r *Result) Failed() int {
+	n := 0
+	for _, c := range r.Cases {
+		if !c.Passed && !c.Skipped {
+			n++
+		}
+	}
+	return n
+}
+
 // Total returns the total number of expectations.
 func (r *Result) Total() int { return len(r.Cases) }
 
@@ -92,9 +127,14 @@ func (r *Result) Duration() string {
 	return r.Elapsed.Round(time.Second).String()
 }
 
-// Summary returns a one-line result string, e.g. "3 of 3 passed (12s)".
+// Summary returns a one-line result string, e.g. "3 passed, 0 failed, 1 skipped (45s)".
 func (r *Result) Summary() string {
-	return fmt.Sprintf("%d of %d passed (%s)", r.Passed(), r.Total(), r.Duration())
+	total := len(r.Cases)
+	s := fmt.Sprintf("%d of %d passed", r.Passed(), total)
+	if n := r.Skipped(); n > 0 {
+		s += fmt.Sprintf(", %d skipped", n)
+	}
+	return s + fmt.Sprintf(" (%s)", r.Duration())
 }
 
 // ImportResult holds the outcome of one imported E2E file in a suite run.

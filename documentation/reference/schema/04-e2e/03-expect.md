@@ -29,6 +29,8 @@ expect:
 | `resources` | no | Resource state assertions, polled until passing. |
 | `commands` | no | Shell command assertions, run in the same polling loop. |
 | `kubectl` | no | Structured kubectl subcommand assertions. See [kubectl block](07-kubectl.md). |
+| `when` | no | AND-gate: all conditions must be true or the checkpoint is skipped. See [Conditional checkpoints](#conditional-checkpoints-when-and-anyof). |
+| `anyOf` | no | OR-gate: at least one condition must be true or the checkpoint is skipped. See [Conditional checkpoints](#conditional-checkpoints-when-and-anyof). |
 | `onFailure` | no | Diagnostic kubectl and shell commands to run and print when this specific checkpoint fails. See [Per-expectation onFailure](#per-expectation-onfailure). |
 | `include` | no | Path to a YAML file containing a bare list of checkpoints to expand in place. See [Composing expectations](#composing-expectations-with-include). |
 
@@ -99,6 +101,79 @@ commands:
 | `notEquals` | no | Output must not exactly match this string. |
 | `greaterThan` | no | Output (trimmed, parsed as a number) must be greater than this value. |
 | `lessThan` | no | Output (trimmed, parsed as a number) must be less than this value. |
+
+---
+
+## Conditional checkpoints: `when` and `anyOf`
+
+A checkpoint can be gated by runtime conditions. When the gate does not pass, the checkpoint is **skipped** — not failed. Skipped checkpoints appear in results as `~ name (skipped)` and are counted separately from passed and failed.
+
+This is useful when the expected outcome depends on external state that changes — time of day, feature flag state, or environment — rather than always asserting one value regardless of context.
+
+```yaml
+spec:
+  notes:
+    functions:
+      - name: inBusinessHours
+        expression: '{{ and weekday (timeInWindow "09:00" "18:00") }}'
+
+expect:
+  - name: Feature enabled during business hours
+    after: cr-applied
+    timeout: 30s
+    when:
+      - field: '{{ inBusinessHours }}'
+        equals: "true"
+    kubectl:
+      get:
+        - kind: Deployment
+          name: my-app
+          namespace: default
+          field: .metadata.annotations.feature-enabled
+          equals: "true"
+
+  - name: Feature disabled outside business hours
+    after: cr-applied
+    timeout: 30s
+    anyOf:
+      - field: '{{ inBusinessHours }}'
+        equals: "false"
+    kubectl:
+      get:
+        - kind: Deployment
+          name: my-app
+          namespace: default
+          field: .metadata.annotations.feature-enabled
+          equals: "false"
+```
+
+At most one of these two checkpoints runs on any given test execution — the other is skipped. Together they cover both paths.
+
+### `when` — AND gate
+
+All conditions in `when` must be true. If any condition is false, the checkpoint is skipped.
+
+```yaml
+when:
+  - field: '{{ inBusinessHours }}'
+    equals: "true"
+```
+
+### `anyOf` — OR gate
+
+At least one condition in `anyOf` must be true. If no condition is true, the checkpoint is skipped.
+
+```yaml
+anyOf:
+  - field: '{{ inBusinessHours }}'
+    equals: "false"
+```
+
+Each entry in `when` or `anyOf` is a `Condition` — the same type used in Katalog `when:` blocks. See [Conditions reference](../02-katalog/06-when-conditions.md) for the full field list.
+
+Template expressions in `field` are evaluated using note functions declared in `spec.notes`. Built-in notes (`weekday`, `timeInWindow`, etc.) are always available.
+
+Both `when` and `anyOf` can appear together on the same checkpoint — both gates must pass.
 
 ---
 

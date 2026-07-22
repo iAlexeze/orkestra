@@ -30,9 +30,10 @@ import (
 	"time"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
-	"github.com/orkspace/orkestra/pkg/registry/motif"
-	"github.com/orkspace/orkestra/pkg/tools/cluster"
 	"github.com/orkspace/orkestra/pkg/registry"
+	"github.com/orkspace/orkestra/pkg/registry/motif"
+	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
+	"github.com/orkspace/orkestra/pkg/tools/cluster"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	orkutils "github.com/orkspace/orkestra/pkg/utils"
 	"gopkg.in/yaml.v3"
@@ -356,7 +357,18 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 				sp.Success()
 				installedOrkestra = true
 			} else {
-				// Orkestra already running — sync bundle silently.
+				// Orkestra is already running from a previous import.
+				// Two steps are always needed:
+				// 1. helm upgrade — applies this import's valueFiles (image, features).
+				//    When values match the previous import the pod is not restarted.
+				// 2. SyncRuntime — restarts the pod so it loads the new bundle ConfigMap.
+				//    Without this, a values-identical upgrade leaves the old bundle in memory.
+				sp := orkutils.StartSpinner("Upgrading Orkestra" + text)
+				if err := cluster.InstallOrUpgradeOrkestra(r.orkestraVersion, r.valueFiles, r.helmArgs...); err != nil {
+					sp.Failure()
+					return nil, fmt.Errorf("helm upgrade: %w", err)
+				}
+				sp.Success()
 				if err := cluster.SyncRuntime(); err != nil {
 					return nil, fmt.Errorf("syncing Orkestra runtime: %w", err)
 				}
@@ -369,21 +381,12 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 						sp := orkutils.StartSpinner("Upgrading Orkestra to enable gateway...")
 						if err := cluster.InstallOrUpgradeOrkestra(r.orkestraVersion, r.valueFiles, r.helmArgs...); err != nil {
 							sp.Failure()
-							return nil, fmt.Errorf("helm upgrade: %w", err)
+							return nil, fmt.Errorf("helm upgrade (gateway): %w", err)
 						}
 						sp.Success()
-						installedOrkestra = true
 					}
 				}
-				// Health check — silent, still blocks until ready.
-				if status := cluster.CheckRuntimeHealth(); !status.Running {
-					return nil, fmt.Errorf("Orkestra runtime not ready after sync: %s", status.Reason)
-				}
-				if gatewayEnabled {
-					if status := cluster.CheckGatewayHealth(); !status.Running {
-						return nil, fmt.Errorf("Orkestra gateway not ready after sync: %s", status.Reason)
-					}
-				}
+				installedOrkestra = true
 			}
 
 			if installedOrkestra {
@@ -409,6 +412,12 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// Build a template evaluator from spec.notes so when:/anyOf: expressions
+		// on expect blocks can reference user-defined note functions.
+		noteEval := orktmpl.NewResolverFromMap(nil).
+			WithUserNotes(r.e2e.Spec.Notes).
+			TemplateEvaluator()
 
 		crApplied := false
 		crDeleted := false
@@ -465,20 +474,29 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 					}
 				}
 			}()
-			verifyErr := verifyExpectation(ctx, exp, r.e2eDir, r.cs, r.cfg)
+			verifyErr := verifyExpectation(ctx, exp, r.e2eDir, r.cs, r.cfg, noteEval)
 			close(waitDone)
 			caseElapsed := time.Since(caseStart)
 
-			cases = append(cases, CaseResult{
+			skipped := verifyErr == errSkipped
+			cr := CaseResult{
 				Name:    exp.Name,
 				Passed:  verifyErr == nil,
+				Skipped: skipped,
 				Elapsed: caseElapsed,
 				Err:     verifyErr,
-			})
-			if verifyErr != nil {
+			}
+			if skipped {
+				cr.Err = nil
+			}
+			cases = append(cases, cr)
+			switch {
+			case skipped:
+				fmt.Printf("  ~ %s (skipped)\n", exp.Name)
+			case verifyErr != nil:
 				fmt.Printf("  %s %s (%s): %v\n", orkutils.FailureMark(), exp.Name, caseElapsed.Round(time.Millisecond), verifyErr)
 				runOnFailure(ctx, exp.OnFailure, r.e2eDir, r.cs)
-			} else {
+			default:
 				fmt.Printf("  %s %s (%s)\n", orkutils.SuccessMark(), exp.Name, caseElapsed.Round(time.Millisecond))
 			}
 		}
@@ -502,7 +520,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 
 		var failures []CaseResult
 		for _, c := range cases {
-			if !c.Passed {
+			if !c.Passed && !c.Skipped {
 				failures = append(failures, c)
 			}
 		}
@@ -515,6 +533,19 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 						fmt.Printf("      %s\n", line)
 					}
 				}
+			}
+		}
+
+		var skippedCases []CaseResult
+		for _, c := range cases {
+			if c.Skipped {
+				skippedCases = append(skippedCases, c)
+			}
+		}
+		if len(skippedCases) > 0 {
+			fmt.Printf("\n")
+			for _, c := range skippedCases {
+				fmt.Printf("  ~ %-40s (skipped)\n", c.Name)
 			}
 		}
 
@@ -921,7 +952,7 @@ func (r *Runner) teardown(ctx context.Context, crdPaths []string, bundlePath str
 
 	// Helm uninstall orkestra — must happen before bundle delete so the
 	// runtime is stopped before its RBAC and ConfigMap are removed.
-	if uninstallOrkestra {
+	if uninstallOrkestra && !r.sharedOrkestra {
 		fmt.Printf("  → Uninstalling Orkestra...\n")
 		cmd := exec.CommandContext(ctx, "helm", "uninstall", cluster.Orkestra,
 			"--namespace", cluster.OrkestraNamespace, "--ignore-not-found")
@@ -1028,45 +1059,30 @@ func (r *Runner) runImports(ctx context.Context) []ImportResult {
 		}
 	}
 
-	// Pre-install Orkestra once for all shared-cluster imports so each sub-runner
-	// takes the sync-bundle path instead of the install→test→uninstall cycle.
-	// Each sub-runner finds RuntimeInstalled()=true, enters the sync branch, and
-	// leaves installedOrkestra=false — so its teardown never uninstalls.
-	// We uninstall once here after all imports complete.
-	installedByCoordinator := false
+	// Each sub-runner installs or upgrades Orkestra with its own valueFiles so
+	// fixture-specific values (image, features) are applied correctly. The
+	// coordinator only owns cleanup — it defers an uninstall that runs after all
+	// imports complete. --ignore-not-found makes it safe if no import ran.
 	if !r.kubernetesTarget {
-		sharedImportCount := 0
+		hasShared := false
 		for _, imp := range r.e2e.Imports {
 			if !imp.FreshCluster {
-				sharedImportCount++
+				hasShared = true
+				break
 			}
 		}
-		importText := "imports"
-		if sharedImportCount == 1 {
-			importText = "import"
+		if hasShared {
+			defer func() {
+				fmt.Printf("→ Uninstalling Orkestra...\n")
+				cmd := exec.CommandContext(ctx, "helm", "uninstall", cluster.Orkestra,
+					"--namespace", cluster.OrkestraNamespace, "--ignore-not-found")
+				if out, err := cmd.CombinedOutput(); err != nil {
+					fmt.Printf("  ! helm uninstall failed: %v\n%s\n", err, out)
+				} else {
+					fmt.Printf("  %s Orkestra uninstalled\n", orkutils.SuccessMark())
+				}
+			}()
 		}
-
-		if sharedImportCount > 0 && !cluster.RuntimeInstalled() {
-			fmt.Printf("→ Installing Orkestra (shared across %d %s)...\n", sharedImportCount, importText)
-			helmArgs := append(r.helmArgs, "--set", "controlCenter.enabled=false")
-			if err := cluster.InstallOrUpgradeOrkestra(r.orkestraVersion, r.valueFiles, helmArgs...); err != nil {
-				return []ImportResult{{Err: fmt.Errorf("installing Orkestra for imports: %w", err)}}
-			}
-			installedByCoordinator = true
-			fmt.Printf("  %s Orkestra installed\n", orkutils.SuccessMark())
-		}
-	}
-	if installedByCoordinator {
-		defer func() {
-			fmt.Printf("→ Uninstalling Orkestra...\n")
-			cmd := exec.CommandContext(ctx, "helm", "uninstall", cluster.Orkestra,
-				"--namespace", cluster.OrkestraNamespace, "--ignore-not-found")
-			if out, err := cmd.CombinedOutput(); err != nil {
-				fmt.Printf("  ! helm uninstall failed: %v\n%s\n", err, out)
-			} else {
-				fmt.Printf("  %s Orkestra uninstalled\n", orkutils.SuccessMark())
-			}
-		}()
 	}
 
 	var results []ImportResult

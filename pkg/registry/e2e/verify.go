@@ -30,7 +30,14 @@ const portForwardTimeout = 15 * time.Second
 // verifyExpectation polls until all conditions pass or timeout expires.
 // workDir is the working directory for command checks — relative paths in
 // commands and resource file refs resolve from there.
-func verifyExpectation(ctx context.Context, exp orktypes.E2EExpectation, workDir string, cs kubernetes.Interface, cfg *rest.Config) error {
+// errSkipped is a sentinel returned when a when:/anyOf: gate is not met.
+// The runner detects it to record a skipped case rather than a failure.
+var errSkipped = fmt.Errorf("skipped")
+
+func verifyExpectation(ctx context.Context, exp orktypes.E2EExpectation, workDir string, cs kubernetes.Interface, cfg *rest.Config, noteEval orktypes.TemplateEvaluator) error {
+	if !orktypes.EvaluateWhen(nil, exp.When, exp.AnyOf, noteEval) {
+		return errSkipped
+	}
 	if exp.Wait != "" {
 		if d, err := time.ParseDuration(exp.Wait); err == nil && d > 0 {
 			select {

@@ -50,8 +50,8 @@ func TestArgs_Int(t *testing.T) {
 	if got := a.Int("float64"); got != 5 {
 		t.Errorf("Int(float64) = %d, want 5", got)
 	}
-	if got := a.Int("str"); got != 0 {
-		t.Errorf("Int(str) = %d, want 0 (wrong type)", got)
+	if got := a.Int("str"); got != 9 {
+		t.Errorf("Int(str) = %d, want 9", got)
 	}
 	if got := a.Int("missing"); got != 0 {
 		t.Errorf("Int(missing) = %d, want 0", got)

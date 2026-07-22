@@ -148,6 +148,50 @@ func onReconcile(ctx context.Context, obj *apiv1.Database) error {
 
 `kube.Args()` always returns a non-nil `Args` — absent keys return zero values, so no nil checks are needed.
 
+#### `reconciler.hooks.external`
+
+HTTP calls the runtime makes **before** the hook runs. Results are injected into the resolver so their values are available as `args` template expressions (`{{ .external.<name>.body }}`, `.status`, `.headers`). This keeps the hook free of HTTP client code — the Katalog owns the call, the hook receives the resolved value via `kube.Args()`.
+
+```yaml
+hooks:
+  external:
+    - name: flags
+      url: "{{ .spec.serviceUrl }}/flags/{{ .metadata.name }}/v2Enabled"
+      method: GET
+      continueOnError: true
+      timeout: 5s
+      when:
+        - field: '{{ inBusinessHours }}'
+          equals: "true"
+  args:
+    featureEnabled: '{{ .external.flags.body }}'
+    inBusinessHours: '{{ inBusinessHours }}'
+```
+
+The hook reads the resolved value with no HTTP logic:
+
+```go
+func onReconcile(ctx context.Context, obj *apiv1.App) error {
+    kube, _ := kubeclient.FromContext(ctx)
+    featureEnabled   := kube.Args().String("featureEnabled") == "true"
+    inBusinessHours  := kube.Args().String("inBusinessHours") == "true"
+    // decision logic — no http.Get, no time.Now
+    return nil
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | yes | Key used in `.external.<name>.*` template expressions. |
+| `url` | yes | URL to call. Supports template expressions evaluated against the current CR. |
+| `method` | no | HTTP method. Default `GET`. |
+| `timeout` | no | Per-call timeout. Default `5s`. |
+| `continueOnError` | no | When `true`, a failed call leaves `.external.<name>.body` empty rather than aborting reconciliation. Default `false`. |
+| `when` | no | AND-gate conditions. The call is skipped when any condition is false. Same `[]Condition` type as Katalog `when:` blocks — see [conditions reference](06-when-conditions.md). |
+| `anyOf` | no | OR-gate conditions. The call is skipped when no condition is true. |
+
+The full `external:` field reference (shared with the top-level `external:` block) is in [13-external.md](13-external.md).
+
 #### `reconciler.hooks.runHooksFirst`
 
 Controls the order in which the hook and declared templates run within the same reconcile cycle.
