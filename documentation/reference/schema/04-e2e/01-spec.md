@@ -83,6 +83,48 @@ See [05-custom-target.md](05-custom-target.md) for full documentation and use ca
 
 ---
 
+## `spec.notes`
+
+Declares user-defined note functions available as template expressions in `when:` and `anyOf:` conditions on `expect` entries. Uses the same syntax as `notes:` in a Katalog — a list of named Go template expressions evaluated against the current context.
+
+```yaml
+spec:
+  notes:
+    functions:
+      - name: inBusinessHours
+        expression: '{{ and weekday (timeInWindow "09:00" "18:00") }}'
+```
+
+Notes defined here are available by name in any `when:` or `anyOf:` condition on an `expect` entry:
+
+```yaml
+expect:
+  - name: Feature enabled during business hours
+    after: cr-applied
+    timeout: 30s
+    when:
+      - field: '{{ inBusinessHours }}'
+        equals: "true"
+    kubectl:
+      get:
+        - kind: Deployment
+          name: my-app
+          namespace: default
+          field: .metadata.annotations.feature-enabled
+          equals: "true"
+```
+
+All built-in note functions (`weekday`, `timeInWindow`, etc.) are available inside note expressions. Notes may call each other.
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `functions` | no | List of named note functions. |
+| `functions[].name` | yes | Name used to call the note in template expressions: `{{ myNote }}`. |
+| `functions[].expression` | yes | Go template string evaluated at runtime. Result is always a string. |
+| `functions[].description` | no | Human-readable description of the note. |
+
+---
+
 ## `spec.onFailure`
 
 Declares kubectl operations and shell commands to run and print to the terminal when any expectation fails. Uses the same `kubectl:` DSL as `expect` entries — assertion fields are present on the structs but never evaluated. Output is always printed. Teardown still runs after `onFailure` completes.

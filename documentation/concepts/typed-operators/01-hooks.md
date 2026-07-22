@@ -142,6 +142,40 @@ The full note FuncMap is available in template args — `default`, `upper`, `low
 
 For structured access, bind the whole map to a typed struct with `kube.Args().BindArgs(&cfg)`. See the [schema reference](../../reference/schema/02-katalog/04-operatorbox.md) for the full `args` API.
 
+### `external:` — world state via HTTP
+
+`external:` declares HTTP calls the runtime makes before the hook runs. Results are injected into the resolver so they are available as `args` template expressions. The hook receives resolved values via `kube.Args()` — no HTTP client code required.
+
+```yaml
+hooks:
+  external:
+    - name: flags
+      url: "{{ .spec.serviceUrl }}/flags/{{ .metadata.name }}/v2Enabled"
+      method: GET
+      continueOnError: true
+      timeout: 5s
+      when:
+        - field: '{{ inBusinessHours }}'
+          equals: "true"
+  args:
+    featureEnabled: '{{ .external.flags.body }}'
+    inBusinessHours: '{{ inBusinessHours }}'
+```
+
+The hook sees the results as plain strings — no HTTP knowledge needed:
+
+```go
+func onReconcile(ctx context.Context, obj *apiv1.App) error {
+    kube, _ := kubeclient.FromContext(ctx)
+    featureEnabled  := kube.Args().String("featureEnabled") == "true"
+    inBusinessHours := kube.Args().String("inBusinessHours") == "true"
+    // make decisions — no http.Get, no time.Now
+    return nil
+}
+```
+
+`external:` under `hooks:` uses the same field schema as the top-level `external:` block — including `when:` / `anyOf:` gating, `continueOnError`, and response accessors (`.body`, `.status`, `.headers`). Any infrastructure available to declarative external calls is automatically available to hooks for free as the feature evolves.
+
 ---
 
 ## Hook function
