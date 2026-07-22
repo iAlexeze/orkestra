@@ -1,0 +1,10 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: args-demo-simulate
+  description: >
+    Runs both args simulations in sequence — hooks first, then constructor.
+
+imports:
+  - 01-hooks/simulate.yaml
+  - 02-constructor/simulate.yaml

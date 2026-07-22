@@ -1,0 +1,104 @@
+# Args — Access to External Systems for Typed Operators
+
+Declarative operators in Orkestra have always had access to `external:`,
+`cross:`, notes, and the full resolver context. Typed operators — hooks and
+constructors — run Go code but were isolated from that context.
+
+`args:` bridges the gap. Template expressions in `args:` are resolved against
+the full per-CR context before the hook or constructor runs:
+
+```yaml
+hooks:
+  external:
+    - name: flags
+      url: "{{ .spec.serviceUrl }}/flags/{{ .metadata.name }}/v2Enabled"
+  args:
+    featureEnabled: '{{ .external.flags.body }}'
+```
+
+The hook reads `kube.Args().String("featureEnabled")` — no HTTP client,
+no flag service SDK, no environment wiring. The Katalog handles the IO.
+
+This fixture composes two self-contained examples showing the same access
+story with the two typed operator patterns:
+
+| Sub-directory | CRD | Pattern | World state | External call |
+|---|---|---|---|---|
+| [`01-hooks/`](01-hooks/) | `BlockchainApp` | hooks | note evaluated by runtime → passed via args | runtime calls flag service when in business hours |
+| [`02-constructor/`](02-constructor/) | `BlockchainNode` | constructor | constructor checks clock using window from args | constructor calls flag service when in business hours |
+
+**Requirement:** `ork` CLI — install from [orkestra-install](https://github.com/orkspace/orkestra#getting-started)
+
+---
+
+## Step 1 — Generate the registry
+
+```bash
+make registry
+```
+
+## Step 2 — Build and validate
+
+```bash
+make clean && make build
+ork validate 01-hooks/katalog.yaml
+ork validate 02-constructor/katalog.yaml
+ork simulate
+```
+
+## Step 3 — Run
+
+```bash
+ork run --dev-server
+```
+
+The dev server returns `"true"` for all flag requests. Both operators stamp the
+result on their managed Deployment and on the CR status:
+
+### hooks example
+```bash
+kubectl get deployment 01-hooks-my-chain \
+  -o jsonpath='{.metadata.annotations.feature\.demo/v2-enabled}' && echo
+```
+
+```bash
+kubectl get blockchainapp 01-hooks-my-chain \
+  -o jsonpath='{.status.featureEnabled}' && echo
+```
+
+```bash
+kubectl get blockchainapp 01-hooks-my-chain \
+  -o jsonpath='{.status.inBusinessHours}' && echo
+```
+
+### constructors example
+```bash
+kubectl get deployment 02-constructor-my-node \
+  -o jsonpath='{.metadata.annotations.feature\.demo/v2-enabled}' && echo
+```
+
+```bash
+kubectl get blockchainnode 02-constructor-my-node \
+  -o jsonpath='{.status.featureEnabled}' && echo
+```
+
+```bash
+kubectl get blockchainnode 02-constructor-my-node \
+  -o jsonpath='{.status.inBusinessHours}' && echo
+```
+
+## E2E
+
+```bash
+make docker push IMAGE_REPO=yourregistry/blockchain-operator IMAGE_TAG=latest
+
+ork e2e --dev-server \
+  --set runtime.image.repository=yourregistry/blockchain-operator \
+  --set runtime.image.tag=latest
+```
+
+## Cleanup
+
+```bash
+./cleanup.sh
+```

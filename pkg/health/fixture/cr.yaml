@@ -1,0 +1,7 @@
+apiVersion: health.orkestra.io/v1alpha1
+kind: HealthProbe
+metadata:
+  name: probe
+  namespace: default
+spec:
+  name: probe
