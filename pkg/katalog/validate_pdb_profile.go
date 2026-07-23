@@ -18,6 +18,7 @@ package katalog
 
 import (
 	"fmt"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 
 	"github.com/orkspace/orkestra/pkg/profiles"
 )
@@ -25,7 +26,7 @@ import (
 func (k *Katalog) validatePDBBehaviorProfiles() error {
 	for crdName, crd := range k.enabledCRDs {
 		for _, e := range crd.CollectPDBProfileEntries() {
-			if isTemplateExpr(e.Profile) {
+			if orktypes.IsTemplate(e.Profile) {
 				continue
 			}
 			if !k.isUserPDBProfile(e.Profile) && !profiles.IsValidPDBProfile(e.Profile) {

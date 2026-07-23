@@ -1,0 +1,21 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: notes-validation-sim
+  description: >
+    Verifies that user-defined notes work in validation and mutation rules.
+    The bad-image CR is always denied by the {{ allowedRegistry }} rule —
+    the error appears in the simulate output.
+
+spec:
+  katalog: ./katalog.yaml
+  cr: ./cr-bad-image.yaml
+  cycles: 3
+
+  expect:
+    noErrors: false
+    steady: true
+    ops:
+      - cycle: 1
+        verb: create
+        resource: deployments

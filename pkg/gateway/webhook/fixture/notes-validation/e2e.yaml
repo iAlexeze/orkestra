@@ -1,0 +1,41 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: E2E
+metadata:
+  name: webhook-notes-validation-e2e
+  description: >
+    Verifies that user-defined notes work in admission webhook validation and mutation.
+    The allowedRegistry note drives the image prefix rule — rejected synchronously
+    at kubectl apply time. The inBusinessHours note gates the whole operator.
+    Mutation defaults spec.replicas from the defaultReplicas note before validation runs.
+
+spec:
+  katalog: ./katalog.yaml
+  crd: ./crd.yaml
+  cr: ./cr-placeholder.yaml
+
+  notes:
+    functions:
+      - name: inBusinessHours
+        expression: '{{ and weekday (timeInWindow "09:00" "18:00") }}'
+
+  cluster:
+    provider: kind
+    name: ork-webhook-notes-validation
+    reuse: false
+
+  expect:
+    - include: ./e2e/01-webhook-deny.yaml
+    - include: ./e2e/02-mutation.yaml
+    - include: ./e2e/03-cleanup.yaml
+
+  onFailure:
+    kubectl:
+      get:
+        - kind: DeploymentRequest
+          name: my-app
+          namespace: default
+      logs:
+        - leaderElection:
+            lease: orkestra-konductor
+            namespace: orkestra-system
+          since: 2m

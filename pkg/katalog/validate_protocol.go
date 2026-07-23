@@ -14,7 +14,7 @@ import (
 func (k *Katalog) validatePortProtocols() error {
 	for crdName, crd := range k.enabledCRDs {
 		for _, e := range crd.CollectPortProtocolEntries() {
-			if isTemplateExpr(e.Protocol) {
+			if orktypes.IsTemplate(e.Protocol) {
 				continue // dynamic value — cannot validate at load time
 			}
 			if !orktypes.IsValidProtocol(e.Protocol) {

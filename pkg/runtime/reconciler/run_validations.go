@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/orkspace/orkestra/pkg/logger"
+	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -82,9 +83,11 @@ func (r *ValidationResult) Error() error {
 // Returns a ValidationResult. The caller decides whether to halt reconciliation.
 //
 // data is resolver.Data() — the full CR map, works for both typed and unstructured.
+// resolver is optional — when non-nil, template expressions in comparison values
+// and messages are resolved against the full resolver context (notes, profiles, etc.).
 // Called from generic.go before runTemplateReconcile (or after runMutation
 // when mutateFirst: true).
-func runValidation(data map[string]interface{}, cfg *orktypes.ValidationConfig, crdName string) *ValidationResult {
+func runValidation(data map[string]interface{}, resolver *orktmpl.Resolver, cfg *orktypes.ValidationConfig, crdName string) *ValidationResult {
 	result := &ValidationResult{Passed: true}
 	if cfg == nil || len(cfg.Rules) == 0 {
 		return result
@@ -94,7 +97,7 @@ func runValidation(data map[string]interface{}, cfg *orktypes.ValidationConfig, 
 		if !orktypes.EvaluateWhen(data, rule.When, rule.AnyOf, nil) {
 			continue
 		}
-		violation := evaluateValidationRule(data, rule)
+		violation := evaluateValidationRule(data, resolver, rule)
 		if violation == nil {
 			continue
 		}
@@ -135,18 +138,45 @@ func runValidation(data map[string]interface{}, cfg *orktypes.ValidationConfig, 
 
 // evaluateValidationRule evaluates one rule against the CR data map.
 // Returns a ValidationViolation if the rule fails, nil if it passes.
-func evaluateValidationRule(data map[string]interface{}, rule orktypes.ValidationRule) *ValidationViolation {
+func evaluateValidationRule(data map[string]interface{}, resolver *orktmpl.Resolver, rule orktypes.ValidationRule) *ValidationViolation {
 	op, expected := resolveValidationOp(rule)
 
-	fieldVal, found := resolveField(data, rule.Field)
+	// Resolve template expressions in comparison values and messages.
+	// Notes are called by name directly: {{ inBusinessHours }}, {{ allowedRegistry }}.
+	if resolver != nil && orktypes.IsTemplate(expected) {
+		if resolved, err := resolver.Resolve(expected); err == nil {
+			expected = resolved
+		}
+	}
+	message := rule.Message
+	if resolver != nil && orktypes.IsTemplate(message) {
+		if resolved, err := resolver.Resolve(message); err == nil {
+			message = resolved
+		}
+	}
+
+	// displayField is always the original expression — shown in violation messages.
+	// When field is a template, the resolved value is the result of the expression
+	// directly (not a CR path), so we skip resolveField and use it as fieldVal.
+	displayField := rule.Field
+	isTemplate := orktypes.IsTemplate(rule.Field)
+
+	var fieldVal string
+	var found bool
+	if isTemplate && resolver != nil {
+		fieldVal, _ = resolver.Resolve(rule.Field)
+		found = fieldVal != ""
+	} else {
+		fieldVal, found = resolveField(data, rule.Field)
+	}
 
 	// Build a violation helper
 	fail := func() *ValidationViolation {
 		return &ValidationViolation{
-			Field:   rule.Field,
+			Field:   displayField,
 			Rule:    string(op),
 			Value:   fieldVal,
-			Message: rule.Message,
+			Message: message,
 			Action:  rule.Action,
 		}
 	}

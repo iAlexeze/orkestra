@@ -17,7 +17,7 @@ func (r *GenericReconciler[PTR]) applyReconcileTimeValidation(ctx context.Contex
 		return nil, nil
 	}
 
-	result := runValidation(resolver.Data(), r.crd.Validation, r.crd.APITypes.Kind)
+	result := runValidation(resolver.Data(), resolver, r.crd.Validation, r.crd.APITypes.Kind)
 
 	for _, w := range result.Warnings {
 		logger.FromContext(ctx).Warn().
