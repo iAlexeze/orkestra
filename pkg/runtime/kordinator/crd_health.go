@@ -7,8 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	ork_autoscaler "github.com/orkspace/orkestra/pkg/runtime/autoscaler"
 	"github.com/orkspace/orkestra/pkg/konfig"
+	ork_autoscaler "github.com/orkspace/orkestra/pkg/runtime/autoscaler"
 	"github.com/orkspace/orkestra/pkg/runtime/queue"
 )
 

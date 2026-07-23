@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/runtime/autoscaler"
 	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/runtime/autoscaler"
 	orkqueue "github.com/orkspace/orkestra/pkg/runtime/queue"
 )
 

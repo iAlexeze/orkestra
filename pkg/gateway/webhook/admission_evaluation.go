@@ -32,7 +32,7 @@ func (ws *WebhookServer) evaluateValidationRules(
 		resolver = resolver.WithUserNotes(ws.katalog.Notes)
 	}
 	for _, rule := range cfg.Rules {
-		if !orktypes.EvaluateWhen(obj, rule.When, rule.AnyOf, nil) {
+		if !orktypes.EvaluateWhen(obj, rule.When, rule.AnyOf, resolver.TemplateEvaluator()) {
 			continue
 		}
 		v := evaluateOneRule(obj, resolver, rule)
@@ -189,7 +189,7 @@ func (ws *WebhookServer) applyMutationRules(
 	var changes []fieldChange
 
 	for _, rule := range cfg.Rules {
-		if !orktypes.EvaluateWhen(obj, rule.When, rule.AnyOf, nil) {
+		if !orktypes.EvaluateWhen(obj, rule.When, rule.AnyOf, resolver.TemplateEvaluator()) {
 			continue
 		}
 
