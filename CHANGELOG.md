@@ -1,4 +1,4 @@
-## v0.7.12 — Gateway Apply API, IDP, and codebase clarity [UNRELEASED]
+## v0.7.12 — Gateway Apply API, IDP, and codebase clarity
 
 ### Gateway Apply API
 
