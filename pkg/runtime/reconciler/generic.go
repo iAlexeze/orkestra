@@ -313,7 +313,7 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	// This gives typed hooks access to external systems without needing an HTTP
 	// client — the runtime makes the calls, the hook reads the results via kube.Args().
 	if r.crd.HasHooksExternal() {
-		resolver, err = runExternal(ctx, r.crd.GVKString(), resolver, r.crd.HooksExternal())
+		resolver, err = runExternal(ctx, r.crd.GVKString(), resolver, r.crd.HooksExternal(), r.kube.Clientset())
 		if err != nil {
 			return err
 		}

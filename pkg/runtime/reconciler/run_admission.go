@@ -20,7 +20,7 @@ func (r *GenericReconciler[PTR]) applyReconcileTimeValidation(ctx context.Contex
 
 	var err error
 	if calls := r.crd.Validation.ReconcileExternal(); len(calls) > 0 {
-		resolver, err = orkexternal.Run(ctx, r.crd.GVKString(), resolver, calls)
+		resolver, err = orkexternal.Run(ctx, r.crd.GVKString(), resolver, calls, r.kube.Clientset())
 		if err != nil {
 			return resolver, nil, err
 		}
@@ -56,7 +56,7 @@ func (r *GenericReconciler[PTR]) applyReconcileTimeMutation(ctx context.Context,
 
 	if calls := r.crd.Mutation.ReconcileExternal(); len(calls) > 0 {
 		var err error
-		resolver, err = orkexternal.Run(ctx, r.crd.GVKString(), resolver, calls)
+		resolver, err = orkexternal.Run(ctx, r.crd.GVKString(), resolver, calls, r.kube.Clientset())
 		if err != nil {
 			return resolver, err
 		}

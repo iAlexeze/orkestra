@@ -44,7 +44,7 @@ func resolver(data map[string]interface{}) *orktmpl.Resolver {
 
 func TestRun_EmptyCalls(t *testing.T) {
 	r := resolver(map[string]interface{}{})
-	got, err := orkexternal.Run(context.Background(), "test", r, nil)
+	got, err := orkexternal.Run(context.Background(), "test", r, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestRun_SuccessfulCall(t *testing.T) {
 		{Name: "flags", URL: "http://flags.internal/v1"},
 	}
 
-	got, err := orkexternal.Run(context.Background(), "test", r, calls)
+	got, err := orkexternal.Run(context.Background(), "test", r, calls, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestRun_JSONBodyAutoParsed(t *testing.T) {
 		{Name: "cfg", URL: "http://config.internal/v1"},
 	}
 
-	got, err := orkexternal.Run(context.Background(), "test", r, calls)
+	got, err := orkexternal.Run(context.Background(), "test", r, calls, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -117,7 +117,7 @@ func TestRun_ContinueOnError_True(t *testing.T) {
 		{Name: "svc", URL: "http://svc.internal/health", ContinueOnError: true},
 	}
 
-	got, err := orkexternal.Run(context.Background(), "test", r, calls)
+	got, err := orkexternal.Run(context.Background(), "test", r, calls, nil)
 	if err != nil {
 		t.Fatalf("expected no error with continueOnError:true, got: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestRun_ContinueOnError_False(t *testing.T) {
 		{Name: "svc", URL: "http://svc.internal/health", ContinueOnError: false},
 	}
 
-	_, err := orkexternal.Run(context.Background(), "test", r, calls)
+	_, err := orkexternal.Run(context.Background(), "test", r, calls, nil)
 	if err == nil {
 		t.Fatal("expected error with continueOnError:false on a failed call")
 	}
@@ -163,7 +163,7 @@ func TestRun_WhenConditionSkipsCall(t *testing.T) {
 		},
 	}
 
-	_, err := orkexternal.Run(context.Background(), "test", r, calls)
+	_, err := orkexternal.Run(context.Background(), "test", r, calls, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -199,7 +199,7 @@ func TestRun_LaterCallSeesEarlierResult(t *testing.T) {
 		{Name: "data", URL: `{{ index .external "discovery" "endpoint" }}`},
 	}
 
-	got, err := orkexternal.Run(context.Background(), "test", r, calls)
+	got, err := orkexternal.Run(context.Background(), "test", r, calls, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -221,7 +221,7 @@ func TestRun_ExpectedStatusMismatch(t *testing.T) {
 		{Name: "api", URL: "http://api.internal/v1", ExpectedStatus: 200, ContinueOnError: false},
 	}
 
-	_, err := orkexternal.Run(context.Background(), "test", r, calls)
+	_, err := orkexternal.Run(context.Background(), "test", r, calls, nil)
 	if err == nil {
 		t.Fatal("expected error when response status doesn't match expectedStatus")
 	}
@@ -236,7 +236,7 @@ func TestRun_JSONStatusKeyDoesNotOverwriteHTTPStatus(t *testing.T) {
 		{Name: "health", URL: "http://svc.internal/health"},
 	}
 
-	got, err := orkexternal.Run(context.Background(), "test", r, calls)
+	got, err := orkexternal.Run(context.Background(), "test", r, calls, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -256,7 +256,7 @@ func TestRun_NonJSONBodyNotParsed(t *testing.T) {
 		{Name: "txt", URL: "http://txt.internal/v1"},
 	}
 
-	got, err := orkexternal.Run(context.Background(), "test", r, calls)
+	got, err := orkexternal.Run(context.Background(), "test", r, calls, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

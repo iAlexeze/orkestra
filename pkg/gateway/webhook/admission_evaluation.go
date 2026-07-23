@@ -35,7 +35,7 @@ func (ws *WebhookServer) evaluateValidationRules(
 	}
 	if calls := cfg.AdmissionExternal(); len(calls) > 0 {
 		var err error
-		resolver, err = orkexternal.Run(ctx, kindName, resolver, calls)
+		resolver, err = orkexternal.Run(ctx, kindName, resolver, calls, ws.kubeClient)
 		if err != nil {
 			logger.FromContext(ctx).Warn().Err(err).Str("kind", kindName).Msg("admission/validate: external call failed")
 		}
@@ -198,7 +198,7 @@ func (ws *WebhookServer) applyMutationRules(
 	}
 	if calls := cfg.AdmissionExternal(); len(calls) > 0 {
 		var err error
-		resolver, err = orkexternal.Run(ctx, kindName, resolver, calls)
+		resolver, err = orkexternal.Run(ctx, kindName, resolver, calls, ws.kubeClient)
 		if err != nil {
 			logger.FromContext(ctx).Warn().Err(err).Str("kind", kindName).Msg("admission/mutate: external call failed")
 		}

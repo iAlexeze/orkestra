@@ -13,15 +13,17 @@ import (
 	"github.com/orkspace/orkestra/pkg/metrics"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"k8s.io/client-go/kubernetes"
 )
 
 // Run executes all declared external calls sequentially and returns a new
 // resolver with results injected under .external.<name>.
 //
 // Calls run in declaration order. Each call can reference earlier calls'
-// results in its own URL or body template expressions.
+// results in its own URL, query, or body template expressions.
 //
 // gvk is the CRD identifier used for metrics labelling only.
+// cs is used to resolve auth.secretRef — pass nil when secretRef is not used.
 // Returns the enriched resolver. The original is unchanged.
 // Returns an error only when continueOnError is false and a call fails.
 func Run(
@@ -29,6 +31,7 @@ func Run(
 	gvk string,
 	resolver *orktmpl.Resolver,
 	calls []orktypes.ExternalCallSpec,
+	cs kubernetes.Interface,
 ) (*orktmpl.Resolver, error) {
 	if len(calls) == 0 {
 		return resolver, nil
@@ -60,12 +63,12 @@ func Run(
 		if err != nil {
 			return resolver, fmt.Errorf("external[%d].body: %w", i, err)
 		}
-		resolvedToken, err := resolver.Resolve(ExpandEnv(call.Token))
+		credential, authHeader, err := resolveAuth(ctx, call.Auth, cs)
 		if err != nil {
-			return resolver, fmt.Errorf("external[%d].token: %w", i, err)
+			return resolver, fmt.Errorf("external[%d] %q: %w", i, call.Name, err)
 		}
 
-		result := executeHTTPCall(ctx, call, resolvedURL, resolvedBody, resolvedToken)
+		result := executeHTTPCall(ctx, call, resolvedURL, resolvedBody, credential, authHeader)
 
 		entry := map[string]interface{}{}
 		if result.Body != "" {
