@@ -3,18 +3,22 @@ package pvs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/resources/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 // Create creates a PersistentVolume if it does not already exist.
@@ -42,49 +46,39 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update reconciles an existing PV. Capacity and reclaim policy are patched on drift.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPVSpec) error {
+// Apply creates or updates a PersistentVolume using Server-Side Apply.
+// PVs are cluster-scoped — no namespace arg. Sends only fields Orkestra owns.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPVSpec) error {
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
 	}
 
-	existing, err := kube.Clientset().CoreV1().PersistentVolumes().Get(ctx, spec.Name, metav1.GetOptions{})
+	pv := buildPV(owner, spec)
+	pv.TypeMeta = metav1.TypeMeta{APIVersion: "v1", Kind: "PersistentVolume"}
+
+	body, err := json.Marshal(pv)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			return Create(ctx, kube, owner, spec)
-		}
-		return fmt.Errorf("pv.Update: getting %q: %w", spec.Name, err)
+		return fmt.Errorf("pv.Apply: marshal: %w", err)
 	}
 
-	updated := existing.DeepCopy()
-	drifted := false
-
-	desired := buildPV(owner, spec)
-
-	if desired.Spec.PersistentVolumeReclaimPolicy != existing.Spec.PersistentVolumeReclaimPolicy {
-		updated.Spec.PersistentVolumeReclaimPolicy = desired.Spec.PersistentVolumeReclaimPolicy
-		drifted = true
+	if _, err = kube.Clientset().CoreV1().PersistentVolumes().Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		return fmt.Errorf("pv.Apply: %w", err)
 	}
 
-	for k, v := range spec.Labels {
-		if updated.Labels[k] != v {
-			updated.Labels[k] = v
-			drifted = true
-		}
-	}
+	logger.Debug().
+		Str("pv", spec.Name).
+		Str("owner", owner.GetName()).
+		Msg("pv applied")
 
-	if !drifted {
-		logger.Debug().Str("pv", spec.Name).Msg("pv in sync — no update needed")
-		return nil
-	}
-
-	_, err = kube.Clientset().CoreV1().PersistentVolumes().Update(ctx, updated, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("pv.Update: updating %q: %w", spec.Name, err)
-	}
-
-	logger.Info().Str("pv", spec.Name).Msg("pv updated")
 	return nil
+}
+
+// Update applies the PV via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPVSpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the PV if it exists.
@@ -192,8 +186,18 @@ func buildPV(owner domain.Object, spec ResolvedPVSpec) *corev1.PersistentVolume 
 		}
 	}
 
-	// PVs are cluster-scoped; label with owner for DeleteIfOwned.
-	_ = owner
+	if owner.GetNamespace() == "" {
+		pv.OwnerReferences = []metav1.OwnerReference{
+			{
+				APIVersion:         owner.GetObjectKind().GroupVersionKind().GroupVersion().String(),
+				Kind:               owner.GetObjectKind().GroupVersionKind().Kind,
+				Name:               owner.GetName(),
+				UID:                owner.GetUID(),
+				Controller:         utils.BoolPtr(true),
+				BlockOwnerDeletion: utils.BoolPtr(true),
+			},
+		}
+	}
 
 	return pv
 }

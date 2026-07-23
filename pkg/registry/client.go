@@ -275,7 +275,7 @@ func (c *Client) List(ctx context.Context, registryURL string) (*PatternIndex, e
 	}
 	index, err := c.fetchIndex(ctx, idxRef)
 	if err != nil {
-		return &PatternIndex{UpdatedAt: time.Now().UTC().Format(time.RFC3339)}, nil
+		return nil, err
 	}
 	return index, nil
 }

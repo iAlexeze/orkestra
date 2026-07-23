@@ -300,8 +300,25 @@ type E2ESpec struct {
 	// runs automatically during ork push.
 	ValuesFiles []string `yaml:"valuesFiles,omitempty"`
 
+	// Notes declares user-defined note functions available in when:/anyOf: expressions.
+	// Same syntax as a Katalog notes block — same FuncMap registration, same functions.
+	Notes NoteRegistry `yaml:"notes,omitempty"`
+
 	// Expect is the list of expectations to check after each lifecycle event.
 	Expect []E2EExpectation `yaml:"expect"`
+
+	// OnFailure declares kubectl operations and commands to run and print to the
+	// terminal when any expectation fails. Uses the same kubectl: DSL as expect
+	// entries — assertions are never evaluated; output is always printed.
+	OnFailure *E2EOnFailure `yaml:"onFailure,omitempty"`
+}
+
+// E2EOnFailure declares diagnostic operations to run when any expectation fails.
+// kubectl: accepts the same DSL as expect entries; assertion fields are ignored.
+// commands: are raw shell strings run via sh -c.
+type E2EOnFailure struct {
+	Kubectl  *E2EKubectl `yaml:"kubectl,omitempty"`
+	Commands []string    `yaml:"commands,omitempty"`
 }
 
 // E2EInit selects a built-in example pack as the test source.
@@ -372,6 +389,18 @@ type E2EExpectation struct {
 	// describe, exec, port-forward. Compiles to kubectl invocations internally.
 	// Use commands: for anything that doesn't fit a subcommand.
 	Kubectl *E2EKubectl `yaml:"kubectl,omitempty"`
+
+	// When / AnyOf gate this expectation using the same []Condition type as
+	// katalog when:/anyOf:. An expectation whose conditions do not pass is
+	// skipped — not failed. Notes declared in spec.notes are available as
+	// template expressions: field: '{{ inBusinessHours }}'.
+	// Empty blocks always pass.
+	When  []Condition `yaml:"when,omitempty"`
+	AnyOf []Condition `yaml:"anyOf,omitempty"`
+
+	// OnFailure declares diagnostic operations to run immediately when this
+	// specific expectation fails. Runs before moving to the next expectation.
+	OnFailure *E2EOnFailure `yaml:"onFailure,omitempty"`
 }
 
 // E2EResourceCheck asserts the state of any Kubernetes resource.
@@ -401,9 +430,10 @@ type E2ECommand struct {
 	// OutputContains asserts the combined stdout+stderr contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the combined stdout+stderr does NOT contain this substring.
-	OutputNotContains string `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string `yaml:"greaterThan,omitempty"`
-	LessThan          string `yaml:"lessThan,omitempty"`
+	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string   `yaml:"greaterThan,omitempty"`
+	LessThan          string   `yaml:"lessThan,omitempty"`
+	OneOf             []string `yaml:"oneOf,omitempty"`
 }
 
 // E2EKubectl is the structured kubectl DSL block.
@@ -448,6 +478,18 @@ type E2EKubectl struct {
 	// Requires metrics-server; installed automatically when entries are present.
 	// Generates: kubectl top <kind> [-n <ns>] [<name> | -l <selector>] [--containers]
 	Top []E2EKubectlTop `yaml:"top,omitempty"`
+
+	// Restart triggers a rollout restart of a Deployment, StatefulSet, or DaemonSet.
+	// Generates: kubectl rollout restart <kind>/<name> -n <ns>
+	// Waits for the rollout to complete when ready: true (default).
+	// The expect step's timeout governs how long to wait.
+	Restart []E2EKubectlRestart `yaml:"restart,omitempty"`
+
+	// Scale sets the replica count on a Deployment, StatefulSet, or ReplicaSet.
+	// Generates: kubectl scale <kind>/<name> --replicas=<n> -n <ns>
+	// Waits for the rollout to complete when ready: true (default).
+	// The expect step's timeout governs how long to wait.
+	Scale []E2EKubectlScale `yaml:"scale,omitempty"`
 }
 
 // E2EKubectlGet asserts a field value on a Kubernetes resource.
@@ -475,9 +517,10 @@ type E2EKubectlGet struct {
 	// OutputContains asserts the output contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
-	OutputNotContains string `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string `yaml:"greaterThan,omitempty"`
-	LessThan          string `yaml:"lessThan,omitempty"`
+	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string   `yaml:"greaterThan,omitempty"`
+	LessThan          string   `yaml:"lessThan,omitempty"`
+	OneOf             []string `yaml:"oneOf,omitempty"`
 }
 
 // E2EKubectlLogs asserts container log output.
@@ -506,9 +549,10 @@ type E2EKubectlLogs struct {
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
 	// Useful for asserting no FATAL or ERROR lines were logged.
-	OutputNotContains string `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string `yaml:"greaterThan,omitempty"`
-	LessThan          string `yaml:"lessThan,omitempty"`
+	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string   `yaml:"greaterThan,omitempty"`
+	LessThan          string   `yaml:"lessThan,omitempty"`
+	OneOf             []string `yaml:"oneOf,omitempty"`
 }
 
 // E2EKubectlDescribe asserts kubectl describe output.
@@ -529,9 +573,10 @@ type E2EKubectlDescribe struct {
 	// OutputContains asserts the output contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
-	OutputNotContains string `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string `yaml:"greaterThan,omitempty"`
-	LessThan          string `yaml:"lessThan,omitempty"`
+	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string   `yaml:"greaterThan,omitempty"`
+	LessThan          string   `yaml:"lessThan,omitempty"`
+	OneOf             []string `yaml:"oneOf,omitempty"`
 }
 
 // E2EKubectlExec runs a command inside a running container and asserts its output.
@@ -560,9 +605,10 @@ type E2EKubectlExec struct {
 	// OutputContains asserts the output contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
-	OutputNotContains string `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string `yaml:"greaterThan,omitempty"`
-	LessThan          string `yaml:"lessThan,omitempty"`
+	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string   `yaml:"greaterThan,omitempty"`
+	LessThan          string   `yaml:"lessThan,omitempty"`
+	OneOf             []string `yaml:"oneOf,omitempty"`
 }
 
 // E2EKubectlApply applies one or more manifests during an expect checkpoint.
@@ -632,9 +678,10 @@ type E2EKubectlEvents struct {
 	// OutputContains asserts the output contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
-	OutputNotContains string `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string `yaml:"greaterThan,omitempty"`
-	LessThan          string `yaml:"lessThan,omitempty"`
+	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string   `yaml:"greaterThan,omitempty"`
+	LessThan          string   `yaml:"lessThan,omitempty"`
+	OneOf             []string `yaml:"oneOf,omitempty"`
 }
 
 // E2EKubectlAuth checks permissions via kubectl auth can-i and asserts the result.
@@ -656,9 +703,10 @@ type E2EKubectlAuth struct {
 	// OutputContains asserts the output contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
-	OutputNotContains string `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string `yaml:"greaterThan,omitempty"`
-	LessThan          string `yaml:"lessThan,omitempty"`
+	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string   `yaml:"greaterThan,omitempty"`
+	LessThan          string   `yaml:"lessThan,omitempty"`
+	OneOf             []string `yaml:"oneOf,omitempty"`
 }
 
 // E2EKubectlCp copies a file out of a running container and asserts its content.
@@ -686,9 +734,10 @@ type E2EKubectlCp struct {
 	// OutputContains asserts the file content contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the file content does not contain this substring.
-	OutputNotContains string `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string `yaml:"greaterThan,omitempty"`
-	LessThan          string `yaml:"lessThan,omitempty"`
+	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string   `yaml:"greaterThan,omitempty"`
+	LessThan          string   `yaml:"lessThan,omitempty"`
+	OneOf             []string `yaml:"oneOf,omitempty"`
 }
 
 // E2EKubectlTop queries live CPU and memory usage via kubectl top and asserts
@@ -712,9 +761,10 @@ type E2EKubectlTop struct {
 	// OutputContains asserts the output contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
-	OutputNotContains string `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string `yaml:"greaterThan,omitempty"`
-	LessThan          string `yaml:"lessThan,omitempty"`
+	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string   `yaml:"greaterThan,omitempty"`
+	LessThan          string   `yaml:"lessThan,omitempty"`
+	OneOf             []string `yaml:"oneOf,omitempty"`
 }
 
 // E2EKubectlLeaderElection resolves the target pod by reading the current holder
@@ -767,7 +817,38 @@ type E2EKubectlPortForward struct {
 	// OutputContains asserts the output contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
-	OutputNotContains string `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string `yaml:"greaterThan,omitempty"`
-	LessThan          string `yaml:"lessThan,omitempty"`
+	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
+	GreaterThan       string   `yaml:"greaterThan,omitempty"`
+	LessThan          string   `yaml:"lessThan,omitempty"`
+	OneOf             []string `yaml:"oneOf,omitempty"`
+	// StatusCode asserts the HTTP response status code. When set, the response
+	// body is discarded and only the numeric status is checked (e.g. 404, 200).
+	// Cannot be combined with JQ, YQ, Equals, or OutputContains.
+	StatusCode int `yaml:"statusCode,omitempty"`
+}
+
+// E2EKubectlRestart triggers a rollout restart of a Deployment, StatefulSet, or DaemonSet.
+type E2EKubectlRestart struct {
+	// Kind is the resource kind: Deployment, StatefulSet, or DaemonSet.
+	Kind string `yaml:"kind"`
+	// Name is the resource name.
+	Name string `yaml:"name"`
+	// Namespace to target. Defaults to "default".
+	Namespace string `yaml:"namespace,omitempty"`
+	// Ready waits for the rollout to complete after the restart. Defaults to true.
+	Ready *bool `yaml:"ready,omitempty"`
+}
+
+// E2EKubectlScale sets the replica count on a Deployment, StatefulSet, or ReplicaSet.
+type E2EKubectlScale struct {
+	// Kind is the resource kind: Deployment, StatefulSet, or ReplicaSet.
+	Kind string `yaml:"kind"`
+	// Name is the resource name.
+	Name string `yaml:"name"`
+	// Namespace to target. Defaults to "default".
+	Namespace string `yaml:"namespace,omitempty"`
+	// Replicas is the desired replica count.
+	Replicas int `yaml:"replicas"`
+	// Ready waits for the rollout to complete after scaling. Defaults to true.
+	Ready *bool `yaml:"ready,omitempty"`
 }

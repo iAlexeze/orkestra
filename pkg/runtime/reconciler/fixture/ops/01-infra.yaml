@@ -1,0 +1,32 @@
+x-base-op: &base-op
+  cycle: 1
+  verb: apply
+
+ops:
+  # Namespace
+  - <<: *base-op
+    verb: create
+    resource: namespaces
+    name: probe-ns
+  
+  # Configuration
+  - <<: *base-op
+    verb: create
+    resource: secrets
+    name: probe-creds
+  - <<: *base-op
+    resource: configmaps
+    name: probe-config
+  
+  # Network Policies
+  - <<: *base-op
+    resource: networkpolicies
+    name: probe-netpol
+  
+  # Resource Management
+  - <<: *base-op
+    resource: resourcequotas
+    name: probe-quota
+  - <<: *base-op
+    resource: limitranges
+    name: probe-limits

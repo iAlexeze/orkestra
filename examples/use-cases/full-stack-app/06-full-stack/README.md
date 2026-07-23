@@ -6,18 +6,38 @@ One CR, all five patterns at once. A `FullStackApp` creates 3 regional Deploymen
 
 ## Step 1 — Validate
 
+`katalog.yaml` has the `managed-database` CRD block commented out by default. This lets the root `full-stack-app/` composite import it without a duplicate-CRD conflict. When running this example in isolation, uncomment the `managed-database:` block first:
+
+```yaml
+# katalog.yaml — uncomment this before running ork validate from 06-full-stack/
+spec:
+  crds:
+    managed-database:
+      crdFile: ../03-cross-crd/crd-managed-database.yaml
+      ...
+```
+
+Then validate:
+
 ```bash
 ork validate
 ```
 
 Expected:
 ```
-✓ full-stack-app
-    kind: FullStackApp
-    group: advanced.orkestra.io / version: v1alpha1 / plural: fullstackapps
+● full-stack-app
+    kind: FullStackApp / group: advanced.orkestra.io / version: v1alpha1
     mode: dynamic / workers: 2 / resync: 30s
-    dependsOn: managed-database
+
+● managed-database
+    kind: ManagedDatabase / group: advanced.orkestra.io / version: v1alpha1
+    mode: dynamic / workers: 2 / resync: 30s
+
+────────────────────────────────────────────────────────────
+2 CRDs valid (0 built-in, 2 custom)
 ```
+
+> If you plan to run the full composite from the parent directory (`full-stack-app/`), comment `managed-database:` back out before switching — see [Troubleshooting](../README.md#troubleshooting).
 
 ---
 

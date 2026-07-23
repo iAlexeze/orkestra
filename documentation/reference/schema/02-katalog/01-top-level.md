@@ -25,6 +25,12 @@ profiles:                              # optional → see profiles schema
   containerSecurity: [...]
   podSecurity: [...]
 
+notes:                                 # optional — user-defined template functions
+  functions:
+    - name: fullImage
+      description: string
+      expression: '{{ .spec.image }}:{{ .spec.tag | default "latest" }}'
+
 spec:
   finalizers:                          # optional — applied to every CRD
     - platform.example.io/cleanup
@@ -73,6 +79,36 @@ spec:
 
 → Full field reference: [crd-entry.md](02-crd-entry.md)
 
+## `notes`
+
+User-defined template functions, available in every `{{ }}` expression in this Katalog — status fields, resource names, `when:` conditions, and anywhere else a template is evaluated.
+
+```yaml
+notes:
+  functions:
+    - name: fullImage
+      description: Qualified image reference combining image and tag
+      expression: "{{ .spec.image }}:{{ .spec.tag | default \"latest\" }}"
+
+    - name: inBusinessHours
+      expression: '{{ and weekday (timeInWindow "09:00" "18:00") }}'
+
+    - name: statusLabel
+      expression: "{{ if inBusinessHours }}Active{{ else }}Suspended{{ end }}"
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | yes | Function name. Called as `{{ noteName }}` in templates. Must be a valid Go identifier. |
+| `expression` | yes | Go template expression. May call built-in notes and other user-defined notes. |
+| `description` | no | Human-readable description. Shown in `ork validate --notes`. |
+
+Notes are pure: same input → same output. They may call any built-in note and any other user-defined note declared in the same `notes.functions:` block (order-independent).
+
+→ Full reference: [Notes concept](../../../concepts/notes/index.md)
+
+---
+
 ## `profiles`
 
 Named profile definitions shared across all CRD entries in this Katalog. Profiles are resolved by name at reconcile time — user-defined profiles take precedence over built-ins.
@@ -100,3 +136,4 @@ Named profile definitions shared across all CRD entries in this Katalog. Profile
 - [katalog-providers.md](12-katalog-providers.md)
 - [komposer.md](../03-komposer/index.md) — compose multiple Katalogs
 - [User-Defined Profiles](../../../concepts/profiles/10-user-defined-profiles.md) — declaring and referencing profiles
+- [Notes concept](../../../concepts/notes/index.md) — user-defined notes, built-in reference, composition

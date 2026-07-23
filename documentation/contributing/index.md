@@ -25,12 +25,26 @@ Once oriented, pick the area you want to work in:
 
 ---
 
+## Build and test commands
+
+| Command | What it does |
+|---------|-------------|
+| `make ork` | Codegen (note catalog, e2e example doc) + gofmt + build `ork` binary to `~/.orkestra/bin/` |
+| `make test` | `go vet` + unit tests — fast, no cluster required |
+| `make test-race` | Same with Go's race detector — run before every PR |
+| `make test-unit` | Unit tests only, skipping vet |
+| `make test-integration` | Integration tests via envtest (requires `setup-envtest`) |
+| `make test-coverage` | HTML coverage report written to `coverage.html` |
+| `make docs` | Start Hugo dev server at `localhost:8090` (requires `make hugo-install` once) |
+
+> **`go build ./...` is not a substitute for `make ork`.** The build step runs `hack/generate-notes` first — skipping it leaves `pkg/note/catalog_generated.go` stale, which breaks `ork notes`.
+
 ## General contribution workflow
 
 1. Fork the repository and create a branch from `main`.
 2. Read the guide for the area you are changing.
-3. Run `make ork` to rebuild after Go changes.
-4. Run `go test ./...` to confirm nothing is broken.
+3. Run `make ork` after any Go changes.
+4. Run `make test-race` to confirm nothing is broken.
 5. Open a pull request with a short description of what and why.
 
 Questions? Open a [GitHub Discussion](https://github.com/orkspace/orkestra/discussions).

@@ -36,6 +36,14 @@ The [Operator Autoscaler](operator-autoscaler/) is a built-in subsystem that dyn
 
 ---
 
+## Workload Autoscaler
+
+The [Workload Autoscaler](workload-autoscaler/) scales the Deployments your operator manages — based on time, external queue depth, sibling operator metrics, or any combination. One field on a Deployment declaration. No KEDA, no ScaledObject, no gRPC scaler plugin.
+
+→ [Read: Workload Autoscaler](workload-autoscaler/)
+
+---
+
 ## OperatorBox
 
 _CRDs in. Operators out._
@@ -118,6 +126,14 @@ The [Health Subsystem](health-subsystem/) is Orkestra's liveness, readiness, and
 
 ---
 
+## Time-Dependent Workloads
+
+[Time-Dependent Workloads](temporal/) covers operators that change behavior based on wall-clock time — without CronJobs or external schedulers. Business hours provisioning, maintenance windows, regional peak scaling — all driven by built-in time notes re-evaluated on every reconcile.
+
+→ [Read: Time-Dependent Workloads](temporal/)
+
+---
+
 ## Conditionals
 
 [Conditionals](conditional/) are the logic layer — `when:` and `anyOf:` blocks that control when a resource is created, when a status field is written, and how multi-phase async workflows sequence themselves. Works in Katalogs and Motifs.
@@ -147,3 +163,11 @@ The [Health Subsystem](health-subsystem/) is Orkestra's liveness, readiness, and
 [Declarative E2E](e2e/) is how Orkestra verifies an operator against a real cluster — one YAML file, no test framework, no Go. Every learning example ships with a runnable `e2e.yaml`. The `imports:` field composes focused per-Katalog tests into suites that a single `ork e2e` command runs end to end.
 
 → [Read: Declarative End-to-End Testing](e2e/)
+
+---
+
+## Internal Developer Platform
+
+An [Internal Developer Platform](idp/) built on Orkestra is not a separate application. It is the gateway, a Katalog with two config fields enabled, and optionally a form in the Control Center. The Gateway Apply API is a CRUD REST surface for CRs — any HTTP client can create, read, or delete the resources your operator manages, without kubeconfig or kubectl.
+
+→ [Read: Internal Developer Platform](idp/)

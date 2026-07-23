@@ -247,8 +247,8 @@ At `ork validate` time, fields containing `{{` are skipped — they cannot be va
 
 When a resource declares `profile: some-name`, Orkestra resolves it in this order:
 
-1. User-defined profiles in the katalog `profiles:` block
-2. User-defined profiles merged from imported Motifs
+1. User-defined profiles in the Katalog `profiles:` block
+2. User-defined profiles merged from Motifs imported at `spec.imports`
 3. Built-in Orkestra profiles
 
 The first match wins. Built-ins are only consulted when the name is not found in any user registry.
@@ -257,7 +257,7 @@ The first match wins. Built-ins are only consulted when the name is not found in
 
 ## Profiles in Motifs
 
-A Motif can declare its own `profiles:` block. When a Katalog imports the Motif, its profiles are merged into the Katalog's registry:
+A Motif can declare its own `profiles:` block. To make those profiles available across the Katalog, import the Motif at `spec.imports` — profiles are only merged at this level. Importing the same Motif at `spec.crds[name].imports` does not merge its profiles (only resources, status, and admission are consumed there).
 
 ```yaml
 # tenant-isolation.motif.yaml
@@ -290,6 +290,28 @@ resources:
       profile: allow-monitoring
 ```
 
+Import at `spec.imports` to merge profiles into the Katalog-wide registry:
+
+```yaml
+spec:
+  imports:
+    - motif: ./motifs/tenant-isolation.yaml   # profiles merged here
+
+  crds:
+    namespace:
+      operatorBox:
+        onCreate:
+          networkPolicies:
+            - name: "{{ .metadata.name }}-monitoring"
+              profile: allow-monitoring   # ✓ available to all CRDs
+    service:
+      operatorBox:
+        onCreate:
+          networkPolicies:
+            - name: "{{ .metadata.name }}-monitoring"
+              profile: allow-monitoring   # ✓ same profile, no re-import needed
+```
+
 ### Conflict detection
 
 If the same profile name appears in the same class in both the Katalog and an imported Motif — or in two imported Motifs — it is a **hard error** at load time:
@@ -304,7 +326,26 @@ The same name in different classes is not a conflict — `resourceQuotas.medium`
 
 ## ork validate output
 
-When a Motif declares profiles, `ork validate` shows them alongside resources:
+Pass `--profiles` when validating a Katalog to print the merged profile registry — your inline declarations plus anything imported from Motifs:
+
+```bash
+ork validate --profiles
+```
+
+```text
+Profiles (9)
+  resources           team-api
+  containerSecurity   team-baseline
+  podSecurity         team-nonroot
+  hpa                 team-conservative
+  hpa                 team-responsive
+  networkPolicies     team-deny-all
+  networkPolicies     team-allow-internal
+  networkPolicies     team-allow-dns
+  probes              team-standard
+```
+
+When validating a Motif directly, `ork validate` shows profiles alongside resources in the summary:
 
 ```text
 ● tenant-isolation

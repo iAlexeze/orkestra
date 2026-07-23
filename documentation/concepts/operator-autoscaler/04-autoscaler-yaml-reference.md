@@ -179,7 +179,7 @@ Keys:
 - `cron:` — cron expression defining when the window opens  
 - `duration:` — how long the window stays open  
 
-Without `duration:`, the window lasts for one autoscaler tick.
+Without `duration:`, the window stays open until the next fire. Add `duration:` to close it sooner.
 
 Cron format:
 

@@ -349,7 +349,8 @@ wrote no deletion code.
 ### 7. Check the metrics
 
 ```bash
-kubectl port-forward svc/orkestra 8080:8080 &
+ork proxy
+
 curl localhost:8080/katalog/pipeline | jq '{
   reconcileTotal: .reconcileTotal,
   queueDepth: .queueDepth

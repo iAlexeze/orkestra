@@ -3,11 +3,13 @@ package cronjobs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -18,6 +20,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 // ResolvedCronJobSpec is the fully resolved CronJob specification.
@@ -126,12 +129,11 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update reconciles an existing CronJob to match the resolved spec.
-// Detects drift across schedule, image, suspend, concurrencyPolicy,
-// and history limits. Creates the CronJob if it does not exist.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedCronJobSpec) error {
+// Apply creates or updates a CronJob using Server-Side Apply.
+// Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedCronJobSpec) error {
 	if err := validateSpec(spec); err != nil {
-		return fmt.Errorf("cronjob.Update: %w", err)
+		return fmt.Errorf("cronjob.Apply: %w", err)
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
@@ -139,110 +141,33 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		return err
 	}
 
-	existing, err := kube.Clientset().BatchV1().CronJobs(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
+	cj := buildCronJob(owner, spec, namespace)
+	cj.TypeMeta = metav1.TypeMeta{APIVersion: "batch/v1", Kind: "CronJob"}
+
+	body, err := json.Marshal(cj)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info().
-				Str("cronjob", spec.Name).
-				Str("namespace", namespace).
-				Msg("cronjob not found during reconcile — recreating")
-			return Create(ctx, kube, owner, spec)
-		}
-		return fmt.Errorf("cronjob.Update: getting %q: %w", spec.Name, err)
+		return fmt.Errorf("cronjob.Apply: marshal: %w", err)
 	}
 
-	// ── Drift detection ───────────────────────────────────────────────────
-	drifted := false
-	updated := existing.DeepCopy()
-
-	if existing.Spec.Schedule != spec.Schedule {
-		updated.Spec.Schedule = spec.Schedule
-		drifted = true
-		logger.Info().Str("cronjob", spec.Name).
-			Str("desired", spec.Schedule).Msg("cronjob schedule drifted")
+	if _, err = kube.Clientset().BatchV1().CronJobs(namespace).Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		return fmt.Errorf("cronjob.Apply: %w", err)
 	}
 
-	if existing.Spec.Suspend == nil || *existing.Spec.Suspend != spec.Suspend {
-		updated.Spec.Suspend = utils.BoolPtr(spec.Suspend)
-		drifted = true
-		logger.Info().Str("cronjob", spec.Name).
-			Bool("desired", spec.Suspend).Msg("cronjob suspend drifted")
-	}
-
-	if spec.ConcurrencyPolicy != "" && existing.Spec.ConcurrencyPolicy != spec.ConcurrencyPolicy {
-		updated.Spec.ConcurrencyPolicy = spec.ConcurrencyPolicy
-		drifted = true
-	}
-
-	if spec.StartingDeadlineSeconds != nil {
-		if existing.Spec.StartingDeadlineSeconds == nil ||
-			*existing.Spec.StartingDeadlineSeconds != *spec.StartingDeadlineSeconds {
-			updated.Spec.StartingDeadlineSeconds = spec.StartingDeadlineSeconds
-			drifted = true
-		}
-	}
-
-	if spec.SuccessfulJobsHistoryLimit != nil {
-		if existing.Spec.SuccessfulJobsHistoryLimit == nil ||
-			*existing.Spec.SuccessfulJobsHistoryLimit != *spec.SuccessfulJobsHistoryLimit {
-			updated.Spec.SuccessfulJobsHistoryLimit = spec.SuccessfulJobsHistoryLimit
-			drifted = true
-		}
-	}
-
-	if spec.FailedJobsHistoryLimit != nil {
-		if existing.Spec.FailedJobsHistoryLimit == nil ||
-			*existing.Spec.FailedJobsHistoryLimit != *spec.FailedJobsHistoryLimit {
-			updated.Spec.FailedJobsHistoryLimit = spec.FailedJobsHistoryLimit
-			drifted = true
-		}
-	}
-
-	if len(existing.Spec.JobTemplate.Spec.Template.Spec.Containers) > 0 {
-		container := &updated.Spec.JobTemplate.Spec.Template.Spec.Containers[0]
-		if container.Image != spec.Image {
-			container.Image = spec.Image
-			drifted = true
-			logger.Info().Str("cronjob", spec.Name).
-				Str("desired", spec.Image).Msg("cronjob image drifted")
-		}
-		if len(spec.Command) > 0 {
-			container.Command = spec.Command
-			drifted = true
-		}
-		if len(spec.Args) > 0 {
-			container.Args = spec.Args
-			drifted = true
-		}
-		if spec.Resources != nil {
-			desiredRes := common.BuildResourceRequirements(spec.Resources)
-			if !common.ResourceRequirementsEqual(container.Resources, desiredRes) {
-				container.Resources = desiredRes
-				drifted = true
-				logger.Info().Str("cronjob", spec.Name).Msg("cronjob resources drifted")
-			}
-		}
-	}
-
-	if !drifted {
-		logger.Debug().
-			Str("cronjob", spec.Name).
-			Str("namespace", namespace).
-			Msg("cronjob in sync — no update needed")
-		return nil
-	}
-
-	_, err = kube.Clientset().BatchV1().CronJobs(namespace).Update(ctx, updated, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("cronjob.Update: updating %q: %w", spec.Name, err)
-	}
-
-	logger.Info().
+	logger.Debug().
 		Str("cronjob", spec.Name).
 		Str("namespace", namespace).
-		Msg("cronjob updated")
+		Str("owner", owner.GetName()).
+		Msg("cronjob applied")
 
 	return nil
+}
+
+// Update applies the CronJob via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedCronJobSpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the CronJob if it exists.

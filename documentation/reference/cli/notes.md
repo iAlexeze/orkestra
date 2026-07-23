@@ -1,11 +1,11 @@
 # ork notes
 
-Browse and search the built-in Orkestra note functions without leaving the terminal.
+Browse and search the built-in Orkestra note functions without leaving the terminal. Pass `-f` to also include user-defined notes from a Katalog or Komposer.
 
 Notes are the template functions available in every Katalog expression — `status.fields`, `mutation`, `validation`, `onCreate`, `onReconcile`, and anywhere else `{{ }}` is evaluated.
 
 ```bash
-ork notes [--domain <domain>] [--no-pager]
+ork notes [-f <katalog-or-komposer>] [--domain <domain>] [--no-pager]
 ork notes search <term>
 ork notes show <name>
 ork notes domains
@@ -17,9 +17,9 @@ ork notes domains
 
 ## Subcommands
 
-### `ork notes`
+### `ork notes [-f <path>]`
 
-List all 115 built-in notes as a paginated table.
+List all 115 built-in notes as a paginated table. Pass `-f` with a path to a Katalog or Komposer to append user-defined notes from that file:
 
 ```text
 DOMAIN        NAME              DESCRIPTION
@@ -30,6 +30,11 @@ cron          cronToMap         Convert a cron string to the structured map shap
 kubernetes    resourceExists    Return true when the object exists in the template context.
 strings       toLower           Convert a string to all lowercase.
 ...
+```
+
+```bash
+ork notes -f katalog.yaml
+ork notes -f komposer.yaml
 ```
 
 Output is piped through `less` when stdout is a terminal. Use `--no-pager` to print directly.
@@ -108,6 +113,7 @@ Available domains:
 
 | Flag | Applies to | Description |
 |------|-----------|-------------|
+| `-f <path>` | `ork notes` | Include user-defined notes from a Katalog or Komposer |
 | `--domain <name>` | `ork notes` | Filter by domain |
 | `--no-pager` | `ork notes`, `search`, `show` | Print directly without paging through `less` |
 

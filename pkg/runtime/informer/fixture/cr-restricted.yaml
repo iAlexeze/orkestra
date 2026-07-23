@@ -1,0 +1,7 @@
+apiVersion: informer.orkestra.io/v1alpha1
+kind: InformerProbe
+metadata:
+  name: probe-restricted
+  namespace: team-b
+spec:
+  name: probe-restricted

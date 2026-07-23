@@ -40,6 +40,10 @@ spec:
                 group: batch
                 version: v1
                 plural: jobs
+            args:
+              maxRetries: 3
+              timeoutSeconds: 300
+              notifyOnSuccess: true
 ```
 
 `reconciler.default: false` tells Orkestra not to use the GenericReconciler. The constructor at `location` provides the complete reconcile implementation.
@@ -56,6 +60,42 @@ The `@version` suffix in `location` is shorthand for the `version:` field — `l
 Use `fetch: true` when pulling the constructor from a remote module you have not yet added to the project. Use `fetch: false` (or omit it) when the module is already a local dependency.
 
 `resources` declares what Kubernetes resources the constructor manages — required for RBAC generation.
+
+`args` passes configuration from the Katalog into the constructor. Orkestra attaches the args to the `kube` client before calling the constructor function — no extra wiring needed.
+
+**String values support Go template expressions**, including strings inside nested maps — the resolver recurses into them. Integers and booleans have no template syntax (YAML parses them as native types) so they are always read as-is. Dynamic string values — those with `{{ }}` — need to be resolved per-CR at reconcile time. The constructor calls `kube.ScopedFor(resolver.TemplateEvaluator())` itself after building its resolver:
+
+```go
+func NewPipelineReconciler(
+    kube kubeclient.KubeClient,
+    informer cache.SharedIndexInformer,
+    ev event.Recorder,
+) domain.Reconciler {
+    // Static args are safe to read at construction time — no templates involved.
+    maxRetries      := kube.Args().Int("maxRetries")
+    notifyOnSuccess := kube.Args().Bool("notifyOnSuccess")
+    return &PipelineReconciler{
+        kube:            kube,   // holds rawArgs; ScopedFor resolves them at reconcile time
+        informer:        informer,
+        event:           ev,
+        maxRetries:      maxRetries,
+        notifyOnSuccess: notifyOnSuccess,
+    }
+}
+
+func (r *PipelineReconciler) Reconcile(ctx context.Context, obj domain.Object) error {
+    resolver := template.NewResolver(ctx, obj)
+    kube := r.kube.ScopedFor(resolver.TemplateEvaluator())  // resolve {{ }} in args
+    ns     := kube.Args().String("namespace")   // "prod" (from {{ .metadata.namespace }})
+    source := kube.Args().String("source")      // "GITHUB" (from {{ upper .spec.source }})
+    _ = ns; _ = source
+    return nil
+}
+```
+
+The full note FuncMap is available — `default`, `upper`, `lower`, and all other note functions work in constructor args exactly as they do in hook args and `onCreate` templates.
+
+For structured access, bind the whole map to a typed struct with `kube.Args().BindArgs(&cfg)`. See the [schema reference](../../reference/schema/02-katalog/04-operatorbox.md) for the full `args` API.
 
 !!! note Constructor Ownership
     `onCreate`, `onReconcile`, `onDelete`, `hooks`, and `status.fields` are all ignored when `default: false`. The constructor owns status management directly.

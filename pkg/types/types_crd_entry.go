@@ -268,6 +268,93 @@ type CRDEntry struct {
 	// into OnReconcile at Katalog load time.
 	// Required inputs not provided in with: are a validation error.
 	Imports []MotifImport `yaml:"imports,omitempty" json:"imports,omitempty"`
+
+	// IDP exposes this CRD through the Gateway Apply API as a developer portal
+	// surface. When enabled, the Control Center renders a [+ Create] button for
+	// this CRD and serves its schema via GET /api/v1/schema/{kind}.
+	IDP *IDPConfig `yaml:"idp,omitempty" json:"idp,omitempty"`
+}
+
+// IDPConfig declares IDP exposure settings for a CRD entry.
+type IDPConfig struct {
+	// Enabled surfaces this CRD in the Control Center as a self-service form.
+	// Requires gateway.applyAPI.enabled: true on the Katalog.
+	// Default: false.
+	Enabled bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+
+	// Include is a path (relative to the katalog file) to a YAML file whose
+	// top-level keys are IDPFieldConfig entries. Expanded at load time — the
+	// result is merged into Fields, with inline Fields taking precedence.
+	Include string `yaml:"include,omitempty" json:"include,omitempty"`
+
+	// Fields provides presentation hints layered on top of the CRD's OpenAPI
+	// schema. Each key matches a field path in spec. Hints are merged with the
+	// schema at GET /api/v1/schema/{kind} time — they do not replace the schema.
+	Fields map[string]IDPFieldConfig `yaml:"fields,omitempty" json:"fields,omitempty"`
+
+	// IgnoreFields lists spec field names that should never appear in the IDP
+	// form, even though they exist in the CRD schema. Use this to hide
+	// system-managed or operator-internal fields from developers.
+	IgnoreFields []string `yaml:"ignoreFields,omitempty" json:"ignoreFields,omitempty"`
+
+	// Category is a catalog label used when listing available schemas
+	// via GET /api/v1/schema/. Example: "Compute", "Data", "Security".
+	Category string `yaml:"category,omitempty" json:"category,omitempty"`
+
+	// Description is a short human-readable summary shown in the service catalog.
+	// Falls back to the CRD-level description when not set.
+	Description string `yaml:"description,omitempty" json:"description,omitempty"`
+
+	// ForceConflict, when true, sets Force: true on every server-side apply
+	// for this CRD — the gateway takes ownership of any conflicting fields
+	// rather than surfacing a conflict error. Equivalent to helm --force-conflict.
+	// Can be overridden per-request with ?overwrite=true regardless of this setting.
+	// Default: false.
+	ForceConflict bool `yaml:"forceConflict,omitempty" json:"forceConflict,omitempty"`
+}
+
+// IDPFieldConfig holds display hints for one spec field in the IDP form.
+type IDPFieldConfig struct {
+	// Label overrides the field name in the rendered form.
+	Label string `yaml:"label,omitempty" json:"label,omitempty"`
+
+	// Placeholder is the input placeholder text.
+	Placeholder string `yaml:"placeholder,omitempty" json:"placeholder,omitempty"`
+
+	// Hint is descriptive text rendered below the field.
+	Hint string `yaml:"hint,omitempty" json:"hint,omitempty"`
+
+	// Order controls position in the rendered form. Lower values appear first.
+	// Fields with no order (0) appear after all explicitly ordered fields.
+	Order int `yaml:"order,omitempty" json:"order,omitempty"`
+
+	// Category is a section heading for visual grouping. Fields sharing a category
+	// are rendered under the same heading. Works with When — if all fields in
+	// a category are hidden, the heading is also hidden.
+	Category string `yaml:"category,omitempty" json:"category,omitempty"`
+
+	// When is a list of conditions that must ALL be true for this field to be
+	// visible. Evaluated client-side as the user fills the form. An empty When
+	// means the field is always visible.
+	// Supports: equals, notEquals, time, dayOfWeek, cron, negate — same as
+	// template source when: blocks.
+	When []Condition `yaml:"when,omitempty" json:"when,omitempty"`
+
+	// AnyOf is a list of conditions where at least ONE must be true for the
+	// field to be visible. OR counterpart to When (AND).
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Required, when true, marks the field as mandatory in the IDP form.
+	// The browser enforces this natively — the label shows an asterisk and the
+	// form cannot be submitted while the field is empty. Has no effect on
+	// fields that are currently hidden by a when: or anyOf: condition.
+	// For server-side enforcement use validation.rules with action: deny.
+	Required bool `yaml:"required,omitempty" json:"required,omitempty"`
+
+	// Disabled, when non-empty, renders the field greyed out with this string
+	// as the reason. The field is excluded from form submission.
+	// Use for maintenance windows or temporarily locked fields.
+	Disabled string `yaml:"disabled,omitempty" json:"disabled,omitempty"`
 }
 
 type ConversionVersionSpec struct {
@@ -289,4 +376,23 @@ type EndpointsConfig struct {
 
 	// Info controls whether the /info endpoint is served.
 	Info *bool `yaml:"info,omitempty" json:"info,omitempty"`
+}
+
+// IDPEnabled reports whether IDP is configured and enabled for this CRD.
+func (c *CRDEntry) IDPEnabled() bool {
+	return c.IDP != nil && c.IDP.Enabled
+}
+
+func (e EndpointsConfig) IsHealthEnabled() bool {
+	if e.Enabled != nil && !*e.Enabled {
+		return false
+	}
+	return e.Health == nil || *e.Health
+}
+
+func (e EndpointsConfig) IsInfoEnabled() bool {
+	if e.Enabled != nil && !*e.Enabled {
+		return false
+	}
+	return e.Info == nil || *e.Info
 }

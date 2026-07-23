@@ -6,10 +6,10 @@ import (
 	"fmt"
 
 	"github.com/orkspace/orkestra/cmd/internal"
-	"github.com/orkspace/orkestra/pkg/devserver"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/registry"
+	"github.com/orkspace/orkestra/pkg/tools/devserver"
 	"github.com/spf13/cobra"
 )
 

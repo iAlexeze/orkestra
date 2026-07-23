@@ -146,10 +146,23 @@ type ValidationRule struct {
 	Operator  ConditionOperator `yaml:"operator,omitempty" json:"operator,omitempty"`
 	Value     string            `yaml:"value,omitempty" json:"value,omitempty"`
 	ValueType string            `yaml:"valueType,omitempty"` // "string", "int" or "integer", "float" or "number", "bool" or "boolean"
+
+	// When — all conditions must pass for this rule to be evaluated (AND).
+	// Empty means unconditional.
+	When []Condition `yaml:"when,omitempty" json:"when,omitempty"`
+
+	// AnyOf — at least one condition must pass for this rule to be evaluated (OR).
+	// When both When and AnyOf are declared, both blocks must pass.
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 }
 
 // ValidationConfig holds all validation rules for a CRD.
 type ValidationConfig struct {
+	// Include is a path (relative to the katalog file) to a YAML file whose
+	// top-level value is a list of ValidationRule entries. Expanded at load
+	// time — included rules come first, inline rules append after.
+	Include string `yaml:"include,omitempty" json:"include,omitempty"`
+
 	// Rules — evaluated in declaration order.
 	// All rules are evaluated before returning — all violations are reported
 	// together so the user can fix everything in one cycle.
@@ -224,10 +237,21 @@ type MutationRule struct {
 
 	// Value type
 	ValueType string `yaml:"valueType,omitempty"` // "string", "int" or "integer", "float" or "number", "bool" or "boolean"
+
+	// When — all conditions must pass for this rule to be applied (AND).
+	When []Condition `yaml:"when,omitempty" json:"when,omitempty"`
+
+	// AnyOf — at least one condition must pass for this rule to be applied (OR).
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 }
 
 // MutationConfig holds all mutation rules for a CRD.
 type MutationConfig struct {
+	// Include is a path (relative to the katalog file) to a YAML file whose
+	// top-level value is a list of MutationRule entries. Expanded at load
+	// time — included rules come first, inline rules append after.
+	Include string `yaml:"include,omitempty" json:"include,omitempty"`
+
 	// Rules — applied in declaration order.
 	Rules []MutationRule `yaml:"rules,omitempty" json:"rules,omitempty"`
 

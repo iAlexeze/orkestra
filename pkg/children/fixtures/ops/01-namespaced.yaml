@@ -1,0 +1,34 @@
+x-base-op: &base-op
+  cycle: 1
+  verb: apply
+
+ops:
+  # DEV Environment
+  - <<: *base-op
+    verb: create
+    resource: namespaces
+    name: acme-dev
+  - <<: *base-op
+    resource: networkpolicies
+    name: acme-acme-dev-deny-all
+  - <<: *base-op
+    resource: resourcequotas
+    name: acme-acme-dev-quota
+  - <<: *base-op
+    resource: limitranges
+    name: acme-acme-dev-limits
+  
+  # STAGING Environment
+  - <<: *base-op
+    verb: create
+    resource: namespaces
+    name: acme-staging
+  - <<: *base-op
+    resource: networkpolicies
+    name: acme-acme-staging-deny-all
+  - <<: *base-op
+    resource: resourcequotas
+    name: acme-acme-staging-quota
+  - <<: *base-op
+    resource: limitranges
+    name: acme-acme-staging-limits

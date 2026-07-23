@@ -6,6 +6,7 @@ import "fmt"
 // Profiles are resolved before built-ins at validate and reconcile time.
 // Template expressions in profile field values are allowed and resolved at reconcile time.
 type ProfileRegistry struct {
+	Include           string                        `yaml:"include,omitempty"            json:"include,omitempty"`
 	NetworkPolicies   []NetworkPolicyProfileDef     `yaml:"networkPolicies,omitempty"    json:"networkPolicies,omitempty"`
 	ResourceQuotas    []ResourceQuotaProfileDef     `yaml:"resourceQuotas,omitempty"     json:"resourceQuotas,omitempty"`
 	LimitRanges       []LimitRangeProfileDef        `yaml:"limitRanges,omitempty"        json:"limitRanges,omitempty"`

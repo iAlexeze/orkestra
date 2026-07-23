@@ -9,6 +9,15 @@ package types
 //	  enabled: true     # explicitly enable gateway installation
 //	  standalone: true  # gateway runs without a companion runtime operator
 //	  endpoint: ""      # leave empty when standalone; sets this when paired with runtime
+//	  applyAPI:
+//	    enabled: true
+//	    auth:
+//	      tokens:
+//	        - name: ci-pipeline
+//	          secretRef:
+//	            name: ork-apply-token
+//	            key: token
+//	            rotateAfter: 90d
 type GatewayConfig struct {
 	// Enabled declares whether the gateway should be installed for this katalog.
 	// When true, this means:
@@ -27,6 +36,65 @@ type GatewayConfig struct {
 	// Endpoint is the HTTP base URL of the gateway, used by the runtime to locate it.
 	// Leave empty in standalone deployments.
 	Endpoint string `yaml:"endpoint,omitempty" json:"endpoint,omitempty"`
+
+	// ApplyAPI enables the CRUD REST surface for CRs on this gateway.
+	ApplyAPI *ApplyAPIConfig `yaml:"applyAPI,omitempty" json:"applyAPI,omitempty"`
+}
+
+// ApplyAPIConfig enables and configures the Gateway Apply API.
+type ApplyAPIConfig struct {
+	// Enabled activates the Apply API handlers on the gateway.
+	// When true, the gateway registers POST /api/v1/apply,
+	// GET/DELETE /api/v1/resources/..., and GET /api/v1/schema/... routes.
+	// Default: false.
+	Enabled bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+
+	// Auth configures bearer token authentication for Apply API requests.
+	Auth ApplyAPIAuth `yaml:"auth,omitempty" json:"auth,omitempty"`
+}
+
+// ApplyAPIAuth holds the token list for Apply API authentication.
+type ApplyAPIAuth struct {
+	// Tokens is the list of accepted bearer tokens. Every Apply API request
+	// must include Authorization: Bearer <token> matching one entry.
+	Tokens []ApplyAPIToken `yaml:"tokens,omitempty" json:"tokens,omitempty"`
+}
+
+// ApplyAPIToken is one bearer token entry.
+// Exactly one of SecretRef or Token must be set.
+type ApplyAPIToken struct {
+	// Name is a human-readable identifier used in logs and audit output.
+	Name string `yaml:"name" json:"name"`
+
+	// SecretRef reads the token value from a Kubernetes Secret at startup.
+	// If the Secret does not exist, the gateway creates it with a generated
+	// uuidv4 token. If rotateAfter is set, the gateway rotates the token
+	// using the same annotation-based rotation as pkg/runners.
+	SecretRef *ApplyAPISecretRef `yaml:"secretRef,omitempty" json:"secretRef,omitempty"`
+
+	// Token is an ${ENV_VAR} reference expanded at startup.
+	// Set the variable via extraEnv in the gateway and controlCenter Helm values.
+	// Literal values are not accepted.
+	Token string `yaml:"token,omitempty" json:"token,omitempty"`
+}
+
+// ApplyAPISecretRef locates a Kubernetes Secret that holds a bearer token.
+type ApplyAPISecretRef struct {
+	// Name is the Kubernetes Secret name.
+	Name string `yaml:"name" json:"name"`
+
+	// Key is the data key within the Secret whose value is the token.
+	Key string `yaml:"key" json:"key"`
+
+	// Namespace is the Secret's namespace.
+	// Defaults to Orkestra's own namespace when empty.
+	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty"`
+
+	// RotateAfter is an optional duration (e.g. "90d", "720h").
+	// When set, the gateway checks the orkestra.io/generated-at annotation on
+	// the Secret; if the age exceeds this duration, it deletes and recreates
+	// the Secret with a new uuidv4 token.
+	RotateAfter string `yaml:"rotateAfter,omitempty" json:"rotateAfter,omitempty"`
 }
 
 // KatalogFile is the top-level structure of a crd-katalog.yaml file.
@@ -57,6 +125,11 @@ type KatalogFile struct {
 	// source Katalogs, notification blocks are merged — source teams are inherited
 	// and the Komposer's own teams win on name conflict.
 	Notification *KatalogNotification `yaml:"notification,omitempty"`
+
+	// Notes declares user-defined note functions available to all CRDs in this Katalog.
+	// Notes are named template expressions that compose built-in notes and Go template
+	// syntax. Once declared, a note is callable by name in any template expression.
+	Notes NoteRegistry `yaml:"notes,omitempty"`
 
 	// Profiles declares named profiles available to all CRDs in this Katalog.
 	// Profiles are resolved before built-in Orkestra profiles at both validate
@@ -247,6 +320,12 @@ type HelmSource struct {
 // KatalogSpec holds the actual CRD definitions.
 // This is what the merger produces after resolving all sources.
 type KatalogSpec struct {
+	// Imports declares Motifs whose profiles are merged into the Katalog-wide
+	// ProfileRegistry. Only profiles: from each Motif are consumed here;
+	// resources, status, and admission declarations in the Motif are ignored
+	// at this level. Use spec.crds[name].imports for those.
+	Imports []MotifImport `yaml:"imports,omitempty"`
+
 	// Finalizers — Katalog-level finalizers applied to all CRDs
 	// unless overridden at the CRD level.
 	Finalizers []string `yaml:"finalizers,omitempty"`

@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	sigs "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -18,6 +19,22 @@ type KubeClient interface {
 	Clientset() kubernetes.Interface
 	DynamicClient() dynamic.Interface
 	Mapper() meta.RESTMapper
+	RestConfig() *rest.Config
+
+	// Args returns the args declared under hooks.args or constructor.args in katalog.yaml.
+	// Returns an empty Args map when no args were declared.
+	Args() Args
+
+	// WithArgs returns a copy of this KubeClient with the given args attached.
+	// Used by the runtime to inject per-CRD args before calling a hook or constructor.
+	WithArgs(args Args) KubeClient
+
+	// ScopedFor evaluates any template expressions in the rawArgs using eval and
+	// returns a copy of this KubeClient with the resolved args attached.
+	// Called by GenericReconciler after building the resolver so hook authors see
+	// fully-evaluated args without any extra wiring. Constructor authors call it
+	// themselves using their own resolver.
+	ScopedFor(eval func(string) (string, bool)) KubeClient
 
 	// CRUD — typed object operations for constructor reconcilers.
 	// Accepts sigs.k8s.io/controller-runtime/pkg/client.Object so reconcilers

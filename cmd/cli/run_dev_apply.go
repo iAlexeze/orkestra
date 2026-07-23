@@ -11,7 +11,7 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/merger"
-	orkpkg "github.com/orkspace/orkestra/pkg/ork"
+	orkpkg "github.com/orkspace/orkestra/pkg/tools/cluster"
 )
 
 // applyPreRuntimeResources applies all pre-runtime resources declared in the

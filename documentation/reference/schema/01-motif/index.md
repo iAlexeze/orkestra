@@ -42,6 +42,11 @@ profiles:                              # optional → see profiles schema
   containerSecurity: [...]
   podSecurity: [...]
 
+notes:                                 # optional — user-defined template functions
+  functions:
+    - name: serviceHost
+      expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+
 inputs:
   - name: image
     description: PostgreSQL image
@@ -167,6 +172,30 @@ ork patterns --kind Motif
 
 ---
 
+## `notes`
+
+A Motif can declare user-defined template functions in a `notes.functions:` block. When the Katalog imports the Motif, its notes are merged into the Katalog's FuncMap alongside the Katalog's own notes and all built-ins.
+
+```yaml
+notes:
+  functions:
+    - name: serviceHost
+      description: Cluster-local service hostname
+      expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | yes | Function name. Called as `{{ noteName }}` in templates. Must be a valid Go identifier. |
+| `expression` | yes | Go template expression. May call built-in notes and any other declared note. |
+| `description` | no | Human-readable description. Shown in `ork validate --notes`. |
+
+If the same note name appears in both the Katalog and an imported Motif, it is a hard error at load time.
+
+→ Full reference: [Notes concept](../../../concepts/notes/index.md)
+
+---
+
 ## `profiles`
 
 A Motif can declare its own `profiles:` block. When a Katalog imports the Motif, its profiles are merged into the Katalog's registry and become available to all CRD entries.
@@ -196,6 +225,7 @@ If the same profile name appears in the same class in both the Katalog and an im
 | [01-inputs.md](01-inputs.md) | `inputs` — declaration, required/optional, defaults, type hints |
 | [02-resources.md](02-resources.md) | `resources` — blocks, template context, `onCreate`, `status`, `admission` |
 | [03-importing.md](03-importing.md) | Importing into a Katalog — `imports:`, `with:` bindings, multiple Motifs |
+| [Notes concept](../../../concepts/notes/index.md) | User-defined notes — expression syntax, built-in reference, composition |
 
 ---
 

@@ -24,6 +24,11 @@ package types
 //	        replicas: "{{ .spec.replicas }}"
 //	        theme: "default"   # default — v1 has no theme field
 type CRDConversion struct {
+	// Include is a path (relative to the katalog file) to a YAML file whose
+	// top-level value is a list of ConversionPath entries under a "paths:" key.
+	// Expanded at load time — included paths come first, inline paths append after.
+	Include string `yaml:"include,omitempty" json:"include,omitempty"`
+
 	// Participant marks this CRD as a conversion participant without declaring
 	// conversion paths. Use this on the stable/storage-version CRD when the
 	// conversion paths are declared on the other version. Both CRDs need to

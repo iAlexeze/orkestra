@@ -1,0 +1,46 @@
+x-base-op: &base-op
+  cycle: 1
+  verb: apply
+
+ops:
+  # API Workloads
+  - <<: *base-op
+    resource: deployments
+    name: acme-api
+  - <<: *base-op
+    resource: statefulsets
+    name: acme-api-sts
+  - <<: *base-op
+    resource: replicasets
+    name: acme-api-rs
+  - <<: *base-op
+    resource: pods
+    name: acme-api-pod
+  - <<: *base-op
+    verb: create
+    resource: jobs
+    name: acme-api-job
+  - <<: *base-op
+    resource: cronjobs
+    name: acme-api-cron
+  
+  # Worker Workloads
+  - <<: *base-op
+    resource: deployments
+    name: acme-worker
+  - <<: *base-op
+    resource: statefulsets
+    name: acme-worker-sts
+  - <<: *base-op
+    resource: replicasets
+    name: acme-worker-rs
+  - <<: *base-op
+    resource: pods
+    name: acme-worker-pod
+  - <<: *base-op
+    verb: create
+    resource: jobs
+    name: acme-worker-job
+  - <<: *base-op
+    resource: cronjobs
+    name: acme-worker-cron

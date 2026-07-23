@@ -374,6 +374,43 @@ func (k *Katalog) GenerateGatewayRBACRules() []rbacv1.PolicyRule {
 	}
 
 	// ───────────────────────────────────────────────
+	// Apply API — secretRef token bootstrap/rotation
+	// ───────────────────────────────────────────────
+	// get: read existing token; create: self-bootstrap when Secret is absent.
+	// Uses the same annotation-based rotation as pkg/runners secrets_once.go.
+	if k.HasApplyAPISecretRefs() {
+		rules = append(rules, rbacv1.PolicyRule{
+			APIGroups: []string{""},
+			Resources: []string{"secrets"},
+			Verbs:     []string{"get", "create"},
+		})
+	}
+
+	// ───────────────────────────────────────────────
+	// Apply API — CR create/update/delete/get/list
+	// ───────────────────────────────────────────────
+	if k.HasIDPEnabled() {
+		for _, crd := range k.Enabled() {
+			if !crd.IDPEnabled() {
+				continue
+			}
+			rules = append(rules, rbacv1.PolicyRule{
+				APIGroups: []string{crd.APITypes.Group},
+				Resources: []string{crd.APITypes.Plural},
+				Verbs:     []string{"get", "list", "create", "update", "patch", "delete"},
+			})
+			// Schema endpoint reads the CRD object to extract the OpenAPI spec.
+			// Scoped to the exact CRD name — least-privilege get only.
+			rules = append(rules, rbacv1.PolicyRule{
+				APIGroups:     []string{"apiextensions.k8s.io"},
+				Resources:     []string{"customresourcedefinitions"},
+				Verbs:         []string{"get"},
+				ResourceNames: []string{crd.APITypes.Plural + "." + crd.APITypes.Group},
+			})
+		}
+	}
+
+	// ───────────────────────────────────────────────
 	// CRD CA bundle patching (conversion webhooks)
 	// ───────────────────────────────────────────────
 	for _, crd := range k.Enabled() {

@@ -1,0 +1,52 @@
+rules:
+  - field: spec.team
+    operator: exists
+    message: "spec.team is required — all platform resources must declare team ownership"
+    action: deny
+
+  - field: spec.workloadType
+    operator: in
+    value: "app,cert,monitoring"
+    message: "spec.workloadType must be one of: app, cert, monitoring"
+    action: deny
+
+  - field: spec.environment
+    operator: in
+    value: "staging,production"
+    message: "spec.environment must be staging or production"
+    action: deny
+
+  # Deny when: cert workload is missing a domain — only applies to cert workloads.
+  - field: spec.domain
+    operator: exists
+    message: "spec.domain is required for cert workloads"
+    action: deny
+    when:
+      - field: spec.workloadType
+        equals: cert
+
+  # Deny when: anyOf — app or monitoring workload must declare a repoURL.
+  - field: spec.repoURL
+    operator: exists
+    message: "spec.repoURL is required for app and monitoring workloads"
+    action: deny
+    anyOf:
+      - field: spec.workloadType
+        equals: app
+      - field: spec.workloadType
+        equals: monitoring
+
+  # Unique domain per cluster — no two certs share a domain.
+  - field: spec.domain
+    operator: unique
+    message: "spec.domain must be unique — a certificate for this domain already exists"
+    action: deny
+
+  # Warn when: production deploy missing an approval ticket.
+  - field: spec.productionApproval
+    operator: exists
+    message: "production deploys should include a productionApproval ticket"
+    action: warn
+    when:
+      - field: spec.environment
+        equals: production

@@ -150,12 +150,19 @@ func ResolveCRDFiles(path string) ([]byte, error) {
 			return nil, fmt.Errorf("CRD %q: %w", name, err)
 		}
 
-		entry["apiTypes"] = map[string]interface{}{
-			"group":   apiTypes.Group,
-			"version": apiTypes.Version,
-			"kind":    apiTypes.Kind,
-			"plural":  apiTypes.Plural,
+		// Merge: start from whatever apiTypes the user already declared so that
+		// typed-mode fields (location, object, objectList, alias, apiPath) are
+		// preserved. Overwrite only the structural fields that crdFile is
+		// authoritative for (group, version, kind, plural).
+		existing, _ := entry["apiTypes"].(map[string]interface{})
+		if existing == nil {
+			existing = map[string]interface{}{}
 		}
+		existing["group"] = apiTypes.Group
+		existing["version"] = apiTypes.Version
+		existing["kind"] = apiTypes.Kind
+		existing["plural"] = apiTypes.Plural
+		entry["apiTypes"] = existing
 		delete(entry, "crdFile")
 		crds[name] = entry
 	}

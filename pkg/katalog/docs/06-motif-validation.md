@@ -6,7 +6,7 @@ Motifs are reusable infrastructure templates (databases, caches, brokers) that a
 
 Motif validation runs in two layers:
 
-### Layer 1 — Structural (pkg/motif/loader.go)
+### Layer 1 — Structural (pkg/registry/motif/loader.go)
 
 `motif.Load(path)` reads a Motif YAML file and decodes it with `utils.StrictUnmarshal` — the same strict decoder used for Katalog and Komposer YAML. Unknown fields are rejected immediately, before any semantic checks run.
 
@@ -64,7 +64,7 @@ This runs after the Motif file passes structural validation, so both layers must
 
 ```
 operatorBox.imports:
-  - motif: postgres          # resolved via pkg/motif loader
+  - motif: postgres          # resolved via pkg/registry/motif loader
     with:
       image: "{{ .data.postgresImage }}"
       volumeSize: "{{ .data.postgresVolumeSize }}"

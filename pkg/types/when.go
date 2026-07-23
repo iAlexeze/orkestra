@@ -44,8 +44,8 @@ import (
 // nil disables template evaluation — all existing callers are backward-compatible.
 type TemplateEvaluator func(tmpl string) (string, bool)
 
-// isTemplate returns true when s contains a Go template expression.
-func isTemplate(s string) bool { return strings.Contains(s, "{{") }
+// IsTemplate reports whether s contains a Go template expression.
+func IsTemplate(s string) bool { return strings.Contains(s, "{{") }
 
 // EvaluateWhen evaluates when: (allOf, AND) and anyOf: (OR) conditions.
 // data is resolver.Data() — full CR map including children, external, cross.
@@ -83,6 +83,14 @@ func EvaluateWhen(data map[string]interface{}, allOf []Condition, anyOf []Condit
 // Time-based conditions (time:, dayOfWeek:, cron:) are evaluated against the
 // current wall clock — they do not reference the data map.
 func EvaluateOneCond(data map[string]interface{}, cond Condition, eval TemplateEvaluator) bool {
+	result := evaluateOneCond(data, cond, eval)
+	if cond.Negate {
+		return !result
+	}
+	return result
+}
+
+func evaluateOneCond(data map[string]interface{}, cond Condition, eval TemplateEvaluator) bool {
 	// ── Time-based conditions ─────────────────────────────────────────────────
 
 	if cond.Time != nil {
@@ -103,6 +111,7 @@ func EvaluateOneCond(data map[string]interface{}, cond Condition, eval TemplateE
 			}
 		}
 		// Stateless fallback: window open if a cron fire occurred within duration.
+		// When duration is unset, defaults to one natural period of the schedule.
 		return evalCronWindow(cond.Cron, cond.Duration.Duration, time.Now())
 	}
 
@@ -111,7 +120,7 @@ func EvaluateOneCond(data map[string]interface{}, cond Condition, eval TemplateE
 	// ── Template expected-value resolution ────────────────────────────────
 	// If the comparison value itself is a template expression, evaluate it so
 	// conditions like `equals: "{{ .spec.image }}"` work as intended.
-	if isTemplate(expected) && eval != nil {
+	if IsTemplate(expected) && eval != nil {
 		if resolved, ok := eval(expected); ok {
 			expected = resolved
 		}
@@ -120,7 +129,7 @@ func EvaluateOneCond(data map[string]interface{}, cond Condition, eval TemplateE
 	// ── Template field resolution ──────────────────────────────────────────
 	// If the field is a template expression, evaluate it through the resolver.
 	// The string result is used for operator comparison — same logic as dot path.
-	if isTemplate(cond.Field) && eval != nil {
+	if IsTemplate(cond.Field) && eval != nil {
 		result, ok := eval(cond.Field)
 		if !ok {
 			return false // fail silently — same behaviour as missing dot path
@@ -379,9 +388,23 @@ func evalTimeWindow(tw *TimeWindow, now time.Time) bool {
 	return true
 }
 
+// EvalDayOfWeekAt is the exported entry point for tests that need a fixed clock.
+func EvalDayOfWeekAt(d *DayOfWeekCondition, now time.Time) bool {
+	return evalDayOfWeek(d, now)
+}
+
 // evalDayOfWeek returns true when today matches the declared day constraint.
 func evalDayOfWeek(d *DayOfWeekCondition, now time.Time) bool {
-	today := now.Weekday().String()
+	wd := now.Weekday()
+	if d.Weekday != nil {
+		isWeekday := wd >= time.Monday && wd <= time.Friday
+		return *d.Weekday == isWeekday
+	}
+	if d.Weekend != nil {
+		isWeekend := wd == time.Saturday || wd == time.Sunday
+		return *d.Weekend == isWeekend
+	}
+	today := wd.String()
 	if len(d.In) > 0 {
 		for _, day := range d.In {
 			if strings.EqualFold(day, today) {
@@ -403,16 +426,21 @@ func evalDayOfWeek(d *DayOfWeekCondition, now time.Time) bool {
 
 // evalCronWindow returns true when a cron-defined window is currently open.
 // The window opens at each cron fire and stays open for duration.
-// When duration is zero a 60s default is used — callers should always set it.
+// When duration is zero the window defaults to one natural period of the schedule
+// (the interval between two consecutive future fires), so the condition stays open
+// from the previous fire until the next one regardless of the reconcile interval.
 func evalCronWindow(cronExpr string, duration time.Duration, now time.Time) bool {
 	schedule, err := cron.ParseStandard(cronExpr)
 	if err != nil {
 		return false
 	}
 	if duration == 0 {
-		duration = 60 * time.Second
+		// Derive the natural period from two consecutive fires.
+		next := schedule.Next(now)
+		period := schedule.Next(next).Sub(next)
+		duration = period
 	}
-	// Find the most recent fire before now.
+	// Window is open if a fire occurred within the last duration.
 	prev := schedule.Next(now.Add(-duration))
 	return !prev.After(now)
 }

@@ -96,7 +96,7 @@ The patch variables (`kubeclient.MergeFrom`, `sigs.MergeFrom`) are interchangeab
 
 ## Simulation
 
-`FakeKubeclient` (in `pkg/simulate`) stubs all three methods:
+`FakeKubeclient` (in `pkg/registry/simulate`) stubs all three methods:
 
 - `Get` records a `get` op and returns a NotFound error, so the reconciler always takes the `Create` path on every simulated cycle.
 - `Create` and `Patch` record their ops and return nil.

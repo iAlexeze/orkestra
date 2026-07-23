@@ -3,10 +3,12 @@ package ingresses
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -17,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 // Create creates an Ingress owned by the CR if it does not already exist.
@@ -59,12 +62,11 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update reconciles an existing Ingress to match the resolved spec.
-// Patches host, backend service, port, and TLS when drift is detected.
-// If the Ingress does not exist, creates it.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedIngressSpec) error {
+// Apply creates or updates an Ingress using Server-Side Apply.
+// Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedIngressSpec) error {
 	if err := validateSpec(spec); err != nil {
-		return fmt.Errorf("ingress.Update: invalid spec: %w", err)
+		return fmt.Errorf("ingress.Apply: invalid spec: %w", err)
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
@@ -72,68 +74,33 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		return err
 	}
 
-	existing, err := kube.Clientset().NetworkingV1().Ingresses(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
+	ing := buildIngress(owner, spec, namespace)
+	ing.TypeMeta = metav1.TypeMeta{APIVersion: "networking.k8s.io/v1", Kind: "Ingress"}
+
+	body, err := json.Marshal(ing)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info().
-				Str("ingress", spec.Name).
-				Str("namespace", namespace).
-				Msg("ingress not found during reconcile — recreating")
-			return Create(ctx, kube, owner, spec)
-		}
-		return fmt.Errorf("ingress.Update: getting ingress %q: %w", spec.Name, err)
+		return fmt.Errorf("ingress.Apply: marshal: %w", err)
 	}
 
-	desired := buildIngress(owner, spec, namespace)
-	drifted := false
-	updated := existing.DeepCopy()
-
-	// Reconcile rules
-	if len(desired.Spec.Rules) > 0 {
-		if len(existing.Spec.Rules) == 0 ||
-			existing.Spec.Rules[0].Host != desired.Spec.Rules[0].Host ||
-			(len(existing.Spec.Rules[0].HTTP.Paths) > 0 &&
-				existing.Spec.Rules[0].HTTP.Paths[0].Backend.Service != nil &&
-				existing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number != spec.ServicePort) {
-			updated.Spec.Rules = desired.Spec.Rules
-			drifted = true
-		}
+	if _, err = kube.Clientset().NetworkingV1().Ingresses(namespace).Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		return fmt.Errorf("ingress.Apply: %w", err)
 	}
 
-	// Reconcile TLS
-	tlsMatch := len(existing.Spec.TLS) == len(desired.Spec.TLS)
-	if tlsMatch && len(desired.Spec.TLS) > 0 {
-		tlsMatch = existing.Spec.TLS[0].SecretName == desired.Spec.TLS[0].SecretName
-	}
-	if !tlsMatch {
-		updated.Spec.TLS = desired.Spec.TLS
-		drifted = true
-	}
-
-	// Reconcile IngressClassName
-	if desired.Spec.IngressClassName != nil {
-		if existing.Spec.IngressClassName == nil || *existing.Spec.IngressClassName != *desired.Spec.IngressClassName {
-			updated.Spec.IngressClassName = desired.Spec.IngressClassName
-			drifted = true
-		}
-	}
-
-	if !drifted {
-		logger.Debug().Str("ingress", spec.Name).Msg("ingress in sync — no update needed")
-		return nil
-	}
-
-	_, err = kube.Clientset().NetworkingV1().Ingresses(namespace).Update(ctx, updated, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("ingress.Update: updating ingress %q: %w", spec.Name, err)
-	}
-
-	logger.Info().
+	logger.Debug().
 		Str("ingress", spec.Name).
 		Str("namespace", namespace).
-		Msg("ingress updated")
+		Str("owner", owner.GetName()).
+		Msg("ingress applied")
 
 	return nil
+}
+
+// Update applies the Ingress via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedIngressSpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the Ingress if it exists.

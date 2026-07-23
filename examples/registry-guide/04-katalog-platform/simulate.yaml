@@ -15,10 +15,10 @@ spec:
     noErrors: true
     ops:
       - cycle: 1
-        verb: create
+        verb: apply
         resource: deployments
         name: my-platform-app
       - cycle: 1
-        verb: create
+        verb: apply
         resource: services
         name: my-platform-app-svc

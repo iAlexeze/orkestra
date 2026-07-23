@@ -4,7 +4,7 @@ Thank you for your interest in improving Orkestra’s internal resources!
 
 ## What to Contribute
 
-- **New resource types** – e.g., `HorizontalPodAutoscaler`, `NetworkPolicy`, `Ingress`.
+- **New resource types** – additional Kubernetes resource packages.
 - **Improvements** – bug fixes, performance optimisations, better error messages.
 - **Test coverage** – unit tests for existing or new resources.
 
@@ -22,9 +22,10 @@ Thank you for your interest in improving Orkestra’s internal resources!
 Follow the steps outlined in the [README](./README.md). Make sure to:
 
 - Add the template source type to `pkg/types/hooks.go`.
-- Implement the four functions in your subdirectory.
+- Implement `Create`, `Apply`, `Update` (delegates to `Apply`), `Delete`, and `Resolve` in your subdirectory.
+- Set `TypeMeta` (`APIVersion` + `Kind`) before marshaling in `Apply` — required for SSA.
 - Add a resolver method in `template/resolver.go`.
-- Add a runner in `pkg/reconciler/`.
+- Add a runner in `pkg/runtime/reconciler/`.
 - Wire the runner in `generic.go`.
 - Write unit tests covering all functions.
 
@@ -39,7 +40,7 @@ Follow the steps outlined in the [README](./README.md). Make sure to:
 
 - Each resource must have a test file with at least:
   - Test for `Create` (resource created, already exists).
-  - Test for `Update` (drift detection, update, creation).
+  - Test for `Apply` (SSA patch issued, immutable-field fallback if applicable).
   - Test for `Delete` (resource exists, not exists).
   - Test for `Resolve` (defaults, labels).
 

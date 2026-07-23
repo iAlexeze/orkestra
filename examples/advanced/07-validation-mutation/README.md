@@ -221,7 +221,7 @@ kubectl get website warn-site -o yaml | grep -A5 "ValidationWarning"
 ## Step 5 — Check the metrics
 
 ```bash
-kubectl port-forward svc/orkestra-runtime 8080:8080 -n orkestra-system &
+ork proxy
 
 curl localhost:8080/katalog/website | jq '{
   "reconcileTotal": .reconcileTotal,

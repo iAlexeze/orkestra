@@ -42,7 +42,7 @@ operatorBox:
 
 ## Result context
 
-After a call completes, four fields are available under `.external.<name>`:
+After a call completes, the following fields are available under `.external.<name>`:
 
 | Field | Type | Description |
 |---|---|---|
@@ -50,22 +50,31 @@ After a call completes, four fields are available under `.external.<name>`:
 | `.body` | `string` | First 4096 bytes of the response body. Truncated silently for larger responses. |
 | `.error` | `string` | Error message when the call failed — includes `"expected status 200, got 403"` for status mismatches. Empty on success. |
 | `.called` | `string` | `"true"` when the call ran. `"false"` when skipped because `when:`/`anyOf:` conditions failed. |
+| `.<key>` | any | When the response body is a valid JSON object, its top-level keys are merged directly into `.external.<name>` and are navigable by dot path. |
+
+If the response is `{ "queue": { "pendingJobs": 8 } }` and the call is named `metrics`, then `.external.metrics.queue.pendingJobs` resolves to `8` — in template expressions and in `field:` conditions.
+
+`.body` is always present alongside the parsed fields. If the body is not valid JSON, only the four fixed fields above are set.
 
 Access in any template expression or condition:
 
 ```yaml
-# Dot-path in a when: condition on a resource
+# Fixed fields — always available
 - field: external.healthCheck.status
   equals: "200"
 
-# Dot-path in a when: condition on a status field
 - field: external.signImage.called
   equals: "true"
 
-# Template expression in a value
 value: "{{ .external.appConfig.body }}"
 
-# Template expression in a later call's url or token (chaining)
+# Parsed JSON fields — available when response is a JSON object
+- field: external.metrics.queue.pendingJobs
+  greaterThan: "100"
+
+value: "{{ .external.metrics.queue.pendingJobs }}"
+
+# Chaining — later calls can reference earlier results
 token: "{{ .external.tokenFetch.body }}"
 url: "{{ .external.discovery.body }}/api/v1/{{ .metadata.name }}"
 ```

@@ -29,6 +29,9 @@ expect:
 | `resources` | no | Resource state assertions, polled until passing. |
 | `commands` | no | Shell command assertions, run in the same polling loop. |
 | `kubectl` | no | Structured kubectl subcommand assertions. See [kubectl block](07-kubectl.md). |
+| `when` | no | AND-gate: all conditions must be true or the checkpoint is skipped. See [Conditional checkpoints](#conditional-checkpoints-when-and-anyof). |
+| `anyOf` | no | OR-gate: at least one condition must be true or the checkpoint is skipped. See [Conditional checkpoints](#conditional-checkpoints-when-and-anyof). |
+| `onFailure` | no | Diagnostic kubectl and shell commands to run and print when this specific checkpoint fails. See [Per-expectation onFailure](#per-expectation-onfailure). |
 | `include` | no | Path to a YAML file containing a bare list of checkpoints to expand in place. See [Composing expectations](#composing-expectations-with-include). |
 
 ---
@@ -37,6 +40,7 @@ expect:
 
 | Value | When it triggers |
 |-------|-----------------|
+| `setup-complete` | After all setup steps finish, before the CR is applied. Use for Kubernetes workloads that are not operators — where setup is the thing under test, not a CR lifecycle. |
 | `cr-applied` | After the CR has been applied and the initial reconcile has started. |
 | `cr-deleted` | After the CR has been deleted and finalizer cleanup has run. |
 
@@ -97,6 +101,125 @@ commands:
 | `notEquals` | no | Output must not exactly match this string. |
 | `greaterThan` | no | Output (trimmed, parsed as a number) must be greater than this value. |
 | `lessThan` | no | Output (trimmed, parsed as a number) must be less than this value. |
+
+---
+
+## Conditional checkpoints: `when` and `anyOf`
+
+A checkpoint can be gated by runtime conditions. When the gate does not pass, the checkpoint is **skipped** — not failed. Skipped checkpoints appear in results as `~ name (skipped)` and are counted separately from passed and failed.
+
+This is useful when the expected outcome depends on external state that changes — time of day, feature flag state, or environment — rather than always asserting one value regardless of context.
+
+```yaml
+spec:
+  notes:
+    functions:
+      - name: inBusinessHours
+        expression: '{{ and weekday (timeInWindow "09:00" "18:00") }}'
+
+expect:
+  - name: Feature enabled during business hours
+    after: cr-applied
+    timeout: 30s
+    when:
+      - field: '{{ inBusinessHours }}'
+        equals: "true"
+    kubectl:
+      get:
+        - kind: Deployment
+          name: my-app
+          namespace: default
+          field: .metadata.annotations.feature-enabled
+          equals: "true"
+
+  - name: Feature disabled outside business hours
+    after: cr-applied
+    timeout: 30s
+    anyOf:
+      - field: '{{ inBusinessHours }}'
+        equals: "false"
+    kubectl:
+      get:
+        - kind: Deployment
+          name: my-app
+          namespace: default
+          field: .metadata.annotations.feature-enabled
+          equals: "false"
+```
+
+At most one of these two checkpoints runs on any given test execution — the other is skipped. Together they cover both paths.
+
+### `when` — AND gate
+
+All conditions in `when` must be true. If any condition is false, the checkpoint is skipped.
+
+```yaml
+when:
+  - field: '{{ inBusinessHours }}'
+    equals: "true"
+```
+
+### `anyOf` — OR gate
+
+At least one condition in `anyOf` must be true. If no condition is true, the checkpoint is skipped.
+
+```yaml
+anyOf:
+  - field: '{{ inBusinessHours }}'
+    equals: "false"
+```
+
+Each entry in `when` or `anyOf` is a `Condition` — the same type used in Katalog `when:` blocks. See [Conditions reference](../02-katalog/06-when-conditions.md) for the full field list.
+
+Template expressions in `field` are evaluated using note functions declared in `spec.notes`. Built-in notes (`weekday`, `timeInWindow`, etc.) are always available.
+
+Both `when` and `anyOf` can appear together on the same checkpoint — both gates must pass.
+
+---
+
+## Per-expectation `onFailure`
+
+A checkpoint can declare its own `onFailure:` block. When that specific checkpoint fails, its `onFailure` diagnostics run immediately — before the next checkpoint is evaluated. This lets you capture cluster state at the moment of failure, when it is most informative.
+
+```yaml
+expect:
+  - name: Both probes reach Ready status
+    after: cr-applied
+    timeout: 120s
+    kubectl:
+      get:
+        - kind: E2EProbe
+          name: my-probe-server
+          namespace: default
+          field: .status.phase
+          equals: Ready
+    onFailure:
+      kubectl:
+        get:
+          - kind: E2EProbe
+            name: my-probe-server
+            namespace: default
+        describe:
+          - kind: Deployment
+            name: my-probe-server
+            namespace: default
+      commands:
+        - kubectl get pods -n default -o wide
+```
+
+| Field | Description |
+|-------|-------------|
+| `kubectl` | Accepts the full `kubectl:` DSL (`get`, `logs`, `describe`, `events`, `exec`). Assertion fields are ignored — output is printed. |
+| `commands` | List of shell strings run via `sh -c`. Output is printed to the terminal. |
+
+The per-expectation `onFailure` is complementary to `spec.onFailure`. The difference:
+
+| | When it runs |
+|---|---|
+| `expect[].onFailure` | Immediately after that checkpoint fails — cluster state reflects the failure context |
+| `spec.onFailure` | Once at the end, after all expectations complete — useful for a global summary |
+
+→ See [spec.onFailure in 01-spec.md](01-spec.md#speconfailure) for the spec-level variant.
 
 ---
 

@@ -1,0 +1,21 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: gateway-fixture-app
+  description: app workload — ArgoCD Application created on cycle 1
+
+spec:
+  katalog: ../katalog.yaml
+  cr: ../cr-default.yaml
+  cycles: 3
+
+  expect:
+    steady: true
+    noErrors: true
+    crds:
+      platformResource:
+        ops:
+          - cycle: 1
+            verb: create
+            resource: applications
+            name: payments-api

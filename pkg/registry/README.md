@@ -1,6 +1,14 @@
 # pkg/registry
 
-The registry package implements the Orkestra artifact registry — an OCI-based store for **patterns** (Katalog-based operators) and **motifs** (reusable resource primitives) that can be pushed, pulled, and inspected by `ork push`, `ork pull`, `ork inspect`, and `ork patterns`.
+The registry is Orkestra's artifact store and testing layer. It owns OCI push/pull for operator patterns and motifs, the simulate harness for in-memory reconcile testing, the e2e runner for cluster integration tests, and motif expansion.
+
+| Sub-package | Responsibility |
+|-------------|----------------|
+| [simulate/](simulate/README.md) | In-memory reconcile harness — `ork simulate` |
+| [e2e/](e2e/README.md)          | Cluster integration test runner — `ork e2e` |
+| [motif/](motif/README.md)      | Motif loading, validation, and expansion — `ork push`/`ork pull` |
+
+OCI push/pull, reference resolution, and artifact kind detection live in this package directly.
 
 Artifact kind is detected automatically from the primary YAML file (`kind: Katalog` → pattern, `kind: Motif` → motif). No separate code path per kind is needed — adding a new artifact kind is a one-line entry in `artifactSpecs` in `artifact.go`.
 

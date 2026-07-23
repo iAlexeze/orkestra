@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/orkspace/orkestra/pkg/devserver"
-	orke2e "github.com/orkspace/orkestra/pkg/e2e"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/merger"
-	"github.com/orkspace/orkestra/pkg/simulate"
+	orke2e "github.com/orkspace/orkestra/pkg/registry/e2e"
+	"github.com/orkspace/orkestra/pkg/registry/simulate"
+	"github.com/orkspace/orkestra/pkg/tools/devserver"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	orkutils "github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
@@ -180,6 +180,7 @@ func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *
 	if len(crdEntry.OperatorBox.Cross) > 0 && len(opts.Peers) == 0 {
 		fmt.Printf("  %s cross: peer CRs not provided — cross.* fields will be empty (add sibling CRs to the CR file)\n", dim("note:"))
 	}
+	printSimulateAutoscaleSummary(crdEntry)
 	fmt.Println()
 
 	spin := StartSpinner(fmt.Sprintf("Running %d cycles...", maxCycles))
@@ -218,7 +219,7 @@ func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *
 	}
 
 	for _, cycle := range result.Cycles {
-		meaningful := filterOps(cycle.Ops, "create", "update", "delete", "patch")
+		meaningful := filterOps(cycle.Ops, "create", "update", "delete", "patch", "apply")
 		if len(meaningful) == 0 && cycle.Error == nil {
 			continue
 		}
@@ -340,6 +341,46 @@ func printAssertions(errs []simulate.AssertionError, expect *orktypes.SimulateEx
 	}
 }
 
+// printSimulateAutoscaleSummary prints a one-line autoscale marker for each workload
+// that declares autoscale:, so the policy is visible in simulate output.
+func printSimulateAutoscaleSummary(entry orktypes.CRDEntry) {
+	type workload struct {
+		name      string
+		autoscale *orktypes.WorkloadAutoscale
+	}
+	var workloads []workload
+	for _, ht := range []*orktypes.HookTemplates{entry.OperatorBox.OnCreate, entry.OperatorBox.OnReconcile} {
+		if ht == nil {
+			continue
+		}
+		for _, d := range ht.Deployments {
+			if d.Autoscale != nil {
+				workloads = append(workloads, workload{d.Name, d.Autoscale})
+			}
+		}
+		for _, s := range ht.StatefulSets {
+			if s.Autoscale != nil {
+				workloads = append(workloads, workload{s.Name, s.Autoscale})
+			}
+		}
+		for _, r := range ht.ReplicaSets {
+			if r.Autoscale != nil {
+				workloads = append(workloads, workload{r.Name, r.Autoscale})
+			}
+		}
+	}
+	for _, w := range workloads {
+		a := w.autoscale
+		min := int32(0)
+		if a.Min != nil {
+			min = *a.Min
+		}
+		cooldown := a.EffectiveCooldown().Duration.String()
+		fmt.Printf("  %s %s  %s\n", dim("autoscale:"), gray(w.name),
+			gray(fmt.Sprintf("min=%d max=%d cooldown=%s", min, a.Max, cooldown)))
+	}
+}
+
 // printCycleOps prints one cycle's ops, coalescing duplicate resource+name entries.
 // If a resource is both created and updated in the same cycle (e.g. reconcile: true),
 // only the create icon (+) is shown.
@@ -363,6 +404,8 @@ func printCycleOps(ops []simulate.Op) {
 			seen[key].hasCreate = true
 		case "delete":
 			seen[key].hasDelete = true
+		case "apply":
+			// SSA ops display as ~ (changed), same as update/patch
 		}
 	}
 	for _, key := range order {
@@ -419,6 +462,10 @@ func parseMultiDocCRs(data []byte) map[string]*unstructured.Unstructured {
 		if err := dec.Decode(&node); err != nil {
 			break // EOF or parse error
 		}
+		// YAML → JSON → Unstructured: go-yaml can produce non-JSON types
+		// (!!timestamp, int64, map[interface{}]interface{}) that Unstructured's
+		// map[string]interface{} does not accept. YAMLToJSON normalises them to
+		// JSON-compatible types before json.Unmarshal populates the object.
 		b, err := yaml.Marshal(&node)
 		if err != nil {
 			continue
@@ -489,6 +536,14 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 		return fmt.Errorf("%s: missing spec", path)
 	}
 
+	if err := validateSimulateFileQuiet(path); err != nil {
+		return err
+	}
+
+	if err := orktypes.ExpandSimulateOpsIncludes(doc.Spec.Expect, dir); err != nil {
+		return fmt.Errorf("expanding simulate ops includes in %s: %w", path, err)
+	}
+
 	cycles := doc.Spec.Cycles
 	if cycles <= 0 {
 		cycles = maxCycles
@@ -503,6 +558,7 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 	if err := m.Merge(); err != nil {
 		return fmt.Errorf("merging Katalog: %w", err)
 	}
+
 	kat, err := katalog.BuildExpanded(kfg, m)
 	if err != nil {
 		var typedErr *katalog.TypedOperatorError

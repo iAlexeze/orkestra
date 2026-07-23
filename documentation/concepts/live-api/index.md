@@ -83,5 +83,6 @@ The gateway's `/katalog` response carries a `source: "gateway"` field and is key
 **External tooling** — CI pipelines, dashboards, and integration tests can hit the runtime directly. `ork e2e` uses port-forward to assert health state without any Kubernetes API access.
 
 → [Full endpoint reference](endpoints.md)
+→ [Endpoint access control](access-control.md) — disabling endpoints and cross reads per CRD
 → [ONCOP](../oncop/) — cross-binary observation protocol that rides on this API
 → [Operator Autoscaler](../operator-autoscaler/) — autoscaling that reads `metrics.*` from this API

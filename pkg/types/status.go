@@ -151,6 +151,11 @@ type StatusFieldSpec struct {
 // StatusConfig declares the declarative status behavior for a CRD.
 // Declared under spec.crds[].reconciler.status in the Katalog.
 type StatusConfig struct {
+	// Include is a path (relative to the katalog file) to a YAML file whose
+	// top-level value is a list of StatusFieldSpec entries under a "fields:" key.
+	// Expanded at load time — included fields come first, inline fields append after.
+	Include string `yaml:"include,omitempty" json:"include,omitempty"`
+
 	// Fields — list of status fields to write after every successful reconcile.
 	// Resolved in declaration order. Later fields win on path conflict.
 	Fields []StatusFieldSpec `yaml:"fields,omitempty" json:"fields,omitempty"`

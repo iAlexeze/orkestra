@@ -7,3 +7,5 @@ metadata:
 
 imports:
   - ./06-komposer-basic/simulate.yaml
+  - ./09-notes/01-built-in/simulate.yaml
+  - ./09-notes/02-user-defined/simulate.yaml

@@ -58,11 +58,13 @@
             <li class="ork-sidebar-item"><a href="#configuration">Configuration</a></li>
             {{ if .CRD.DependsOn }}<li class="ork-sidebar-item"><a href="#dependencies">Dependencies</a></li>{{ end }}
             {{ if .HasChildren }}<li class="ork-sidebar-item"><a href="#child-resources">Child Resources</a></li>{{ end }}
+            {{ if ne .CRD.State "endpoints-disabled" }}<li class="ork-sidebar-item"><a href="#operatorbox">operatorBox</a></li>{{ end }}
             <li class="ork-sidebar-item"><a href="#kubectl">kubectl Reference</a></li>
             {{ if .HasRBAC }}<li class="ork-sidebar-item"><a href="#rbac">Access Control</a></li>{{ end }}
             {{ if or .HasAdmission .HasConversion }}<li class="ork-sidebar-item"><a href="#webhooks">Webhooks</a></li>{{ end }}
             {{ if .HasProtection }}<li class="ork-sidebar-item"><a href="#protection">Protection</a></li>{{ end }}
             {{ if .HasProviders }}<li class="ork-sidebar-item"><a href="#providers">Providers</a></li>{{ end }}
+            <li class="ork-sidebar-item"><a href="#endpoints">Endpoints</a></li>
           </ul>
         </div>
 
@@ -127,6 +129,16 @@
             <tr><td>GVR (plural)</td><td><code>{{ .CRD.GVR }}</code></td></tr>
             <tr><td>Scope</td><td>{{ if .CRD.Namespaced }}Namespaced{{ else }}Cluster-scoped{{ end }}</td></tr>
             {{ if .CRD.Namespace }}<tr><td>Operator namespace</td><td><code>{{ .CRD.Namespace }}</code></td></tr>{{ end }}
+            <tr>
+              <td>Cross-read access</td>
+              <td>
+                {{ if .CRD.CrossAccess }}
+                <span style="color:var(--ork-green)">✓ allowed</span> — sibling operators may read this CRD's CR state via <code>cross:</code>
+                {{ else }}
+                <span style="color:var(--ork-muted)">⊘ denied</span> — <code>crossAccess: false</code> blocks all inbound cross-reads; outbound reads are unaffected
+                {{ end }}
+              </td>
+            </tr>
           </tbody>
         </table>
 
@@ -140,29 +152,32 @@
           This CRD runs in <strong>typed mode</strong>. Orkestra decodes each custom resource into a concrete Go type before reconciliation.
           Type-safe field access is available to reconcile hooks, enabling precise validation, defaults, and business logic without stringly-typed map lookups.
         </p>
-
-          {{ if .HasAutoscaler }}
-          <p>
-            This operator uses the <strong>Generic Reconciler</strong> with reconcile hooks (<code>ReconcileHooks</code>). The hooks receive a fully typed object and can read or modify fields directly. The Generic Reconciler handles the full CR lifecycle — finalizers, managed labels, events, metrics, and health reporting — while hooks provide the business logic for each lifecycle phase.
-          </p>
-          {{ else if eq .CRD.Mode "typed" }}
-          <p>
-            The reconcile implementation is provided by a <strong>custom constructor</strong>. The constructor returns a fully custom reconciler that owns the entire CR lifecycle. Finalizers, events, and metrics are the constructor's responsibility.
-          </p>
-          {{ end }}
-
+        {{ if .HasAutoscaler }}
+        <p>
+          This operator uses the <strong>Generic Reconciler</strong> with reconcile hooks (<code>ReconcileHooks</code>). The hooks receive a fully typed object and can read or modify fields directly. The Generic Reconciler handles the full CR lifecycle — finalizers, managed labels, events, metrics, and health reporting — while hooks provide the business logic for each lifecycle phase.
+        </p>
         {{ else }}
+        <p>
+          The reconcile implementation is provided by a <strong>custom constructor</strong>. The constructor returns a fully custom reconciler that owns the entire CR lifecycle. Finalizers, events, and metrics are the constructor's responsibility.
+        </p>
+        {{ end }}
+
+        {{ else if eq .CRD.Mode "dynamic" }}
         <p>
           This CRD runs in <strong>dynamic mode</strong>. Orkestra works directly with the raw unstructured Kubernetes object — no Go code is required. Reconcile logic is expressed declaratively in the Katalog YAML using template expressions like <code>{{ "{{ .spec.field }}" }}</code>.
         </p>
         <p>
           The <strong>Generic Reconciler</strong> manages the full CR lifecycle: it ensures managed labels are set on every reconcile, adds and removes finalizers, runs <code>onCreate</code> and <code>onReconcile</code> template blocks, emits events, increments metrics, and reports health status.
         </p>
+
+        {{ else }}
+        <p>Reconcile mode unavailable — endpoints are disabled for this CRD.</p>
         {{ end }}
 
         <hr>
 
         <!-- ── Configuration ─────────────────────────────────── -->
+        {{ if ne .CRD.State "endpoints-disabled" }}
         <h2 id="configuration">Configuration</h2>
         <p>
           The operator maintains <strong>{{ .CRD.Workers }} worker goroutines</strong>
@@ -195,6 +210,7 @@
         {{ end }}
 
         <hr>
+        {{ end }}
 
         <!-- ── Dependencies ──────────────────────────────────── -->
         {{ if .CRD.DependsOn }}
@@ -269,6 +285,42 @@
           To see the actual child resources created for a running instance, navigate to the instance's
           detail page from the <a href="/controlcenter/katalog/{{ .KatalogName }}">{{ .KatalogName }} control panel</a>.
         </p>
+        <hr>
+        {{ end }}
+
+        <!-- ── operatorBox ───────────────────────────────────── -->
+        {{ if ne .CRD.State "endpoints-disabled" }}
+        {{ $ob := .CRD.OperatorBox }}
+        {{ $fins    := mapGet $ob "finalizers" }}
+        {{ $hooks   := mapGet $ob "hooks" }}
+        {{ $ctor    := mapGet $ob "constructor" }}
+        {{ $hookConf := mapGet $hooks "configured" | asBool }}
+        {{ $ctorConf := mapGet $ctor  "configured" | asBool }}
+        {{ $finVals  := mapGet $fins  "values"     | asSlice }}
+        <h2 id="operatorbox">operatorBox</h2>
+        <p>
+          Summary of the reconciler configuration declared in the Katalog for this CRD.
+        </p>
+        <table>
+          <thead><tr><th>Feature</th><th>Configured</th><th>Detail</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Hooks</td>
+              <td>{{ if $hookConf }}✓{{ else }}—{{ end }}</td>
+              <td>{{ if $hookConf }}<code>{{ mapGet $hooks "source" | asString }}</code>{{ if mapGet $hooks "function" | asString }} · <code>{{ mapGet $hooks "function" | asString }}</code>{{ end }}{{ else }}No reconcile hooks{{ end }}</td>
+            </tr>
+            <tr>
+              <td>Constructor</td>
+              <td>{{ if $ctorConf }}✓{{ else }}—{{ end }}</td>
+              <td>{{ if $ctorConf }}<code>{{ mapGet $ctor "source" | asString }}</code>{{ else }}Generic reconciler{{ end }}</td>
+            </tr>
+            <tr>
+              <td>Finalizers</td>
+              <td>{{ if $finVals }}{{ len $finVals }}{{ else }}—{{ end }}</td>
+              <td>{{ if $finVals }}{{ range $finVals }}<code>{{ . }}</code> {{ end }}{{ else }}None declared{{ end }}</td>
+            </tr>
+          </tbody>
+        </table>
         <hr>
         {{ end }}
 
@@ -448,6 +500,54 @@
           </tbody>
         </table>
         {{ end }}
+
+        <!-- ── Endpoints ──────────────────────────────────────── -->
+        <h2 id="endpoints">Endpoints</h2>
+        <p>
+          Orkestra exposes per-CRD HTTP endpoints for health reporting and runtime introspection.
+          Endpoints can be selectively disabled in the Katalog via <code>endpoints:</code>.
+        </p>
+
+        <table>
+          <thead><tr><th>Endpoint</th><th>Path</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Health</td>
+              <td><code>/katalog/{{ .CRD.Name | toLower }}/health</code></td>
+              <td>
+                {{- if .CRD.HealthEndpointDisabled }}
+                <span style="color:var(--ork-muted)">⊘ disabled — <code>endpoints: health: false</code></span>
+                {{- else }}
+                <span style="color:var(--ork-green)">✓ enabled</span>
+                {{- end }}
+              </td>
+            </tr>
+            <tr>
+              <td>Info</td>
+              <td><code>/katalog/{{ .CRD.Name | toLower }}</code></td>
+              <td>
+                {{- if .CRD.InfoEndpointDisabled }}
+                <span style="color:var(--ork-muted)">⊘ disabled — <code>endpoints: enabled: false</code></span>
+                {{- else }}
+                <span style="color:var(--ork-green)">✓ enabled</span>
+                {{- end }}
+              </td>
+            </tr>
+            <tr>
+              <td>CR List</td>
+              <td><code>/katalog/{{ .CRD.Name | toLower }}/cr</code></td>
+              <td>
+                {{- if .CRD.InfoEndpointDisabled }}
+                <span style="color:var(--ork-muted)">⊘ disabled — <code>endpoints: enabled: false</code></span>
+                {{- else }}
+                <span style="color:var(--ork-green)">✓ enabled</span>
+                {{- end }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <hr>
 
       </div><!-- ork-doc-body -->
     </article>

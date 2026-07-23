@@ -27,7 +27,7 @@ deployments:
 
 `ExpandForEachDeployments` (and the equivalent for each built-in type) processes this: it reads `spec.tenants` from the resolver, iterates over its items, and produces one template source per item with `.item` bound to the current value.
 
-The `forEach` expansion functions are exported so that `pkg/reconciler` can call them during the template application phase (before any resources are created). The same expansion logic runs in both the reconcile phase (to know what to create) and the read phase (to know what to read back).
+The `forEach` expansion functions are exported so that `pkg/runtime/reconciler` can call them during the template application phase (before any resources are created). The same expansion logic runs in both the reconcile phase (to know what to create) and the read phase (to know what to read back).
 
 ### Implementation
 

@@ -27,9 +27,5 @@ func (r *Resolver) WithNormalizeChanges(changes []orktypes.NormalizeChange) *Res
 
 	newData := r.shallowCopy()
 	newData["_normalizeChanges"] = raw
-	return &Resolver{
-		data:           newData,
-		ownerName:      r.ownerName,
-		ownerNamespace: r.ownerNamespace,
-	}
+	return r.copyWith(newData)
 }

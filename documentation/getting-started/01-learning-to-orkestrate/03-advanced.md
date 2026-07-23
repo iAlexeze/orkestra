@@ -46,6 +46,7 @@ ork run
 | Example | What it teaches |
 |---|---|
 | `12-autoscale` | Dynamic worker and resync scaling based on metrics. Five sub-examples: no-autoscaler baseline, own metrics, sibling operator metrics (in-binary), sibling operator metrics (cross-cluster), external metrics source. |
+| `19-endpoint-control` | Per-CRD HTTP visibility and cross-read access control. Three sub-examples: selective health endpoint disable, full endpoint disable, and the fully-dark asymmetric pattern — one CRD reads its sibling; the sibling's read back is denied by `crossAccess: false`. Both outcomes visible in kubectl printer columns. |
 
 ---
 
@@ -54,3 +55,4 @@ ork run
 | Example | What it teaches |
 |---|---|
 | `15-any-language` | Orkestra only cares about the final Katalog YAML. Generate it from Python, Go, or Node.js — three language examples producing identical output. |
+

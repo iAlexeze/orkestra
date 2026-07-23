@@ -105,16 +105,16 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/health"
-	"github.com/orkspace/orkestra/pkg/informer"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
-	"github.com/orkspace/orkestra/pkg/kordinator"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/merger"
 	ork "github.com/orkspace/orkestra/pkg/orkestra"
-	"github.com/orkspace/orkestra/pkg/queue"
-	"github.com/orkspace/orkestra/pkg/reconciler"
+	"github.com/orkspace/orkestra/pkg/runtime/informer"
+	"github.com/orkspace/orkestra/pkg/runtime/kordinator"
+	"github.com/orkspace/orkestra/pkg/runtime/queue"
+	"github.com/orkspace/orkestra/pkg/runtime/reconciler"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/client-go/tools/cache"
 )
@@ -372,13 +372,19 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 
 			logger.Debug().Str("gvk", gvk).Msg("wiring GenericReconciler factory")
 
+			// Attach hooks.args to a copy of the kube client; hooks read them via kube.Args().
+			var hookKube kubeclient.KubeClient = kube
+			if args := crd.HooksArgs(); len(args) > 0 {
+				hookKube = kube.WithArgs(kubeclient.Args(args))
+			}
+
 			pStats := providerStatsMap[gvk]
 			factory = func() domain.Reconciler {
 				return reconciler.NewGenericReconciler(
 					crd,
 					infCopy,
 					ev,
-					kube,
+					hookKube,
 					anyHooks,
 					func() domain.Object {
 						return objCopy.DeepCopyObject().(domain.Object)
@@ -399,8 +405,14 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 
 			logger.Debug().Str("gvk", gvk).Msg("wiring custom reconciler factory")
 
+			// Attach constructor.args to a copy of the kube client; the constructor reads them via kube.Args().
+			var ctorKube kubeclient.KubeClient = kube
+			if args := crd.ConstructorArgs(); len(args) > 0 {
+				ctorKube = kube.WithArgs(kubeclient.Args(args))
+			}
+
 			factory = func() domain.Reconciler {
-				return crd.OperatorBox.Constructor(kube, infCopy, ev)
+				return crd.OperatorBox.Constructor(ctorKube, infCopy, ev)
 			}
 		}
 
@@ -428,7 +440,6 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 	//   /katalog                    		→ all CRDs, dependency graph, health summary
 	orkHealth := kordinator.NewOrkestraHealth()
 
-	deletionProtectedCRDs := kat.DeletionProtectedCRDNames()
 	for _, crd := range kat.Enabled() {
 		gvk := crd.GVKString()
 		crdHealth := crdHealthMap[gvk]
@@ -440,9 +451,6 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 		if !crd.IsEnabledAllEndpoints() {
 			continue
 		}
-
-		crdKey := crd.APITypes.Plural + "." + crd.APITypes.Group
-		_, isDeletionProtected := deletionProtectedCRDs[crdKey]
 
 		if crd.IsHealthEnabled() {
 			hs.Register(
@@ -457,25 +465,16 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 				kordinator.BuildCRDInfoHandler(
 					crd, kfg, inf, crdHealth,
 					orkHealth,
-					nil, // conversion stats — live in gateway process
-					nil, // admission stats — live in gateway process
-					nil, // protection stats — live in gateway process
-					nil, // webhook stats — live in gateway process
 					providerStatsMap[gvk],
-					nil, // namespace stats — live in gateway process
-					isDeletionProtected,
-					kat.IsNamespaceProtectionEnabled(),
-					kat.IsConversionEnabled(),
-					kat.IsAdmissionEnabled(),
 				),
 			)
 			hs.Register(
 				"/katalog/"+crdName+"/cr",
-				kordinator.BuildCRListHandler(crd, inf),
+				kordinator.BuildCRListHandler(crd, inf, orkHealth),
 			)
 			hs.Register(
 				"/katalog/"+crdName+"/cr/",
-				kordinator.BuildCRDetailAndEventsHandler(crd, inf, kube, crd.OperatorBox),
+				kordinator.BuildCRDetailAndEventsHandler(crd, inf, kube, crd.OperatorBox, orkHealth),
 			)
 		}
 

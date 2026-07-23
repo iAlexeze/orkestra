@@ -14,12 +14,12 @@ spec:
     noErrors: true
     ops:
       - cycle: 1
-        verb: create
+        verb: apply
         resource: statefulsets
       - cycle: 1
-        verb: create
+        verb: apply
         resource: services
       - cycle: 1
-        verb: create
+        verb: apply
         resource: cronjobs
         name: my-db-backup

@@ -6,8 +6,8 @@ import (
 	"github.com/orkspace/orkestra/pkg/katalog"
 )
 
-const validMotifPath = "../motif/testdata/valid.yaml"
-const simpleMotifPath = "../motif/testdata/simple.yaml"
+const validMotifPath = "../registry/motif/testdata/valid.yaml"
+const simpleMotifPath = "../registry/motif/testdata/simple.yaml"
 
 func TestValidateMotif_Valid(t *testing.T) {
 	errs := katalog.ValidateMotif(validMotifPath)
@@ -24,14 +24,14 @@ func TestValidateMotif_NotFound(t *testing.T) {
 }
 
 func TestValidateMotif_WrongKind(t *testing.T) {
-	errs := katalog.ValidateMotif("../motif/testdata/wrong_kind.yaml")
+	errs := katalog.ValidateMotif("../registry/motif/testdata/wrong_kind.yaml")
 	if len(errs) == 0 {
 		t.Fatal("expected errors for wrong kind, got none")
 	}
 }
 
 func TestValidateMotif_NoName(t *testing.T) {
-	errs := katalog.ValidateMotif("../motif/testdata/no_name.yaml")
+	errs := katalog.ValidateMotif("../registry/motif/testdata/no_name.yaml")
 	if len(errs) == 0 {
 		t.Fatal("expected errors for missing name, got none")
 	}

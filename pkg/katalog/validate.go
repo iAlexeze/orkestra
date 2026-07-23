@@ -190,6 +190,12 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// 26c. Validate user-defined notes (uniqueness, valid template, shadowing)
+	// -------------------------------------------------------------------------
+	if err := k.validateUserNotes(); err != nil {
+		return nil, err
+	}
+
 	// 26b. Validate HPA Behavior Profiles
 	// -------------------------------------------------------------------------
 	if err := k.validateHPABehaviorProfiles(); err != nil {
@@ -234,6 +240,13 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	// 29. Validate port protocols (Deployments, ReplicaSets, StatefulSets, Pods)
 	// -------------------------------------------------------------------------
 	if err := k.validatePortProtocols(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 33. Validate workload autoscale blocks on Deployment declarations
+	// -------------------------------------------------------------------------
+	if err := k.validateWorkloadAutoscale(); err != nil {
 		return nil, err
 	}
 

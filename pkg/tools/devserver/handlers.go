@@ -1,0 +1,450 @@
+package devserver
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strings"
+
+	"github.com/orkspace/orkestra/pkg/logger"
+)
+
+func registerHandlers(mux *http.ServeMux) {
+	mux.HandleFunc("/autoscale-metrics/flip", handle(autoscaleMetricsFlipHandler))
+	mux.HandleFunc("/autoscale-metrics", handle(autoscaleMetricsHandler))
+	mux.HandleFunc("/workload-metrics/flip", handle(workloadMetricsFlipHandler))
+	mux.HandleFunc("/workload-metrics", handle(workloadMetricsHandler))
+	mux.HandleFunc("/health", handle(healthHandler))
+	mux.HandleFunc("/ready", handle(readyHandler))
+	mux.HandleFunc("/started", handle(startedHandler))
+	mux.HandleFunc("/status/", handle(statusHandler))
+	mux.HandleFunc("/config/", handle(configHandler))
+	mux.HandleFunc("/sign", handle(signHandler))
+	mux.HandleFunc("/auth/token", handle(authTokenHandler))
+	mux.HandleFunc("/resources/", handle(resourcesHandler))
+	mux.HandleFunc("/flags/", handle(flagsHandler))
+	// 06-sbom-cosign
+	mux.HandleFunc("/sbom/", handle(sbomHandler))
+	mux.HandleFunc("/cosign/verify", handle(cosignVerifyHandler))
+	// 07-vault-secret-gate
+	mux.HandleFunc("/vault/", handle(vaultHandler))
+	// 08-opa-policy
+	mux.HandleFunc("/v1/data/", handle(opaPolicyHandler))
+	// 09-cert-readiness
+	mux.HandleFunc("/certs/", handle(certsHandler))
+	// 04-jira-slack (idp example)
+	mux.HandleFunc("/jira/transition", handle(jiraTransitionHandler))
+	mux.HandleFunc("/slack/notify", handle(slackNotifyHandler))
+}
+
+// handle wraps a handler with debug logging.
+func handle(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		h(w, r)
+		logger.Debug().Str("method", r.Method).Str("path", r.URL.Path).Msg("dev server request")
+	}
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(v) //nolint:errcheck
+}
+
+func writePlain(w http.ResponseWriter, status int, s string) {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(status)
+	fmt.Fprint(w, s) //nolint:errcheck
+}
+
+// GET /health → 200
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// GET /ready → 200
+func readyHandler(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
+}
+
+// GET /started → 200
+func startedHandler(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "started"})
+}
+
+// GET /status/200 → 200, GET /status/503 → 503
+func statusHandler(w http.ResponseWriter, r *http.Request) {
+	code := strings.TrimPrefix(r.URL.Path, "/status/")
+	switch code {
+	case "200":
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	case "503":
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unavailable"})
+	default:
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "unknown status code"})
+	}
+}
+
+// GET /config/:name → JSON config blob
+func configHandler(w http.ResponseWriter, r *http.Request) {
+	name := strings.TrimPrefix(r.URL.Path, "/config/")
+	writeJSON(w, http.StatusOK, map[string]any{
+		"name":     name,
+		"env":      "production",
+		"debug":    "false",
+		"replicas": 2,
+	})
+}
+
+// POST /sign → 200 signed, or 403 if the image is nginx:not-secure.
+func signHandler(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		Image string `json:"image"`
+	}
+	json.NewDecoder(r.Body).Decode(&payload) //nolint:errcheck
+
+	if payload.Image == "nginx:not-secure" {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error":  "image rejected by signing policy",
+			"image":  payload.Image,
+			"reason": "image is flagged as insecure — update spec.image to a trusted tag",
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]bool{"signed": true})
+}
+
+// POST /auth/token → plain-string fake bearer token
+func authTokenHandler(w http.ResponseWriter, r *http.Request) {
+	writePlain(w, http.StatusOK, "dev-token-abc123")
+}
+
+// GET /resources/:name → JSON resource stub
+func resourcesHandler(w http.ResponseWriter, r *http.Request) {
+	name := strings.TrimPrefix(r.URL.Path, "/resources/")
+	writeJSON(w, http.StatusOK, map[string]any{
+		"name":   name,
+		"status": "active",
+		"ready":  true,
+	})
+}
+
+// GET /sbom/:image → SBOM report. nginx:vulnerable returns high CVE counts (operator
+// gates the Deployment via a when: condition on the body). nginx:unknown → 404 (no SBOM).
+func sbomHandler(w http.ResponseWriter, r *http.Request) {
+	image := strings.TrimPrefix(r.URL.Path, "/sbom/")
+
+	if image == "nginx:unknown" {
+		writeJSON(w, http.StatusNotFound, map[string]string{
+			"error": "no SBOM found for image",
+			"image": image,
+		})
+		return
+	}
+
+	critical, high := 0, 0
+	if image == "nginx:vulnerable" {
+		critical, high = 3, 12
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"image":    image,
+		"scanner":  "dev-scanner",
+		"critical": critical,
+		"high":     high,
+		"medium":   2,
+		"low":      7,
+		"clean":    critical == 0 && high == 0,
+	})
+}
+
+// POST /cosign/verify → 200 verified, or 403 if the image is nginx:unsigned.
+// Chained after /sbom — the operator uses the SBOM result to gate this call.
+func cosignVerifyHandler(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		Image string `json:"image"`
+	}
+	json.NewDecoder(r.Body).Decode(&payload) //nolint:errcheck
+
+	if payload.Image == "nginx:unsigned" {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error":  "no valid signature found",
+			"image":  payload.Image,
+			"reason": "image has no cosign signature — sign it before deploying",
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"verified":  true,
+		"image":     payload.Image,
+		"signer":    "dev-signer@example.com",
+		"algorithm": "ecdsa-p256",
+	})
+}
+
+// GET /vault/v1/secret/data/:path → secret data, mimicking the Vault KV v2 API.
+// Paths ending in /expired → 403 lease expired. Paths ending in /missing → 404.
+func vaultHandler(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/vault/v1/secret/data/")
+
+	if strings.HasSuffix(path, "/expired") || strings.Contains(path, "expired") {
+		writeJSON(w, http.StatusForbidden, map[string]any{
+			"errors": []string{"permission denied — lease expired, secret must be rotated"},
+		})
+		return
+	}
+
+	if strings.HasSuffix(path, "/missing") || strings.Contains(path, "missing") {
+		writeJSON(w, http.StatusNotFound, map[string]any{
+			"errors": []string{"secret not found at path: " + path},
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"data": map[string]any{
+			"data": map[string]string{
+				"value":      "dev-secret-value",
+				"expires_at": "2099-12-31T00:00:00Z",
+			},
+			"metadata": map[string]any{
+				"version":       1,
+				"created_time":  "2026-01-01T00:00:00Z",
+				"deletion_time": "",
+				"destroyed":     false,
+			},
+		},
+	})
+}
+
+// POST /v1/data/:policy → OPA decision. Mimics the OPA REST API wire format.
+// Denies when input.namespace == "forbidden" or input.name contains "deny".
+func opaPolicyHandler(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Input map[string]any `json:"input"`
+	}
+	json.NewDecoder(r.Body).Decode(&body) //nolint:errcheck
+
+	deny := false
+	reason := ""
+
+	ns, _ := body.Input["namespace"].(string)
+	name, _ := body.Input["name"].(string)
+
+	if ns == "forbidden" {
+		deny = true
+		reason = "namespace 'forbidden' is not permitted by org policy"
+	} else if strings.Contains(name, "deny") {
+		deny = true
+		reason = "resource name contains a denied prefix — rename the CR"
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"result": map[string]any{
+			"allow":  !deny,
+			"deny":   deny,
+			"reason": reason,
+		},
+	})
+}
+
+// certsHandler routes /certs/* requests:
+//
+//	GET  /certs/:name/status → cert status (issued/pending)
+//	POST /certs/:name/toggle → flip between issued and pending, return new status
+func certsHandler(w http.ResponseWriter, r *http.Request) {
+	rest := strings.TrimPrefix(r.URL.Path, "/certs/")
+	rest = strings.TrimSuffix(rest, "/")
+	parts := strings.SplitN(rest, "/", 2)
+
+	if len(parts) < 2 {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "use /certs/:name/status or /certs/:name/toggle"})
+		return
+	}
+
+	name, action := parts[0], parts[1]
+
+	switch {
+	case action == "status" && r.Method == http.MethodGet:
+		issued := certGet(name)
+		status, code := "issued", http.StatusOK
+		if !issued {
+			status, code = "pending", http.StatusAccepted
+		}
+		writeJSON(w, code, map[string]any{
+			"name":       name,
+			"status":     status,
+			"issuer":     "dev-ca",
+			"expires_at": "2099-12-31T00:00:00Z",
+		})
+
+	case action == "toggle" && r.Method == http.MethodPost:
+		next := certToggle(name)
+		status := "issued"
+		if !next {
+			status = "pending"
+		}
+		writePlain(w, http.StatusOK, status)
+
+	default:
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "unknown certs route"})
+	}
+}
+
+// POST /jira/transition → 200 Jira transition response.
+// Mimics the Jira REST API POST /rest/api/2/issue/{key}/transitions wire format.
+func jiraTransitionHandler(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		IssueKey   string `json:"issueKey"`
+		Transition string `json:"transition"`
+	}
+	json.NewDecoder(r.Body).Decode(&body) //nolint:errcheck
+	writeJSON(w, http.StatusOK, map[string]any{
+		"issueKey":   body.IssueKey,
+		"transition": body.Transition,
+		"status":     "transitioned",
+	})
+}
+
+// POST /slack/notify → 200 Slack acknowledgement.
+// Accepts the Slack incoming-webhook wire format (channel + text).
+func slackNotifyHandler(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Channel string `json:"channel"`
+		Text    string `json:"text"`
+	}
+	json.NewDecoder(r.Body).Decode(&body) //nolint:errcheck
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":      true,
+		"channel": body.Channel,
+	})
+}
+
+// flagsHandler routes /flags/* requests:
+//
+//	GET  /flags/:name              → all flags as JSON
+//	GET  /flags/:name/:flag        → single flag value as plain text ("true"/"false")
+//	POST /flags/:name/:flag/toggle → flip the flag, return new value as plain text
+func flagsHandler(w http.ResponseWriter, r *http.Request) {
+	// Strip the /flags/ prefix and split remaining path segments.
+	rest := strings.TrimPrefix(r.URL.Path, "/flags/")
+	rest = strings.TrimSuffix(rest, "/")
+	parts := strings.SplitN(rest, "/", 3)
+
+	switch {
+	// GET /flags/:name
+	case len(parts) == 1:
+		name := parts[0]
+		writeJSON(w, http.StatusOK, map[string]any{
+			"name":        name,
+			"v2Enabled":   flagGet(name, "v2Enabled"),
+			"betaEnabled": flagGet(name, "betaEnabled"),
+		})
+
+	// GET /flags/:name/:flag
+	case len(parts) == 2 && r.Method == http.MethodGet:
+		name, flag := parts[0], parts[1]
+		writePlain(w, http.StatusOK, fmt.Sprintf("%v", flagGet(name, flag)))
+
+	// POST /flags/:name/:flag/toggle
+	case len(parts) == 3 && parts[2] == "toggle" && r.Method == http.MethodPost:
+		name, flag := parts[0], parts[1]
+		next := flagToggle(name, flag)
+		writePlain(w, http.StatusOK, fmt.Sprintf("%v", next))
+
+	default:
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "unknown flags route"})
+	}
+}
+
+// autoscaleMetricsHandler serves GET /autoscale-metrics.
+// Returns a baseline (low load) or overloaded (high load) metrics payload
+// depending on the current flip state. The payload shape mirrors the Orkestra
+// /katalog/{crd} metrics response so that cross.<crd>.metrics.* conditions
+// can resolve against it directly.
+func autoscaleMetricsHandler(w http.ResponseWriter, _ *http.Request) {
+	autoscaleMu.Lock()
+	flipped := autoscaleFlipped
+	autoscaleMu.Unlock()
+
+	var m map[string]interface{}
+	if flipped {
+		m = map[string]interface{}{
+			"errorRatePercent":       0,
+			"queueDepth":             98,
+			"reconcileDurationP95Ms": 1244.18,
+			"workersBusyPercent":     100,
+			"workersIdlePercent":     0,
+		}
+	} else {
+		m = map[string]interface{}{
+			"errorRatePercent":       0,
+			"queueDepth":             12,
+			"reconcileDurationP95Ms": 142.3,
+			"workersBusyPercent":     18,
+			"workersIdlePercent":     82,
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"metrics": m})
+}
+
+// autoscaleMetricsFlipHandler serves POST /autoscale-metrics/flip.
+// Toggles between baseline and overloaded payload; returns the new state.
+func autoscaleMetricsFlipHandler(w http.ResponseWriter, _ *http.Request) {
+	autoscaleMu.Lock()
+	autoscaleFlipped = !autoscaleFlipped
+	flipped := autoscaleFlipped
+	autoscaleMu.Unlock()
+
+	state := "baseline"
+	if flipped {
+		state = "overloaded"
+	}
+	writePlain(w, http.StatusOK, state)
+}
+
+// workloadMetricsHandler serves GET /workload-metrics.
+// Returns a baseline (low load) or high-load worker pool metrics payload
+// depending on the current flip state. Used by workload autoscaler examples.
+func workloadMetricsHandler(w http.ResponseWriter, _ *http.Request) {
+	workloadMetricsMu.Lock()
+	flipped := workloadMetricsFlipped
+	workloadMetricsMu.Unlock()
+
+	var m map[string]interface{}
+	if flipped {
+		m = map[string]interface{}{
+			"pendingJobs":    152,
+			"processingRate": 38,
+			"errorRate":      2,
+			"workerUtilPct":  94,
+		}
+	} else {
+		m = map[string]interface{}{
+			"pendingJobs":    8,
+			"processingRate": 120,
+			"errorRate":      0,
+			"workerUtilPct":  22,
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"queue": m})
+}
+
+// workloadMetricsFlipHandler serves POST /workload-metrics/flip.
+// Toggles between baseline and high-load payload; returns the new state.
+func workloadMetricsFlipHandler(w http.ResponseWriter, _ *http.Request) {
+	workloadMetricsMu.Lock()
+	workloadMetricsFlipped = !workloadMetricsFlipped
+	flipped := workloadMetricsFlipped
+	workloadMetricsMu.Unlock()
+
+	state := "baseline"
+	if flipped {
+		state = "high-load"
+	}
+	writePlain(w, http.StatusOK, state)
+}

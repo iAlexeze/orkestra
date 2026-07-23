@@ -21,6 +21,7 @@ package katalog
 
 import (
 	"fmt"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"strings"
 
 	"github.com/orkspace/orkestra/pkg/profiles"
@@ -31,7 +32,7 @@ import (
 func (k *Katalog) validateSecurityProfiles() error {
 	for crdName, crd := range k.enabledCRDs {
 		for _, e := range crd.CollectSecurityProfileEntries() {
-			if isTemplateExpr(e.Profile) {
+			if orktypes.IsTemplate(e.Profile) {
 				continue
 			}
 			_, csUser := k.Profiles.LookupContainerSecurity(e.Profile)
@@ -62,7 +63,7 @@ func (k *Katalog) validateSecurityProfiles() error {
 func (k *Katalog) validateSecurityCapabilities() error {
 	for crdName, crd := range k.enabledCRDs {
 		for _, e := range crd.CollectCapabilityEntries() {
-			if isTemplateExpr(e.Value) {
+			if orktypes.IsTemplate(e.Value) {
 				continue
 			}
 			upper := strings.ToUpper(e.Value)

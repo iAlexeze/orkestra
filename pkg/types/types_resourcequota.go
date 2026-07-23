@@ -83,6 +83,9 @@ type ResourceQuotaTemplateSource struct {
 	// Reconcile: true — sync on every reconcile (drift correction).
 	Reconcile bool `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`
 
+	// ForEach — expand this entry once per item in a list or map field.
+	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
 	// Profile — named resource quota preset. Expands into hard limits.
 	// Allowed values: small, medium, large, xlarge.
 	// Mutually exclusive with Hard — set one or the other, not both.

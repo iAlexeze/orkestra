@@ -1,0 +1,20 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: informer-probe-restricted
+  description: CR in restricted namespace (team-b) — namespace guard blocks reconcile, no resources created
+
+spec:
+  katalog: ../katalog.yaml
+  cr: ../cr-restricted.yaml
+  cycles: 2
+
+  expect:
+    steady: true
+    noErrors: true
+    crds:
+      informer-probe:
+        absent:
+          - cycle: 1
+            resource: configmaps
+            name: probe-restricted-config

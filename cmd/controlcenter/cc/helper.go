@@ -10,6 +10,77 @@ import (
 	"strings"
 )
 
+// summaryFor returns the CRDSummary for a named CRD from a cached KatalogResponse.
+// Returns nil when the katalog is nil or the CRD is not found.
+func summaryFor(kat *KatalogResponse, crdName string) *CRDSummary {
+	if kat == nil {
+		return nil
+	}
+	for i := range kat.CRDs {
+		if strings.EqualFold(kat.CRDs[i].Name, crdName) {
+			return &kat.CRDs[i]
+		}
+	}
+	return nil
+}
+
+// synthHealthFromSummary builds a CRDHealth from the /katalog summary so that
+// CRDs with a disabled health endpoint still show correct state and uptime in
+// the Control Center instead of a zero placeholder.
+func synthHealthFromSummary(name string, s *CRDSummary) *CRDHealth {
+	if s == nil {
+		return &CRDHealth{Name: name, State: "started", Started: true}
+	}
+	return &CRDHealth{
+		Name:       name,
+		State:      s.State,
+		Healthy:    s.Healthy,
+		Started:    s.Started,
+		Pending:    s.Pending,
+		Uptime:     s.Uptime,
+		ErrorRate:  s.ErrorRate,
+		QueueDepth: s.QueueDepth,
+	}
+}
+
+// synthInfoFromSummary builds a minimal CRDInfo from the /katalog summary for
+// CRDs whose info endpoint is disabled.
+func synthInfoFromSummary(name string, s *CRDSummary) *CRDInfo {
+	if s == nil {
+		return &CRDInfo{Name: name}
+	}
+	return &CRDInfo{
+		Name:          name,
+		Description:   s.Description,
+		Mode:          s.Mode,
+		GVK:           s.GVK,
+		GVR:           s.GVR,
+		Namespaced:    s.Namespaced,
+		Namespace:     s.Namespace,
+		Workers:       s.Workers,
+		WorkersActive: int32(s.WorkersActive),
+		QueueDepth:    s.QueueDepth,
+		MaxDepth:      s.MaxDepth,
+		ResourceCount: s.ResourceCount,
+		ErrorRate:     s.ErrorRate,
+	}
+}
+
+// endpointInfoFor returns the EndpointInfo for a named CRD from a cached
+// KatalogResponse. When the katalog is nil or the CRD is not found it returns
+// a fully-enabled default so the caller retains normal fetch behaviour.
+func endpointInfoFor(kat *KatalogResponse, crdName string) EndpointInfo {
+	if kat == nil {
+		return EndpointInfo{HealthEnabled: true, InfoEnabled: true}
+	}
+	for _, c := range kat.CRDs {
+		if strings.EqualFold(c.Name, crdName) {
+			return c.Endpoints
+		}
+	}
+	return EndpointInfo{HealthEnabled: true, InfoEnabled: true}
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Rendering helpers
 // ─────────────────────────────────────────────────────────────────────────────

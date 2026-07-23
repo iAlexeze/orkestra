@@ -142,7 +142,7 @@ func (cc *ControlCenter) handleCRDDocs(w http.ResponseWriter, r *http.Request, k
 		return
 	}
 
-	crd, err := inst.Client.FetchCRDDetail(crdName)
+	crd, err := inst.Client.FetchCRDDetail(crdName, endpointInfoFor(inst.Katalog, crdName), summaryFor(inst.Katalog, crdName))
 	if err != nil {
 		log.Printf("WARN: docs fetch CRD %s: %v", crdName, err)
 		crd = &CRDDetail{

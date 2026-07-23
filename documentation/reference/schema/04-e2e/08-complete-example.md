@@ -4,7 +4,7 @@ One file that exercises every `expect:` subcommand — `resources`, `commands`,
 and every `kubectl:` subcommand. Use it as the canonical reference for what a
 fully-featured E2E looks like.
 
-Source: [`pkg/e2e/fixture/e2e.yaml`](https://github.com/orkspace/orkestra/blob/main/pkg/e2e/fixture/e2e.yaml)
+Source: [`pkg/registry/e2e/fixture/e2e.yaml`](https://github.com/orkspace/orkestra/blob/main/pkg/registry/e2e/fixture/e2e.yaml)
 
 ---
 
@@ -74,6 +74,21 @@ spec:
             namespace: default
             field: .status.phase
             equals: Ready
+      onFailure:
+        kubectl:
+          get:
+            - kind: E2EProbe
+              name: my-probe-server
+              namespace: default
+            - kind: E2EProbe
+              name: my-probe-exec
+              namespace: default
+          describe:
+            - kind: Deployment
+              name: my-probe-server
+              namespace: default
+        commands:
+          - kubectl get pods -n default -o wide
 
     - name: Field assertions on Deployments and Services
       after: cr-applied
@@ -284,6 +299,75 @@ spec:
         - run: kubectl get e2eprobe -n default -o name
           outputContains: my-probe-server
 
+    # ── kubectl.restart ──────────────────────────────────────────────────────
+    - name: Rollout restart recovers the probe deployment
+      after: cr-applied
+      timeout: 120s
+      kubectl:
+        restart:
+          - kind: Deployment
+            name: my-probe-server
+            namespace: default
+      resources:
+        - kind: Deployment
+          name: my-probe-server
+          namespace: default
+          ready: true
+
+    # ── kubectl.scale ────────────────────────────────────────────────────────
+    # Use a standalone deployment — scaling a reconciled deployment is immediately
+    # undone by the Orkestra reconciler restoring the CR's replica count.
+    - name: Scale standalone deployment up to 2 replicas
+      after: cr-applied
+      timeout: 60s
+      kubectl:
+        apply:
+          - inline: |
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: e2e-scale-target
+                namespace: default
+              spec:
+                replicas: 1
+                selector:
+                  matchLabels:
+                    app: e2e-scale-target
+                template:
+                  metadata:
+                    labels:
+                      app: e2e-scale-target
+                  spec:
+                    containers:
+                      - name: nginx
+                        image: nginx:alpine
+        scale:
+          - kind: Deployment
+            name: e2e-scale-target
+            namespace: default
+            replicas: 2
+        get:
+          - kind: Deployment
+            name: e2e-scale-target
+            namespace: default
+            field: .spec.replicas
+            equals: "2"
+
+    - name: Scale standalone deployment back to 1 and clean up
+      after: cr-applied
+      timeout: 60s
+      kubectl:
+        scale:
+          - kind: Deployment
+            name: e2e-scale-target
+            namespace: default
+            replicas: 1
+        delete:
+          - kind: Deployment
+            name: e2e-scale-target
+            namespace: default
+            ignoreNotFound: true
+
     # ── cleanup ──────────────────────────────────────────────────────────────
     - name: Cleanup verified
       after: cr-deleted
@@ -305,6 +389,51 @@ spec:
           name: my-probe-exec
           namespace: default
           count: 0
+
+  # ── onFailure ───────────────────────────────────────────────────────────────
+  # Diagnostic commands printed to the terminal when any expectation fails.
+  # Assertions are never evaluated here — output is always printed.
+  onFailure:
+    kubectl:
+      # kubectl get
+      get:
+        - kind: E2EProbe
+          name: my-probe-server
+          namespace: default
+        - kind: E2EProbe
+          name: my-probe-exec
+          namespace: default
+      # kubectl logs
+      logs:
+        - labelSelector: orkestra-owner=my-probe-server
+          namespace: default
+          since: 2m
+        - labelSelector: orkestra-owner=my-probe-exec
+          namespace: default
+          since: 2m
+      # kubectl describe
+      describe:
+        - kind: Deployment
+          name: my-probe-server
+          namespace: default
+        - kind: Deployment
+          name: my-probe-exec
+          namespace: default
+      # kubectl events
+      events:
+        - kind: Deployment
+          name: my-probe-server
+          namespace: default
+        - kind: Deployment
+          name: my-probe-exec
+          namespace: default
+      # kubectl exec
+      exec:
+        - labelSelector: orkestra-owner=my-probe-exec
+          namespace: default
+          command: [sh, -c, "echo on-failure-exec-ok"]
+    commands:
+      - kubectl get pods -n default -o wide
 ```
 
 ---
@@ -332,7 +461,7 @@ Two CRs run in parallel from `cr.yaml` (multi-document):
 | `my-probe-server` | `ghcr.io/orkspace/orkestra-dev-server:latest` | 9999 | Port-forward and JSON endpoint assertions |
 | `my-probe-exec` | `nginx:alpine` | 80 | Exec assertions — nginx has `sh`, the devserver is distroless |
 
-See [`pkg/e2e/fixture/README.md`](https://github.com/orkspace/orkestra/blob/main/pkg/e2e/fixture/README.md) for
+See [`pkg/registry/e2e/fixture/README.md`](https://github.com/orkspace/orkestra/blob/main/pkg/registry/e2e/fixture/README.md) for
 instructions on running this fixture and the rule for adding new subcommands.
 
 ---

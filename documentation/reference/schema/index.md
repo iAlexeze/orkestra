@@ -32,3 +32,4 @@ All fields that live inside a Katalog `spec.crds.<name>` entry:
 | [11-katalog-notification.md](02-katalog/11-katalog-notification.md) | `notification` block |
 | [12-katalog-providers.md](02-katalog/12-katalog-providers.md) | `providers` block |
 | [15-enrich.md](02-katalog/15-enrich.md) | `enrich` — post-reconcile enrichment |
+| [17-katalog-applyapi.md](02-katalog/17-katalog-applyapi.md) | `gateway.applyAPI` — Apply API config and per-CRD `idp:` block |

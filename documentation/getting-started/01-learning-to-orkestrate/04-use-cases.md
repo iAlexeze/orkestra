@@ -118,3 +118,38 @@ ork run --dev-server
 | `08-opa-policy` | OPA policy enforcement. `continueOnError: false` ensures the Deployment never exists without a passing check. Full OPA response in status for observability. |
 | `09-cert-readiness` | TLS certificate issuance gate. Deployment removed when cert goes pending; restored when issued. Toggle endpoint for local demo. |
 | `10-motif-composition` | External calls, admission rules, and status as reusable motifs. Four motifs parameterized via `inputs:`, bound by two katalogs via `with:`. `admission`, `vault-gate`, and `opa-policy` shared by both; `supply-chain` by the WebApp only. A Komposer runs both operators. |
+
+---
+
+## Temporal
+
+Time-dependent workloads without CronJobs. The reconciler re-evaluates built-in time notes on every resync and converges the cluster to the correct state for *right now*.
+
+```bash
+cd temporal/01-business-hours
+ork run
+```
+
+| Example | What it teaches |
+|---|---|
+| `01-business-hours` | Provision a dev environment Mon–Fri 09:00–18:00 UTC and deprovision it automatically when the window closes. `inBusinessHours` and `nextBusinessHour` user-defined notes power the status message. |
+| `02-maintenance-window` | Weekly database maintenance window (Sun 02:00–04:00 UTC). Read replicas scale to zero, a ConfigMap signals downstream load balancers, replicas restore when the window closes. |
+| `03-regional-peak` | CDN edge operator with per-region peak-hour replica scaling. US-East, EU-Central, and APAC each scale between `peakReplicas` and `baseReplicas` based on their local UTC window. One operator, no CronJobs. |
+| `04-autoscale` | Business-hours autoscaling. `autoscale:` driven by a user-defined note — `inBusinessHours` composes `weekday` and `timeInWindow` into one named boolean. `target` jump scaling; `cooldown` prevents oscillation at window boundaries. |
+
+---
+
+## Workload Autoscaler
+
+Orkestra collapses KEDA, VPA, and custom scaling controllers into one field on a Deployment. The same condition engine that controls resource creation controls scaling — `external:`, `cross:`, and time conditions all work as scaling signals.
+
+```bash
+cd workload-autoscaler/01-time-based
+ork run
+```
+
+| Example | What it teaches |
+|---|---|
+| `01-time-based` | `autoscale:` with `target` jump scaling; `when: time:` and `when: dayOfWeek:` as scaling signals; `negate: true` to invert a condition. |
+| `02-external-api` | `external:` feeds live queue depth into `autoscale:` conditions; `increment`/`decrement` step scaling; `continueOnError: true` keeps the operator alive when the metrics endpoint is down. Run with `ork run --dev-server`. |
+| `03-cross-operator` | `cross:` reads a sibling CRD's queue depth from the informer cache; workers scale with the producer's load. Any field a sibling publishes to status is a valid scaling signal. |

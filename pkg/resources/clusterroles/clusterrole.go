@@ -3,18 +3,21 @@ package clusterroles
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"reflect"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/resources/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 // ResolvedClusterRoleSpec is the fully resolved ClusterRole specification.
@@ -47,7 +50,7 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		return nil
 	}
 
-	cr := buildClusterRole(spec)
+	cr := buildClusterRole(owner, spec)
 
 	_, err = kube.Clientset().RbacV1().ClusterRoles().Create(ctx, cr, metav1.CreateOptions{})
 	if err != nil {
@@ -62,42 +65,39 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update applies the desired rules to an existing ClusterRole.
-// If it does not exist, creates it.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedClusterRoleSpec) error {
+// Apply creates or updates a ClusterRole using Server-Side Apply.
+// Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedClusterRoleSpec) error {
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
 	}
 
-	existing, err := kube.Clientset().RbacV1().ClusterRoles().Get(ctx, spec.Name, metav1.GetOptions{})
+	cr := buildClusterRole(owner, spec)
+	cr.TypeMeta = metav1.TypeMeta{APIVersion: "rbac.authorization.k8s.io/v1", Kind: "ClusterRole"}
+
+	body, err := json.Marshal(cr)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			return Create(ctx, kube, owner, spec)
-		}
-		return fmt.Errorf("clusterrole.Update: getting %q: %w", spec.Name, err)
+		return fmt.Errorf("clusterrole.Apply: marshal: %w", err)
 	}
 
-	if reflect.DeepEqual(existing.Rules, spec.Rules) && reflect.DeepEqual(existing.Labels, spec.Labels) {
-		logger.Debug().
-			Str("clusterrole", spec.Name).
-			Msg("clusterrole in sync — no update needed")
-		return nil
+	if _, err = kube.Clientset().RbacV1().ClusterRoles().Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		return fmt.Errorf("clusterrole.Apply: %w", err)
 	}
 
-	existing.Rules = spec.Rules
-	existing.Labels = spec.Labels
-
-	_, err = kube.Clientset().RbacV1().ClusterRoles().Update(ctx, existing, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("clusterrole.Update: updating %q: %w", spec.Name, err)
-	}
-
-	logger.Info().
+	logger.Debug().
 		Str("clusterrole", spec.Name).
 		Str("owner", owner.GetName()).
-		Msg("clusterrole updated")
+		Msg("clusterrole applied")
 
 	return nil
+}
+
+// Update applies the ClusterRole via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedClusterRoleSpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the ClusterRole if it exists.
@@ -172,17 +172,27 @@ func Resolve(src orktypes.ClusterRoleTemplateSource, ownerName string) ResolvedC
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-func buildClusterRole(spec ResolvedClusterRoleSpec) *rbacv1.ClusterRole {
-	return &rbacv1.ClusterRole{
+func buildClusterRole(owner domain.Object, spec ResolvedClusterRoleSpec) *rbacv1.ClusterRole {
+	cr := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   spec.Name,
 			Labels: spec.Labels,
-			// No OwnerReference: ClusterRoles are cluster-scoped; a namespace-scoped CR
-			// cannot own a cluster-scoped resource. Ownership is tracked via the
-			// OrkestraOwner label; cleanup is performed explicitly via DeleteIfOwned.
 		},
 		Rules: spec.Rules,
 	}
+	if owner.GetNamespace() == "" {
+		cr.OwnerReferences = []metav1.OwnerReference{
+			{
+				APIVersion:         owner.GetObjectKind().GroupVersionKind().GroupVersion().String(),
+				Kind:               owner.GetObjectKind().GroupVersionKind().Kind,
+				Name:               owner.GetName(),
+				UID:                owner.GetUID(),
+				Controller:         utils.BoolPtr(true),
+				BlockOwnerDeletion: utils.BoolPtr(true),
+			},
+		}
+	}
+	return cr
 }
 
 func validateSpec(spec ResolvedClusterRoleSpec) error {

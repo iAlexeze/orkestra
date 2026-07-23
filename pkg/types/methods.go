@@ -289,6 +289,56 @@ func (c *CRDEntry) IsInfoEnabled() bool {
 	return *c.Endpoints.Info
 }
 
+// CrossAccessEnabled reports whether cross: reads are permitted for this CRD.
+// Defaults to true when omitted.
+func (c *CRDEntry) CrossAccessEnabled() bool {
+	return c.CrossAccess == nil || *c.CrossAccess
+}
+
+// HasHooks reports whether this CRD has hooks wired — either a YAML-declared
+// hooks block or a Go-registered HookFactory.
+func (c *CRDEntry) HasHooks() bool {
+	r := c.OperatorBox.Reconciler
+	return (r != nil && r.Hooks != nil) || c.OperatorBox.HookFactory != nil
+}
+
+// HasConstructor reports whether a Go-registered constructor is wired for this CRD.
+func (c *CRDEntry) HasConstructor() bool {
+	return c.OperatorBox.Constructor != nil
+}
+
+// HooksArgs returns the args declared under reconciler.hooks.args in the Katalog.
+// Returns nil when no hooks declaration or no args are present.
+func (c *CRDEntry) HooksArgs() map[string]interface{} {
+	if r := c.OperatorBox.Reconciler; r != nil && r.Hooks != nil {
+		return r.Hooks.Args
+	}
+	return nil
+}
+
+// HooksExternal returns the external call specs declared under reconciler.hooks.external.
+// Returns nil when no hooks declaration or no external calls are declared.
+func (c *CRDEntry) HooksExternal() []ExternalCallSpec {
+	if r := c.OperatorBox.Reconciler; r != nil && r.Hooks != nil {
+		return r.Hooks.External
+	}
+	return nil
+}
+
+// HasHooksExternal reports whether the CRD declares any external calls under reconciler.hooks.external.
+func (c *CRDEntry) HasHooksExternal() bool {
+	return len(c.HooksExternal()) > 0
+}
+
+// ConstructorArgs returns the args declared under reconciler.constructor.args in the Katalog.
+// Returns nil when no constructor declaration or no args are present.
+func (c *CRDEntry) ConstructorArgs() map[string]interface{} {
+	if r := c.OperatorBox.Reconciler; r != nil && r.ConstructorDecl != nil {
+		return r.ConstructorDecl.Args
+	}
+	return nil
+}
+
 // IsEnabledAllEndpoints reports whether the all endpoints are disabled for this CRD.
 // Defaults to false when omitted.
 func (c *CRDEntry) IsEnabledAllEndpoints() bool {

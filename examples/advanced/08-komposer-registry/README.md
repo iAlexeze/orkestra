@@ -110,6 +110,13 @@ ork simulate    # Quick in-memory test. No cluster
 ork e2e         # 
 ```
 
+Or run it directly without pulling, as part of your inspection:
+
+```bash
+ork run postgres:v1.0.0 --apply-cr       # against an existing cluster
+ork run postgres:v1.0.0 --apply-cr --dev # spins up a local cluster if you don't have one
+```
+
 Once satisfied, you can proceed.
 
 ### 1. Preview the merged configuration
@@ -132,7 +139,7 @@ ork template --graph
 ```
 
 This shows the merged result of all three sources with overrides applied —
-without pulling anything or touching a cluster.
+without touching a cluster.
 
 ### 2. Validate
 
@@ -199,8 +206,15 @@ Now we have 3 valid CRDs to work with.
 > [!TIP]
 > If you want to enable the database CRD, uncomment the CRD block in [`crd.yaml`](crd.yaml) and [`cr.yaml`](cr.yaml).
 
+#### 2.2 Preview permissions
 
-#### 2.2 Generate runtime bundle
+`ork validate --full` shows every RBAC rule the bundle will contain — per CRD, per component — before anything is generated. No cluster required. Review this before proceeding.
+
+```bash
+ork validate --full
+```
+
+#### 2.3 Generate runtime bundle
 ```bash
 ork generate bundle -o bundle.yaml
 ```
@@ -239,8 +253,10 @@ helm upgrade --install orkestra orkestra/orkestra \
 ### 4. Verify both CRDs are managed
 
 ```bash
-kubectl port-forward svc/orkestra-runtime 8080:8080 -n orkestra-system &
+ork proxy
+```
 
+```bash
 curl localhost:8080/katalog | jq '.crds[] | {name: .name, workers: .workers,}'
 ```
 
@@ -255,9 +271,6 @@ Expected:
 ### 5. Apply the CR and Watch the Control Center
 ```bash
 kubectl apply -f cr.yaml
-
-# portforward to view the control center
-kubectl port-forward svc/orkestra-cc 8081:8081 -n orkestra-system &
 ```
 
 Open http://localhost:8081

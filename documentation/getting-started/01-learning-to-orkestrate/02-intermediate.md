@@ -15,3 +15,4 @@ ork run
 | `06-komposer-basic` | Your first Komposer. Two Katalogs composed into one runtime: a namespace operator and a website operator. Shows the `imports.files` pattern for local composition. |
 | `07-crd-file` | Using an external CRD YAML. Decouples the schema file from the operator definition — useful when the CRD is owned by another team or published separately. |
 | `08-state-machine` | A multi-step pipeline operator with no Go code. Motif-based state machine: each phase writes status, the next phase gates on it. Shows how `when:` conditions on status fields replace Go state machine code. |
+| `09-notes` | Notes — the template vocabulary of a Katalog. Four sub-examples: built-in notes for live cluster queries and fallbacks (`01-built-in`); user-defined notes declared inline (`02-user-defined`); packaging notes into a Motif for team distribution via `spec.imports` (`03-motifs`); overriding a Motif note at the Komposer level (`04-komposer`). |

@@ -1,4 +1,468 @@
-## v0.7.10 [UNRELEASED] — E2E DSL extensions, cluster improvements
+## v0.7.12 — Gateway Apply API, IDP, and codebase clarity
+
+### Gateway Apply API
+
+Three new endpoints served by the gateway process when `gateway.applyAPI.enabled: true`:
+
+- `POST /api/v1/apply` — server-side apply a CR body; returns `accepted`, `name`, `namespace`, `resourceVersion`
+- `GET /api/v1/resources/{kind}/{ns}[/{name}]` — read or list CRs without kubeconfig
+- `DELETE /api/v1/resources/{kind}/{ns}/{name}` — delete a CR
+- `GET /api/v1/schema/{kind}` — return the CRD's spec properties with `idp.fields` hints merged in; only available when `idp.enabled: true`
+
+All routes require a bearer token. Tokens are declared in `gateway.applyAPI.auth.tokens` and can reference a `secretRef` (self-bootstrapped by the gateway on first start if the Secret does not exist) or an environment variable.
+
+### IDP — developer self-service in the Control Center
+
+`idp.enabled: true` on a CRD entry surfaces a **[+ Create]** button in the Control Center. The button links to a full-page form that reads field labels, hints, placeholders, and order from `idp.fields` via the gateway's `/api/v1/schema/{kind}` endpoint. The gateway token is injected server-side — the browser never sees it.
+
+```yaml
+gateway:
+  applyAPI:
+    enabled: true
+    auth:
+      tokens:
+        - name: control-center
+          secretRef:
+            name: ork-apply-token
+            key: token
+
+spec:
+  crds:
+    apprequest:
+      idp:
+        enabled: true
+        fields:
+          team:
+            label: "Team"
+            placeholder: "team-payments"
+            order: 1
+          environment:
+            label: "Environment"
+            hint: "staging or production"
+            order: 2
+```
+
+Set `controlCenter.gatewayToken.secretRef.name` in the Helm values to inject the token into the Control Center.
+
+### CR list and detail are now leader-pinned
+
+The runtime's `/katalog/{crd}/cr` and `/katalog/{crd}/cr/{ns}/{name}` responses now include `isKonductor: true` when served by the leader pod. The Control Center retries these requests up to three times until it gets a leader response, then falls back to the last available result. Previously, multi-replica deployments could show an empty CR list or "CR not found" when the Service routed to a follower pod.
+
+### Gateway RBAC — least-privilege `customresourcedefinitions get`
+
+When `idp.enabled: true` on a CRD, the generated RBAC bundle now includes a `get` rule on `apiextensions.k8s.io/customresourcedefinitions` scoped to that CRD's full resource name (`{plural}.{group}`). This allows the gateway to read the OpenAPI schema for the `/api/v1/schema/{kind}` endpoint without cluster-wide CRD read access.
+
+### Notes in validation and mutation rules
+
+User-defined notes can now be referenced directly as template expressions inside `validation.rules` and `mutation.rules`. Both `field:`, comparison values (`equals:`, `prefix:`, `min:`, …), and `message:` are resolved against the full note FuncMap before evaluation. This applies at reconcile time and at admission webhook time.
+
+```yaml
+notes:
+  functions:
+    - name: allowedRegistry
+      expression: "myorg/"
+    - name: inBusinessHours
+      expression: '{{ and weekday (timeInWindow "09:00" "18:00") }}'
+    - name: defaultReplicas
+      expression: "2"
+
+spec:
+  crds:
+    deploymentrequest:
+      mutation:
+        rules:
+          - field: spec.replicas
+            default: "{{ defaultReplicas }}"
+            valueType: int
+
+      validation:
+        rules:
+          - field: "{{ inBusinessHours }}"
+            equals: "true"
+            action: deny
+            message: "deployments are only allowed during business hours"
+          - field: spec.image
+            prefix: "{{ allowedRegistry }}"
+            action: deny
+            message: "image must be from {{ allowedRegistry }}"
+```
+
+When `field:` is a template expression, the resolved value is used directly in the comparison — not treated as a path into the CR. The original expression is preserved in violation messages (`field "{{ inBusinessHours }}": …`).
+
+`IsTemplate` is now a single exported helper in `pkg/types` (`orktypes.IsTemplate`), replacing scattered `strings.Contains(s, "{{")` checks across the katalog, reconciler, and webhook packages.
+
+### Conditional validation and mutation rules
+
+`when:` and `anyOf:` conditions are now supported on `validation.rules` and `mutation.rules` entries. A rule whose conditions do not match is skipped entirely — no violation is recorded, no log entry is emitted.
+
+```yaml
+validation:
+  rules:
+    - field: spec.domain
+      operator: exists
+      message: "spec.domain is required for cert workloads"
+      action: deny
+      when:
+        - field: spec.workloadType
+          equals: cert
+
+    - field: spec.repoURL
+      operator: exists
+      message: "spec.repoURL is required for app and monitoring workloads"
+      action: deny
+      anyOf:
+        - field: spec.workloadType
+          equals: app
+        - field: spec.workloadType
+          equals: monitoring
+```
+
+Conditions are evaluated using the same `EvaluateWhen` engine as template `when:` blocks. Works for both typed and unstructured CRDs — the typed CRD limitation (previously documented as "use Go hooks") is removed. Both `applyReconcileTimeValidation` and `applyReconcileTimeMutation` now use `resolver.Data()` which handles typed CRDs via JSON round-trip.
+
+Admission webhook rules honour `when:` and `anyOf:` in the same way as reconcile-time rules.
+
+### `idp.fields.<name>.required` — browser-native form field enforcement
+
+Setting `required: true` on an IDP field marks it as mandatory in the Control Center form. The browser enforces it natively — the label shows an asterisk and the form cannot be submitted while the field is empty. Fields hidden by a `when:` or `anyOf:` condition are automatically excluded from browser constraint validation.
+
+```yaml
+idp:
+  fields:
+    productionApproval:
+      label: "Production Approval Ticket"
+      required: true
+      when:
+        - field: environment
+          equals: production
+```
+
+`required` in IDP is a form UX annotation only — it does not affect the Apply API or the admission webhook. For server-side enforcement use `validation.rules` with `action: deny`.
+
+### `include:` strict YAML parsing
+
+All `include:` expansion functions now use `StrictUnmarshal` (unknown fields produce errors). Previously, a typo in an included YAML file caused the field to be silently dropped; `ork validate` now surfaces these as clear errors before any cluster is involved.
+
+### `include:` extended to all major Katalog blocks
+
+Previously `include:` was only supported in `e2e expect:`. It now works across `validation.rules`, `mutation.rules`, `conversion.paths`, `status.fields`, `notes.functions`, `profiles`, `idp.fields`, and `simulate ops:`.
+
+Each include file uses the same root key as the inline block and is expanded in place before the runtime sees the declaration. See `documentation/concepts/composition/02-include.md` for the full reference and domain layout pattern.
+
+### Server-Side Apply for all resource packages
+
+Every reconcilable resource package now uses Kubernetes Server-Side Apply (`ApplyPatchType`, `fieldManager: orkestra-runtime`, `force: true`) instead of Get → compare → Update. `Update` delegates to the new `Apply` function; callers are unchanged.
+
+This eliminates false-positive drift from k8s-injected defaults (SA token volumes, `imagePullPolicy`, `Protocol: TCP`, default security contexts) and resolves KI-002 resource-version conflicts caused by the status-patch → immediate-reconcile race. Jobs, ServiceAccounts, and PVCs keep `Create` semantics — their specs are immutable or managed externally.
+
+### Hook and constructor args — per-CRD configuration with template support
+
+`args:` is a free-form key/value map declared under `reconciler.hooks` or `reconciler.constructor` in katalog.yaml. Orkestra attaches it to the `KubeClient` before calling the hook or constructor function; the author reads it via `kube.Args()`.
+
+```yaml
+operatorBox:
+  reconciler:
+    hooks:
+      function: DatabaseHooks
+      args:
+        readReplicaCount: 2
+        backupEnabled: true
+        region: '{{ default "us-east-1" .spec.region }}'
+        database:
+          engine: '{{ default "postgres" .spec.engine }}'
+```
+
+**String values support Go template expressions.** The GenericReconciler evaluates them against the current CR before the hook runs — the full note FuncMap (`default`, `upper`, `lower`, etc.) is available. Nested maps are walked recursively so any string inside them is also evaluated. Integers and booleans have no template syntax and pass through as their native types.
+
+Constructor authors call `kube.ScopedFor(resolver.TemplateEvaluator())` themselves at reconcile time for the same capability with full control over timing.
+
+The primary use case is **configuration reusability**: one binary, one constructor, many Katalog deployments — each with different args. Tier routing (`starter` / `standard` / `enterprise`), region configuration, feature flags, and per-tenant dynamic values all live in YAML with no code changes. See `documentation/concepts/typed-operators/06-reusability.md`.
+
+**`external:` under `hooks:`** — hooks can now declare HTTP calls alongside `args:` in the Katalog. The runtime executes them before invoking the hook, injects the results into the resolver, and makes them available to `args:` template expressions as `.external.<name>.*`. The hook reads the result via `kube.Args()` with no HTTP client or flag-service SDK in hook code.
+
+```yaml
+hooks:
+  external:
+    - name: flags
+      url: "{{ .spec.serviceUrl }}/flags/{{ .metadata.name }}/v2Enabled"
+      method: GET
+      continueOnError: true
+      timeout: 5s
+  args:
+    featureEnabled: '{{ .external.flags.body }}'
+```
+
+All `external:` capabilities available to declarative operators — `when:`, `anyOf:`, `continueOnError`, timeout — apply to hook external calls without additional plumbing. Constructor authors who need external data make the call themselves and pass the URL via `args:`.
+
+### Cluster-scoped GC and always-on finalizer
+
+`runners.DeleteOwnedClusterScopedResources` now covers Namespaces, ClusterRoles, ClusterRoleBindings, PersistentVolumes, and cluster-scoped custom resources. Previously only Namespaces were explicitly cleaned up on CR deletion.
+
+Every operator now receives the `orkestra.orkspace.io/cleanup` finalizer unconditionally. Previously the finalizer was only injected when the operator declared Namespace resources. Without it, a CR with cluster-scoped `custom:` children (e.g. a namespaced CR spawning a cluster-scoped child via `custom:`) was deleted by Kubernetes before the explicit GC runner could fire, leaving orphaned cluster-scoped resources.
+
+### Codebase restructure — packages organised by component
+
+Orkestra's packages are now organised by component. No API or behaviour changes — import paths only.
+
+**Gateway** — all gateway concerns under `pkg/gateway/`:
+→ `pkg/webhook` → `pkg/gateway/webhook`
+→ `pkg/notification` → `pkg/gateway/notification`
+→ `pkg/certmanager` → `pkg/gateway/certmanager`
+
+**Runtime** — all runtime-only packages under `pkg/runtime/`:
+→ `pkg/reconciler` → `pkg/runtime/reconciler`
+→ `pkg/kordinator` → `pkg/runtime/kordinator`
+→ `pkg/konductor` → `pkg/runtime/konductor`
+→ `pkg/informer` → `pkg/runtime/informer`
+→ `pkg/runners` → `pkg/runtime/runners`
+→ `pkg/autoscaler` → `pkg/runtime/autoscaler`
+→ `pkg/queue` → `pkg/runtime/queue`
+
+**Registry** — simulate, e2e, and motif join `pkg/registry/`:
+→ `pkg/simulate` → `pkg/registry/simulate`
+→ `pkg/e2e` → `pkg/registry/e2e`
+→ `pkg/motif` → `pkg/registry/motif`
+
+**Tools** — CLI-support packages under `pkg/tools/`:
+→ `pkg/ork` → `pkg/tools/cluster` (package renamed to `cluster`)
+→ `pkg/generate` → `pkg/tools/generate`
+→ `pkg/migrate` → `pkg/tools/migrate`
+→ `pkg/plan` → `pkg/tools/plan`
+→ `pkg/devserver` → `pkg/tools/devserver`
+→ `pkg/proxy` → `pkg/tools/proxy`
+
+New shared package `pkg/secrets` extracts secret lifecycle helpers used by both the runtime and the gateway Apply API.
+
+---
+
+## v0.7.11 — Workload autoscaler, user-defined notes, and three new example packs
+
+
+### Notes — the template vocabulary of a Katalog
+
+```bash
+ork init --pack intermediate/09-notes
+```
+
+Four sub-examples: built-in notes for live cluster queries and fallbacks (`01-built-in`), user-defined notes declared inline (`02-user-defined`), notes packaged into a Motif for team distribution via `spec.imports` (`03-motifs`), and Komposer-level note override (`04-komposer`). A root `simulate.yaml` and `e2e.yaml` run all four in sequence.
+
+
+### Temporal — time-dependent or time-aware operators
+
+```bash
+ork init --pack use-cases/temporal
+```
+
+Four sub-examples: business-hours provisioning (`01-business-hours`), weekly maintenance window (`02-maintenance-window`), per-region peak-hour replica scaling (`03-regional-peak`), and business-hours autoscaling driven by a user-defined note (`04-autoscale`). No CronJobs in any example.
+
+
+### Workload Autoscaler — replica control driven by time, external metrics, or cross-operator state
+
+```bash
+ork init --pack use-cases/workload-autoscaler
+```
+
+Three sub-examples: time-based jump scaling (`01-time-based`), external API step scaling via `external:` with the dev server (`02-external-api`), and cross-operator step scaling via `cross:` reading a sibling CRD's queue depth (`03-cross-operator`).
+
+
+### `autoscale:` — replica control for Deployments, StatefulSets, and ReplicaSets
+
+Adds an `autoscale:` block to `deployments:`, `statefulsets:`, and `replicasets:` declarations. On every reconcile, the autoscaler evaluates scale-up and scale-down conditions and patches `spec.replicas` when they pass. The reconciler's drift correction is suppressed for any workload that declares `autoscale:` so the two never fight.
+
+```yaml
+deployments:
+  - name: "{{ .metadata.name }}"
+    replicas: 2          # baseline — used as the starting point, not enforced once autoscale owns replicas
+    autoscale:
+      min: 2
+      max: 10
+      cooldown: 3m       # minimum gap between any two scale events
+      scaleUp:
+        conditions:
+          when:
+            - field: external.queue.queue.pendingJobs
+              greaterThan: "100"
+        increment: 2     # step scaling — adds 2 replicas per tick
+      scaleDown:
+        conditions:
+          when:
+            - field: external.queue.queue.pendingJobs
+              lessThan: "20"
+        decrement: 1
+```
+
+**Scale modes** — each direction supports either step or jump scaling:
+
+- `increment: N` / `decrement: N` — add or remove N replicas per tick, clamped to `min`/`max`
+- `target: N` — jump directly to N replicas in one reconcile
+
+**Condition sources** — any data in the resolver context is a valid scaling signal:
+
+- `time:` / `dayOfWeek:` — time-window and weekday conditions (built-in notes: `weekday`, `weekend`, `timeInWindow`, `nextCron`)
+- `field:` referencing `external.*` — scale on live HTTP metrics fetched via `external:` each reconcile
+- `field:` referencing `cross.*` — scale on a sibling CRD's status fields via `cross:` (informer cache, no HTTP call)
+
+**`negate: true` on any condition** — inverts the result, enabling "not in business hours" and similar patterns without writing a separate note:
+
+```yaml
+when:
+  - dayOfWeek:
+      weekday: true
+    negate: true   # passes on weekends
+```
+
+**External JSON auto-parsing** — when an `external:` call returns a JSON object body, top-level keys are merged into `external.<name>` so nested fields are navigable with dot-path syntax (`external.queue.queue.pendingJobs`).
+
+**`ork validate`** — validates `autoscale:` declarations: checks that `min ≤ max`, that each direction has exactly one of `target`, `increment`, or `decrement`, and that `cooldown` is a valid duration.
+
+**Dev server `/workload-metrics`** — `ork run --dev-server` exposes a stateful metrics endpoint for testing external API autoscale locally. `POST /workload-metrics/flip` toggles between low-load (8 pending jobs) and high-load (152 pending jobs) without touching the cluster.
+
+### User-defined notes — named template expressions for Katalogs and Motifs
+
+Adds a `notes:` block to Katalog and Motif. Each entry is a named Go template expression that becomes a callable function in every `{{ }}` context across the Katalog — status fields, when: conditions, onReconcile templates, normalize rules.
+
+```yaml
+notes:
+  - name: serviceHost
+    description: Fully-qualified cluster hostname for this workload
+    expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+
+  - name: fullImage
+    expression: "{{ .spec.image }}:{{ .spec.tag | default \"latest\" }}"
+
+spec:
+  crds:
+    workload:
+      operatorBox:
+        status:
+          fields:
+            - path: host
+              value: "{{ serviceHost }}"   # calls the note
+        onReconcile:
+          deployments:
+            - image: "{{ fullImage }}"
+```
+
+Notes declared in a Motif are distributed the same way as profiles — via `spec.imports` at the Katalog level, available to every CRD without re-declaring them:
+
+```yaml
+spec:
+  imports:
+    - motif: ./org-standards.yaml   # contributes notes and profiles Katalog-wide
+```
+
+A Komposer can override any note inline without touching the Katalog:
+
+```yaml
+# komposer.yaml
+notes:
+  - name: serviceHost
+    expression: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.prod-cluster.example.com"
+```
+
+**CLI:** `ork validate --notes` prints the merged note registry after validation. `ork notes -f katalog.yaml` appends user-defined notes to the built-in catalog.
+
+
+### Fix: `ork patterns` surfaces auth errors instead of silently showing 0 patterns
+
+`ork patterns` without a valid GHCR login previously rendered an empty table ("0 patterns") with no explanation. The catalog listing API requires auth even on public registries — unlike `ork run` which uses anonymous artifact pulls — so the two commands appeared to behave differently without any hint as to why.
+
+The error is now written to stderr with a login hint:
+
+```
+warning: could not list patterns from ghcr.io/orkspace/orkestra-registry/patterns/katalogs
+  → unauthorized: authentication required
+  hint: try logging in with: docker login ghcr.io
+```
+
+Same fix applied to the motif URL listing path.
+
+
+### `spec.imports` — katalog-wide profile scoping for Motifs
+
+Profiles declared in a Motif can now be imported at the Katalog level via `spec.imports`, making them available to every CRD in the Katalog:
+
+```yaml
+spec:
+  imports:
+    - motif: ./org-standards.yaml
+  crds:
+    application:
+      operatorBox:
+        onCreate:
+          deployments:
+            - resources:
+                profile: org-standard   # ✓ available to all CRDs
+    database:
+      operatorBox:
+        onCreate:
+          deployments:
+            - resources:
+                profile: org-standard   # ✓ same profile, no import needed here
+```
+
+`spec.crds[name].imports` still works for resources, status, and admission — profiles declared in those Motifs are ignored at the CRD level. This removes the previous behaviour where profiles from a CRD-level import leaked into the Katalog-wide registry, which caused conflicts when more than one CRD imported the same Motif.
+
+
+## v0.7.10 — E2E DSL extensions, cluster improvements, endpoint control, children forEach fixes, ork proxy
+
+
+### `ork proxy` — port-forward for Helm-deployed Orkestra
+
+Inspired by `kubectl proxy`, `ork proxy` replaces manual `kubectl port-forward` calls when working with a deployed Orkestra. It discovers components by the `orkestra.orkspace.io/komponent` label, resolves the Runtime leader via the `orkestra-konductor` Lease, and reconnects automatically on pod replacement (rollouts, leader failover).
+
+```bash
+ork proxy                        # Forward Runtime, Control Center, and Gateway
+ork proxy --for cc               # Control Center only
+ork proxy --for runtime,cc       # Runtime and Control Center
+ork proxy -n my-platform-ns      # Custom namespace
+ork proxy --runtime-port 9090    # Remap a port to avoid conflicts
+```
+
+The Runtime forward always targets the **leader pod** — not a random replica — so the forwarded connection reaches the replica with authoritative reconciler state. Port conflicts are caught before any tunnel opens. The `--for` flag uses the same vocabulary as `ork generate bundle --for`.
+
+
+### E2E: kubectl subprocess calls migrated to Go client
+
+Three operations in the e2e runner previously shelled out to `kubectl`. They now use the Go client directly, removing the `kubectl` install requirement for these paths:
+
+- **Leader Lease resolution** (`leaderElection:` on `port-forward`, `logs`, `exec`, `delete`) — `CoordinationV1().Leases().Get()` instead of `kubectl get lease -o jsonpath`
+- **Auth checks** (`kubectl.auth`) — `SelfSubjectAccessReview` when no `--as` is set (matching `kubectl auth can-i` default behaviour); `SubjectAccessReview` with `User` when `--as` is specified. The previous `SubjectAccessReview` with an empty user field was rejected by the API server.
+- **Port-forward assertions** (`kubectl.port-forward`) — SPDY portforward via `k8s.io/client-go/tools/portforward` + `net/http`. Uses `readyChan` for an exact ready signal instead of the old curl-retry polling loop.
+
+
+### Fix: kind node readiness spinner
+
+The spinner during `ork e2e` cluster setup was interleaving kubectl output on the same terminal line. Node readiness output is now captured via `os.Pipe` and never written to the terminal. The spinner updates with `(N/total)` progress as each node becomes ready and marks success once all nodes are up.
+
+
+### `kubectl.restart` and `kubectl.scale` — new E2E DSL subcommands
+
+Two new mutation subcommands under `kubectl:` for steps that need to trigger a rollout or change replica count as part of a test sequence.
+
+**`kubectl.restart`** calls `kubectl rollout restart` and waits for the rollout to complete (`ready: true` by default):
+
+```yaml
+kubectl:
+  restart:
+    - kind: Deployment
+      name: my-app
+      namespace: default
+```
+
+**`kubectl.scale`** calls `kubectl scale --replicas=N` and waits for the rollout to settle:
+
+```yaml
+kubectl:
+  scale:
+    - kind: Deployment
+      name: my-app
+      namespace: default
+      replicas: 3
+```
+
+Both support `ready: false` to skip the rollout status wait. Neither appears in `onFailure` diagnostics — mutations do not belong in the diagnostic path.
+
+Typical use: disabling deletion protection for e2e cleanup (patch ConfigMap → `kubectl.restart` gateway so housekeeper starts with `enabled: false` and removes the ValidatingWebhookConfiguration).
 
 ### `leaderElection:` on `kubectl.delete` and `kubectl.exec`
 
@@ -8,18 +472,6 @@
 
 `kubectl.exec` with `leaderElection:` runs a command inside the leader pod.
 
-### `include:` composition for `expect:`
-
-Long `expect:` sections can now be split across files in an `e2e/` subfolder and composed with `include:`:
-
-```yaml
-expect:
-  - include: ./e2e/infra-ready.yaml
-  - include: ./e2e/failover.yaml
-  - include: ./e2e/cleanup.yaml
-```
-
-Each include file carries the `expect:` root key. Phases can be read, improved, and scaled independently without touching the others. The three resilience examples (`leader-failover`, `crd-missing-recovery`, `admission-protection`) are refactored to use this pattern.
 
 ### Type rename: `E2EKubectlPortForwardLeaderElection` → `E2EKubectlLeaderElection`
 
@@ -61,11 +513,100 @@ ork run postgres:v1.0.0 --dev --refresh  # re-pull before running
 
 `komposer.yaml` was missing from `OptionalFiles` for Katalog patterns — it was never included as an OCI layer when pushing. Added `FileKomposer` constant and added it to the optional files list. Patterns must be re-pushed to include it.
 
+### Endpoint control — `endpoints:` and `crossAccess:` surfaced in the Control Center
+
+Disabled endpoints no longer show as degraded in the CC. The `/katalog` summary now carries `healthEnabled`, `infoEnabled`, and `crossAccess` flags alongside the static CRD fields (`GVK`, `GVR`, `Mode`, `Namespaced`, `Description`) that were previously only available from the per-CRD info endpoint.
+
+The CC reads these flags and skips disabled endpoint calls, synthesising health and info from the always-available `/katalog` summary. A CRD with `endpoints: enabled: false` returns `state: "endpoints-disabled"` and renders a clean disabled page instead of zeros or error states.
+
+All three CC templates updated:
+
+- **Katalog card** — health badge + `⊘` icon when health is disabled; metrics rows hidden when info is disabled; `⊘ info endpoint disabled` row when fully dark
+- **CRD detail** — three explicit disabled states: full-page notice, health section notice, operatorBox section notice
+- **Generated docs** — new Endpoints section (always shown); Cross-read access row in Overview; operatorBox summary table (hooks, constructor, finalizers); Configuration section hidden for disabled CRDs
+
+`crossAccess:` is now visible in the generated docs page for each CRD — ✓ allowed or ⊘ denied with a plain-English explanation.
+
+### Advanced pack — `19-endpoint-control`
+
+Three new examples under `examples/advanced/19-endpoint-control/`, each with `ork validate`, `ork simulate`, `ork run` walkthrough, and a fully passing `ork e2e`:
+
+| Example | What it teaches |
+|---------|-----------------|
+| `01-selective-health` | `endpoints: health: false` — info and CR list active, health endpoint removed |
+| `02-full-disable` | `endpoints: enabled: false` — all HTTP surfaces removed, operator reconciles normally |
+| `03-fully-dark` | `crossAccess: false` + `endpoints: enabled: false` — dark operator reads its open sibling via `cross:`; sibling's cross-read is denied; both outcomes visible in status printer columns |
+
+Root `simulate.yaml` and `e2e.yaml` use `imports:` to chain all three sub-examples.
+
+### Control Center — generated docs page
+
+New documentation page in `documentation/orkestra-core/03-controlcenter/generated-docs.md` covering the live-generated per-CRD docs: what sections appear, when, and how disabled endpoints affect the output.
+
 ### Bug fixes
+
+- **`forEach:` silently no-op on NetworkPolicy, ResourceQuota, LimitRange, ClusterRole, ClusterRoleBinding**: `forEach:` support for these five resource types was deferred from v0.7.8 when they were first introduced. A declared `forEach:` block was silently dropped — no expansion, no error. Fixed: `ExpandForEach*` wrappers added in `pkg/children/foreach.go`; runner calls in `run_template_reconcile.go` now pass through the expand step.
+- **`ForEach` field missing on NetworkPolicy, ResourceQuota, LimitRange, ClusterRole, ClusterRoleBinding template sources**: `forEach:` was undeclared on these types — any YAML using it would be silently ignored. Fixed: `ForEach *ForEachSpec` added to all five structs.
+- **NetworkPolicy invisible to child tracker**: `mergeTemplates` in `pkg/children/read.go` merged all v0.7.8 resources except `NetworkPolicies` — they never appeared in the CR detail children map. Fixed.
+- **ResourceQuota and LimitRange invisible to CR detail view**: `ResourceQuotaGVR` and `LimitRangeGVR` were absent from `pkg/children/gvr.go` — these resources could not be read back as children after reconcile. Fixed: GVR vars and `ChildGVRs()` entries added.
+- **NetworkPolicy, ResourceQuota, LimitRange, ClusterRole, ClusterRoleBinding not tracked as children**: No `*Names` helper or `children.go` read block existed for any of the five types. Fixed: helpers and read blocks added; resources now appear in CR detail and the Control Center Resources tab.
 
 - **Node-ready race**: `waitForNodesReady` checked the condition *type* (`Ready`) not its *status* (`True`). A node could be type=Ready status=False and still be reported ready. Replaced with `kubectl wait --for=condition=Ready node --all`.
 - **`--version` silently ignored when kind is in PATH**: `resolveKind` always checked PATH first regardless of the version flag. Fixed: empty version checks PATH then falls back to default; non-empty version skips PATH entirely.
 - **Spinner output leaking during setup waits**: `WaitForResource` used `.Run()` for ready checks, letting `kubectl rollout status` and `kubectl wait` write progress to the terminal while the spinner goroutine was running. Replaced with `.Output()`. `helm repo add/update` had the same issue during the Installing spinner.
+
+### `ork e2e --report-file`
+
+`--report-file <path>` writes results as a GFM markdown table after every run. The file contains two tables — passed cases (icon, test, time) and failed cases (icon, test, time, error) — with a summary line. Newlines in error messages are replaced with `. ` so the table renders correctly.
+
+```bash
+ork e2e --report-file results.md
+ork e2e --report-file "$GITHUB_STEP_SUMMARY"   # render directly in GitHub Actions
+```
+
+Terminal output is now also split: passed cases print first, then failed cases with the full error indented line-by-line — consistent with how most language test frameworks present results.
+
+### `spec.onFailure` and per-expectation `onFailure`
+
+Two levels of diagnostic output when a test fails:
+
+**`spec.onFailure`** — runs once after all expectations complete, when at least one failed. Use for a global cluster snapshot.
+
+**`expect[].onFailure`** — runs immediately when that specific checkpoint fails, before moving to the next. Use to capture state at the moment of failure.
+
+Both accept the same DSL:
+
+```yaml
+spec:
+  onFailure:
+    kubectl:
+      logs:
+        - labelSelector: app=my-operator
+          namespace: default
+          since: 2m
+    commands:
+      - kubectl get pods -A -o wide
+
+  expect:
+    - name: Operator reaches Ready
+      after: cr-applied
+      timeout: 120s
+      kubectl:
+        get:
+          - kind: MyResource
+            name: my-cr
+            namespace: default
+            field: .status.phase
+            equals: Ready
+      onFailure:
+        kubectl:
+          describe:
+            - kind: Deployment
+              name: my-operator
+              namespace: default
+```
+
+Assertion fields on the `kubectl:` structs are present but never evaluated — output is always printed. `onFailure` never blocks teardown.
 
 ---
 
@@ -105,7 +646,7 @@ Caches have no TTL — entries persist until `ork pull -f komposer.yaml --refres
 
 - **Merger log noise**: git clone and Helm pull progress messages in `resolveGitChart` and `resolveRemoteChart` downgraded from `Info` to `Debug`. Only shown with `--debug`.
 - **charts/examples gitlink**: dangling gitlink (`mode 160000`) in the repository index with no `.gitmodules` caused `ork template` to fail on machines that cloned the repo via the merger. Re-added as regular tracked files.
-- **`.gitignore` bare `ork` pattern**: the entry `ork` matched `pkg/ork/` and blocked `pkg/ork/metrics.go` from being tracked. Changed to `/ork` (root-only).
+- **`.gitignore` bare `ork` pattern**: the entry `ork` matched `pkg/tools/cluster/` and blocked `pkg/tools/cluster/metrics.go` from being tracked. Changed to `/ork` (root-only).
 - **govulncheck in CI**: `go run golang.org/x/vuln/cmd/govulncheck@latest ./...` added to `validate-pr` workflow. `go install` + call-by-name was tried first but `GOPATH/bin` is not on `PATH` in CI runners.
 - **CVE dependency updates**: `x/crypto` → `v0.52.0`, `x/net` → `v0.55.0`, `containerd` → `v1.7.33`. Three remaining containerd advisories have `Fixed in: N/A` upstream and are not actionable.
 
@@ -294,7 +835,7 @@ expect:
 
 **Validator**: `ork validate` checks all `kubectl:` blocks — required fields, mutual exclusion, at least one assertion per entry, `jq`/`yq` format consistency, `top` kind must be `pod` or `node`.
 
-**Fixture**: `pkg/e2e/fixture/` is a living integration test with one checkpoint per subcommand. Rule: add a checkpoint when you add a subcommand.
+**Fixture**: `pkg/registry/e2e/fixture/` is a living integration test with one checkpoint per subcommand. Rule: add a checkpoint when you add a subcommand.
 
 ---
 
@@ -718,7 +1259,7 @@ This release ships the first public early-access build of Orkestra. It focuses o
 
 ### Documentation
 
-- **`pkg/e2e` developer docs** — all four existing reference pages rewritten; three new pages: `05-imports.md`, `06-discovery.md`, `07-custom-operator.md`.
+- **`pkg/registry/e2e` developer docs** — all four existing reference pages rewritten; three new pages: `05-imports.md`, `06-discovery.md`, `07-custom-operator.md`.
 - **Schema docs** — `wait:` imports field and `spec.customOperator` documented.
 - **Getting-started** — CLI reference table updated; `ork run -f` note on optional `-f` when `katalog.yaml` is in the current directory.
 - **Blog** — `04-why-i-built-this.md`.
@@ -816,7 +1357,7 @@ security:
 
 New command that runs the full operator reconcile loop against a fake in-memory cluster — no Kubernetes required. Give it a Katalog and a CR and it shows exactly which resources are created, updated, or deleted each cycle.
 
-- `pkg/simulate` — new package: `FakeKubeclient`, `Run`, `Result`, `CycleResult`, `Op`
+- `pkg/registry/simulate` — new package: `FakeKubeclient`, `Run`, `Result`, `CycleResult`, `Op`
 - Fake clientset uses `PrependReactor` so every k8s operation is recorded before the default object tracker handles it
 - CR is pre-seeded with managed labels and annotations so the reconciler's idempotency guards skip those patches every cycle
 - Deployment status is advanced to `Available` after cycle 1 to unblock state machines waiting on `AvailableReplicas`
@@ -825,7 +1366,7 @@ New command that runs the full operator reconcile loop against a fake in-memory 
 - `+` shown for creates, `~` for updates, `-` for deletes; if a resource is both created and patched in one cycle (e.g. `reconcile: true`), only `+` is shown
 - Zerolog global logger is redirected to `io.Discard` during simulation so reconciler JSON logs don't pollute output
 - CR YAML is converted via `sigsyaml.YAMLToJSON` before unmarshalling to ensure numeric fields are `float64` (k8s `DeepCopyJSON` requirement)
-- Progressive documentation in `pkg/simulate/docs/` (output, steady state, limitations, internals)
+- Progressive documentation in `pkg/registry/simulate/docs/` (output, steady state, limitations, internals)
 
 ### **Added — `ork e2e` command**
 
@@ -897,7 +1438,7 @@ Key components:
 - **Unified replica parsing (`pkg/resources/common/parse.go`)**
   Added `ParseReplicas(s string) int32` to unify replica string-to-int32 parsing across deployments, statefulsets, replicasets, pods, jobs, and cronjobs.
 
-- **Motif input quoting fix (`pkg/motif/expander.go`)**
+- **Motif input quoting fix (`pkg/registry/motif/expander.go`)**
   `renderInputs` now strips YAML quotes for inputs declared as `type: integer` or `type: bool`, preventing the `Invalid value: "string"` class of errors when Orkestra-rendered values are applied to strictly-typed CRD fields.
 
 ### **Impact**

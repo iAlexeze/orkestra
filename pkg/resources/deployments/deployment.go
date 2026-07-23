@@ -3,10 +3,12 @@ package deployments
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -18,6 +20,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 // Create creates a Deployment owned by the CR if it does not already exist.
@@ -61,12 +64,11 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update reconciles an existing Deployment to match the resolved spec.
-// Handles drift — if replicas or image have changed, patches the Deployment.
-// If the Deployment does not exist, creates it.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedDeploymentSpec) error {
+// Apply creates or updates a Deployment using Server-Side Apply.
+// Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedDeploymentSpec) error {
 	if err := validateSpec(spec); err != nil {
-		return fmt.Errorf("deployment.Update: invalid spec: %w", err)
+		return fmt.Errorf("deployment.Apply: invalid spec: %w", err)
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
@@ -74,75 +76,33 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		return err
 	}
 
-	existing, err := kube.Clientset().AppsV1().Deployments(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
+	d := buildDeployment(owner, spec, namespace)
+	d.TypeMeta = metav1.TypeMeta{APIVersion: "apps/v1", Kind: "Deployment"}
+
+	body, err := json.Marshal(d)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info().
-				Str("deployment", spec.Name).
-				Str("namespace", namespace).
-				Msg("deployment not found during reconcile — recreating")
-			return Create(ctx, kube, owner, spec)
-		}
-		return fmt.Errorf("deployment.Update: getting deployment %q: %w", spec.Name, err)
+		return fmt.Errorf("deployment.Apply: marshal: %w", err)
 	}
 
-	desired := buildDeployment(owner, spec, namespace)
-	drifted := false
-	updated := existing.DeepCopy()
-
-	// Replicas
-	if existing.Spec.Replicas == nil || *existing.Spec.Replicas != spec.Replicas {
-		updated.Spec.Replicas = desired.Spec.Replicas
-		drifted = true
-		logger.Info().Str("deployment", spec.Name).Int32("desired", spec.Replicas).Msg("deployment replicas drifted")
+	if _, err = kube.Clientset().AppsV1().Deployments(namespace).Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		return fmt.Errorf("deployment.Apply: %w", err)
 	}
 
-	// Labels
-	if !common.LabelsEqual(existing.Labels, desired.Labels) {
-		updated.Labels = desired.Labels
-		drifted = true
-	}
-
-	// Resources (uses custom equality to handle Kubernetes-defaulted values)
-	if spec.Resources != nil {
-		desiredRes := common.BuildResourceRequirements(spec.Resources)
-		var existingRes corev1.ResourceRequirements
-		if len(existing.Spec.Template.Spec.Containers) > 0 {
-			existingRes = existing.Spec.Template.Spec.Containers[0].Resources
-		}
-		if !common.ResourceRequirementsEqual(existingRes, desiredRes) {
-			updated.Spec.Template.Spec.Containers[0].Resources = desiredRes
-			drifted = true
-			logger.Info().Str("deployment", spec.Name).Msg("deployment resources drifted")
-		}
-	}
-
-	// All other container and pod-spec fields from the template
-	if len(updated.Spec.Template.Spec.Containers) > 0 && len(desired.Spec.Template.Spec.Containers) > 0 {
-		if common.SyncContainerSpec(&updated.Spec.Template.Spec.Containers[0], desired.Spec.Template.Spec.Containers[0]) {
-			drifted = true
-		}
-	}
-	if common.SyncPodSpec(&updated.Spec.Template.Spec, desired.Spec.Template.Spec) {
-		drifted = true
-	}
-
-	if !drifted {
-		logger.Debug().Str("deployment", spec.Name).Msg("deployment in sync — no update needed")
-		return nil
-	}
-
-	_, err = kube.Clientset().AppsV1().Deployments(namespace).Update(ctx, updated, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("deployment.Update: updating deployment %q: %w", spec.Name, err)
-	}
-
-	logger.Info().
+	logger.Debug().
 		Str("deployment", spec.Name).
 		Str("namespace", namespace).
-		Msg("deployment updated")
+		Str("owner", owner.GetName()).
+		Msg("deployment applied")
 
 	return nil
+}
+
+// Update applies the Deployment via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedDeploymentSpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the Deployment if it exists.
@@ -223,6 +183,7 @@ func Resolve(src orktypes.DeploymentTemplateSource, ownerName string, reg orktyp
 	}
 
 	spec.Replicas = common.ParseReplicas(src.Replicas)
+	spec.HasAutoscale = src.Autoscale != nil
 
 	// Port — prefer dynamic resolved string, fall back to static int
 	if src.Port != "" {
@@ -301,7 +262,7 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: spec.Labels,
+					Labels: podTemplateLabels(spec.Labels, owner.GetName()),
 				},
 				Spec: corev1.PodSpec{
 					ImagePullSecrets:   common.ToPullSecrets(spec.ImagePullSecrets),
@@ -398,6 +359,17 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 	}
 
 	return d
+}
+
+// podTemplateLabels merges user-supplied labels with the selector label so the
+// pod template always satisfies the Deployment's matchLabels constraint.
+func podTemplateLabels(userLabels map[string]string, ownerName string) map[string]string {
+	out := make(map[string]string, len(userLabels)+1)
+	for k, v := range userLabels {
+		out[k] = v
+	}
+	out["orkestra-owner"] = ownerName
+	return out
 }
 
 func validateSpec(spec ResolvedDeploymentSpec) error {

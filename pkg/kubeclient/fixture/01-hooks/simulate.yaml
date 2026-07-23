@@ -1,0 +1,24 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: blockchainapp-hooks-sim
+  description: >
+    Run with: ork simulate --dev-server
+
+    The dev server returns "true" for all flag requests, so featureEnabled="true"
+    and the Deployment is created at spec.replicas (5).
+    The hook reads kube.Args().String("featureEnabled") — no HTTP client in hook code.
+
+spec:
+  katalog: ./katalog.yaml
+  cr: ./cr.yaml
+  cycles: 3
+
+  expect:
+    steady: true
+    noErrors: true
+    ops:
+      - cycle: 1
+        verb: apply
+        resource: deployments
+        name: 01-hooks-my-chain

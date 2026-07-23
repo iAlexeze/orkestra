@@ -6,7 +6,6 @@
   <h3><em>Declare. Run.</em></h3>
 
   <p>
-    <a href="https://goreportcard.com/report/github.com/orkspace/orkestra"><img src="https://goreportcard.com/badge/github.com/orkspace/orkestra" alt="Go Report Card" /></a>
     <a href="https://github.com/orkspace/orkestra/releases"><img src="https://img.shields.io/github/v/release/orkspace/orkestra" alt="Release" /></a>
     <a href="https://artifacthub.io/packages/search?repo=orkestra"><img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/orkestra" alt="Artifact Hub" /></a>
     <img src="https://img.shields.io/badge/Go-1.26+-00ADD8.svg" alt="Go" />
@@ -95,6 +94,7 @@ Every CRD declared in a Katalog becomes a complete, isolated operator. Nothing t
 | **Prometheus metrics** | Reconcile totals, queue depth, error rate — labeled by GVK. |
 | **Deletion protection** | Orkestra and everything it manages cannot be accidentally `kubectl delete`. |
 | **Control Center** | Realtime visibility per CRD, per Katalog, across instances. Auto-generated operator docs — overview, reconcile mode, child resources, kubectl reference, access control. |
+| **Developer portal** | `idp.enabled: true` on any CRD surfaces a self-service form in the Control Center. Users submit CRs through a browser — no kubectl, no YAML. |
 
 ---
 
@@ -166,15 +166,15 @@ Six Runtimes. 75 CRDs. One Control Center.
 
 ## What Orkestra is not
 
-**Orkestra is not an operator — it is a runtime for Kubernetes behaviour.** Each CRD you declare in a Katalog becomes an operator. Orkestra itself is the runtime that runs them.
+**Not an operator framework — an operator runtime.** A framework gives you libraries and conventions. Orkestra gives you a runtime with platform tools to build, test, evaluate, visualize, and operate operators and control planes.
 
-**CRD generation is a starting point, not the source of truth.** `ork generate crd` scaffolds a base CRD from your Katalog. You own the final schema — add validation, printer columns, and version history to it. `crdFile` just points to whatever CRD file you maintain.
+**Not an operator — a runtime for operators.** Each CRD in a Katalog becomes its own operator. Orkestra is the runtime that runs them all.
 
-**It does not replace Go for complex logic.** Hooks and constructors exist for exactly this reason. ~90% of operators are declarative structure; ~10% need code. Orkestra handles the 90% and gives the 10% a clean interface.
+**Not an IDP — but every operator can become one.** `idp.enabled: true` on any CRD exposes a self-service form in the Control Center. Users submit CRs through a browser without kubectl or YAML. The IDP is the operator — Orkestra just surfaces it.
 
-**External infrastructure providers are in development.** For AWS, MongoDB, or cloud DNS alongside Kubernetes resources, use Crossplane for external infrastructure and Orkestra for the application layer. The two complement each other.
+**Not a replacement for Go.** Hooks and constructors exist for exactly this reason. ~90% of operators are declarative; ~10% need code. Orkestra handles the 90% and gives the 10% a clean interface — the same informer, queue, health, and metrics infrastructure, with a single function to implement.
 
-**It does not auto-sync from Git.** Configuration is resolved at startup and locked in. Katalogs define long-lived API contracts; silently reloading them is dangerous. Use a deployment pipeline like any other runtime change.
+**Not GitOps.** Katalogs define long-lived API contracts and are resolved at startup. Silently reloading them mid-flight is dangerous. Treat Katalog changes like any other runtime change — deploy through a pipeline.
 
 ---
 

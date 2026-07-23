@@ -3,10 +3,12 @@ package statefulsets
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -20,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 // Create creates a StatefulSet owned by the CR if it does not already exist.
@@ -55,74 +58,41 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update reconciles an existing StatefulSet to match the resolved spec.
-// Patches replicas and image when drift is detected.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedStatefulSetSpec) error {
+// Apply creates or updates a StatefulSet using Server-Side Apply.
+// Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedStatefulSetSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
 	}
 
-	existing, err := kube.Clientset().AppsV1().StatefulSets(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
+	sts := buildStatefulSet(owner, spec, namespace)
+	sts.TypeMeta = metav1.TypeMeta{APIVersion: "apps/v1", Kind: "StatefulSet"}
+
+	body, err := json.Marshal(sts)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			return Create(ctx, kube, owner, spec)
-		}
-		return fmt.Errorf("statefulset.Update: getting %q: %w", spec.Name, err)
+		return fmt.Errorf("statefulset.Apply: marshal: %w", err)
 	}
 
-	desired := buildStatefulSet(owner, spec, namespace)
-	drifted := false
-	updated := existing.DeepCopy()
-
-	// Replicas
-	if existing.Spec.Replicas == nil || *existing.Spec.Replicas != *desired.Spec.Replicas {
-		updated.Spec.Replicas = desired.Spec.Replicas
-		drifted = true
-		logger.Info().Str("statefulset", spec.Name).Msg("statefulset replicas drifted")
+	if _, err = kube.Clientset().AppsV1().StatefulSets(namespace).Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		return fmt.Errorf("statefulset.Apply: %w", err)
 	}
 
-	// Labels
-	if !common.LabelsEqual(existing.Labels, desired.Labels) {
-		updated.Labels = desired.Labels
-		drifted = true
-	}
+	logger.Debug().
+		Str("statefulset", spec.Name).
+		Str("namespace", namespace).
+		Str("owner", owner.GetName()).
+		Msg("statefulset applied")
 
-	// Resources
-	if spec.Resources != nil {
-		desiredRes := common.BuildResourceRequirements(spec.Resources)
-		var existingRes corev1.ResourceRequirements
-		if len(existing.Spec.Template.Spec.Containers) > 0 {
-			existingRes = existing.Spec.Template.Spec.Containers[0].Resources
-		}
-		if !common.ResourceRequirementsEqual(existingRes, desiredRes) {
-			updated.Spec.Template.Spec.Containers[0].Resources = desiredRes
-			drifted = true
-			logger.Info().Str("statefulset", spec.Name).Msg("statefulset resources drifted")
-		}
-	}
-
-	if len(updated.Spec.Template.Spec.Containers) > 0 && len(desired.Spec.Template.Spec.Containers) > 0 {
-		if common.SyncContainerSpec(&updated.Spec.Template.Spec.Containers[0], desired.Spec.Template.Spec.Containers[0]) {
-			drifted = true
-		}
-	}
-	if common.SyncPodSpec(&updated.Spec.Template.Spec, desired.Spec.Template.Spec) {
-		drifted = true
-	}
-
-	if !drifted {
-		logger.Debug().Str("statefulset", spec.Name).Msg("statefulset in sync — no update needed")
-		return nil
-	}
-
-	_, err = kube.Clientset().AppsV1().StatefulSets(namespace).Update(ctx, updated, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("statefulset.Update: updating %q: %w", spec.Name, err)
-	}
-
-	logger.Info().Str("statefulset", spec.Name).Str("namespace", namespace).Msg("statefulset updated")
 	return nil
+}
+
+// Update applies the StatefulSet via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedStatefulSetSpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the StatefulSet if it exists.
@@ -166,6 +136,7 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string, reg orkty
 		Image:           src.Image,
 		ServiceName:     src.ServiceName,
 		Replicas:        common.ParseReplicas(src.Replicas),
+		HasAutoscale:    src.Autoscale != nil,
 		Labels:          make(map[string]string),
 		Annotations:     make(map[string]string),
 		Env:             src.Env,

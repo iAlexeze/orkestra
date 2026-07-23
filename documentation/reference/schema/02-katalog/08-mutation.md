@@ -18,6 +18,31 @@ mutation:
       default: "{{ .Spec.Registry }}/myapp:latest"
 ```
 
+## `mutation.include`
+
+Pull rules from an external file to keep the Katalog compact. The file contains a `rules:` key with the same list structure as inline rules.
+
+```yaml
+mutation:
+  include: ./admission/apprequest.yaml   # relative to the katalog file
+  rules:
+    - field: spec.logLevel               # appended after included rules
+      default: info
+```
+
+`admission/apprequest.yaml`:
+
+```yaml
+rules:
+  - field: spec.replicas
+    default: 1
+    valueType: int
+  - field: spec.engine
+    default: postgres
+```
+
+Included rules come first. Inline `rules:` append after. The `include:` path is resolved relative to the katalog file's directory — the katalog can be run from any working directory. The field is cleared from the runtime bundle after expansion.
+
 ## `mutation.rules`
 
 Each rule sets one field. Rules are applied in order.
@@ -28,8 +53,32 @@ Each rule sets one field. Rules are applied in order.
 | `default` | one of | Set only if the field is **absent or empty**. Supports Go templates. |
 | `override` | one of | **Always** set, regardless of current value. Supports Go templates. |
 | `valueType` | no | `string` (default), `int`, `float`, `bool` |
+| `when` | no | All conditions must pass for this rule to be applied (AND). Empty means unconditional. |
+| `anyOf` | no | At least one condition must pass for this rule to be applied (OR). When both `when` and `anyOf` are declared, both blocks must pass. |
 
 Declare either `default` or `override` on each rule, not both.
+
+`when` and `anyOf` use the same `Condition` type as resource templates — see [06-when-conditions.md](06-when-conditions.md) for the full operator reference.
+
+```yaml
+mutation:
+  rules:
+    - field: spec.replicas
+      default: 1
+      valueType: int
+
+    - field: spec.targetRevision
+      default: main
+      when:
+        - field: spec.environment
+          equals: staging
+
+    - field: spec.targetRevision
+      override: "{{ .spec.approvedRevision }}"
+      when:
+        - field: spec.environment
+          equals: production
+```
 
 ## `mutateFirst`
 

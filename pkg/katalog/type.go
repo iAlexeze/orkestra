@@ -24,6 +24,7 @@ type Katalog struct {
 	Kind         string                                `yaml:"kind"`
 	Spec         orktypes.KatalogSpec                  `yaml:"spec"`
 	Security     orktypes.KatalogSecurity              `yaml:"security"`
+	Notes        orktypes.NoteRegistry                 `yaml:"notes,omitempty"`
 	Profiles     orktypes.ProfileRegistry              `yaml:"profiles,omitempty"`
 	Gateway      *orktypes.GatewayConfig               `yaml:"gateway,omitempty"`
 	Notification *orktypes.KatalogNotification         `yaml:"notification,omitempty"`

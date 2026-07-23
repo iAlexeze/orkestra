@@ -187,4 +187,10 @@ type DeploymentTemplateSource struct {
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).
 	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
+
+	// Autoscale declares workload autoscaling behaviour for this Deployment.
+	// When set, the reconciler evaluates scale-up and scale-down conditions on every
+	// reconcile and patches spec.replicas when conditions pass and cooldown has elapsed.
+	// No goroutine — the resync period is the evaluation tick.
+	Autoscale *WorkloadAutoscale `yaml:"autoscale,omitempty" json:"autoscale,omitempty"`
 }

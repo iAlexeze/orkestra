@@ -36,6 +36,8 @@ package health
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -116,6 +118,11 @@ func (h *HealthServer) Start(ctx context.Context) error {
 	}
 	h.mux.Handle("/metrics", promhttp.Handler())
 
+	ln, err := net.Listen("tcp", h.httpPort)
+	if err != nil {
+		return fmt.Errorf("health server: cannot bind %s: %w", h.httpPort, err)
+	}
+
 	h.server = &http.Server{
 		Addr:    h.httpPort,
 		Handler: h.mux,
@@ -126,7 +133,7 @@ func (h *HealthServer) Start(ctx context.Context) error {
 
 	go func() {
 		logger.Info().Str("port", h.httpPort).Msg("health server listening")
-		if err := h.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := h.server.Serve(ln); err != nil && err != http.ErrServerClosed {
 			logger.Error().Err(err).Str("port", h.httpPort).Msg("health server error")
 		}
 	}()

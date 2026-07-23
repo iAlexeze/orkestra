@@ -87,11 +87,13 @@ func (k *Katalog) KomposeRuntimeKatalog(
 ) (map[string]orktypes.CRDEntry, error) {
 
 	k.Spec = m.ToSpec()
+	k.Spec.Imports = m.ToSpecImports()
 	k.Security = m.ToSecurity()
 	k.Gateway = m.ToGateway()
 	k.Notification = m.ToNotification()
 	k.Providers = m.ToProviders()
 	k.Profiles = m.ToProfiles()
+	k.Notes = m.ToNotes()
 	k.projectInfo = m.ToProjectInfo()
 	k.enabledCRDs = m.Enabled()           // Enabled CRDs for all operations
 	k.metadata = m.APIMetadata().Metadata // Metadata for CLI and health endpoints
@@ -99,6 +101,13 @@ func (k *Katalog) KomposeRuntimeKatalog(
 	k.Kind = m.APIMetadata().Kind
 	k.konfig = kfg
 	k.katalogDir = m.FirstEntryDir()
+
+	if err := orktypes.ExpandNotesInclude(&k.Notes, k.katalogDir); err != nil {
+		return nil, fmt.Errorf("notes: %w", err)
+	}
+	if err := orktypes.ExpandProfileInclude(&k.Profiles, k.katalogDir); err != nil {
+		return nil, fmt.Errorf("profiles: %w", err)
+	}
 
 	for name, entry := range k.enabledCRDs {
 		// Populate APITypes from crdFile before enrichment so isFullySpecified sees
@@ -113,6 +122,25 @@ func (k *Katalog) KomposeRuntimeKatalog(
 			entry.CRDFile = ""
 		}
 
+		// Expand idp.include before enrichment so field hints are fully resolved.
+		if err := populateIDPFieldsFromInclude(&entry, k.katalogDir); err != nil {
+			return nil, fmt.Errorf("CRD %q: %w", name, err)
+		}
+
+		// Expand validation.include, mutation.include, conversion.include and status.include.
+		if err := populateValidationRulesFromInclude(&entry, k.katalogDir); err != nil {
+			return nil, fmt.Errorf("CRD %q: %w", name, err)
+		}
+		if err := populateMutationRulesFromInclude(&entry, k.katalogDir); err != nil {
+			return nil, fmt.Errorf("CRD %q: %w", name, err)
+		}
+		if err := populateConversionPathsFromInclude(&entry, k.katalogDir); err != nil {
+			return nil, fmt.Errorf("CRD %q: %w", name, err)
+		}
+		if err := populateStatusFieldsFromInclude(&entry, k.katalogDir); err != nil {
+			return nil, fmt.Errorf("CRD %q: %w", name, err)
+		}
+
 		// Enrich enabled CRDs
 		outcome, err := EnrichCRDEntry(&entry)
 		if err != nil {
@@ -122,7 +150,12 @@ func (k *Katalog) KomposeRuntimeKatalog(
 		k.enabledCRDs[name] = entry
 	}
 
-	// Expand Motif imports declared in each operatorBox
+	// Expand spec.imports — merge profiles into the Katalog-wide ProfileRegistry
+	if err := k.expandKatalogImports(); err != nil {
+		return nil, err
+	}
+
+	// Expand Motif imports declared in each operatorBox (resources, status, admission only)
 	if err := k.expandMotifImports(); err != nil {
 		return nil, err
 	}

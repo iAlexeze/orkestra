@@ -84,7 +84,7 @@ type Condition struct {
 
 	// Cron — a standard cron expression (5-field) that defines when the
 	// window opens. Duration defines how long the window stays open.
-	// Without Duration, the window closes after one evaluation interval.
+	// Without Duration, the window stays open until the next fire. Add Duration to close it sooner.
 	Cron string `yaml:"cron,omitempty" json:"cron,omitempty"`
 
 	// Duration — how long a cron-opened window remains active.
@@ -96,6 +96,15 @@ type Condition struct {
 	Notify *NotifyBlock `yaml:"notify,omitempty" json:"notify,omitempty"`
 
 	// ── Cross-binary metric fallback ─────────────────────────────────────────
+
+	// Negate — when true, the result of this condition is inverted.
+	// Applies to all condition types: field comparisons, time windows, dayOfWeek, cron.
+	//
+	//   when:
+	//     - dayOfWeek:
+	//         weekday: true
+	//       negate: true   # passes on weekends
+	Negate bool `yaml:"negate,omitempty" json:"negate,omitempty"`
 
 	// Source is the HTTP fallback for cross-binary metric observation.
 	// Only used when field is a cross.<crd>.metrics.* field and the CRD

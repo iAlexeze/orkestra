@@ -30,11 +30,11 @@ Full contribution guides live in [`documentation/contributing/`](documentation/c
 git clone https://github.com/orkspace/orkestra.git
 cd orkestra
 
-# Build
+# Build (runs codegen + gofmt + go build)
 make ork
 
 # Test
-go test ./...
+make test
 ```
 
 ---
@@ -43,7 +43,7 @@ go test ./...
 
 1. Fork and create a branch from `main`.
 2. Read the relevant guide above.
-3. Run `go test ./...` and confirm it passes.
+3. Run `make test-race` and confirm it passes (vet + unit tests + race detector).
 4. Open a PR with a short description of what and why. Link any related issues.
 
 ---

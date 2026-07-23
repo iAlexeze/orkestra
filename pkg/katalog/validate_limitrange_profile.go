@@ -19,12 +19,13 @@ package katalog
 
 import (
 	"fmt"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 func (k *Katalog) validateLimitRangeProfiles() error {
 	for crdName, crd := range k.enabledCRDs {
 		for _, e := range crd.CollectLimitRangeProfileEntries() {
-			if isTemplateExpr(e.Profile) {
+			if orktypes.IsTemplate(e.Profile) {
 				continue
 			}
 			if !k.isUserLimitRangeProfile(e.Profile) {

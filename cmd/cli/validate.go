@@ -11,10 +11,10 @@ import (
 
 	"path/filepath"
 
-	"github.com/orkspace/orkestra/pkg/e2e"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
-	motifpkg "github.com/orkspace/orkestra/pkg/motif"
+	"github.com/orkspace/orkestra/pkg/registry/e2e"
+	motifpkg "github.com/orkspace/orkestra/pkg/registry/motif"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	orkutils "github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
@@ -117,6 +117,19 @@ Examples:
 		}
 
 		full, _ := cmd.Flags().GetBool("full")
+		showNotes, _ := cmd.Flags().GetBool("notes")
+		showProfiles, _ := cmd.Flags().GetBool("profiles")
+
+		// --notes / --profiles: quiet mode — skip full validate output, print only that registry.
+		if showNotes || showProfiles {
+			if showNotes {
+				printValidateNotes(k.Notes)
+			}
+			if showProfiles {
+				printValidateProfiles(k.Profiles)
+			}
+			return nil
+		}
 
 		var perCRDPerms map[string][]rbacv1.PolicyRule
 		if full {
@@ -166,8 +179,17 @@ Examples:
 		}
 
 		// Summary
+		crdText := "CRDs"
+		if (builtIn + custom) == 1 {
+			crdText = "CRD"
+		}
+
 		fmt.Println(strings.Repeat("─", 60))
-		fmt.Printf("%d CRDs valid (%d built-in, %d custom)\n", len(entries), builtIn, custom)
+		fmt.Printf("%d %s valid (%d built-in, %d custom)\n", len(entries), crdText, builtIn, custom)
+
+		for _, w := range k.CronConditionWarnings() {
+			fmt.Printf("\n%s  %s\n", yellow("⚠"), w)
+		}
 
 		if full {
 			if dd := k.DependencyDisplayData(); dd != nil {
@@ -177,6 +199,10 @@ Examples:
 			printGatewayPermissionsSection(k.GenerateGatewayRBACRules())
 			fmt.Println()
 		}
+
+		// Always print non-empty registries inline.
+		printValidateNotes(k.Notes)
+		printValidateProfiles(k.Profiles)
 
 		return nil
 	},
@@ -280,7 +306,8 @@ func validateE2EFile(path string) error {
 			if k := exp.Kubectl; k != nil {
 				kubectlCount = len(k.Get) + len(k.Logs) + len(k.Describe) + len(k.Exec) +
 					len(k.PortForward) + len(k.Apply) + len(k.Delete) + len(k.Patch) +
-					len(k.Events) + len(k.Auth) + len(k.Cp) + len(k.Top)
+					len(k.Events) + len(k.Auth) + len(k.Cp) + len(k.Top) +
+					len(k.Restart) + len(k.Scale)
 			}
 			if len(exp.Resources) == 0 && len(exp.Commands) == 0 && kubectlCount == 0 {
 				errs = append(errs, fmt.Sprintf("spec.expect[%d] (%q): must have at least one resource, command, or kubectl check", i, exp.Name))
@@ -385,9 +412,19 @@ func validateE2EFile(path string) error {
 
 // validateSimulateFile validates a Simulate spec file and prints a summary.
 func validateSimulateFile(path string) error {
-	fmt.Println()
-	fmt.Println(bold("Validating Simulate..."))
-	fmt.Println()
+	return validateSimulateFileOpts(path, false)
+}
+
+func validateSimulateFileQuiet(path string) error {
+	return validateSimulateFileOpts(path, true)
+}
+
+func validateSimulateFileOpts(path string, quiet bool) error {
+	if !quiet {
+		fmt.Println()
+		fmt.Println(bold("Validating Simulate..."))
+		fmt.Println()
+	}
 
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -433,33 +470,61 @@ func validateSimulateFile(path string) error {
 			errs = append(errs, "spec.cr not found: "+doc.Spec.CR)
 		}
 		if doc.Spec.Expect != nil {
-			validVerbs := map[string]bool{"create": true, "update": true, "delete": true, "patch": true}
-			for i, rule := range doc.Spec.Expect.Ops {
-				switch {
-				case rule.Verb == "" || rule.Resource == "":
-					errs = append(errs, fmt.Sprintf("expect.ops[%d]: verb and resource are required", i))
-				case !validVerbs[rule.Verb]:
-					errs = append(errs, fmt.Sprintf("expect.ops[%d]: invalid verb %q (must be create, update, delete, or patch)", i, rule.Verb))
+			if expandErr := orktypes.ExpandSimulateOpsIncludes(doc.Spec.Expect, baseDir); expandErr != nil {
+				errs = append(errs, "expanding ops includes: "+expandErr.Error())
+			}
+			validVerbs := map[string]bool{
+				"create": true,
+				"apply":  true,
+				"update": true,
+				"delete": true,
+				"patch":  true,
+			}
+			validateOpRules := func(rules []orktypes.SimulateOpRule, prefix string) {
+				for i, rule := range rules {
+					switch {
+					case rule.Verb == "" || rule.Resource == "":
+						errs = append(errs, fmt.Sprintf("%s[%d]: verb and resource are required", prefix, i))
+					case !validVerbs[rule.Verb]:
+						errs = append(errs, fmt.Sprintf("%s[%d]: invalid verb %q (must be create, apply, update, delete, or patch)", prefix, i, rule.Verb))
+					}
 				}
 			}
-			for i, rule := range doc.Spec.Expect.Absent {
-				switch {
-				case rule.Verb == "" || rule.Resource == "":
-					errs = append(errs, fmt.Sprintf("expect.absent[%d]: verb and resource are required", i))
-				case !validVerbs[rule.Verb]:
-					errs = append(errs, fmt.Sprintf("expect.absent[%d]: invalid verb %q (must be create, update, delete, or patch)", i, rule.Verb))
+			validateAbsentRules := func(rules []orktypes.SimulateOpRule, prefix string) {
+				for i, rule := range rules {
+					switch {
+					case rule.Resource == "":
+						errs = append(errs, fmt.Sprintf("%s[%d]: resource is required", prefix, i))
+					case rule.Verb != "" && !validVerbs[rule.Verb]:
+						errs = append(errs, fmt.Sprintf("%s[%d]: invalid verb %q (must be create, apply, update, delete, or patch)", prefix, i, rule.Verb))
+					}
 				}
+			}
+			validateOpRules(doc.Spec.Expect.Ops, "expect.ops")
+			validateAbsentRules(doc.Spec.Expect.Absent, "expect.absent")
+			for crdName, sub := range doc.Spec.Expect.CRDs {
+				if sub == nil {
+					continue
+				}
+				validateOpRules(sub.Ops, fmt.Sprintf("expect.crds[%s].ops", crdName))
+				validateAbsentRules(sub.Absent, fmt.Sprintf("expect.crds[%s].absent", crdName))
 			}
 		}
 	}
 
 	if len(errs) > 0 {
-		for _, e := range errs {
-			fmt.Printf("  %s %s\n", failureMark(), e)
+		if !quiet {
+			for _, e := range errs {
+				fmt.Printf("  %s %s\n", failureMark(), e)
+			}
+			fmt.Println()
+			fmt.Println(strings.Repeat("─", 60))
 		}
-		fmt.Println()
-		fmt.Println(strings.Repeat("─", 60))
 		return fmt.Errorf("%d validation error(s) in %s", len(errs), path)
+	}
+
+	if quiet {
+		return nil
 	}
 
 	// Success — print structured summary matching the Katalog/E2E style.
@@ -483,9 +548,21 @@ func validateSimulateFile(path string) error {
 		fmt.Printf("    %s\n", gray(fmt.Sprintf("cr      : %s", doc.Spec.CR)))
 		fmt.Printf("    %s\n", gray(fmt.Sprintf("cycles  : %d", cycles)))
 		if doc.Spec.Expect != nil {
-			fmt.Printf("    %s\n", gray(fmt.Sprintf("ops     : %d rule(s)", len(doc.Spec.Expect.Ops))))
-			if len(doc.Spec.Expect.Absent) > 0 {
-				fmt.Printf("    %s\n", gray(fmt.Sprintf("absent  : %d rule(s)", len(doc.Spec.Expect.Absent))))
+			totalOps := len(doc.Spec.Expect.Ops)
+			totalAbsent := len(doc.Spec.Expect.Absent)
+			for _, sub := range doc.Spec.Expect.CRDs {
+				if sub == nil {
+					continue
+				}
+				totalOps += len(sub.Ops)
+				totalAbsent += len(sub.Absent)
+			}
+			fmt.Printf("    %s\n", gray(fmt.Sprintf("ops     : %d rule(s)", totalOps)))
+			if totalAbsent > 0 {
+				fmt.Printf("    %s\n", gray(fmt.Sprintf("absent  : %d rule(s)", totalAbsent)))
+			}
+			if len(doc.Spec.Expect.CRDs) > 0 {
+				fmt.Printf("    %s\n", gray(fmt.Sprintf("crds    : %d scoped", len(doc.Spec.Expect.CRDs))))
 			}
 		}
 	}
@@ -498,6 +575,11 @@ func validateSimulateFile(path string) error {
 		ops := 0
 		if doc.Spec.Expect != nil {
 			ops = len(doc.Spec.Expect.Ops)
+			for _, sub := range doc.Spec.Expect.CRDs {
+				if sub != nil {
+					ops += len(sub.Ops)
+				}
+			}
 		}
 		fmt.Printf("Simulate is valid (%d op rule(s))\n", ops)
 	}
@@ -613,11 +695,82 @@ func motifResourceSummary(m *orktypes.Motif) string {
 	return strings.Join(parts, " ")
 }
 
+func printValidateProfiles(reg orktypes.ProfileRegistry) {
+	if reg.IsEmpty() {
+		return
+	}
+	type entry struct{ kind, name string }
+	var entries []entry
+	for _, p := range reg.Resources {
+		entries = append(entries, entry{"resources", p.Name})
+	}
+	for _, p := range reg.ContainerSecurity {
+		entries = append(entries, entry{"containerSecurity", p.Name})
+	}
+	for _, p := range reg.PodSecurity {
+		entries = append(entries, entry{"podSecurity", p.Name})
+	}
+	for _, p := range reg.HPA {
+		entries = append(entries, entry{"hpa", p.Name})
+	}
+	for _, p := range reg.PDB {
+		entries = append(entries, entry{"pdb", p.Name})
+	}
+	for _, p := range reg.RollingUpdate {
+		entries = append(entries, entry{"rollingUpdate", p.Name})
+	}
+	for _, p := range reg.Reconciler {
+		entries = append(entries, entry{"reconciler", p.Name})
+	}
+	for _, p := range reg.NetworkPolicies {
+		entries = append(entries, entry{"networkPolicies", p.Name})
+	}
+	for _, p := range reg.ResourceQuotas {
+		entries = append(entries, entry{"resourceQuotas", p.Name})
+	}
+	for _, p := range reg.LimitRanges {
+		entries = append(entries, entry{"limitRanges", p.Name})
+	}
+	for _, p := range reg.Probes {
+		entries = append(entries, entry{"probes", p.Name})
+	}
+	maxLen := 0
+	for _, e := range entries {
+		if l := len(e.kind); l > maxLen {
+			maxLen = l
+		}
+	}
+	fmt.Println()
+	fmt.Printf("%s\n", bold(fmt.Sprintf("Profiles (%d)", len(entries))))
+	for _, e := range entries {
+		fmt.Printf("  %s   %s\n", padRight(cyan(e.kind), maxLen), gray(e.name))
+	}
+}
+
+func printValidateNotes(reg orktypes.NoteRegistry) {
+	if reg.IsEmpty() {
+		return
+	}
+	maxLen := 0
+	for _, n := range reg.Functions {
+		if l := len(n.Name); l > maxLen {
+			maxLen = l
+		}
+	}
+	fmt.Println()
+	fmt.Printf("%s\n", bold(fmt.Sprintf("Notes (%d)", len(reg.Functions))))
+	for _, n := range reg.Functions {
+		fmt.Printf("  %s   %s\n", padRight(cyan(n.Name), maxLen), gray(n.Expression))
+	}
+}
+
 func init() {
 	rootCmd.AddCommand(validateCmd)
 
 	validateCmd.Flags().StringSliceP("file", "f", nil, "Path to an Orkestra pattern (repeatable or comma-separated)")
 	validateCmd.Flags().Bool("full", false, "Show per-CRD permissions, dependency graph, and system-level RBAC")
+	validateCmd.Flags().Bool("notes", false, "Quiet mode: print only the merged note registry, skip full validate output")
+	validateCmd.Flags().Bool("profiles", false, "Quiet mode: print only the merged profile registry, skip full validate output")
 
 	// Shadow global flags so they don't appear under `ork validate`
 	validateCmd.Flags().Bool("debug", false, "")

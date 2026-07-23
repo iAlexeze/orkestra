@@ -114,6 +114,7 @@ type ClusterRoleTemplateSource struct {
 	Conditions []Condition      `yaml:"when,omitempty" json:"when,omitempty"`
 	Reconcile  bool             `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`
 	AnyOf      []Condition      `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	ForEach    *ForEachSpec     `yaml:"forEach,omitempty" json:"forEach,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
@@ -145,6 +146,7 @@ type ClusterRoleBindingTemplateSource struct {
 	Conditions []Condition     `yaml:"when,omitempty" json:"when,omitempty"`
 	Reconcile  bool            `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`
 	AnyOf      []Condition     `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	ForEach    *ForEachSpec    `yaml:"forEach,omitempty" json:"forEach,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`

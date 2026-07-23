@@ -56,7 +56,7 @@ The katalog package also handles **Motif** imports — reusable infrastructure t
 | `motif_imports.go` | `ResolveMotifImports` — expands `imports:` blocks into concrete resource declarations |
 | `motif_validate.go` | `ValidateMotif`, `ValidateMotifImports` — structural and semantic validation of Motif YAML |
 
-Motif YAML is loaded by `pkg/motif/loader.go` using `utils.StrictUnmarshal` (same strict decoder as Katalog/Komposer) and then validated by `motif_validate.go` before any import expansion runs.
+Motif YAML is loaded by `pkg/registry/motif/loader.go` using `utils.StrictUnmarshal` (same strict decoder as Katalog/Komposer) and then validated by `motif_validate.go` before any import expansion runs.
 
 ## Developer documentation
 

@@ -32,3 +32,5 @@ If your operator only creates Kubernetes resources and applies rules, stay decla
 → [Mixing all three](./03-mixed.md) — a declarative operator, a hooks operator, and a constructor operator composed into one runtime from a single Komposer.
 
 → [Migrating from controller-runtime](./05-migration.md) — have a working controller-runtime operator? The `from-controller-runtime` pack shows the same operator expressed five ways, and `ork migrate` automates the constructor path.
+
+→ [Reusability](./06-reusability.md) — one binary, many deployments. The same hook or constructor serves different environments, tiers, and tenants — API type routing via `apiTypes`, behavior routing via `args:`.

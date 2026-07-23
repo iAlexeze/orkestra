@@ -8,6 +8,7 @@ metadata:
   labels:
     {{- include "orkestra.labels" . | nindent 4 }}
     app.kubernetes.io/component: runtime
+    orkestra.orkspace.io/komponent: runtime
 spec:
   replicas: {{ .Values.runtime.replicaCount }}
   selector:

@@ -3,8 +3,11 @@ package limitranges
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -16,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 // ResolvedLimitRangeSpec is the fully resolved LimitRange specification.
@@ -71,54 +75,46 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update reconciles an existing LimitRange to match the resolved spec.
-// If it does not exist, creates it.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedLimitRangeSpec) error {
+// Apply creates or updates a LimitRange using Server-Side Apply.
+// Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedLimitRangeSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
 	}
 
-	existing, err := kube.Clientset().CoreV1().LimitRanges(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info().
-				Str("limitrange", spec.Name).
-				Str("namespace", namespace).
-				Msg("limitrange not found during reconcile — recreating")
-			return Create(ctx, kube, owner, spec)
-		}
-		return fmt.Errorf("limitrange.Update: getting %q: %w", spec.Name, err)
-	}
-
 	limits, err := resolveLimits(ctx, kube, spec, owner)
 	if err != nil {
-		return fmt.Errorf("limitrange.Update: resolving limits: %w", err)
+		return fmt.Errorf("limitrange.Apply: resolving limits: %w", err)
 	}
 
-	desired := buildLimitRangeItems(limits)
-	if limitRangeItemsEqual(existing.Spec.Limits, desired) {
-		logger.Debug().
-			Str("limitrange", spec.Name).
-			Str("namespace", namespace).
-			Msg("limitrange in sync — no update needed")
-		return nil
-	}
+	lr := buildLimitRange(owner, spec, namespace, limits)
+	lr.TypeMeta = metav1.TypeMeta{APIVersion: "v1", Kind: "LimitRange"}
 
-	updated := existing.DeepCopy()
-	updated.Spec.Limits = desired
-
-	_, err = kube.Clientset().CoreV1().LimitRanges(namespace).Update(ctx, updated, metav1.UpdateOptions{})
+	body, err := json.Marshal(lr)
 	if err != nil {
-		return fmt.Errorf("limitrange.Update: updating %q: %w", spec.Name, err)
+		return fmt.Errorf("limitrange.Apply: marshal: %w", err)
 	}
 
-	logger.Info().
+	if _, err = kube.Clientset().CoreV1().LimitRanges(namespace).Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		return fmt.Errorf("limitrange.Apply: %w", err)
+	}
+
+	logger.Debug().
 		Str("limitrange", spec.Name).
 		Str("namespace", namespace).
-		Msg("limitrange updated")
+		Str("owner", owner.GetName()).
+		Msg("limitrange applied")
 
 	return nil
+}
+
+// Update applies the LimitRange via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedLimitRangeSpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the LimitRange if it exists.

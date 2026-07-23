@@ -28,10 +28,11 @@ func ParsePort(s string) int {
 }
 
 // ParseReplicas parses a replica count string, defaulting to 1 when empty or unparseable.
+// Zero is a valid replica count — used to scale StatefulSets and Deployments to zero.
 func ParseReplicas(s string) int32 {
 	if s != "" {
 		var r int
-		if n, _ := fmt.Sscanf(s, "%d", &r); n == 1 && r > 0 {
+		if n, _ := fmt.Sscanf(s, "%d", &r); n == 1 && r >= 0 {
 			return int32(r)
 		}
 	}

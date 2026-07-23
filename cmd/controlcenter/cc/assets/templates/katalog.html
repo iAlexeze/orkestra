@@ -253,6 +253,7 @@
           <div class="cc-card-body">
             <div class="flex items-center justify-between mb-3">
               <h3 class="cc-card-title">{{ .Name }}</h3>
+              <div style="display:flex;align-items:center;gap:6px">
               {{- if .HasUnhealthyDependencies }}
               <span class="cc-badge cc-badge-pending" data-tooltip="Unhealthy dependencies">
                 <span class="cc-status-dot pending"></span>
@@ -279,6 +280,10 @@
                 <span class="cc-status-dot degraded"></span>Degraded
               </span>
               {{- end }}
+              {{- if not .Endpoints.HealthEnabled }}
+              <span class="cc-badge" style="color:var(--text-muted);border-color:var(--border)" data-tooltip="Health endpoint disabled">⊘</span>
+              {{- end }}
+              </div>
             </div>
 
             {{ if .DependsOn }}
@@ -291,6 +296,7 @@
             {{ end }}
 
             <div class="cc-card-meta">
+              {{- if .Endpoints.InfoEnabled }}
               <div class="cc-card-row">
                 <span class="cc-card-row-label">Workers</span>
                 <span class="cc-card-row-value font-mono">{{ .WorkersActive }}<span class="text-muted">/{{ .Workers }}</span></span>
@@ -314,10 +320,20 @@
                 <span class="cc-card-row-label">Resources</span>
                 <span class="cc-card-row-value">{{ .ResourceCount }}</span>
               </div>
+              {{- end }}
+              {{- if not .Endpoints.InfoEnabled }}
+              <div class="cc-card-row" style="color:var(--text-muted);display:flex;align-items:center;gap:6px">
+                <span style="opacity:0.5;line-height:1">⊘</span>
+                <span style="font-size:12px;line-height:1">info endpoint disabled</span>
+              </div>
+              {{- end }}
+              {{- if .Endpoints.HealthEnabled }}
               <div class="cc-card-row">
                 <span class="cc-card-row-label">Error Rate</span>
                 <span class="cc-card-row-value{{ if gt .ErrorRate 0.0 }} text-red{{ else }} text-green{{ end }}">{{ printf "%.1f" .ErrorRate }}%</span>
               </div>
+              {{- end }}
+              {{- if .Endpoints.InfoEnabled }}
               <div class="cc-card-row">
                 <span class="cc-card-row-label">RBAC Rules</span>
                 <span class="cc-card-row-value">{{ .RBACCount }}</span>
@@ -328,10 +344,13 @@
                 <span class="cc-card-row-value">{{ .ProviderCount }}</span>
               </div>
               {{ end }}
+              {{- end }}
+              {{- if .Endpoints.HealthEnabled }}
               <div class="cc-card-row">
                 <span class="cc-card-row-label">Uptime</span>
                 <span class="cc-card-row-value font-mono text-sm">{{ .Uptime }}</span>
               </div>
+              {{- end }}
             </div>
           </div>
           <div class="cc-card-footer" style="padding:10px 18px;display:flex;gap:8px">
@@ -339,9 +358,11 @@
               View Details
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </a>
-            <a href="/controlcenter/docs/{{ $.KatalogName }}/{{ .Name }}" class="cc-btn cc-btn-secondary" style="justify-content:center;font-size:12px;padding:6px 10px" title="View documentation">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            </a>
+            {{ if .IdpEnabled }}
+            <a href="/controlcenter/katalog/{{ $.KatalogName }}/crd/{{ .Name }}/cr/create" class="cc-btn cc-btn-primary" style="justify-content:center;font-size:12px;padding:6px 14px">+ Create</a>
+            {{ else }}
+            <button class="cc-btn cc-btn-disabled" disabled style="font-size:12px;padding:6px 14px" title="IDP not enabled for this CRD. Set idp.enabled: true in the Katalog to allow browser-based CR creation.">+ Create</button>
+            {{ end }}
           </div>
         </div>
         {{ end }}

@@ -125,6 +125,7 @@ type KatalogResponse struct {
 	Projects           map[string]ProjectInfoSummary      `json:"projects,omitempty"`
 	Namespaces         map[string]KatalogNamespaceSummary `json:"namespaces,omitempty"`
 	GatewayEndpoint    string                             `json:"gatewayEndpoint,omitempty"`
+	IdpEnabled         bool                               `json:"idpEnabled,omitempty"`
 }
 
 // GatewayKatalogResponse mirrors the response served at GET /katalog by the
@@ -208,27 +209,77 @@ type DevAppDetailData struct {
 	RuntimeVersion string
 }
 
+type EndpointInfo struct {
+	Health        string `json:"health"`
+	Info          string `json:"info"`
+	HealthEnabled bool   `json:"healthEnabled"`
+	InfoEnabled   bool   `json:"infoEnabled"`
+}
+
 // CRDSummary is a summary of a CRD
 type CRDSummary struct {
-	Name                     string   `json:"name"`
-	State                    string   `json:"state"` // "healthy", "started", "pending", "degraded"
-	Healthy                  bool     `json:"healthy"`
-	Started                  bool     `json:"started"`
-	Pending                  bool     `json:"pending"`
-	Workers                  int      `json:"workers"`
-	WorkersActive            int      `json:"workersActive"`
-	DependsOn                []string `json:"dependsOn"`
-	WorkersSource            string   `json:"workersSource"`
-	QueueDepth               int      `json:"queueDepth"`
-	MaxDepth                 int      `json:"maxDepth"`
-	ResourceCount            int      `json:"resourceCount"`
-	ErrorRate                float64  `json:"errorRate"`
-	Uptime                   string   `json:"uptime"`
-	RBACCount                int      `json:"rbacCount,omitempty"`
-	HasUnhealthyDependencies bool     `json:"hasUnhealthyDependencies"`
-	DeletionProtection       bool     `json:"deletionProtection"`
-	ProviderCount            int      `json:"providerCount,omitempty"`
-	KatalogNamespace         string   `json:"katalogNamespace,omitempty"`
+	Name                     string       `json:"name"`
+	Description              string       `json:"description,omitempty"`
+	Mode                     string       `json:"mode,omitempty"`
+	GVK                      string       `json:"gvk,omitempty"`
+	GVR                      string       `json:"gvr,omitempty"`
+	Namespaced               bool         `json:"namespaced"`
+	Namespace                string       `json:"namespace,omitempty"`
+	CrossAccess              bool         `json:"crossAccess"`
+	State                    string       `json:"state"` // "healthy", "started", "pending", "degraded"
+	Healthy                  bool         `json:"healthy"`
+	Started                  bool         `json:"started"`
+	Pending                  bool         `json:"pending"`
+	Workers                  int          `json:"workers"`
+	WorkersActive            int          `json:"workersActive"`
+	DependsOn                []string     `json:"dependsOn"`
+	WorkersSource            string       `json:"workersSource"`
+	QueueDepth               int          `json:"queueDepth"`
+	MaxDepth                 int          `json:"maxDepth"`
+	ResourceCount            int          `json:"resourceCount"`
+	ErrorRate                float64      `json:"errorRate"`
+	Uptime                   string       `json:"uptime"`
+	RBACCount                int          `json:"rbacCount,omitempty"`
+	HasUnhealthyDependencies bool         `json:"hasUnhealthyDependencies"`
+	DeletionProtection       bool         `json:"deletionProtection"`
+	ProviderCount            int          `json:"providerCount,omitempty"`
+	KatalogNamespace         string       `json:"katalogNamespace,omitempty"`
+	Endpoints                EndpointInfo `json:"endpoints,omitempty"`
+	IdpEnabled               bool         `json:"idpEnabled,omitempty"`
+}
+
+// IDPField is one rendered field in the IDP create form.
+type IDPField struct {
+	Name        string
+	Label       string
+	InputType   string // "text" | "number" | "select" | "checkbox"
+	Placeholder string
+	Hint        string
+	Enum        []string
+	Required    bool
+	Default     string // pre-populated value from CRD schema default:
+	Category    string // section heading for visual grouping
+	WhenJSON    string // JSON array of Condition — all must be true (AND)
+	AnyOfJSON   string // JSON array of Condition — at least one must be true (OR)
+	Disabled    string // non-empty → greyed-out field with this message
+}
+
+// IDPSection is a group of fields sharing a section heading in the IDP form.
+type IDPSection struct {
+	Title  string
+	Fields []IDPField
+}
+
+// IDPFormData is the view model for idp_form.html.
+type IDPFormData struct {
+	KatalogName string
+	CRDName     string
+	Kind        string
+	APIVersion  string
+	BackURL     string
+	Namespaced  bool
+	Sections    []IDPSection
+	Error       string
 }
 
 // CRDHealth is the response from the /katalog/{crd}/health endpoint
@@ -401,6 +452,7 @@ type CRDDetail struct {
 	GVR                      string                      `json:"gvr"`
 	Namespaced               bool                        `json:"namespaced"`
 	Namespace                string                      `json:"namespace"`
+	CrossAccess              bool                        `json:"crossAccess"`
 	DependsOn                []string                    `json:"dependsOn"`
 	HasUnhealthyDependencies bool                        `json:"hasUnhealthyDependencies"`
 	Dependencies             map[string]DependencyStatus `json:"dependencies,omitempty"`
@@ -432,6 +484,8 @@ type CRDDetail struct {
 	AutoscalerEnabled        bool                        `json:"autoscalerEnabled"`
 	AutoscalerWorkers        *AutoscalerWorkersInfo      `json:"autoscalerWorkers,omitempty"`
 	Rollback                 *RollbackStatsInfo          `json:"rollback,omitempty"`
+	HealthEndpointDisabled   bool                        `json:"healthEndpointDisabled,omitempty"`
+	InfoEndpointDisabled     bool                        `json:"infoEndpointDisabled,omitempty"`
 }
 
 // TODO: Future

@@ -3,10 +3,11 @@ package pods
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"reflect"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -16,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 // Create creates a Pod owned by the CR if it does not already exist.
@@ -59,12 +61,12 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update reconciles an existing Pod to match the resolved spec.
-// Pods are largely immutable — image drift triggers delete + recreate.
-// If the Pod does not exist, creates it.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPodSpec) error {
+// Apply creates or updates a Pod using Server-Side Apply.
+// Pod specs are largely immutable — if SSA is rejected (422/Invalid),
+// falls back to delete + recreate.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPodSpec) error {
 	if err := validateSpec(spec); err != nil {
-		return fmt.Errorf("pod.Update: invalid spec: %w", err)
+		return fmt.Errorf("pod.Apply: invalid spec: %w", err)
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
@@ -72,60 +74,40 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 		return err
 	}
 
-	existing, err := kube.Clientset().CoreV1().Pods(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
+	p := buildPod(owner, spec, namespace)
+	p.TypeMeta = metav1.TypeMeta{APIVersion: "v1", Kind: "Pod"}
+
+	body, err := json.Marshal(p)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info().
-				Str("pod", spec.Name).
-				Str("namespace", namespace).
-				Msg("pod not found during reconcile — recreating")
+		return fmt.Errorf("pod.Apply: marshal: %w", err)
+	}
+
+	if _, err = kube.Clientset().CoreV1().Pods(namespace).Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		if errors.IsInvalid(err) {
+			logger.Info().Str("pod", spec.Name).Msg("pod spec immutable — delete+recreate")
+			if delErr := kube.Clientset().CoreV1().Pods(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{}); delErr != nil && !errors.IsNotFound(delErr) {
+				return fmt.Errorf("pod.Apply: deleting stale pod %q: %w", spec.Name, delErr)
+			}
 			return Create(ctx, kube, owner, spec)
 		}
-		return fmt.Errorf("pod.Update: getting pod %q: %w", spec.Name, err)
-	}
-
-	// Pods are largely immutable — drift is handled by delete + recreate.
-	// Build the desired pod and compare all template-declared fields.
-	desired := buildPod(owner, spec, namespace)
-	needsRecreate := false
-
-	if len(existing.Spec.Containers) > 0 && len(desired.Spec.Containers) > 0 {
-		ec := existing.Spec.Containers[0]
-		dc := desired.Spec.Containers[0]
-		if ec.Image != dc.Image ||
-			!common.ResourceRequirementsEqual(ec.Resources, dc.Resources) ||
-			!reflect.DeepEqual(ec.Env, dc.Env) ||
-			!reflect.DeepEqual(ec.EnvFrom, dc.EnvFrom) ||
-			!reflect.DeepEqual(ec.VolumeMounts, dc.VolumeMounts) ||
-			!reflect.DeepEqual(ec.LivenessProbe, dc.LivenessProbe) ||
-			!reflect.DeepEqual(ec.ReadinessProbe, dc.ReadinessProbe) ||
-			!reflect.DeepEqual(ec.StartupProbe, dc.StartupProbe) ||
-			!reflect.DeepEqual(ec.SecurityContext, dc.SecurityContext) {
-			logger.Info().Str("pod", spec.Name).Msg("pod container spec drifted — deleting and recreating")
-			needsRecreate = true
-		}
-	}
-	if !needsRecreate {
-		if !reflect.DeepEqual(existing.Spec.Volumes, desired.Spec.Volumes) ||
-			!reflect.DeepEqual(existing.Spec.SecurityContext, desired.Spec.SecurityContext) ||
-			existing.Spec.ServiceAccountName != desired.Spec.ServiceAccountName {
-			logger.Info().Str("pod", spec.Name).Msg("pod spec drifted — deleting and recreating")
-			needsRecreate = true
-		}
-	}
-	if needsRecreate {
-		if err := Delete(ctx, kube, owner, spec); err != nil {
-			return err
-		}
-		return Create(ctx, kube, owner, spec)
+		return fmt.Errorf("pod.Apply: %w", err)
 	}
 
 	logger.Debug().
 		Str("pod", spec.Name).
 		Str("namespace", namespace).
-		Msg("pod in sync — no update needed")
+		Str("owner", owner.GetName()).
+		Msg("pod applied")
 
 	return nil
+}
+
+// Update applies the Pod via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPodSpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the Pod if it exists.

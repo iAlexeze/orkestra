@@ -18,7 +18,8 @@ type ResolvedReplicaSetSpec struct {
 	Image string
 
 	// Replicas — number of pod replicas. Default: 1.
-	Replicas int32
+	Replicas     int32
+	HasAutoscale bool
 
 	// Port — container port. 0 means no port exposed.
 	Port     int32

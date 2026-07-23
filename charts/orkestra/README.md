@@ -399,19 +399,20 @@ helm upgrade --install orkestra orkestra/orkestra \
 ## Observability
 
 ```bash
+ork proxy
+```
+
+```bash
 # Runtime
-kubectl port-forward svc/orkestra-runtime 8080:8080 -n orkestra-system
 curl localhost:8080/health
 curl localhost:8080/metrics
 curl localhost:8080/katalog | jq
 
 # Gateway
-kubectl port-forward svc/orkestra-gateway 8080:8080 -n orkestra-system
-curl localhost:8080/health
-curl localhost:8080/metrics
+curl localhost:8443/health
+curl localhost:8443/metrics
 
 # Control Center
-kubectl port-forward svc/orkestra-cc 8081:8081 -n orkestra-system
 open http://localhost:8081/controlcenter
 ```
 

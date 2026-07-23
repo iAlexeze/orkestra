@@ -83,6 +83,85 @@ See [05-custom-target.md](05-custom-target.md) for full documentation and use ca
 
 ---
 
+## `spec.notes`
+
+Declares user-defined note functions available as template expressions in `when:` and `anyOf:` conditions on `expect` entries. Uses the same syntax as `notes:` in a Katalog — a list of named Go template expressions evaluated against the current context.
+
+```yaml
+spec:
+  notes:
+    functions:
+      - name: inBusinessHours
+        expression: '{{ and weekday (timeInWindow "09:00" "18:00") }}'
+```
+
+Notes defined here are available by name in any `when:` or `anyOf:` condition on an `expect` entry:
+
+```yaml
+expect:
+  - name: Feature enabled during business hours
+    after: cr-applied
+    timeout: 30s
+    when:
+      - field: '{{ inBusinessHours }}'
+        equals: "true"
+    kubectl:
+      get:
+        - kind: Deployment
+          name: my-app
+          namespace: default
+          field: .metadata.annotations.feature-enabled
+          equals: "true"
+```
+
+All built-in note functions (`weekday`, `timeInWindow`, etc.) are available inside note expressions. Notes may call each other.
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `functions` | no | List of named note functions. |
+| `functions[].name` | yes | Name used to call the note in template expressions: `{{ myNote }}`. |
+| `functions[].expression` | yes | Go template string evaluated at runtime. Result is always a string. |
+| `functions[].description` | no | Human-readable description of the note. |
+
+---
+
+## `spec.onFailure`
+
+Declares kubectl operations and shell commands to run and print to the terminal when any expectation fails. Uses the same `kubectl:` DSL as `expect` entries — assertion fields are present on the structs but never evaluated. Output is always printed. Teardown still runs after `onFailure` completes.
+
+```yaml
+spec:
+  onFailure:
+    kubectl:
+      logs:
+        - labelSelector: app=my-operator
+          namespace: default
+          since: 2m
+      describe:
+        - kind: Deployment
+          name: my-operator
+          namespace: default
+      events:
+        - kind: Pod
+          name: my-operator-pod
+          namespace: default
+    commands:
+      - kubectl get pods -A -o wide
+```
+
+| Field | Description |
+|-------|-------------|
+| `kubectl` | Accepts the full `kubectl:` DSL (`get`, `logs`, `describe`, `events`, `exec`). Assertion fields are ignored — output is printed. |
+| `commands` | List of shell strings run via `sh -c`. Output is printed to the terminal. |
+
+`onFailure` is spec-level — it runs once when the test has at least one failing expectation, not per-expectation. It is skipped entirely when all expectations pass.
+
+To run diagnostics immediately when a specific checkpoint fails, add `onFailure:` directly on that `expect` entry — see [Per-expectation onFailure](03-expect.md#per-expectation-onfailure).
+
+→ See [07-kubectl.md](07-kubectl.md) for the full `kubectl:` field reference.
+
+---
+
 ## `imports`
 
 A top-level list of other E2E files to run after this test completes. Used to compose test suites without a cluster-per-test overhead. See [04-imports.md](04-imports.md) for the full field reference.

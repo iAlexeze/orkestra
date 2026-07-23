@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	informerpkg "github.com/orkspace/orkestra/pkg/informer"
 	"github.com/orkspace/orkestra/pkg/konfig"
-	"github.com/orkspace/orkestra/pkg/queue"
+	informerpkg "github.com/orkspace/orkestra/pkg/runtime/informer"
+	"github.com/orkspace/orkestra/pkg/runtime/queue"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"

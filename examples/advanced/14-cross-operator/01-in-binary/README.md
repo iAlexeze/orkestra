@@ -129,7 +129,7 @@ The endpoint stays consistent — Orkestra always reads the live informer value.
 ## Step 7 — Observe in the Control Center
 
 ```bash
-kubectl port-forward svc/orkestra-cc -n orkestra-system 8081:8081
+ork proxy
 ```
 
 Open [http://localhost:8081](http://localhost:8081). Click **Consumer** → any CR → the **Cross** panel shows `cross.producer.status.endpoint` and when it was last resolved.

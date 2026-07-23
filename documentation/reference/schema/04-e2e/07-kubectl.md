@@ -29,6 +29,19 @@ expect:
 
 All subcommands in a `kubectl:` block are checked in the same polling loop as `resources:` and `commands:`. All must pass for the checkpoint to pass.
 
+### Execution order
+
+Within a single `kubectl:` block, subcommands always execute in this fixed order regardless of how they appear in the YAML:
+
+1. **`apply`** — create or update resources
+2. **`patch`** — modify fields on existing resources
+3. **`restart`** — trigger a rollout restart
+4. **`scale`** — change replica count
+5. **`delete`** — remove resources
+6. **`get`**, **`logs`**, **`describe`**, **`exec`**, **`port-forward`**, **`events`**, **`auth`**, **`cp`**, **`top`** — assertions (read-only)
+
+Mutations always run before assertions so that state changes take effect before they are evaluated. Within mutations, the order is create → modify → destroy — so you can `scale` a resource in the same block that later `delete`s it.
+
 ---
 
 ## Assertion fields
@@ -39,12 +52,25 @@ Every subcommand supports the same assertion fields:
 |-------|-------------|
 | `equals` | Output (trimmed) must exactly match this string |
 | `notEquals` | Output must not exactly match this string |
+| `oneOf` | Output (trimmed) must match one of the listed strings |
 | `outputContains` | Output must contain this substring |
 | `outputNotContains` | Output must not contain this substring |
 | `greaterThan` | Output (trimmed, parsed as a number) must be greater than this value |
 | `lessThan` | Output (trimmed, parsed as a number) must be less than this value |
 
 Multiple assertions on the same entry all apply. Empty fields are ignored. `greaterThan` and `lessThan` parse the output as `float64` — the check fails if the output is not numeric when either is set.
+
+`oneOf` is useful when the expected value is one of several valid strings — for example, a status field that reflects current runtime state:
+
+```yaml
+kubectl:
+  get:
+    - kind: APIServer
+      name: my-api
+      namespace: default
+      field: .status.phase
+      oneOf: [Peak, Steady]
+```
 
 ---
 
@@ -577,6 +603,50 @@ expect:
     commands:
       - run: "curl -sf http://my-service:8080/healthz"
         outputContains: ok
+```
+
+---
+
+## kubectl.restart
+
+Trigger a rollout restart of a Deployment, StatefulSet, or DaemonSet. By default waits for the rollout to complete — the expect step's `timeout` governs how long.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `kind` | string | yes | Resource kind: `Deployment`, `StatefulSet`, or `DaemonSet` |
+| `name` | string | yes | Resource name |
+| `namespace` | string | no | Namespace. Defaults to `default` |
+| `ready` | bool | no | Wait for rollout to complete. Defaults to `true` |
+
+```yaml
+kubectl:
+  restart:
+    - kind: Deployment
+      name: orkestra-gateway
+      namespace: orkestra-system
+```
+
+---
+
+## kubectl.scale
+
+Set the replica count on a Deployment, StatefulSet, or ReplicaSet. By default waits for the rollout to complete — the expect step's `timeout` governs how long.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `kind` | string | yes | Resource kind: `Deployment`, `StatefulSet`, or `ReplicaSet` |
+| `name` | string | yes | Resource name |
+| `namespace` | string | no | Namespace. Defaults to `default` |
+| `replicas` | int | yes | Desired replica count |
+| `ready` | bool | no | Wait for rollout to complete. Defaults to `true` |
+
+```yaml
+kubectl:
+  scale:
+    - kind: Deployment
+      name: my-app
+      namespace: default
+      replicas: 3
 ```
 
 ---

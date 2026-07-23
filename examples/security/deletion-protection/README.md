@@ -239,7 +239,7 @@ Succeeds immediately.
 Every blocked deletion is recorded. Port-forward to the Orkestra Control Center to see it:
 
 ```bash
-kubectl port-forward svc/orkestra-cc -n orkestra-system 8081:8081
+ork proxy
 ```
 
 Open [http://localhost:8081](http://localhost:8081).

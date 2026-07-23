@@ -137,7 +137,7 @@ Two things happen in order: the missing `team` label triggers a **warn** (logged
 The control center also surfaces this. Port-forward and open the dashboard:
 
 ```bash
-kubectl port-forward svc/orkestra-cc -n orkestra-system 8081:8081
+ork proxy
 # open http://localhost:8081
 ```
 

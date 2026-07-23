@@ -329,4 +329,77 @@ find "$SRC_DIR/publications" -name '*.md' 2>/dev/null | sort | while read -r src
   echo "  pub: $(basename "$src_file")"
 done
 
+# ── Generate changelog pages ──────────────────────────────────────────────────
+# Reads CHANGELOG.md from the repo root, splits on ## v* headers, and writes
+# one page per release to content/docs/changelog/. Also writes _index.md.
+
+CHANGELOG_SRC="$(realpath "$SCRIPT_DIR/../../CHANGELOG.md")"
+CHANGELOG_DST="$DST_DIR/changelog"
+
+if [[ -f "$CHANGELOG_SRC" ]]; then
+  echo "Generating changelog pages: $CHANGELOG_SRC → $CHANGELOG_DST"
+  rm -rf "$CHANGELOG_DST"
+  mkdir -p "$CHANGELOG_DST"
+
+  python3 - "$CHANGELOG_SRC" "$CHANGELOG_DST" <<'PYEOF'
+import sys, re, os
+
+src = sys.argv[1]
+dst_dir = sys.argv[2]
+
+with open(src) as f:
+    content = f.read()
+
+# Split on lines starting with "## v"
+sections = re.split(r'(?=^## v)', content, flags=re.MULTILINE)
+sections = [s.strip() for s in sections if s.strip().startswith('## v')]
+
+index_entries = []
+
+for i, section in enumerate(sections):
+    first_line = section.splitlines()[0]  # e.g. "## v0.7.10 [UNRELEASED] — ..."
+    # Extract version and headline
+    m = re.match(r'^## (v[\d.]+)\s*(?:\[UNRELEASED\])?\s*(?:—\s*(.+))?', first_line)
+    if not m:
+        continue
+    version = m.group(1)          # v0.7.10
+    headline = (m.group(2) or '').strip()
+
+    # Strip the ## heading line from the body
+    body = '\n'.join(section.splitlines()[1:]).strip()
+
+    title = version
+    if headline:
+        title = f'{version} — {headline}'
+
+    # Weight: earlier in file = higher version = lower weight number (newest first)
+    weight = i + 1
+
+    date_line = ''
+    # Try to pull a date from the section (not critical)
+
+    filename = f'{version}.md'
+    filepath = os.path.join(dst_dir, filename)
+
+    with open(filepath, 'w') as out:
+        out.write(f'---\ntitle: "{title}"\nlinkTitle: "{version}"\nweight: {weight}\n---\n\n')
+        out.write(body + '\n')
+
+    index_entries.append((version, headline, weight))
+    print(f'  changelog: {filename}')
+
+# Write _index.md
+index_path = os.path.join(dst_dir, '_index.md')
+with open(index_path, 'w') as out:
+    out.write('---\ntitle: "Changelog"\nweight: 1\n---\n\n')
+    for version, headline, _ in index_entries:
+        if headline:
+            out.write(f'- [{version}]({version}/) — {headline}\n')
+        else:
+            out.write(f'- [{version}]({version}/)\n')
+
+print(f'  changelog: _index.md ({len(index_entries)} releases)')
+PYEOF
+fi
+
 echo "Done."

@@ -25,6 +25,21 @@ The `once: true` flag makes the reconciler skip Secret creation if the Secret al
 
 ## Reference
 
+### `uuidv4`
+
+Generate a random UUID v4 string in standard `8-4-4-4-12` hex format. Same entropy as `randomHex 16`, formatted as a UUID for systems that expect that shape.
+
+Keywords: random, uuid, secret, token, id, identifier, generate, crypto
+
+```yaml
+# value: "{{ uuidv4 }}"
+# → "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+```
+
+**Use for:** Apply API tokens, OAuth client IDs, correlation IDs, any consumer that expects UUID-shaped values.
+
+---
+
 ### `randomAlphanumeric`
 
 Generate a cryptographically random alphanumeric string of exactly `n` characters. Characters are drawn from `[a-zA-Z0-9]`.
@@ -105,11 +120,12 @@ All three notes use Go's `crypto/rand` package. This reads from the operating sy
 
 | Note | Signature | Output length | Use for |
 |------|-----------|---------------|---------|
+| `uuidv4` | `()` | 36 chars | UUID-shaped tokens, correlation IDs |
 | `randomAlphanumeric` | `(n int)` | exactly `n` chars | Readable passwords |
 | `randomHex` | `(n int)` | `2n` chars | API keys, tokens |
 | `randomBase64` | `(n int)` | `~n*4/3` chars | JWT/HMAC secrets |
 
-All three require `once: true` on the enclosing secret declaration.
+All four require `once: true` on the enclosing secret declaration.
 
 ---
 

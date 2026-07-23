@@ -97,6 +97,9 @@ type NetworkPolicyTemplateSource struct {
 	// Reconcile: true — sync on every reconcile (drift correction).
 	Reconcile bool `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`
 
+	// ForEach — expand this entry once per item in a list or map field.
+	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
 	// Sleep injects an artificial delay.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).
 	Sleep string `yaml:"sleep,omitempty" json:"sleep,omitempty"`

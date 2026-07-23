@@ -278,6 +278,53 @@ func ReadChildren(
 		children["pv"] = firstValue(m)
 	}
 
+	// ── NetworkPolicies ───────────────────────────────────────────────────
+	if len(templates.NetworkPolicies) > 0 {
+		m := readResourceGroup(ctx, kube, obj, resolver, NetworkPolicyGVR,
+			networkPolicyNames(resolver, templates.NetworkPolicies))
+		enrichGroupWithWarnings(ctx, kube, m, crd, "NetworkPolicy")
+		children["networkpolicies"] = m
+		children["networkpolicy"] = firstValue(m)
+	}
+
+	// ── ResourceQuotas ────────────────────────────────────────────────────
+	if len(templates.ResourceQuotas) > 0 {
+		m := readResourceGroup(ctx, kube, obj, resolver, ResourceQuotaGVR,
+			resourceQuotaNames(resolver, templates.ResourceQuotas))
+		enrichGroupWithWarnings(ctx, kube, m, crd, "ResourceQuota")
+		children["resourcequotas"] = m
+		children["resourcequota"] = firstValue(m)
+	}
+
+	// ── LimitRanges ───────────────────────────────────────────────────────
+	if len(templates.LimitRanges) > 0 {
+		m := readResourceGroup(ctx, kube, obj, resolver, LimitRangeGVR,
+			limitRangeNames(resolver, templates.LimitRanges))
+		enrichGroupWithWarnings(ctx, kube, m, crd, "LimitRange")
+		children["limitranges"] = m
+		children["limitrange"] = firstValue(m)
+	}
+
+	// ── ClusterRoles ──────────────────────────────────────────────────────
+	// Cluster-scoped — readResourceGroup skips namespace when empty.
+	if len(templates.ClusterRoles) > 0 {
+		m := readResourceGroup(ctx, kube, obj, resolver, ClusterRoleGVR,
+			clusterRoleNames(resolver, templates.ClusterRoles))
+		enrichGroupWithWarnings(ctx, kube, m, crd, "ClusterRole")
+		children["clusterroles"] = m
+		children["clusterrole"] = firstValue(m)
+	}
+
+	// ── ClusterRoleBindings ───────────────────────────────────────────────
+	// Cluster-scoped — readResourceGroup skips namespace when empty.
+	if len(templates.ClusterRoleBindings) > 0 {
+		m := readResourceGroup(ctx, kube, obj, resolver, ClusterRoleBindingGVR,
+			clusterRoleBindingNames(resolver, templates.ClusterRoleBindings))
+		enrichGroupWithWarnings(ctx, kube, m, crd, "ClusterRoleBinding")
+		children["clusterrolebindings"] = m
+		children["clusterrolebinding"] = firstValue(m)
+	}
+
 	// ── Phase 2: conditional enrichment targets ───────────────────────────
 	// Now that children are populated, re-evaluate conditional gates.
 	//

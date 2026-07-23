@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/orkspace/orkestra/pkg/generate"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/merger"
+	"github.com/orkspace/orkestra/pkg/tools/generate"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/spf13/cobra"
 )

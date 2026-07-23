@@ -3,9 +3,11 @@ package rolebindings
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -15,6 +17,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 // ResolvedRoleBindingSpec is the fully resolved RoleBinding specification.
@@ -72,45 +75,50 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	return nil
 }
 
-// Update applies the desired subjects and roleRef to an existing RoleBinding.
-// RoleRef is immutable in Kubernetes — if it changed the binding is deleted and recreated.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedRoleBindingSpec) error {
+// Apply creates or updates a RoleBinding using Server-Side Apply.
+// RoleRef is immutable — if SSA is rejected due to a changed roleRef,
+// the binding is deleted and recreated.
+func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedRoleBindingSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
 	}
 
-	existing, err := kube.Clientset().RbacV1().RoleBindings(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
+	rb := buildRoleBinding(owner, spec, namespace)
+	rb.TypeMeta = metav1.TypeMeta{APIVersion: "rbac.authorization.k8s.io/v1", Kind: "RoleBinding"}
+
+	body, err := json.Marshal(rb)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		return fmt.Errorf("rolebinding.Apply: marshal: %w", err)
+	}
+
+	if _, err = kube.Clientset().RbacV1().RoleBindings(namespace).Patch(
+		ctx, spec.Name, k8stypes.ApplyPatchType, body,
+		metav1.PatchOptions{FieldManager: konfig.FieldManagerRuntime, Force: utils.BoolPtr(true)},
+	); err != nil {
+		if errors.IsInvalid(err) {
+			// roleRef is immutable — delete and recreate.
+			logger.Info().Str("rolebinding", spec.Name).Msg("rolebinding roleRef drifted — delete+recreate")
+			if delErr := kube.Clientset().RbacV1().RoleBindings(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{}); delErr != nil && !errors.IsNotFound(delErr) {
+				return fmt.Errorf("rolebinding.Apply: deleting stale binding %q: %w", spec.Name, delErr)
+			}
 			return Create(ctx, kube, owner, spec)
 		}
-		return fmt.Errorf("rolebinding.Update: getting %q: %w", spec.Name, err)
+		return fmt.Errorf("rolebinding.Apply: %w", err)
 	}
 
-	// roleRef is immutable — recreate if it changed
-	if existing.RoleRef.Name != spec.RoleRef.Name || existing.RoleRef.Kind != spec.RoleRef.Kind {
-		if delErr := kube.Clientset().RbacV1().RoleBindings(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{}); delErr != nil && !errors.IsNotFound(delErr) {
-			return fmt.Errorf("rolebinding.Update: deleting stale binding %q: %w", spec.Name, delErr)
-		}
-		return Create(ctx, kube, owner, spec)
-	}
-
-	existing.Subjects = spec.Subjects
-	existing.Labels = spec.Labels
-
-	_, err = kube.Clientset().RbacV1().RoleBindings(namespace).Update(ctx, existing, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("rolebinding.Update: updating rolebinding %q in %q: %w", spec.Name, namespace, err)
-	}
-
-	logger.Info().
+	logger.Debug().
 		Str("rolebinding", spec.Name).
 		Str("namespace", namespace).
 		Str("owner", owner.GetName()).
-		Msg("rolebinding updated")
+		Msg("rolebinding applied")
 
 	return nil
+}
+
+// Update applies the RoleBinding via SSA. Delegates to Apply.
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedRoleBindingSpec) error {
+	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the RoleBinding if it exists.

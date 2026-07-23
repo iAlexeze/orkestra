@@ -83,13 +83,17 @@ spec:
           workers: 3
           resync: 30s
           hooks:
-          location: github.com/myorg/database-operator/hooks
-          version: v1.3.0
-          fetch: true
-          function: DatabaseHooks
-          resources:
-            - kind: StatefulSet
-            - kind: Service
+            location: github.com/myorg/database-operator/hooks
+            version: v1.3.0
+            fetch: true
+            function: DatabaseHooks
+            resources:
+              - kind: StatefulSet
+              - kind: Service
+            args:
+              readReplicaCount: 2
+              backupEnabled: true
+              replicationMode: async
 
         # declarative templates still apply after the hook
         status:
@@ -110,6 +114,67 @@ spec:
 For private modules with `fetch: true`, set `GOPRIVATE` and ensure credentials are available before running `ork generate registry`.
 
 `resources` declares what Kubernetes resources the hook manages — required for RBAC generation.
+
+`args` passes configuration from the Katalog into the hook at reconcile time. **String values support Go template expressions** — the GenericReconciler evaluates them against the current CR before the hook runs, so the hook sees fully-resolved values:
+
+```yaml
+args:
+  readReplicaCount: 2                                       # static — passed through as-is
+  backupEnabled: true                                       # static
+  region: "{{ default \"us-east-1\" .spec.region }}"       # dynamic — evaluated per-CR
+  database:
+    engine: "{{ default \"postgres\" .spec.engine }}"       # dynamic — nested maps work too
+```
+
+```go
+func onReconcile(ctx context.Context, obj *apiv1.Database) error {
+    kube, _ := kubeclient.FromContext(ctx)
+    replicas  := kube.Args().Int("readReplicaCount")   // 2
+    region    := kube.Args().String("region")          // "eu-west-1" or default "us-east-1"
+    db        := kube.Args().Sub("database")
+    engine    := db.String("engine")                   // from spec or default "postgres"
+    _ = replicas; _ = region; _ = engine
+    return nil
+}
+```
+
+The full note FuncMap is available in template args — `default`, `upper`, `lower`, and all other note functions work exactly as they do in `onCreate`/`onReconcile` templates.
+
+For structured access, bind the whole map to a typed struct with `kube.Args().BindArgs(&cfg)`. See the [schema reference](../../reference/schema/02-katalog/04-operatorbox.md) for the full `args` API.
+
+### `external:` — world state via HTTP
+
+`external:` declares HTTP calls the runtime makes before the hook runs. Results are injected into the resolver so they are available as `args` template expressions. The hook receives resolved values via `kube.Args()` — no HTTP client code required.
+
+```yaml
+hooks:
+  external:
+    - name: flags
+      url: "{{ .spec.serviceUrl }}/flags/{{ .metadata.name }}/v2Enabled"
+      method: GET
+      continueOnError: true
+      timeout: 5s
+      when:
+        - field: '{{ inBusinessHours }}'
+          equals: "true"
+  args:
+    featureEnabled: '{{ .external.flags.body }}'
+    inBusinessHours: '{{ inBusinessHours }}'
+```
+
+The hook sees the results as plain strings — no HTTP knowledge needed:
+
+```go
+func onReconcile(ctx context.Context, obj *apiv1.App) error {
+    kube, _ := kubeclient.FromContext(ctx)
+    featureEnabled  := kube.Args().String("featureEnabled") == "true"
+    inBusinessHours := kube.Args().String("inBusinessHours") == "true"
+    // make decisions — no http.Get, no time.Now
+    return nil
+}
+```
+
+`external:` under `hooks:` uses the same field schema as the top-level `external:` block — including `when:` / `anyOf:` gating, `continueOnError`, and response accessors (`.body`, `.status`, `.headers`). Any infrastructure available to declarative external calls is automatically available to hooks for free as the feature evolves.
 
 ---
 

@@ -51,9 +51,54 @@ spec:
         - run: kubectl delete crd logstreams.security.orkestra.io --ignore-not-found
           exitCode: 0
 
-    - name: Cleanup verified
+    # The housekeeper watches the ValidatingWebhookConfiguration and recreates
+    # it immediately on DELETED events — deleting the VWC directly does not work.
+    # The only clean escape is to update the ConfigMap with enabled: false and
+    # restart the gateway. On startup the housekeeper reads enabled: false,
+    # calls cleanupValidatingWebhook, and never recreates it.
+    - name: Disable deletion protection and restart gateway to unblock cleanup
+      after: cr-applied
+      timeout: 120s
+      kubectl:
+        apply:
+          - inline: |
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: orkestra-katalog
+                namespace: orkestra-system
+                labels:
+                  app.kubernetes.io/name: orkestra
+                  app.kubernetes.io/tag: orkestra-internal
+              data:
+                katalog.yaml: |
+                  apiVersion: orkestra.orkspace.io/v1
+                  kind: Katalog
+                  metadata:
+                    name: deletion-protection
+                  gateway:
+                    endpoint: http://orkestra-gateway:8080
+                  security:
+                    deletionProtection:
+                      enabled: false
+                      cleanupOnShutdown: true
+                      failurePolicy: Fail
+                  spec:
+                    crds:
+                      app:
+                        apiTypes:
+                          group: security.orkestra.io
+                          version: v1alpha1
+                          kind: App
+                          plural: apps
+        restart:
+          - kind: Deployment
+            name: orkestra-gateway
+            namespace: orkestra-system
+
+    - name: Cleanup verified — CRs and CRDs deleted after webhook removal
       after: cr-deleted
-      timeout: 30s
+      timeout: 60s
       resources:
         - kind: App
           name: my-app

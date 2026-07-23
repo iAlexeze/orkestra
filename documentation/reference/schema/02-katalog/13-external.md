@@ -51,6 +51,9 @@ operatorBox:
 | `.external.<name>.body` | First 4096 bytes of response body. |
 | `.external.<name>.error` | Error message on failure; `""` on success. |
 | `.external.<name>.called` | `"true"` when the call ran; `"false"` when skipped by `when:`/`anyOf:`. |
+| `.external.<name>.<key>` | When the response body is a valid JSON object, its top-level keys are merged in and navigable by dot path. |
+
+If the response is `{ "queue": { "pendingJobs": 8 } }` and the call is named `metrics`, then `external.metrics.queue.pendingJobs` is directly usable in `field:` conditions and `{{ .external.metrics.queue.pendingJobs }}` in template expressions. `.body` is always present alongside parsed fields.
 
 ## Access pattern
 

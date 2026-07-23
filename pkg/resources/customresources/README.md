@@ -104,7 +104,7 @@ Typical use cases:
 
 ## See Also
 
-- `pkg/reconciler/run_customresource.go` — how the reconciler drives `Create`/`Update` per lifecycle hook
-- `pkg/reconciler/expand_customresources.go` — template expansion for `customResources:` declarations
+- `pkg/runtime/reconciler/run_customresource.go` — how the reconciler drives `Create`/`Update` per lifecycle hook
+- `pkg/runtime/reconciler/expand_customresources.go` — template expansion for `customResources:` declarations
 - `pkg/resources/template/` — the `Resolver` that evaluates Go templates before `Resolve` is called
 - `pkg/resources/README.md` — top-level contract shared by all registry packages

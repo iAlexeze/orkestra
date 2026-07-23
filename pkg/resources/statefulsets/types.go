@@ -18,13 +18,14 @@ type ResolvedVolumeClaimTemplate struct {
 
 // ResolvedStatefulSetSpec is the fully resolved StatefulSet specification.
 type ResolvedStatefulSetSpec struct {
-	Name        string
-	Namespace   string
-	Image       string
-	Replicas    int32
-	Port        int32
-	Protocol    corev1.Protocol
-	ServiceName string
+	Name         string
+	Namespace    string
+	Image        string
+	Replicas     int32
+	HasAutoscale bool
+	Port         int32
+	Protocol     corev1.Protocol
+	ServiceName  string
 
 	// VolumeClaimTemplates — resolved PVC templates (may be multiple).
 	VolumeClaimTemplates []ResolvedVolumeClaimTemplate

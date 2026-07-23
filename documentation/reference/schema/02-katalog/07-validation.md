@@ -21,7 +21,59 @@ validation:
       prefix: "myregistry.example.com/"
       message: "image must come from the internal registry"
       action: warn
+
+    - field: spec.productionApproval
+      operator: exists
+      message: "production deploys require an approval ticket"
+      action: deny
+      when:
+        - field: spec.environment
+          equals: production
+
+    - field: spec.domain
+      operator: exists
+      message: "spec.domain is required for cert workloads"
+      action: deny
+      when:
+        - field: spec.workloadType
+          equals: cert
+      anyOf:
+        - field: spec.workloadType
+          equals: cert
+        - field: spec.workloadType
+          equals: monitoring
 ```
+
+## `validation.include`
+
+Pull rules from an external file to keep the Katalog compact. The file contains a `rules:` key with the same list structure as inline rules.
+
+```yaml
+validation:
+  include: ./admission/apprequest.yaml   # relative to the katalog file
+  rules:
+    - field: spec.tier                   # appended after included rules
+      operator: in
+      value: "free,pro,enterprise"
+      action: deny
+```
+
+`admission/apprequest.yaml`:
+
+```yaml
+rules:
+  - field: spec.team
+    operator: exists
+    message: "spec.team is required"
+    action: deny
+  - field: spec.environment
+    operator: in
+    value: "staging,production"
+    message: "spec.environment must be staging or production"
+    action: deny
+```
+
+Included rules come first. Inline `rules:` append after. The `include:` path is resolved relative to the katalog file's directory — the katalog can be run from any working directory. The field is cleared from the runtime bundle after expansion.
 
 ## `validation.rules`
 
@@ -34,8 +86,12 @@ Each rule describes one check. Rules are evaluated in order.
 | `action` | no | `deny` (default) — reject; `warn` — allow but log a warning |
 | `operator` + `value` | yes* | Explicit comparison (see operators) |
 | `valueType` | no | `string` (default), `int`, `float`, `bool` |
+| `when` | no | All conditions must pass for this rule to be evaluated (AND). Empty means unconditional. |
+| `anyOf` | no | At least one condition must pass for this rule to be evaluated (OR). When both `when` and `anyOf` are declared, both blocks must pass. |
 
 *Use either an operator+value pair or a shorthand field.
+
+`when` and `anyOf` use the same `Condition` type as resource templates — see [06-when-conditions.md](06-when-conditions.md) for the full operator reference.
 
 ## Operators
 

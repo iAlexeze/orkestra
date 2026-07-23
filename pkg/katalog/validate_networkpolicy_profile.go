@@ -21,6 +21,7 @@ package katalog
 
 import (
 	"fmt"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 
 	"github.com/orkspace/orkestra/pkg/profiles"
 )
@@ -28,7 +29,7 @@ import (
 func (k *Katalog) validateNetworkPolicyProfiles() error {
 	for crdName, crd := range k.enabledCRDs {
 		for _, e := range crd.CollectNetworkPolicyProfileEntries() {
-			if isTemplateExpr(e.Profile) {
+			if orktypes.IsTemplate(e.Profile) {
 				continue
 			}
 			if !k.isUserNetworkPolicyProfile(e.Profile) && !profiles.IsValidNetworkPolicyProfile(e.Profile) {

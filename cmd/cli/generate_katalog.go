@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/orkspace/orkestra/pkg/generate"
+	"github.com/orkspace/orkestra/pkg/tools/generate"
 	"github.com/spf13/cobra"
 )
 
