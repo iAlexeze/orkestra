@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	orkexternal "github.com/orkspace/orkestra/pkg/external"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -23,6 +24,7 @@ type validationViolation struct {
 }
 
 func (ws *WebhookServer) evaluateValidationRules(
+	ctx context.Context,
 	obj map[string]interface{},
 	cfg *orktypes.ValidationConfig,
 	kindName string,
@@ -31,8 +33,16 @@ func (ws *WebhookServer) evaluateValidationRules(
 	if ws.katalog != nil {
 		resolver = resolver.WithUserNotes(ws.katalog.Notes)
 	}
+	if calls := cfg.AdmissionExternal(); len(calls) > 0 {
+		var err error
+		resolver, err = orkexternal.Run(ctx, kindName, resolver, calls)
+		if err != nil {
+			logger.FromContext(ctx).Warn().Err(err).Str("kind", kindName).Msg("admission/validate: external call failed")
+		}
+	}
+	data := resolver.Data()
 	for _, rule := range cfg.Rules {
-		if !orktypes.EvaluateWhen(obj, rule.When, rule.AnyOf, resolver.TemplateEvaluator()) {
+		if !orktypes.EvaluateWhen(data, rule.When, rule.AnyOf, resolver.TemplateEvaluator()) {
 			continue
 		}
 		v := evaluateOneRule(obj, resolver, rule)
@@ -186,10 +196,18 @@ func (ws *WebhookServer) applyMutationRules(
 	if ws.katalog != nil {
 		resolver = resolver.WithUserNotes(ws.katalog.Notes)
 	}
+	if calls := cfg.AdmissionExternal(); len(calls) > 0 {
+		var err error
+		resolver, err = orkexternal.Run(ctx, kindName, resolver, calls)
+		if err != nil {
+			logger.FromContext(ctx).Warn().Err(err).Str("kind", kindName).Msg("admission/mutate: external call failed")
+		}
+	}
 	var changes []fieldChange
 
+	mdata := resolver.Data()
 	for _, rule := range cfg.Rules {
-		if !orktypes.EvaluateWhen(obj, rule.When, rule.AnyOf, resolver.TemplateEvaluator()) {
+		if !orktypes.EvaluateWhen(mdata, rule.When, rule.AnyOf, resolver.TemplateEvaluator()) {
 			continue
 		}
 
