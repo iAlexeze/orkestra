@@ -80,9 +80,18 @@ func runMutation(
 			continue
 		}
 
+		// Resolve template expression in the field path so notes and CR fields
+		// can be used to target dynamic paths (e.g. "spec.{{ container }}.image").
+		targetField := rule.Field
+		if orktypes.IsTemplate(targetField) {
+			if resolved, err := resolver.Resolve(targetField); err == nil {
+				targetField = resolved
+			}
+		}
+
 		// currentVal is the string representation of the current field value.
 		// resolveField uses anyToString — so integers come back as "2", bools as "true".
-		currentVal, found := resolveField(data, rule.Field)
+		currentVal, found := resolveField(data, targetField)
 
 		// ── Determine the mutation type and raw desired value ─────────────────
 		// rawVal preserves the YAML-native type (int64, bool, string).
@@ -92,7 +101,7 @@ func runMutation(
 
 		rawVal, mutationType, err = resolveRuleValue(rule, found, currentVal, resolver)
 		if err != nil {
-			return nil, fmt.Errorf("mutation: field %q: %w", rule.Field, err)
+			return nil, fmt.Errorf("mutation: field %q: %w", targetField, err)
 		}
 		if rawVal == nil {
 			continue // rule did not apply (default with existing value, or no value declared)
@@ -106,22 +115,22 @@ func runMutation(
 		}
 
 		// ── Accumulate patch ──────────────────────────────────────────────────
-		setNestedPatch(patch, rule.Field, rawVal)
+		setNestedPatch(patch, targetField, rawVal)
 		hasPatch = true
 
 		result.Changes = append(result.Changes, MutationChange{
-			Field:    rule.Field,
+			Field:    targetField,
 			OldValue: currentVal,
 			NewValue: rawVal,
 			Type:     mutationType,
 		})
 
-		metrics.RecordMutationFieldDetail(crdName, rule.Field, mutationType)
+		metrics.RecordMutationFieldDetail(crdName, targetField, mutationType)
 
 		logger.Debug().
 			Str("crd", crdName).
 			Str("name", obj.GetName()).
-			Str("field", rule.Field).
+			Str("field", targetField).
 			Str("old", currentVal).
 			Str("new", fmt.Sprintf("%v", rawVal)).
 			Str("type", mutationType).
@@ -212,7 +221,7 @@ func resolveRuleValue(
 func resolveTypedValue(val interface{}, valueType string, resolver *orktmpl.Resolver) (interface{}, error) {
 	// First resolve template if needed
 	strVal, isStr := val.(string)
-	if isStr && strings.Contains(strVal, "{{") {
+	if isStr && orktypes.IsTemplate(strVal) {
 		resolved, err := resolver.Resolve(strVal)
 		if err != nil {
 			return nil, fmt.Errorf("resolving template expression %q: %w", strVal, err)

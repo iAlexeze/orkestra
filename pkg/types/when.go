@@ -44,8 +44,8 @@ import (
 // nil disables template evaluation — all existing callers are backward-compatible.
 type TemplateEvaluator func(tmpl string) (string, bool)
 
-// isTemplate returns true when s contains a Go template expression.
-func isTemplate(s string) bool { return strings.Contains(s, "{{") }
+// IsTemplate reports whether s contains a Go template expression.
+func IsTemplate(s string) bool { return strings.Contains(s, "{{") }
 
 // EvaluateWhen evaluates when: (allOf, AND) and anyOf: (OR) conditions.
 // data is resolver.Data() — full CR map including children, external, cross.
@@ -120,7 +120,7 @@ func evaluateOneCond(data map[string]interface{}, cond Condition, eval TemplateE
 	// ── Template expected-value resolution ────────────────────────────────
 	// If the comparison value itself is a template expression, evaluate it so
 	// conditions like `equals: "{{ .spec.image }}"` work as intended.
-	if isTemplate(expected) && eval != nil {
+	if IsTemplate(expected) && eval != nil {
 		if resolved, ok := eval(expected); ok {
 			expected = resolved
 		}
@@ -129,7 +129,7 @@ func evaluateOneCond(data map[string]interface{}, cond Condition, eval TemplateE
 	// ── Template field resolution ──────────────────────────────────────────
 	// If the field is a template expression, evaluate it through the resolver.
 	// The string result is used for operator comparison — same logic as dot path.
-	if isTemplate(cond.Field) && eval != nil {
+	if IsTemplate(cond.Field) && eval != nil {
 		result, ok := eval(cond.Field)
 		if !ok {
 			return false // fail silently — same behaviour as missing dot path

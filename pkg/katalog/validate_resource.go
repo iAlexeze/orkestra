@@ -26,21 +26,15 @@ package katalog
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/orkspace/orkestra/pkg/profiles"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
-
-// isTemplateExpr reports whether s contains a Go template expression.
-// Template expressions are resolved at runtime and should not be validated statically.
-func isTemplateExpr(s string) bool {
-	return strings.Contains(s, "{{")
-}
 
 func (k *Katalog) validateResourceProfile() error {
 	for crdName, crd := range k.enabledCRDs {
 		for _, e := range crd.CollectResourceProfileEntries() {
-			if isTemplateExpr(e.Profile) {
+			if orktypes.IsTemplate(e.Profile) {
 				continue
 			}
 			_, userDefined := k.Profiles.LookupResource(e.Profile)
@@ -66,7 +60,7 @@ func (k *Katalog) validateResourceProfile() error {
 func (k *Katalog) validateProbeProfiles() error {
 	for crdName, crd := range k.enabledCRDs {
 		for _, e := range crd.CollectProbeProfileEntries() {
-			if isTemplateExpr(e.Profile) {
+			if orktypes.IsTemplate(e.Profile) {
 				continue
 			}
 			_, userDefined := k.Profiles.LookupProbe(e.Profile)

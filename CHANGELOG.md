@@ -52,6 +52,45 @@ The runtime's `/katalog/{crd}/cr` and `/katalog/{crd}/cr/{ns}/{name}` responses 
 
 When `idp.enabled: true` on a CRD, the generated RBAC bundle now includes a `get` rule on `apiextensions.k8s.io/customresourcedefinitions` scoped to that CRD's full resource name (`{plural}.{group}`). This allows the gateway to read the OpenAPI schema for the `/api/v1/schema/{kind}` endpoint without cluster-wide CRD read access.
 
+### Notes in validation and mutation rules
+
+User-defined notes can now be referenced directly as template expressions inside `validation.rules` and `mutation.rules`. Both `field:`, comparison values (`equals:`, `prefix:`, `min:`, …), and `message:` are resolved against the full note FuncMap before evaluation. This applies at reconcile time and at admission webhook time.
+
+```yaml
+notes:
+  functions:
+    - name: allowedRegistry
+      expression: "myorg/"
+    - name: inBusinessHours
+      expression: '{{ and weekday (timeInWindow "09:00" "18:00") }}'
+    - name: defaultReplicas
+      expression: "2"
+
+spec:
+  crds:
+    deploymentrequest:
+      mutation:
+        rules:
+          - field: spec.replicas
+            default: "{{ defaultReplicas }}"
+            valueType: int
+
+      validation:
+        rules:
+          - field: "{{ inBusinessHours }}"
+            equals: "true"
+            action: deny
+            message: "deployments are only allowed during business hours"
+          - field: spec.image
+            prefix: "{{ allowedRegistry }}"
+            action: deny
+            message: "image must be from {{ allowedRegistry }}"
+```
+
+When `field:` is a template expression, the resolved value is used directly in the comparison — not treated as a path into the CR. The original expression is preserved in violation messages (`field "{{ inBusinessHours }}": …`).
+
+`IsTemplate` is now a single exported helper in `pkg/types` (`orktypes.IsTemplate`), replacing scattered `strings.Contains(s, "{{")` checks across the katalog, reconciler, and webhook packages.
+
 ### Conditional validation and mutation rules
 
 `when:` and `anyOf:` conditions are now supported on `validation.rules` and `mutation.rules` entries. A rule whose conditions do not match is skipped entirely — no violation is recorded, no log entry is emitted.

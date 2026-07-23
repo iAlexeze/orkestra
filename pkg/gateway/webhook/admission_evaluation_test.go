@@ -432,7 +432,7 @@ func TestEvaluateOneRule(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			violation := evaluateOneRule(tc.obj, tc.rule)
+			violation := evaluateOneRule(tc.obj, nil, tc.rule)
 			if tc.wantPass {
 				assert.Nil(t, violation, "expected rule to pass — got violation: %+v", violation)
 			} else {
@@ -455,7 +455,7 @@ func TestEvaluateOneRule_ViolationFieldsArePopulated(t *testing.T) {
 		Action:  orktypes.ValidationActionDeny,
 	}
 
-	v := evaluateOneRule(obj, rule)
+	v := evaluateOneRule(obj, nil, rule)
 
 	require.NotNil(t, v)
 	assert.Equal(t, "spec.image", v.Field)

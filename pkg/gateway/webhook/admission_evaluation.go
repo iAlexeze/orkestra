@@ -27,11 +27,15 @@ func (ws *WebhookServer) evaluateValidationRules(
 	cfg *orktypes.ValidationConfig,
 	kindName string,
 ) (denials []validationViolation, warnings []validationViolation) {
+	resolver := orktmpl.NewResolverFromMap(obj)
+	if ws.katalog != nil {
+		resolver = resolver.WithUserNotes(ws.katalog.Notes)
+	}
 	for _, rule := range cfg.Rules {
 		if !orktypes.EvaluateWhen(obj, rule.When, rule.AnyOf, nil) {
 			continue
 		}
-		v := evaluateOneRule(obj, rule)
+		v := evaluateOneRule(obj, resolver, rule)
 		if v == nil {
 			continue
 		}
@@ -45,14 +49,38 @@ func (ws *WebhookServer) evaluateValidationRules(
 	return
 }
 
-func evaluateOneRule(obj map[string]interface{}, rule orktypes.ValidationRule) *validationViolation {
+func evaluateOneRule(obj map[string]interface{}, resolver *orktmpl.Resolver, rule orktypes.ValidationRule) *validationViolation {
 	op, expected := resolveValidationOperator(rule)
-	fieldVal, found := resolveFieldPath(obj, rule.Field)
+
+	// Resolve template expressions in comparison values and messages.
+	if orktypes.IsTemplate(expected) {
+		if resolved, err := resolver.Resolve(expected); err == nil {
+			expected = resolved
+		}
+	}
+	message := rule.Message
+	if orktypes.IsTemplate(message) {
+		if resolved, err := resolver.Resolve(message); err == nil {
+			message = resolved
+		}
+	}
+
+	// displayField preserves the original expression for error messages.
+	// When field is a template, the resolved value is the result directly.
+	displayField := rule.Field
+	var fieldVal string
+	var found bool
+	if orktypes.IsTemplate(rule.Field) {
+		fieldVal, _ = resolver.Resolve(rule.Field)
+		found = fieldVal != ""
+	} else {
+		fieldVal, found = resolveFieldPath(obj, rule.Field)
+	}
 
 	fail := func() *validationViolation {
 		return &validationViolation{
-			Field:    rule.Field,
-			Message:  rule.Message,
+			Field:    displayField,
+			Message:  message,
 			Got:      fieldVal,
 			RuleType: string(op),
 			Action:   rule.Action,
@@ -155,12 +183,24 @@ func (ws *WebhookServer) applyMutationRules(
 	}
 
 	resolver := orktmpl.NewResolverFromMap(obj)
+	if ws.katalog != nil {
+		resolver = resolver.WithUserNotes(ws.katalog.Notes)
+	}
 	var changes []fieldChange
 
 	for _, rule := range cfg.Rules {
 		if !orktypes.EvaluateWhen(obj, rule.When, rule.AnyOf, nil) {
 			continue
 		}
+
+		// Resolve template expression in the field path.
+		targetField := rule.Field
+		if orktypes.IsTemplate(targetField) {
+			if resolved, err := resolver.Resolve(targetField); err == nil {
+				targetField = resolved
+			}
+		}
+
 		// Resolve raw value (string from template or static value) first
 		var rawResolved string
 		var changeType string
@@ -170,19 +210,19 @@ func (ws *WebhookServer) applyMutationRules(
 		case rule.Override != nil && anyToString(rule.Override) != "":
 			raw, err := resolver.Resolve(anyToString(rule.Override))
 			if err != nil {
-				return nil, fmt.Errorf("mutation rule override for field %q: %w", rule.Field, err)
+				return nil, fmt.Errorf("mutation rule override for field %q: %w", targetField, err)
 			}
 			rawResolved = raw
 			changeType = "override"
 
 		case rule.Default != nil:
-			currentVal, found := resolveFieldPath(obj, rule.Field)
+			currentVal, found := resolveFieldPath(obj, targetField)
 			if found && currentVal != "" {
 				continue // already set, skip default
 			}
 			raw, err := resolver.Resolve(anyToString(rule.Default))
 			if err != nil {
-				return nil, fmt.Errorf("mutation rule default for field %q: %w", rule.Field, err)
+				return nil, fmt.Errorf("mutation rule default for field %q: %w", targetField, err)
 			}
 			rawResolved = raw
 			changeType = "default"
@@ -199,16 +239,16 @@ func (ws *WebhookServer) applyMutationRules(
 		}
 
 		// Compare with current value (as string for simplicity)
-		currentVal, _ := resolveFieldPath(obj, rule.Field)
+		currentVal, _ := resolveFieldPath(obj, targetField)
 		if fmt.Sprintf("%v", typedVal) == currentVal {
 			continue // unchanged
 		}
 
 		// Apply the typed value to the object
-		setFieldPath(obj, rule.Field, typedVal)
+		setFieldPath(obj, targetField, typedVal)
 
 		changes = append(changes, fieldChange{
-			Field:      rule.Field,
+			Field:      targetField,
 			OldValue:   currentVal,
 			NewValue:   fmt.Sprintf("%v", typedVal),
 			TypedValue: typedVal,
@@ -217,7 +257,7 @@ func (ws *WebhookServer) applyMutationRules(
 
 		logger.Debug().
 			Str("kind", kindName).
-			Str("field", rule.Field).
+			Str("field", targetField).
 			Str("was", currentVal).
 			Str("now", fmt.Sprintf("%v", typedVal)).
 			Str("type", changeType).
