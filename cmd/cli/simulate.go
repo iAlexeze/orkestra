@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/orkspace/orkestra/pkg/tools/devserver"
-	orke2e "github.com/orkspace/orkestra/pkg/registry/e2e"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/merger"
+	orke2e "github.com/orkspace/orkestra/pkg/registry/e2e"
 	"github.com/orkspace/orkestra/pkg/registry/simulate"
+	"github.com/orkspace/orkestra/pkg/tools/devserver"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	orkutils "github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"

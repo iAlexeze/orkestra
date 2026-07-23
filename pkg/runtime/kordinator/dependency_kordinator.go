@@ -188,11 +188,11 @@ import (
 	"github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	ork_autoscaler "github.com/orkspace/orkestra/pkg/runtime/autoscaler"
-	"github.com/orkspace/orkestra/pkg/runtime/informer"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
+	ork_autoscaler "github.com/orkspace/orkestra/pkg/runtime/autoscaler"
+	"github.com/orkspace/orkestra/pkg/runtime/informer"
 	"github.com/orkspace/orkestra/pkg/runtime/queue"
 )
 

@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/orkspace/orkestra/pkg/registry/e2e"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/registry"
+	"github.com/orkspace/orkestra/pkg/registry/e2e"
 	"github.com/orkspace/orkestra/pkg/version"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"

@@ -3,11 +3,11 @@ package internal
 import (
 	"context"
 
-	"github.com/orkspace/orkestra/pkg/runtime/konductor"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/merger"
+	"github.com/orkspace/orkestra/pkg/runtime/konductor"
 	"github.com/orkspace/orkestra/pkg/utils"
 )
 

@@ -12,9 +12,9 @@ import (
 	"github.com/orkspace/orkestra/pkg/event"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 
-	"github.com/orkspace/orkestra/pkg/runtime/informer"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/runtime/informer"
 	"github.com/orkspace/orkestra/pkg/runtime/queue"
 )
 

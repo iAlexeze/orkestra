@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/orkspace/orkestra/pkg/runtime/informer"
 	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/runtime/informer"
 	"github.com/orkspace/orkestra/pkg/runtime/queue"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
