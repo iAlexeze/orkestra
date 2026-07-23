@@ -9,7 +9,7 @@ runtime:
   imagePullSecrets: []
   image:
     repository: ghcr.io/orkspace/orkestra
-    tag: "0.7.11"
+    tag: "0.7.12"
     pullPolicy: IfNotPresent
   replicaCount: 2
   service:
@@ -138,7 +138,7 @@ gateway:
   imagePullSecrets: []
   image:
     repository: ghcr.io/orkspace/orkestra-gateway
-    tag: "0.7.11"
+    tag: "0.7.12"
     pullPolicy: IfNotPresent
   replicaCount: 2
   resources:
@@ -248,7 +248,7 @@ controlCenter:
   imagePullSecrets: []
   image:
     repository: ghcr.io/orkspace/orkestra-cc
-    tag: "0.7.11"
+    tag: "0.7.12"
     pullPolicy: IfNotPresent
   replicaCount: 1
   resources:
@@ -327,6 +327,13 @@ controlCenter:
     #  - podSelector:
     #      matchLabels:
     #        app: prometheus
+  # Gateway Apply API token for the Control Center IDP proxy.
+  # Point secretRef at the Secret the gateway auto-creates on first start.
+  # Leave name empty to disable (no GATEWAY_TOKEN env injected).
+  gatewayToken:
+    secretRef:
+      name: "" # e.g. "ork-apply-token" (created by the gateway)
+      key: "token"
   extraEnv: []
   extraEnvFrom: []
   extraVolumes: []
