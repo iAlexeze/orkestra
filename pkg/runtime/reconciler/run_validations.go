@@ -94,7 +94,11 @@ func runValidation(data map[string]interface{}, resolver *orktmpl.Resolver, cfg 
 	}
 
 	for _, rule := range cfg.Rules {
-		if !orktypes.EvaluateWhen(data, rule.When, rule.AnyOf, nil) {
+		var eval orktypes.TemplateEvaluator
+		if resolver != nil {
+			eval = resolver.TemplateEvaluator()
+		}
+		if !orktypes.EvaluateWhen(data, rule.When, rule.AnyOf, eval) {
 			continue
 		}
 		violation := evaluateValidationRule(data, resolver, rule)
