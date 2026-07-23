@@ -227,6 +227,27 @@ func TestRun_ExpectedStatusMismatch(t *testing.T) {
 	}
 }
 
+func TestRun_JSONStatusKeyDoesNotOverwriteHTTPStatus(t *testing.T) {
+	// Body {"status":"ok"} must not overwrite the HTTP status code "200".
+	defer withTransport(t, stubTransport{status: 200, body: `{"status":"ok"}`})()
+
+	r := resolver(map[string]interface{}{})
+	calls := []orktypes.ExternalCallSpec{
+		{Name: "health", URL: "http://svc.internal/health"},
+	}
+
+	got, err := orkexternal.Run(context.Background(), "test", r, calls)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	ext := got.Data()["external"].(map[string]interface{})
+	health := ext["health"].(map[string]interface{})
+	if health["status"] != "200" {
+		t.Errorf("status: got %v, want 200 — JSON body key must not overwrite HTTP status", health["status"])
+	}
+}
+
 func TestRun_NonJSONBodyNotParsed(t *testing.T) {
 	defer withTransport(t, stubTransport{status: 200, body: "plain text response"})()
 

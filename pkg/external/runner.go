@@ -67,12 +67,7 @@ func Run(
 
 		result := executeHTTPCall(ctx, call, resolvedURL, resolvedBody, resolvedToken)
 
-		entry := map[string]interface{}{
-			"status": result.Status,
-			"body":   result.Body,
-			"error":  result.Error,
-			"called": "true",
-		}
+		entry := map[string]interface{}{}
 		if result.Body != "" {
 			var parsed map[string]interface{}
 			if err := json.Unmarshal([]byte(result.Body), &parsed); err == nil {
@@ -81,6 +76,12 @@ func Run(
 				}
 			}
 		}
+		// HTTP meta fields are set after JSON parsing so they are never
+		// overwritten by a body key with the same name (e.g. {"status":"ok"}).
+		entry["status"] = result.Status
+		entry["body"] = result.Body
+		entry["error"] = result.Error
+		entry["called"] = "true"
 		results[call.Name] = entry
 
 		metrics.RecordExternalCall(gvk, call.Name, resolvedURL, result.DurationSeconds, result.Error, result.StatusCode)
