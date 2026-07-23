@@ -1,0 +1,19 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: validation-external-simulate
+
+spec:
+  katalog: ./katalog.yaml
+  crd: webapp
+  cr: ./cr-bad-health.yaml
+  cycles: 3
+
+  expect:
+    noErrors: false
+    steady: true
+    ops:
+      - cycle: 1
+        verb: create
+        resource: deployments
+        absent: true
