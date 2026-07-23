@@ -8,7 +8,7 @@ Orkestra writes status in two layers — one automatic, one declarative.
 
 No declaration required. Every managed CR gets this.
 
-**Layer 2 — declarative fields.** Declared under `operatorBox.status`. Written after reconcile templates complete.
+**Layer 2 — declarative fields.** Declared under `operatorBox.status`. Fields with `when:`/`anyOf:` conditions are always evaluated — including when reconcile fails — so status can reflect why. Fields without conditions are only written on successful reconcile.
 
 ## Wire format
 
