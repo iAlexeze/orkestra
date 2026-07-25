@@ -1,0 +1,33 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: E2E
+metadata:
+  name: external-prometheus-e2e
+  description: >
+    Verifies protocol: prometheus against Orkestra's own /api/v1/query endpoint.
+    Queries go_goroutines and process_cpu_seconds_total from the orkestra-runtime
+    health server (/api/v1/query). Exercises promValue, promAboveThreshold, and promSeriesCount.
+
+spec:
+  katalog: ./katalog.yaml
+  crd: ./crd.yaml
+  cr: ./cr.yaml
+
+  cluster:
+    provider: kind
+    name: ork-external-prometheus
+    reuse: false
+
+  expect:
+    - include: ./e2e/01-assertions.yaml
+    - include: ./e2e/02-cleanup.yaml
+
+  onFailure:
+    kubectl:
+      get:
+        - kind: WebApp
+          namespace: default
+      logs:
+        - leaderElection:
+            lease: orkestra-konductor
+            namespace: orkestra-system
+          since: 2m

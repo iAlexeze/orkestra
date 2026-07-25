@@ -57,8 +57,10 @@ Every subcommand supports the same assertion fields:
 | `outputNotContains` | Output must not contain this substring |
 | `greaterThan` | Output (trimmed, parsed as a number) must be greater than this value |
 | `lessThan` | Output (trimmed, parsed as a number) must be less than this value |
+| `exists` | Output (trimmed) must be non-empty — field is present and has a value |
+| `notExists` | Output (trimmed) must be empty — field is absent or unset |
 
-Multiple assertions on the same entry all apply. Empty fields are ignored. `greaterThan` and `lessThan` parse the output as `float64` — the check fails if the output is not numeric when either is set.
+Multiple assertions on the same entry all apply. Empty fields are ignored. `greaterThan` and `lessThan` parse the output as `float64` — the check fails if the output is not numeric when either is set. `exists` and `notExists` check the trimmed output for presence or absence.
 
 `oneOf` is useful when the expected value is one of several valid strings — for example, a status field that reflects current runtime state:
 

@@ -101,6 +101,8 @@ commands:
 | `notEquals` | no | Output must not exactly match this string. |
 | `greaterThan` | no | Output (trimmed, parsed as a number) must be greater than this value. |
 | `lessThan` | no | Output (trimmed, parsed as a number) must be less than this value. |
+| `exists` | no | Output (trimmed) must be non-empty — field is present and has a value. |
+| `notExists` | no | Output (trimmed) must be empty — field is absent or unset. |
 
 ---
 

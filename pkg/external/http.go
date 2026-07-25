@@ -32,7 +32,7 @@ func ExpandEnv(s string) string {
 func executeHTTPCall(
 	ctx context.Context,
 	spec orktypes.ExternalCallSpec,
-	url, body, token string,
+	url, body, credential, authHeader string,
 ) orktypes.ExternalCallResult {
 	timeout := defaultExternalTimeout
 	if spec.Timeout != "" {
@@ -65,8 +65,8 @@ func executeHTTPCall(
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
+	if credential != "" {
+		req.Header.Set(authHeader, "Bearer "+credential)
 	}
 	for k, v := range spec.Headers {
 		req.Header.Set(k, v)

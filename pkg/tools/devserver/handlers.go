@@ -21,6 +21,7 @@ func registerHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/config/", handle(configHandler))
 	mux.HandleFunc("/sign", handle(signHandler))
 	mux.HandleFunc("/auth/token", handle(authTokenHandler))
+	mux.HandleFunc("/protected/", handle(protectedHandler))
 	mux.HandleFunc("/resources/", handle(resourcesHandler))
 	mux.HandleFunc("/flags/", handle(flagsHandler))
 	// 06-sbom-cosign
@@ -83,6 +84,23 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "unknown status code"})
 	}
+}
+
+// GET /protected/:name → JSON blob; requires Authorization: Bearer dev-token-abc123.
+// Returns 401 when the token is absent or wrong.
+// Used by the external-auth fixture to verify auth.secretRef wires correctly.
+func protectedHandler(w http.ResponseWriter, r *http.Request) {
+	bearer := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if strings.TrimSpace(bearer) != "dev-token-abc123" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	name := strings.TrimPrefix(r.URL.Path, "/protected/")
+	writeJSON(w, http.StatusOK, map[string]any{
+		"name":       name,
+		"env":        "production",
+		"tokenValid": "true",
+	})
 }
 
 // GET /config/:name → JSON config blob

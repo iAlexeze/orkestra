@@ -129,7 +129,7 @@ func resolveSecretRef(ctx context.Context, ref *orktypes.ApplyAPISecretRef, kube
 	}
 
 	// Secret exists — read the token value.
-	return readSecretKey(ctx, kube, ns, ref.Name, ref.Key)
+	return secrets.ReadSecretKey(ctx, kube.Clientset(), ns, ref.Name, ref.Key)
 }
 
 // createTokenSecret creates a new Kubernetes Secret with the given token value
@@ -150,21 +150,6 @@ func createTokenSecret(ctx context.Context, kube kubeclient.KubeClient, ns, name
 	}
 	_, err := kube.Clientset().CoreV1().Secrets(ns).Create(ctx, secret, metav1.CreateOptions{})
 	return err
-}
-
-// readSecretKey fetches a Secret and returns the value at the given key.
-func readSecretKey(ctx context.Context, kube kubeclient.KubeClient, ns, name, key string) (string, error) {
-	secret, err := kube.Clientset().CoreV1().Secrets(ns).Get(ctx, name, metav1.GetOptions{
-		ResourceVersion: "0",
-	})
-	if err != nil {
-		return "", fmt.Errorf("reading secret %s/%s: %w", ns, name, err)
-	}
-	val, ok := secret.Data[key]
-	if !ok {
-		return "", fmt.Errorf("secret %s/%s has no key %q", ns, name, key)
-	}
-	return string(val), nil
 }
 
 // expandEnvToken resolves ${ENV_VAR} or $ENV_VAR references.
