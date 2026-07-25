@@ -73,6 +73,7 @@ const (
 	ProtocolRedis      ExternalProtocol = "redis"
 	ProtocolPrometheus ExternalProtocol = "prometheus"
 	ProtocolPostgres   ExternalProtocol = "postgres"
+	ProtocolMongo      ExternalProtocol = "mongo"
 	ProtocolGRPC       ExternalProtocol = "grpc"
 	ProtocolKafka      ExternalProtocol = "kafka"
 	ProtocolNATS       ExternalProtocol = "nats"

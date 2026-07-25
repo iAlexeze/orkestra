@@ -1,13 +1,12 @@
-// Package external executes declarative external calls (HTTP today, protocol
-// clients in future) and injects results into the resolver context under
-// .external.<name>. Used by both the reconciler (at reconcile time) and the
-// gateway webhook (at admission time).
+// Package external executes declarative external calls and injects results
+// into the resolver context under .external.<name>.
+// Used by both the reconciler (at reconcile time) and the gateway webhook (at admission time).
 package external
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/metrics"
@@ -20,9 +19,9 @@ import (
 // resolver with results injected under .external.<name>.
 //
 // Calls run in declaration order. Each call can reference earlier calls'
-// results in its own URL, query, or body template expressions.
+// results in its own url:, query:, and body: template expressions.
 //
-// gvk is the CRD identifier used for metrics labelling only.
+// gvk is the CRD identifier used for metrics labelling and cache keying.
 // cs is used to resolve auth.secretRef — pass nil when secretRef is not used.
 // Returns the enriched resolver. The original is unchanged.
 // Returns an error only when continueOnError is false and a call fails.
@@ -42,12 +41,7 @@ func Run(
 
 	for i, call := range calls {
 		if !orktypes.EvaluateWhen(resolver.Data(), call.Conditions, call.AnyOf, resolver.TemplateEvaluator()) {
-			results[call.Name] = map[string]interface{}{
-				"status": "",
-				"body":   "",
-				"error":  "",
-				"called": "false",
-			}
+			results[call.Name] = skippedResult(call.Protocol)
 			log.Debug().
 				Str("call", call.Name).
 				Int("index", i).
@@ -59,58 +53,98 @@ func Run(
 		if err != nil {
 			return resolver, fmt.Errorf("external[%d].url: %w", i, err)
 		}
-		resolvedBody, err := resolver.Resolve(call.Body)
+		resolvedQuery, err := resolver.Resolve(call.Query)
 		if err != nil {
-			return resolver, fmt.Errorf("external[%d].body: %w", i, err)
+			return resolver, fmt.Errorf("external[%d].query: %w", i, err)
 		}
-		credential, authHeader, err := resolveAuth(ctx, call.Auth, cs)
+		credential, _, err := resolveAuth(ctx, call.Auth, cs)
 		if err != nil {
 			return resolver, fmt.Errorf("external[%d] %q: %w", i, call.Name, err)
 		}
 
-		result := executeHTTPCall(ctx, call, resolvedURL, resolvedBody, credential, authHeader)
+		// Cache check for protocols that declare cacheFor:.
+		var entry map[string]interface{}
+		cacheHit := false
+		if call.CacheFor != "" {
+			key := cacheKey(gvk, call.Name, resolvedURL, resolvedQuery)
+			if cached, ok := cacheGet(key); ok {
+				entry = cached
+				cacheHit = true
+				log.Debug().Str("call", call.Name).Msg("external call: cache hit")
+			}
+		}
 
-		entry := map[string]interface{}{}
-		if result.Body != "" {
-			var parsed map[string]interface{}
-			if err := json.Unmarshal([]byte(result.Body), &parsed); err == nil {
-				for k, v := range parsed {
-					entry[k] = v
+		if !cacheHit {
+			client := newProtocolClient(call.Protocol)
+			entry, err = client.Fetch(ctx, call, resolvedURL, resolvedQuery, credential)
+			if err != nil {
+				// Hard error from the client (e.g. context cancelled).
+				if !call.ContinueOnError {
+					return resolver, fmt.Errorf("external call %q: %w", call.Name, err)
+				}
+				log.Warn().Err(err).Str("call", call.Name).Msg("external call hard error — continuing")
+				entry = errorResult(err.Error())
+			}
+
+			if call.CacheFor != "" {
+				if ttl, err := time.ParseDuration(call.CacheFor); err == nil {
+					key := cacheKey(gvk, call.Name, resolvedURL, resolvedQuery)
+					cacheSet(key, entry, ttl)
 				}
 			}
 		}
-		// HTTP meta fields are set after JSON parsing so they are never
-		// overwritten by a body key with the same name (e.g. {"status":"ok"}).
-		entry["status"] = result.Status
-		entry["body"] = result.Body
-		entry["error"] = result.Error
-		entry["called"] = "true"
+
 		results[call.Name] = entry
 
-		metrics.RecordExternalCall(gvk, call.Name, resolvedURL, result.DurationSeconds, result.Error, result.StatusCode)
+		// Record metrics using the url for HTTP calls; query for others.
+		callErr, _ := entry["error"].(string)
+		statusStr, _ := entry["status"].(string)
+		durationSeconds := 0.0 // non-HTTP clients don't surface duration yet
+		metrics.RecordExternalCall(gvk, call.Name, resolvedURL, durationSeconds, callErr, 0)
 
 		// Inject before any early return so status fields can reference this
 		// call's result even when continueOnError is false.
 		resolver = resolver.WithExternal(results)
 
-		if result.Error != "" {
+		if callErr != "" {
 			log.Warn().
 				Str("call", call.Name).
 				Str("url", resolvedURL).
-				Str("error", result.Error).
+				Str("error", callErr).
 				Msg("external call failed")
 
 			if !call.ContinueOnError {
-				return resolver, fmt.Errorf("external call %q failed: %s", call.Name, result.Error)
+				return resolver, fmt.Errorf("external call %q failed: %s", call.Name, callErr)
 			}
 		} else {
 			log.Debug().
 				Str("call", call.Name).
 				Str("url", resolvedURL).
-				Str("status", result.Status).
+				Str("status", statusStr).
 				Msg("external call succeeded")
 		}
 	}
 
 	return resolver, nil
+}
+
+// skippedResult returns the zero-value result for a skipped call.
+// HTTP uses status/body/error/called; non-HTTP uses result/raw/error/called.
+func skippedResult(protocol orktypes.ExternalProtocol) map[string]interface{} {
+	switch protocol {
+	case "", orktypes.ProtocolHTTP:
+		return map[string]interface{}{
+			"status": "",
+			"body":   "",
+			"error":  "",
+			"called": "false",
+		}
+	default:
+		return map[string]interface{}{
+			"result": "",
+			"raw":    map[string]interface{}{},
+			"error":  "",
+			"called": "false",
+		}
+	}
 }
