@@ -433,6 +433,8 @@ type E2ECommand struct {
 	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
 	GreaterThan       string   `yaml:"greaterThan,omitempty"`
 	LessThan          string   `yaml:"lessThan,omitempty"`
+	Exists            bool     `yaml:"exists,omitempty"`
+	NotExists         bool     `yaml:"notExists,omitempty"`
 	OneOf             []string `yaml:"oneOf,omitempty"`
 }
 
@@ -520,6 +522,8 @@ type E2EKubectlGet struct {
 	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
 	GreaterThan       string   `yaml:"greaterThan,omitempty"`
 	LessThan          string   `yaml:"lessThan,omitempty"`
+	Exists            bool     `yaml:"exists,omitempty"`
+	NotExists         bool     `yaml:"notExists,omitempty"`
 	OneOf             []string `yaml:"oneOf,omitempty"`
 }
 
@@ -552,6 +556,8 @@ type E2EKubectlLogs struct {
 	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
 	GreaterThan       string   `yaml:"greaterThan,omitempty"`
 	LessThan          string   `yaml:"lessThan,omitempty"`
+	Exists            bool     `yaml:"exists,omitempty"`
+	NotExists         bool     `yaml:"notExists,omitempty"`
 	OneOf             []string `yaml:"oneOf,omitempty"`
 }
 
@@ -576,6 +582,8 @@ type E2EKubectlDescribe struct {
 	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
 	GreaterThan       string   `yaml:"greaterThan,omitempty"`
 	LessThan          string   `yaml:"lessThan,omitempty"`
+	Exists            bool     `yaml:"exists,omitempty"`
+	NotExists         bool     `yaml:"notExists,omitempty"`
 	OneOf             []string `yaml:"oneOf,omitempty"`
 }
 
@@ -608,6 +616,8 @@ type E2EKubectlExec struct {
 	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
 	GreaterThan       string   `yaml:"greaterThan,omitempty"`
 	LessThan          string   `yaml:"lessThan,omitempty"`
+	Exists            bool     `yaml:"exists,omitempty"`
+	NotExists         bool     `yaml:"notExists,omitempty"`
 	OneOf             []string `yaml:"oneOf,omitempty"`
 }
 
@@ -681,6 +691,8 @@ type E2EKubectlEvents struct {
 	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
 	GreaterThan       string   `yaml:"greaterThan,omitempty"`
 	LessThan          string   `yaml:"lessThan,omitempty"`
+	Exists            bool     `yaml:"exists,omitempty"`
+	NotExists         bool     `yaml:"notExists,omitempty"`
 	OneOf             []string `yaml:"oneOf,omitempty"`
 }
 
@@ -706,6 +718,8 @@ type E2EKubectlAuth struct {
 	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
 	GreaterThan       string   `yaml:"greaterThan,omitempty"`
 	LessThan          string   `yaml:"lessThan,omitempty"`
+	Exists            bool     `yaml:"exists,omitempty"`
+	NotExists         bool     `yaml:"notExists,omitempty"`
 	OneOf             []string `yaml:"oneOf,omitempty"`
 }
 
@@ -737,6 +751,8 @@ type E2EKubectlCp struct {
 	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
 	GreaterThan       string   `yaml:"greaterThan,omitempty"`
 	LessThan          string   `yaml:"lessThan,omitempty"`
+	Exists            bool     `yaml:"exists,omitempty"`
+	NotExists         bool     `yaml:"notExists,omitempty"`
 	OneOf             []string `yaml:"oneOf,omitempty"`
 }
 
@@ -764,6 +780,8 @@ type E2EKubectlTop struct {
 	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
 	GreaterThan       string   `yaml:"greaterThan,omitempty"`
 	LessThan          string   `yaml:"lessThan,omitempty"`
+	Exists            bool     `yaml:"exists,omitempty"`
+	NotExists         bool     `yaml:"notExists,omitempty"`
 	OneOf             []string `yaml:"oneOf,omitempty"`
 }
 
@@ -820,6 +838,8 @@ type E2EKubectlPortForward struct {
 	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
 	GreaterThan       string   `yaml:"greaterThan,omitempty"`
 	LessThan          string   `yaml:"lessThan,omitempty"`
+	Exists            bool     `yaml:"exists,omitempty"`
+	NotExists         bool     `yaml:"notExists,omitempty"`
 	OneOf             []string `yaml:"oneOf,omitempty"`
 	// StatusCode asserts the HTTP response status code. When set, the response
 	// body is discarded and only the numeric status is checked (e.g. 404, 200).
