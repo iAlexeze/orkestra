@@ -272,6 +272,38 @@ Event reasons emitted by Orkestra: `Reconciled`, `ReconcileError`, `ValidationWa
 
 ---
 
+## Metrics query endpoint
+
+### `GET /api/v1/query?query=<metric>`
+
+Queries Orkestra's own Prometheus metrics by metric name. Served by the runtime on port 8080 alongside `/metrics`.
+
+```bash
+curl -s "localhost:8080/api/v1/query?query=go_goroutines" | jq
+curl -s "localhost:8080/api/v1/query?query=process_cpu_seconds_total" | jq
+```
+
+**Response** follows the standard Prometheus instant query API format:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "resultType": "vector",
+    "result": [
+      {
+        "metric": { "__name__": "go_goroutines" },
+        "value": [1753228800, "42"]
+      }
+    ]
+  }
+}
+```
+
+Only bare metric names are accepted — PromQL functions (`rate(...)`, `sum(...)`, etc.) are not supported. This endpoint is the query target for `protocol: prometheus` external calls that point at `http://orkestra-runtime.orkestra-system.svc:8080`.
+
+---
+
 ## Gateway endpoints
 
 Served by the gateway process on port 8443 when the gateway is deployed. Not available from the runtime.
