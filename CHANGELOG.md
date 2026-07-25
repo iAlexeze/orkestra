@@ -1,4 +1,4 @@
-## v0.7.13 — External calls at admission and reconcile time [UNRELEASED]
+## v0.7.13 — External calls at admission and reconcile time, protocol clients [UNRELEASED]
 
 ### `validation.external` and `mutation.external`
 
@@ -47,6 +47,56 @@ calls:
     url: "{{ .spec.authUrl }}/token"
     method: POST
 ```
+
+### Protocol clients
+
+`external:` blocks now support a `protocol:` field selecting a native client instead of HTTP.
+
+| Protocol | `protocol:` value | `url:` | `query:` |
+|---|---|---|---|
+| HTTP (default) | `http` or omit | any URL | not used |
+| Prometheus | `prometheus` | Prometheus base URL | PromQL expression |
+| Redis | `redis` | `redis://host:port` | Redis command (`PING`, `LLEN jobs`, …) |
+| PostgreSQL | `postgres` | connection string | SQL query |
+| MongoDB | `mongo` | `mongodb://host:port` | `db.collection [filter]` |
+| Kafka | `kafka` | `kafka://broker:9092` | `group/topic` for lag, `@topic` for metadata |
+
+All protocols resolve before deployment evaluation and return results at `external.<name>.*`. `continueOnError: true` is supported on all of them.
+
+### Prometheus notes
+
+Seven template notes for working with Prometheus external results:
+
+- `promValue` — extract the first scalar value from a Prometheus instant query result
+- `promSum` / `promMax` — aggregate across multiple series
+- `promAboveThreshold` / `promBelowThreshold` — boolean threshold checks for `when:` conditions
+- `promSeriesCount` — number of series returned
+- `promLabelValues` — extract a label value from the first series
+
+### `exists` and `notExists` e2e assertions
+
+```yaml
+- name: field is populated
+  kubectl:
+    get:
+      - kind: MyApp
+        name: my-app
+        namespace: default
+        field: .status.connectionCount
+        exists: true
+```
+
+`exists: true` fails when the field is empty or missing. `notExists: true` fails when the field is present. Both work in all e2e assertion blocks (`kubectl`, `exec`, `http`, `expect`).
+
+### Runtime RBAC — automatic `secrets get` for `auth.secretRef`
+
+When any `external:` block in a Katalog uses `auth.secretRef`, the generated runtime RBAC now automatically includes a `secrets get` rule. No manual RBAC annotation required.
+
+### `GET /api/v1/query` endpoint
+
+The runtime now exposes `GET /api/v1/query?expr=<promql>` — a passthrough Prometheus query endpoint backed by the operator's own metrics. Useful for dashboards and autoscaler signals without a separate Prometheus instance.
+
+---
 
 ## v0.7.12 — Gateway Apply API, IDP, and codebase clarity
 
