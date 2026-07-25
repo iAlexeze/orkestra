@@ -11,6 +11,7 @@ import (
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/event"
+	orkexternal "github.com/orkspace/orkestra/pkg/external"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/runtime/kordinator"
@@ -80,9 +81,9 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 	// Without it, external calls hit the real network — useful when targeting a
 	// local mock server or a staging API from a development machine.
 	if opts.SkipExternal {
-		prevTransport := reconciler.ExternalHTTPTransport
-		reconciler.ExternalHTTPTransport = noopTransport{}
-		defer func() { reconciler.ExternalHTTPTransport = prevTransport }()
+		prevTransport := orkexternal.HTTPTransport
+		orkexternal.HTTPTransport = noopTransport{}
+		defer func() { orkexternal.HTTPTransport = prevTransport }()
 	}
 
 	crdEntry, ok := kat.CRDEntry(crdName)
