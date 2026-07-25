@@ -499,7 +499,9 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 
 	// ── Reconcile-time mutation and validation ────────────────────────────────
 	if r.crd.HasMutationRules() && r.crd.ShouldMutateFirst() {
-		if mutErr := r.applyReconcileTimeMutation(ctx, resolver, obj); mutErr != nil {
+		var mutErr error
+		resolver, mutErr = r.applyReconcileTimeMutation(ctx, resolver, obj)
+		if mutErr != nil {
 			logger.FromContext(ctx).Warn().Err(mutErr).
 				Str("name", obj.GetName()).
 				Msg("reconcile mutation failed — continuing")
@@ -508,16 +510,18 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 
 	var lastValResult *ValidationResult
 	if r.crd.HasValidationRules() {
-		vr, valErr := r.applyReconcileTimeValidation(ctx, resolver, obj)
-		lastValResult = vr
+		var valErr error
+		resolver, lastValResult, valErr = r.applyReconcileTimeValidation(ctx, resolver, obj)
 		if valErr != nil {
-			r.patchStatusWithChildren(ctx, obj, resolver, valErr, vr)
+			r.patchStatusWithChildren(ctx, obj, resolver, valErr, lastValResult)
 			return valErr
 		}
 	}
 
 	if r.crd.HasMutationRules() && !r.crd.ShouldMutateFirst() {
-		if mutErr := r.applyReconcileTimeMutation(ctx, resolver, obj); mutErr != nil {
+		var mutErr error
+		resolver, mutErr = r.applyReconcileTimeMutation(ctx, resolver, obj)
+		if mutErr != nil {
 			logger.FromContext(ctx).Warn().Err(mutErr).
 				Str("name", obj.GetName()).
 				Msg("reconcile mutation failed — continuing")

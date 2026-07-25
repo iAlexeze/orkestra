@@ -484,7 +484,7 @@ func TestEvaluateValidationRules_MixedDenyAndWarn(t *testing.T) {
 		},
 	}
 
-	denials, warnings := h.evaluateValidationRules(obj, cfg, "Website")
+	denials, warnings := h.evaluateValidationRules(context.Background(), obj, cfg, "Website")
 
 	assert.Len(t, denials, 2, "should collect all deny violations — not fail-fast")
 	assert.Len(t, warnings, 1)
@@ -513,7 +513,7 @@ func TestEvaluateValidationRules_AllPass(t *testing.T) {
 		},
 	}
 
-	denials, warnings := h.evaluateValidationRules(obj, cfg, "Website")
+	denials, warnings := h.evaluateValidationRules(context.Background(), obj, cfg, "Website")
 
 	assert.Empty(t, denials)
 	assert.Empty(t, warnings)
@@ -530,7 +530,7 @@ func TestEvaluateValidationRules_EmptyActionDefaultsToDeny(t *testing.T) {
 		},
 	}
 
-	denials, warnings := h.evaluateValidationRules(obj, cfg, "Website")
+	denials, warnings := h.evaluateValidationRules(context.Background(), obj, cfg, "Website")
 
 	assert.Len(t, denials, 1)
 	assert.Empty(t, warnings)

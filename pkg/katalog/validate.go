@@ -250,5 +250,12 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 34. Validate external call lists (unique non-empty names)
+	// -------------------------------------------------------------------------
+	if err := k.validateExternalCalls(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }

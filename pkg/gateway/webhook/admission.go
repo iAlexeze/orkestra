@@ -76,7 +76,7 @@ func (ws *WebhookServer) validationHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	denials, warnings := ws.evaluateValidationRules(obj, rules, req.Kind.Kind)
+	denials, warnings := ws.evaluateValidationRules(r.Context(), obj, rules, req.Kind.Kind)
 
 	for _, w := range warnings {
 		resp.Warnings = append(resp.Warnings,

@@ -1,3 +1,53 @@
+## v0.7.13 — External calls at admission and reconcile time [UNRELEASED]
+
+### `validation.external` and `mutation.external`
+
+External HTTP calls can now be declared under `validation:` and `mutation:` in addition to `onReconcile:`. Calls declared here fire before the corresponding rule loop — at admission webhook time and, by default, at every reconcile.
+
+```yaml
+validation:
+  external:
+    - name: healthCheck
+      url: "{{ .spec.healthCheckUrl }}/health"
+      expectedStatus: 200
+      continueOnError: true
+      fires:
+        reconcile: false   # admission-only
+
+  rules:
+    - field: "{{ .external.healthCheck.status }}"
+      equals: "200"
+      action: deny
+      message: "health check failed — CR rejected"
+```
+
+`fires.reconcile: false` marks a call as admission-only. The reconciler skips it on resyncs; the webhook always runs it. When omitted, the call fires at both sites.
+
+Results from `validation.external` and `mutation.external` are now propagated back into the main reconcile resolver — status fields, resource templates, and subsequent steps can reference `.external.<name>.*` just like `onReconcile.external` results. This holds even on the denial path: when validation denies, status is patched with the enriched resolver, so phase and error fields reflect the external call outcome.
+
+The external call runner is now in `pkg/external` — shared by the reconciler and the gateway webhook.
+
+### `include:` in external call lists
+
+All `external:` lists now support per-item `include:` entries. An item with `include:` set is replaced in-place by the `calls:` list from the referenced file. Works in `onReconcile.external`, `onCreate.external`, `hooks.external`, `validation.external`, and `mutation.external`.
+
+```yaml
+onReconcile:
+  external:
+    - include: ./shared/auth-calls.yaml
+    - name: healthCheck
+      url: "{{ .spec.serviceUrl }}/health"
+```
+
+`./shared/auth-calls.yaml`:
+
+```yaml
+calls:
+  - name: tokenFetch
+    url: "{{ .spec.authUrl }}/token"
+    method: POST
+```
+
 ## v0.7.12 — Gateway Apply API, IDP, and codebase clarity
 
 ### Gateway Apply API

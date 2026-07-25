@@ -45,11 +45,82 @@ status:
 
 ---
 
+## `when:` and `anyOf:`
+
+Gate a field on conditions — the same condition engine used in resource templates and validation rules.
+
+```yaml
+status:
+  fields:
+    - path: phase
+      value: "Active"
+      when:
+        - field: external.healthCheck.status
+          equals: "200"
+        - field: "{{ allReplicasReady .children.deployment }}"
+          equals: "true"
+
+    - path: phase
+      value: "Degraded"
+      when:
+        - field: external.healthCheck.status
+          notEquals: "200"
+
+    - path: phase
+      value: "Pending"
+      anyOf:
+        - field: external.healthCheck.called
+          equals: "false"
+        - field: "{{ allReplicasReady .children.deployment }}"
+          equals: "false"
+```
+
+`when:` requires all conditions to pass (AND). `anyOf:` requires at least one to pass (OR). When both are declared, both blocks must pass.
+
+A path can appear multiple times with different conditions — the first matching entry wins. Use this to build declarative state machines.
+
+---
+
+## `include:`
+
+When the field list grows long it can be split into a separate file:
+
+```yaml
+operatorBox:
+  status:
+    include: ./status/fields.yaml
+    fields:
+      - path: version           # appended after included fields
+        value: "{{ .spec.version }}"
+```
+
+`./status/fields.yaml`:
+
+```yaml
+fields:
+  - path: phase
+    value: "Active"
+    when:
+      - field: "{{ allReplicasReady .children.deployment }}"
+        equals: "true"
+  - path: phase
+    value: "Degraded"
+    when:
+      - field: "{{ allReplicasReady .children.deployment }}"
+        equals: "false"
+```
+
+Included fields come first. Inline `fields:` append after. The path is resolved relative to the katalog file's directory.
+
+---
+
 ## Rules
 
 **Paths are relative to `status`.** `phase` writes to `status.phase`. `database.host` writes to `status.database.host`. Dot-notation works at any depth.
 
-**Fields are only written on successful reconcile.** If the reconcile fails partway through, the declarative fields are not updated — only the `Ready` condition is written (as `False`). This prevents misleading status when cluster state is partial.
+**Unconditional fields are only written on successful reconcile.** A field with no `when:` or `anyOf:` is skipped when reconcile fails — writing it on error would produce misleading status (e.g. `phase: Active` while the CR is denied).
+
+**Conditional fields always evaluate.** A field with `when:` or `anyOf:` is evaluated on both success and failure. This is what allows status to reflect *why* reconcile failed — for example, surfacing an external health check result or the denial reason as `phase: Degraded`.
 
 ---
 

@@ -81,17 +81,69 @@ Each rule describes one check. Rules are evaluated in order.
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `field` | yes | Dot-notation path in the CR (e.g. `spec.replicas`, `spec.config.engine`) |
-| `message` | yes | Error or warning message — shown in events, webhook response, and logs |
+| `field` | yes | Dot-notation path in the CR, or a Go template expression (see below). |
+| `message` | yes | Error or warning message. Supports Go templates resolved against the CR and notes FuncMap. |
 | `action` | no | `deny` (default) — reject; `warn` — allow but log a warning |
-| `operator` + `value` | yes* | Explicit comparison (see operators) |
+| `operator` + `value` | yes* | Explicit comparison (see operators). `value` supports Go templates. |
 | `valueType` | no | `string` (default), `int`, `float`, `bool` |
-| `when` | no | All conditions must pass for this rule to be evaluated (AND). Empty means unconditional. |
+| `when` | no | All conditions must pass for this rule to be evaluated (AND). Empty means unconditional. Conditions support Go template expressions via `EvaluateWhen`. |
 | `anyOf` | no | At least one condition must pass for this rule to be evaluated (OR). When both `when` and `anyOf` are declared, both blocks must pass. |
 
 *Use either an operator+value pair or a shorthand field.
 
 `when` and `anyOf` use the same `Condition` type as resource templates — see [06-when-conditions.md](06-when-conditions.md) for the full operator reference.
+
+### Template expressions in rules
+
+`field:`, comparison values (`equals:`, `prefix:`, `min:`, `value:`, …), and `message:` are all resolved as Go templates before evaluation. The full CR fields and notes FuncMap are available.
+
+When `field:` is a template expression, the resolved value is used in the comparison directly — not looked up as a path in the CR. The original expression is preserved in violation messages.
+
+```yaml
+notes:
+  functions:
+    - name: inBusinessHours
+      expression: '{{ and weekday (timeInWindow "09:00" "18:00") }}'
+    - name: allowedRegistry
+      expression: "myorg/"
+
+validation:
+  rules:
+    - field: "{{ inBusinessHours }}"
+      equals: "true"
+      action: deny
+      message: "deployments are only allowed during business hours"
+
+    - field: spec.image
+      prefix: "{{ allowedRegistry }}"
+      action: deny
+      message: "image must come from {{ allowedRegistry }}"
+```
+
+## `validation.external`
+
+External HTTP calls can be declared directly under `validation:`. They fire before any rule is evaluated, and their results are available in `field:` expressions as `.external.<name>.*`.
+
+```yaml
+validation:
+  external:
+    - name: healthCheck
+      url: "{{ .spec.healthCheckUrl }}/health"
+      expectedStatus: 200
+      continueOnError: true
+      fires:
+        reconcile: false   # admission-only — skip during reconcile resyncs
+
+  rules:
+    - field: "{{ .external.healthCheck.status }}"
+      equals: "200"
+      action: deny
+      message: "health check failed — CR rejected"
+```
+
+`fires.reconcile: false` means the call only runs at `kubectl apply` time. When omitted (default), the call also runs on every reconcile — the result is available the same way as `onReconcile.external` calls.
+
+See [13-external.md](13-external.md) for the full field reference.
 
 ## Operators
 

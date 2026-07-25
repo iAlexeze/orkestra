@@ -3,18 +3,27 @@ package reconciler
 import (
 	"context"
 
+	orkexternal "github.com/orkspace/orkestra/pkg/external"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
-	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // applyReconcileTimeValidation evaluates validation rules against the live CR.
+// Returns the (possibly enriched) resolver so external call results from
+// validation.external are available to the caller for status and templates.
 // Warn violations are logged as advisory — reconcile continues.
 // Deny violations halt reconcile — the caller patches status and returns the error.
-// Always returns the ValidationResult so the caller can pass it to patchStatusWithChildren.
-func (r *GenericReconciler[PTR]) applyReconcileTimeValidation(ctx context.Context, resolver *orktmpl.Resolver, obj PTR) (*ValidationResult, error) {
+func (r *GenericReconciler[PTR]) applyReconcileTimeValidation(ctx context.Context, resolver *orktmpl.Resolver, obj PTR) (*orktmpl.Resolver, *ValidationResult, error) {
 	if r.crd.Validation == nil || len(r.crd.Validation.Rules) == 0 {
-		return nil, nil
+		return resolver, nil, nil
+	}
+
+	var err error
+	if calls := r.crd.Validation.ReconcileExternal(); len(calls) > 0 {
+		resolver, err = orkexternal.Run(ctx, r.crd.GVKString(), resolver, calls)
+		if err != nil {
+			return resolver, nil, err
+		}
 	}
 
 	result := runValidation(resolver.Data(), resolver, r.crd.Validation, r.crd.APITypes.Kind)
@@ -29,32 +38,30 @@ func (r *GenericReconciler[PTR]) applyReconcileTimeValidation(ctx context.Contex
 	}
 
 	if result.Deny {
-		return result, result.DenialError()
+		return resolver, result, result.DenialError()
 	}
 
-	return result, nil
+	return resolver, result, nil
 }
 
 // applyReconcileTimeMutation applies mutation defaults to the CR and patches
 // the spec subresource when changes are needed.
+// Returns the (possibly enriched) resolver so external call results from
+// mutation.external are available to the caller for subsequent steps.
 // Mutation failures are non-fatal — the caller logs and continues.
-func (r *GenericReconciler[PTR]) applyReconcileTimeMutation(ctx context.Context, resolver *orktmpl.Resolver, obj PTR) error {
+func (r *GenericReconciler[PTR]) applyReconcileTimeMutation(ctx context.Context, resolver *orktmpl.Resolver, obj PTR) (*orktmpl.Resolver, error) {
 	if r.crd.Mutation == nil || len(r.crd.Mutation.Rules) == 0 {
-		return nil
+		return resolver, nil
+	}
+
+	if calls := r.crd.Mutation.ReconcileExternal(); len(calls) > 0 {
+		var err error
+		resolver, err = orkexternal.Run(ctx, r.crd.GVKString(), resolver, calls)
+		if err != nil {
+			return resolver, err
+		}
 	}
 
 	_, err := runMutation(ctx, r.kube, obj, resolver, r.crd.Mutation, r.crd.GVR(), r.crd.APITypes.Kind)
-	return err
-}
-
-// validationRuleAction looks up the declared action for a rule by its field
-// and rule type string. Returns "" (deny) when no match is found — this is the
-// fail-safe default: unknown or ambiguous rules block rather than warn.
-func validationRuleAction(cfg *orktypes.ValidationConfig, field, rt string) orktypes.ValidationAction {
-	for _, rule := range cfg.Rules {
-		if rule.Field == field && ruleType(rule) == rt {
-			return rule.Action
-		}
-	}
-	return "" // default: deny
+	return resolver, err
 }

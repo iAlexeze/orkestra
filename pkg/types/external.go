@@ -40,6 +40,23 @@
 // KubeReader mechanism. Never put raw secrets in Katalog YAML.
 package types
 
+// FiresConfig controls at which lifecycle points an external call is executed.
+// When absent, the call fires at both admission and reconcile time (the safe default).
+type FiresConfig struct {
+	// Reconcile controls whether the call fires at reconcile time.
+	// Default true. Set false for admission-only calls (e.g. image signing checks)
+	// where the admission check is trusted and re-running every reconcile is wasteful.
+	Reconcile *bool `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`
+}
+
+// firesAtReconcile reports whether this FiresConfig allows reconcile-time firing.
+func (f *FiresConfig) firesAtReconcile() bool {
+	if f == nil || f.Reconcile == nil {
+		return true
+	}
+	return *f.Reconcile
+}
+
 // ExternalCallSpec declares one HTTP call to make before resource reconciliation.
 type ExternalCallSpec struct {
 	// Name is the identifier used to access the result in template expressions.
@@ -93,6 +110,16 @@ type ExternalCallSpec struct {
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).
 	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
+
+	// Fires controls at which lifecycle points this call executes.
+	// When absent: fires at both admission and reconcile time.
+	// fires.reconcile: false — admission only; reconciler skips this call.
+	Fires *FiresConfig `yaml:"fires,omitempty" json:"fires,omitempty"`
+
+	// Include is a path to a YAML file containing a top-level "calls:" list.
+	// When set, this entry is replaced in-place by the listed calls.
+	// Resolved relative to the katalog file's directory. Cleared after expansion.
+	Include string `yaml:"include,omitempty" json:"include,omitempty"`
 }
 
 // ExternalCallResult is the result of one HTTP call, injected into the resolver
