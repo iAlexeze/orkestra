@@ -113,6 +113,7 @@ func printDevBanner(port int) {
 	fmt.Printf("  GET  /config/:name              → JSON config blob\n")
 	fmt.Printf("  POST /sign                      → 200 signed (ignores token)\n")
 	fmt.Printf("  POST /auth/token                → fake bearer token\n")
+	fmt.Printf("  GET  /protected/:name           → 200 JSON (Bearer dev-token-abc123 required, else 401)\n")
 	fmt.Printf("  GET  /resources/:name           → JSON resource stub\n")
 	fmt.Printf("  GET  /flags/:name               → all flags JSON\n")
 	fmt.Printf("  GET  /flags/:name/:flag         → single flag value (plain text)\n")
