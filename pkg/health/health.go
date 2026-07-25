@@ -117,6 +117,7 @@ func (h *HealthServer) Start(ctx context.Context) error {
 		h.mux.HandleFunc("/ready", h.readyHandler)
 	}
 	h.mux.Handle("/metrics", promhttp.Handler())
+	h.registerQueryHandler()
 
 	ln, err := net.Listen("tcp", h.httpPort)
 	if err != nil {
