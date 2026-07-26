@@ -61,8 +61,7 @@ spec:
                 name: "{{ .metadata.name }}"
                 namespace: "{{ .metadata.namespace }}"
                 labels:
-                  - key: team
-                    value: "{{ .spec.team }}"
+                  team: "{{ .spec.team }}"
               spec:
                 selector:
                   matchLabels:
@@ -80,8 +79,7 @@ spec:
                 name: "{{ .metadata.name }}"
                 namespace: "{{ .metadata.namespace }}"
                 labels:
-                  - key: team
-                    value: "{{ .spec.team }}"
+                  team: "{{ .spec.team }}"
               spec:
                 groups:
                   - name: "{{ .metadata.name }}.rules"

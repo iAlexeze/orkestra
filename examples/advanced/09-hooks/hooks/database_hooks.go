@@ -79,10 +79,10 @@ func onDatabaseReconcile(ctx context.Context, obj *apiv1.Database) error {
 				{Name: "POSTGRES_USER", Value: postgresUser},
 				{Name: "POSTGRES_PASSWORD", Value: postgresPassword},
 			},
-			Labels: []orktypes.ResourceLabel{
-				{Key: "db-engine", Value: engine},
-				{Key: "db-version", Value: version},
-				{Key: "storage-size", Value: storage},
+			Labels: orktypes.Labels{
+				"db-engine":    engine,
+				"db-version":   version,
+				"storage-size": storage,
 			},
 		},
 		obj.Name,

@@ -9,8 +9,17 @@ Kubernetes notes safely navigate the unstructured objects that Orkestra exposes 
 | `meta` | Return the `metadata` map of a Kubernetes object. |
 | `labels` | Return the `metadata. |
 | `annotations` | Return the `metadata. |
+| `getLabel` | Return the value of a single label key from `metadata. |
+| `getLabelInt` | Return a label value parsed as `int64`. |
+| `hasLabel` | Return `true` when the object has the given label key with a non-empty value. |
+| `getAnnotation` | Return the value of a single annotation key from `metadata. |
+| `getAnnotationInt` | Return an annotation value parsed as `int64`. |
+| `hasAnnotation` | Return `true` when the object has the given annotation key with a non-empty value. |
+| `labelMatches` | Return `true` when the object's labels contain every key/value pair given as arguments. |
 | `spec` | Return the `spec` map of a Kubernetes object. |
 | `status` | Return the `status` map of a Kubernetes object. |
+| `getStatus` | Return the string value of a specific key from `status`. |
+| `hasStatus` | Return `true` when the given status field exists and is non-empty. |
 | `phase` | Return `status. |
 | `get` | Navigate a nested path through a Kubernetes object using variadic string segments. |
 | `ownerKind` | Return the `kind` of the first `ownerReference`. |
@@ -41,6 +50,40 @@ Kubernetes notes safely navigate the unstructured objects that Orkestra exposes 
 # annotations
 # value: "{{ mapGet (annotations .children.deployment) \"orkestra.io/phase\" }}"
 
+# getLabel
+# value: "{{ getLabel .children.deployment \"app.kubernetes.io/name\" }}"
+# → "my-app"
+
+# Drive logic from a label without a spec field:
+# value: '{{ getLabel . "orkestra.io/resource-profile" | default "medium" }}'
+
+# getLabelInt
+# value: "{{ getLabelInt .children.deployment \"replica-count\" }}"
+# → 3
+
+# hasLabel
+# when:
+#   - field: '{{ hasLabel .children.deployment "app.kubernetes.io/managed-by" }}'
+#     equals: "true"
+
+# getAnnotation
+# value: '{{ getAnnotation . "autoscale/min-replicas" | default "2" }}'
+# → "2"
+
+# getAnnotationInt
+# autoscale:
+#   scaleDown:
+#     target: '{{ getAnnotationInt . "autoscale/min-replicas" | default 2 }}'
+
+# hasAnnotation
+# when:
+#   - field: '{{ hasAnnotation . "autoscale/enabled" }}'
+#     equals: "true"
+
+# labelMatches
+# value: '{{ labelMatches .children.deployment "app" "frontend" "env" "prod" }}'
+# → true when the deployment carries both labels
+
 # spec
 # value: "{{ mapGet (spec .children.cronjob) \"schedule\" }}"
 # Equivalent to: .children.cronjob.spec.schedule
@@ -48,6 +91,22 @@ Kubernetes notes safely navigate the unstructured objects that Orkestra exposes 
 # status
 # value: "{{ mapGet (status .children.deployment) \"readyReplicas\" }}"
 # Equivalent to: .children.deployment.status.readyReplicas
+
+# getStatus
+# value: "{{ getStatus .children.deployment \"readyReplicas\" }}"
+# → "3"
+
+# when:
+#   - field: '{{ getStatus .children.pod "phase" }}'
+#     equals: "Running"
+
+# hasStatus
+# value: '{{ hasStatus .children.service "loadBalancer" }}'
+# → true when loadBalancer is set in status
+
+# when:
+#   - field: '{{ hasStatus .children.deployment "readyReplicas" }}'
+#     equals: "true"
 
 # phase
 # value: "{{ phase .children.pod }}"

@@ -81,7 +81,7 @@ type LimitRangeTemplateSource struct {
 	Limits []LimitRangeItem `yaml:"limits,omitempty" json:"limits,omitempty"`
 
 	// Labels — applied to LimitRange metadata.
-	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty"`
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty"`
 
 	// Conditions (when:) — all must pass for this resource to be applied.
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`

@@ -277,8 +277,8 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 		wq := queueRegistry.Register(gvk, crd.OperatorBox.Reconciler.Queue.MaxDepth)
 
 		// compute selectors
-		labelSelector := orktypes.SelectorMap(crd.LabelSelector).String()
-		fieldSelector := orktypes.SelectorMap(crd.FieldSelector).String()
+		labelSelector := orktypes.Labels(crd.LabelSelector).String()
+		fieldSelector := orktypes.Labels(crd.FieldSelector).String()
 
 		opts := informer.Options{
 			Name:          crd.APITypes.Kind,

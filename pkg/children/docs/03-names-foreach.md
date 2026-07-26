@@ -44,11 +44,10 @@ func expandForEach[T any](
 
 `getForEach` extracts the `ForEach` field from the type-specific source struct. `resolve` contains the per-type field resolution logic (name, image, labels, env vars, etc.). The outer loop — fast-path check, nil guard, `itemResolver` call — is shared across all resource types.
 
-Three helpers are extracted for reuse across the per-type `resolve` closures:
+Two helpers are extracted for reuse across the per-type `resolve` closures:
 
-- `resolveLabels(ir, ls)` — resolves template expressions in a `[]ResourceLabel` slice
+- `resolveMap(ir, m)` — resolves template expressions in a `map[string]string` value, used for labels, annotations, and match selectors alike (`Labels`)
 - `resolveEnvVars(ir, vars)` — resolves template expressions in an `EnvVarList`
-- `resolveSelectorMap(ir, sel)` — resolves template expressions in a `SelectorMap`
 
 Adding a new resource type requires only writing the `resolve` closure — the shared loop is not touched.
 

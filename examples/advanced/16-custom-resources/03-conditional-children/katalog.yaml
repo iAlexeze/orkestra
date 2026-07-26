@@ -45,10 +45,8 @@ spec:
                 namespace: "{{ .metadata.namespace }}"
                 namespaced: true
                 labels:
-                  - key: platform.example.io/environment
-                    value: "{{ .metadata.name }}"
-                  - key: platform.example.io/tier
-                    value: "{{ .spec.tier }}"
+                  platform.example.io/environment: "{{ .metadata.name }}"
+                  platform.example.io/tier: "{{ .spec.tier }}"
               spec:
                 size: "{{ .spec.cache.size }}"
                 ttl: "{{ .spec.cache.ttl }}"
@@ -66,8 +64,7 @@ spec:
                 namespace: "{{ .metadata.namespace }}"
                 namespaced: true
                 labels:
-                  - key: platform.example.io/environment
-                    value: "{{ .metadata.name }}"
+                  platform.example.io/environment: "{{ .metadata.name }}"
               spec:
                 indexName: "{{ .spec.search.indexName }}"
                 replicas: "{{ .spec.search.replicas }}"

@@ -85,11 +85,11 @@ type DeploymentTemplateSource struct {
 	// Labels — applied to the Deployment ObjectMeta and the pod template.
 	// Label values support template expressions.
 	// Orkestra always adds: managed-by=orkestra, orkestra-owner=<cr-name>
-	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
 
 	// Annotations — applied to the Deployment ObjectMeta only.
 	// Annotation values support template expressions.
-	Annotations []ResourceLabel `yaml:"annotations,omitempty" json:"annotations,omitempty" validate:"omitempty"`
+	Annotations Labels `yaml:"annotations,omitempty" json:"annotations,omitempty" validate:"omitempty"`
 
 	// Resources — CPU and memory requests/limits for the primary container.
 	// Set resources.profile for a named preset, or resources.requests/limits for

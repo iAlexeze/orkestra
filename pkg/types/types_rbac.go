@@ -44,7 +44,7 @@ type RoleTemplateSource struct {
 	Version    string           `yaml:"version,omitempty" json:"version,omitempty"`
 	Name       string           `yaml:"name,omitempty" json:"name,omitempty"`
 	Namespace  string           `yaml:"namespace,omitempty" json:"namespace,omitempty"`
-	Labels     []ResourceLabel  `yaml:"labels,omitempty" json:"labels,omitempty"`
+	Labels     Labels           `yaml:"labels,omitempty" json:"labels,omitempty"`
 	Rules      []PolicyRuleSpec `yaml:"rules,omitempty" json:"rules,omitempty"`
 	Conditions []Condition      `yaml:"when,omitempty" json:"when,omitempty"`
 	Reconcile  bool             `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`
@@ -72,16 +72,16 @@ type RoleTemplateSource struct {
 //	          name: "{{ .metadata.name }}-sa"
 //	          namespace: "{{ .metadata.name }}-ns"
 type RoleBindingTemplateSource struct {
-	Version    string          `yaml:"version,omitempty" json:"version,omitempty"`
-	Name       string          `yaml:"name,omitempty" json:"name,omitempty"`
-	Namespace  string          `yaml:"namespace,omitempty" json:"namespace,omitempty"`
-	Labels     []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty"`
-	RoleRef    RoleRefSpec     `yaml:"roleRef,omitempty" json:"roleRef,omitempty"`
-	Subjects   []SubjectSpec   `yaml:"subjects,omitempty" json:"subjects,omitempty"`
-	Conditions []Condition     `yaml:"when,omitempty" json:"when,omitempty"`
-	Reconcile  bool            `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`
-	ForEach    *ForEachSpec    `yaml:"forEach,omitempty" json:"forEach,omitempty"`
-	AnyOf      []Condition     `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	Version    string        `yaml:"version,omitempty" json:"version,omitempty"`
+	Name       string        `yaml:"name,omitempty" json:"name,omitempty"`
+	Namespace  string        `yaml:"namespace,omitempty" json:"namespace,omitempty"`
+	Labels     Labels        `yaml:"labels,omitempty" json:"labels,omitempty"`
+	RoleRef    RoleRefSpec   `yaml:"roleRef,omitempty" json:"roleRef,omitempty"`
+	Subjects   []SubjectSpec `yaml:"subjects,omitempty" json:"subjects,omitempty"`
+	Conditions []Condition   `yaml:"when,omitempty" json:"when,omitempty"`
+	Reconcile  bool          `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`
+	ForEach    *ForEachSpec  `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+	AnyOf      []Condition   `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
@@ -109,7 +109,7 @@ type RoleBindingTemplateSource struct {
 type ClusterRoleTemplateSource struct {
 	Version    string           `yaml:"version,omitempty" json:"version,omitempty"`
 	Name       string           `yaml:"name,omitempty" json:"name,omitempty"`
-	Labels     []ResourceLabel  `yaml:"labels,omitempty" json:"labels,omitempty"`
+	Labels     Labels           `yaml:"labels,omitempty" json:"labels,omitempty"`
 	Rules      []PolicyRuleSpec `yaml:"rules,omitempty" json:"rules,omitempty"`
 	Conditions []Condition      `yaml:"when,omitempty" json:"when,omitempty"`
 	Reconcile  bool             `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`
@@ -138,15 +138,15 @@ type ClusterRoleTemplateSource struct {
 //	          name: "{{ .metadata.name }}-sa"
 //	          namespace: "{{ .metadata.namespace }}"
 type ClusterRoleBindingTemplateSource struct {
-	Version    string          `yaml:"version,omitempty" json:"version,omitempty"`
-	Name       string          `yaml:"name,omitempty" json:"name,omitempty"`
-	Labels     []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty"`
-	RoleRef    RoleRefSpec     `yaml:"roleRef,omitempty" json:"roleRef,omitempty"`
-	Subjects   []SubjectSpec   `yaml:"subjects,omitempty" json:"subjects,omitempty"`
-	Conditions []Condition     `yaml:"when,omitempty" json:"when,omitempty"`
-	Reconcile  bool            `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`
-	AnyOf      []Condition     `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
-	ForEach    *ForEachSpec    `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+	Version    string        `yaml:"version,omitempty" json:"version,omitempty"`
+	Name       string        `yaml:"name,omitempty" json:"name,omitempty"`
+	Labels     Labels        `yaml:"labels,omitempty" json:"labels,omitempty"`
+	RoleRef    RoleRefSpec   `yaml:"roleRef,omitempty" json:"roleRef,omitempty"`
+	Subjects   []SubjectSpec `yaml:"subjects,omitempty" json:"subjects,omitempty"`
+	Conditions []Condition   `yaml:"when,omitempty" json:"when,omitempty"`
+	Reconcile  bool          `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`
+	AnyOf      []Condition   `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	ForEach    *ForEachSpec  `yaml:"forEach,omitempty" json:"forEach,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`

@@ -123,11 +123,11 @@ type CustomResourceMetadata struct {
 
 	// Labels are used for selection, ownership, and children tracking.
 	// Keys and values must conform to Kubernetes label syntax.
-	Labels []ResourceLabel `json:"labels,omitempty" yaml:"labels,omitempty"`
+	Labels Labels `json:"labels,omitempty" yaml:"labels,omitempty"`
 
 	// Annotations are free-form metadata. Keys must conform to Kubernetes
 	// annotation key syntax. Values are arbitrary strings.
-	Annotations []ResourceLabel `json:"annotations,omitempty" yaml:"annotations,omitempty"`
+	Annotations Labels `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 }
 
 // IsNamespaced returns whether the declaration intends the resource to be

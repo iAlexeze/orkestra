@@ -74,20 +74,16 @@ spec:
           namespaces:
             - name: "{{ .spec.targetNamespace }}"
               labels:
-                - key: team
-                  value: "{{ .spec.team }}"
-                - key: managed-by
-                  value: orkestra
+                team: "{{ .spec.team }}"
+                managed-by: orkestra
               reconcile: true
 
           serviceAccounts:
             - name: "{{ .spec.owner }}"
               namespace: "{{ .spec.targetNamespace }}"
               labels:
-                - key: team
-                  value: "{{ .spec.team }}"
-                - key: managed-by
-                  value: orkestra
+                team: "{{ .spec.team }}"
+                managed-by: orkestra
               reconcile: true
 
           # Profile names come from the tenant-policies motif — no profiles: block here.
@@ -96,10 +92,8 @@ spec:
               namespace: "{{ .spec.targetNamespace }}"
               profile: "{{ printf \"org-%s\" .spec.tier }}"
               labels:
-                - key: team
-                  value: "{{ .spec.team }}"
-                - key: managed-by
-                  value: orkestra
+                team: "{{ .spec.team }}"
+                managed-by: orkestra
               reconcile: true
 
           limitRanges:
@@ -107,10 +101,8 @@ spec:
               namespace: "{{ .spec.targetNamespace }}"
               profile: org-container-defaults
               labels:
-                - key: team
-                  value: "{{ .spec.team }}"
-                - key: managed-by
-                  value: orkestra
+                team: "{{ .spec.team }}"
+                managed-by: orkestra
               reconcile: true
 
           deployments:
@@ -121,12 +113,9 @@ spec:
               rollingUpdate:
                 profile: org-safe
               labels:
-                - key: team
-                  value: "{{ .spec.team }}"
-                - key: app
-                  value: ns-agent
-                - key: managed-by
-                  value: orkestra
+                team: "{{ .spec.team }}"
+                app: ns-agent
+                managed-by: orkestra
               reconcile: true
 
           hpa:
@@ -141,10 +130,8 @@ spec:
               behavior:
                 profile: org-conservative
               labels:
-                - key: team
-                  value: "{{ .spec.team }}"
-                - key: managed-by
-                  value: orkestra
+                team: "{{ .spec.team }}"
+                managed-by: orkestra
               reconcile: true
 
           pdb:
@@ -156,10 +143,8 @@ spec:
               behavior:
                 profile: org-at-least-one
               labels:
-                - key: team
-                  value: "{{ .spec.team }}"
-                - key: managed-by
-                  value: orkestra
+                team: "{{ .spec.team }}"
+                managed-by: orkestra
               reconcile: true
 
           secrets:

@@ -18,13 +18,14 @@ spec:
       crFiles:
         - ./cr.yaml
 
-      workers: 1
-      resync: 30s
-
       enrich:
         - cronjob
 
       operatorBox:
+        reconciler:
+          workers: 1
+          resync: 30s
+
         onCreate:
           cronJobs:
             - name: "{{ .metadata.name }}-cron"

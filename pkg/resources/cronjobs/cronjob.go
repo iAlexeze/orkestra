@@ -284,8 +284,8 @@ func Resolve(src orktypes.CronJobTemplateSource, ownerName string, reg orktypes.
 	}
 
 	// ── Labels ────────────────────────────────────────────────────────────
-	for _, l := range src.Labels {
-		spec.Labels[l.Key] = l.Value
+	for k, v := range src.Labels {
+		spec.Labels[k] = v
 	}
 
 	spec.Labels[labels.ManagedKey] = labels.ManagedValue

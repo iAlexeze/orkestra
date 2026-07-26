@@ -96,6 +96,41 @@ When any `external:` block in a Katalog uses `auth.secretRef`, the generated run
 
 The runtime now exposes `GET /api/v1/query?expr=<promql>` — a passthrough Prometheus query endpoint backed by the operator's own metrics. Useful for dashboards and autoscaler signals without a separate Prometheus instance.
 
+### Breaking: `labels`/`annotations` move to native map syntax
+
+`labels:` and `annotations:` move from a list of `{key, value}` pairs to a plain map — the shape every Kubernetes user already expects.
+
+```yaml
+# before
+labels:
+  - key: app
+    value: "{{ .metadata.name }}"
+  - key: tier
+    value: backend
+
+# after
+labels:
+  app: "{{ .metadata.name }}"
+  tier: backend
+```
+
+This also applies to `selector:`, `labelSelector:`, and `fieldSelector:` fields, which shared the same list shape under the internal `SelectorMap` type — now unified with `labels`/`annotations` under one `Labels` type, since both were already `map[string]string` underneath.
+
+### Kubernetes notes — single-key label, annotation, and status accessors
+
+Nine new notes complement the existing whole-map `labels`/`annotations`/`status` accessors with single-key equivalents:
+
+- `getLabel` / `getLabelInt` / `hasLabel` — read or check a single label key
+- `getAnnotation` / `getAnnotationInt` / `hasAnnotation` — read or check a single annotation key
+- `getStatus` / `hasStatus` — read or check a single status field, scalar or structured
+- `labelMatches` — check whether an object's labels contain every given key/value pair
+
+```yaml
+# value: '{{ getLabel .children.deployment "app.kubernetes.io/name" }}'
+# value: '{{ hasAnnotation . "autoscale/enabled" }}'
+# value: '{{ labelMatches .children.deployment "app" "frontend" "env" "prod" }}'
+```
+
 ---
 
 ## v0.7.12 — Gateway Apply API, IDP, and codebase clarity

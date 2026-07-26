@@ -162,8 +162,8 @@ func Resolve(src orktypes.ClusterRoleBindingTemplateSource, ownerName string) Re
 		spec.Name = ownerName + "-crb"
 	}
 
-	for _, l := range src.Labels {
-		spec.Labels[l.Key] = l.Value
+	for k, v := range src.Labels {
+		spec.Labels[k] = v
 	}
 	spec.Labels[labels.ManagedKey] = labels.ManagedValue
 	spec.Labels[labels.OrkestraOwner] = ownerName

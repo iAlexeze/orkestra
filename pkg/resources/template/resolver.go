@@ -282,10 +282,10 @@ func (r *Resolver) ResolvePodTemplate(src orktypes.PodTemplateSource) (orktypes.
 		return resolved, fmt.Errorf("pod.namespace: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("pod.labels: %w", err)
 	}
-	if resolved.Annotations, err = r.ResolveLabels(src.Annotations); err != nil {
+	if resolved.Annotations, err = r.ResolveMap(src.Annotations); err != nil {
 		return resolved, fmt.Errorf("pod.annotations: %w", err)
 	}
 	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
@@ -345,10 +345,10 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 		return resolved, fmt.Errorf("deployment.namespace: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("deployment.labels: %w", err)
 	}
-	if resolved.Annotations, err = r.ResolveLabels(src.Annotations); err != nil {
+	if resolved.Annotations, err = r.ResolveMap(src.Annotations); err != nil {
 		return resolved, fmt.Errorf("deployment.annotations: %w", err)
 	}
 	// service account name
@@ -491,12 +491,12 @@ func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSour
 	}
 
 	// Labels
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("replicaset.labels: %w", err)
 	}
 
 	// Annotations
-	if resolved.Annotations, err = r.ResolveLabels(src.Annotations); err != nil {
+	if resolved.Annotations, err = r.ResolveMap(src.Annotations); err != nil {
 		return resolved, fmt.Errorf("replicaset.annotations: %w", err)
 	}
 
@@ -605,11 +605,11 @@ func (r *Resolver) ResolveServiceTemplate(src orktypes.ServiceTemplateSource) (o
 		return resolved, fmt.Errorf("service.namespace: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("service.labels: %w", err)
 	}
 
-	if resolved.Selector, err = r.ResolveSelectors(src.Selector); err != nil {
+	if resolved.Selector, err = r.ResolveMap(src.Selector); err != nil {
 		return resolved, fmt.Errorf("service.selector: %w", err)
 	}
 
@@ -628,7 +628,7 @@ func (r *Resolver) ResolveNamespaceTemplate(src orktypes.NamespaceTemplateSource
 		return resolved, fmt.Errorf("namespace.name: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("namespace.labels: %w", err)
 	}
 
@@ -700,7 +700,7 @@ func (r *Resolver) ResolveJobTemplate(src orktypes.JobTemplateSource) (orktypes.
 		resolved.Args = append(resolved.Args, rv)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("job.labels: %w", err)
 	}
 
@@ -746,7 +746,7 @@ func (r *Resolver) ResolveSecretTemplate(src orktypes.SecretTemplateSource) (ork
 	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
 		return resolved, fmt.Errorf("secret.sleep: %w", err)
 	}
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("secret.data: %w", err)
 	}
 
@@ -833,7 +833,7 @@ func (r *Resolver) ResolveConfigMapTemplate(src orktypes.ConfigMapTemplateSource
 	if resolved.FromConfigMap, err = r.Resolve(src.FromConfigMap); err != nil {
 		return resolved, fmt.Errorf("configmap.fromConfigMap: %w", err)
 	}
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("configmap.labels: %w", err)
 	}
 
@@ -950,7 +950,7 @@ func (r *Resolver) ResolveCronJobTemplate(src orktypes.CronJobTemplateSource) (o
 		resolved.Args = append(resolved.Args, rv)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("cronjob.labels: %w", err)
 	}
 
@@ -983,7 +983,7 @@ func (r *Resolver) ResolveServiceAccountTemplate(src orktypes.ServiceAccountTemp
 		return resolved, fmt.Errorf("serviceAccount.sleep: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("serviceaccount.labels: %w", err)
 	}
 
@@ -1014,7 +1014,7 @@ func (r *Resolver) ResolveRoleTemplate(src orktypes.RoleTemplateSource) (orktype
 		return resolved, fmt.Errorf("role.sleep: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("role.labels: %w", err)
 	}
 
@@ -1062,7 +1062,7 @@ func (r *Resolver) ResolveRoleBindingTemplate(src orktypes.RoleBindingTemplateSo
 		return resolved, fmt.Errorf("rolebinding.sleep: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("rolebinding.labels: %w", err)
 	}
 
@@ -1126,10 +1126,10 @@ func (r *Resolver) ResolveIngressTemplate(src orktypes.IngressTemplateSource) (o
 		return resolved, fmt.Errorf("ingress.namespace: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("ingress.labels: %w", err)
 	}
-	if resolved.Annotations, err = r.ResolveLabels(src.Annotations); err != nil {
+	if resolved.Annotations, err = r.ResolveMap(src.Annotations); err != nil {
 		return resolved, fmt.Errorf("ingress.annotations: %w", err)
 	}
 
@@ -1195,7 +1195,7 @@ func (r *Resolver) ResolveHPATemplate(src orktypes.HPATemplateSource) (orktypes.
 		return resolved, fmt.Errorf("hpa.namespace: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("hpa.labels: %w", err)
 	}
 
@@ -1233,11 +1233,11 @@ func (r *Resolver) ResolvePDBTemplate(src orktypes.PDBTemplateSource) (orktypes.
 		return resolved, fmt.Errorf("pdb.namespace: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("pdb.labels: %w", err)
 	}
 
-	if resolved.Selector, err = r.ResolveSelectors(src.Selector); err != nil {
+	if resolved.Selector, err = r.ResolveMap(src.Selector); err != nil {
 		return resolved, fmt.Errorf("pdb.selector: %w", err)
 	}
 
@@ -1320,10 +1320,10 @@ func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSo
 		return resolved, fmt.Errorf("statefulset.serviceAccountName: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("statefulset.labels: %w", err)
 	}
-	if resolved.Annotations, err = r.ResolveLabels(src.Annotations); err != nil {
+	if resolved.Annotations, err = r.ResolveMap(src.Annotations); err != nil {
 		return resolved, fmt.Errorf("statefulset.annotations: %w", err)
 	}
 
@@ -1431,7 +1431,7 @@ func (r *Resolver) ResolvePVCTemplate(src orktypes.PVCTemplateSource) (orktypes.
 		return resolved, fmt.Errorf("pvc.namespace: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("pvc.labels: %w", err)
 	}
 
@@ -1472,7 +1472,7 @@ func (r *Resolver) ResolvePVTemplate(src orktypes.PVTemplateSource) (orktypes.PV
 		return resolved, fmt.Errorf("pv.sleep: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("pv.labels: %w", err)
 	}
 
@@ -1572,7 +1572,7 @@ func (r *Resolver) ResolveNetworkPolicyTemplate(src orktypes.NetworkPolicyTempla
 	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
 		return resolved, fmt.Errorf("networkpolicy.sleep: %w", err)
 	}
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("networkpolicy.labels: %w", err)
 	}
 
@@ -1634,7 +1634,7 @@ func (r *Resolver) ResolveResourceQuotaTemplate(src orktypes.ResourceQuotaTempla
 	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
 		return resolved, fmt.Errorf("resourcequota.sleep: %w", err)
 	}
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("resourcequota.labels: %w", err)
 	}
 
@@ -1704,7 +1704,7 @@ func (r *Resolver) ResolveLimitRangeTemplate(src orktypes.LimitRangeTemplateSour
 	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
 		return resolved, fmt.Errorf("limitrange.sleep: %w", err)
 	}
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("limitrange.labels: %w", err)
 	}
 
@@ -1796,7 +1796,7 @@ func (r *Resolver) ResolveClusterRoleTemplate(src orktypes.ClusterRoleTemplateSo
 	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
 		return resolved, fmt.Errorf("clusterrole.sleep: %w", err)
 	}
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("clusterrole.labels: %w", err)
 	}
 
@@ -1833,7 +1833,7 @@ func (r *Resolver) ResolveClusterRoleBindingTemplate(src orktypes.ClusterRoleBin
 	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
 		return resolved, fmt.Errorf("clusterrolebinding.sleep: %w", err)
 	}
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("clusterrolebinding.labels: %w", err)
 	}
 

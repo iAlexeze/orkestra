@@ -11,11 +11,12 @@ metadata:
 spec:
   crds:
     probe:
-      workers: 1
-      resync: 15s
 
       operatorBox:
-        default: true
+        reconciler:
+          default: true
+          workers: 1
+          resync: 15s
 
         onCreate:
           deployments:

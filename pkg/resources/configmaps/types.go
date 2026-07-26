@@ -74,7 +74,7 @@ type ConfigMapTemplateSource struct {
 	Data map[string]string
 
 	// Labels — applied to all created ConfigMap copies.
-	Labels []orktypes.ResourceLabel
+	Labels orktypes.Labels
 
 	// Reconcile: true — sync on every reconcile.
 	// When true, if the source ConfigMap changes, all copies are updated automatically.

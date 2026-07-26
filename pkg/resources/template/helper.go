@@ -6,37 +6,23 @@ import (
 	"strings"
 
 	"github.com/orkspace/orkestra/domain"
-	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-// ResolveLabels evaluates template expressions in label and annotation values.
-// Keys are never template expressions — only values are resolved.
-func (r *Resolver) ResolveLabels(labels []orktypes.ResourceLabel) ([]orktypes.ResourceLabel, error) {
-	resolved := make([]orktypes.ResourceLabel, 0, len(labels))
-	for _, l := range labels {
-		v, err := r.Resolve(l.Value)
-		if err != nil {
-			return nil, fmt.Errorf("label %q: %w", l.Key, err)
-		}
-		resolved = append(resolved, orktypes.ResourceLabel{Key: l.Key, Value: v})
-	}
-	return resolved, nil
-}
-
-// ResolveSelectors evaluates template expressions in selector maps
+// ResolveMap evaluates template expressions in each value of a map[string]string —
+// used for labels, annotations, and match selectors alike.
 // Keys are never template expressions — only values are resolved.
 //
 // Example:
 //
 //	name: {{ .metadata.name }}
 //	app: {{ .metadata.labels.app }}
-func (r *Resolver) ResolveSelectors(selectors map[string]string) (map[string]string, error) {
-	resolved := make(map[string]string, len(selectors))
-	for k, v := range selectors {
+func (r *Resolver) ResolveMap(m map[string]string) (map[string]string, error) {
+	resolved := make(map[string]string, len(m))
+	for k, v := range m {
 		v, err := r.Resolve(v)
 		if err != nil {
-			return nil, fmt.Errorf("selector %q: %w", k, err)
+			return nil, fmt.Errorf("%q: %w", k, err)
 		}
 		resolved[k] = v
 	}

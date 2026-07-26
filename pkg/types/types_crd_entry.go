@@ -153,13 +153,13 @@ type CRDEntry struct {
 	// ── OperatorBox ────────────────────────────────────────────────────
 	OperatorBox OperatorBoxConfig `yaml:"operatorBox,omitempty" json:"operatorBox,omitempty"`
 
-	// Labels           []ResourceLabel  `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
+	// Labels           Labels  `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
 	// LabelSelector filters which resources this CRD entry reconciles.
 	// Only resources whose labels match ALL declared key-value pairs are watched.
 	// Required for built-in types (ConfigMap, Pod, etc.) — without a selector,
 	// Orkestra would reconcile every instance in the cluster.
 	// For custom CRDs this is optional — can narrow scope within a CRD.
-	LabelSelector SelectorMap `yaml:"labelSelector,omitempty"`
+	LabelSelector Labels `yaml:"labelSelector,omitempty"`
 
 	// FieldSelector filters which resources this CRD entry reconciles.
 	// Only resources whose *fields* match ALL declared key-value expressions
@@ -179,7 +179,7 @@ type CRDEntry struct {
 	//
 	// Field selectors are optional for all types. When omitted, Orkestra will
 	// watch all objects permitted by LabelSelector and namespace restrictions.
-	FieldSelector SelectorMap `yaml:"fieldSelector,omitempty"`
+	FieldSelector Labels `yaml:"fieldSelector,omitempty"`
 
 	// RegistryRef is the OCI or Git reference this CRD entry was loaded from.
 	// Set by the merger after loadRegistrySource resolves the pattern.

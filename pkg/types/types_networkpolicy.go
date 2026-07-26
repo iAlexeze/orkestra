@@ -81,7 +81,7 @@ type NetworkPolicyTemplateSource struct {
 	PolicyTypes []string `yaml:"policyTypes,omitempty" json:"policyTypes,omitempty"`
 
 	// Labels — applied to NetworkPolicy metadata.
-	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty"`
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty"`
 
 	// Conditions (when:) — all must pass for this resource to be applied.
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`

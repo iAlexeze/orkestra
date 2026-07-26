@@ -32,18 +32,14 @@ resources:
       namespace: "{{ .inputs.namespace }}"
       profile: deny-all
       labels:
-        - key: team
-          value: "{{ .inputs.team }}"
-        - key: managed-by
-          value: orkestra
+        team: "{{ .inputs.team }}"
+        managed-by: orkestra
       reconcile: true
 
     - name: "{{ .inputs.team }}-allow-dns"
       namespace: "{{ .inputs.namespace }}"
       profile: allow-dns-egress
       labels:
-        - key: team
-          value: "{{ .inputs.team }}"
-        - key: managed-by
-          value: orkestra
+        team: "{{ .inputs.team }}"
+        managed-by: orkestra
       reconcile: true

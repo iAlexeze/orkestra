@@ -194,11 +194,11 @@ func Resolve(src orktypes.DeploymentTemplateSource, ownerName string, reg orktyp
 
 	spec.Protocol = common.ParseProtocol(src.Protocol)
 
-	for _, l := range src.Labels {
-		spec.Labels[l.Key] = l.Value
+	for k, v := range src.Labels {
+		spec.Labels[k] = v
 	}
-	for _, a := range src.Annotations {
-		spec.Annotations[a.Key] = a.Value
+	for k, v := range src.Annotations {
+		spec.Annotations[k] = v
 	}
 
 	spec.Env = []orktypes.EnvVar(src.Env)

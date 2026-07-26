@@ -70,10 +70,10 @@ type StatefulSetTemplateSource struct {
 	// +optional
 	ServiceAccountName string `yaml:"serviceAccountName,omitempty" json:"serviceAccountName,omitempty"`
 
-	Labels      []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty"`
-	Annotations []ResourceLabel `yaml:"annotations,omitempty" json:"annotations,omitempty"`
-	Env         EnvVarList      `yaml:"env,omitempty" json:"env,omitempty"`
-	EnvFrom     *EnvFrom        `yaml:"envFrom,omitempty" json:"envFrom,omitempty"`
+	Labels      Labels     `yaml:"labels,omitempty" json:"labels,omitempty"`
+	Annotations Labels     `yaml:"annotations,omitempty" json:"annotations,omitempty"`
+	Env         EnvVarList `yaml:"env,omitempty" json:"env,omitempty"`
+	EnvFrom     *EnvFrom   `yaml:"envFrom,omitempty" json:"envFrom,omitempty"`
 
 	// Resources — CPU and memory requests/limits for the primary container.
 	// Set resources.profile for a named preset, or resources.requests/limits for

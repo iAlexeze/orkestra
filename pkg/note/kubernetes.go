@@ -32,10 +32,21 @@ func kubernetesNotes() template.FuncMap {
 		"labels":      noteLabels,
 		"annotations": noteAnnotations,
 
+		// ── Single-key label/annotation accessors ─────────────────────────────
+		"getLabel":         noteGetLabel,
+		"getLabelInt":      noteGetLabelInt,
+		"hasLabel":         noteHasLabel,
+		"getAnnotation":    noteGetAnnotation,
+		"getAnnotationInt": noteGetAnnotationInt,
+		"hasAnnotation":    noteHasAnnotation,
+		"labelMatches":     noteLabelMatches,
+
 		// ── Spec / Status / Phase ─────────────────────────────────────────────
-		"spec":   noteSpec,
-		"status": noteStatus,
-		"phase":  notePhase,
+		"spec":      noteSpec,
+		"status":    noteStatus,
+		"getStatus": noteGetStatus,
+		"hasStatus": noteHasStatus,
+		"phase":     notePhase,
 
 		// ── Safe nested field lookup ──────────────────────────────────────────
 		"get": noteGet,
@@ -129,6 +140,79 @@ func noteAnnotations(obj interface{}) map[string]interface{} {
 	return map[string]interface{}{}
 }
 
+// ── Single-key label/annotation accessors ─────────────────────────────────────
+
+// noteGetLabel returns the value of a single label key. Returns "" when the
+// key is absent or the object has no labels.
+//
+//	{{ getLabel .children.deployment "app.kubernetes.io/name" }} → "my-app"
+func noteGetLabel(obj interface{}, key string) string {
+	v, _ := noteLabels(obj)[key].(string)
+	return v
+}
+
+// noteGetLabelInt returns a label value parsed as int64. Returns 0 when the
+// key is absent or the value is non-numeric.
+//
+//	{{ getLabelInt .children.deployment "replica-count" }} → 3
+func noteGetLabelInt(obj interface{}, key string) int64 {
+	return toInt64(noteLabels(obj)[key])
+}
+
+// noteHasLabel returns true when the object has the given label key with a
+// non-empty value.
+//
+//	{{ hasLabel .children.deployment "app.kubernetes.io/managed-by" }}
+func noteHasLabel(obj interface{}, key string) bool {
+	return noteGetLabel(obj, key) != ""
+}
+
+// noteGetAnnotation returns the value of a single annotation key. Returns ""
+// when the key is absent or the object has no annotations.
+//
+//	{{ getAnnotation . "autoscale/min-replicas" | default "2" }}
+func noteGetAnnotation(obj interface{}, key string) string {
+	v, _ := noteAnnotations(obj)[key].(string)
+	return v
+}
+
+// noteGetAnnotationInt returns an annotation value parsed as int64. Returns 0
+// when the key is absent or the value is non-numeric.
+//
+//	{{ getAnnotationInt . "autoscale/min-replicas" | default 2 }}
+func noteGetAnnotationInt(obj interface{}, key string) int64 {
+	return toInt64(noteAnnotations(obj)[key])
+}
+
+// noteHasAnnotation returns true when the object has the given annotation
+// key with a non-empty value.
+//
+//	{{ hasAnnotation . "autoscale/enabled" }}
+func noteHasAnnotation(obj interface{}, key string) bool {
+	return noteGetAnnotation(obj, key) != ""
+}
+
+// noteLabelMatches returns true when the object's labels contain every
+// key/value pair given as variadic arguments. Extra labels on the object are
+// ignored. kvs must have an even number of elements (key, value, key, value...);
+// an odd count is treated as a non-match rather than a panic.
+//
+//	{{ labelMatches .children.deployment "app" "frontend" "env" "prod" }}
+func noteLabelMatches(obj interface{}, kvs ...string) bool {
+	if len(kvs)%2 != 0 {
+		return false
+	}
+	lbls := noteLabels(obj)
+	for i := 0; i < len(kvs); i += 2 {
+		key, want := kvs[i], kvs[i+1]
+		got, ok := lbls[key].(string)
+		if !ok || got != want {
+			return false
+		}
+	}
+	return true
+}
+
 //
 // ────────────────────────────────────────────────────────────────
 //   2. SPEC / STATUS HELPERS
@@ -159,6 +243,46 @@ func noteStatus(obj interface{}) map[string]interface{} {
 		}
 	}
 	return map[string]interface{}{}
+}
+
+// noteGetStatus returns a single status field converted to its string
+// representation. Returns "" when the field is absent, nil, or a structured
+// value (map, slice) — use get or status for those instead.
+//
+//	{{ getStatus .children.deployment "readyReplicas" }} → "3"
+func noteGetStatus(obj interface{}, key string) string {
+	v := noteStatus(obj)[key]
+	switch t := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return t
+	case map[string]interface{}, []interface{}:
+		return ""
+	default:
+		return fmt.Sprint(t)
+	}
+}
+
+// noteHasStatus returns true when the given status field exists and is
+// non-empty. Works for both scalar and structured (map, slice) fields.
+//
+//	{{ hasStatus .children.service "loadBalancer" }}
+func noteHasStatus(obj interface{}, key string) bool {
+	v, ok := noteStatus(obj)[key]
+	if !ok || v == nil {
+		return false
+	}
+	switch t := v.(type) {
+	case string:
+		return t != ""
+	case map[string]interface{}:
+		return len(t) > 0
+	case []interface{}:
+		return len(t) > 0
+	default:
+		return true
+	}
 }
 
 //

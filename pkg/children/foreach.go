@@ -80,18 +80,6 @@ func expandForEach[T any](
 // Shared field-resolution helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-func resolveLabels(ir *orktmpl.Resolver, ls []orktypes.ResourceLabel) []orktypes.ResourceLabel {
-	if len(ls) == 0 {
-		return ls
-	}
-	out := make([]orktypes.ResourceLabel, 0, len(ls))
-	for _, l := range ls {
-		v, _ := ir.Resolve(l.Value)
-		out = append(out, orktypes.ResourceLabel{Key: l.Key, Value: v})
-	}
-	return out
-}
-
 func resolveEnvVars(ir *orktmpl.Resolver, vars orktypes.EnvVarList) orktypes.EnvVarList {
 	if len(vars) == 0 {
 		return vars
@@ -104,12 +92,15 @@ func resolveEnvVars(ir *orktmpl.Resolver, vars orktypes.EnvVarList) orktypes.Env
 	return out
 }
 
-func resolveSelectorMap(ir *orktmpl.Resolver, sel orktypes.SelectorMap) orktypes.SelectorMap {
-	if len(sel) == 0 {
-		return sel
+// resolveMap resolves template expressions in each value of a map[string]string —
+// used for labels, annotations, and match selectors alike. Keys are never
+// template expressions — only values are resolved.
+func resolveMap(ir *orktmpl.Resolver, m map[string]string) map[string]string {
+	if len(m) == 0 {
+		return m
 	}
-	out := make(orktypes.SelectorMap, len(sel))
-	for k, v := range sel {
+	out := make(map[string]string, len(m))
+	for k, v := range m {
 		rv, _ := ir.Resolve(v)
 		out[k] = rv
 	}
@@ -129,7 +120,7 @@ func ExpandForEachNamespaces(
 		func(ir *orktmpl.Resolver, src orktypes.NamespaceTemplateSource) orktypes.NamespaceTemplateSource {
 			src.ForEach = nil
 			src.Name, _ = ir.Resolve(src.Name)
-			src.Labels = resolveLabels(ir, src.Labels)
+			src.Labels = resolveMap(ir, src.Labels)
 			if len(src.Finalizers) > 0 {
 				out := make([]string, 0, len(src.Finalizers))
 				for _, f := range src.Finalizers {
@@ -157,8 +148,8 @@ func ExpandForEachDeployments(
 			src.Port, _ = ir.Resolve(src.Port)
 			src.Namespace, _ = ir.Resolve(src.Namespace)
 			src.Env = resolveEnvVars(ir, src.Env)
-			src.Labels = resolveLabels(ir, src.Labels)
-			src.Annotations = resolveLabels(ir, src.Annotations)
+			src.Labels = resolveMap(ir, src.Labels)
+			src.Annotations = resolveMap(ir, src.Annotations)
 			return src
 		},
 	)
@@ -178,8 +169,8 @@ func ExpandForEachReplicaSets(
 			src.Port, _ = ir.Resolve(src.Port)
 			src.Namespace, _ = ir.Resolve(src.Namespace)
 			src.Env = resolveEnvVars(ir, src.Env)
-			src.Labels = resolveLabels(ir, src.Labels)
-			src.Annotations = resolveLabels(ir, src.Annotations)
+			src.Labels = resolveMap(ir, src.Labels)
+			src.Annotations = resolveMap(ir, src.Annotations)
 			return src
 		},
 	)
@@ -197,8 +188,8 @@ func ExpandForEachServices(
 			src.Namespace, _ = ir.Resolve(src.Namespace)
 			src.Port, _ = ir.Resolve(src.Port)
 			src.TargetPort, _ = ir.Resolve(src.TargetPort)
-			src.Labels = resolveLabels(ir, src.Labels)
-			src.Selector = resolveSelectorMap(ir, src.Selector)
+			src.Labels = resolveMap(ir, src.Labels)
+			src.Selector = resolveMap(ir, src.Selector)
 			return src
 		},
 	)
@@ -214,7 +205,7 @@ func ExpandForEachSecrets(
 			src.ForEach = nil
 			src.Name, _ = ir.Resolve(src.Name)
 			src.Namespace, _ = ir.Resolve(src.Namespace)
-			src.Labels = resolveLabels(ir, src.Labels)
+			src.Labels = resolveMap(ir, src.Labels)
 			return src
 		},
 	)
@@ -230,7 +221,7 @@ func ExpandForEachConfigMaps(
 			src.ForEach = nil
 			src.Name, _ = ir.Resolve(src.Name)
 			src.Namespace, _ = ir.Resolve(src.Namespace)
-			src.Labels = resolveLabels(ir, src.Labels)
+			src.Labels = resolveMap(ir, src.Labels)
 			return src
 		},
 	)
@@ -247,7 +238,7 @@ func ExpandForEachJobs(
 			src.Name, _ = ir.Resolve(src.Name)
 			src.Image, _ = ir.Resolve(src.Image)
 			src.Namespace, _ = ir.Resolve(src.Namespace)
-			src.Labels = resolveLabels(ir, src.Labels)
+			src.Labels = resolveMap(ir, src.Labels)
 			return src
 		},
 	)
@@ -264,7 +255,7 @@ func ExpandForEachCronJobs(
 			src.Name, _ = ir.Resolve(src.Name)
 			src.Schedule, _ = ir.Resolve(src.Schedule)
 			src.Namespace, _ = ir.Resolve(src.Namespace)
-			src.Labels = resolveLabels(ir, src.Labels)
+			src.Labels = resolveMap(ir, src.Labels)
 			return src
 		},
 	)
@@ -285,8 +276,8 @@ func ExpandForEachIngresses(
 			src.ServicePort, _ = ir.Resolve(src.ServicePort)
 			src.Path, _ = ir.Resolve(src.Path)
 			src.IngressClass, _ = ir.Resolve(src.IngressClass)
-			src.Labels = resolveLabels(ir, src.Labels)
-			src.Annotations = resolveLabels(ir, src.Annotations)
+			src.Labels = resolveMap(ir, src.Labels)
+			src.Annotations = resolveMap(ir, src.Annotations)
 			if src.TLS != nil {
 				resolved := *src.TLS
 				resolved.SecretName, _ = ir.Resolve(src.TLS.SecretName)
@@ -320,7 +311,7 @@ func ExpandForEachHPAs(
 			src.MinReplicas, _ = ir.Resolve(src.MinReplicas)
 			src.MaxReplicas, _ = ir.Resolve(src.MaxReplicas)
 			src.TargetCPUUtilizationPercentage, _ = ir.Resolve(src.TargetCPUUtilizationPercentage)
-			src.Labels = resolveLabels(ir, src.Labels)
+			src.Labels = resolveMap(ir, src.Labels)
 			return src
 		},
 	)
@@ -338,8 +329,8 @@ func ExpandForEachPDBs(
 			src.Namespace, _ = ir.Resolve(src.Namespace)
 			src.MinAvailable, _ = ir.Resolve(src.MinAvailable)
 			src.MaxUnavailable, _ = ir.Resolve(src.MaxUnavailable)
-			src.Labels = resolveLabels(ir, src.Labels)
-			src.Selector = resolveSelectorMap(ir, src.Selector)
+			src.Labels = resolveMap(ir, src.Labels)
+			src.Selector = resolveMap(ir, src.Selector)
 			return src
 		},
 	)
@@ -355,7 +346,7 @@ func ExpandForEachServiceAccounts(
 			src.ForEach = nil
 			src.Name, _ = ir.Resolve(src.Name)
 			src.Namespace, _ = ir.Resolve(src.Namespace)
-			src.Labels = resolveLabels(ir, src.Labels)
+			src.Labels = resolveMap(ir, src.Labels)
 			return src
 		},
 	)
@@ -382,8 +373,8 @@ func ExpandForEachStatefulSets(
 				src.VolumeClaimTemplates[i].MountPath, _ = ir.Resolve(vct.MountPath)
 				src.VolumeClaimTemplates[i].Name, _ = ir.Resolve(vct.Name)
 			}
-			src.Labels = resolveLabels(ir, src.Labels)
-			src.Annotations = resolveLabels(ir, src.Annotations)
+			src.Labels = resolveMap(ir, src.Labels)
+			src.Annotations = resolveMap(ir, src.Annotations)
 			return src
 		},
 	)
@@ -402,7 +393,7 @@ func ExpandForEachPVCs(
 			src.StorageClassName, _ = ir.Resolve(src.StorageClassName)
 			src.Storage, _ = ir.Resolve(src.Storage)
 			src.VolumeName, _ = ir.Resolve(src.VolumeName)
-			src.Labels = resolveLabels(ir, src.Labels)
+			src.Labels = resolveMap(ir, src.Labels)
 			return src
 		},
 	)
@@ -423,7 +414,7 @@ func ExpandForEachPVs(
 			src.HostPath, _ = ir.Resolve(src.HostPath)
 			src.CSIDriver, _ = ir.Resolve(src.CSIDriver)
 			src.CSIVolumeHandle, _ = ir.Resolve(src.CSIVolumeHandle)
-			src.Labels = resolveLabels(ir, src.Labels)
+			src.Labels = resolveMap(ir, src.Labels)
 			return src
 		},
 	)
@@ -471,8 +462,8 @@ func ExpandForEachPods(
 			src.Image, _ = ir.Resolve(src.Image)
 			src.Port, _ = ir.Resolve(src.Port)
 			src.Namespace, _ = ir.Resolve(src.Namespace)
-			src.Labels = resolveLabels(ir, src.Labels)
-			src.Annotations = resolveLabels(ir, src.Annotations)
+			src.Labels = resolveMap(ir, src.Labels)
+			src.Annotations = resolveMap(ir, src.Annotations)
 			return src
 		},
 	)

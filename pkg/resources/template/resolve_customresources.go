@@ -59,10 +59,10 @@ func (r *Resolver) ResolveCustomResourceTemplate(src orktypes.CustomResourceTemp
 	}
 
 	// Labels / Annotations (helpers return map[string]string)
-	if resolved.Metadata.Labels, err = r.ResolveLabels(src.Metadata.Labels); err != nil {
+	if resolved.Metadata.Labels, err = r.ResolveMap(src.Metadata.Labels); err != nil {
 		return resolved, fmt.Errorf("custom.metadata.labels: %w", err)
 	}
-	if resolved.Metadata.Annotations, err = r.ResolveLabels(src.Metadata.Annotations); err != nil {
+	if resolved.Metadata.Annotations, err = r.ResolveMap(src.Metadata.Annotations); err != nil {
 		return resolved, fmt.Errorf("custom.metadata.annotations: %w", err)
 	}
 

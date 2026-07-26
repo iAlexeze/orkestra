@@ -44,8 +44,7 @@ spec:
                 - name: PORT
                   value: "{{ or .value.port .spec.defaultPort }}"
               labels:
-                - key: app
-                  value: "{{ .metadata.name }}-{{ .item }}"
+                app: "{{ .metadata.name }}-{{ .item }}"
               forEach:
                 field: spec.regions
                 as: item
@@ -58,8 +57,7 @@ spec:
               port: "{{ or .value.port .spec.defaultPort }}"                 # per-region service port
               targetPort: "{{ or .value.port .spec.defaultPort }}"
               labels:
-                - key: app
-                  value: "{{ .metadata.name }}-{{ .item }}"
+                app: "{{ .metadata.name }}-{{ .item }}"
               selector:
                 app: "{{ .metadata.name }}-{{ .item }}"
               forEach:

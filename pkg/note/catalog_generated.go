@@ -612,21 +612,21 @@ var BuiltinNotes = []NoteInfo{
 		Name:        "getLabel",
 		Domain:      "kubernetes",
 		Description: "Return the value of a single label key from `metadata.labels`. Returns `\"\"` when the key is absent or the object has no labels.",
-		Example:     "# value: '{{ getLabel .children.deployment \"app.kubernetes.io/name\" }}'\n# → \"my-app\"\n\n# Drive logic from a label without a spec field:\n# value: '{{ getLabel . \"orkestra.io/resource-profile\" | default \"medium\" }}'",
+		Example:     "# value: \"{{ getLabel .children.deployment \\\"app.kubernetes.io/name\\\" }}\"\n# → \"my-app\"\n\n# Drive logic from a label without a spec field:\n# value: '{{ getLabel . \"orkestra.io/resource-profile\" | default \"medium\" }}'",
 		Keywords:    []string{"kubernetes", "label", "metadata", "get", "string", "access", "selector"},
 	},
 	{
 		Name:        "getLabelInt",
 		Domain:      "kubernetes",
 		Description: "Return a label value parsed as `int64`. Returns `0` when the key is absent or the value is non-numeric.",
-		Example:     "# value: '{{ getLabelInt .children.deployment \"replica-count\" }}'\n# → 3",
+		Example:     "# value: \"{{ getLabelInt .children.deployment \\\"replica-count\\\" }}\"\n# → 3",
 		Keywords:    []string{"kubernetes", "label", "metadata", "int", "numeric", "replicas", "autoscale"},
 	},
 	{
 		Name:        "getStatus",
 		Domain:      "kubernetes",
-		Description: "Return the string value of a specific key from `status`. Returns `\"\"` when the field is absent, nil, or not a string. For structured status fields (maps, slices) use `get`.",
-		Example:     "# value: '{{ getStatus .children.deployment \"readyReplicas\" }}'\n# → \"3\"\n\n# when:\n#   - field: '{{ getStatus .children.pod \"phase\" }}'\n#     equals: \"Running\"",
+		Description: "Return the string value of a specific key from `status`. Numeric and boolean values are converted to their string form. Returns `\"\"` when the field is absent, nil, or a structured value (map, slice) — use `get` or `status` for those.",
+		Example:     "# value: \"{{ getStatus .children.deployment \\\"readyReplicas\\\" }}\"\n# → \"3\"\n\n# when:\n#   - field: '{{ getStatus .children.pod \"phase\" }}'\n#     equals: \"Running\"",
 		Keywords:    []string{"kubernetes", "status", "get", "string", "field", "access"},
 	},
 	{
@@ -653,7 +653,7 @@ var BuiltinNotes = []NoteInfo{
 	{
 		Name:        "hasStatus",
 		Domain:      "kubernetes",
-		Description: "Return `true` when the given status field exists and is non-empty. Works for both string and structured fields — any non-nil, non-empty value returns `true`.",
+		Description: "Return `true` when the given status field exists and is non-empty. Works for both scalar and structured (map, slice) fields.",
 		Example:     "# value: '{{ hasStatus .children.service \"loadBalancer\" }}'\n# → true when loadBalancer is set in status\n\n# when:\n#   - field: '{{ hasStatus .children.deployment \"readyReplicas\" }}'\n#     equals: \"true\"",
 		Keywords:    []string{"kubernetes", "status", "boolean", "check", "exists", "present", "field"},
 	},
@@ -674,8 +674,8 @@ var BuiltinNotes = []NoteInfo{
 	{
 		Name:        "labelMatches",
 		Domain:      "kubernetes",
-		Description: "Return `true` when the object's labels contain every key-value pair in the selector map. Extra labels on the object are ignored. Useful for checking if a resource would be selected by a label selector.",
-		Example:     "# value: '{{ labelMatches .children.deployment (dict \"app\" \"frontend\" \"env\" \"prod\") }}'\n# → true when the deployment carries both labels",
+		Description: "Return `true` when the object's labels contain every key/value pair given as arguments. Extra labels on the object are ignored. Useful for checking if a resource would be selected by a label selector.",
+		Example:     "# value: '{{ labelMatches .children.deployment \"app\" \"frontend\" \"env\" \"prod\" }}'\n# → true when the deployment carries both labels",
 		Keywords:    []string{"kubernetes", "label", "selector", "match", "boolean", "filter", "scope"},
 	},
 	{
