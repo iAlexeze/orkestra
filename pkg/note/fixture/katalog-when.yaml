@@ -29,9 +29,6 @@ spec:
       crFiles:
         - ./cr.yaml
 
-      workers: 1
-      resync: 15s
-
       # ── Conditional enrichment ──────────────────────────────────────────────
       # events: only pay the API cost when the deployment is degraded.
       # replicasets: only visible when debug mode is on.
@@ -47,6 +44,10 @@ spec:
                 equals: "true"
 
       operatorBox:
+        reconciler:
+          workers: 1
+          resync: 15s
+
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}"

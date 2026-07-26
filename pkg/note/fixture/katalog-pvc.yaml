@@ -17,14 +17,15 @@ spec:
       crFiles:
         - ./cr.yaml
 
-      workers: 1
-      resync: 30s
-
       enrich:
         - pvc
         - storageclass
 
       operatorBox:
+        reconciler:
+          workers: 1
+          resync: 30s
+
         onCreate:
           persistentVolumeClaims:
             - name: "{{ .metadata.name }}-data"

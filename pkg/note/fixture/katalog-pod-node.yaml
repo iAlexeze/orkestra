@@ -18,13 +18,14 @@ spec:
       crFiles:
         - ./cr.yaml
 
-      workers: 1
-      resync: 30s
-
       enrich:
         - node
 
       operatorBox:
+        reconciler:
+          workers: 1
+          resync: 30s
+
         onCreate:
           pods:
             - name: "{{ .metadata.name }}-pod"
