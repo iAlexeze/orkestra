@@ -257,5 +257,12 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 35. Validate envFrom refs (suffix requires keys)
+	// -------------------------------------------------------------------------
+	if err := k.validateEnvFromRefs(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }

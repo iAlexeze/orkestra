@@ -131,6 +131,33 @@ Nine new notes complement the existing whole-map `labels`/`annotations`/`status`
 # value: '{{ labelMatches .children.deployment "app" "frontend" "env" "prod" }}'
 ```
 
+### Breaking: `envFrom.secretRef`/`configMapRef` move from a name list to a struct
+
+`envFrom.secretRef` and `envFrom.configMapRef` move from a plain list of names to a list of `{name, prefix, optional, keys, suffix}` refs. `prefix` and `optional` map directly onto Kubernetes' own `EnvFromSource`/`SecretEnvSource`/`ConfigMapEnvSource` fields — no behavior change for anyone only using those. `keys` and `suffix` are Orkestra additions with no Kubernetes equivalent: Kubernetes' `envFrom` is a blanket import with no per-key rename mechanism, so a ref that sets `keys` is expanded into individual `env:` entries instead of a native `envFrom` source. `suffix` without `keys` is now a validation error — there's nothing for it to rename during a blanket import.
+
+```yaml
+# before
+envFrom:
+  secretRef:
+    - myapp-creds
+  configMapRef:
+    - myapp-config
+
+# after
+envFrom:
+  secretRef:
+    - name: myapp-creds
+      prefix: "DB_"
+      optional: true
+    - name: myapp-feature-flags
+      keys: [ENABLE_BETA, ROLLOUT_PCT]
+      suffix: "_FLAG"
+  configMapRef:
+    - name: myapp-config
+```
+
+`SecretKeyRef`/`ConfigMapKeyRef` (used under `env.valueFrom`) also gain an `optional` field, mirroring `corev1.SecretKeySelector`/`ConfigMapKeySelector`.
+
 ---
 
 ## v0.7.12 — Gateway Apply API, IDP, and codebase clarity

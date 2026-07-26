@@ -393,19 +393,12 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 	// EnvFrom resolution
 	if src.EnvFrom != nil {
 		resolved.EnvFrom = &orktypes.EnvFrom{}
-		for _, name := range src.EnvFrom.SecretRef {
-			rn, rerr := r.Resolve(name)
-			if rerr != nil {
-				return resolved, fmt.Errorf("envFrom.secretRef: %w", rerr)
-			}
-			resolved.EnvFrom.SecretRef = append(resolved.EnvFrom.SecretRef, rn)
+		var everr error
+		if resolved.EnvFrom.SecretRef, everr = r.ResolveEnvFromRefs(src.EnvFrom.SecretRef, "envFrom.secretRef"); everr != nil {
+			return resolved, everr
 		}
-		for _, name := range src.EnvFrom.ConfigMapRef {
-			rn, rerr := r.Resolve(name)
-			if rerr != nil {
-				return resolved, fmt.Errorf("envFrom.configMapRef: %w", rerr)
-			}
-			resolved.EnvFrom.ConfigMapRef = append(resolved.EnvFrom.ConfigMapRef, rn)
+		if resolved.EnvFrom.ConfigMapRef, everr = r.ResolveEnvFromRefs(src.EnvFrom.ConfigMapRef, "envFrom.configMapRef"); everr != nil {
+			return resolved, everr
 		}
 	}
 
@@ -534,19 +527,12 @@ func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSour
 	// EnvFrom
 	if src.EnvFrom != nil {
 		resolved.EnvFrom = &orktypes.EnvFrom{}
-		for _, name := range src.EnvFrom.SecretRef {
-			rn, rerr := r.Resolve(name)
-			if rerr != nil {
-				return resolved, fmt.Errorf("envFrom.secretRef: %w", rerr)
-			}
-			resolved.EnvFrom.SecretRef = append(resolved.EnvFrom.SecretRef, rn)
+		var everr error
+		if resolved.EnvFrom.SecretRef, everr = r.ResolveEnvFromRefs(src.EnvFrom.SecretRef, "envFrom.secretRef"); everr != nil {
+			return resolved, everr
 		}
-		for _, name := range src.EnvFrom.ConfigMapRef {
-			rn, rerr := r.Resolve(name)
-			if rerr != nil {
-				return resolved, fmt.Errorf("envFrom.configMapRef: %w", rerr)
-			}
-			resolved.EnvFrom.ConfigMapRef = append(resolved.EnvFrom.ConfigMapRef, rn)
+		if resolved.EnvFrom.ConfigMapRef, everr = r.ResolveEnvFromRefs(src.EnvFrom.ConfigMapRef, "envFrom.configMapRef"); everr != nil {
+			return resolved, everr
 		}
 	}
 
@@ -1361,19 +1347,12 @@ func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSo
 	// EnvFrom resolution
 	if src.EnvFrom != nil {
 		resolved.EnvFrom = &orktypes.EnvFrom{}
-		for _, name := range src.EnvFrom.SecretRef {
-			rn, rerr := r.Resolve(name)
-			if rerr != nil {
-				return resolved, fmt.Errorf("envFrom.secretRef: %w", rerr)
-			}
-			resolved.EnvFrom.SecretRef = append(resolved.EnvFrom.SecretRef, rn)
+		var everr error
+		if resolved.EnvFrom.SecretRef, everr = r.ResolveEnvFromRefs(src.EnvFrom.SecretRef, "envFrom.secretRef"); everr != nil {
+			return resolved, everr
 		}
-		for _, name := range src.EnvFrom.ConfigMapRef {
-			rn, rerr := r.Resolve(name)
-			if rerr != nil {
-				return resolved, fmt.Errorf("envFrom.configMapRef: %w", rerr)
-			}
-			resolved.EnvFrom.ConfigMapRef = append(resolved.EnvFrom.ConfigMapRef, rn)
+		if resolved.EnvFrom.ConfigMapRef, everr = r.ResolveEnvFromRefs(src.EnvFrom.ConfigMapRef, "envFrom.configMapRef"); everr != nil {
+			return resolved, everr
 		}
 	}
 

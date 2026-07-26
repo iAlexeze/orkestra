@@ -313,12 +313,14 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 					kev.ValueFrom.SecretKeyRef = &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: ev.ValueFrom.SecretKeyRef.Name},
 						Key:                  ev.ValueFrom.SecretKeyRef.Key,
+						Optional:             ev.ValueFrom.SecretKeyRef.Optional,
 					}
 				}
 				if ev.ValueFrom.ConfigMapKeyRef != nil {
 					kev.ValueFrom.ConfigMapKeyRef = &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: ev.ValueFrom.ConfigMapKeyRef.Name},
 						Key:                  ev.ValueFrom.ConfigMapKeyRef.Key,
+						Optional:             ev.ValueFrom.ConfigMapKeyRef.Optional,
 					}
 				}
 			} else {
@@ -329,26 +331,9 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 	}
 
 	// EnvFrom
-	if spec.EnvFrom != nil {
-		for _, name := range spec.EnvFrom.SecretRef {
-			d.Spec.Template.Spec.Containers[0].EnvFrom = append(
-				d.Spec.Template.Spec.Containers[0].EnvFrom,
-				corev1.EnvFromSource{
-					SecretRef: &corev1.SecretEnvSource{
-						LocalObjectReference: corev1.LocalObjectReference{Name: name},
-					},
-				})
-		}
-		for _, name := range spec.EnvFrom.ConfigMapRef {
-			d.Spec.Template.Spec.Containers[0].EnvFrom = append(
-				d.Spec.Template.Spec.Containers[0].EnvFrom,
-				corev1.EnvFromSource{
-					ConfigMapRef: &corev1.ConfigMapEnvSource{
-						LocalObjectReference: corev1.LocalObjectReference{Name: name},
-					},
-				})
-		}
-	}
+	envFrom, extraEnv := common.ExpandEnvFrom(spec.EnvFrom)
+	d.Spec.Template.Spec.Containers[0].EnvFrom = envFrom
+	d.Spec.Template.Spec.Containers[0].Env = append(d.Spec.Template.Spec.Containers[0].Env, extraEnv...)
 
 	// Volumes / VolumeMounts
 	if vols := common.BuildVolumes(spec.Volumes); len(vols) > 0 {
