@@ -106,22 +106,40 @@ type ValueFrom struct {
 	ConfigMapKeyRef *ConfigMapKeyRef `yaml:"configMapKeyRef,omitempty" json:"configMapKeyRef,omitempty"`
 }
 
+// EnvFromRef is one secretRef/configMapRef entry under envFrom.
+//
+// Name, Prefix, and Optional map directly onto Kubernetes' own EnvFromSource /
+// SecretEnvSource / ConfigMapEnvSource fields. Keys and Suffix are Orkestra
+// extensions with no Kubernetes equivalent — Kubernetes' envFrom is a blanket
+// import with no per-key rename mechanism, so a ref that sets Keys is expanded
+// into individual env entries at build time instead of a native envFrom source.
+// Suffix without Keys is a validation error — see pkg/katalog/validate_envfrom.go.
+type EnvFromRef struct {
+	Name     string   `yaml:"name" json:"name" validate:"required"`
+	Prefix   string   `yaml:"prefix,omitempty" json:"prefix,omitempty"`
+	Suffix   string   `yaml:"suffix,omitempty" json:"suffix,omitempty"`
+	Optional *bool    `yaml:"optional,omitempty" json:"optional,omitempty"`
+	Keys     []string `yaml:"keys,omitempty" json:"keys,omitempty"`
+}
+
 // EnvFrom groups environment sources by type.
 type EnvFrom struct {
-	SecretRef    []string `yaml:"secretRef,omitempty" json:"secretRef,omitempty"`
-	ConfigMapRef []string `yaml:"configMapRef,omitempty" json:"configMapRef,omitempty"`
+	SecretRef    []EnvFromRef `yaml:"secretRef,omitempty" json:"secretRef,omitempty"`
+	ConfigMapRef []EnvFromRef `yaml:"configMapRef,omitempty" json:"configMapRef,omitempty"`
 }
 
 // SecretKeyRef selects a key from a Kubernetes Secret.
-// Both Name and Key are required.
+// Name and Key are required. Optional mirrors corev1.SecretKeySelector.Optional.
 type SecretKeyRef struct {
-	Name string `yaml:"name" json:"name"`
-	Key  string `yaml:"key" json:"key"`
+	Name     string `yaml:"name" json:"name"`
+	Key      string `yaml:"key" json:"key"`
+	Optional *bool  `yaml:"optional,omitempty" json:"optional,omitempty"`
 }
 
 // ConfigMapKeyRef selects a key from a Kubernetes ConfigMap.
-// Both Name and Key are required.
+// Name and Key are required. Optional mirrors corev1.ConfigMapKeySelector.Optional.
 type ConfigMapKeyRef struct {
-	Name string `yaml:"name" json:"name"`
-	Key  string `yaml:"key" json:"key"`
+	Name     string `yaml:"name" json:"name"`
+	Key      string `yaml:"key" json:"key"`
+	Optional *bool  `yaml:"optional,omitempty" json:"optional,omitempty"`
 }

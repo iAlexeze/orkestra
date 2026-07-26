@@ -269,12 +269,14 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 				kev.ValueFrom.SecretKeyRef = &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{Name: ev.ValueFrom.SecretKeyRef.Name},
 					Key:                  ev.ValueFrom.SecretKeyRef.Key,
+					Optional:             ev.ValueFrom.SecretKeyRef.Optional,
 				}
 			}
 			if ev.ValueFrom.ConfigMapKeyRef != nil {
 				kev.ValueFrom.ConfigMapKeyRef = &corev1.ConfigMapKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{Name: ev.ValueFrom.ConfigMapKeyRef.Name},
 					Key:                  ev.ValueFrom.ConfigMapKeyRef.Key,
+					Optional:             ev.ValueFrom.ConfigMapKeyRef.Optional,
 				}
 			}
 		} else {
@@ -283,22 +285,9 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 		container.Env = append(container.Env, kev)
 	}
 
-	if spec.EnvFrom != nil {
-		for _, name := range spec.EnvFrom.SecretRef {
-			container.EnvFrom = append(container.EnvFrom, corev1.EnvFromSource{
-				SecretRef: &corev1.SecretEnvSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: name},
-				},
-			})
-		}
-		for _, name := range spec.EnvFrom.ConfigMapRef {
-			container.EnvFrom = append(container.EnvFrom, corev1.EnvFromSource{
-				ConfigMapRef: &corev1.ConfigMapEnvSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: name},
-				},
-			})
-		}
-	}
+	envFrom, extraEnv := common.ExpandEnvFrom(spec.EnvFrom)
+	container.EnvFrom = envFrom
+	container.Env = append(container.Env, extraEnv...)
 
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{

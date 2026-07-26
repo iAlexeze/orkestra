@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/orkspace/orkestra/domain"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -53,6 +54,37 @@ func (r *Resolver) ResolveStringSlice(values []string) ([]string, error) {
 		if rv != "" {
 			resolved = append(resolved, rv)
 		}
+	}
+	return resolved, nil
+}
+
+// ResolveEnvFromRefs resolves Name/Prefix/Suffix template expressions in each
+// EnvFromRef. Keys and Optional are not template expressions — copied as-is.
+func (r *Resolver) ResolveEnvFromRefs(refs []orktypes.EnvFromRef, field string) ([]orktypes.EnvFromRef, error) {
+	if len(refs) == 0 {
+		return nil, nil
+	}
+	resolved := make([]orktypes.EnvFromRef, 0, len(refs))
+	for _, ref := range refs {
+		name, err := r.Resolve(ref.Name)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", field, err)
+		}
+		prefix, err := r.Resolve(ref.Prefix)
+		if err != nil {
+			return nil, fmt.Errorf("%s: prefix: %w", field, err)
+		}
+		suffix, err := r.Resolve(ref.Suffix)
+		if err != nil {
+			return nil, fmt.Errorf("%s: suffix: %w", field, err)
+		}
+		resolved = append(resolved, orktypes.EnvFromRef{
+			Name:     name,
+			Prefix:   prefix,
+			Suffix:   suffix,
+			Optional: ref.Optional,
+			Keys:     ref.Keys,
+		})
 	}
 	return resolved, nil
 }
