@@ -27,7 +27,7 @@ type ServiceAccountTemplateSource struct {
 	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty" validate:"omitempty"`
 
 	// Labels — applied to ServiceAccount metadata. Values support template expressions.
-	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
 
 	// Conditions declares the set of runtime predicates that must all evaluate to
 	// true for this resource template to be applied during reconciliation.
@@ -95,7 +95,7 @@ type NamespaceTemplateSource struct {
 	Finalizers []string `yaml:"finalizers,omitempty" json:"finalizers,omitempty" validate:"omitempty"`
 
 	// Labels — applied to ServiceAccount metadata. Values support template expressions.
-	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
 
 	// Conditions declares the set of runtime predicates that must all evaluate to
 	// true for this resource template to be applied during reconciliation.

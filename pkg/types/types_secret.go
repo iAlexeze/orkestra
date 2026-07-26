@@ -41,7 +41,7 @@ type SecretTemplateSource struct {
 	Data map[string]string `yaml:"data,omitempty" json:"data,omitempty" validate:"omitempty"`
 
 	// Labels — applied to Secret metadata. Values support template expressions.
-	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
 
 	// Annotations — applied to Secret metadata.
 	Annotations map[string]string `yaml:"annotations,omitempty" json:"annotations,omitempty"`

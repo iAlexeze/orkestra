@@ -96,6 +96,26 @@ When any `external:` block in a Katalog uses `auth.secretRef`, the generated run
 
 The runtime now exposes `GET /api/v1/query?expr=<promql>` — a passthrough Prometheus query endpoint backed by the operator's own metrics. Useful for dashboards and autoscaler signals without a separate Prometheus instance.
 
+### Breaking: `labels`/`annotations` move to native map syntax
+
+`labels:` and `annotations:` move from a list of `{key, value}` pairs to a plain map — the shape every Kubernetes user already expects.
+
+```yaml
+# before
+labels:
+  - key: app
+    value: "{{ .metadata.name }}"
+  - key: tier
+    value: backend
+
+# after
+labels:
+  app: "{{ .metadata.name }}"
+  tier: backend
+```
+
+This also applies to `selector:`, `labelSelector:`, and `fieldSelector:` fields, which shared the same list shape under the internal `SelectorMap` type — now unified with `labels`/`annotations` under one `Labels` type, since both were already `map[string]string` underneath.
+
 ---
 
 ## v0.7.12 — Gateway Apply API, IDP, and codebase clarity

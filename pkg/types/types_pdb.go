@@ -27,7 +27,7 @@ type PDBTemplateSource struct {
 
 	// Selector — label selector identifying the pods this PDB protects.
 	// Keys are static; values support template expressions.
-	Selector SelectorMap `yaml:"selector,omitempty" json:"selector,omitempty"`
+	Selector Labels `yaml:"selector,omitempty" json:"selector,omitempty"`
 
 	// MinAvailable — minimum number of pods that must remain available.
 	// Accepts integer strings ("1") or percentage strings ("50%").
@@ -40,7 +40,7 @@ type PDBTemplateSource struct {
 	MaxUnavailable string `yaml:"maxUnavailable,omitempty" json:"maxUnavailable,omitempty"`
 
 	// Labels applied to PDB metadata. Values support template expressions.
-	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty"`
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty"`
 
 	// Behavior — disruption limit configuration.
 	// Set behavior.profile for a named preset, or declare minAvailable/maxUnavailable explicitly.

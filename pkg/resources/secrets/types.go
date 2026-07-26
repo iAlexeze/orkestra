@@ -78,7 +78,7 @@ type SecretTemplateSource struct {
 	Type string
 
 	// Labels — applied to all created Secret copies.
-	Labels []orktypes.ResourceLabel
+	Labels orktypes.Labels
 
 	// Reconcile: true — also sync on every reconcile (drift correction).
 	// When true, if the source Secret changes, all copies are updated automatically.

@@ -48,45 +48,19 @@ import (
 
 // ── Shared resource value types ───────────────────────────────────────────────
 
-// ResourceLabel is a single key-value label or annotation pair.
-// When used in hook template declarations, values support Go text/template
-// expressions evaluated against the live CR at reconcile time.
-// e.g. {key: "app", value: "{{ .metadata.name }}"}
-type ResourceLabel struct {
-	Key   string `yaml:"key" json:"key" validate:"required"`
-	Value string `yaml:"value" json:"value" validate:"required"`
-}
-
-func (l ResourceLabel) String() string {
-	return fmt.Sprintf("%s=%s", l.Key, l.Value)
-}
-
-type ResourceSelector []ResourceLabel
+// Labels is a set of Kubernetes labels or annotations. When used in hook template
+// declarations, values support Go text/template expressions evaluated against the
+// live CR at reconcile time.
+// e.g. {app: "{{ .metadata.name }}"}
+type Labels map[string]string
 
 // Stringifier
-func (s ResourceSelector) String() string {
-	if len(s) == 0 {
+func (l Labels) String() string {
+	if len(l) == 0 {
 		return ""
 	}
-
-	parts := make([]string, 0, len(s))
-	for _, lbl := range s {
-		parts = append(parts, lbl.String())
-	}
-
-	return strings.Join(parts, ",")
-}
-
-// Selector map
-type SelectorMap map[string]string
-
-// Stringifier
-func (m SelectorMap) String() string {
-	if len(m) == 0 {
-		return ""
-	}
-	parts := make([]string, 0, len(m))
-	for k, v := range m {
+	parts := make([]string, 0, len(l))
+	for k, v := range l {
 		parts = append(parts, fmt.Sprintf("%s=%s", k, v))
 	}
 	sort.Strings(parts)

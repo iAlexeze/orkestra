@@ -152,10 +152,8 @@ resources:
       podSelector: {}
       profile: org-deny-all
       labels:
-        - key: team
-          value: "{{ .inputs.team }}"
-        - key: managed-by
-          value: orkestra
+        team: "{{ .inputs.team }}"
+        managed-by: orkestra
       reconcile: true
 
     - name: "{{ .inputs.team }}-allow-dns"
@@ -163,10 +161,8 @@ resources:
       podSelector: {}
       profile: org-allow-dns-egress
       labels:
-        - key: team
-          value: "{{ .inputs.team }}"
-        - key: managed-by
-          value: orkestra
+        team: "{{ .inputs.team }}"
+        managed-by: orkestra
       reconcile: true
 
     - name: "{{ .inputs.team }}-allow-monitoring"
@@ -174,8 +170,6 @@ resources:
       podSelector: {}
       profile: org-allow-monitoring
       labels:
-        - key: team
-          value: "{{ .inputs.team }}"
-        - key: managed-by
-          value: orkestra
+        team: "{{ .inputs.team }}"
+        managed-by: orkestra
       reconcile: true

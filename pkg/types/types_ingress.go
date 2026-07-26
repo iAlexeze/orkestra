@@ -50,10 +50,10 @@ type IngressTemplateSource struct {
 	IngressClass string `yaml:"className,omitempty" json:"className,omitempty"`
 
 	// Labels applied to Ingress metadata. Values support template expressions.
-	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty"`
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty"`
 
 	// Annotations applied to Ingress metadata. Values support template expressions.
-	Annotations []ResourceLabel `yaml:"annotations,omitempty" json:"annotations,omitempty"`
+	Annotations Labels `yaml:"annotations,omitempty" json:"annotations,omitempty"`
 
 	// TLS — optional TLS configuration. When tls.enabled is true, Orkestra
 	// generates a self-signed TLS Secret before creating the Ingress.

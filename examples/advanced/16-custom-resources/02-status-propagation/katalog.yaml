@@ -46,8 +46,7 @@ spec:
                 namespace: "{{ .metadata.namespace }}"
                 namespaced: true
                 labels:
-                  - key: data.example.io/pipeline
-                    value: "{{ .metadata.name }}"
+                  data.example.io/pipeline: "{{ .metadata.name }}"
               spec:
                 source: "{{ .spec.source }}"
                 destination: "{{ .spec.destination }}"

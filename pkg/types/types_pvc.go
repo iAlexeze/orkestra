@@ -27,7 +27,7 @@ type PVCTemplateSource struct {
 	// VolumeName — bind to a specific PV by name.
 	VolumeName string `yaml:"volumeName,omitempty" json:"volumeName,omitempty"`
 
-	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty"`
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty"`
 
 	Reconcile  bool         `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`
 	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
@@ -67,7 +67,7 @@ type PVTemplateSource struct {
 	CSIDriver       string `yaml:"csiDriver,omitempty" json:"csiDriver,omitempty"`
 	CSIVolumeHandle string `yaml:"csiVolumeHandle,omitempty" json:"csiVolumeHandle,omitempty"`
 
-	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty"`
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty"`
 
 	Reconcile  bool         `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`
 	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`

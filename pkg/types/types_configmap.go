@@ -37,7 +37,7 @@ type ConfigMapTemplateSource struct {
 	Data map[string]string `yaml:"data,omitempty" json:"data,omitempty" validate:"omitempty"`
 
 	// Labels — applied to ConfigMap metadata. Values support template expressions.
-	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
 	// FromConfigMap — name of an existing ConfigMap to copy data from.
 	// Orkestra reads this at reconcile time — copies stay in sync with the source.
 	FromConfigMap string `yaml:"fromConfigMap,omitempty" json:"fromConfigMap,omitempty" validate:"omitempty"`

@@ -169,8 +169,8 @@ func Resolve(src orktypes.JobTemplateSource, backoffLimit int, ownerName string,
 		spec.BackoffLimit = 3
 	}
 
-	for _, l := range src.Labels {
-		spec.Labels[l.Key] = l.Value
+	for k, v := range src.Labels {
+		spec.Labels[k] = v
 	}
 
 	// System labels

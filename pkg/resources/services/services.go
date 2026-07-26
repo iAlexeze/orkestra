@@ -193,8 +193,8 @@ func Resolve(src orktypes.ServiceTemplateSource, ownerName string) ResolvedServi
 		spec.TargetPort = spec.Port
 	}
 
-	for _, l := range src.Labels {
-		spec.Labels[l.Key] = l.Value
+	for k, v := range src.Labels {
+		spec.Labels[k] = v
 	}
 
 	for k, v := range src.Selector {

@@ -43,10 +43,8 @@ spec:
                 namespace: "{{ .metadata.namespace }}"
                 namespaced: true
                 labels:
-                  - key: storage.example.io/store
-                    value: "{{ .metadata.name }}"
-                  - key: storage.example.io/region
-                    value: "{{ .shard.region }}"
+                  storage.example.io/store: "{{ .metadata.name }}"
+                  storage.example.io/region: "{{ .shard.region }}"
               spec:
                 shardName: "{{ .shard.name }}"
                 region: "{{ .shard.region }}"

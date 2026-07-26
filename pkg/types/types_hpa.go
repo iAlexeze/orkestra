@@ -53,7 +53,7 @@ type HPATemplateSource struct {
 	Behavior *HPABehavior `yaml:"behavior,omitempty" json:"behavior,omitempty"`
 
 	// Labels applied to HPA metadata. Values support template expressions.
-	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty"`
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty"`
 
 	Reconcile  bool         `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`
 	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
