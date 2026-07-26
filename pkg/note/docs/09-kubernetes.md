@@ -70,6 +70,103 @@ Keywords: kubernetes, metadata, annotations, map, tags
 
 ---
 
+### `getLabel`
+
+Return the value of a single label key from `metadata.labels`. Returns `""` when the key is absent or the object has no labels.
+
+Keywords: kubernetes, label, metadata, get, string, access, selector
+
+```yaml
+# value: "{{ getLabel .children.deployment \"app.kubernetes.io/name\" }}"
+# → "my-app"
+
+# Drive logic from a label without a spec field:
+# value: '{{ getLabel . "orkestra.io/resource-profile" | default "medium" }}'
+```
+
+---
+
+### `getLabelInt`
+
+Return a label value parsed as `int64`. Returns `0` when the key is absent or the value is non-numeric.
+
+Keywords: kubernetes, label, metadata, int, numeric, replicas, autoscale
+
+```yaml
+# value: "{{ getLabelInt .children.deployment \"replica-count\" }}"
+# → 3
+```
+
+---
+
+### `hasLabel`
+
+Return `true` when the object has the given label key with a non-empty value.
+
+Keywords: kubernetes, label, metadata, boolean, check, exists, selector
+
+```yaml
+# when:
+#   - field: '{{ hasLabel .children.deployment "app.kubernetes.io/managed-by" }}'
+#     equals: "true"
+```
+
+---
+
+### `getAnnotation`
+
+Return the value of a single annotation key from `metadata.annotations`. Returns `""` when the key is absent or the object has no annotations.
+
+Keywords: kubernetes, annotation, metadata, get, string, access, config
+
+```yaml
+# value: '{{ getAnnotation . "autoscale/min-replicas" | default "2" }}'
+# → "2"
+```
+
+---
+
+### `getAnnotationInt`
+
+Return an annotation value parsed as `int64`. Returns `0` when the key is absent or the value is non-numeric. Use with autoscale targets and thresholds stored in annotations.
+
+Keywords: kubernetes, annotation, metadata, int, numeric, autoscale, replicas, threshold
+
+```yaml
+# autoscale:
+#   scaleDown:
+#     target: '{{ getAnnotationInt . "autoscale/min-replicas" | default 2 }}'
+```
+
+---
+
+### `hasAnnotation`
+
+Return `true` when the object has the given annotation key with a non-empty value.
+
+Keywords: kubernetes, annotation, metadata, boolean, check, exists, gate
+
+```yaml
+# when:
+#   - field: '{{ hasAnnotation . "autoscale/enabled" }}'
+#     equals: "true"
+```
+
+---
+
+### `labelMatches`
+
+Return `true` when the object's labels contain every key/value pair given as arguments. Extra labels on the object are ignored. Useful for checking if a resource would be selected by a label selector.
+
+Keywords: kubernetes, label, selector, match, boolean, filter, scope
+
+```yaml
+# value: '{{ labelMatches .children.deployment "app" "frontend" "env" "prod" }}'
+# → true when the deployment carries both labels
+```
+
+---
+
 ## Spec and status
 
 ### `spec`
@@ -94,6 +191,40 @@ Keywords: kubernetes, status, object, navigate, map
 ```yaml
 # value: "{{ mapGet (status .children.deployment) \"readyReplicas\" }}"
 # Equivalent to: .children.deployment.status.readyReplicas
+```
+
+---
+
+### `getStatus`
+
+Return the string value of a specific key from `status`. Numeric and boolean values are converted to their string form. Returns `""` when the field is absent, nil, or a structured value (map, slice) — use `get` or `status` for those.
+
+Keywords: kubernetes, status, get, string, field, access
+
+```yaml
+# value: "{{ getStatus .children.deployment \"readyReplicas\" }}"
+# → "3"
+
+# when:
+#   - field: '{{ getStatus .children.pod "phase" }}'
+#     equals: "Running"
+```
+
+---
+
+### `hasStatus`
+
+Return `true` when the given status field exists and is non-empty. Works for both scalar and structured (map, slice) fields.
+
+Keywords: kubernetes, status, boolean, check, exists, present, field
+
+```yaml
+# value: '{{ hasStatus .children.service "loadBalancer" }}'
+# → true when loadBalancer is set in status
+
+# when:
+#   - field: '{{ hasStatus .children.deployment "readyReplicas" }}'
+#     equals: "true"
 ```
 
 ---
@@ -316,8 +447,17 @@ when:
 | `meta` | `(obj any)` | `map[string]interface{}` |
 | `labels` | `(obj any)` | `map[string]interface{}` |
 | `annotations` | `(obj any)` | `map[string]interface{}` |
+| `getLabel` | `(obj any, key string)` | `string` |
+| `getLabelInt` | `(obj any, key string)` | `int64` |
+| `hasLabel` | `(obj any, key string)` | `bool` |
+| `getAnnotation` | `(obj any, key string)` | `string` |
+| `getAnnotationInt` | `(obj any, key string)` | `int64` |
+| `hasAnnotation` | `(obj any, key string)` | `bool` |
+| `labelMatches` | `(obj any, kvs ...string)` | `bool` |
 | `spec` | `(obj any)` | `map[string]interface{}` |
 | `status` | `(obj any)` | `map[string]interface{}` |
+| `getStatus` | `(obj any, key string)` | `string` |
+| `hasStatus` | `(obj any, key string)` | `bool` |
 | `phase` | `(obj any)` | `string` |
 | `get` | `(obj any, path ...string)` | `any` |
 | `ownerKind` | `(obj any)` | `string` |

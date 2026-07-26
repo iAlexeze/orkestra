@@ -28,6 +28,12 @@ spec:
               image: "{{ .spec.image }}"
               replicas: "{{ .spec.replicas }}"
               port: "{{ .spec.port }}"
+              labels:
+                team: platform
+                replica-count: "3"
+              annotations:
+                autoscale/min-replicas: "2"
+                autoscale/enabled: "true"
               reconcile: true
 
           services:
@@ -91,16 +97,43 @@ spec:
               value: "{{ resourceMemory .children.deployment }}"
 
             - path: hasConditionAvailable
-              value: "{{ hasCondition .children.deployment \"Available\" }}"
+              value: '{{ hasCondition .children.deployment "Available" }}'
 
             - path: hasConditionProgressing
-              value: "{{ hasCondition .children.deployment \"Progressing\" }}"
+              value: '{{ hasCondition .children.deployment "Progressing" }}'
 
             - path: conditionAvailableReason
-              value: "{{ conditionReason .children.deployment \"Available\" }}"
+              value: '{{ conditionReason .children.deployment "Available" }}'
 
             - path: conditionProgressingMessage
-              value: "{{ conditionMessage .children.deployment \"Progressing\" }}"
+              value: '{{ conditionMessage .children.deployment "Progressing" }}'
+
+            - path: getLabelTeam
+              value: '{{ getLabel .children.deployment "team" }}'
+
+            - path: getLabelReplicaCount
+              value: '{{ getLabelInt .children.deployment "replica-count" }}'
+
+            - path: hasLabelTeam
+              value: '{{ hasLabel .children.deployment "team" }}'
+
+            - path: getAnnotationMinReplicas
+              value: '{{ getAnnotation .children.deployment "autoscale/min-replicas" }}'
+
+            - path: getAnnotationMinReplicasInt
+              value: '{{ getAnnotationInt .children.deployment "autoscale/min-replicas" }}'
+
+            - path: hasAnnotationEnabled
+              value: '{{ hasAnnotation .children.deployment "autoscale/enabled" }}'
+
+            - path: labelMatchesTeam
+              value: '{{ labelMatches .children.deployment "team" "platform" }}'
+
+            - path: getStatusReadyReplicas
+              value: '{{ getStatus .children.deployment "readyReplicas" }}'
+
+            - path: hasStatusReadyReplicas
+              value: '{{ hasStatus .children.deployment "readyReplicas" }}'
 
             # ── replica notes ───────────────────────────────────────────────
             - path: allReady
