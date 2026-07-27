@@ -59,3 +59,5 @@ A checkbox field in the Control Center form always submits an explicit value —
 → [idp.additionalFields schema reference](../../reference/schema/02-katalog/02-crd-entry.md#idpadditionalfields)
 → [Kubernetes notes — getLabel, getAnnotation, hasAnnotation](../notes/index.md)
 → [use-cases/idp example pack](https://github.com/orkspace/orkestra/tree/main/examples/use-cases/idp) — `01-form` drives its whole flow from `additionalFields` and minimal `spec`
+→ [Required fields are enforced automatically](../../reference/schema/02-katalog/07-validation.md#required-fields-are-enforced-automatically) — `required: true` synthesizes server-side enforcement, not just a form hint
+→ [IDP-aware messages for hand-written rules](../../reference/schema/02-katalog/07-validation.md#idp-aware-messages-for-hand-written-rules) — write `message:` using the field's `label:`, not its raw `spec.*` path

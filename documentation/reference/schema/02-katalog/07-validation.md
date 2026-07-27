@@ -93,6 +93,49 @@ Each rule describes one check. Rules are evaluated in order.
 
 `when` and `anyOf` use the same `Condition` type as resource templates — see [06-when-conditions.md](06-when-conditions.md) for the full operator reference.
 
+### Required fields are enforced automatically
+
+`required: true` on an `idp.fields` or `idp.additionalFields` entry isn't just a form hint — at katalog load time, every `required: true` entry gets an implicit `exists` rule synthesized automatically, with `message:` already matching the field's `label:`. This is enforced at the API server for every client — the Control Center form, `curl`, a CI pipeline, a custom UI, `kubectl apply` — not only the one that happens to render a required-field asterisk. You don't hand-write a `validation.rules` entry for plain "this field must be present" checks — marking the field required is enough:
+
+```yaml
+idp:
+  fields:
+    targetRevision:
+      label: "Branch / Tag"
+      required: true
+# → synthesizes: { field: spec.targetRevision, operator: exists,
+#                  message: "Branch / Tag is required", action: deny }
+```
+
+`idp.additionalFields.labels`/`.annotations` entries synthesize the same way, through `getLabel`/`getAnnotation` rather than a raw dot-path — required annotation keys with dots (the Kubernetes-recommended `prefix/name` shape) are handled correctly without you needing to know that dot-path resolution would otherwise misparse them.
+
+### IDP-aware messages for hand-written rules
+
+Auto-synthesis only covers plain existence. For anything more specific — an enum check, a range, a prefix — you still write the `validation.rules` entry by hand, and there the same principle applies: write `message:` using the field's `label:` instead of its raw `spec.*` path. A developer submitting through the Control Center form saw the label, not the YAML path — an error that echoes the path back is a translation the developer has to do themselves.
+
+```yaml
+idp:
+  fields:
+    environment:
+      label: "Environment"
+
+validation:
+  rules:
+    # before — leaks the internal field name
+    - field: spec.environment
+      operator: in
+      value: "staging,production"
+      message: "spec.environment must be staging or production"
+
+    # after — matches what the developer actually saw on the form
+    - field: spec.environment
+      operator: in
+      value: "staging,production"
+      message: "Environment must be staging or production"
+```
+
+This applies whether the rule fires from a form submission, `kubectl apply`, or a CI pipeline — the message is the same either way, so keep it in the vocabulary of the person reading it, not the API shape.
+
 ### Template expressions in rules
 
 `field:`, comparison values (`equals:`, `prefix:`, `min:`, `value:`, …), and `message:` are all resolved as Go templates before evaluation. The full CR fields and notes FuncMap are available.

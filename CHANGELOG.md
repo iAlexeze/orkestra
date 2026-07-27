@@ -181,6 +181,26 @@ idp:
 
 Validated at `ork validate` time: every key must be a syntactically valid Kubernetes label/annotation key, and no key may collide with `idp.fields` or the other `additionalFields` bucket. `idp.include` now also merges an `additionalFields:` block from the included file, the same way it already merged `fields:`.
 
+### `idp.fields.<name>.required` — enforced server-side, for every client
+
+`required: true` on an `idp.fields` or `idp.additionalFields` entry now synthesizes an implicit `exists` validation rule at katalog load time, with `message:` matching the field's `label:` automatically. This is enforced at the API server — the Control Center form, `curl`, a CI pipeline, `kubectl apply`, any Apply API client — not only the one that renders a required-field asterisk.
+
+```yaml
+idp:
+  fields:
+    targetRevision:
+      label: "Branch / Tag"
+      required: true
+# → synthesizes: { field: spec.targetRevision, operator: exists,
+#                  message: "Branch / Tag is required", action: deny }
+```
+
+The synthesized rule inherits the field's own `when:`/`anyOf:`, so a field required only under one branch of a discriminator (e.g. `workloadType: app`) stays conditionally required — not unconditionally — matching what a static CRD schema's `required: [...]` list can't express.
+
+### Fix: `operator: in` was never evaluated in `validation.rules`
+
+`operator: in` was defined for `when:`/`anyOf:` conditions but missing from the separate rule-evaluation switch in both the reconciler and the admission webhook — a `validation.rules` entry using it silently always passed instead of checking comma-separated membership. Both now evaluate it.
+
 ---
 
 ## v0.7.12 — Gateway Apply API, IDP, and codebase clarity
