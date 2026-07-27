@@ -3,6 +3,7 @@ package external
 import (
 	"context"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -75,6 +76,8 @@ func kafkaDialer(credential string) *kafka.Dialer {
 }
 
 // fetchGroupLag reads consumer group lag for "group/topic".
+// Lag = sum over partitions of (latestOffset - committedOffset).
+// When the group has never committed, committed is treated as 0.
 func fetchGroupLag(ctx context.Context, dialer *kafka.Dialer, brokers []string, query string) (map[string]interface{}, error) {
 	parts := strings.SplitN(query, "/", 2)
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
@@ -86,28 +89,66 @@ func fetchGroupLag(ctx context.Context, dialer *kafka.Dialer, brokers []string, 
 	if err != nil {
 		return errorResult(fmt.Sprintf("kafka: connect: %v", err)), nil
 	}
-	defer conn.Close()
-
 	partitions, err := conn.ReadPartitions(topic)
+	conn.Close()
 	if err != nil {
 		return errorResult(fmt.Sprintf("kafka: read partitions for %q: %v", topic, err)), nil
 	}
 
+	partitionIDs := make([]int, len(partitions))
+	for i, p := range partitions {
+		partitionIDs[i] = p.ID
+	}
+
+	client := &kafka.Client{
+		Addr: kafka.TCP(brokers[0]),
+		Transport: &kafka.Transport{
+			Dial: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return dialer.DialContext(ctx, network, addr)
+			},
+		},
+	}
+
+	// Committed offsets for this consumer group.
+	fetchResp, err := client.OffsetFetch(ctx, &kafka.OffsetFetchRequest{
+		GroupID: group,
+		Topics:  map[string][]int{topic: partitionIDs},
+	})
+	if err != nil {
+		return errorResult(fmt.Sprintf("kafka: fetch committed offsets group=%q: %v", group, err)), nil
+	}
+
+	// Latest (high-watermark) offsets.
+	offsetReqs := make([]kafka.OffsetRequest, len(partitions))
+	for i, p := range partitions {
+		offsetReqs[i] = kafka.OffsetRequest{Partition: p.ID, Timestamp: kafka.LastOffset}
+	}
+	listResp, err := client.ListOffsets(ctx, &kafka.ListOffsetsRequest{
+		Topics: map[string][]kafka.OffsetRequest{topic: offsetReqs},
+	})
+	if err != nil {
+		return errorResult(fmt.Sprintf("kafka: list offsets topic=%q: %v", topic, err)), nil
+	}
+
+	committed := make(map[int]int64, len(partitions))
+	for _, p := range fetchResp.Topics[topic] {
+		committed[p.Partition] = p.CommittedOffset
+	}
+	latest := make(map[int]int64, len(partitions))
+	for _, p := range listResp.Topics[topic] {
+		latest[p.Partition] = p.LastOffset
+	}
+
 	var totalLag int64
-	for _, p := range partitions {
-		pc := kafka.NewReader(kafka.ReaderConfig{
-			Brokers:   brokers,
-			Topic:     topic,
-			Partition: p.ID,
-			MaxWait:   2 * time.Second,
-			Dialer:    dialer,
-		})
-		latest, err := pc.ReadLag(ctx)
-		pc.Close()
-		if err != nil {
-			return errorResult(fmt.Sprintf("kafka: read lag group=%q topic=%q partition=%d: %v", group, topic, p.ID, err)), nil
+	for _, id := range partitionIDs {
+		c := committed[id] // 0 if group never committed
+		if c < 0 {
+			c = 0
 		}
-		totalLag += latest
+		l := latest[id]
+		if lag := l - c; lag > 0 {
+			totalLag += lag
+		}
 	}
 
 	lag := fmt.Sprintf("%d", totalLag)
