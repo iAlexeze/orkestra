@@ -237,13 +237,13 @@
 
               {{ if eq .InputType "checkbox" }}
               <div class="idp-checkbox-row">
-                <input type="checkbox" id="field-{{ .Name }}" name="{{ .Name }}" data-type="boolean"
+                <input type="checkbox" id="field-{{ .Name }}" name="{{ .Name }}" data-type="boolean" data-source="{{ .Source }}"
                   {{ if .Disabled }}disabled{{ end }}>
                 <label for="field-{{ .Name }}">{{ .Label }}{{ if .Required }} <span style="color:var(--text-muted)">*</span>{{ end }}</label>
               </div>
               {{ else if eq .InputType "select" }}
               <label for="field-{{ .Name }}">{{ .Label }}{{ if .Required }} <span style="color:var(--text-muted)">*</span>{{ end }}</label>
-              <select id="field-{{ .Name }}" name="{{ .Name }}" data-type="string"
+              <select id="field-{{ .Name }}" name="{{ .Name }}" data-type="string" data-source="{{ .Source }}"
                 {{ if and .Required (not .Disabled) }}required{{ end }}
                 {{ if .Disabled }}disabled{{ end }}>
                 <option value="">— select —</option>
@@ -253,14 +253,14 @@
               </select>
               {{ else if eq .InputType "number" }}
               <label for="field-{{ .Name }}">{{ .Label }}{{ if .Required }} <span style="color:var(--text-muted)">*</span>{{ end }}</label>
-              <input type="number" id="field-{{ .Name }}" name="{{ .Name }}" data-type="number"
+              <input type="number" id="field-{{ .Name }}" name="{{ .Name }}" data-type="number" data-source="{{ .Source }}"
                 {{ if .Placeholder }}placeholder="{{ .Placeholder }}"{{ end }}
                 {{ if .Default }}value="{{ .Default }}"{{ end }}
                 {{ if and .Required (not .Disabled) }}required{{ end }}
                 {{ if .Disabled }}disabled{{ end }}>
               {{ else }}
               <label for="field-{{ .Name }}">{{ .Label }}{{ if .Required }} <span style="color:var(--text-muted)">*</span>{{ end }}</label>
-              <input type="text" id="field-{{ .Name }}" name="{{ .Name }}" data-type="string"
+              <input type="text" id="field-{{ .Name }}" name="{{ .Name }}" data-type="string" data-source="{{ .Source }}"
                 {{ if .Placeholder }}placeholder="{{ .Placeholder }}"{{ end }}
                 {{ if .Default }}value="{{ .Default }}"{{ end }}
                 {{ if and .Required (not .Disabled) }}required{{ end }}
@@ -400,8 +400,13 @@
     }
 
     // ── Payload collection ──────────────────────────────────────────────────
+    // Each field's data-source ("spec" | "label" | "annotation") decides which
+    // bucket it lands in — the server writes each bucket to a different part
+    // of the CR (spec.*, metadata.labels, metadata.annotations). Labels and
+    // annotations are always strings, regardless of data-type, since that's
+    // all Kubernetes metadata values can be.
     function collectPayload() {
-      var spec = {}, name = '', namespace = '';
+      var spec = {}, labels = {}, annotations = {}, name = '', namespace = '';
       form.querySelectorAll('input, select').forEach(function (el) {
         var n = el.name;
         if (!n) return;
@@ -411,12 +416,16 @@
         if (wrap && wrap.style.display === 'none') return;
         if (el.disabled) return;
         var t = el.getAttribute('data-type');
+        var source = el.getAttribute('data-source') || 'spec';
         var v = (t === 'boolean') ? el.checked
               : (t === 'number')  ? (el.value !== '' ? Number(el.value) : undefined)
               : el.value;
-        if (v !== undefined && v !== '') spec[n] = v;
+        if (v === undefined || v === '') return;
+        if (source === 'label')           { labels[n] = String(v); }
+        else if (source === 'annotation') { annotations[n] = String(v); }
+        else                              { spec[n] = v; }
       });
-      return { name: name, namespace: namespace, spec: spec };
+      return { name: name, namespace: namespace, spec: spec, labels: labels, annotations: annotations };
     }
 
     // ── Submit / Preview ────────────────────────────────────────────────────
