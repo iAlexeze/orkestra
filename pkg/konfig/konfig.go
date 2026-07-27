@@ -189,8 +189,9 @@ func GetStrSliceEnv(key string, def []string) []string {
 // GetBoolEnv returns the boolean value of an env
 func GetBoolEnv(key string, def bool) bool {
 	if val, ok := os.LookupEnv(key); ok {
-		valBool, _ := strconv.ParseBool(val)
-		return valBool
+		if valBool, err := strconv.ParseBool(val); err == nil {
+			return valBool
+		}
 	}
 	return def
 }
@@ -198,8 +199,9 @@ func GetBoolEnv(key string, def bool) bool {
 // GetDurEnvSeconds returns the time.duration value of an env
 func GetDurEnvSeconds(key string, def int) time.Duration {
 	if val, ok := os.LookupEnv(key); ok {
-		valInt, _ := strconv.Atoi(val)
-		return time.Duration(valInt) * time.Second
+		if valInt, err := strconv.Atoi(val); err == nil {
+			return time.Duration(valInt) * time.Second
+		}
 	}
 	return time.Duration(def) * time.Second
 }
@@ -207,8 +209,9 @@ func GetDurEnvSeconds(key string, def int) time.Duration {
 // GetIntEnv returns the int value of an env
 func GetIntEnv(key string, def int) int {
 	if val, ok := os.LookupEnv(key); ok {
-		valInt, _ := strconv.Atoi(val)
-		return valInt
+		if valInt, err := strconv.Atoi(val); err == nil {
+			return valInt
+		}
 	}
 	return def
 }
