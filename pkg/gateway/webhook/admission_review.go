@@ -49,9 +49,20 @@ type AdmissionResponse struct {
 }
 
 // AdmissionStatus is the rejection reason returned when Allowed is false.
+//
+// Message stays a single verbose string — field path, rule text, and the
+// received value all concatenated — because that's what shows up in
+// `kubectl apply`'s error output and needs to be self-contained there.
+// Details.Causes carries the same denials as clean, structured per-field
+// entries instead: this is what the real Kubernetes API server relays into
+// any client's error response (metav1.Status.Details), which is how
+// pkg/gateway/applyapi's ApplyResponse.Violations gets populated for the
+// Apply API — used by the Control Center form and any other client that
+// wants to show a field-focused error instead of the raw kubectl-style string.
 type AdmissionStatus struct {
-	Message string `json:"message"`
-	Code    int32  `json:"code"`
+	Message string                `json:"message"`
+	Code    int32                 `json:"code"`
+	Details *metav1.StatusDetails `json:"details,omitempty"`
 }
 
 const jsonPatchType = "JSONPatch"
