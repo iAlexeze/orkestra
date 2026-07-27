@@ -1,4 +1,4 @@
-## v0.7.13 — External calls at admission and reconcile time, protocol clients [UNRELEASED]
+## v0.7.13 — Kubernetes-native labels/envFrom, IDP additionalFields, external calls at admission/reconcile, protocol clients [UNRELEASED]
 
 ### `validation.external` and `mutation.external`
 
@@ -157,6 +157,29 @@ envFrom:
 ```
 
 `SecretKeyRef`/`ConfigMapKeyRef` (used under `env.valueFrom`) also gain an `optional` field, mirroring `corev1.SecretKeySelector`/`ConfigMapKeySelector`.
+
+### `idp.additionalFields` — labels and annotations as self-service form fields
+
+`idp.fields` exposes `spec.*` to the IDP form — but team, environment, and feature flags are usually metadata, not spec data. `idp.additionalFields` exposes label and annotation keys the same way, written to `metadata.labels`/`metadata.annotations` on apply instead of `spec`. Each entry needs an explicit `type` (`string` default, `integer`, `number`, `boolean`, `enum`) since labels/annotations have no CRD schema to infer it from.
+
+```yaml
+idp:
+  enabled: true
+  fields:
+    image:
+      label: "Container Image"
+  additionalFields:
+    labels:
+      team:
+        label: "Team"
+        required: true
+    annotations:
+      canary.myorg.io:
+        label: "Enable canary rollout"
+        type: boolean
+```
+
+Validated at `ork validate` time: every key must be a syntactically valid Kubernetes label/annotation key, and no key may collide with `idp.fields` or the other `additionalFields` bucket. `idp.include` now also merges an `additionalFields:` block from the included file, the same way it already merged `fields:`.
 
 ---
 

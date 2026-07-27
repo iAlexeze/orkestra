@@ -4,7 +4,7 @@ An IDP is not an application. It is a contract.
 
 A platform engineering team defines what developers can create, what rules apply, and what the system produces. Developers use that contract to ship — without knowing what runs underneath. That is the whole thing.
 
-The runtime makes that contract a Custom Resource. Everything else follows from it.
+The runtime makes that contract a **Custom Resource**. Everything else follows from it.
 
 ---
 
@@ -27,14 +27,18 @@ None of these know about each other. A field rename in the CRD touches all of th
 
 ## The Orkestra Model
 
-The platform team writes one Katalog. That Katalog is the contract. It describes:
+Every platform team ends up wanting the same thing: a developer describes what they want, and the right Kubernetes resources appear and stay correct — forever, without anyone watching. Big platforms already prove this pattern works: an ArgoCD `Application`, a Crossplane claim, a Terraform Cloud run are all just a CR that some controller watches and reconciles. Orkestra doesn't invent a new pattern — it generalizes that one to any CRD a platform team defines, instead of tying it to one product's shape.
 
-- What fields the CR accepts and what values are valid
-- What the runtime produces when a CR is applied
-- Who can reach it (token-based auth, namespace protection)
-- How developers interact with it (form hints, field labels, tab order)
+**The CR is the entry point.** Every delivery path — a browser form, `kubectl apply`, a CI pipeline, a Slack bot — ends at the same place: a CR applied to the cluster. Nothing downstream cares how it got there.
 
-Orkestra already handles reconciliation, admission, and status. Adding an IDP is enabling the interface to what is already running.
+Four pieces make that entry point real, and each one is a plain Orkestra component, not a new system:
+
+- **The Katalog is the declaration.** One file: what the CR accepts, what's valid, what gets built when one appears, who's allowed to submit one.
+- **The gateway is the validation and admission surface.** Every apply — from any caller — goes through the same schema check, the same `validation.rules`, the same auth tokens, and comes back as a server-side apply on the CR. It's the error handler and the security boundary, in one place, before anything reaches etcd.
+- **The runtime is what keeps it in sync, forever.** It watches for CRs and reconciles. One CRD or twenty attached to the same katalog — the reconcile loop doesn't change shape per kind.
+- **The Control Center is a client, not a special one.** It calls the gateway's API the same way any other caller does. Anything that can consume an HTTP API — a CLI, a Slack bot, a homegrown React app — can build the same self-service experience against the same contract.
+
+Adding an IDP is enabling the interface to what is already running, not standing up a new system.
 
 ```yaml
 gateway:
@@ -68,6 +72,10 @@ spec:
 
 That is the IDP. Two config blocks on the Katalog the platform team already had. The gateway self-bootstraps its token Secret on first start. The Control Center reads `idpEnabled` from the runtime and shows a `[+ Create]` button.
 
+`fields` exposes `spec.*` — the workload data the operator computes with. Not everything a form should collect belongs there, though: a team name, a feature flag, an external ticket reference are metadata, not spec data. `idp.additionalFields` is the release valve — a surface, on any CRD entry in the katalog, for exactly what shouldn't be forced into `spec`. It exposes label and annotation keys as form fields the same way `fields` exposes spec ones, written straight to `metadata` instead.
+
+→ [Additional Fields in depth](01-additional-fields.md)
+
 ---
 
 ## One CR, any delivery path
@@ -78,7 +86,6 @@ The reconciler does not know how a CR arrived. It reconciles when one appears.
 Browser form          ↓
 kubectl apply         ↓
 CI curl POST          ↓  →  CR in Kubernetes  →  runtime reconciles
-Terraform provider    ↓
 Slack bot             ↓
 GitHub webhook        ↓
 ```
@@ -107,9 +114,7 @@ A developer opens the Control Center. The `Application` row shows a `[+ Create]`
 └────────────────────────────────────────────────────┘
 ```
 
-The form is generated from the CRD's OpenAPI schema combined with the `idp.fields` presentation hints. No separate form builder. No schema duplication. The Control Center reads the schema from the gateway and renders it — field types determine input types, enum values become dropdowns, hints appear below the field.
-
-The same developer working in CI uses a token and `curl`. The same developer using Terraform uses the Terraform provider. They are all talking to the same runtime through the same API. The platform team maintains one definition; developers choose how to consume it.
+The form is generated from the CRD's OpenAPI schema combined with the `idp.fields`/`idp.additionalFields` presentation hints. No separate form builder. No schema duplication. The Control Center reads the schema from the gateway and renders it — field types determine input types, enum values become dropdowns, hints appear below the field. It's doing nothing a different client couldn't: the same developer working in CI uses a token and `curl` against the same `POST /api/v1/apply` endpoint instead.
 
 ---
 
@@ -118,9 +123,10 @@ The same developer working in CI uses a token and `curl`. The same developer usi
 - A separate portal or service catalog
 - A Backstage plugin
 - A custom admission webhook deployment
-- A Terraform provider from scratch (~200 lines of provider code against the Apply API)
 - A notification pipeline (the `external:` block in the Katalog handles Jira/Slack after deployment)
 - A form schema separate from the CRD schema
+
+A Terraform provider is not one of these — nothing here ships one today. The Apply API is a plain REST surface, so writing one is straightforward, but it is not built for you yet.
 
 All of those are either unnecessary or reduced to configuration.
 
@@ -132,12 +138,15 @@ All of those are either unnecessary or reduced to configuration.
 ork init --pack use-cases/idp
 ```
 
-The example pack runs four delivery paths against the same `AppRequest` CRD: browser form, CI pipeline, Terraform, and a Jira + Slack post-deployment hook. Each example adds a few lines to the previous one. The runtime is the same throughout.
+The example pack runs three delivery paths against the same `AppRequest` CRD: browser form, CI pipeline, and a Jira + Slack post-deployment hook. Each example adds a few lines to the previous one. The runtime is the same throughout.
 
 For the ecosystem progression:
 
 ```bash
 ork init --pack ecosystem-composition/06-idp
 ```
+
+## Where to go next
+→ [Additional Fields](01-additional-fields.md)
 
 → [Apply API reference](../../reference/schema/02-katalog/17-katalog-applyapi.md)
