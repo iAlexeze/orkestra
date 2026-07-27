@@ -264,5 +264,12 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 36. Validate idp.additionalFields (key syntax, enum, uniqueness)
+	// -------------------------------------------------------------------------
+	if err := k.validateIDPAdditionalFields(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }
