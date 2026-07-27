@@ -12,6 +12,8 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/children"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/logger"
+	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -135,7 +137,7 @@ func readChildrenForEndpoint(
 	// Custom resources have dynamic GVRs — fetch separately from standard types.
 	customSrcs := mergeCustomResourceSrcs(rc)
 	if len(customSrcs) > 0 {
-		customs := fetchCustomChildren(fetchCtx, kube, ns, labelSelector, customSrcs)
+		customs := fetchCustomChildren(fetchCtx, kube, owner, ns, labelSelector, customSrcs)
 		switch len(customs) {
 		case 1:
 			childMap["custom"] = customs[0]
@@ -162,13 +164,26 @@ func InvalidateChildrenCache(namespace, name string) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // relevantGVRsFromConfig returns only the GVR entries for resource types
-// declared in the OperatorBoxConfig's onCreate/onReconcile templates.
-// When no config is provided (empty templates), all known GVRs are returned
-// so Katalogs using Go hooks still show their children.
+// declared in the OperatorBoxConfig's onCreate/onReconcile templates, per
+// OperatorBoxConfig.DeclaredChildKinds() — the single source of truth for
+// "which built-in kinds does this box declare," colocated with HookTemplates
+// itself in pkg/types rather than duplicated here.
+//
+// When OnCreate and OnReconcile are both nil — no declarative template info
+// at all (e.g. a Katalog using Go hooks instead of templates) — every known
+// GVR is checked, since there's nothing to narrow the search with. This is
+// distinct from a CRD that declares only custom: entries and zero built-in
+// kinds: DeclaredChildKinds() correctly returns empty there too, but firing
+// all ~24 built-in LIST calls anyway both wastes work and risks the fixed
+// fetchTimeout expiring before the (separately-fetched) custom resources
+// block ever runs, silently returning empty children with no error.
 func relevantGVRsFromConfig(box orktypes.OperatorBoxConfig) []childGVREntry {
-	needed := relevantKeys(box)
-	if len(needed) == 0 {
+	if box.OnCreate == nil && box.OnReconcile == nil {
 		return knownChildGVRs
+	}
+	needed := box.DeclaredChildKinds()
+	if len(needed) == 0 {
+		return nil
 	}
 	result := make([]childGVREntry, 0, len(needed))
 	for _, e := range knownChildGVRs {
@@ -177,68 +192,6 @@ func relevantGVRsFromConfig(box orktypes.OperatorBoxConfig) []childGVREntry {
 		}
 	}
 	return result
-}
-
-// relevantKeys extracts the set of child resource type keys declared in
-// the OperatorBoxConfig's onCreate/onReconcile templates.
-func relevantKeys(box orktypes.OperatorBoxConfig) map[string]bool {
-	needed := map[string]bool{}
-	addKeys := func(t *orktypes.HookTemplates) {
-		if t == nil {
-			return
-		}
-		if len(t.Deployments) > 0 {
-			needed["deployment"] = true
-		}
-		if len(t.ReplicaSets) > 0 {
-			needed["replicaset"] = true
-		}
-		if len(t.StatefulSets) > 0 {
-			needed["statefulset"] = true
-		}
-		if len(t.Services) > 0 {
-			needed["service"] = true
-		}
-		if len(t.Secrets) > 0 {
-			needed["secret"] = true
-		}
-		if len(t.ConfigMaps) > 0 {
-			needed["configmap"] = true
-		}
-		if len(t.Jobs) > 0 {
-			needed["job"] = true
-		}
-		if len(t.CronJobs) > 0 {
-			needed["cronjob"] = true
-		}
-		if len(t.Pods) > 0 {
-			needed["pod"] = true
-		}
-		if len(t.ServiceAccounts) > 0 {
-			needed["serviceaccount"] = true
-		}
-		if len(t.Namespaces) > 0 {
-			needed["namespace"] = true
-		}
-		if len(t.Ingresses) > 0 {
-			needed["ingress"] = true
-		}
-		if len(t.PersistentVolumes) > 0 {
-			needed["persistentvolume"] = true
-		}
-		if len(t.PersistentVolumeClaims) > 0 {
-			needed["persistentvolumeclaim"] = true
-		}
-		if len(t.Roles) > 0 {
-			needed["role"] = true
-		}
-		if len(t.RoleBindings) > 0 {
-			needed["rolebinding"] = true
-		}
-	}
-	addKeys(box.OnCreate)
-	addKeys(box.OnReconcile)
-	return needed
 }
 
 // mergeCustomResourceSrcs collects all custom resource template entries from
@@ -272,31 +225,60 @@ func mergeCustomResourceSrcs(box orktypes.OperatorBoxConfig) []orktypes.CustomRe
 // fetchCustomChildren lists all custom resources declared in srcs that are
 // owned by the CR (matched by orkestra-owner label). Each unique APIVersion/Kind
 // is resolved to a GVR via the REST mapper and listed once.
+//
+// A custom resource's namespace is not necessarily the parent CR's namespace —
+// metadata.namespace in the template can be a literal override (e.g. an ArgoCD
+// Application hardcoded to "argocd") or a template expression. ownerMap lets us
+// render it correctly via the same Resolver the create path uses, instead of
+// assuming it always matches the parent.
 func fetchCustomChildren(
 	ctx context.Context,
 	kube *kubeclient.Kubeclient,
+	ownerMap map[string]interface{},
 	ns, labelSelector string,
 	srcs []orktypes.CustomResourceTemplateSource,
 ) []ChildSummary {
+	resolver := orktmpl.NewResolverFromMap(ownerMap)
+
 	var result []ChildSummary
 	for i := range srcs {
 		src := &srcs[i]
 		gvr, err := src.ResolveGVR(kube.Mapper())
 		if err != nil {
+			logger.Warn().
+				Str("apiVersion", src.APIVersion).
+				Str("kind", src.Kind).
+				Err(err).
+				Msg("children: failed to resolve GVR for custom resource — child will not appear until this resolves")
 			continue
 		}
+
+		childNS := ns
+		if resolved, rerr := resolver.Resolve(src.Metadata.Namespace); rerr == nil && resolved != "" {
+			childNS = resolved
+		}
+
 		resource := kube.DynamicClient().Resource(gvr)
 		opts := metav1.ListOptions{
 			LabelSelector:   labelSelector,
 			ResourceVersion: "0",
 		}
 		var list *unstructured.UnstructuredList
-		if src.IsNamespaced() && ns != "" {
-			list, err = resource.Namespace(ns).List(ctx, opts)
+		if src.IsNamespaced() && childNS != "" {
+			list, err = resource.Namespace(childNS).List(ctx, opts)
 		} else {
 			list, err = resource.List(ctx, opts)
 		}
-		if err != nil || len(list.Items) == 0 {
+		if err != nil {
+			logger.Warn().
+				Str("apiVersion", src.APIVersion).
+				Str("kind", src.Kind).
+				Str("namespace", childNS).
+				Err(err).
+				Msg("children: failed to list custom resource")
+			continue
+		}
+		if len(list.Items) == 0 {
 			continue
 		}
 		for _, obj := range list.Items {

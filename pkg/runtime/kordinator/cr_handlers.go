@@ -101,9 +101,8 @@ type CRDetailResponse struct {
 	Status   map[string]interface{} `json:"status,omitempty"`
 	Children map[string]interface{} `json:"children"`
 
-	EventsEndpoint    string `json:"eventsEndpoint"`
-	HasTemplateBlocks bool   `json:"hasTemplateBlocks"`
-	IsKonductor       bool   `json:"isKonductor"`
+	EventsEndpoint string `json:"eventsEndpoint"`
+	IsKonductor    bool   `json:"isKonductor"`
 }
 
 // CREvent is one Kubernetes event involving this CR or its children.
@@ -410,7 +409,6 @@ func buildCRDetail(objMap map[string]interface{}, children map[string]interface{
 		Status:            status,
 		Children:          children,
 		EventsEndpoint:    eventsEndpoint,
-		// HasTemplateBlocks: hasTemplateBlocks(rc),
 	}
 }
 
