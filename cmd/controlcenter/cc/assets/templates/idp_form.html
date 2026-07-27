@@ -328,7 +328,8 @@
         }
       }
       if (cond.field) {
-        var el = document.getElementById('field-' + cond.field);
+        var fieldName = cond.field.replace(/^spec\./, '');
+        var el = document.getElementById('field-' + fieldName);
         var val = el ? (el.type === 'checkbox' ? String(el.checked) : el.value) : '';
         if (cond.equals    !== undefined && val !== cond.equals)                   return false;
         if (cond.notEquals !== undefined && val === cond.notEquals)                return false;
@@ -350,6 +351,15 @@
     function applyVisibility() {
       document.querySelectorAll('.idp-field[data-when], .idp-field[data-anyof]').forEach(function (wrap) {
         wrap.style.display = fieldVisible(wrap) ? '' : 'none';
+      });
+      // A category heading with no currently-visible fields underneath is just
+      // dead space — hide the whole section, not only its (already-hidden) fields.
+      document.querySelectorAll('.idp-section').forEach(function (section) {
+        var fields = section.querySelectorAll('.idp-field');
+        var anyVisible = Array.prototype.some.call(fields, function (f) {
+          return f.style.display !== 'none';
+        });
+        section.style.display = anyVisible ? '' : 'none';
       });
     }
 
