@@ -126,6 +126,10 @@ func evaluateOneRule(obj map[string]interface{}, resolver *orktmpl.Resolver, rul
 		if !found || !strings.HasSuffix(fieldVal, expected) {
 			return fail()
 		}
+	case orktypes.ConditionIn:
+		if !found || !inCommaList(fieldVal, expected) {
+			return fail()
+		}
 	case orktypes.ConditionGt:
 		cv, err := strconv.ParseFloat(expected, 64)
 		if err != nil {
@@ -151,6 +155,17 @@ func evaluateOneRule(obj map[string]interface{}, resolver *orktmpl.Resolver, rul
 	}
 
 	return nil
+}
+
+// inCommaList reports whether value equals one of expected's comma-separated
+// entries (each trimmed of surrounding whitespace).
+func inCommaList(value, expected string) bool {
+	for _, v := range strings.Split(expected, ",") {
+		if strings.TrimSpace(v) == value {
+			return true
+		}
+	}
+	return false
 }
 
 func resolveValidationOperator(r orktypes.ValidationRule) (orktypes.ConditionOperator, string) {

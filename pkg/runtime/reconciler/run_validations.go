@@ -221,6 +221,11 @@ func evaluateValidationRule(data map[string]interface{}, resolver *orktmpl.Resol
 			return fail()
 		}
 
+	case orktypes.ConditionIn:
+		if !found || !inCommaList(fieldVal, expected) {
+			return fail()
+		}
+
 	case orktypes.ConditionGt: // used as Min when coming from rule.Min
 		cv, err := strconv.ParseFloat(expected, 64)
 		if err != nil {
@@ -247,6 +252,17 @@ func evaluateValidationRule(data map[string]interface{}, resolver *orktmpl.Resol
 	}
 
 	return nil // rule passed
+}
+
+// inCommaList reports whether value equals one of expected's comma-separated
+// entries (each trimmed of surrounding whitespace).
+func inCommaList(value, expected string) bool {
+	for _, v := range strings.Split(expected, ",") {
+		if strings.TrimSpace(v) == value {
+			return true
+		}
+	}
+	return false
 }
 
 // resolveValidationOp resolves the effective operator and comparison value
