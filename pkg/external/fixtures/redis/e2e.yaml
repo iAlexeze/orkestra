@@ -10,7 +10,7 @@ metadata:
 spec:
   katalog: ./katalog.yaml
   crd: ./crd.yaml
-  cr: ./cr.yaml
+  cr: ./e2e/cr-e2e.yaml
 
   cluster:
     provider: kind

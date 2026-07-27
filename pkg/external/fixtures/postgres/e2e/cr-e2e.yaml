@@ -5,3 +5,4 @@ metadata:
   namespace: default
 spec:
   image: nginx:1.25
+  postgresURL: "postgres://orkestra:orkestra@postgres.orkestra-system.svc:5432/orkestra"

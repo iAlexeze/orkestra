@@ -10,6 +10,8 @@ spec:
   crds:
     webapp:
       crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
 
       operatorBox:
         reconciler:
@@ -32,7 +34,7 @@ spec:
         status:
           fields:
             - path: partitionCount
-              value: "{{ .external.topicMeta.partitions }}"
+              value: "{{ .external.topicMeta.partitionCount }}"
 
             - path: phase
               value: "Ready"

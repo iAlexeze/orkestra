@@ -41,7 +41,7 @@ expect:
                         - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
                           value: "1"
                         - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
-                          value: "true"
+                          value: "false"
         - inline: |
             apiVersion: v1
             kind: Service
@@ -55,10 +55,56 @@ expect:
                 - port: 9092
                   targetPort: 9092
 
-  - name: Kafka pod is ready
+  - name: Kafka pod is Available
     timeout: 120s
     resources:
       - kind: Deployment
         name: kafka
         namespace: orkestra-system
         condition: Available
+
+  - name: create events topic (3 partitions)
+    kubectl:
+      apply:
+        - inline: |
+            apiVersion: batch/v1
+            kind: Job
+            metadata:
+              name: kafka-init
+              namespace: orkestra-system
+            spec:
+              ttlSecondsAfterFinished: 60
+              template:
+                spec:
+                  restartPolicy: OnFailure
+                  containers:
+                    - name: kafka-init
+                      image: apache/kafka:3.9.0
+                      command:
+                        - /opt/kafka/bin/kafka-topics.sh
+                        - --bootstrap-server
+                        - kafka.orkestra-system.svc:9092
+                        - --create
+                        - --topic
+                        - events
+                        - --partitions
+                        - "3"
+                        - --replication-factor
+                        - "1"
+                        - --if-not-exists
+
+  - name: kafka-init job complete
+    timeout: 60s
+    resources:
+      - kind: Job
+        name: kafka-init
+        namespace: orkestra-system
+        condition: Complete
+
+  - name: Kafka pod is Ready
+    timeout: 120s
+    resources:
+      - kind: Deployment
+        name: kafka
+        namespace: orkestra-system
+        ready: true

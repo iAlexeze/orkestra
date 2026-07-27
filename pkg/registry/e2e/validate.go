@@ -69,6 +69,10 @@ func ExpandExpectIncludes(expects []orktypes.E2EExpectation, baseDir string) ([]
 		if err := yaml.Unmarshal(data, &wrapper); err != nil {
 			return nil, fmt.Errorf("include %s: %w", exp.Include, err)
 		}
+		includeDir := filepath.Dir(path)
+		for i := range wrapper.Expect {
+			wrapper.Expect[i].WorkDir = includeDir
+		}
 		result = append(result, wrapper.Expect...)
 	}
 	return result, nil
