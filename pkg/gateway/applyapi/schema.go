@@ -36,6 +36,13 @@ type SchemaResponse struct {
 	Required     []string                           `json:"required,omitempty"`
 	IDPFields    map[string]orktypes.IDPFieldConfig `json:"idpFields,omitempty"`
 	IgnoreFields []string                           `json:"ignoreFields,omitempty"`
+
+	// AdditionalLabels/AdditionalAnnotations are idp.additionalFields entries —
+	// form fields with no CRD schema counterpart, written to metadata on apply
+	// instead of spec. No live-cluster read needed to populate these, unlike
+	// Properties — labels/annotations have no OpenAPI schema to fetch.
+	AdditionalLabels      map[string]orktypes.IDPFieldConfig `json:"additionalLabels,omitempty"`
+	AdditionalAnnotations map[string]orktypes.IDPFieldConfig `json:"additionalAnnotations,omitempty"`
 }
 
 // CatalogEntry is one row in the service catalog.
@@ -87,12 +94,14 @@ func schemaHandler(kube kubeclient.KubeClient, lookup CRDLookup, list CatalogLis
 		}
 
 		utils.WriteJSON(w, http.StatusOK, SchemaResponse{
-			Kind:         entry.APITypes.Kind,
-			APIVersion:   entry.APITypes.Group + "/" + entry.APITypes.Version,
-			Properties:   props,
-			Required:     required,
-			IDPFields:    entry.IDP.Fields,
-			IgnoreFields: entry.IDP.IgnoreFields,
+			Kind:                  entry.APITypes.Kind,
+			APIVersion:            entry.APITypes.Group + "/" + entry.APITypes.Version,
+			Properties:            props,
+			Required:              required,
+			IDPFields:             entry.IDP.Fields,
+			IgnoreFields:          entry.IDP.IgnoreFields,
+			AdditionalLabels:      entry.AdditionalLabelFields(),
+			AdditionalAnnotations: entry.AdditionalAnnotationFields(),
 		})
 	}
 }

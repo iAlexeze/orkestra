@@ -33,7 +33,7 @@ func registerHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/v1/data/", handle(opaPolicyHandler))
 	// 09-cert-readiness
 	mux.HandleFunc("/certs/", handle(certsHandler))
-	// 04-jira-slack (idp example)
+	// 03-jira-slack (idp example)
 	mux.HandleFunc("/jira/transition", handle(jiraTransitionHandler))
 	mux.HandleFunc("/slack/notify", handle(slackNotifyHandler))
 }

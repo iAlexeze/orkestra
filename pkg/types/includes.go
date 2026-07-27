@@ -267,8 +267,10 @@ func expandOpRules(rules []SimulateOpRule, baseDir string) ([]SimulateOpRule, er
 }
 
 // ExpandIDPInclude resolves the idp.include field by reading the referenced
-// file, unmarshaling its "fields:" map, and merging it under the inline fields.
-// Inline fields take precedence — included keys present in both are overridden.
+// file, unmarshaling its "fields:" and "additionalFields:" maps, and merging
+// them under the inline equivalents. Inline entries take precedence — included
+// keys present in both are overridden, per bucket (fields, additionalFields.labels,
+// additionalFields.annotations independently).
 // The include path is resolved relative to baseDir. Cleared after expansion.
 func ExpandIDPInclude(idp *IDPConfig, baseDir string) error {
 	if idp == nil || idp.Include == "" {
@@ -283,7 +285,8 @@ func ExpandIDPInclude(idp *IDPConfig, baseDir string) error {
 		return fmt.Errorf("reading idp.include %q: %w", idp.Include, err)
 	}
 	var f struct {
-		Fields map[string]IDPFieldConfig `yaml:"fields"`
+		Fields           map[string]IDPFieldConfig `yaml:"fields"`
+		AdditionalFields *AdditionalIDPFields      `yaml:"additionalFields"`
 	}
 	if err := orkutils.StrictUnmarshal(data, &f); err != nil {
 		return fmt.Errorf("parsing idp.include %q: %w", idp.Include, err)
@@ -296,6 +299,32 @@ func ExpandIDPInclude(idp *IDPConfig, baseDir string) error {
 		merged[k] = v
 	}
 	idp.Fields = merged
+
+	if f.AdditionalFields != nil {
+		if idp.AdditionalFields == nil {
+			idp.AdditionalFields = &AdditionalIDPFields{}
+		}
+		idp.AdditionalFields.Labels = mergeIDPFieldConfigs(f.AdditionalFields.Labels, idp.AdditionalFields.Labels)
+		idp.AdditionalFields.Annotations = mergeIDPFieldConfigs(f.AdditionalFields.Annotations, idp.AdditionalFields.Annotations)
+	}
+
 	idp.Include = ""
 	return nil
+}
+
+// mergeIDPFieldConfigs merges included and inline IDPFieldConfig maps, inline
+// taking precedence. Returns nil when both inputs are empty, matching the
+// omitempty shape AdditionalIDPFields expects.
+func mergeIDPFieldConfigs(included, inline map[string]IDPFieldConfig) map[string]IDPFieldConfig {
+	if len(included) == 0 && len(inline) == 0 {
+		return nil
+	}
+	merged := make(map[string]IDPFieldConfig, len(included)+len(inline))
+	for k, v := range included {
+		merged[k] = v
+	}
+	for k, v := range inline {
+		merged[k] = v
+	}
+	return merged
 }
