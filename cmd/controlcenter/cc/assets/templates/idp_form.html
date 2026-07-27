@@ -400,6 +400,22 @@
       window.scrollTo(0, 0);
     }
 
+    // A rejection with structured violations gets a short banner — the
+    // per-field detail lives next to each field via showViolations(), so the
+    // banner doesn't need to repeat the raw "field \"spec.foo\": ... (got: ...)"
+    // string. Only fall back to the full server message when there's nothing
+    // structured to point at (e.g. malformed JSON, unknown resource).
+    function showRejection(body, preview) {
+      var violations = body && body.violations;
+      if (violations && violations.length > 0) {
+        showStatus(false, 'Please fix the highlighted field' + (violations.length > 1 ? 's' : '') + ' below.', preview);
+        showViolations(violations);
+        return;
+      }
+      var msg = (body && (body.message || body.error)) || (preview ? 'Would be rejected.' : 'Request failed.');
+      showStatus(false, msg, preview);
+    }
+
     function showWarnings(warnings) {
       if (!warnings || warnings.length === 0) return;
       status.style.display = 'block';
@@ -472,9 +488,7 @@
               showStatus(true, 'Looks good — no admission errors detected.', true);
             }
           } else {
-            var msg = (res.body && (res.body.message || res.body.error)) || 'Would be rejected (' + res.status + ')';
-            showStatus(false, msg, true);
-            if (res.body && res.body.violations) showViolations(res.body.violations);
+            showRejection(res.body, true);
           }
           return;
         }
@@ -487,9 +501,7 @@
             window.location.href = backURL;
           }
         } else {
-          var msg = (res.body && (res.body.message || res.body.error)) || 'Request failed (' + res.status + ')';
-          showStatus(false, msg, false);
-          if (res.body && res.body.violations) showViolations(res.body.violations);
+          showRejection(res.body, false);
         }
       })
       .catch(function (err) {
