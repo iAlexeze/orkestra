@@ -1,4 +1,4 @@
-.PHONY: build orkcc clean test test-unit test-race test-integration test-all test-coverage test-coverage-text vet vuln certs docs docs-sync docs-build docs-serve hugo-install generate-notes generate-e2e-example test-fixture-note test-fixture-reconciler ork-gateway-linux docker-gateway gateway-reload runtime-reload controlcenter-reload reload docker-devserver release-devserver
+.PHONY: build orkcc clean test test-unit test-controlcenter test-race test-integration test-all test-coverage test-coverage-text vet vuln certs docs docs-sync docs-build docs-serve hugo-install generate-notes generate-e2e-example test-fixture-note test-fixture-reconciler ork-gateway-linux docker-gateway gateway-reload runtime-reload controlcenter-reload reload docker-devserver release-devserver
 
 # ── Configuration ────────────────────────────────────────────────────────────
 ORKESTRA_DIR := .
@@ -280,8 +280,8 @@ reload: runtime-reload gateway-reload controlcenter-reload
 
 # ── Primary targets ───────────────────────────────────────────────────────────
 
-# Default: vet + unit tests. Fast, no external dependencies.
-test: vet test-unit
+# Default: vet + unit tests (both modules). Fast, no external dependencies.
+test: vet test-unit test-controlcenter
 
 # ── Unit tests ────────────────────────────────────────────────────────────────
 # All tests under pkg/ that are not guarded by //go:build integration.
@@ -291,6 +291,12 @@ test: vet test-unit
 test-unit:
 	@echo "Running unit tests..."
 	go test ./pkg/... -v -short -count=1
+
+# Control Center is a separate Go module (github.com/orkspace/orkestra-cc) —
+# its own go.mod, so it needs its own `go test` invocation from its directory.
+test-controlcenter:
+	@echo "Running Control Center unit tests..."
+	cd $(CONTROL_CENTER_DIR) && go test ./... -v -short -count=1
 
 # ── Race detector ─────────────────────────────────────────────────────────────
 # Same as test-unit with Go's race detector enabled.
@@ -314,7 +320,7 @@ test-integration:
 	go test ./tests/integration/... -v -tags=integration -count=1 -timeout=120s
 
 # ── Full suite ────────────────────────────────────────────────────────────────
-test-all: test-unit test-integration
+test-all: test-unit test-controlcenter test-integration
 
 # ── Coverage ──────────────────────────────────────────────────────────────────
 # HTML report written to coverage.html — open with: xdg-open coverage.html
