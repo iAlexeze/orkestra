@@ -3,15 +3,7 @@ expect:
     timeout: 30s
     kubectl:
       apply:
-        - inline: |
-            apiVersion: v1
-            kind: Secret
-            metadata:
-              name: dev-server-token
-              namespace: default
-            type: Opaque
-            stringData:
-              token: dev-token-abc123
+        - file: ../secret.yaml
 
   - name: WebApp reaches Ready
     after: cr-applied

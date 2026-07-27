@@ -5,3 +5,4 @@ metadata:
   namespace: default
 spec:
   image: nginx:1.25
+  url: "http://localhost:9999"
