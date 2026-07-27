@@ -10,11 +10,15 @@ Two calls are declared:
 ## Local run (docker-compose)
 
 ```sh
-docker compose up -d
-ork run -f katalog.yaml
+docker compose -f pkg/external/fixtures/redis/docker-compose.yaml up -d
+ork run -f pkg/external/fixtures/redis/katalog.yaml
 ```
 
-The `cr.yaml` used for `ork run` should point to `redis://localhost:6379`. Edit `spec.redisURL` accordingly or apply a local override.
+## Check the Status
+
+```sh
+kubectl get webapp my-app -oyaml
+```
 
 ## E2e
 

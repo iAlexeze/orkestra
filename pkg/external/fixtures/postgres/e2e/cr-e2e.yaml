@@ -5,4 +5,4 @@ metadata:
   namespace: default
 spec:
   image: nginx:1.25
-  mongoURL: "mongodb://localhost:27017"
+  postgresURL: "postgres://orkestra:orkestra@postgres.orkestra-system.svc:5432/orkestra"

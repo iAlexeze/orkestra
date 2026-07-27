@@ -5,4 +5,4 @@ metadata:
   namespace: default
 spec:
   image: nginx:1.25
-  mongoURL: "mongodb://localhost:27017"
+  redisURL: "redis://redis.orkestra-system.svc:6379"

@@ -10,6 +10,8 @@ spec:
   crds:
     webapp:
       crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
 
       operatorBox:
         reconciler:
