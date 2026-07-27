@@ -474,7 +474,11 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 					}
 				}
 			}()
-			verifyErr := verifyExpectation(ctx, exp, r.e2eDir, r.cs, r.cfg, noteEval)
+			workDir := r.e2eDir
+			if exp.WorkDir != "" {
+				workDir = exp.WorkDir
+			}
+			verifyErr := verifyExpectation(ctx, exp, workDir, r.cs, r.cfg, noteEval)
 			close(waitDone)
 			caseElapsed := time.Since(caseStart)
 

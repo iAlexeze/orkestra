@@ -401,6 +401,11 @@ type E2EExpectation struct {
 	// OnFailure declares diagnostic operations to run immediately when this
 	// specific expectation fails. Runs before moving to the next expectation.
 	OnFailure *E2EOnFailure `yaml:"onFailure,omitempty"`
+
+	// WorkDir is the directory used to resolve relative file paths in this
+	// expectation. Set by ExpandExpectIncludes to the directory of the include
+	// file; empty means use the e2e.yaml directory.
+	WorkDir string `yaml:"-"`
 }
 
 // E2EResourceCheck asserts the state of any Kubernetes resource.

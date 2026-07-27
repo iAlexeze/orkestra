@@ -137,6 +137,32 @@ expect:
 	}
 }
 
+func TestExpandExpectIncludes_WorkDirIsIncludeFileDir(t *testing.T) {
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "subdir")
+	if err := os.Mkdir(sub, 0755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(sub, "steps.yaml"), `
+expect:
+  - name: step-a
+  - name: step-b
+`)
+	expects := []orktypes.E2EExpectation{{Include: filepath.Join(sub, "steps.yaml")}}
+	got, err := ExpandExpectIncludes(expects, dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected 2 expectations, got %d", len(got))
+	}
+	for _, exp := range got {
+		if exp.WorkDir != sub {
+			t.Errorf("expected WorkDir %q, got %q", sub, exp.WorkDir)
+		}
+	}
+}
+
 // ── ValidateKubectl ───────────────────────────────────────────────────────────
 
 func TestValidateKubectl_NoKubectlBlock(t *testing.T) {
