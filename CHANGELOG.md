@@ -1,5 +1,9 @@
 ## v0.7.13 — Kubernetes-native labels/envFrom, IDP additionalFields, external calls at admission/reconcile, protocol clients [UNRELEASED]
 
+### Blog: There Is No Kubernetes Expression Language
+
+New post — [blog/KEL](documentation/blog/06-there-is-no-kubernetes-expression-language.md). Covers KEL as a composable vocabulary of Go template functions, how notes build on it, and why Helm proved the pattern worked.
+
 ### `validation.external` and `mutation.external`
 
 External HTTP calls can now be declared under `validation:` and `mutation:` in addition to `onReconcile:`. Calls declared here fire before the corresponding rule loop — at admission webhook time and, by default, at every reconcile.
@@ -62,6 +66,14 @@ calls:
 | Kafka | `kafka` | `kafka://broker:9092` | `group/topic` for lag, `@topic` for metadata |
 
 All protocols resolve before deployment evaluation and return results at `external.<name>.*`. `continueOnError: true` is supported on all of them.
+
+### Fix: Kafka consumer group lag
+
+`fetchGroupLag` now uses `kafka.Client.OffsetFetch` + `ListOffsets` to compute `latest − committed` per partition. Previously it called `Reader.ReadLag`, which returns lag from offset 0, not the group's committed position.
+
+### Fix: `file:` paths in included e2e steps
+
+Relative `file:` paths in `kubectl.apply` steps loaded via `include:` now resolve against the include file's own directory, not the root `e2e.yaml` directory.
 
 ### Prometheus notes
 
