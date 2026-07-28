@@ -91,11 +91,11 @@ func resolveValue(r *orktmpl.Resolver, v interface{}) (interface{}, error) {
 			}
 			return m, nil
 		}
-		if strings.Contains(tv, "{{") {
+		if orktypes.IsTemplate(tv) {
 			if resolved == "" {
 				return nil, nil
 			}
-			return orktmpl.TryCoerceString(resolved), nil
+			return orktypes.TryCoerceString(resolved), nil
 		}
 		return resolved, nil
 	case map[string]interface{}:

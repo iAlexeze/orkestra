@@ -325,12 +325,12 @@ func ValidateMotifTemplates(m *orktypes.Motif) []string {
 // their bound values. Any remaining {{ }} is a runtime expression that must be
 // preserved on the resource for the reconciler to evaluate.
 func isRuntimeCondition(cond orktypes.Condition) bool {
-	if strings.Contains(cond.Field, "{{") {
+	if orktypes.IsTemplate(cond.Field) {
 		return true
 	}
 	// Check comparison values
 	_, val := orktypes.ResolveConditionOp(cond)
-	return strings.Contains(val, "{{")
+	return orktypes.IsTemplate(val)
 }
 
 // splitConditions partitions conditions into those that can be evaluated now

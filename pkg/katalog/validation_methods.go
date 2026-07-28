@@ -516,7 +516,7 @@ func (k *Katalog) validateTimeDuration() error {
 		// Validate sleep durations across all resource types.
 		// Skip template expressions — those are resolved at runtime.
 		for _, e := range crd.CollectSleepEntries() {
-			if strings.Contains(e.Duration, "{{") {
+			if orktypes.IsTemplate(e.Duration) {
 				continue
 			}
 			if _, err := orktypes.ParseTimeDuration(e.Duration); err != nil {
