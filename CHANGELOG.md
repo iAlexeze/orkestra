@@ -201,6 +201,44 @@ The synthesized rule inherits the field's own `when:`/`anyOf:`, so a field requi
 
 `operator: in` was defined for `when:`/`anyOf:` conditions but missing from the separate rule-evaluation switch in both the reconciler and the admission webhook — a `validation.rules` entry using it silently always passed instead of checking comma-separated membership. Both now evaluate it.
 
+The reconciler and the webhook no longer maintain separate copies of validation-rule evaluation, shorthand resolution, and field lookup — all now shared from `pkg/types` (`EvaluateValidationRule`, `ResolveValidationOp`, `ResolveScalarField`). That duplication is exactly how `operator: in` went unimplemented in both places at once.
+
+### `idp.fields.<name>.type: enum` — membership validated automatically
+
+`type: enum` on an `idp.fields`/`idp.additionalFields` entry now synthesizes an implicit `in` validation rule, the same way `required: true` synthesizes `exists`. Membership is checked only when the field has a value — an enum field that isn't also `required: true` can still be omitted, it just can't be set to something outside the declared list.
+
+```yaml
+idp:
+  fields:
+    workloadType:
+      label: "Workload Type"
+      type: enum
+      enum: [app, cert, monitoring, infra]
+# → synthesizes: { field: spec.workloadType, operator: in,
+#                  value: "app,cert,monitoring,infra",
+#                  message: "Workload Type must be one of: app, cert, monitoring, infra" }
+```
+
+### JSON object/array values in `onCreate` custom resource templates
+
+A resolved template value that looks like a JSON object or array (e.g. an IDP form field collecting raw JSON) now coerces into a real `map`/`slice` instead of being embedded as a literal string — `matchLabels: "{{ .spec.serviceSelector }}"` now produces a structured selector, not a JSON-string value in a field that expects a map. Same mechanism that already coerced resolved templates into `int`/`float`/`bool` (`TryCoerceString`, now shared from `pkg/types` instead of duplicated across the custom-resource resolver, the forEach-expansion path, and the conversion webhook — the forEach path had no coercion at all, a real pre-existing gap this closes).
+
+### New notes: Kubernetes and general input-format validation
+
+Two new note domains, exposed for use in `validation.rules` and `when:` conditions:
+
+- **Kubernetes format** — `isValidLabelValue`, `isValidLabelKey`, `isValidAnnotationKey`, `isDNS1123Subdomain`, wrapping the same `k8s.io/apimachinery` checks the API server itself uses.
+- **General input format** — `isValidEmail`, `isValidGitRepository`, `isValidURL`, `isValidImageRef`, `isValidJSON`, `isValidPort`.
+
+```yaml
+validation:
+  rules:
+    - field: "{{ isValidGitRepository .spec.repoURL }}"
+      equals: "true"
+      message: "Repository URL must be a valid git repository"
+      action: deny
+```
+
 ---
 
 ## v0.7.12 — Gateway Apply API, IDP, and codebase clarity
