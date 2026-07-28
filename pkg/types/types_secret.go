@@ -20,9 +20,6 @@ package types
 //
 // You may also copy from an existing Secret using FromSecret.
 type SecretTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty" validate:"omitempty"`
-
 	// Name — Secret name.
 	// Default when omitted: "{{ .metadata.name }}-secret"
 	Name string `yaml:"name,omitempty" json:"name,omitempty" validate:"omitempty"`

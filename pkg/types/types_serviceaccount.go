@@ -14,9 +14,6 @@ package types
 //	      labels:
 //	        app: "{{ .metadata.name }}"
 type ServiceAccountTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty" validate:"omitempty"`
-
 	// Name — ServiceAccount name.
 	// Default when omitted: "{{ .metadata.name }}-sa"
 	Name string `yaml:"name,omitempty" json:"name,omitempty" validate:"omitempty"`
@@ -92,9 +89,6 @@ type ServiceAccountTemplateSource struct {
 //	      labels:
 //	        app: "{{ .metadata.name }}"
 type NamespaceTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty" validate:"omitempty"`
-
 	// Name — Namespace name.
 	// Default when omitted: "{{ .metadata.name }}-ns"
 	Name string `yaml:"name,omitempty" json:"name,omitempty" validate:"omitempty"`

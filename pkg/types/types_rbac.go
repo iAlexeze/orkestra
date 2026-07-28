@@ -42,9 +42,6 @@ type RoleRefSpec struct {
 //	          verbs: ["get", "list", "watch", "update", "patch"]
 //	          resourceNames: ["{{ .metadata.name }}"]
 type RoleTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty"`
-
 	// Name — Role name.
 	// Default when omitted: "{{ .metadata.name }}-role"
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`
@@ -132,9 +129,6 @@ type RoleTemplateSource struct {
 //	          name: "{{ .metadata.name }}-sa"
 //	          namespace: "{{ .metadata.name }}-ns"
 type RoleBindingTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty"`
-
 	// Name — RoleBinding name.
 	// Default when omitted: "{{ .metadata.name }}-rolebinding"
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`
@@ -234,9 +228,6 @@ type RoleBindingTemplateSource struct {
 //	          resources: ["namespaces"]
 //	          verbs: ["get", "list", "watch"]
 type ClusterRoleTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty"`
-
 	// Name — ClusterRole name.
 	// Default when omitted: "{{ .metadata.name }}-cluster-role"
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`
@@ -322,9 +313,6 @@ type ClusterRoleTemplateSource struct {
 //	          name: "{{ .metadata.name }}-sa"
 //	          namespace: "{{ .metadata.namespace }}"
 type ClusterRoleBindingTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty"`
-
 	// Name — ClusterRoleBinding name.
 	// Default when omitted: "{{ .metadata.name }}-crb"
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`

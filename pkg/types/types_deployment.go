@@ -35,9 +35,6 @@ package types
 //	          cpu: 500m
 //	          memory: 512Mi
 type DeploymentTemplateSource struct {
-	// Version — OrkestraRegistry implementation version to use. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty" validate:"omitempty"`
-
 	// Name — Deployment and primary container name.
 	// Supports template expressions.
 	// Default when omitted: "{{ .metadata.name }}-deployment"

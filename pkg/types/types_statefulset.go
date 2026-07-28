@@ -35,9 +35,6 @@ type VolumeClaimTemplateSource struct {
 //	          storageSize: 10Gi
 //	          mountPath: /var/lib/postgresql/data
 type StatefulSetTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty"`
-
 	// Name — StatefulSet name. Default: "{{ .metadata.name }}".
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`
 

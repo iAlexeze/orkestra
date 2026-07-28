@@ -248,9 +248,7 @@ func (r *Resolver) resolveProbes(src *orktypes.ProbesConfig) (*orktypes.ProbesCo
 //	Name      → ownerName + "-pod"      (applied later in pods.Resolve)
 //	Namespace → ownerNamespace          (applied here so downstream has it)
 func (r *Resolver) ResolvePodTemplate(src orktypes.PodTemplateSource) (orktypes.PodTemplateSource, error) {
-	resolved := orktypes.PodTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.PodTemplateSource{}
 
 	var err error
 
@@ -309,9 +307,7 @@ func (r *Resolver) ResolvePodTemplate(src orktypes.PodTemplateSource) (orktypes.
 // Returns a new DeploymentTemplateSource with all expressions evaluated — safe to pass
 // directly to deployments.Resolve().
 func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSource) (orktypes.DeploymentTemplateSource, error) {
-	resolved := orktypes.DeploymentTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.DeploymentTemplateSource{}
 
 	var err error
 
@@ -426,9 +422,7 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 // Returns a new ReplicaSetTemplateSource with all expressions evaluated — safe to pass
 // directly to replicasets.Resolve().
 func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSource) (orktypes.ReplicaSetTemplateSource, error) {
-	resolved := orktypes.ReplicaSetTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.ReplicaSetTemplateSource{}
 
 	var err error
 
@@ -558,9 +552,7 @@ func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSour
 
 // ResolveServiceTemplate resolves all template expressions in a ServiceTemplateSource.
 func (r *Resolver) ResolveServiceTemplate(src orktypes.ServiceTemplateSource) (orktypes.ServiceTemplateSource, error) {
-	resolved := orktypes.ServiceTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.ServiceTemplateSource{}
 
 	var err error
 
@@ -604,9 +596,7 @@ func (r *Resolver) ResolveServiceTemplate(src orktypes.ServiceTemplateSource) (o
 
 // ResolveNamespaceTemplate resolves all template expressions in a NamespaceTemplateSource.
 func (r *Resolver) ResolveNamespaceTemplate(src orktypes.NamespaceTemplateSource) (orktypes.NamespaceTemplateSource, error) {
-	resolved := orktypes.NamespaceTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.NamespaceTemplateSource{}
 
 	var err error
 
@@ -636,7 +626,6 @@ func (r *Resolver) ResolveNamespaceTemplate(src orktypes.NamespaceTemplateSource
 // ResolveJobTemplate resolves all template expressions in a JobTemplateSource.
 func (r *Resolver) ResolveJobTemplate(src orktypes.JobTemplateSource) (orktypes.JobTemplateSource, error) {
 	resolved := orktypes.JobTemplateSource{
-		Version:      src.Version,
 		BackoffLimit: src.BackoffLimit,
 	}
 
@@ -707,9 +696,7 @@ func (r *Resolver) ResolveJobTemplate(src orktypes.JobTemplateSource) (orktypes.
 // Returns a new SecretTemplateSource with all expressions evaluated — safe to pass
 // directly to secrets.Resolve().
 func (r *Resolver) ResolveSecretTemplate(src orktypes.SecretTemplateSource) (orktypes.SecretTemplateSource, error) {
-	resolved := orktypes.SecretTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.SecretTemplateSource{}
 
 	var err error
 
@@ -798,9 +785,7 @@ func (r *Resolver) ResolveSecretTemplate(src orktypes.SecretTemplateSource) (ork
 // Returns a new ConfigMapTemplateSource with all expressions evaluated — safe to pass
 // directly to configmaps.Resolve().
 func (r *Resolver) ResolveConfigMapTemplate(src orktypes.ConfigMapTemplateSource) (orktypes.ConfigMapTemplateSource, error) {
-	resolved := orktypes.ConfigMapTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.ConfigMapTemplateSource{}
 	var err error
 
 	// Resolve the template expressions
@@ -884,9 +869,7 @@ func (r *Resolver) ResolveConfigMapTemplate(src orktypes.ConfigMapTemplateSource
 
 // ResolveCronJobTemplate resolves all template expressions in a CronJobTemplateSource.
 func (r *Resolver) ResolveCronJobTemplate(src orktypes.CronJobTemplateSource) (orktypes.CronJobTemplateSource, error) {
-	resolved := orktypes.CronJobTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.CronJobTemplateSource{}
 
 	var err error
 
@@ -948,9 +931,7 @@ func (r *Resolver) ResolveCronJobTemplate(src orktypes.CronJobTemplateSource) (o
 
 // ResolveServiceAccountTemplate resolves all template expressions in a ServiceAccountTemplateSource.
 func (r *Resolver) ResolveServiceAccountTemplate(src orktypes.ServiceAccountTemplateSource) (orktypes.ServiceAccountTemplateSource, error) {
-	resolved := orktypes.ServiceAccountTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.ServiceAccountTemplateSource{}
 
 	var err error
 
@@ -979,7 +960,6 @@ func (r *Resolver) ResolveServiceAccountTemplate(src orktypes.ServiceAccountTemp
 // ResolveRoleTemplate resolves all template expressions in a RoleTemplateSource.
 func (r *Resolver) ResolveRoleTemplate(src orktypes.RoleTemplateSource) (orktypes.RoleTemplateSource, error) {
 	resolved := orktypes.RoleTemplateSource{
-		Version:   src.Version,
 		Reconcile: src.Reconcile,
 	}
 
@@ -1027,7 +1007,6 @@ func (r *Resolver) ResolveRoleTemplate(src orktypes.RoleTemplateSource) (orktype
 // ResolveRoleBindingTemplate resolves all template expressions in a RoleBindingTemplateSource.
 func (r *Resolver) ResolveRoleBindingTemplate(src orktypes.RoleBindingTemplateSource) (orktypes.RoleBindingTemplateSource, error) {
 	resolved := orktypes.RoleBindingTemplateSource{
-		Version:   src.Version,
 		Reconcile: src.Reconcile,
 	}
 
@@ -1073,9 +1052,7 @@ func (r *Resolver) ResolveRoleBindingTemplate(src orktypes.RoleBindingTemplateSo
 
 // ResolveIngressTemplate resolves all template expressions in an IngressTemplateSource.
 func (r *Resolver) ResolveIngressTemplate(src orktypes.IngressTemplateSource) (orktypes.IngressTemplateSource, error) {
-	resolved := orktypes.IngressTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.IngressTemplateSource{}
 
 	var err error
 
@@ -1142,9 +1119,7 @@ func (r *Resolver) ResolveIngressTemplate(src orktypes.IngressTemplateSource) (o
 
 // ResolveHPATemplate resolves all template expressions in an HPATemplateSource.
 func (r *Resolver) ResolveHPATemplate(src orktypes.HPATemplateSource) (orktypes.HPATemplateSource, error) {
-	resolved := orktypes.HPATemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.HPATemplateSource{}
 
 	var err error
 
@@ -1195,9 +1170,7 @@ func (r *Resolver) ResolveHPATemplate(src orktypes.HPATemplateSource) (orktypes.
 
 // ResolvePDBTemplate resolves all template expressions in a PDBTemplateSource.
 func (r *Resolver) ResolvePDBTemplate(src orktypes.PDBTemplateSource) (orktypes.PDBTemplateSource, error) {
-	resolved := orktypes.PDBTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.PDBTemplateSource{}
 
 	var err error
 
@@ -1241,9 +1214,7 @@ func (r *Resolver) ResolvePDBTemplate(src orktypes.PDBTemplateSource) (orktypes.
 
 // ResolveStatefulSetTemplate resolves all template expressions in a StatefulSetTemplateSource.
 func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSource) (orktypes.StatefulSetTemplateSource, error) {
-	resolved := orktypes.StatefulSetTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.StatefulSetTemplateSource{}
 
 	var err error
 
@@ -1379,7 +1350,6 @@ func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSo
 // ResolvePVCTemplate resolves all template expressions in a PVCTemplateSource.
 func (r *Resolver) ResolvePVCTemplate(src orktypes.PVCTemplateSource) (orktypes.PVCTemplateSource, error) {
 	resolved := orktypes.PVCTemplateSource{
-		Version:     src.Version,
 		AccessModes: src.AccessModes,
 		VolumeMode:  src.VolumeMode,
 	}
@@ -1420,7 +1390,6 @@ func (r *Resolver) ResolvePVCTemplate(src orktypes.PVCTemplateSource) (orktypes.
 // ResolvePVTemplate resolves all template expressions in a PVTemplateSource.
 func (r *Resolver) ResolvePVTemplate(src orktypes.PVTemplateSource) (orktypes.PVTemplateSource, error) {
 	resolved := orktypes.PVTemplateSource{
-		Version:     src.Version,
 		AccessModes: src.AccessModes,
 	}
 
@@ -1525,7 +1494,6 @@ func (r *Resolver) resolveVolumeMounts(src []orktypes.VolumeMount) ([]orktypes.V
 // ResolveNetworkPolicyTemplate resolves all template expressions in a NetworkPolicyTemplateSource.
 func (r *Resolver) ResolveNetworkPolicyTemplate(src orktypes.NetworkPolicyTemplateSource) (orktypes.NetworkPolicyTemplateSource, error) {
 	resolved := orktypes.NetworkPolicyTemplateSource{
-		Version:     src.Version,
 		PolicyTypes: src.PolicyTypes,
 		Ingress:     src.Ingress,
 		Egress:      src.Egress,
@@ -1590,9 +1558,7 @@ func (r *Resolver) ResolveNetworkPolicyTemplate(src orktypes.NetworkPolicyTempla
 
 // ResolveResourceQuotaTemplate resolves all template expressions in a ResourceQuotaTemplateSource.
 func (r *Resolver) ResolveResourceQuotaTemplate(src orktypes.ResourceQuotaTemplateSource) (orktypes.ResourceQuotaTemplateSource, error) {
-	resolved := orktypes.ResourceQuotaTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.ResourceQuotaTemplateSource{}
 	var err error
 
 	if resolved.Profile, err = r.Resolve(src.Profile); err != nil {
@@ -1663,9 +1629,7 @@ func (r *Resolver) ResolveResourceQuotaTemplate(src orktypes.ResourceQuotaTempla
 
 // ResolveLimitRangeTemplate resolves all template expressions in a LimitRangeTemplateSource.
 func (r *Resolver) ResolveLimitRangeTemplate(src orktypes.LimitRangeTemplateSource) (orktypes.LimitRangeTemplateSource, error) {
-	resolved := orktypes.LimitRangeTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.LimitRangeTemplateSource{}
 	var err error
 
 	if resolved.Name, err = r.Resolve(src.Name); err != nil {
@@ -1764,7 +1728,6 @@ func (r *Resolver) resolveStringMap(m map[string]string) (map[string]string, err
 // ResolveClusterRoleTemplate resolves all template expressions in a ClusterRoleTemplateSource.
 func (r *Resolver) ResolveClusterRoleTemplate(src orktypes.ClusterRoleTemplateSource) (orktypes.ClusterRoleTemplateSource, error) {
 	resolved := orktypes.ClusterRoleTemplateSource{
-		Version:   src.Version,
 		Reconcile: src.Reconcile,
 	}
 	var err error
@@ -1801,7 +1764,6 @@ func (r *Resolver) ResolveClusterRoleTemplate(src orktypes.ClusterRoleTemplateSo
 // ResolveClusterRoleBindingTemplate resolves all template expressions in a ClusterRoleBindingTemplateSource.
 func (r *Resolver) ResolveClusterRoleBindingTemplate(src orktypes.ClusterRoleBindingTemplateSource) (orktypes.ClusterRoleBindingTemplateSource, error) {
 	resolved := orktypes.ClusterRoleBindingTemplateSource{
-		Version:   src.Version,
 		Reconcile: src.Reconcile,
 	}
 	var err error

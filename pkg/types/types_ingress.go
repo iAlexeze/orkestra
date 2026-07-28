@@ -22,9 +22,6 @@ package types
 //	        hosts:
 //	          - "{{ .spec.hostname }}"
 type IngressTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty"`
-
 	// Name — Ingress resource name. Default: "{{ .metadata.name }}-ingress"
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`
 

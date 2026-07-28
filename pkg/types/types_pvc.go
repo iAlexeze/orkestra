@@ -11,9 +11,6 @@ package types
 //	      storage: 10Gi
 //	      accessModes: ["ReadWriteOnce"]
 type PVCTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty"`
-
 	// Name — PVC name. Required.
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`
 
@@ -111,9 +108,6 @@ type PVCTemplateSource struct {
 //	      csiDriver: ebs.csi.aws.com
 //	      csiVolumeHandle: "{{ .spec.volumeId }}"
 type PVTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty"`
-
 	// Name — PV name. Required.
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`
 

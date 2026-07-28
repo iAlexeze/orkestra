@@ -24,9 +24,6 @@ type ScaleTargetRef struct {
 //	        field: spec.services
 //	        as: item
 type HPATemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty"`
-
 	// Name — HPA resource name. Default: "{{ .metadata.name }}-hpa"
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`
 

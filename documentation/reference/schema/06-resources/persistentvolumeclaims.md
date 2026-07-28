@@ -24,14 +24,6 @@ Declare a resource under `onDelete` to run explicit cleanup before the CR's fina
 
 ## Fields
 
-### `version`
-
-Type: string
-
-Version — OrkestraRegistry implementation version. Omit for latest.
-
----
-
 ### `name`
 
 Type: string
@@ -168,7 +160,6 @@ Sleep injects an artificial delay into the reconcile of this resource. Useful fo
 
 | YAML key | Type |
 |---|---|
-| `version` | string |
 | `name` | string |
 | `namespace` | string |
 | `storageClassName` | string |

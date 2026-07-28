@@ -23,9 +23,6 @@ package types
 //	      command: ["sh", "-c", "echo cleaning up {{ .metadata.name }}"]
 //	      backoffLimit: 3
 type JobTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty" validate:"omitempty"`
-
 	// Name — Job name.
 	// Default when omitted: "{{ .metadata.name }}-job"
 	Name string `yaml:"name,omitempty" json:"name,omitempty" validate:"omitempty"`
@@ -179,9 +176,6 @@ type JobTemplateSource struct {
 //	      image: "{{ .spec.syncImage }}"
 //	      command: ["sh", "-c", "sync.sh"]
 type CronJobTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty" validate:"omitempty"`
-
 	// Name — CronJob name.
 	// Default when omitted: "{{ .metadata.name }}-cronjob"
 	Name string `yaml:"name,omitempty" json:"name,omitempty" validate:"omitempty"`

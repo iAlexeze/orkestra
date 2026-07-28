@@ -17,9 +17,6 @@ package types
 //	        LOG_LEVEL: info
 //	        MAX_CONNECTIONS: "100"
 type ConfigMapTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty" validate:"omitempty"`
-
 	// Name — ConfigMap name.
 	// Default when omitted: "{{ .metadata.name }}-config"
 	Name string `yaml:"name,omitempty" json:"name,omitempty" validate:"omitempty"`

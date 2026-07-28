@@ -17,9 +17,6 @@ package types
 //	      image: "{{ .spec.workerImage }}"
 //	      port: "9090"
 type PodTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty" validate:"omitempty"`
-
 	// Name — Pod name.
 	// Default when omitted: "{{ .metadata.name }}-pod"
 	Name string `yaml:"name,omitempty" json:"name,omitempty" validate:"omitempty"`

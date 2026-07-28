@@ -32,14 +32,6 @@ Declare this resource under `onCreate` for an idempotent, one-time create: Orkes
 
 ## Fields
 
-### `version`
-
-Type: string
-
-Version — OrkestraRegistry implementation version. Omit for latest.
-
----
-
 ### `name`
 
 Type: string
@@ -268,7 +260,6 @@ Sleep injects an artificial delay into the reconcile of this resource. Useful fo
 
 | YAML key | Type |
 |---|---|
-| `version` | string |
 | `name` | string |
 | `image` | string |
 | `imagePullSecrets` | list |

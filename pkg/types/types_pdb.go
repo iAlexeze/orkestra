@@ -17,9 +17,6 @@ package types
 //	        field: spec.services
 //	        as: item
 type PDBTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty"`
-
 	// Name — PDB resource name. Default: "{{ .metadata.name }}-pdb"
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`
 

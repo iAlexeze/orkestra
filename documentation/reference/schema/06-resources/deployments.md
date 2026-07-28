@@ -48,14 +48,6 @@ Declare a resource under `onDelete` to run explicit cleanup before the CR's fina
 
 ## Fields
 
-### `version`
-
-Type: string
-
-Version — OrkestraRegistry implementation version to use. Omit for latest.
-
----
-
 ### `name`
 
 Type: string
@@ -420,7 +412,6 @@ autoscale:
 
 | YAML key | Type |
 |---|---|
-| `version` | string |
 | `name` | string |
 | `image` | string |
 | `imagePullSecrets` | list |

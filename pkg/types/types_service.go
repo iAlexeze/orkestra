@@ -19,9 +19,6 @@ package types
 //	      selector:
 //	        app: "{{ .metadata.name }}"
 type ServiceTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty" validate:"omitempty"`
-
 	// Name — Service name.
 	// Default when omitted: "{{ .metadata.name }}-svc"
 	Name string `yaml:"name,omitempty" json:"name,omitempty" validate:"omitempty"`
