@@ -273,7 +273,7 @@ fields:
 | `order` | Sort order within the form. Fields without `order` follow fields that have it. |
 | `when` | All conditions must pass for this field to be shown (AND). Uses the same `Condition` type as resource templates — see [06-when-conditions.md](06-when-conditions.md). Evaluated client-side in the Control Center; gateway/admission is the backstop. |
 | `anyOf` | At least one condition must pass for this field to be shown (OR). When both `when` and `anyOf` are declared, both blocks must pass. |
-| `required` | When `true`, marks the field as mandatory in the IDP form. The browser enforces this natively — the label shows an asterisk and the form cannot be submitted while the field is empty. Has no effect on fields currently hidden by a `when:` or `anyOf:` condition. For server-side enforcement use `validation.rules` with `action: deny`. |
+| `required` | When `true`, marks the field as mandatory — enforced both client-side (the browser shows an asterisk and blocks submission while empty) and server-side: an implicit `exists` rule with `action: deny` is synthesized automatically at load time, so every caller of the Apply API is covered, not just the Control Center form. No matching `validation.rules` entry needs to be hand-written. Has no effect on fields currently hidden by a `when:` or `anyOf:` condition. |
 | `disabled` | Non-empty string — field is rendered greyed-out with this message. Useful for platform-managed fields that should be visible but not editable. |
 
 ### `idp.additionalFields`

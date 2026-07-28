@@ -362,11 +362,13 @@ type IDPFieldConfig struct {
 	// field to be visible. OR counterpart to When (AND).
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 
-	// Required, when true, marks the field as mandatory in the IDP form.
-	// The browser enforces this natively — the label shows an asterisk and the
-	// form cannot be submitted while the field is empty. Has no effect on
-	// fields that are currently hidden by a when: or anyOf: condition.
-	// For server-side enforcement use validation.rules with action: deny.
+	// Required, when true, marks the field as mandatory in the IDP form —
+	// the browser enforces this natively (asterisk on the label, form cannot
+	// be submitted while empty) — and is also enforced server-side: an
+	// implicit exists validation rule is synthesized automatically at
+	// katalog load time (see CRDEntry.RequiredIDPFieldRules), covering every
+	// client of the Apply API, not just the Control Center form. No matching
+	// validation.rules entry needs to be hand-written.
 	Required bool `yaml:"required,omitempty" json:"required,omitempty"`
 
 	// Disabled, when non-empty, renders the field greyed out with this string

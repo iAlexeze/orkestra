@@ -1,4 +1,4 @@
-.PHONY: build orkcc clean test test-unit test-controlcenter test-race test-integration test-all test-coverage test-coverage-text vet vuln certs docs docs-sync docs-build docs-serve hugo-install generate-notes generate-e2e-example test-fixture-note test-fixture-reconciler ork-gateway-linux docker-gateway gateway-reload runtime-reload controlcenter-reload reload docker-devserver release-devserver
+.PHONY: build orkcc clean test test-unit test-controlcenter test-race test-integration test-all test-coverage test-coverage-text vet vuln vuln-orkestra vuln-controlcenter vuln-runtime vuln-gateway certs docs docs-sync docs-build docs-serve hugo-install generate-notes generate-e2e-example test-fixture-note test-fixture-reconciler ork-gateway-linux docker-gateway gateway-reload runtime-reload controlcenter-reload reload docker-devserver release-devserver
 
 # ── Configuration ────────────────────────────────────────────────────────────
 ORKESTRA_DIR := .
@@ -428,5 +428,49 @@ vet:
 	@echo "Running go vet..."
 	go vet ./...
 
-vuln:
-	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+# Known, verified-non-exploitable findings as of this writing — CI runs each
+# of the four targets below with continue-on-error so these don't
+# perpetually block merges, but every check still runs (in its own parallel
+# job) and still shows red, so a genuinely new finding remains visible.
+# Re-verify before dismissing a finding as one of these; don't assume a new
+# CVE ID is the same story.
+#
+#   - GO-2026-5932 (golang.org/x/crypto/openpgp, no fix — package is
+#     permanently unmaintained): reachable only through pkg/merger/helm.go's
+#     resolveRemoteChart, via Helm SDK's action.Pull chart-signature
+#     verification. Verified in helm.sh/helm/v3/pkg/action/pull.go that
+#     NewPullWithOpts starts from a zero-value Pull{} (Verify defaults to
+#     false), and Orkestra's own call site never sets pull.Verify = true —
+#     so the verification code path that would invoke openpgp is never
+#     exercised, regardless of what a Katalog's HelmSource points at.
+#   - GO-2026-5622 / GO-2026-5338 / GO-2026-5064 (github.com/containerd/containerd,
+#     no fix yet): all three are specifically about CRI checkpoint/restore, a
+#     container-runtime feature nothing in this codebase calls. containerd is
+#     a transitive dependency of Helm's OCI-artifact getter package, pulled
+#     in for unrelated image/content/compression handling.
+vuln: vuln-orkestra vuln-controlcenter vuln-runtime vuln-gateway
+
+# Scans the whole module under Go's default build config — which is actually
+# cmd/cli/run_dev.go's dev-CLI build (no tags set), not either production
+# binary. Broadest net: also catches issues in dev-only tooling, which still
+# matters (a compromised dev machine, supply-chain risk in what contributors
+# run locally) even though it never ships.
+vuln-orkestra:
+	go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
+
+# Control Center is a separate Go module — its own go.mod, own dependency
+# tree — so it needs its own govulncheck invocation from its directory.
+vuln-controlcenter:
+	cd $(CONTROL_CENTER_DIR) && go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
+
+# These two scope govulncheck to exactly what's reachable in the two
+# binaries that actually run in a cluster — same -tags used to build them
+# (see ork-linux / ork-gateway-linux below) — rather than vuln-orkestra's
+# whole-module, default-build-config scan. A finding here means the shipped
+# binary is actually affected; a finding only in vuln-orkestra means it's
+# confined to dev tooling.
+vuln-runtime:
+	go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 -tags runtime ./cmd/orkestra/...
+
+vuln-gateway:
+	go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 -tags gateway ./cmd/orkestra/...

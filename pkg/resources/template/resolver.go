@@ -167,7 +167,7 @@ func (r *Resolver) Resolve(value string) (string, error) {
 	}
 
 	// Fast path — no template markers, static value
-	if !strings.Contains(value, "{{") {
+	if !orktypes.IsTemplate(value) {
 		return value, nil
 	}
 
@@ -758,7 +758,7 @@ func (r *Resolver) ResolveSecretTemplate(src orktypes.SecretTemplateSource) (ork
 	// where .spec.targetNamespaces is a YAML list in the CR.
 
 	for i, v := range src.ToNamespaces {
-		if !strings.Contains(v, "{{") {
+		if !orktypes.IsTemplate(v) {
 			// Static string — no resolution needed
 			if v != "" {
 				resolved.ToNamespaces = append(resolved.ToNamespaces, v)
@@ -845,7 +845,7 @@ func (r *Resolver) ResolveConfigMapTemplate(src orktypes.ConfigMapTemplateSource
 	// where .spec.targetNamespaces is a YAML list in the CR.
 
 	for i, v := range src.ToNamespaces {
-		if !strings.Contains(v, "{{") {
+		if !orktypes.IsTemplate(v) {
 			// Static string — no resolution needed
 			if v != "" {
 				resolved.ToNamespaces = append(resolved.ToNamespaces, v)
@@ -1556,7 +1556,7 @@ func (r *Resolver) ResolveNetworkPolicyTemplate(src orktypes.NetworkPolicyTempla
 	}
 
 	for i, v := range src.ToNamespaces {
-		if !strings.Contains(v, "{{") {
+		if !orktypes.IsTemplate(v) {
 			if v != "" {
 				resolved.ToNamespaces = append(resolved.ToNamespaces, v)
 			}
@@ -1629,7 +1629,7 @@ func (r *Resolver) ResolveResourceQuotaTemplate(src orktypes.ResourceQuotaTempla
 	}
 
 	for i, v := range src.ToNamespaces {
-		if !strings.Contains(v, "{{") {
+		if !orktypes.IsTemplate(v) {
 			if v != "" {
 				resolved.ToNamespaces = append(resolved.ToNamespaces, v)
 			}
@@ -1713,7 +1713,7 @@ func (r *Resolver) ResolveLimitRangeTemplate(src orktypes.LimitRangeTemplateSour
 	}
 
 	for i, v := range src.ToNamespaces {
-		if !strings.Contains(v, "{{") {
+		if !orktypes.IsTemplate(v) {
 			if v != "" {
 				resolved.ToNamespaces = append(resolved.ToNamespaces, v)
 			}

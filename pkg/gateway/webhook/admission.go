@@ -111,15 +111,22 @@ func (ws *WebhookServer) validationHandler(w http.ResponseWriter, r *http.Reques
 	if len(denials) > 0 {
 		resp.Allowed = false
 		msgs := make([]string, 0, len(denials))
+		causes := make([]metav1.StatusCause, 0, len(denials))
 		for _, d := range denials {
 			msgs = append(msgs, fmt.Sprintf("field %q: %s (got: %q)", d.Field, d.Message, d.Got))
+			causes = append(causes, metav1.StatusCause{
+				Type:    metav1.CauseTypeFieldValueInvalid,
+				Field:   d.Field,
+				Message: d.Message,
+			})
 		}
 		resp.Status = &AdmissionStatus{
 			Message: fmt.Sprintf(
 				"\n\n[Orkestra Validation] validation failed\n\n"+
 					"%s/%s/%s was blocked due to the following policies:\n"+
 					" %s\n\n", req.Kind.Kind, req.Name, req.Namespace, strings.Join(msgs, "; ")),
-			Code: 400,
+			Code:    400,
+			Details: &metav1.StatusDetails{Causes: causes},
 		}
 		logger.Info().
 			Str("kind", req.Kind.Kind).

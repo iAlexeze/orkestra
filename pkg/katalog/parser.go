@@ -163,6 +163,23 @@ func (k *Katalog) KomposeRuntimeKatalog(
 		return nil, err
 	}
 
+	// idp.fields / idp.additionalFields marked required: true get an implicit
+	// exists rule, and entries declaring type: enum get an implicit in rule —
+	// see CRDEntry.RequiredIDPFieldRules / EnumIDPFieldRules. Runs last, after
+	// every other rules source (inline, validation.include, motif imports)
+	// has settled, so it only ever appends.
+	for name, entry := range k.enabledCRDs {
+		synthesized := append(entry.RequiredIDPFieldRules(), entry.EnumIDPFieldRules()...)
+		if len(synthesized) == 0 {
+			continue
+		}
+		if entry.Validation == nil {
+			entry.Validation = &orktypes.ValidationConfig{}
+		}
+		entry.Validation.Rules = append(entry.Validation.Rules, synthesized...)
+		k.enabledCRDs[name] = entry
+	}
+
 	// initialize conversion registry and admission registry
 	k.conversionRegistry = NewInMemoryConversionRegistry()
 	k.admissionRegistry = NewInMemoryAdmissionRegistry()
