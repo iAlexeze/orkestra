@@ -7,35 +7,35 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// CustomResourceTemplateSource represents an arbitrary Kubernetes resource declared inside
-// onCreate/onReconcile/onDelete hooks. It is intentionally schema-agnostic and
-// serialises to/from YAML/JSON as the user wrote it in the Katalog.
+// CustomResourceTemplateSource declares one arbitrary Kubernetes resource —
+// any Kind not covered by one of Orkestra's built-in resource types (a
+// third-party CRD such as cert-manager's Certificate, or your own CRD).
+// It is schema-agnostic: the spec block is written and applied exactly as
+// declared in the Katalog, with no built-in knowledge of its structure.
+// Kubernetes enforces the resource's own CRD schema at apply time.
 //
-// Design goals:
-//   - Mirror Kubernetes conventions for metadata so created objects are valid.
-//   - Be friendly to Orkestra's templating and dynamic client pipeline.
-//   - Make status semantics explicit so the reconciler knows whether to attempt
-//     status patches.
-//   - Allow arbitrary top-level fields for CRDs that do not follow spec/status
-//     conventions.
+// Example:
 //
-// Notes for implementers:
-//   - This struct is converted to an unstructured.Unstructured before any
-//     dynamic client calls. No CRD schema validation is performed here; Kubernetes
-//     will enforce schema at API server time.
-//   - Validation rules (required fields, namespaced vs cluster-scoped, label and
-//     annotation format, template correctness) should be enforced by
-//     validateCustomResource() before attempting creation.
-//   - If the CRD is not present at runtime, the reconciler should register the
-//     GVK with the kordinator's activateMissing flow and requeue the reconcile.
-//   - Reconcile defaults to true; treat false as "create once, do not drift-correct".
+//	onCreate:
+//	  custom:
+//	    - apiVersion: "cert-manager.io/v1"
+//	      kind: Certificate
+//	      metadata:
+//	        name: "{{ .metadata.name }}-tls"
+//	        namespace: "{{ .metadata.namespace }}"
+//	      spec:
+//	        secretName: "{{ .metadata.name }}-tls-secret"
+//	        dnsNames:
+//	          - "{{ .spec.hostname }}"
+//	        issuerRef:
+//	          name: letsencrypt-prod
+//	          kind: ClusterIssuer
 type CustomResourceTemplateSource struct {
-	// APIVersion is required and must be a group/version string (e.g. "foo.io/v1").
-	// This field is used to derive the GroupVersionKind for REST mapping.
+	// APIVersion — the group/version of the target resource, e.g. "cert-manager.io/v1".
+	// Required.
 	APIVersion string `json:"apiVersion" yaml:"apiVersion"`
 
-	// Kind is required and must be a valid Kubernetes Kind (e.g. "Bar").
-	// Used together with APIVersion to resolve the GVR for dynamic client calls.
+	// Kind — the target resource's Kind, e.g. "Certificate". Required.
 	Kind string `json:"kind" yaml:"kind"`
 
 	// runtimeGVK is a cached GroupVersionKind derived from APIVersion + Kind.
@@ -46,11 +46,16 @@ type CustomResourceTemplateSource struct {
 	// It is intentionally not serialized to YAML/JSON.
 	runtimeGVR *schema.GroupVersionResource `json:"-" yaml:"-"`
 
-	// Metadata mirrors the subset of metav1.ObjectMeta Orkestra needs.
-	// Implementations must ensure metadata.Name is present after templating.
-	// Namespace is required for namespaced CRDs; for cluster-scoped CRDs the
-	// namespace field should be empty. Whether a CRD is namespaced is determined
-	// by discovery/validation and not by this struct alone.
+	// Metadata — name, namespace, labels, and annotations for the resource.
+	// name is required. namespace is required for namespaced CRDs and must be
+	// omitted for cluster-scoped ones; Orkestra determines the correct scope
+	// via discovery unless namespaced is set explicitly.
+	//
+	//	metadata:
+	//	  name: "{{ .metadata.name }}-tls"
+	//	  namespace: "{{ .metadata.namespace }}"
+	//	  labels:
+	//	    app: "{{ .metadata.name }}"
 	Metadata CustomResourceMetadata `json:"metadata" yaml:"metadata"`
 
 	// Spec is the conventional spec block for CRDs. It is schema-agnostic and
@@ -58,10 +63,10 @@ type CustomResourceTemplateSource struct {
 	// Orkestra; structural/schema validation is deferred to the API server.
 	Spec map[string]any `json:"spec,omitempty" yaml:"spec,omitempty"`
 
-	// Status is allowed in the declaration for convenience (for example when
-	// bootstrapping resources that expect an initial status). Orkestra will
-	// only attempt to write status if HasStatus() returns true.
-	// Users should prefer letting the controller that owns the CR populate status.
+	// Status — an initial status block, useful when bootstrapping a resource
+	// that expects one to be present immediately. Orkestra only writes this if
+	// hasStatus resolves to true. Prefer letting the resource's own controller
+	// populate status rather than setting this.
 	Status map[string]any `json:"status,omitempty" yaml:"status,omitempty"`
 
 	// Other captures any top-level fields that are not spec/status/metadata.
@@ -77,10 +82,51 @@ type CustomResourceTemplateSource struct {
 	// Use this to avoid API errors for CRDs that do not support status.
 	HasStatus *bool `json:"hasStatus,omitempty" yaml:"hasStatus,omitempty"`
 
-	Reconcile  bool         `yaml:"reconcile" json:"reconcile,omitempty"`
-	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
-	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
-	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+	// Reconcile: true — also apply this declaration as drift correction on every
+	// reconcile. Equivalent to declaring the same entry under both onCreate and
+	// onReconcile. When false (default), only runs on onCreate (idempotent create).
+	Reconcile bool `yaml:"reconcile" json:"reconcile,omitempty"`
+
+	// Conditions declares the set of runtime predicates that must all evaluate to
+	// true for this resource template to be applied during reconciliation.
+	//
+	// Each condition inspects a field on the live Custom Resource using dot-notation
+	// (e.g. "spec.enabled", "metadata.labels.tier") and compares it against a value
+	// using the chosen operator. All conditions in the list are AND‑ed together.
+	//
+	// If any condition fails, the resource is skipped for that reconcile cycle.
+	// This is not an error — it simply means "do not create/update this resource
+	// right now". This enables expressive, data‑driven orchestration such as:
+	//
+	//   when:
+	//     - field: spec.exposePublicly
+	//       equals: "true"
+	//     - field: spec.environment
+	//       prefix: "prod"
+	//
+	// Conditions allow templates to be selectively activated based on the CR's
+	// state, enabling dynamic topologies, feature flags, environment‑specific
+	// behavior, and conditional provisioning without writing Go code.
+	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
+
+	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	//
+	//	anyOf:
+	//	  - field: spec.tier
+	//	    equals: pro
+	//	  - field: spec.tier
+	//	    equals: enterprise
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// ForEach declares dynamic expansion over a list field.
+	// When set, one source declaration becomes N declarations — one per list element.
+	// .item and .<as> are available in template expressions within this declaration.
+	//
+	//	forEach:
+	//	  field: spec.regions
+	//	  as: region
+	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.

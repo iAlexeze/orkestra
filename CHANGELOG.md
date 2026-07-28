@@ -251,6 +251,18 @@ validation:
       action: deny
 ```
 
+### Resource schema reference — one page per resource kind
+
+`documentation/reference/schema/06-resources/` documents every Kubernetes built-in and custom resource declarable under `onCreate`/`onReconcile`/`onDelete` — fields, types, worked YAML examples, and lifecycle semantics (`reconcile: true`, `onDelete` cleanup). There was previously no reference for this at all. The `*TemplateSource` structs' Go doc comments are now the single source of truth, rendered by `hack/generate-resource-docs` (`make generate-resource-docs`, wired into `ork:` and validated in CI).
+
+### Breaking: `version` removed from every resource's `*TemplateSource`
+
+Every `onCreate`/`onReconcile`/`onDelete` resource declaration (deployments, services, secrets, etc.) had a `version:` field intended for pinning a specific OrkestraRegistry implementation per resource — a feature that was never built. It was accepted and silently discarded everywhere; nothing ever read it.
+
+### Helm and ORAS excluded from the runtime and gateway binaries
+
+`helm.sh/helm/v3` and `oras.land/oras-go` are gone entirely from `ork run` (runtime) and `ork gat` (gateway) — both are build-tag excluded (`!runtime && !gateway`) rather than just documented as unreachable. Both were only ever used for authoring-time Katalog imports (`imports.helm:`, `imports.registry:`, motif imports) — the runtime and gateway only ever read an already-merged `katalog.yaml` key from a ConfigMap (`ork generate bundle` resolves everything ahead of time), so neither binary needs them. This also removes the previously-accepted GO-2026-5932 (openpgp) and GO-2026-5622/5338/5064 (containerd) findings from `vuln-runtime`/`vuln-gateway` — they're gone, not just excused, so that check is now a hard gate (no `continue-on-error`). `vuln-orkestra` (the broad, dev-CLI-scoped scan where those findings still apply) moved to its own manually-triggered workflow.
+
 ---
 
 ## v0.7.12 — Gateway Apply API, IDP, and codebase clarity

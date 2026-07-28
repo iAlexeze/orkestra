@@ -23,9 +23,6 @@ package types
 //	      command: ["sh", "-c", "echo cleaning up {{ .metadata.name }}"]
 //	      backoffLimit: 3
 type JobTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty" validate:"omitempty"`
-
 	// Name — Job name.
 	// Default when omitted: "{{ .metadata.name }}-job"
 	Name string `yaml:"name,omitempty" json:"name,omitempty" validate:"omitempty"`
@@ -90,21 +87,31 @@ type JobTemplateSource struct {
 	// Conditions allow templates to be selectively activated based on the CR's
 	// state, enabling dynamic topologies, feature flags, environment‑specific
 	// behavior, and conditional provisioning without writing Go code.
-
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
-	// Reconcile: true — also apply this declaration as drift correction on every
-	// reconcile. Equivalent to declaring the same entry under both onCreate and
-	// onReconcile. When false (default), only runs on onCreate (idempotent create).
+	// Reconcile has no effect on a Job entry. Jobs are always a one-time,
+	// idempotent create — Orkestra never re-applies or updates a Job after it
+	// runs, since Jobs are meant to run once to completion. This field exists
+	// for schema consistency with other resource types only.
 	Reconcile bool `yaml:"reconcile,omitempty" json:"reconcile,omitempty" validate:"omitempty"`
 
 	// ForEach declares dynamic expansion over a list field.
 	// When set, one source declaration becomes N declarations — one per list element.
 	// .item and .<as> are available in template expressions within this declaration.
+	//
+	//	forEach:
+	//	  field: spec.regions
+	//	  as: region
 	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
 
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	//
+	//	anyOf:
+	//	  - field: spec.tier
+	//	    equals: pro
+	//	  - field: spec.tier
+	//	    equals: enterprise
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 
 	// WorkingDirectory sets the container's working directory (container.WorkingDir).
@@ -115,21 +122,39 @@ type JobTemplateSource struct {
 	// Resources — CPU and memory requests/limits for the container.
 	// Set resources.profile for a named preset, or resources.requests/limits for
 	// explicit values. Profile and explicit values are mutually exclusive.
+	//
+	//	resources:
+	//	  profile: burst
 	Resources *ResourceRequirements `yaml:"resources,omitempty" json:"resources,omitempty" validate:"omitempty"`
 
 	// SecurityContext — container-level security settings.
 	// Set securityContext.profile for a named preset (baseline, restricted, hardened)
 	// or declare individual fields. Profile and explicit fields are mutually exclusive.
+	//
+	//	securityContext:
+	//	  profile: restricted
 	SecurityContext *ContainerSecurityContext `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
 
 	// PodSecurity — pod-level security settings applied to the pod spec.
 	// Set podSecurity.profile for a named preset or declare individual fields.
+	//
+	//	podSecurity:
+	//	  profile: baseline
 	PodSecurity *PodSecurityContext `yaml:"podSecurity,omitempty" json:"podSecurity,omitempty"`
 
 	// Volumes — pod volumes available for mounting into the container.
+	//
+	//	volumes:
+	//	  - name: config
+	//	    configMap:
+	//	      name: myapp-config
 	Volumes []VolumeSource `yaml:"volumes,omitempty" json:"volumes,omitempty"`
 
 	// VolumeMounts — mounts for the primary container.
+	//
+	//	volumeMounts:
+	//	  - name: config
+	//	    mountPath: /etc/myapp
 	VolumeMounts []VolumeMount `yaml:"volumeMounts,omitempty" json:"volumeMounts,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
@@ -151,9 +176,6 @@ type JobTemplateSource struct {
 //	      image: "{{ .spec.syncImage }}"
 //	      command: ["sh", "-c", "sync.sh"]
 type CronJobTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty" validate:"omitempty"`
-
 	// Name — CronJob name.
 	// Default when omitted: "{{ .metadata.name }}-cronjob"
 	Name string `yaml:"name,omitempty" json:"name,omitempty" validate:"omitempty"`
@@ -221,27 +243,56 @@ type CronJobTemplateSource struct {
 	// Conditions allow templates to be selectively activated based on the CR's
 	// state, enabling dynamic topologies, feature flags, environment‑specific
 	// behavior, and conditional provisioning without writing Go code.
-
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
-	Suspend                    string `yaml:"suspend,omitempty" json:"suspend,omitempty"`
+	// Suspend — when "true", the schedule stops firing new Jobs; existing runs
+	// are unaffected. Accepts a template expression. Default: "false".
+	Suspend string `yaml:"suspend,omitempty" json:"suspend,omitempty"`
+
+	// SuccessfulJobsHistoryLimit — number of completed, successful Jobs to
+	// keep around for inspection. Default: 3.
 	SuccessfulJobsHistoryLimit string `yaml:"successfulJobsHistoryLimit,omitempty" json:"successfulJobsHistoryLimit,omitempty"`
-	FailedJobsHistoryLimit     string `yaml:"failedJobsHistoryLimit,omitempty" json:"failedJobsHistoryLimit,omitempty"`
-	ConcurrencyPolicy          string `yaml:"concurrencyPolicy,omitempty" json:"concurrencyPolicy,omitempty"`
-	StartingDeadlineSeconds    string `yaml:"startingDeadlineSeconds,omitempty" json:"startingDeadlineSeconds,omitempty"`
+
+	// FailedJobsHistoryLimit — number of failed Jobs to keep around for
+	// inspection. Default: 1.
+	FailedJobsHistoryLimit string `yaml:"failedJobsHistoryLimit,omitempty" json:"failedJobsHistoryLimit,omitempty"`
+
+	// ConcurrencyPolicy — how to handle a scheduled run that overlaps with a
+	// still-running previous Job.
+	// Accepted values: allow (default — runs concurrently), forbid (skip the
+	// new run), replace (cancel the running Job and start the new one).
+	ConcurrencyPolicy string `yaml:"concurrencyPolicy,omitempty" json:"concurrencyPolicy,omitempty"`
+
+	// StartingDeadlineSeconds — if a scheduled run is missed (e.g. the
+	// controller was down) by more than this many seconds, it is counted as
+	// failed instead of started late. Omit for no deadline.
+	StartingDeadlineSeconds string `yaml:"startingDeadlineSeconds,omitempty" json:"startingDeadlineSeconds,omitempty"`
 
 	// Resources — CPU and memory requests/limits for the container.
 	// Set resources.profile for a named preset, or resources.requests/limits for
 	// explicit values. Profile and explicit values are mutually exclusive.
+	//
+	//	resources:
+	//	  profile: burst
 	Resources *ResourceRequirements `yaml:"resources,omitempty" json:"resources,omitempty" validate:"omitempty"`
 
 	// ForEach declares dynamic expansion over a list field.
 	// When set, one source declaration becomes N declarations — one per list element.
 	// .item and .<as> are available in template expressions within this declaration.
+	//
+	//	forEach:
+	//	  field: spec.regions
+	//	  as: region
 	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
 
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	//
+	//	anyOf:
+	//	  - field: spec.tier
+	//	    equals: pro
+	//	  - field: spec.tier
+	//	    equals: enterprise
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 
 	// WorkingDirectory sets the container's working directory (container.WorkingDir).
@@ -252,10 +303,16 @@ type CronJobTemplateSource struct {
 	// SecurityContext — container-level security settings.
 	// Set securityContext.profile for a named preset (baseline, restricted, hardened)
 	// or declare individual fields. Profile and explicit fields are mutually exclusive.
+	//
+	//	securityContext:
+	//	  profile: restricted
 	SecurityContext *ContainerSecurityContext `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
 
 	// PodSecurity — pod-level security settings applied to the pod spec.
 	// Set podSecurity.profile for a named preset or declare individual fields.
+	//
+	//	podSecurity:
+	//	  profile: baseline
 	PodSecurity *PodSecurityContext `yaml:"podSecurity,omitempty" json:"podSecurity,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.

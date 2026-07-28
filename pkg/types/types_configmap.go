@@ -17,9 +17,6 @@ package types
 //	        LOG_LEVEL: info
 //	        MAX_CONNECTIONS: "100"
 type ConfigMapTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty" validate:"omitempty"`
-
 	// Name — ConfigMap name.
 	// Default when omitted: "{{ .metadata.name }}-config"
 	Name string `yaml:"name,omitempty" json:"name,omitempty" validate:"omitempty"`
@@ -71,7 +68,6 @@ type ConfigMapTemplateSource struct {
 	// Conditions allow templates to be selectively activated based on the CR's
 	// state, enabling dynamic topologies, feature flags, environment‑specific
 	// behavior, and conditional provisioning without writing Go code.
-
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 	// ForEach declares dynamic expansion over a list field.
 	// When set, one source declaration becomes N declarations — one per list element.

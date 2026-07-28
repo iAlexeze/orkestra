@@ -9,6 +9,13 @@
 // This avoids redundant pulls and removes the need for Docker credential
 // forwarding inside the process — callers should use `ork pull`
 // to populate the cache, then rely on these helpers to read from it.
+//
+// Authoring-time only, same as registry.go: depends on its pullPattern /
+// pullMotifFromGit methods, which don't exist in the runtime/gateway
+// builds. See pull_stub.go.
+
+//go:build !runtime && !gateway
+
 package merger
 
 import (

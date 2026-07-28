@@ -43,9 +43,6 @@ package types
 //	        - "{{ .metadata.namespace }}"
 //	        - staging
 type NetworkPolicyTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty"`
-
 	// Name — NetworkPolicy name.
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`
 

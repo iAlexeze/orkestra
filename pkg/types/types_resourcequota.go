@@ -44,9 +44,6 @@ package types
 //	        - "{{ .metadata.namespace }}"
 //	        - staging
 type ResourceQuotaTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty"`
-
 	// Name — ResourceQuota name.
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`
 

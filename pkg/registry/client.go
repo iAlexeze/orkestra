@@ -9,6 +9,16 @@
 // Pull: fetches the manifest, extracts layers to the cache directory.
 // Info: fetches the manifest only, reads annotations.
 // List: fetches the index pattern from the registry root.
+//
+// Authoring-time only: every caller (ork push/pull/inspect/patterns and the
+// e2e/validate/simulate commands) is already !runtime && !gateway tagged.
+// The runtime and gateway only ever read an already-merged katalog.yaml key
+// from a ConfigMap — motif/registry/helm imports are expanded before that
+// point, not by either binary. No stub needed here: nothing in the
+// runtime/gateway build graph calls into this file.
+
+//go:build !runtime && !gateway
+
 package registry
 
 import (

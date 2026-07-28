@@ -31,12 +31,6 @@ package types
 // All resources created by hook templates receive owner references pointing to the CR.
 // This means cascade deletion is automatic — child resources are garbage collected
 // when the CR is deleted without requiring explicit onDelete declarations for most cases.
-//
-// version field — optional OrkestraRegistry implementation version to pin.
-//
-//	Omit → uses the latest implementation shipped with this Orkestra version.
-//	Set  → pins to a specific OrkestraRegistry release tag for stability.
-//	e.g. version: v1.2.0
 
 import (
 	"fmt"
