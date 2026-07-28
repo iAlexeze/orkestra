@@ -138,13 +138,7 @@ All of those are either unnecessary or reduced to configuration.
 ork init --pack use-cases/idp
 ```
 
-The example pack runs three delivery paths against the same `AppRequest` CRD: browser form, CI pipeline, and a Jira + Slack post-deployment hook. Each example adds a few lines to the previous one. The runtime is the same throughout.
-
-For the ecosystem progression:
-
-```bash
-ork init --pack ecosystem-composition/06-idp
-```
+The pack runs three delivery paths against one `AppRequest` CRD — browser form, CI pipeline, and a Jira + Slack post-deployment hook — then switches to a second CRD, `PlatformResource`, to show two different answers to "one CR, many systems": an entrypoint that infers everything and always creates every tool, and a discriminator that creates exactly one. Each example adds a few lines to the previous one. The runtime is the same throughout.
 
 ## Where to go next
 → [Additional Fields](01-additional-fields.md)
