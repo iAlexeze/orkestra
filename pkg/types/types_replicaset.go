@@ -5,10 +5,6 @@ package types
 
 // ReplicaSetTemplateSource declares one ReplicaSet to be managed by Orkestra.
 //
-// Declare under onCreate to create the ReplicaSet on first reconcile.
-// Declare under onReconcile to apply drift correction on every reconcile.
-// Declare under both to get idempotent creation and drift correction together.
-//
 // Minimal example — static values only:
 //
 //	onCreate:
@@ -89,11 +85,35 @@ type ReplicaSetTemplateSource struct {
 	// Resources — CPU and memory requests/limits for the primary container.
 	// Set resources.profile for a named preset, or resources.requests/limits for
 	// explicit values. Profile and explicit values are mutually exclusive.
+	//
+	//	resources:
+	//	  profile: burst
 	Resources *ResourceRequirements `yaml:"resources,omitempty" json:"resources,omitempty" validate:"omitempty"`
 
 	// Env — environment variables for the primary container, in Kubernetes-native list format.
+	// Each entry has a name and either a value or a valueFrom source.
+	// If omitted, no environment variables are added.
+	//
+	//	env:
+	//	  - name: LOG_LEVEL
+	//	    value: info
+	//	  - name: API_KEY
+	//	    valueFrom:
+	//	      secretKeyRef:
+	//	        name: myapp-secrets
+	//	        key: api-key
 	Env EnvVarList `yaml:"env,omitempty" json:"env,omitempty"`
 
+	// EnvFrom — bulk-load environment variables from Secrets and/or ConfigMaps
+	// into the primary container, in addition to any individual entries in env.
+	// Each secretRef/configMapRef entry names an existing Secret or ConfigMap;
+	// every key in it becomes an environment variable.
+	//
+	//	envFrom:
+	//	  secretRef:
+	//	    - name: myapp-secrets
+	//	  configMapRef:
+	//	    - name: myapp-config
 	EnvFrom *EnvFrom `yaml:"envFrom,omitempty" json:"envFrom,omitempty"`
 
 	// NodeSelector is a selector which must be true for the pod to fit on a node.

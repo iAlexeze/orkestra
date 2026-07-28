@@ -83,7 +83,6 @@ type SecretTemplateSource struct {
 	// Conditions allow templates to be selectively activated based on the CR's
 	// state, enabling dynamic topologies, feature flags, environment‑specific
 	// behavior, and conditional provisioning without writing Go code.
-
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
 	// ForEach declares dynamic expansion (same as other resource types)
@@ -92,10 +91,20 @@ type SecretTemplateSource struct {
 	// AnyOf holds OR conditions (same as other resource types)
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 
-	// Once controls idempotent secret generation.
-	// true  — evaluate templates and create only when the Secret does not exist.
-	//         Use with random notes (randomAlphanumeric, randomHex, randomBase64).
-	// false — standard create/update behavior (default).
+	// Once — when true, evaluates templates and creates the Secret only if it
+	// does not already exist; every subsequent reconcile is a no-op. Use this
+	// for generated credentials that must stay stable across reconciles, in
+	// combination with random notes such as randomAlphanumeric, randomHex,
+	// and randomBase64. Has no effect when reconcile: true is also set on
+	// this entry, or when the entry is declared under onReconcile —
+	// continuous reconciliation takes precedence over once. Default: false
+	// (standard create/update behavior).
+	//
+	//	secrets:
+	//	  - name: "{{ .metadata.name }}-credentials"
+	//	    once: true
+	//	    data:
+	//	      password: "{{ randomAlphanumeric 32 }}"
 	Once bool `yaml:"once,omitempty" json:"once,omitempty"`
 
 	// RotateAfter declares a time-based rotation threshold.

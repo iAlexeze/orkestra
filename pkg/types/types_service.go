@@ -15,8 +15,9 @@ package types
 //	      targetPort: "8080"
 //	      namespace: "{{ .metadata.namespace }}"
 //	      labels:
-//	        - key: app
-//	          value: "{{ .metadata.name }}"
+//	        app: "{{ .metadata.name }}"
+//	      selector:
+//	        app: "{{ .metadata.name }}"
 type ServiceTemplateSource struct {
 	// Version — OrkestraRegistry implementation version. Omit for latest.
 	Version string `yaml:"version,omitempty" json:"version,omitempty" validate:"omitempty"`
@@ -56,8 +57,11 @@ type ServiceTemplateSource struct {
 	// Labels — applied to Service metadata. Values support template expressions.
 	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
 
-	// Selector filters which pods this service will route traffic to
-	// Useful in forEach situations where the labels would likely be the same
+	// Selector filters which pods this service will route traffic to.
+	// Useful in forEach situations where the labels would likely be the same.
+	//
+	//	selector:
+	//	  app: "{{ .metadata.name }}"
 	Selector Labels `yaml:"selector,omitempty" json:"selector,omitempty" validate:"omitempty"`
 
 	// Reconcile: true — also apply this declaration as drift correction on every
@@ -85,16 +89,25 @@ type ServiceTemplateSource struct {
 	// Conditions allow templates to be selectively activated based on the CR's
 	// state, enabling dynamic topologies, feature flags, environment‑specific
 	// behavior, and conditional provisioning without writing Go code.
-
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
 	// ForEach declares dynamic expansion over a list field.
 	// When set, one source declaration becomes N declarations — one per list element.
 	// .item and .<as> are available in template expressions within this declaration.
+	//
+	//	forEach:
+	//	  field: spec.regions
+	//	  as: region
 	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
 
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	//
+	//	anyOf:
+	//	  - field: spec.tier
+	//	    equals: pro
+	//	  - field: spec.tier
+	//	    equals: enterprise
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.

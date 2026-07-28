@@ -40,6 +40,34 @@ jobs:
             echo "✅ Note catalog is up-to-date."
           fi
 
+  validate-resource-docs:
+    name: Validate generated resource docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run resource docs generator
+        run: make generate-resource-docs
+
+      - name: Check for uncommitted changes (documentation/reference/schema/06-resources)
+        run: |
+          if ! git diff --quiet documentation/reference/schema/06-resources/; then
+            echo "❌ documentation/reference/schema/06-resources/ is out of date."
+            echo "Run 'make generate-resource-docs' locally and commit the changes."
+            exit 1
+          else
+            echo "✅ Resource docs are up-to-date."
+          fi
+
   validate-code:
     name: Run static checks
     runs-on: ubuntu-latest

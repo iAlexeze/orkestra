@@ -92,7 +92,7 @@ func runCustomResources(
 		// Convert resolved template into the runtime ResolvedCustomResourceSpec
 		spec := orkcust.Resolve(resolved, resolver.OwnerName())
 
-		// Create enforces spec if resource already exists (idempotent OnCreate).
+		// Create is a no-op if the resource already exists (idempotent OnCreate).
 		// Update always corrects drift — delete drift (recreate) and spec drift.
 		if update {
 			if err := orkcust.Update(ctx, kube, owner, spec, labelMgr, shouldProtect); err != nil {
@@ -101,6 +101,13 @@ func runCustomResources(
 		} else {
 			if err := orkcust.Create(ctx, kube, owner, spec, labelMgr, shouldProtect); err != nil {
 				return fmt.Errorf("custom[%d].create: %w", i, err)
+			}
+
+			// reconcile: true
+			if src.Reconcile {
+				if err := orkcust.Update(ctx, kube, owner, spec, labelMgr, shouldProtect); err != nil {
+					return fmt.Errorf("custom[%d].reconcile: %w", i, err)
+				}
 			}
 		}
 	}

@@ -1,4 +1,4 @@
-.PHONY: build orkcc clean test test-unit test-controlcenter test-race test-integration test-all test-coverage test-coverage-text vet vuln vuln-orkestra vuln-controlcenter vuln-runtime vuln-gateway certs docs docs-sync docs-build docs-serve hugo-install generate-notes generate-e2e-example test-fixture-note test-fixture-reconciler ork-gateway-linux docker-gateway gateway-reload runtime-reload controlcenter-reload reload docker-devserver release-devserver
+.PHONY: build orkcc clean test test-unit test-controlcenter test-race test-integration test-all test-coverage test-coverage-text vet vuln vuln-orkestra vuln-controlcenter vuln-runtime vuln-gateway certs docs docs-sync docs-build docs-serve hugo-install generate-notes generate-e2e-example generate-resource-docs test-fixture-note test-fixture-reconciler ork-gateway-linux docker-gateway gateway-reload runtime-reload controlcenter-reload reload docker-devserver release-devserver
 
 # ── Configuration ────────────────────────────────────────────────────────────
 ORKESTRA_DIR := .
@@ -30,7 +30,12 @@ generate-e2e-example:
 	@bash scripts/generate-e2e-example.sh
 	@echo "✅ documentation/reference/schema/04-e2e/08-complete-example.md updated"
 
-ork: generate-notes generate-e2e-example
+generate-resource-docs:
+	@echo "Generating resource schema docs..."
+	go run ./hack/generate-resource-docs
+	@echo "✅ documentation/reference/schema/06-resources/*.md updated"
+
+ork: generate-notes generate-e2e-example generate-resource-docs
 	@echo "Building Orkestra..."
 	@mkdir -p $(OUTPUT_DIR)
 	cd $(ORKESTRA_DIR) && gofmt -w .
