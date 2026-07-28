@@ -433,12 +433,22 @@ vet:
 	@echo "Running go vet..."
 	go vet ./...
 
-# Known, verified-non-exploitable findings as of this writing — CI runs each
-# of the four targets below with continue-on-error so these don't
-# perpetually block merges, but every check still runs (in its own parallel
-# job) and still shows red, so a genuinely new finding remains visible.
-# Re-verify before dismissing a finding as one of these; don't assume a new
-# CVE ID is the same story.
+# Known, verified-non-exploitable findings as of this writing, in
+# vuln-orkestra only — it's manually triggered (see .github/workflows/vuln-orkestra.yml), so
+# these don't need continue-on-error to avoid blocking merges, but the
+# reasoning stays here for whoever re-triggers it. Re-verify before
+# dismissing a finding as one of these; don't assume a new CVE ID is the
+# same story.
+#
+# Neither finding below reaches vuln-controlcenter (separate module, never
+# imported Helm or ORAS), vuln-runtime, or vuln-gateway: Helm
+# (pkg/merger/helm.go, pkg/merger/helm_cache.go) and ORAS
+# (pkg/registry/client.go, pkg/registry/motif/pull.go) are both build-tag
+# excluded from the runtime and gateway binaries — see the comments atop
+# those files. Both are authoring-time-only (ork push/pull/generate bundle);
+# the runtime and gateway only ever read an already-merged katalog.yaml key
+# from a ConfigMap. validate-pr.yml's vuln-check (controlcenter/runtime/
+# gateway) has no known findings left to accept — it runs as a hard gate.
 #
 #   - GO-2026-5932 (golang.org/x/crypto/openpgp, no fix — package is
 #     permanently unmaintained): reachable only through pkg/merger/helm.go's

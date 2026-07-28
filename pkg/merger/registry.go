@@ -1,4 +1,13 @@
 // pkg/merger/registry.go
+//
+// Registry Katalog imports (imports.registry:) — authoring-time only, same
+// reasoning as helm.go: the runtime and gateway only ever read the
+// katalog.yaml key from a ConfigMap, already fully merged by
+// `ork generate bundle` with no imports left to resolve. See registry_stub.go
+// for what those two builds get instead.
+
+//go:build !runtime && !gateway
+
 package merger
 
 import (

@@ -10,6 +10,14 @@
 // Cache key is the SHA256 of the tuple that uniquely identifies the artifact.
 // Sentinel file: Chart.yaml — if it exists, the cache entry is complete.
 // Callers pass refresh=true to bypass the cache and overwrite the stored copy.
+//
+// Authoring-time only, same as helm.go: this file's only entry point
+// (WarmHelmSource) is called exclusively from the dev-only `ork pull`
+// command and depends on helm.go's resolveChartPath, which doesn't exist
+// in the runtime/gateway builds.
+
+//go:build !runtime && !gateway
+
 package merger
 
 import (

@@ -1,4 +1,15 @@
 // pkg/merger/helm.go
+//
+// Helm-chart Katalog imports (imports.helm:) — authoring-time only. Neither
+// the runtime nor the gateway binary ever loads a Katalog with a helm:
+// import: production Katalogs are pre-merged (ork generate bundle) into
+// plain Kubernetes manifests before deployment — see helm_stub.go for what
+// those two builds get instead. Excluding this file from them removes the
+// entire Helm SDK (and its openpgp/containerd transitive dependencies) from
+// the shipped binaries.
+
+//go:build !runtime && !gateway
+
 package merger
 
 import (
