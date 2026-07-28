@@ -90,8 +90,8 @@ func runMutation(
 		}
 
 		// currentVal is the string representation of the current field value.
-		// resolveField uses anyToString — so integers come back as "2", bools as "true".
-		currentVal, found := resolveField(data, targetField)
+		// ResolveScalarField uses ScalarToString — integers come back as "2", bools as "true".
+		currentVal, found := orktypes.ResolveScalarField(data, targetField)
 
 		// ── Determine the mutation type and raw desired value ─────────────────
 		// rawVal preserves the YAML-native type (int64, bool, string).
