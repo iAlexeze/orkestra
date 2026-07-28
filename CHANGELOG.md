@@ -239,6 +239,10 @@ validation:
       action: deny
 ```
 
+### Resource schema reference — one page per resource kind
+
+`documentation/reference/schema/06-resources/` documents every Kubernetes built-in and custom resource declarable under `onCreate`/`onReconcile`/`onDelete` — fields, types, worked YAML examples, and lifecycle semantics (`reconcile: true`, `onDelete` cleanup). There was previously no reference for this at all. The `*TemplateSource` structs' Go doc comments are now the single source of truth, rendered by `hack/generate-resource-docs` (`make generate-resource-docs`, wired into `ork:` and validated in CI).
+
 ---
 
 ## v0.7.12 — Gateway Apply API, IDP, and codebase clarity
