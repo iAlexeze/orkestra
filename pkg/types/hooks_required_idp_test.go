@@ -178,3 +178,128 @@ func TestRequiredIDPFieldRules_AllThreeBucketsCombine(t *testing.T) {
 	findRule(t, rules, `{{ getLabel . "team" }}`)
 	findRule(t, rules, `{{ getAnnotation . "expose" }}`)
 }
+
+func TestEnumIDPFieldRules_NilCases(t *testing.T) {
+	t.Run("nil CRDEntry", func(t *testing.T) {
+		var c *CRDEntry
+		if got := c.EnumIDPFieldRules(); got != nil {
+			t.Errorf("got %v, want nil", got)
+		}
+	})
+	t.Run("no enum fields", func(t *testing.T) {
+		c := &CRDEntry{IDP: &IDPConfig{
+			Fields: map[string]IDPFieldConfig{
+				"team": {Label: "Team", Required: true},
+			},
+		}}
+		if got := c.EnumIDPFieldRules(); got != nil {
+			t.Errorf("got %v, want nil — nothing is type: enum", got)
+		}
+	})
+	t.Run("type: enum with no enum values declared — skipped", func(t *testing.T) {
+		c := &CRDEntry{IDP: &IDPConfig{
+			Fields: map[string]IDPFieldConfig{
+				"workloadType": {Label: "Workload Type", Type: "enum"},
+			},
+		}}
+		if got := c.EnumIDPFieldRules(); got != nil {
+			t.Errorf("got %v, want nil — enum list is empty", got)
+		}
+	})
+}
+
+func TestEnumIDPFieldRules_SpecField(t *testing.T) {
+	c := &CRDEntry{IDP: &IDPConfig{
+		Fields: map[string]IDPFieldConfig{
+			"workloadType": {Label: "Workload Type", Type: "enum", Enum: []string{"app", "cert"}, Required: true},
+			"image":        {Label: "Container Image"}, // not enum-typed — no rule
+		},
+	}}
+
+	rules := c.EnumIDPFieldRules()
+	if len(rules) != 1 {
+		t.Fatalf("got %d rules, want 1: %+v", len(rules), rules)
+	}
+
+	r := rules[0]
+	if r.Field != "spec.workloadType" {
+		t.Errorf("Field = %q, want %q", r.Field, "spec.workloadType")
+	}
+	if r.Operator != ConditionIn {
+		t.Errorf("Operator = %q, want %q", r.Operator, ConditionIn)
+	}
+	if r.Value != "app,cert" {
+		t.Errorf("Value = %q, want %q", r.Value, "app,cert")
+	}
+	if r.Message != "Workload Type must be one of: app, cert" {
+		t.Errorf("Message = %q, want %q", r.Message, "Workload Type must be one of: app, cert")
+	}
+	if r.Action != ValidationActionDeny {
+		t.Errorf("Action = %q, want %q", r.Action, ValidationActionDeny)
+	}
+}
+
+// TestEnumIDPFieldRules_ExistsGateIndependentOfRequired guards the exact bug
+// caught while testing this against a live example: without an always-added
+// exists gate, a non-required enum field that a CR simply omits would be
+// denied anyway (ConditionIn fails closed on a missing field, same as
+// exists) — silently turning an optional field into a de facto required
+// one. required: true must stay the only thing that makes a field
+// mandatory; enum membership must only apply when a value is present.
+func TestEnumIDPFieldRules_ExistsGateIndependentOfRequired(t *testing.T) {
+	appOnly := []Condition{{Field: "spec.workloadType", Equals: "app"}}
+
+	c := &CRDEntry{IDP: &IDPConfig{
+		Fields: map[string]IDPFieldConfig{
+			// required + enum — exists gate is redundant with
+			// RequiredIDPFieldRules but must still be present.
+			"workloadType": {Label: "Workload Type", Type: "enum", Enum: []string{"app", "cert"}, Required: true},
+			// enum but NOT required, and carries its own When — both the
+			// synthesized exists gate and the field's own When must be
+			// present on the same rule.
+			"environment": {Label: "Environment", Type: "enum", Enum: []string{"dev", "staging", "prod"}, When: appOnly},
+		},
+	}}
+
+	rules := c.EnumIDPFieldRules()
+
+	requiredRule := findRule(t, rules, "spec.workloadType")
+	if len(requiredRule.When) != 1 || requiredRule.When[0].Field != "spec.workloadType" || requiredRule.When[0].Operator != ConditionExists {
+		t.Errorf("workloadType rule.When = %+v, want a single synthesized exists gate on itself", requiredRule.When)
+	}
+
+	optionalRule := findRule(t, rules, "spec.environment")
+	if len(optionalRule.When) != 2 {
+		t.Fatalf("environment rule.When = %+v, want 2 (synthesized exists gate + the field's own When)", optionalRule.When)
+	}
+	if optionalRule.When[0].Field != "spec.environment" || optionalRule.When[0].Operator != ConditionExists {
+		t.Errorf("environment rule.When[0] = %+v, want the synthesized exists gate first", optionalRule.When[0])
+	}
+	if optionalRule.When[1].Field != "spec.workloadType" || optionalRule.When[1].Equals != "app" {
+		t.Errorf("environment rule.When[1] = %+v, want the field's own When carried through", optionalRule.When[1])
+	}
+}
+
+func TestEnumIDPFieldRules_AdditionalFieldsUseNotes(t *testing.T) {
+	c := &CRDEntry{IDP: &IDPConfig{
+		AdditionalFields: &AdditionalIDPFields{
+			Labels: map[string]IDPFieldConfig{
+				"tier": {Label: "Tier", Type: "enum", Enum: []string{"free", "pro", "enterprise"}},
+			},
+		},
+	}}
+
+	rules := c.EnumIDPFieldRules()
+	if len(rules) != 1 {
+		t.Fatalf("got %d rules, want 1: %+v", len(rules), rules)
+	}
+
+	field := `{{ getLabel . "tier" }}`
+	r := findRule(t, rules, field)
+	if r.Value != "free,pro,enterprise" {
+		t.Errorf("Value = %q, want %q", r.Value, "free,pro,enterprise")
+	}
+	if len(r.When) != 1 || r.When[0].Field != field || r.When[0].Operator != ConditionExists {
+		t.Errorf("When = %+v, want a single synthesized exists gate using the same getLabel expression", r.When)
+	}
+}

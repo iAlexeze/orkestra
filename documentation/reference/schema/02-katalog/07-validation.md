@@ -109,29 +109,47 @@ idp:
 
 `idp.additionalFields.labels`/`.annotations` entries synthesize the same way, through `getLabel`/`getAnnotation` rather than a raw dot-path — required annotation keys with dots (the Kubernetes-recommended `prefix/name` shape) are handled correctly without you needing to know that dot-path resolution would otherwise misparse them.
 
-### IDP-aware messages for hand-written rules
+### Enum fields are validated automatically
 
-Auto-synthesis only covers plain existence. For anything more specific — an enum check, a range, a prefix — you still write the `validation.rules` entry by hand, and there the same principle applies: write `message:` using the field's `label:` instead of its raw `spec.*` path. A developer submitting through the Control Center form saw the label, not the YAML path — an error that echoes the path back is a translation the developer has to do themselves.
+`type: enum` on an `idp.fields` or `idp.additionalFields` entry also synthesizes a rule — an `in` check against the declared `enum:` list, with the same label-matching message. Membership is checked only when the field has a value: an enum field that isn't also `required: true` can still be omitted entirely, it just can't be set to something outside the list.
 
 ```yaml
 idp:
   fields:
-    environment:
-      label: "Environment"
+    workloadType:
+      label: "Workload Type"
+      type: enum
+      enum: [app, cert, monitoring, infra]
+      required: true
+# → synthesizes: { field: spec.workloadType, operator: in,
+#                  value: "app,cert,monitoring,infra",
+#                  message: "Workload Type must be one of: app, cert, monitoring, infra",
+#                  action: deny }
+```
+
+`idp.fields` entries backed by a spec field don't infer `enum:` from the CRD's OpenAPI schema for this purpose — declare it explicitly to opt a field into this synthesis, the same way `idp.additionalFields` already requires `type`/`enum` since those have no CRD schema to infer from.
+
+### IDP-aware messages for hand-written rules
+
+Auto-synthesis covers plain existence and enum membership. For anything more specific — a range, a prefix, a cross-field comparison — you still write the `validation.rules` entry by hand, and there the same principle applies: write `message:` using the field's `label:` instead of its raw `spec.*` path. A developer submitting through the Control Center form saw the label, not the YAML path — an error that echoes the path back is a translation the developer has to do themselves.
+
+```yaml
+idp:
+  fields:
+    image:
+      label: "Container Image"
 
 validation:
   rules:
     # before — leaks the internal field name
-    - field: spec.environment
-      operator: in
-      value: "staging,production"
-      message: "spec.environment must be staging or production"
+    - field: spec.image
+      prefix: "myorg/"
+      message: "spec.image must start with myorg/"
 
     # after — matches what the developer actually saw on the form
-    - field: spec.environment
-      operator: in
-      value: "staging,production"
-      message: "Environment must be staging or production"
+    - field: spec.image
+      prefix: "myorg/"
+      message: "Container Image must start with myorg/"
 ```
 
 This applies whether the rule fires from a form submission, `kubectl apply`, or a CI pipeline — the message is the same either way, so keep it in the vocabulary of the person reading it, not the API shape.
