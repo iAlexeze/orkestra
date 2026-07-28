@@ -53,14 +53,11 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Run go vet
-        run: go vet ./...
+      - name: Run vulnerability check
+        run: make vuln
 
-      # - name: Run vulnerability check
-      #   run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
-
-      - name: Run unit tests (no cluster required)
-        run: make test-unit
+      - name: Run tests (no cluster required)
+        run: make test
 
   # ── Fixture: note family ────────────────────────────────────────────────────
   # Runs only when the note package or its fixture changes.
