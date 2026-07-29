@@ -255,6 +255,16 @@ Every `onCreate`/`onReconcile`/`onDelete` resource declaration (deployments, ser
 
 Available in both `when:`/`anyOf:` and `validation.rules`, with shorthand fields matching each operator name. Also fixes a real bug: `validation.rules`' `gt`/`lt` were accidentally inclusive when used explicitly (`Min`/`Max` shared their evaluation case) — `Min`/`Max` now resolve to the new `gte`/`lte` unchanged, and explicit `gt`/`lt` are properly strict. An unknown `operator:` value in `validation.rules`/`mutation.rules` is now rejected at katalog-load time instead of silently never matching.
 
+### `operator: unique` — designed and deferred until stable, now implemented
+
+`unique` was designed and declared as a valid operator from its introduction, with enforcement deliberately deferred until the reconciler could safely check other instances — a rule using it silently always passed in the meantime, in both `validation.rules` and `when:`/`anyOf:`. Now implemented: the reconciler injects a live checker (`template.Resolver.WithUniquenessChecker`) that lists other instances of the CRD and denies/gates on a matching field value, excluding the CR under evaluation — enforced identically wherever the operator appears. Still deferred at admission time — no live checker there yet — so a duplicate can be admitted and gets caught on the next reconcile instead.
+
+`ork simulate` can now exercise this: a CR file with two documents of the CRD's own kind reconciles the first and seeds the second into the fake dynamic client as a pre-existing instance (`pkg/registry/simulate/fixture/unique/`).
+
+### e2e output assertions now use the stable `Condition` evaluator — formerly deferred until stable
+
+e2e's shell-command and kubectl-output assertions (`equals`, `contains`, `regex`, `oneOf`, …) were kept hand-rolled and separate from `when:`/`anyOf:` until the shared `Condition`/`EvaluateOneCond` evaluator stabilized. Now unified — `pkg/registry/e2e`'s assertion logic delegates to `EvaluateOneCond` per field, so e2e assertions gain every `when:`/`anyOf:` operator (`gte`, `between`, `regex`, …) for free and can no longer drift from that behavior. Field names and error messages are unchanged.
+
 ---
 
 ## v0.7.12 — Gateway Apply API, IDP, and codebase clarity
