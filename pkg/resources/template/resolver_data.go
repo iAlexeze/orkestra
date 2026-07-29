@@ -21,6 +21,10 @@
 // accumulated context at execution time.
 package template
 
+import (
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+)
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Data access
 // ─────────────────────────────────────────────────────────────────────────────
@@ -343,6 +347,26 @@ func (r *Resolver) WithHealth(health map[string]interface{}) *Resolver {
 	}
 	newData := r.shallowCopy()
 	newData["health"] = health
+	return r.copyWith(newData)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WithUniquenessChecker — operator: unique injection
+// ─────────────────────────────────────────────────────────────────────────────
+
+// WithUniquenessChecker returns a new Resolver with a live UniquenessChecker
+// injected under the "_uniquenessChecker" key — the string must match
+// pkg/types' uniquenessCheckerKey constant (same convention as _cronWindows,
+// see when.go). Not template-visible; read internally by operator: unique in
+// both validation.rules and when:/anyOf: (see orktypes.UniquenessChecker).
+// Only the reconciler calls this, so the operator is enforced at reconcile
+// time only.
+func (r *Resolver) WithUniquenessChecker(checker orktypes.UniquenessChecker) *Resolver {
+	if checker == nil {
+		return r
+	}
+	newData := r.shallowCopy()
+	newData["_uniquenessChecker"] = checker
 	return r.copyWith(newData)
 }
 

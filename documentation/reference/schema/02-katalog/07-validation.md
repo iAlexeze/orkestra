@@ -210,7 +210,7 @@ See [13-external.md](13-external.md) for the full field reference.
 
 `validation.rules` uses the exact same operator set and shorthand fields as `when:`/`anyOf:` — both are backed by the same `Condition`/`ConditionOperator` evaluation code (`pkg/types/validation_eval.go` and `pkg/types/when.go` share one operator table so the two can't drift apart). See [when/anyOf conditions § Operators](06-when-conditions.md#operators) for the full list.
 
-One addition specific to `validation.rules`: `unique` — field value must be unique across all existing instances of this CRD (checks the informer cache). It's only meaningful here; in `when:`/`anyOf:` it always passes, since template resolution has no informer access.
+One operator worth calling out: `unique` — field value must be unique across all existing instances of this CRD. It works the same way in `validation.rules` and in `when:`/`anyOf:` (e.g. gating a template source or mutation rule on whether a field is still available), but only at reconcile time, where the reconciler injects a live checker that lists other instances via the dynamic client. The admission webhook doesn't inject one, so `unique` always passes at admission time — a CR can still be admitted with a duplicate value and get caught on the next reconcile instead. Testable with `ork simulate` by adding a second document of the same kind to the CR file — see the `cr` field in [Simulate schema](../05-simulate/index.md).
 
 ## `action`
 

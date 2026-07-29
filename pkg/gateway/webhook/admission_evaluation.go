@@ -45,6 +45,9 @@ func (ws *WebhookServer) evaluateValidationRules(
 		if !orktypes.EvaluateWhen(data, rule.When, rule.AnyOf, resolver.TemplateEvaluator()) {
 			continue
 		}
+		// operator: unique always passes here — no UniquenessChecker is
+		// injected into data at admission time, only at reconcile time
+		// (see orktypes.UniquenessChecker).
 		rv := orktypes.EvaluateValidationRule(data, resolver, rule)
 		if rv == nil {
 			continue

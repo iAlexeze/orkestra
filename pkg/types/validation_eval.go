@@ -27,6 +27,54 @@ type TemplateResolver interface {
 	Resolve(value string) (string, error)
 }
 
+// UniquenessChecker reports whether no other existing instance of the CRD
+// under evaluation currently has the same value for a given field. Satisfied
+// structurally by the reconciler's live-list-backed implementation — this
+// package can't import pkg/runtime/reconciler, same reverse-import-cycle
+// reason as TemplateResolver.
+type UniquenessChecker interface {
+	// IsUnique reports whether no other CR of this kind currently has
+	// field == value. selfNamespace/selfName identify the CR under
+	// evaluation so it's excluded from the comparison — a CR is never a
+	// duplicate of its own already-stored value.
+	IsUnique(field, value, selfNamespace, selfName string) (bool, error)
+}
+
+// uniquenessCheckerKey is the data-map key an injected UniquenessChecker is
+// stored under — same convention as _cronWindows in when.go: state that
+// doesn't belong in a CR's template context travels alongside it in the
+// data map instead of as an explicit parameter on every evaluation
+// function. Set via template.Resolver.WithUniquenessChecker; only the
+// reconciler wires one in, so operator: unique is enforced identically in
+// both validation.rules and when:/anyOf: at reconcile time, and always
+// passes elsewhere (admission webhook, e2e, template-only contexts) where
+// there's no live CRD to check against.
+const uniquenessCheckerKey = "_uniquenessChecker"
+
+// resolveUnique evaluates operator: unique against a checker injected under
+// uniquenessCheckerKey, excluding the CR under evaluation by its own
+// metadata.namespace/name. Shared by EvaluateValidationRule and
+// applyOperator (when.go) so the operator behaves identically wherever it's
+// used.
+//
+// Returns true (pass) when no checker is injected or the checker errors —
+// uniqueness is enforced when a live checker is available, not required.
+func resolveUnique(data map[string]interface{}, field, fieldVal string) bool {
+	checker, ok := data[uniquenessCheckerKey].(UniquenessChecker)
+	if !ok || checker == nil {
+		return true
+	}
+	selfNS, _ := ResolveScalarField(data, "metadata.namespace")
+	selfName, _ := ResolveScalarField(data, "metadata.name")
+	unique, err := checker.IsUnique(field, fieldVal, selfNS, selfName)
+	if err != nil {
+		logger.Warn().Err(err).Str("field", field).
+			Msg("validation: unique check failed — rule skipped")
+		return true
+	}
+	return unique
+}
+
 // RuleViolation is the outcome of one failed ValidationRule.
 type RuleViolation struct {
 	Field   string // the rule's original field expression (template or dot-path)
@@ -374,6 +422,16 @@ func EvaluateValidationRule(data map[string]interface{}, resolver TemplateResolv
 		}
 		fv, err := strconv.ParseFloat(fieldVal, 64)
 		if err != nil || (fv >= lo && fv <= hi) {
+			return fail()
+		}
+
+	case ConditionUnique:
+		if _, hasChecker := data[uniquenessCheckerKey].(UniquenessChecker); !hasChecker {
+			// No checker injected (e.g. admission webhook) — always passes,
+			// same as EvaluateOneCond.
+			return nil
+		}
+		if !found || !resolveUnique(data, rule.Field, fieldVal) {
 			return fail()
 		}
 	}

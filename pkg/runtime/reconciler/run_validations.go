@@ -84,6 +84,9 @@ func (r *ValidationResult) Error() error {
 // data is resolver.Data() — the full CR map, works for both typed and unstructured.
 // resolver is optional — when non-nil, template expressions in comparison values
 // and messages are resolved against the full resolver context (notes, profiles, etc.).
+// operator: unique rules check against a UniquenessChecker injected into data
+// via resolver.WithUniquenessChecker — see orktypes.UniquenessChecker; they
+// always pass when none was injected.
 // Called from generic.go before runTemplateReconcile (or after runMutation
 // when mutateFirst: true).
 func runValidation(data map[string]interface{}, resolver *orktmpl.Resolver, cfg *orktypes.ValidationConfig, crdName string) *ValidationResult {

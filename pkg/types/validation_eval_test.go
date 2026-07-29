@@ -1,6 +1,9 @@
 package types
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 // ── ScalarToString ──────────────────────────────────────────────────────────
 
@@ -253,6 +256,80 @@ func TestEvaluateValidationRule_Operators(t *testing.T) {
 			}
 		})
 	}
+}
+
+// fakeUniquenessChecker is a test double for UniquenessChecker — the
+// concrete live-list-backed implementation lives in
+// pkg/runtime/reconciler/uniqueness.go and can't be imported here (this
+// package can't import the reconciler, same reverse-cycle reason the
+// interface exists in the first place).
+type fakeUniquenessChecker struct {
+	unique bool
+	err    error
+}
+
+func (f *fakeUniquenessChecker) IsUnique(field, value, selfNamespace, selfName string) (bool, error) {
+	return f.unique, f.err
+}
+
+func withUniqueChecker(data map[string]interface{}, checker UniquenessChecker) map[string]interface{} {
+	out := make(map[string]interface{}, len(data)+1)
+	for k, v := range data {
+		out[k] = v
+	}
+	out[uniquenessCheckerKey] = checker
+	return out
+}
+
+func TestEvaluateValidationRule_Unique(t *testing.T) {
+	rule := ValidationRule{Field: "spec.domain", Operator: ConditionUnique, Message: "must be unique"}
+	data := specData(map[string]interface{}{"domain": "a.example.com"})
+
+	t.Run("no checker injected — always passes", func(t *testing.T) {
+		v := EvaluateValidationRule(data, nil, rule)
+		if v != nil {
+			t.Errorf("expected pass with no checker injected — got violation: %+v", v)
+		}
+	})
+
+	t.Run("no checker injected — passes even when field is missing", func(t *testing.T) {
+		v := EvaluateValidationRule(specData(map[string]interface{}{}), nil, rule)
+		if v != nil {
+			t.Errorf("expected pass with no checker injected — got violation: %+v", v)
+		}
+	})
+
+	t.Run("checker present, field missing — fails", func(t *testing.T) {
+		d := withUniqueChecker(specData(map[string]interface{}{}), &fakeUniquenessChecker{unique: true})
+		v := EvaluateValidationRule(d, nil, rule)
+		if v == nil {
+			t.Error("expected violation — field is missing")
+		}
+	})
+
+	t.Run("checker reports unique — passes", func(t *testing.T) {
+		d := withUniqueChecker(data, &fakeUniquenessChecker{unique: true})
+		v := EvaluateValidationRule(d, nil, rule)
+		if v != nil {
+			t.Errorf("expected pass — got violation: %+v", v)
+		}
+	})
+
+	t.Run("checker reports duplicate — fails", func(t *testing.T) {
+		d := withUniqueChecker(data, &fakeUniquenessChecker{unique: false})
+		v := EvaluateValidationRule(d, nil, rule)
+		if v == nil {
+			t.Error("expected violation — checker reported a duplicate")
+		}
+	})
+
+	t.Run("checker errors — fails open (passes), rule skipped", func(t *testing.T) {
+		d := withUniqueChecker(data, &fakeUniquenessChecker{err: fmt.Errorf("list failed")})
+		v := EvaluateValidationRule(d, nil, rule)
+		if v != nil {
+			t.Errorf("expected pass on checker error — got violation: %+v", v)
+		}
+	})
 }
 
 func TestEvaluateValidationRule_ViolationFieldsArePopulated(t *testing.T) {

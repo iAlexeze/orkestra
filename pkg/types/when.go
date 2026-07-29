@@ -232,9 +232,7 @@ func applyOperator(op ConditionOperator, fieldVal, expected string, data map[str
 		}
 		return fv < lo || fv > hi
 	case ConditionUnique:
-		// Unique operator is only meaningful in validation context
-		// (needs informer access). In when: blocks it always passes.
-		return true
+		return resolveUnique(data, cond.Field, fieldVal)
 	case ConditionTypeOf:
 		raw := NavigateRawPath(data, cond.Field)
 		return note.TypeOf(raw) == expected

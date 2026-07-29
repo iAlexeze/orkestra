@@ -65,7 +65,7 @@ Compare a dot-notation path into the CR against a value.
 | `notBetween` | `notBetween` | Field is numerically outside an inclusive range. Value is `"min,max"` |
 | `in` | `in` | Field is one of a comma-separated list |
 | `notIn` | `notIn` | Field is none of a comma-separated list |
-| `unique` | — | Only meaningful in `validation.rules`; always passes in `when:`/`anyOf:` (no informer access at template-resolution time) |
+| `unique` | — | Field value must be unique across all existing instances of this CRD. Works in both `validation.rules` and `when:`/`anyOf:`, but only at reconcile time — always passes at admission time (no live checker there) |
 | `typeOf` / `typeMap` / `typeList` / `typeString` / `typeNumber` / `typeBool` / `typeNull` | — | Check the field's YAML type rather than its value. No shorthand — use `operator:` explicitly. |
 
 `gt`/`lt` are strict (exclusive); use `gte`/`lte` (or the `min`/`max` shorthand) for an inclusive bound. `min`/`max` and `greaterThanOrEqual`/`lessThanOrEqual` resolve to the same `gte`/`lte` operators — `min`/`max` read better for a bound on a quantity (`min: "1"`), `greaterThanOrEqual`/`lessThanOrEqual` for a direct comparison. Same operators and shorthand as [validation.rules](07-validation.md#operators) — the `Condition` type is shared by both.

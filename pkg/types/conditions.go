@@ -243,10 +243,14 @@ const (
 	// range. Value is a comma-separated "min,max" pair, same as between.
 	ConditionNotBetween ConditionOperator = "notBetween"
 
-	// ConditionUnique — field value is unique across all existing CR instances.
-	//
-	// Only valid in validation rules (deny action). Checks the informer cache
-	// for any existing CR with the same field value.
+	// ConditionUnique — field value must not match any other existing
+	// instance of this CRD (the CR being evaluated is excluded from its own
+	// check). Works the same way in validation.rules and in when:/anyOf: —
+	// e.g. gating a template source or mutation rule on whether a field is
+	// still available. ONLY enforced at reconcile time, where the
+	// reconciler injects a live checker; the admission webhook does not, so
+	// a CR can still be admitted with a duplicate value and get caught on
+	// the next reconcile instead.
 	//
 	//	validation:
 	//	  rules:
@@ -255,9 +259,13 @@ const (
 	//	      message: "spec.domain must be unique across all instances"
 	//	      action: deny
 	//
-	// Not valid in when: blocks on template sources — uniqueness requires
-	// informer access which is not available during template evaluation.
-	// In when: context it is treated as always-true (see pkg/types/when/EvaluateOneCond).
+	//	when:
+	//	  - field: spec.domain
+	//	    operator: unique
+	//
+	// Always passes wherever no checker is injected — admission webhook,
+	// e2e, and any other context without live CRD access (see
+	// UniquenessChecker in validation_eval.go).
 	ConditionUnique ConditionOperator = "unique"
 
 	// ConditionTypeOf — check field type

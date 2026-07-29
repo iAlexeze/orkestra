@@ -3,6 +3,7 @@
 package types_test
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -556,6 +557,49 @@ func TestEvaluateOneCond_CronWindowInjected_False(t *testing.T) {
 	}
 	c := orktypes.Condition{Cron: "0 9 * * 1-5", Duration: orktypes.Duration{Duration: time.Hour}}
 	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+// ── EvaluateOneCond — unique operator via _uniquenessChecker injection ───────
+//
+// The concrete live-list-backed checker lives in
+// pkg/runtime/reconciler/uniqueness.go; here we inject a fake under the
+// same "_uniquenessChecker" key template.Resolver.WithUniquenessChecker
+// uses, matching the _cronWindows injection convention above.
+
+type fakeUniqueChecker struct {
+	unique bool
+	err    error
+}
+
+func (f *fakeUniqueChecker) IsUnique(field, value, selfNamespace, selfName string) (bool, error) {
+	return f.unique, f.err
+}
+
+func TestEvaluateOneCond_Unique_NoCheckerInjected_AlwaysPasses(t *testing.T) {
+	d := data("domain", "a.example.com")
+	c := orktypes.Condition{Field: "domain", Operator: orktypes.ConditionUnique}
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_Unique_CheckerReportsUnique(t *testing.T) {
+	d := data("domain", "a.example.com")
+	d["_uniquenessChecker"] = &fakeUniqueChecker{unique: true}
+	c := orktypes.Condition{Field: "domain", Operator: orktypes.ConditionUnique}
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_Unique_CheckerReportsDuplicate(t *testing.T) {
+	d := data("domain", "shared.example.com")
+	d["_uniquenessChecker"] = &fakeUniqueChecker{unique: false}
+	c := orktypes.Condition{Field: "domain", Operator: orktypes.ConditionUnique}
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_Unique_CheckerErrors_FailsOpen(t *testing.T) {
+	d := data("domain", "a.example.com")
+	d["_uniquenessChecker"] = &fakeUniqueChecker{err: errors.New("list failed")}
+	c := orktypes.Condition{Field: "domain", Operator: orktypes.ConditionUnique}
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
 // ── EvaluateOneCond — time window (via Condition.Time) ───────────────────────
