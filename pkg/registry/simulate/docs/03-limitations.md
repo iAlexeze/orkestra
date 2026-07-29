@@ -11,6 +11,7 @@ The fake cluster starts empty and has no external connectivity. Some operator fe
 | Go hooks (typed reconcile hooks) | Active — runs from compiled custom binary | Build your operator binary with `make registry && make build`; hooks fire against the fake cluster |
 | Custom constructors | Active — runs from compiled custom binary | Same binary requirement as hooks |
 | Multi-doc CR files | Active — each CRD matched to its CR by `kind` | CRDs with no matching CR are skipped with a note |
+| `operator: unique` (same-kind duplicates) | Active when extra same-kind docs are in the CR file | The first doc of the CRD's own kind is reconciled; further docs of that kind are seeded into the fake dynamic client as pre-existing instances (not reconciled) — see [04-internals.md](04-internals.md) |
 | Cross-namespace reads (secrets, configmaps) | Not active | `ork e2e` |
 | Git hooks | Not active | `ork e2e` |
 | Provider blocks (AWS, MongoDB) | Not active | `ork e2e` |

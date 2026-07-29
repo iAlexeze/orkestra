@@ -54,7 +54,15 @@ type FakeKubeclient struct {
 	args    kubeclient.Args
 }
 
-func NewFakeKubeclient(scheme *runtime.Scheme) *FakeKubeclient {
+// dynamicObjects seeds the fake dynamic client's tracker at construction —
+// this must happen at construction, not via Tracker().Add() afterward,
+// because fakedynamic.NewSimpleDynamicClient derives its GVR→ListKind
+// mapping from the objects it's given; List() calls for a GVR that wasn't
+// present at construction time fail even if the object is added later.
+// Used to make an in-progress-reconcile CR (and any pre-existing sibling
+// instances from a multi-doc CR file) visible to reconcile-time checks that
+// list other instances of the same CRD, like operator: unique.
+func NewFakeKubeclient(scheme *runtime.Scheme, dynamicObjects ...runtime.Object) *FakeKubeclient {
 	f := &FakeKubeclient{shared: &fakeShared{}}
 
 	cs := fake.NewClientset()
@@ -78,7 +86,7 @@ func NewFakeKubeclient(scheme *runtime.Scheme) *FakeKubeclient {
 
 	f.clientset = cs
 
-	dyn := fakedynamic.NewSimpleDynamicClient(scheme) // For custom
+	dyn := fakedynamic.NewSimpleDynamicClient(scheme, dynamicObjects...) // For custom + seeded pre-existing instances
 	// PrependReactor intercepts every operation and records it before the
 	// default object-tracker reactor handles it. AddReactor appends to the
 	// chain AFTER the tracker, so it is never reached — PrependReactor is
