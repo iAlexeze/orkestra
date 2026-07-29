@@ -208,17 +208,9 @@ See [13-external.md](13-external.md) for the full field reference.
 
 ## Operators
 
-| Shorthand | Operator | Description |
-|-----------|----------|-------------|
-| `equals` | `eq` | Field equals value |
-| `notEquals` | `neq` | Field does not equal value |
-| `prefix` | `prefix` | Field starts with value |
-| `suffix` | `suffix` | Field ends with value |
-| `contains` | `contains` | Field contains substring |
-| `min` | `gte` | Field is greater than or equal (numeric) |
-| `max` | `lte` | Field is less than or equal (numeric) |
-| `greaterThan` | `gt` | Field is greater than (numeric) |
-| `lessThan` | `lt` | Field is less than (numeric) |
+`validation.rules` uses the exact same operator set and shorthand fields as `when:`/`anyOf:` — both are backed by the same `Condition`/`ConditionOperator` evaluation code (`pkg/types/validation_eval.go` and `pkg/types/when.go` share one operator table so the two can't drift apart). See [when/anyOf conditions § Operators](06-when-conditions.md#operators) for the full list.
+
+One addition specific to `validation.rules`: `unique` — field value must be unique across all existing instances of this CRD (checks the informer cache). It's only meaningful here; in `when:`/`anyOf:` it always passes, since template resolution has no informer access.
 
 ## `action`
 

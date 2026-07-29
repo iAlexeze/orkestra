@@ -30,6 +30,7 @@ package types
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -156,6 +157,14 @@ func applyOperator(op ConditionOperator, fieldVal, expected string, data map[str
 		return fieldVal != expected
 	case ConditionContains:
 		return typeContains(fieldVal, expected)
+	case ConditionNotContains:
+		return !typeContains(fieldVal, expected)
+	case ConditionRegex:
+		re, err := regexp.Compile(expected)
+		if err != nil {
+			return false
+		}
+		return re.MatchString(fieldVal)
 	case ConditionPrefix:
 		return typeHasPrefix(fieldVal, expected)
 	case ConditionSuffix:
@@ -174,6 +183,20 @@ func applyOperator(op ConditionOperator, fieldVal, expected string, data map[str
 			return false
 		}
 		return fv < ev
+	case ConditionGte:
+		fv, _ := typeParseFloat(fieldVal)
+		ev, ee := typeParseFloat(expected)
+		if ee != nil {
+			return false
+		}
+		return fv >= ev
+	case ConditionLte:
+		fv, _ := typeParseFloat(fieldVal)
+		ev, ee := typeParseFloat(expected)
+		if ee != nil {
+			return false
+		}
+		return fv <= ev
 	case ConditionIn:
 		for _, v := range typesSplitComma(expected) {
 			if typesTrimSpace(v) == fieldVal {
@@ -181,6 +204,33 @@ func applyOperator(op ConditionOperator, fieldVal, expected string, data map[str
 			}
 		}
 		return false
+	case ConditionNotIn:
+		for _, v := range typesSplitComma(expected) {
+			if typesTrimSpace(v) == fieldVal {
+				return false
+			}
+		}
+		return true
+	case ConditionBetween:
+		lo, hi, ok := parseBetween(expected)
+		if !ok {
+			return false
+		}
+		fv, err := typeParseFloat(fieldVal)
+		if err != nil {
+			return false
+		}
+		return fv >= lo && fv <= hi
+	case ConditionNotBetween:
+		lo, hi, ok := parseBetween(expected)
+		if !ok {
+			return false
+		}
+		fv, err := typeParseFloat(fieldVal)
+		if err != nil {
+			return false
+		}
+		return fv < lo || fv > hi
 	case ConditionUnique:
 		// Unique operator is only meaningful in validation context
 		// (needs informer access). In when: blocks it always passes.
@@ -301,11 +351,41 @@ func ResolveConditionOp(c Condition) (ConditionOperator, string) {
 	if c.Contains != "" {
 		return ConditionContains, c.Contains
 	}
+	if c.NotContains != "" {
+		return ConditionNotContains, c.NotContains
+	}
+	if c.Regex != "" {
+		return ConditionRegex, c.Regex
+	}
 	if c.GreaterThan != "" {
 		return ConditionGt, c.GreaterThan
 	}
 	if c.LessThan != "" {
 		return ConditionLt, c.LessThan
+	}
+	if c.GreaterThanOrEqual != "" {
+		return ConditionGte, c.GreaterThanOrEqual
+	}
+	if c.LessThanOrEqual != "" {
+		return ConditionLte, c.LessThanOrEqual
+	}
+	if c.Min != "" {
+		return ConditionGte, c.Min
+	}
+	if c.Max != "" {
+		return ConditionLte, c.Max
+	}
+	if c.Between != "" {
+		return ConditionBetween, c.Between
+	}
+	if c.NotBetween != "" {
+		return ConditionNotBetween, c.NotBetween
+	}
+	if c.In != "" {
+		return ConditionIn, c.In
+	}
+	if c.NotIn != "" {
+		return ConditionNotIn, c.NotIn
 	}
 	if c.Operator != "" {
 		return c.Operator, c.Value
@@ -367,6 +447,25 @@ func typeParseFloat(s string) (float64, error) {
 	var f float64
 	_, err := fmt.Sscanf(s, "%f", &f)
 	return f, err
+}
+
+// parseBetween splits a "min,max" comma pair into two floats, both
+// inclusive bounds. ok is false unless expected is exactly two
+// comma-separated numeric values — shared by EvaluateOneCond and
+// EvaluateValidationRule so between/notBetween parse identically in both.
+func parseBetween(expected string) (lo, hi float64, ok bool) {
+	parts := typesSplitComma(expected)
+	if len(parts) != 2 {
+		return 0, 0, false
+	}
+	var err error
+	if lo, err = typeParseFloat(typesTrimSpace(parts[0])); err != nil {
+		return 0, 0, false
+	}
+	if hi, err = typeParseFloat(typesTrimSpace(parts[1])); err != nil {
+		return 0, 0, false
+	}
+	return lo, hi, true
 }
 
 // ── Time-based condition helpers ──────────────────────────────────────────────

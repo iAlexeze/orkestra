@@ -271,5 +271,12 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 37. Validate validation.rules / mutation.rules operators are known
+	// -------------------------------------------------------------------------
+	if err := k.validateAdmissionOperators(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }

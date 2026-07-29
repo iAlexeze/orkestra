@@ -155,41 +155,7 @@ when:
     value: "0"
 ```
 
-**Shorthand fields** (instead of `operator` + `value`):
-
-| Shorthand | Equivalent |
-|-----------|-----------|
-| `equals: "v"` | `operator: equals, value: "v"` |
-| `notEquals: "v"` | `operator: notEquals, value: "v"` |
-| `contains: "v"` | `operator: contains, value: "v"` |
-| `prefix: "v"` | `operator: prefix, value: "v"` |
-| `suffix: "v"` | `operator: suffix, value: "v"` |
-| `greaterThan: "v"` | `operator: gt, value: "v"` |
-| `lessThan: "v"` | `operator: lt, value: "v"` |
-| `exists: true` | `operator: exists` |
-| `notExists: true` | `operator: notExists` |
-
-**All operators:**
-
-| Operator | Description |
-|----------|-------------|
-| `equals` | Field exactly equals value (string comparison). |
-| `notEquals` | Field does not equal value. |
-| `contains` | Field contains value as a substring. |
-| `prefix` | Field starts with value. |
-| `suffix` | Field ends with value. |
-| `exists` | Field is present and non-empty. |
-| `notExists` | Field is absent or empty. Use for first-reconcile detection. |
-| `gt` | Field is numerically greater than value. Absent field treated as 0. |
-| `lt` | Field is numerically less than value. |
-| `in` | Field is one of a comma-separated list: `value: "Pending,Running"`. |
-| `typeOf` | Field's runtime type equals value (`map`, `slice`, `string`, `number`, `bool`, `null`). |
-| `typeMap` | Field is a YAML object. |
-| `typeList` | Field is a YAML array. |
-| `typeString` | Field is a string. |
-| `typeNumber` | Field is a number. |
-| `typeBool` | Field is a boolean. |
-| `typeNull` | Field is null or missing. |
+`status.fields[].when`/`anyOf` use the exact same `Condition` type, operators, and shorthand fields as resource-template `when:`/`anyOf:` — see [when/anyOf conditions § Operators](06-when-conditions.md#operators) for the full list (`equals`, `contains`, `prefix`/`suffix`, `regex`, `exists`/`notExists`, `gt`/`lt`/`gte`/`lte`/`between`, `in`/`notIn`, the `typeOf` family, and their shorthand names). Absent field is treated as `0` for numeric comparisons.
 
 ## Example: declarative state machine
 

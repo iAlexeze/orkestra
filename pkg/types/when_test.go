@@ -284,6 +284,144 @@ func TestEvaluateOneCond_In_NoMatch(t *testing.T) {
 	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
+func TestEvaluateOneCond_NotIn_Match(t *testing.T) {
+	d := data("env", "canary")
+	c := orktypes.Condition{Field: "env", NotIn: "dev,staging,prod"}
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_NotIn_NoMatch(t *testing.T) {
+	d := data("env", "prod")
+	c := orktypes.Condition{Field: "env", NotIn: "dev,staging,prod"}
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_Gte_EqualBound(t *testing.T) {
+	d := data("replicas", "3")
+	c := orktypes.Condition{Field: "replicas", GreaterThanOrEqual: "3"}
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_Gte_BelowBound(t *testing.T) {
+	d := data("replicas", "2")
+	c := orktypes.Condition{Field: "replicas", GreaterThanOrEqual: "3"}
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_Lte_EqualBound(t *testing.T) {
+	d := data("cpu", "80")
+	c := orktypes.Condition{Field: "cpu", LessThanOrEqual: "80"}
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_Lte_AboveBound(t *testing.T) {
+	d := data("cpu", "81")
+	c := orktypes.Condition{Field: "cpu", LessThanOrEqual: "80"}
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestResolveConditionOp_Min(t *testing.T) {
+	op, val := orktypes.ResolveConditionOp(orktypes.Condition{Min: "1"})
+	assert.Equal(t, orktypes.ConditionGte, op)
+	assert.Equal(t, "1", val)
+}
+
+func TestResolveConditionOp_Max(t *testing.T) {
+	op, val := orktypes.ResolveConditionOp(orktypes.Condition{Max: "10"})
+	assert.Equal(t, orktypes.ConditionLte, op)
+	assert.Equal(t, "10", val)
+}
+
+func TestEvaluateOneCond_Min_EqualBound(t *testing.T) {
+	d := data("replicas", "1")
+	c := orktypes.Condition{Field: "replicas", Min: "1"}
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_Min_BelowBound(t *testing.T) {
+	d := data("replicas", "0")
+	c := orktypes.Condition{Field: "replicas", Min: "1"}
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_Max_EqualBound(t *testing.T) {
+	d := data("cpu", "80")
+	c := orktypes.Condition{Field: "cpu", Max: "80"}
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_Max_AboveBound(t *testing.T) {
+	d := data("cpu", "81")
+	c := orktypes.Condition{Field: "cpu", Max: "80"}
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_Between_Inside(t *testing.T) {
+	d := data("replicas", "5")
+	c := orktypes.Condition{Field: "replicas", Between: "1,10"}
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_Between_AtBounds(t *testing.T) {
+	c := orktypes.Condition{Field: "replicas", Between: "1,10"}
+	assert.True(t, orktypes.EvaluateOneCond(data("replicas", "1"), c, nil))
+	assert.True(t, orktypes.EvaluateOneCond(data("replicas", "10"), c, nil))
+}
+
+func TestEvaluateOneCond_Between_Outside(t *testing.T) {
+	d := data("replicas", "11")
+	c := orktypes.Condition{Field: "replicas", Between: "1,10"}
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_Between_MalformedRange(t *testing.T) {
+	d := data("replicas", "5")
+	c := orktypes.Condition{Field: "replicas", Between: "not,numbers"}
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_NotBetween_Outside(t *testing.T) {
+	d := data("replicas", "11")
+	c := orktypes.Condition{Field: "replicas", NotBetween: "1,10"}
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_NotBetween_Inside(t *testing.T) {
+	d := data("replicas", "5")
+	c := orktypes.Condition{Field: "replicas", NotBetween: "1,10"}
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_NotContains_Match(t *testing.T) {
+	d := data("image", "myorg/app:latest")
+	c := orktypes.Condition{Field: "image", NotContains: "docker.io"}
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_NotContains_NoMatch(t *testing.T) {
+	d := data("image", "docker.io/app:latest")
+	c := orktypes.Condition{Field: "image", NotContains: "docker.io"}
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_Regex_Match(t *testing.T) {
+	d := data("name", "app-prod-01")
+	c := orktypes.Condition{Field: "name", Regex: `^app-\w+-\d+$`}
+	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_Regex_NoMatch(t *testing.T) {
+	d := data("name", "APP")
+	c := orktypes.Condition{Field: "name", Regex: `^app-\w+-\d+$`}
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
+func TestEvaluateOneCond_Regex_InvalidPattern(t *testing.T) {
+	d := data("name", "app")
+	c := orktypes.Condition{Field: "name", Regex: `(unclosed`}
+	assert.False(t, orktypes.EvaluateOneCond(d, c, nil))
+}
+
 func TestEvaluateOneCond_TypeOf_Map(t *testing.T) {
 	d := map[string]interface{}{
 		"spec": map[string]interface{}{"key": "val"},
