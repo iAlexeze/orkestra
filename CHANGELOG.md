@@ -251,6 +251,10 @@ Every `onCreate`/`onReconcile`/`onDelete` resource declaration (deployments, ser
 
 `helm.sh/helm/v3` and `oras.land/oras-go` are gone entirely from `ork run` (runtime) and `ork gat` (gateway) — both are build-tag excluded (`!runtime && !gateway`) rather than just documented as unreachable. Both were only ever used for authoring-time Katalog imports (`imports.helm:`, `imports.registry:`, motif imports) — the runtime and gateway only ever read an already-merged `katalog.yaml` key from a ConfigMap (`ork generate bundle` resolves everything ahead of time), so neither binary needs them. This also removes the previously-accepted GO-2026-5932 (openpgp) and GO-2026-5622/5338/5064 (containerd) findings from `vuln-runtime`/`vuln-gateway` — they're gone, not just excused, so that check is now a hard gate (no `continue-on-error`). `vuln-orkestra` (the broad, dev-CLI-scoped scan where those findings still apply) moved to its own manually-triggered workflow.
 
+### New condition operators: `gte`, `lte`, `between`, `notBetween`, `notIn`, `notContains`, `regex`
+
+Available in both `when:`/`anyOf:` and `validation.rules`, with shorthand fields matching each operator name. Also fixes a real bug: `validation.rules`' `gt`/`lt` were accidentally inclusive when used explicitly (`Min`/`Max` shared their evaluation case) — `Min`/`Max` now resolve to the new `gte`/`lte` unchanged, and explicit `gt`/`lt` are properly strict. An unknown `operator:` value in `validation.rules`/`mutation.rules` is now rejected at katalog-load time instead of silently never matching.
+
 ---
 
 ## v0.7.12 — Gateway Apply API, IDP, and codebase clarity
