@@ -66,3 +66,32 @@ func (a AllowedNamespaces) Merge(other AllowedNamespaces) AllowedNamespaces {
 
 	return merged
 }
+
+// IsSingleNamespace reports whether this CRD's namespace rules pin it to
+// exactly one namespace — the same single-namespace fast path the runtime
+// informer uses to scope its ListerWatcher (pkg/runtime/informer.NamespaceFilter
+// mirrors this exact check; this is the canonical definition both that type
+// and any validator should call instead of re-deriving it from len(...)==1).
+func (c *CRDEntry) IsSingleNamespace() bool {
+	return len(c.AllowedNamespaces) == 1 && len(c.RestrictedNamespaces) == 0
+}
+
+// SingleNamespace returns the one namespace IsSingleNamespace confirmed, or
+// "" when there isn't exactly one.
+func (c *CRDEntry) SingleNamespace() string {
+	if !c.IsSingleNamespace() {
+		return ""
+	}
+	return c.AllowedNamespaces[0]
+}
+
+// PinnedToNamespace reports whether this CRD's informer is scoped to watch
+// only one fixed namespace — either via IsSingleNamespace (AllowedNamespaces
+// with exactly one entry) or the legacy per-CRD Namespace field
+// (cmd/internal/runtime_konstructor.go's dynamic-CRD fallback). A CRD whose
+// idp.namespace resolves differently per submission (e.g. by team) can never
+// be watched this way — whatever it creates outside the pinned namespace
+// would sit unreconciled forever. See Katalog.validateIDPNamespace.
+func (c *CRDEntry) PinnedToNamespace() bool {
+	return c.IsSingleNamespace() || c.Namespace != ""
+}

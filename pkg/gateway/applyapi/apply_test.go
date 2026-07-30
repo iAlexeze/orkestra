@@ -17,7 +17,7 @@ import (
 func noopLookup(_ string) *orktypes.CRDEntry { return nil }
 
 func TestApplyHandler_MethodNotAllowed(t *testing.T) {
-	h := applyHandler(nil, noopLookup)
+	h := applyHandler(nil, noopLookup, orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/apply", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -27,7 +27,7 @@ func TestApplyHandler_MethodNotAllowed(t *testing.T) {
 }
 
 func TestApplyHandler_InvalidJSON(t *testing.T) {
-	h := applyHandler(nil, noopLookup)
+	h := applyHandler(nil, noopLookup, orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/apply", strings.NewReader("not-json"))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -47,7 +47,7 @@ func TestApplyHandler_InvalidJSON(t *testing.T) {
 }
 
 func TestApplyHandler_EmptyBody(t *testing.T) {
-	h := applyHandler(nil, noopLookup)
+	h := applyHandler(nil, noopLookup, orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/apply", bytes.NewReader([]byte{}))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)

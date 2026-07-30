@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -28,6 +29,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
+	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 )
@@ -105,7 +107,7 @@ func scopedDynamic(kube kubeclient.KubeClient, capture *warningCapture) dynamic.
 
 // Handler returns the http.HandlerFunc for POST /api/v1/apply.
 // The auth middleware must wrap this handler before registration.
-func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes.CRDEntry) http.HandlerFunc {
+func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes.CRDEntry, notes orktypes.NoteRegistry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -140,12 +142,12 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 		dryRun := r.URL.Query().Get("dryRun") == "true"
 		overwrite := r.URL.Query().Get("overwrite") == "true"
 
+		crd := lookup(obj.GetKind())
+
 		// CRD-level forceConflict is a katalog declaration; ?overwrite=true is a
 		// per-request override. Either one sets Force=true.
-		if !overwrite {
-			if crd := lookup(obj.GetKind()); crd != nil && crd.IDP != nil {
-				overwrite = crd.IDP.ForceConflict
-			}
+		if !overwrite && crd != nil && crd.IDP != nil {
+			overwrite = crd.IDP.ForceConflict
 		}
 
 		patchOpts := metav1.PatchOptions{
@@ -154,6 +156,25 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 		}
 		if dryRun {
 			patchOpts.DryRun = []string{metav1.DryRunAll}
+		}
+
+		// idp.namespace, once declared, always decides — it overrides
+		// whatever (if anything) the client sent, so namespace stops being
+		// something any Apply API caller (Control Center, curl, CI) needs to
+		// know or supply. Resolved against exactly what the client submitted
+		// (labels/annotations/spec), same resolver+notes pattern the
+		// admission webhook uses for validation.rules.
+		if crd != nil && crd.HasIDPNamespace() {
+			resolver := orktmpl.NewResolverFromMap(obj.Object).WithUserNotes(notes)
+			if resolved, err := resolver.Resolve(crd.IDP.Namespace); err == nil && resolved != "" {
+				obj.SetNamespace(resolved)
+			} else {
+				logger.FromContext(r.Context()).Warn().
+					Str("kind", obj.GetKind()).
+					Str("idp.namespace", crd.IDP.Namespace).
+					Err(err).
+					Msg("apply API: idp.namespace did not resolve to a value")
+			}
 		}
 
 		ns := obj.GetNamespace()
@@ -169,11 +190,23 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 				Bool("dryRun", dryRun).
 				Err(err).
 				Msg("apply API: SSA rejected")
+			violations := extractViolations(err)
+			// err.Error() is the raw K8s-wrapped string — right for kubectl
+			// (which just prints whatever the API server returns, unaffected
+			// by anything here), but verbose here. Prefer the first violation's message
+			// (same headline convention as ValidationResult.DenialMessage() — full detail
+			// still lives in violations[] either way); fall back to err.Error()
+			// only when there's nothing structured to summarize instead, e.g.
+			// a plain 404 with no admission causes at all.
+			message := err.Error()
+			if len(violations) > 0 && violations[0].Message != "" {
+				message = violations[0].Message
+			}
 			utils.WriteJSON(w, http.StatusUnprocessableEntity, ApplyResponse{
 				DryRun:     dryRun,
-				Message:    err.Error(),
+				Message:    message,
 				Warnings:   capture.collect(),
-				Violations: extractViolations(err),
+				Violations: violations,
 			})
 			return
 		}
@@ -191,13 +224,41 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 	}
 }
 
-// resolveGVR maps apiVersion+kind to a GroupVersionResource via the REST mapper.
+// mapperRefresher is satisfied by kubeclient.KubeClient's real implementation,
+// deliberately not the interface itself — RefreshMapper is a real-cluster
+// discovery-cache concern that simulate's fake client has no reason to
+// implement, so resolveGVR type-asserts for it instead of widening the
+// shared interface.
+type mapperRefresher interface {
+	RefreshMapper()
+}
+
+// resolveGVR maps apiVersion+kind to a GroupVersionResource via the REST
+// mapper, retrying once after a cache refresh on a "no matches" error.
+//
+// The gateway's REST mapper is a DeferredDiscoveryRESTMapper built once at
+// startup — it caches whatever CRDs existed at that point and is never told
+// about ones applied afterward. The runtime avoids this because its
+// reconciler explicitly calls RefreshMapper() from its own post-start hooks
+// (pkg/runtime/kordinator/post_start_hooks.go) once it notices a CRD it was
+// waiting on now exists. The gateway has no equivalent watch loop, so
+// without this retry, an Apply API request for a CRD applied after the
+// gateway pod started 404s forever — "no REST mapping" / "the server could
+// not find the requested resource" — until the pod restarts and builds a
+// fresh cache.
 func resolveGVR(kube kubeclient.KubeClient, apiVersion, kind string) (schema.GroupVersionResource, error) {
 	gv, err := schema.ParseGroupVersion(apiVersion)
 	if err != nil {
 		return schema.GroupVersionResource{}, fmt.Errorf("invalid apiVersion %q: %w", apiVersion, err)
 	}
-	mapping, err := kube.Mapper().RESTMapping(schema.GroupKind{Group: gv.Group, Kind: kind}, gv.Version)
+	gk := schema.GroupKind{Group: gv.Group, Kind: kind}
+	mapping, err := kube.Mapper().RESTMapping(gk, gv.Version)
+	if err != nil && meta.IsNoMatchError(err) {
+		if r, ok := kube.(mapperRefresher); ok {
+			r.RefreshMapper()
+			mapping, err = kube.Mapper().RESTMapping(gk, gv.Version)
+		}
+	}
 	if err != nil {
 		return schema.GroupVersionResource{}, fmt.Errorf("no REST mapping for %s/%s: %w", apiVersion, kind, err)
 	}
