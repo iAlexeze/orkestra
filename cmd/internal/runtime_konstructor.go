@@ -296,17 +296,17 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 		// Tier 2 is always registered when namespace rules exist.
 		// Tier 1 scopes the ListerWatcher to a single namespace when allowedNamespaces
 		// has exactly one entry — the informer never sees events from other namespaces.
-		if len(crd.AllowedNamespaces) > 0 || len(crd.RestrictedNamespaces) > 0 {
-			filter := &informer.NamespaceFilter{
-				AllowedNamespaces:    []string(crd.AllowedNamespaces),
-				RestrictedNamespaces: []string(crd.RestrictedNamespaces),
-			}
-			if filter.IsSingleNamespace() {
-				opts.Namespace = filter.SingleNamespace()
+		if crd.HasNamespaceRules() {
+			if crd.IsSingleNamespace() {
+				opts.Namespace = crd.SingleNamespace()
 				logger.Debug().
 					Str("crd", crd.APITypes.Kind).
 					Str("namespace", opts.Namespace).
 					Msg("informer: namespace-scoped watch (Tier 1)")
+			}
+			filter := &informer.NamespaceFilter{
+				AllowedNamespaces:    []string(crd.AllowedNamespaces),
+				RestrictedNamespaces: []string(crd.RestrictedNamespaces),
 			}
 			infFactory.RegisterNamespaceFilter(gvk, filter)
 			logger.Debug().
