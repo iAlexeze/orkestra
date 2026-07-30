@@ -257,13 +257,78 @@ Available in both `when:`/`anyOf:` and `validation.rules`, with shorthand fields
 
 ### `operator: unique` — designed and deferred until stable, now implemented
 
-`unique` was designed and declared as a valid operator from its introduction, with enforcement deliberately deferred until the reconciler could safely check other instances — a rule using it silently always passed in the meantime, in both `validation.rules` and `when:`/`anyOf:`. Now implemented: the reconciler injects a live checker (`template.Resolver.WithUniquenessChecker`) that lists other instances of the CRD and denies/gates on a matching field value, excluding the CR under evaluation — enforced identically wherever the operator appears. Still deferred at admission time — no live checker there yet — so a duplicate can be admitted and gets caught on the next reconcile instead.
+`unique` was designed and declared as a valid operator from its introduction, with enforcement deliberately deferred until it could be checked safely — a rule using it silently always passed in the meantime, in both `validation.rules` and `when:`/`anyOf:`. Now implemented at both enforcement points:
 
-`ork simulate` can now exercise this: a CR file with two documents of the CRD's own kind reconciles the first and seeds the second into the fake dynamic client as a pre-existing instance (`pkg/registry/simulate/fixture/unique/`).
+- **Reconcile time** — the reconciler injects a live checker (`template.Resolver.WithUniquenessChecker`) that lists other instances of the CRD via the API server and denies/gates on a matching field value, excluding the CR under evaluation. Authoritative — immune to cache staleness.
+- **Admission time** — the gateway injects its own checker (`pkg/gateway/webhook/uniqueness.go`), backed by an HTTP call to the runtime's own `GET /katalog/{crd}/cr?field=<dot-path>` endpoint (new `?field=` support) instead of a live `List()` — the runtime already has this data in its informer cache. Deliberately a fast, best-effort early-rejection layer, not a second source of truth: the cache can be momentarily stale, so a duplicate can still slip past admission in a race, but it's caught on the next reconcile regardless — the reconcile-time guarantee never depends on admission catching it first.
+
+`ork simulate` can exercise the reconcile-time path: a CR file with two documents of the CRD's own kind reconciles the first and seeds the second into the fake dynamic client as a pre-existing instance (`pkg/registry/simulate/fixture/unique/`). The admission-time path needs a real cluster — see `ork e2e`.
 
 ### e2e output assertions now use the stable `Condition` evaluator — formerly deferred until stable
 
 e2e's shell-command and kubectl-output assertions (`equals`, `contains`, `regex`, `oneOf`, …) were kept hand-rolled and separate from `when:`/`anyOf:` until the shared `Condition`/`EvaluateOneCond` evaluator stabilized. Now unified — `pkg/registry/e2e`'s assertion logic delegates to `EvaluateOneCond` per field, so e2e assertions gain every `when:`/`anyOf:` operator (`gte`, `between`, `regex`, …) for free and can no longer drift from that behavior. Field names and error messages are unchanged.
+
+### `idp.fields`/`idp.additionalFields` `link:` — a clean display field, decoupled from the evaluation expression
+
+A validation rule's `field:` is often a template expression once it targets `idp.additionalFields` — e.g. `{{ getLabel . "team" }}` rather than a plain `spec.team`. Clients that highlight the offending form field from a violation's `Field` had nothing usable to match against in that case. `link:` fixes this: a plain, non-template field name naming the `idp.fields`/`idp.additionalFields` key a rule concerns, used as the violation's reported field instead of the raw expression. Validated at load time — `link:` must match a real idp field, and is rejected as redundant if it just repeats an already-clean `spec.<name>` field.
+
+```yaml
+validation:
+  rules:
+    - field: '{{ getLabel . "team" }}'
+      link: team
+      operator: exists
+      message: "Team is required"
+      action: deny
+```
+
+Synthesized `required`/`enum` rules set `link:` automatically.
+
+`order` now also decides validation priority, not just form layout: synthesized rules are prepended ahead of hand-written ones, so when a field fails both a missing-value check and a content check at once, `DenialMessage()` (which reports only the first violation) leads with "required" rather than a less useful content error. Field order itself is deterministic now too — `allIDPFieldRefs` sorts by `order` instead of ranging over a Go map — and two fields on one CRD sharing a non-zero `order:` is a load-time error.
+
+### `kubectl.apply` gains `exitCode` and full assertions — for admission-rejection e2e tests
+
+`kubectl.apply` previously only ran to completion or failed the test — there was no way to assert an apply *should* be rejected (e.g. by an admission webhook) without dropping to a raw `commands: run: kubectl apply ...` block. It now accepts the same `exitCode`/assertion fields as `commands:` (`equals`, `outputContains`, `regex`, `between`, …): default `exitCode: 0` means success is expected; a non-zero value asserts the apply must fail, and `outputContains`/etc. can check the denial message. stdout+stderr are captured unconditionally now, regardless of `exitCode`.
+
+```yaml
+kubectl:
+  apply:
+    - file: ./cr-duplicate.yaml
+      exitCode: 1
+      outputContains: "spec.domain must be unique"
+```
+
+### `kubectl.port-forward` gains `headers`/`body` — for testing token-gated endpoints like the gateway Apply API
+
+Previously every `kubectl.port-forward` request was an unauthenticated `GET`. `headers` (a string map) and `body` now let an entry send an authenticated `POST`/`PUT`/`PATCH` — e.g. asserting on the gateway's Apply API. Both go through `os.ExpandEnv` (`${VAR}` syntax, same convention as `gateway.applyAPI.auth.tokens.token`), so a CI secret never has to be written into the e2e file:
+
+```yaml
+kubectl:
+  port-forward:
+    - service: orkestra-gateway
+      namespace: orkestra-system
+      port: 8443
+      path: /api/v1/apply
+      method: POST
+      headers:
+        Authorization: "Bearer ${ORK_CI_TOKEN}"
+      body: '{"apiVersion":"platform.myorg.io/v1","kind":"AppRequest", ...}'
+      outputContains: '"accepted":false'
+```
+
+### `idp.namespace` — server-side namespace resolution for the Apply API
+
+A namespaced CRD needs a namespace on every CR it creates — but a browser form or a CI `curl` has no business deciding which one. `idp.namespace` is a template expression the gateway's Apply API (`POST /api/v1/apply`) resolves server-side, against exactly what the caller submitted, and always wins over whatever (if anything) the caller sent:
+
+```yaml
+idp:
+  enabled: true
+  namespace: '{{ teamName }}'
+```
+
+Once set, no Apply API caller — Control Center, curl, CI — needs to know or send `namespace` at all; `name` plus the declared fields is the whole contract. The Control Center form no longer renders a namespace field for any CRD. `idp.namespace` routes into a namespace, it doesn't create one — the platform team provisions it ahead of time, the same way a namespaced CRD already requires. Only affects the Apply API: a raw `kubectl apply` is unaffected, since `kubectl` always resolves some namespace client-side before a request reaches the API server, so there's never a genuinely empty namespace for a webhook to fill in the way an omitted JSON field lets the Apply API detect intent — deliberately not implemented as a mutating webhook default for that reason.
+
+Three checks at `ork validate` time: required on a namespaced CRD with `idp.enabled: true`; rejected on a cluster-scoped one (`namespaced: false`) — nothing to resolve into; rejected when templated and the CRD's informer is pinned to one fixed namespace (`allowedNamespaces` with exactly one entry, or the legacy `namespace:` field) — a CR resolved outside that one namespace would exist but never be reconciled, silently.
 
 ---
 
