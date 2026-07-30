@@ -78,3 +78,69 @@ Allowed values:
   • typeOf, typeMap, typeList, typeString, typeNumber, typeBool, typeNull
 ──────────────────────────────────────────────`, op, crd, field)
 }
+
+// validateValidationRuleLinks rejects a validation.rules entry's link: value
+// that either doesn't name any idp.fields / idp.additionalFields key on the
+// CRD (typo, or the field was renamed/removed and this rule wasn't updated),
+// or names an idp.fields key whose Field is already the redundant plain
+// "spec.<name>" form — link: only earns its keep when Field isn't already a
+// clean display name on its own. See ValidationRule.Link.
+func (k *Katalog) validateValidationRuleLinks() error {
+	for _, crd := range k.enabledCRDs {
+		if !crd.HasValidationRules() {
+			continue
+		}
+		for _, rule := range crd.Validation.Rules {
+			if rule.Link == "" {
+				continue
+			}
+			if err := checkLink(rule, crd); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func checkLink(rule orktypes.ValidationRule, crd orktypes.CRDEntry) error {
+	if crd.IDP != nil {
+		if _, ok := crd.IDP.Fields[rule.Link]; ok {
+			if rule.Field == "spec."+rule.Link {
+				return errRedundantLink(rule.Link, crd.Name)
+			}
+			return nil
+		}
+		if _, ok := crd.AdditionalLabelFields()[rule.Link]; ok {
+			return nil
+		}
+		if _, ok := crd.AdditionalAnnotationFields()[rule.Link]; ok {
+			return nil
+		}
+	}
+	return errUnknownLink(rule.Link, crd.Name, rule.Field)
+}
+
+func errUnknownLink(link, crd, field string) error {
+	return fmt.Errorf(`
+──────────────────────────────────────────────
+❌ link %q does not match any idp field
+   CRD: %s
+   field: %s
+
+link: must name a key declared in idp.fields, idp.additionalFields.labels,
+or idp.additionalFields.annotations for this CRD.
+──────────────────────────────────────────────`, link, crd, field)
+}
+
+func errRedundantLink(link, crd string) error {
+	return fmt.Errorf(`
+──────────────────────────────────────────────
+❌ link %q is redundant
+   CRD: %s
+
+This rule's field is already "spec.%s" — already a clean display name on
+its own. link: only matters when field is a template expression that isn't
+itself a valid display name (e.g. wraps getLabel/getAnnotation, or a notes:
+function). Remove link: here.
+──────────────────────────────────────────────`, link, crd, link)
+}

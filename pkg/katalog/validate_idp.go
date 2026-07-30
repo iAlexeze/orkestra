@@ -2,6 +2,9 @@ package katalog
 
 import (
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/api/validate/content"
 
@@ -33,6 +36,40 @@ func (k *Katalog) validateIDPAdditionalFields() error {
 		}
 	}
 	return nil
+}
+
+// validateIDPFieldOrder rejects two idp.fields / idp.additionalFields
+// entries on the same CRD sharing an explicit (non-zero) order: value.
+// order: now decides synthesized validation-rule priority — see
+// CRDEntry.DuplicateIDPFieldOrders — not just form layout, so a collision
+// is no longer purely cosmetic.
+func (k *Katalog) validateIDPFieldOrder() error {
+	for crdName, crd := range k.enabledCRDs {
+		dups := crd.DuplicateIDPFieldOrders()
+		if len(dups) == 0 {
+			continue
+		}
+		orders := make([]int, 0, len(dups))
+		for order := range dups {
+			orders = append(orders, order)
+		}
+		sort.Ints(orders)
+		return errIDPOrderCollision(crdName, orders[0], dups[orders[0]])
+	}
+	return nil
+}
+
+func errIDPOrderCollision(crd string, order int, names []string) error {
+	return fmt.Errorf(`
+──────────────────────────────────────────────
+❌ idp field order collision: order: %s shared by %s
+   CRD: %s
+
+Each idp.fields / idp.additionalFields entry needs a distinct order: value
+(0/unset doesn't count — any number of fields may leave it unset). Order now
+decides which field's violation is reported when more than one fails at
+once, not just where it renders on the form.
+──────────────────────────────────────────────`, strconv.Itoa(order), strings.Join(names, ", "), crd)
 }
 
 func validateIDPAdditionalBucket(crdName, bucket string, fields map[string]orktypes.IDPFieldConfig, seen map[string]string) error {

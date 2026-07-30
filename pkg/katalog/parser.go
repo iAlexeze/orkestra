@@ -3,6 +3,7 @@ package katalog
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/merger"
@@ -167,7 +168,20 @@ func (k *Katalog) KomposeRuntimeKatalog(
 	// exists rule, and entries declaring type: enum get an implicit in rule —
 	// see CRDEntry.RequiredIDPFieldRules / EnumIDPFieldRules. Runs last, after
 	// every other rules source (inline, validation.include, motif imports)
-	// has settled, so it only ever appends.
+	// has settled.
+	//
+	// Prepended, not appended: ValidationResult.DenialMessage() reports only
+	// Violations[0] as the headline denial reason, and a hand-written rule
+	// on the same field (e.g. a content/format check) can fail alongside the
+	// synthesized exists rule when the field is simply missing. Presence is
+	// the more fundamental problem — "team is required" is a more useful
+	// headline than "team must be a valid DNS subdomain" when the real issue
+	// is that team was never set at all. Same principle EnumIDPFieldRules
+	// already applies to itself (its own synthesized rule's When prepends an
+	// exists gate ahead of the enum check). This only reorders relative to
+	// hand-written rules on the same field — it doesn't change any rule's
+	// own pass/fail outcome, and the full violations: list (what the
+	// Control Center highlights from) is unaffected either way.
 	for name, entry := range k.enabledCRDs {
 		synthesized := append(entry.RequiredIDPFieldRules(), entry.EnumIDPFieldRules()...)
 		if len(synthesized) == 0 {
@@ -176,7 +190,32 @@ func (k *Katalog) KomposeRuntimeKatalog(
 		if entry.Validation == nil {
 			entry.Validation = &orktypes.ValidationConfig{}
 		}
-		entry.Validation.Rules = append(entry.Validation.Rules, synthesized...)
+		// KomposeRuntimeKatalog runs on both a raw katalog.yaml and an
+		// already-expanded bundle.yaml (ork generate bundle calls
+		// SerializeExpanded, which serializes the post-KomposeRuntimeKatalog
+		// state — synthesized rules included). idp.fields/idp.additionalFields
+		// required:/type: enum config is still present either way, so without
+		// this check, loading a bundle would re-synthesize and duplicate every
+		// rule already baked in from generate-bundle time. Synthesis is
+		// deterministic — the same config always produces a byte-identical
+		// ValidationRule — so an exact match already present is a leftover
+		// a leftover from a prior pass, and safe to skip.
+		var toAdd []orktypes.ValidationRule
+		for _, s := range synthesized {
+			dup := false
+			for _, existing := range entry.Validation.Rules {
+				if reflect.DeepEqual(s, existing) {
+					dup = true
+					break
+				}
+			}
+			if !dup {
+				toAdd = append(toAdd, s)
+			}
+		}
+		if len(toAdd) > 0 {
+			entry.Validation.Rules = append(toAdd, entry.Validation.Rules...)
+		}
 		k.enabledCRDs[name] = entry
 	}
 
