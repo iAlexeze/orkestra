@@ -8,6 +8,9 @@
 //       List all CR instances for a CRD — the kubectl get equivalent.
 //       Reads from the informer cache — no API server calls.
 //       Returns name, namespace, phase, ready, age, generation.
+//       ?field=<dot-path> additionally resolves that field (e.g. spec.domain)
+//       against each instance's full object and returns it as "value" —
+//       used by the gateway's operator: unique admission check.
 //
 //   GET /katalog/{crd}/cr/{name}           (cluster-scoped CRDs)
 //   GET /katalog/{crd}/cr/{namespace}/{name} (namespaced CRDs)
@@ -64,6 +67,16 @@ type CRSummary struct {
 	ReadyReason string `json:"readyReason,omitempty"`
 	Age         string `json:"age"`
 	Generation  int64  `json:"generation"`
+
+	// Value is the resolved value of the ?field= dot-path requested on this
+	// list call — e.g. ?field=spec.domain. Empty when no field was
+	// requested, or when the CR doesn't have that field. This is what lets
+	// operator: unique check other instances without a live List() call
+	// against the API server: the informer cache already holds full spec
+	// data, this just surfaces one field of it instead of discarding
+	// everything but the summary. See pkg/gateway/webhook's
+	// runtimeUniquenessChecker.
+	Value string `json:"value,omitempty"`
 }
 
 // CRListResponse is returned by GET /katalog/{crd}/cr.
@@ -147,6 +160,8 @@ func BuildCRListHandler(
 			return
 		}
 
+		field := r.URL.Query().Get("field")
+
 		objs := inf.GetIndexer().List()
 		items := make([]CRSummary, 0, len(objs))
 
@@ -155,7 +170,11 @@ func BuildCRListHandler(
 			if err != nil {
 				continue
 			}
-			items = append(items, summariseCR(objMap, crd.APITypes.Kind))
+			item := summariseCR(objMap, crd.APITypes.Kind)
+			if field != "" {
+				item.Value, _ = orktypes.ResolveScalarField(objMap, field)
+			}
+			items = append(items, item)
 		}
 
 		sort.Slice(items, func(i, j int) bool {
