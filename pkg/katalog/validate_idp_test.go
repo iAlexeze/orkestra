@@ -195,3 +195,47 @@ func TestValidateIDPAdditionalFields_MultipleCRDs(t *testing.T) {
 		t.Fatal("expected error from the bad CRD entry")
 	}
 }
+
+func TestValidateIDPFieldOrder_NoCollision(t *testing.T) {
+	k := katalogWithIDP(&orktypes.IDPConfig{
+		Fields: map[string]orktypes.IDPFieldConfig{
+			"image":    {Order: 1},
+			"replicas": {Order: 2},
+		},
+	})
+	if err := k.validateIDPFieldOrder(); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateIDPFieldOrder_UnsetNeverCollides(t *testing.T) {
+	k := katalogWithIDP(&orktypes.IDPConfig{
+		Fields: map[string]orktypes.IDPFieldConfig{
+			"image":    {},
+			"replicas": {},
+		},
+	})
+	if err := k.validateIDPFieldOrder(); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateIDPFieldOrder_Collision(t *testing.T) {
+	k := katalogWithIDP(&orktypes.IDPConfig{
+		Fields: map[string]orktypes.IDPFieldConfig{
+			"image": {Order: 3},
+		},
+		AdditionalFields: &orktypes.AdditionalIDPFields{
+			Labels: map[string]orktypes.IDPFieldConfig{
+				"team": {Order: 3},
+			},
+		},
+	})
+	err := k.validateIDPFieldOrder()
+	if err == nil {
+		t.Fatal("expected a collision error")
+	}
+	if !strings.Contains(err.Error(), "image") || !strings.Contains(err.Error(), "team") {
+		t.Errorf("error = %q, want it to name both colliding fields", err.Error())
+	}
+}

@@ -359,3 +359,42 @@ func TestEvaluateValidationRule_ViolationFieldsArePopulated(t *testing.T) {
 		t.Errorf("Rule = %q, want %q", v.Rule, string(ConditionPrefix))
 	}
 }
+
+func TestEvaluateValidationRule_LinkOverridesDisplayField(t *testing.T) {
+	data := specData(map[string]interface{}{"team": ""})
+	rule := ValidationRule{
+		Field:    `{{ getLabel . "team" }}`,
+		Link:     "team",
+		Operator: ConditionExists,
+		Message:  "team is required",
+		Action:   ValidationActionDeny,
+	}
+
+	v := EvaluateValidationRule(data, nil, rule)
+
+	if v == nil {
+		t.Fatal("expected a violation — field is empty")
+	}
+	if v.Field != "team" {
+		t.Errorf("Field = %q, want %q (Link, not the raw template expression)", v.Field, "team")
+	}
+}
+
+func TestEvaluateValidationRule_NoLinkUsesFieldAsDisplayField(t *testing.T) {
+	data := specData(map[string]interface{}{})
+	rule := ValidationRule{
+		Field:    `{{ getLabel . "team" }}`,
+		Operator: ConditionExists,
+		Message:  "team is required",
+		Action:   ValidationActionDeny,
+	}
+
+	v := EvaluateValidationRule(data, nil, rule)
+
+	if v == nil {
+		t.Fatal("expected a violation — field is empty")
+	}
+	if v.Field != `{{ getLabel . "team" }}` {
+		t.Errorf("Field = %q, want the raw expression unchanged — no Link was set", v.Field)
+	}
+}
