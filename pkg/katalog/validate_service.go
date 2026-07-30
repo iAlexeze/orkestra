@@ -90,7 +90,7 @@ func validateServiceProtocol(k *Katalog) error {
 func errInvalidServiceType(t string) error {
 	return fmt.Errorf(`
 ──────────────────────────────────────────────
-❌ Invalid Service type: %q
+%s Invalid Service type: %q
 
 Allowed values:
   • ClusterIP
@@ -98,13 +98,13 @@ Allowed values:
   • LoadBalancer
 
 Docs: https://kubernetes.io/docs/concepts/services-networking/service/
-──────────────────────────────────────────────`, t)
+──────────────────────────────────────────────`, failureMark(), t)
 }
 
 func errInvalidProtocol(p string) error {
 	return fmt.Errorf(`
 ──────────────────────────────────────────────
-❌ Invalid protocol: %q
+%s Invalid protocol: %q
 
 Allowed values:
   • TCP
@@ -112,5 +112,5 @@ Allowed values:
   • SCTP
 
 Docs: https://kubernetes.io/docs/concepts/services-networking/service/#protocol
-──────────────────────────────────────────────`, p)
+──────────────────────────────────────────────`, failureMark(), p)
 }

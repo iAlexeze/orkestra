@@ -28,7 +28,7 @@ func (k *Katalog) validatePortProtocols() error {
 func errInvalidProtocolForResource(crd, resource, phase, protocol string) error {
 	return fmt.Errorf(`
 ──────────────────────────────────────────────
-❌ Invalid protocol: %q
+%s Invalid protocol: %q
    CRD:      %s
    Resource: %s
    Phase:    %s
@@ -37,5 +37,5 @@ Allowed values:
   • TCP  (default — omit the field for TCP)
   • UDP
   • SCTP
-──────────────────────────────────────────────`, protocol, crd, resource, phase)
+──────────────────────────────────────────────`, failureMark(), protocol, crd, resource, phase)
 }
