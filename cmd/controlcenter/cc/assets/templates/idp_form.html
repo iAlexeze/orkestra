@@ -215,13 +215,6 @@
               <label for="cr-name">Name <span style="color:var(--text-muted)">*</span></label>
               <input type="text" id="cr-name" name="__name" required placeholder="my-resource" pattern="[a-z0-9][a-z0-9\-]*[a-z0-9]?" title="Lowercase letters, numbers, and hyphens">
             </div>
-
-            {{ if .Namespaced }}
-            <div class="idp-field">
-              <label for="cr-namespace">Namespace <span style="color:var(--text-muted)">*</span></label>
-              <input type="text" id="cr-namespace" name="__namespace" required placeholder="default">
-            </div>
-            {{ end }}
           </div>
 
           <!-- Spec fields — one section per Group -->
@@ -432,12 +425,11 @@
     // annotations are always strings, regardless of data-type, since that's
     // all Kubernetes metadata values can be.
     function collectPayload() {
-      var spec = {}, labels = {}, annotations = {}, name = '', namespace = '';
+      var spec = {}, labels = {}, annotations = {}, name = '';
       form.querySelectorAll('input, select').forEach(function (el) {
         var n = el.name;
         if (!n) return;
-        if (n === '__name')      { name = el.value.trim(); return; }
-        if (n === '__namespace') { namespace = el.value.trim(); return; }
+        if (n === '__name') { name = el.value.trim(); return; }
         var wrap = document.getElementById('field-wrap-' + n);
         if (wrap && wrap.style.display === 'none') return;
         if (el.disabled) return;
@@ -451,7 +443,7 @@
         else if (source === 'annotation') { annotations[n] = String(v); }
         else                              { spec[n] = v; }
       });
-      return { name: name, namespace: namespace, spec: spec, labels: labels, annotations: annotations };
+      return { name: name, spec: spec, labels: labels, annotations: annotations };
     }
 
     // ── Submit / Preview ────────────────────────────────────────────────────
