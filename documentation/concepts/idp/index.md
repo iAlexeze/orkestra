@@ -76,7 +76,10 @@ That is the IDP. Two config blocks on the Katalog the platform team already had.
 
 `order` above looks like form layout, and it is — but it's also validation priority: when more than one field fails at once, only the first violation becomes the headline denial reason, evaluated in the same order the fields render in. Two fields sharing a non-zero `order` is a load-time error for that reason, not just a rendering ambiguity.
 
+There's one more thing a self-service caller shouldn't have to decide: **which namespace**. A CRD is namespaced by default, and someone has to place a new CR *somewhere* — but a developer filling in a form, or a CI job doing a `curl`, has no business making that call. `idp.namespace` is a template expression (`'{{ teamName }}'`, or a plain literal) the gateway resolves server-side against whatever the caller submitted, and it always wins over whatever they sent — so `namespace` never appears on the form and no caller ever needs to supply one. It routes into a namespace the platform team already provisioned; it doesn't create one. A cluster-scoped CRD sidesteps the question entirely a different way — no namespace on the CR at all, with `onCreate` provisioning one as a child resource instead — two answers to the same problem, matched to two different scope choices.
+
 → [Additional Fields in depth](01-additional-fields.md)
+→ [`idp.namespace` reference](../../reference/schema/02-katalog/02-crd-entry.md#idpnamespace)
 
 ---
 
