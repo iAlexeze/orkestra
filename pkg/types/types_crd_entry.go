@@ -343,7 +343,17 @@ type IDPFieldConfig struct {
 	Hint string `yaml:"hint,omitempty" json:"hint,omitempty"`
 
 	// Order controls position in the rendered form. Lower values appear first.
-	// Fields with no order (0) appear after all explicitly ordered fields.
+	// Fields with no order (0) appear after all explicitly ordered fields —
+	// any number of fields may leave it unset, since 0 means "no preference,"
+	// not a real position.
+	//
+	// Not just form layout: allIDPFieldRefs sorts by Order to decide
+	// synthesized validation-rule priority too (see RuleViolation.Field /
+	// ValidationResult.DenialMessage — only the first violation is reported
+	// as the headline denial reason), so the field a developer sees first is
+	// also the one whose error they see first when several fail at once.
+	// Two fields on the same CRD sharing a non-zero Order is a load-time
+	// error (see Katalog.validateIDPFieldOrder) for exactly this reason.
 	Order int `yaml:"order,omitempty" json:"order,omitempty"`
 
 	// Category is a section heading for visual grouping. Fields sharing a category

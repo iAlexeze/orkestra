@@ -155,6 +155,125 @@ func TestRequiredIDPFieldRules_AdditionalFieldsUseNotes(t *testing.T) {
 	}
 }
 
+func TestRequiredIDPFieldRules_LinkSetForAdditionalFieldsOnly(t *testing.T) {
+	c := &CRDEntry{IDP: &IDPConfig{
+		Fields: map[string]IDPFieldConfig{
+			"team": {Label: "Team", Required: true},
+		},
+		AdditionalFields: &AdditionalIDPFields{
+			Labels: map[string]IDPFieldConfig{
+				"environment": {Label: "Environment", Required: true},
+			},
+			Annotations: map[string]IDPFieldConfig{
+				"platform.myorg.io/jira-ticket": {Label: "Jira Ticket", Required: true},
+			},
+		},
+	}}
+
+	rules := c.RequiredIDPFieldRules()
+
+	specRule := findRule(t, rules, "spec.team")
+	if specRule.Link != "" {
+		t.Errorf("spec field rule.Link = %q, want empty — \"spec.team\" is already a clean display name", specRule.Link)
+	}
+
+	labelRule := findRule(t, rules, `{{ getLabel . "environment" }}`)
+	if labelRule.Link != "environment" {
+		t.Errorf("label field rule.Link = %q, want %q", labelRule.Link, "environment")
+	}
+
+	annotationRule := findRule(t, rules, `{{ getAnnotation . "platform.myorg.io/jira-ticket" }}`)
+	if annotationRule.Link != "platform.myorg.io/jira-ticket" {
+		t.Errorf("annotation field rule.Link = %q, want %q", annotationRule.Link, "platform.myorg.io/jira-ticket")
+	}
+}
+
+func TestAllIDPFieldRefs_SortedByOrderThenName(t *testing.T) {
+	c := &CRDEntry{IDP: &IDPConfig{
+		Fields: map[string]IDPFieldConfig{
+			"zebra": {Order: 2},
+			"alpha": {}, // unset (0) — sorts after all explicitly ordered fields
+		},
+		AdditionalFields: &AdditionalIDPFields{
+			Labels: map[string]IDPFieldConfig{
+				"team": {Order: 1},
+			},
+		},
+	}}
+
+	refs := c.allIDPFieldRefs()
+	if len(refs) != 3 {
+		t.Fatalf("got %d refs, want 3", len(refs))
+	}
+	got := []string{refs[0].name, refs[1].name, refs[2].name}
+	want := []string{"team", "zebra", "alpha"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("refs[%d].name = %q, want %q (full order: %v)", i, got[i], want[i], got)
+		}
+	}
+}
+
+func TestDuplicateIDPFieldOrders_NilCases(t *testing.T) {
+	t.Run("nil CRDEntry", func(t *testing.T) {
+		var c *CRDEntry
+		if got := c.DuplicateIDPFieldOrders(); got != nil {
+			t.Errorf("got %v, want nil", got)
+		}
+	})
+	t.Run("nil IDP", func(t *testing.T) {
+		c := &CRDEntry{}
+		if got := c.DuplicateIDPFieldOrders(); got != nil {
+			t.Errorf("got %v, want nil", got)
+		}
+	})
+}
+
+func TestDuplicateIDPFieldOrders_NoCollision(t *testing.T) {
+	c := &CRDEntry{IDP: &IDPConfig{
+		Fields: map[string]IDPFieldConfig{
+			"image":    {Order: 1},
+			"replicas": {Order: 2},
+		},
+	}}
+	if got := c.DuplicateIDPFieldOrders(); len(got) != 0 {
+		t.Errorf("got %v, want no collisions", got)
+	}
+}
+
+func TestDuplicateIDPFieldOrders_UnsetNeverCollides(t *testing.T) {
+	c := &CRDEntry{IDP: &IDPConfig{
+		Fields: map[string]IDPFieldConfig{
+			"image":    {}, // order: 0
+			"replicas": {}, // order: 0
+		},
+	}}
+	if got := c.DuplicateIDPFieldOrders(); len(got) != 0 {
+		t.Errorf("got %v, want no collisions — order: 0 is \"unset\", not a real position", got)
+	}
+}
+
+func TestDuplicateIDPFieldOrders_CollisionAcrossBuckets(t *testing.T) {
+	c := &CRDEntry{IDP: &IDPConfig{
+		Fields: map[string]IDPFieldConfig{
+			"image": {Order: 3},
+		},
+		AdditionalFields: &AdditionalIDPFields{
+			Labels: map[string]IDPFieldConfig{
+				"team": {Order: 3},
+			},
+		},
+	}}
+	got := c.DuplicateIDPFieldOrders()
+	if len(got) != 1 {
+		t.Fatalf("got %d colliding orders, want 1: %+v", len(got), got)
+	}
+	names := got[3]
+	if len(names) != 2 || names[0] != "image" || names[1] != "team" {
+		t.Errorf("colliding names at order 3 = %v, want [image team] (sorted)", names)
+	}
+}
+
 func TestRequiredIDPFieldRules_AllThreeBucketsCombine(t *testing.T) {
 	c := &CRDEntry{IDP: &IDPConfig{
 		Fields: map[string]IDPFieldConfig{
@@ -301,5 +420,22 @@ func TestEnumIDPFieldRules_AdditionalFieldsUseNotes(t *testing.T) {
 	}
 	if len(r.When) != 1 || r.When[0].Field != field || r.When[0].Operator != ConditionExists {
 		t.Errorf("When = %+v, want a single synthesized exists gate using the same getLabel expression", r.When)
+	}
+	if r.Link != "tier" {
+		t.Errorf("Link = %q, want %q", r.Link, "tier")
+	}
+}
+
+func TestEnumIDPFieldRules_LinkEmptyForSpecField(t *testing.T) {
+	c := &CRDEntry{IDP: &IDPConfig{
+		Fields: map[string]IDPFieldConfig{
+			"workloadType": {Type: "enum", Enum: []string{"app", "cert"}},
+		},
+	}}
+
+	rules := c.EnumIDPFieldRules()
+	r := findRule(t, rules, "spec.workloadType")
+	if r.Link != "" {
+		t.Errorf("Link = %q, want empty — \"spec.workloadType\" is already a clean display name", r.Link)
 	}
 }

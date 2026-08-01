@@ -74,6 +74,8 @@ That is the IDP. Two config blocks on the Katalog the platform team already had.
 
 `fields` exposes `spec.*` — the workload data the operator computes with. Not everything a form should collect belongs there, though: a team name, a feature flag, an external ticket reference are metadata, not spec data. `idp.additionalFields` is the release valve — a surface, on any CRD entry in the katalog, for exactly what shouldn't be forced into `spec`. It exposes label and annotation keys as form fields the same way `fields` exposes spec ones, written straight to `metadata` instead.
 
+`order` above looks like form layout, and it is — but it's also validation priority: when more than one field fails at once, only the first violation becomes the headline denial reason, evaluated in the same order the fields render in. Two fields sharing a non-zero `order` is a load-time error for that reason, not just a rendering ambiguity.
+
 → [Additional Fields in depth](01-additional-fields.md)
 
 ---

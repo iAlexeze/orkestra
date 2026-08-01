@@ -29,9 +29,12 @@ type TemplateResolver interface {
 
 // UniquenessChecker reports whether no other existing instance of the CRD
 // under evaluation currently has the same value for a given field. Satisfied
-// structurally by the reconciler's live-list-backed implementation — this
-// package can't import pkg/runtime/reconciler, same reverse-import-cycle
-// reason as TemplateResolver.
+// structurally by two concrete implementations, both outside this package to
+// avoid a reverse-import-cycle (same reason as TemplateResolver):
+// pkg/runtime/reconciler's live-List()-backed checker (reconcile time, the
+// authoritative one) and pkg/gateway/webhook's HTTP-backed checker
+// (admission time, best-effort — queries the runtime's own informer cache
+// instead of doing a live List() itself).
 type UniquenessChecker interface {
 	// IsUnique reports whether no other CR of this kind currently has
 	// field == value. selfNamespace/selfName identify the CR under
@@ -44,11 +47,13 @@ type UniquenessChecker interface {
 // stored under — same convention as _cronWindows in when.go: state that
 // doesn't belong in a CR's template context travels alongside it in the
 // data map instead of as an explicit parameter on every evaluation
-// function. Set via template.Resolver.WithUniquenessChecker; only the
-// reconciler wires one in, so operator: unique is enforced identically in
-// both validation.rules and when:/anyOf: at reconcile time, and always
-// passes elsewhere (admission webhook, e2e, template-only contexts) where
-// there's no live CRD to check against.
+// function. Set via template.Resolver.WithUniquenessChecker — the
+// reconciler wires in a live-List() checker on every reconcile, the
+// admission webhook wires in an HTTP-backed one on every admission request,
+// so operator: unique is enforced identically in both validation.rules and
+// when:/anyOf: at both points. Always passes elsewhere (e2e, template-only
+// contexts, simulate without a seeded fixture) where there's no live CRD to
+// check against.
 const uniquenessCheckerKey = "_uniquenessChecker"
 
 // resolveUnique evaluates operator: unique against a checker injected under
@@ -265,11 +270,16 @@ func EvaluateValidationRule(data map[string]interface{}, resolver TemplateResolv
 		}
 	}
 
-	// displayField is always the original expression — shown in violation
-	// messages. When field is a template, the resolved value is the result
-	// of the expression directly (not a CR path), so we skip
-	// ResolveScalarField and use it as fieldVal.
+	// displayField is shown in violation messages and is what UI clients
+	// (the Control Center IDP form) match back to the field they rendered.
+	// rule.Link overrides it when set — see ValidationRule.Link. Otherwise
+	// it's the original expression: when field is a template, the resolved
+	// value is the result of the expression directly (not a CR path), so we
+	// skip ResolveScalarField and use it as fieldVal.
 	displayField := rule.Field
+	if rule.Link != "" {
+		displayField = rule.Link
+	}
 	isTemplate := IsTemplate(rule.Field)
 
 	var fieldVal string
@@ -427,8 +437,9 @@ func EvaluateValidationRule(data map[string]interface{}, resolver TemplateResolv
 
 	case ConditionUnique:
 		if _, hasChecker := data[uniquenessCheckerKey].(UniquenessChecker); !hasChecker {
-			// No checker injected (e.g. admission webhook) — always passes,
-			// same as EvaluateOneCond.
+			// No checker injected (e2e, simulate without a seeded fixture,
+			// or a CRD the webhook couldn't resolve) — always passes, same
+			// as EvaluateOneCond.
 			return nil
 		}
 		if !found || !resolveUnique(data, rule.Field, fieldVal) {

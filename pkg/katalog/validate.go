@@ -278,5 +278,19 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 38. Validate validation.rules link: values
+	// -------------------------------------------------------------------------
+	if err := k.validateValidationRuleLinks(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 39. Validate idp field order: values don't collide
+	// -------------------------------------------------------------------------
+	if err := k.validateIDPFieldOrder(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }
