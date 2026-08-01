@@ -15,7 +15,7 @@ operatorBox:
     - field: spec.mode
       equals: production
     - field: spec.mode
-      equals: staging
+      notEquals: staging
 ```
 
 ## Semantics
@@ -48,15 +48,27 @@ Compare a dot-notation path into the CR against a value.
 
 | Operator | Shorthand | Description |
 |----------|-----------|-------------|
-| `eq` | `equals` | Field equals value |
-| `neq` | `notEquals` | Field does not equal value |
-| `gt` | `greaterThan` | Field is greater than value (numeric) |
-| `lt` | `lessThan` | Field is less than value (numeric) |
-| `gte` | `min` | Field is greater than or equal to value (numeric) |
-| `lte` | `max` | Field is less than or equal to value (numeric) |
+| `equals` | `equals` | Field equals value |
+| `notEquals` | `notEquals` | Field does not equal value |
 | `contains` | `contains` | Field contains the substring |
+| `notContains` | `notContains` | Field does not contain the substring |
 | `prefix` | `prefix` | Field starts with the value |
 | `suffix` | `suffix` | Field ends with the value |
+| `regex` | `regex` | Field matches the value as an RE2 regular expression (Go's `regexp` syntax) |
+| `exists` | `exists: true` | Field is present and non-empty |
+| `notExists` | `notExists: true` | Field is absent or empty |
+| `gt` | `greaterThan` | Field is numerically greater than value — **strict** |
+| `lt` | `lessThan` | Field is numerically less than value — **strict** |
+| `gte` | `min`, `greaterThanOrEqual` | Field is numerically greater than or equal to value |
+| `lte` | `max`, `lessThanOrEqual` | Field is numerically less than or equal to value |
+| `between` | `between` | Field is numerically within an inclusive range. Value is `"min,max"` |
+| `notBetween` | `notBetween` | Field is numerically outside an inclusive range. Value is `"min,max"` |
+| `in` | `in` | Field is one of a comma-separated list |
+| `notIn` | `notIn` | Field is none of a comma-separated list |
+| `unique` | — | Field value must be unique across all existing instances of this CRD. Works in both `validation.rules` and `when:`/`anyOf:`, but only at reconcile time — always passes at admission time (no live checker there) |
+| `typeOf` / `typeMap` / `typeList` / `typeString` / `typeNumber` / `typeBool` / `typeNull` | — | Check the field's YAML type rather than its value. No shorthand — use `operator:` explicitly. |
+
+`gt`/`lt` are strict (exclusive); use `gte`/`lte` (or the `min`/`max` shorthand) for an inclusive bound. `min`/`max` and `greaterThanOrEqual`/`lessThanOrEqual` resolve to the same `gte`/`lte` operators — `min`/`max` read better for a bound on a quantity (`min: "1"`), `greaterThanOrEqual`/`lessThanOrEqual` for a direct comparison. Same operators and shorthand as [validation.rules](07-validation.md#operators) — the `Condition` type is shared by both.
 
 #### Shorthand form
 
@@ -78,6 +90,20 @@ when:
     operator: gt
     value: "3"
     valueType: int
+```
+
+#### `between`, `in`, and `regex`
+
+```yaml
+when:
+  - field: spec.replicas
+    between: "1,10"          # inclusive range — 1 and 10 both pass
+
+  - field: spec.tier
+    in: "standard,premium"   # comma-separated list
+
+  - field: spec.name
+    regex: "^app-[a-z0-9-]+$"
 ```
 
 ---

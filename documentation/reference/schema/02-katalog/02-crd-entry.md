@@ -273,8 +273,42 @@ fields:
 | `order` | Sort order within the form. Fields without `order` follow fields that have it. |
 | `when` | All conditions must pass for this field to be shown (AND). Uses the same `Condition` type as resource templates — see [06-when-conditions.md](06-when-conditions.md). Evaluated client-side in the Control Center; gateway/admission is the backstop. |
 | `anyOf` | At least one condition must pass for this field to be shown (OR). When both `when` and `anyOf` are declared, both blocks must pass. |
-| `required` | When `true`, marks the field as mandatory in the IDP form. The browser enforces this natively — the label shows an asterisk and the form cannot be submitted while the field is empty. Has no effect on fields currently hidden by a `when:` or `anyOf:` condition. For server-side enforcement use `validation.rules` with `action: deny`. |
+| `required` | When `true`, marks the field as mandatory — enforced both client-side (the browser shows an asterisk and blocks submission while empty) and server-side: an implicit `exists` rule with `action: deny` is synthesized automatically at load time, so every caller of the Apply API is covered, not just the Control Center form. No matching `validation.rules` entry needs to be hand-written. Has no effect on fields currently hidden by a `when:` or `anyOf:` condition. |
 | `disabled` | Non-empty string — field is rendered greyed-out with this message. Useful for platform-managed fields that should be visible but not editable. |
+
+### `idp.additionalFields`
+
+Exposes label and annotation keys as self-service form fields, written to `metadata.labels`/`metadata.annotations` on apply instead of `spec`. Flat — `labels` and `annotations` are the only two buckets; there is no third kind of Kubernetes object-metadata field to add later.
+
+```yaml
+idp:
+  enabled: true
+  additionalFields:
+    labels:
+      team:
+        label: "Team"
+        placeholder: "team-payments"
+        required: true
+    annotations:
+      canary.myorg.io:
+        label: "Enable canary rollout"
+        type: boolean
+      cost-center.myorg.io:
+        label: "Cost Center"
+        type: enum
+        enum: ["finance", "engineering", "sales"]
+```
+
+Each entry is an `IDPFieldConfig` — the same shape as `idp.fields.<name>` above, plus two fields that only matter here (spec fields always infer these from the CRD's OpenAPI schema instead):
+
+| Field | Description |
+|-------|-------------|
+| `type` | Required for additionalFields — labels/annotations have no CRD schema to infer type from. One of `string` (default), `integer`, `number`, `boolean`, `enum`. |
+| `enum` | Valid values when `type: enum`. Required in that case — `ork validate` rejects `type: enum` with no `enum:` list. |
+
+Validated at `ork validate` time: every key must be a syntactically valid Kubernetes label/annotation key (`[prefix/]name`), and no key may collide with `idp.fields` or the other `additionalFields` bucket.
+
+→ [concepts/idp — Additional Fields](../../../concepts/idp/01-additional-fields.md) — why this exists, and the boolean-checkbox gotcha with `hasAnnotation`
 
 Without any `idp:` block on the CRD entry, the CRD is not exposed via the Apply API regardless of what the Katalog-level `gateway.applyAPI` config says.
 

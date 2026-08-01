@@ -42,6 +42,8 @@ operatorBox:
 | `when` | no | `[]` | AND gate conditions. If any fail, the call is skipped and `.called = "false"`. |
 | `anyOf` | no | `[]` | OR gate conditions. At least one must pass. Combined with `when:` using AND semantics. |
 | `sleep` | no | `""` | Delay before this call. Go duration. For development and sequencing async side-effects — not for production rate limiting. |
+| `fires.reconcile` | no | `true` | When `false`, the call is skipped during reconcile — it only runs at admission time. Applies when the call is declared under `validation.external` or `mutation.external`. No effect on `onReconcile.external` calls. |
+| `include` | no | — | Path to a YAML file with a top-level `calls:` list. When set, this entry is replaced in-place by the listed calls. Resolved relative to the katalog file. Cleared after expansion. |
 
 ## Result context
 
@@ -80,6 +82,61 @@ external:
   - name: protectedCall
     url: "{{ .spec.serviceUrl }}/resource"
     token: "{{ .external.tokenFetch.body }}"
+```
+
+## `include:` in external lists
+
+When the `external:` list grows long, individual entries can delegate to a shared file:
+
+```yaml
+onReconcile:
+  external:
+    - include: ./shared/auth-calls.yaml
+    - name: healthCheck
+      url: "{{ .spec.serviceUrl }}/health"
+```
+
+`./shared/auth-calls.yaml`:
+
+```yaml
+calls:
+  - name: tokenFetch
+    url: "{{ .spec.authUrl }}/token"
+    method: POST
+  - name: featureFlags
+    url: "{{ .spec.flagsUrl }}/flags"
+    continueOnError: true
+```
+
+The include entry is replaced in-place by the `calls:` list. The path is resolved relative to the katalog file's directory. Works in `onReconcile.external`, `onCreate.external`, `validation.external`, and `mutation.external`.
+
+## Placement
+
+External calls can be declared in three locations:
+
+| Location | When it fires |
+|---|---|
+| `onReconcile.external` | Every reconcile cycle, before resource groups are processed |
+| `validation.external` | Before validation rules — at admission (always) and at reconcile (unless `fires.reconcile: false`) |
+| `mutation.external` | Before mutation rules — at admission (always) and at reconcile (unless `fires.reconcile: false`) |
+
+`fires.reconcile: false` is useful when an external call is expensive or irrelevant after the CR is persisted — for example, a pre-admission health check that only makes sense at `kubectl apply` time.
+
+```yaml
+validation:
+  external:
+    - name: healthCheck
+      url: "{{ .spec.serviceUrl }}/health"
+      expectedStatus: 200
+      continueOnError: true
+      fires:
+        reconcile: false   # checked once at apply — not repeated every resync
+
+  rules:
+    - field: "{{ .external.healthCheck.status }}"
+      equals: "200"
+      action: deny
+      message: "health check failed — deployment blocked"
 ```
 
 ## Constraints

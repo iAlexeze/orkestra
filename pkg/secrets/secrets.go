@@ -16,6 +16,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 // SecretExists checks whether a Secret with the given name exists in the namespace.
@@ -108,6 +109,22 @@ func annotateSecret(ctx context.Context, kube kubeclient.KubeClient, namespace, 
 	secret.Annotations[orktypes.AnnotationRotateAfter] = rotateAfter
 	_, err = kube.Clientset().CoreV1().Secrets(namespace).Update(ctx, secret, metav1.UpdateOptions{})
 	return err
+}
+
+// ReadSecretKey fetches a Secret and returns the value at the given key.
+// Uses the watch cache (ResourceVersion: "0") to avoid an etcd round-trip.
+func ReadSecretKey(ctx context.Context, cs kubernetes.Interface, namespace, name, key string) (string, error) {
+	secret, err := cs.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{
+		ResourceVersion: "0",
+	})
+	if err != nil {
+		return "", fmt.Errorf("reading secret %s/%s: %w", namespace, name, err)
+	}
+	val, ok := secret.Data[key]
+	if !ok {
+		return "", fmt.Errorf("secret %s/%s has no key %q", namespace, name, key)
+	}
+	return string(val), nil
 }
 
 // IsNotFoundErr returns true when err is a Kubernetes 404 Not Found error.

@@ -46,7 +46,7 @@ services:
       - field: spec.environment
         equals: "production"
       - field: spec.forceExpose
-        equals: "true"
+        NotEquals: "true"
 ```
 
 The service is created when either condition is true.
@@ -55,18 +55,7 @@ The service is created when either condition is true.
 
 ## Condition operators
 
-| Operator | Meaning |
-|---|---|
-| `equals` | Exact string match (default) |
-| `notEquals` | String mismatch |
-| `contains` | Substring match |
-| `prefix` | Starts with |
-| `suffix` | Ends with |
-| `exists` | Field is non-empty |
-| `notExists` | Field is absent or empty |
-| `gt` | Numerically greater than |
-| `lt` | Numerically less than |
-| `in` | Member of comma-separated list |
+String matching (`equals`, `contains`, `prefix`, `suffix`, `regex`), existence (`exists`, `notExists`), numeric comparison (`gt`/`lt`/`gte`/`lte`/`between`), and set membership (`in`/`notIn`) are all available, each with a same-named shorthand field so you rarely need `operator:`/`value:` explicitly — see the [full operator reference](../../reference/schema/02-katalog/06-when-conditions.md#operators).
 
 ---
 

@@ -44,9 +44,6 @@ package types
 //	        - "{{ .metadata.namespace }}"
 //	        - staging
 type ResourceQuotaTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty"`
-
 	// Name — ResourceQuota name.
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`
 
@@ -72,7 +69,7 @@ type ResourceQuotaTemplateSource struct {
 	Hard map[string]string `yaml:"hard,omitempty" json:"hard,omitempty"`
 
 	// Labels — applied to ResourceQuota metadata.
-	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty"`
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty"`
 
 	// Conditions (when:) — all must pass for this resource to be applied.
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`

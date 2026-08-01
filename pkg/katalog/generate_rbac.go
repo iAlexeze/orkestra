@@ -224,6 +224,40 @@ func (k *Katalog) WebhookResources() []string {
 	return resources
 }
 
+// HasExternalSecretRefs returns true when any enabled CRD declares an external call
+// with auth.secretRef. Used to gate automatic secrets-get RBAC generation.
+func (k *Katalog) HasExternalSecretRefs() bool {
+	for _, crd := range k.enabledCRDs {
+		var calls []orktypes.ExternalCallSpec
+		if crd.OperatorBox.OnReconcile != nil {
+			calls = append(calls, crd.OperatorBox.OnReconcile.External...)
+		}
+		if crd.OperatorBox.OnCreate != nil {
+			calls = append(calls, crd.OperatorBox.OnCreate.External...)
+		}
+		calls = append(calls, crd.HooksExternal()...)
+		if crd.Validation != nil {
+			calls = append(calls, crd.Validation.External...)
+		}
+		if crd.Mutation != nil {
+			calls = append(calls, crd.Mutation.External...)
+		}
+		if hasSecretRef(calls) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasSecretRef(calls []orktypes.ExternalCallSpec) bool {
+	for _, c := range calls {
+		if c.Auth != nil && c.Auth.SecretRef != nil {
+			return true
+		}
+	}
+	return false
+}
+
 // GenerateRuntimeRBACRules returns the RBAC rules required by the runtime reconciler process.
 // This is GenerateRBACRules() minus the NeedsCertificates() block (webhook/secrets),
 // minus the IsDeletionProtectionEnabled() namespace block, and minus CRD CA-bundle patch rules.
@@ -245,6 +279,17 @@ func (k *Katalog) GenerateRuntimeRBACRules() []rbacv1.PolicyRule {
 			Verbs:     []string{"create", "patch"},
 		},
 	)
+
+	// ───────────────────────────────────────────────
+	// External auth.secretRef — secrets get
+	// ───────────────────────────────────────────────
+	if k.HasExternalSecretRefs() {
+		rules = append(rules, rbacv1.PolicyRule{
+			APIGroups: []string{""},
+			Resources: []string{"secrets"},
+			Verbs:     []string{"get"},
+		})
+	}
 
 	// ───────────────────────────────────────────────
 	// CRD RBAC (main + status, no CA bundle patch)

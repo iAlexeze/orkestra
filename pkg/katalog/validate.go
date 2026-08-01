@@ -250,5 +250,33 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 34. Validate external call lists (unique non-empty names)
+	// -------------------------------------------------------------------------
+	if err := k.validateExternalCalls(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 35. Validate envFrom refs (suffix requires keys)
+	// -------------------------------------------------------------------------
+	if err := k.validateEnvFromRefs(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 36. Validate idp.additionalFields (key syntax, enum, uniqueness)
+	// -------------------------------------------------------------------------
+	if err := k.validateIDPAdditionalFields(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 37. Validate validation.rules / mutation.rules operators are known
+	// -------------------------------------------------------------------------
+	if err := k.validateAdmissionOperators(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }

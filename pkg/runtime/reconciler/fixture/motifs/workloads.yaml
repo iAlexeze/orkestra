@@ -29,7 +29,7 @@ resources:
               key: PORT
       envFrom:
         secretRef:
-          - "{{ .metadata.name }}-creds"
+          - name: "{{ .metadata.name }}-creds"
 
     # Only created when tier=premium — tests evaluateConditions path.
     - name: "{{ .metadata.name }}-premium"

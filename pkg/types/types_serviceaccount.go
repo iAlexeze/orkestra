@@ -12,12 +12,8 @@ package types
 //	    - name: "{{ .metadata.name }}-sa"
 //	      namespace: "{{ .metadata.namespace }}"
 //	      labels:
-//	        - key: app
-//	          value: "{{ .metadata.name }}"
+//	        app: "{{ .metadata.name }}"
 type ServiceAccountTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty" validate:"omitempty"`
-
 	// Name — ServiceAccount name.
 	// Default when omitted: "{{ .metadata.name }}-sa"
 	Name string `yaml:"name,omitempty" json:"name,omitempty" validate:"omitempty"`
@@ -27,7 +23,7 @@ type ServiceAccountTemplateSource struct {
 	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty" validate:"omitempty"`
 
 	// Labels — applied to ServiceAccount metadata. Values support template expressions.
-	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
 
 	// Conditions declares the set of runtime predicates that must all evaluate to
 	// true for this resource template to be applied during reconciliation.
@@ -49,7 +45,6 @@ type ServiceAccountTemplateSource struct {
 	// Conditions allow templates to be selectively activated based on the CR's
 	// state, enabling dynamic topologies, feature flags, environment‑specific
 	// behavior, and conditional provisioning without writing Go code.
-
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
 	// Reconcile: true — also apply this declaration as drift correction on every
@@ -60,10 +55,20 @@ type ServiceAccountTemplateSource struct {
 	// ForEach declares dynamic expansion over a list field.
 	// When set, one source declaration becomes N declarations — one per list element.
 	// .item and .<as> are available in template expressions within this declaration.
+	//
+	//	forEach:
+	//	  field: spec.regions
+	//	  as: region
 	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
 
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	//
+	//	anyOf:
+	//	  - field: spec.tier
+	//	    equals: pro
+	//	  - field: spec.tier
+	//	    equals: enterprise
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
@@ -80,22 +85,26 @@ type ServiceAccountTemplateSource struct {
 //
 //	onCreate:
 //	  namespaces:
-//	    - name: "{{ .metadata.name }}-sa"
+//	    - name: "{{ .metadata.name }}-ns"
 //	      labels:
-//	        - key: app
-//	          value: "{{ .metadata.name }}"
+//	        app: "{{ .metadata.name }}"
 type NamespaceTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty" validate:"omitempty"`
-
-	// Name — ServiceAccount name.
-	// Default when omitted: "{{ .metadata.name }}-sa"
+	// Name — Namespace name.
+	// Default when omitted: "{{ .metadata.name }}-ns"
 	Name string `yaml:"name,omitempty" json:"name,omitempty" validate:"omitempty"`
 
+	// Finalizers — additional Kubernetes finalizers to add to the Namespace,
+	// beyond the standard "kubernetes" finalizer. The Namespace stays in
+	// Terminating state until every finalizer is removed by its owning
+	// controller, so only add one if something must run cleanup before this
+	// Namespace can actually be deleted.
+	//
+	//	finalizers:
+	//	  - "{{ .metadata.name }}/cleanup"
 	Finalizers []string `yaml:"finalizers,omitempty" json:"finalizers,omitempty" validate:"omitempty"`
 
-	// Labels — applied to ServiceAccount metadata. Values support template expressions.
-	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
+	// Labels — applied to Namespace metadata. Values support template expressions.
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
 
 	// Conditions declares the set of runtime predicates that must all evaluate to
 	// true for this resource template to be applied during reconciliation.
@@ -117,7 +126,6 @@ type NamespaceTemplateSource struct {
 	// Conditions allow templates to be selectively activated based on the CR's
 	// state, enabling dynamic topologies, feature flags, environment‑specific
 	// behavior, and conditional provisioning without writing Go code.
-
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
 	// Reconcile: true — also apply this declaration as drift correction on every
@@ -128,10 +136,20 @@ type NamespaceTemplateSource struct {
 	// ForEach declares dynamic expansion over a list field.
 	// When set, one source declaration becomes N declarations — one per list element.
 	// .item and .<as> are available in template expressions within this declaration.
+	//
+	//	forEach:
+	//	  field: spec.regions
+	//	  as: region
 	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
 
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	//
+	//	anyOf:
+	//	  - field: spec.tier
+	//	    equals: pro
+	//	  - field: spec.tier
+	//	    equals: enterprise
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.

@@ -17,9 +17,6 @@ package types
 //	      image: "{{ .spec.workerImage }}"
 //	      port: "9090"
 type PodTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty" validate:"omitempty"`
-
 	// Name — Pod name.
 	// Default when omitted: "{{ .metadata.name }}-pod"
 	Name string `yaml:"name,omitempty" json:"name,omitempty" validate:"omitempty"`
@@ -46,26 +43,34 @@ type PodTemplateSource struct {
 	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty" validate:"omitempty"`
 
 	// Labels — applied to Pod metadata. Values support template expressions.
-	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
 
 	// Annotations — applied to Pod metadata. Values support template expressions.
-	Annotations []ResourceLabel `yaml:"annotations,omitempty" json:"annotations,omitempty" validate:"omitempty"`
+	Annotations Labels `yaml:"annotations,omitempty" json:"annotations,omitempty" validate:"omitempty"`
 
 	// Resources — CPU and memory requests/limits for the primary container.
 	// Set resources.profile for a named preset, or resources.requests/limits for
 	// explicit values. Profile and explicit values are mutually exclusive.
+	//
+	//	resources:
+	//	  profile: burst
+	//
+	//	resources:
+	//	  requests:
+	//	    cpu: 100m
+	//	    memory: 128Mi
+	//	  limits:
+	//	    cpu: 500m
+	//	    memory: 512Mi
 	Resources *ResourceRequirements `yaml:"resources,omitempty" json:"resources,omitempty" validate:"omitempty"`
 
 	// NodeSelector is a selector which must be true for the pod to fit on a node.
 	// Selector which must match a node's labels for the pod to be scheduled on that node.
 	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-	// +optional
-	// +mapType=atomic
 	NodeSelector map[string]string `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run this pod.
 	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
-	// +optional
 	ServiceAccountName string `yaml:"serviceAccountName,omitempty" json:"serviceAccountName,omitempty"`
 
 	// Conditions declares the set of runtime predicates that must all evaluate to
@@ -88,19 +93,34 @@ type PodTemplateSource struct {
 	// Conditions allow templates to be selectively activated based on the CR's
 	// state, enabling dynamic topologies, feature flags, environment‑specific
 	// behavior, and conditional provisioning without writing Go code.
-
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
 	// ForEach declares dynamic expansion over a list field.
 	// When set, one source declaration becomes N declarations — one per list element.
 	// .item and .<as> are available in template expressions within this declaration.
+	//
+	//	forEach:
+	//	  field: spec.regions
+	//	  as: region
 	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
 
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	//
+	//	anyOf:
+	//	  - field: spec.tier
+	//	    equals: pro
+	//	  - field: spec.tier
+	//	    equals: enterprise
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 
 	// Probes — startup, liveness, and readiness probe configuration.
+	//
+	//	probes:
+	//	  liveness:
+	//	    type: http
+	//	    path: /healthz
+	//	    profile: standard
 	Probes *ProbesConfig `yaml:"probes,omitempty" json:"probes,omitempty"`
 
 	// Reconcile: true — also apply this declaration as drift correction on every
@@ -111,16 +131,31 @@ type PodTemplateSource struct {
 	// SecurityContext — container-level security settings.
 	// Set securityContext.profile for a named preset (baseline, restricted, hardened)
 	// or declare individual fields. Profile and explicit fields are mutually exclusive.
+	//
+	//	securityContext:
+	//	  profile: restricted
 	SecurityContext *ContainerSecurityContext `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
 
 	// PodSecurity — pod-level security settings applied to the pod spec.
 	// Set podSecurity.profile for a named preset or declare individual fields.
+	//
+	//	podSecurity:
+	//	  profile: baseline
 	PodSecurity *PodSecurityContext `yaml:"podSecurity,omitempty" json:"podSecurity,omitempty"`
 
 	// Volumes — pod volumes available for mounting into the container.
+	//
+	//	volumes:
+	//	  - name: config
+	//	    configMap:
+	//	      name: myapp-config
 	Volumes []VolumeSource `yaml:"volumes,omitempty" json:"volumes,omitempty"`
 
 	// VolumeMounts — mounts for the primary container.
+	//
+	//	volumeMounts:
+	//	  - name: config
+	//	    mountPath: /etc/myapp
 	VolumeMounts []VolumeMount `yaml:"volumeMounts,omitempty" json:"volumeMounts,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.

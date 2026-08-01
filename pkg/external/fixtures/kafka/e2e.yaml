@@ -1,0 +1,33 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: E2E
+metadata:
+  name: external-kafka-e2e
+  description: >
+    Verifies protocol: kafka by deploying Kafka in orkestra-system and reading
+    topic metadata (@events) from the WebApp reconciler.
+
+spec:
+  katalog: ./katalog.yaml
+  crd: ./crd.yaml
+  cr: ./e2e/cr-e2e.yaml
+
+  cluster:
+    provider: kind
+    name: ork-external-kafka
+    reuse: false
+
+  expect:
+    - include: ./e2e/01-kafka-deploy.yaml
+    - include: ./e2e/02-assertions.yaml
+    - include: ./e2e/03-cleanup.yaml
+
+  onFailure:
+    kubectl:
+      get:
+        - kind: WebApp
+          namespace: default
+      logs:
+        - leaderElection:
+            lease: orkestra-konductor
+            namespace: orkestra-system
+          since: 2m

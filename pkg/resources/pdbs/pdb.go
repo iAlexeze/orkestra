@@ -195,8 +195,8 @@ func Resolve(src orktypes.PDBTemplateSource, ownerName string, reg orktypes.Prof
 		spec.Selector[k] = v
 	}
 
-	for _, l := range src.Labels {
-		spec.Labels[l.Key] = l.Value
+	for k, v := range src.Labels {
+		spec.Labels[k] = v
 	}
 
 	// System labels

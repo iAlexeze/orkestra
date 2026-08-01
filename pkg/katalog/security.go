@@ -380,13 +380,15 @@ func (k *Katalog) ConversionWindow() int {
 
 // ── Gateway config ────────────────────────────────────────────────────────────
 
-// IsGatewayEnabled reports whether this Katalog requires the gateway to be
-// installed (paired mode). When true:
-//   - Helm must install the gateway chart
-//   - endpoint is optional (runtime may populate it)
-//   - spec: must be present (CRDs required)
+// IsGatewayEnabled reports whether this Katalog declares a gateway: block at
+// all — deliberately just a nil check, not a check of individual fields
+// within it (enabled, endpoint, applyAPI, …). Any declared gateway: block
+// means the katalog expects a gateway to exist; checking specific fields
+// undercounts as the block grows new standalone-meaningful sections (e.g.
+// applyAPI: with no enabled: or endpoint: set, as in a CI-only Apply API
+// client setup).
 func (k *Katalog) IsGatewayEnabled() bool {
-	return k.Gateway != nil && (k.Gateway.Enabled || k.Gateway.Endpoint != "")
+	return k.Gateway != nil
 }
 
 // IsApplyAPIEnabled reports whether the Gateway Apply API flag is set.

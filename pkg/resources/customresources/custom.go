@@ -341,18 +341,24 @@ func buildUnstructured(spec ResolvedCustomResourceSpec, owner domain.Object, gvk
 		u.SetNamespace(namespace)
 	}
 
-	// Labels: merge user-declared + Orkestra managed orklabels.
-	lbls := labelsToMap(spec.Metadata.Labels)
-	if lbls == nil {
-		lbls = make(map[string]string)
+	// Labels: merge user-declared + Orkestra managed orklabels. Copy rather than
+	// mutate spec.Metadata.Labels directly — that map may be shared/reused
+	// (e.g. across forEach expansions of the same source).
+	lbls := make(map[string]string, len(spec.Metadata.Labels)+2)
+	for k, v := range spec.Metadata.Labels {
+		lbls[k] = v
 	}
 	lbls[orklabels.ManagedKey] = orklabels.ManagedValue
 	lbls[orklabels.OrkestraOwner] = owner.GetName()
 	u.SetLabels(lbls)
 
-	// Annotations: convert []ResourceLabel → map[string]string.
+	// Annotations: copy for the same reason as Labels above.
 	if len(spec.Metadata.Annotations) > 0 {
-		u.SetAnnotations(labelsToMap(spec.Metadata.Annotations))
+		annotations := make(map[string]string, len(spec.Metadata.Annotations))
+		for k, v := range spec.Metadata.Annotations {
+			annotations[k] = v
+		}
+		u.SetAnnotations(annotations)
 	}
 
 	// Owner reference — lets Kubernetes garbage-collect the resource when the
@@ -401,21 +407,6 @@ func buildUnstructured(spec ResolvedCustomResourceSpec, owner domain.Object, gvk
 	}
 
 	return u
-}
-
-// labelsToMap converts []ResourceLabel (key-value pairs) to map[string]string
-// as required by the Kubernetes API. Returns nil for an empty slice.
-func labelsToMap(src []orktypes.ResourceLabel) map[string]string {
-	if len(src) == 0 {
-		return nil
-	}
-	m := make(map[string]string, len(src))
-	for _, l := range src {
-		if l.Key != "" {
-			m[l.Key] = l.Value
-		}
-	}
-	return m
 }
 
 func buildGVK(apiVersion, kind string) (schema.GroupVersionKind, error) {

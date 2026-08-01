@@ -31,12 +31,6 @@ package types
 // All resources created by hook templates receive owner references pointing to the CR.
 // This means cascade deletion is automatic — child resources are garbage collected
 // when the CR is deleted without requiring explicit onDelete declarations for most cases.
-//
-// version field — optional OrkestraRegistry implementation version to pin.
-//
-//	Omit → uses the latest implementation shipped with this Orkestra version.
-//	Set  → pins to a specific OrkestraRegistry release tag for stability.
-//	e.g. version: v1.2.0
 
 import (
 	"fmt"
@@ -48,45 +42,19 @@ import (
 
 // ── Shared resource value types ───────────────────────────────────────────────
 
-// ResourceLabel is a single key-value label or annotation pair.
-// When used in hook template declarations, values support Go text/template
-// expressions evaluated against the live CR at reconcile time.
-// e.g. {key: "app", value: "{{ .metadata.name }}"}
-type ResourceLabel struct {
-	Key   string `yaml:"key" json:"key" validate:"required"`
-	Value string `yaml:"value" json:"value" validate:"required"`
-}
-
-func (l ResourceLabel) String() string {
-	return fmt.Sprintf("%s=%s", l.Key, l.Value)
-}
-
-type ResourceSelector []ResourceLabel
+// Labels is a set of Kubernetes labels or annotations. When used in hook template
+// declarations, values support Go text/template expressions evaluated against the
+// live CR at reconcile time.
+// e.g. {app: "{{ .metadata.name }}"}
+type Labels map[string]string
 
 // Stringifier
-func (s ResourceSelector) String() string {
-	if len(s) == 0 {
+func (l Labels) String() string {
+	if len(l) == 0 {
 		return ""
 	}
-
-	parts := make([]string, 0, len(s))
-	for _, lbl := range s {
-		parts = append(parts, lbl.String())
-	}
-
-	return strings.Join(parts, ",")
-}
-
-// Selector map
-type SelectorMap map[string]string
-
-// Stringifier
-func (m SelectorMap) String() string {
-	if len(m) == 0 {
-		return ""
-	}
-	parts := make([]string, 0, len(m))
-	for k, v := range m {
+	parts := make([]string, 0, len(l))
+	for k, v := range l {
 		parts = append(parts, fmt.Sprintf("%s=%s", k, v))
 	}
 	sort.Strings(parts)
@@ -132,22 +100,40 @@ type ValueFrom struct {
 	ConfigMapKeyRef *ConfigMapKeyRef `yaml:"configMapKeyRef,omitempty" json:"configMapKeyRef,omitempty"`
 }
 
+// EnvFromRef is one secretRef/configMapRef entry under envFrom.
+//
+// Name, Prefix, and Optional map directly onto Kubernetes' own EnvFromSource /
+// SecretEnvSource / ConfigMapEnvSource fields. Keys and Suffix are Orkestra
+// extensions with no Kubernetes equivalent — Kubernetes' envFrom is a blanket
+// import with no per-key rename mechanism, so a ref that sets Keys is expanded
+// into individual env entries at build time instead of a native envFrom source.
+// Suffix without Keys is a validation error — see pkg/katalog/validate_envfrom.go.
+type EnvFromRef struct {
+	Name     string   `yaml:"name" json:"name" validate:"required"`
+	Prefix   string   `yaml:"prefix,omitempty" json:"prefix,omitempty"`
+	Suffix   string   `yaml:"suffix,omitempty" json:"suffix,omitempty"`
+	Optional *bool    `yaml:"optional,omitempty" json:"optional,omitempty"`
+	Keys     []string `yaml:"keys,omitempty" json:"keys,omitempty"`
+}
+
 // EnvFrom groups environment sources by type.
 type EnvFrom struct {
-	SecretRef    []string `yaml:"secretRef,omitempty" json:"secretRef,omitempty"`
-	ConfigMapRef []string `yaml:"configMapRef,omitempty" json:"configMapRef,omitempty"`
+	SecretRef    []EnvFromRef `yaml:"secretRef,omitempty" json:"secretRef,omitempty"`
+	ConfigMapRef []EnvFromRef `yaml:"configMapRef,omitempty" json:"configMapRef,omitempty"`
 }
 
 // SecretKeyRef selects a key from a Kubernetes Secret.
-// Both Name and Key are required.
+// Name and Key are required. Optional mirrors corev1.SecretKeySelector.Optional.
 type SecretKeyRef struct {
-	Name string `yaml:"name" json:"name"`
-	Key  string `yaml:"key" json:"key"`
+	Name     string `yaml:"name" json:"name"`
+	Key      string `yaml:"key" json:"key"`
+	Optional *bool  `yaml:"optional,omitempty" json:"optional,omitempty"`
 }
 
 // ConfigMapKeyRef selects a key from a Kubernetes ConfigMap.
-// Both Name and Key are required.
+// Name and Key are required. Optional mirrors corev1.ConfigMapKeySelector.Optional.
 type ConfigMapKeyRef struct {
-	Name string `yaml:"name" json:"name"`
-	Key  string `yaml:"key" json:"key"`
+	Name     string `yaml:"name" json:"name"`
+	Key      string `yaml:"key" json:"key"`
+	Optional *bool  `yaml:"optional,omitempty" json:"optional,omitempty"`
 }

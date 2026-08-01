@@ -55,10 +55,8 @@ resources:
         namespace: "{{ .metadata.namespace }}"
         namespaced: true
         labels:
-          - key: infra.example.io/platform
-            value: "{{ .metadata.name }}"
-          - key: infra.example.io/owner
-            value: "{{ .spec.owner }}"
+          infra.example.io/platform: "{{ .metadata.name }}"
+          infra.example.io/owner: "{{ .spec.owner }}"
       spec:
         replicas: "{{ .inputs.mqReplicas }}"
         storage: "{{ .inputs.mqStorage }}"
@@ -72,10 +70,8 @@ resources:
         namespace: "{{ .metadata.namespace }}"
         namespaced: true
         labels:
-          - key: infra.example.io/platform
-            value: "{{ .metadata.name }}"
-          - key: infra.example.io/owner
-            value: "{{ .spec.owner }}"
+          infra.example.io/platform: "{{ .metadata.name }}"
+          infra.example.io/owner: "{{ .spec.owner }}"
       spec:
         capacity: "{{ .inputs.storeCapacity }}"
         replicas: "{{ .inputs.storeReplicas }}"
@@ -89,10 +85,8 @@ resources:
         namespace: "{{ .metadata.namespace }}"
         namespaced: true
         labels:
-          - key: infra.example.io/platform
-            value: "{{ .metadata.name }}"
-          - key: infra.example.io/owner
-            value: "{{ .spec.owner }}"
+          infra.example.io/platform: "{{ .metadata.name }}"
+          infra.example.io/owner: "{{ .spec.owner }}"
       spec:
         nodes: "{{ .inputs.searchNodes }}"
         heapSize: "{{ .inputs.searchHeapSize }}"

@@ -142,6 +142,32 @@ type ValidationRule struct {
 	GreaterThan string `yaml:"greaterThan,omitempty" json:"greaterThan,omitempty"`
 	LessThan    string `yaml:"lessThan,omitempty" json:"lessThan,omitempty"`
 
+	// GreaterThanOrEqual is a shorthand for operator: gte.
+	GreaterThanOrEqual string `yaml:"greaterThanOrEqual,omitempty" json:"greaterThanOrEqual,omitempty"`
+
+	// LessThanOrEqual is a shorthand for operator: lte.
+	LessThanOrEqual string `yaml:"lessThanOrEqual,omitempty" json:"lessThanOrEqual,omitempty"`
+
+	// NotContains is a shorthand for operator: notContains.
+	NotContains string `yaml:"notContains,omitempty" json:"notContains,omitempty"`
+
+	// Regex is a shorthand for operator: regex.
+	Regex string `yaml:"regex,omitempty" json:"regex,omitempty"`
+
+	// Between is a shorthand for operator: between. Comma-separated "min,max",
+	// both inclusive.
+	Between string `yaml:"between,omitempty" json:"between,omitempty"`
+
+	// NotBetween is a shorthand for operator: notBetween. Comma-separated
+	// "min,max", same bounds as between.
+	NotBetween string `yaml:"notBetween,omitempty" json:"notBetween,omitempty"`
+
+	// In is a shorthand for operator: in. Comma-separated list.
+	In string `yaml:"in,omitempty" json:"in,omitempty"`
+
+	// NotIn is a shorthand for operator: notIn. Comma-separated list.
+	NotIn string `yaml:"notIn,omitempty" json:"notIn,omitempty"`
+
 	// Explicit operator form — use when no shorthand covers the comparison.
 	Operator  ConditionOperator `yaml:"operator,omitempty" json:"operator,omitempty"`
 	Value     string            `yaml:"value,omitempty" json:"value,omitempty"`
@@ -163,10 +189,39 @@ type ValidationConfig struct {
 	// time — included rules come first, inline rules append after.
 	Include string `yaml:"include,omitempty" json:"include,omitempty"`
 
+	// External declares HTTP calls made before validation rules are evaluated.
+	// Results are available in rule field:, equals:, and message: expressions.
+	// At admission time: all entries fire.
+	// At reconcile time: only entries with fires.reconcile != false fire.
+	External []ExternalCallSpec `yaml:"external,omitempty" json:"external,omitempty"`
+
 	// Rules — evaluated in declaration order.
 	// All rules are evaluated before returning — all violations are reported
 	// together so the user can fix everything in one cycle.
 	Rules []ValidationRule `yaml:"rules,omitempty" json:"rules,omitempty"`
+}
+
+// AdmissionExternal returns all external calls — every entry fires at admission time.
+func (c *ValidationConfig) AdmissionExternal() []ExternalCallSpec {
+	if c == nil {
+		return nil
+	}
+	return c.External
+}
+
+// ReconcileExternal returns only calls that fire at reconcile time.
+// Entries with fires.reconcile: false are excluded.
+func (c *ValidationConfig) ReconcileExternal() []ExternalCallSpec {
+	if c == nil {
+		return nil
+	}
+	var out []ExternalCallSpec
+	for _, e := range c.External {
+		if e.Fires.firesAtReconcile() {
+			out = append(out, e)
+		}
+	}
+	return out
 }
 
 // HasDenyRules reports whether any rules use action: deny (or the default).
@@ -252,6 +307,12 @@ type MutationConfig struct {
 	// time — included rules come first, inline rules append after.
 	Include string `yaml:"include,omitempty" json:"include,omitempty"`
 
+	// External declares HTTP calls made before mutation rules are applied.
+	// Results are available in rule field:, default:, and override: expressions.
+	// At admission time: all entries fire.
+	// At reconcile time: only entries with fires.reconcile != false fire.
+	External []ExternalCallSpec `yaml:"external,omitempty" json:"external,omitempty"`
+
 	// Rules — applied in declaration order.
 	Rules []MutationRule `yaml:"rules,omitempty" json:"rules,omitempty"`
 
@@ -262,6 +323,29 @@ type MutationConfig struct {
 	// Kubernetes webhook ordering (MutatingWebhookConfiguration fires before
 	// ValidatingWebhookConfiguration). This field only affects reconcile ordering.
 	MutateFirst bool `yaml:"mutateFirst,omitempty" json:"mutateFirst,omitempty"`
+}
+
+// AdmissionExternal returns all external calls — every entry fires at admission time.
+func (c *MutationConfig) AdmissionExternal() []ExternalCallSpec {
+	if c == nil {
+		return nil
+	}
+	return c.External
+}
+
+// ReconcileExternal returns only calls that fire at reconcile time.
+// Entries with fires.reconcile: false are excluded.
+func (c *MutationConfig) ReconcileExternal() []ExternalCallSpec {
+	if c == nil {
+		return nil
+	}
+	var out []ExternalCallSpec
+	for _, e := range c.External {
+		if e.Fires.firesAtReconcile() {
+			out = append(out, e)
+		}
+	}
+	return out
 }
 
 // ── AdmissionWebhookConfig ────────────────────────────────────────────────

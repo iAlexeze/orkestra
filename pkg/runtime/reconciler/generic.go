@@ -308,12 +308,16 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	if r.kat != nil && !r.kat.Notes.IsEmpty() {
 		resolver = resolver.WithUserNotes(r.kat.Notes)
 	}
+	// Gives operator: unique live CRD access for the rest of this reconcile
+	// pass — validation.rules and any when:/anyOf: block evaluated against
+	// this resolver (mutation rules, template sources) all share it.
+	resolver = resolver.WithUniquenessChecker(newUniquenessChecker(ctx, r.kube, r.crd.GVR(), r.crd.IsNamespaced()))
 	// Run hook-declared external calls before ScopedFor so their results are
 	// available as .external.<name>.* when args template expressions are evaluated.
 	// This gives typed hooks access to external systems without needing an HTTP
 	// client — the runtime makes the calls, the hook reads the results via kube.Args().
 	if r.crd.HasHooksExternal() {
-		resolver, err = runExternal(ctx, r.crd.GVKString(), resolver, r.crd.HooksExternal())
+		resolver, err = runExternal(ctx, r.crd.GVKString(), resolver, r.crd.HooksExternal(), r.kube.Clientset())
 		if err != nil {
 			return err
 		}
@@ -499,7 +503,9 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 
 	// ── Reconcile-time mutation and validation ────────────────────────────────
 	if r.crd.HasMutationRules() && r.crd.ShouldMutateFirst() {
-		if mutErr := r.applyReconcileTimeMutation(ctx, resolver, obj); mutErr != nil {
+		var mutErr error
+		resolver, mutErr = r.applyReconcileTimeMutation(ctx, resolver, obj)
+		if mutErr != nil {
 			logger.FromContext(ctx).Warn().Err(mutErr).
 				Str("name", obj.GetName()).
 				Msg("reconcile mutation failed — continuing")
@@ -508,16 +514,18 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 
 	var lastValResult *ValidationResult
 	if r.crd.HasValidationRules() {
-		vr, valErr := r.applyReconcileTimeValidation(ctx, resolver, obj)
-		lastValResult = vr
+		var valErr error
+		resolver, lastValResult, valErr = r.applyReconcileTimeValidation(ctx, resolver, obj)
 		if valErr != nil {
-			r.patchStatusWithChildren(ctx, obj, resolver, valErr, vr)
+			r.patchStatusWithChildren(ctx, obj, resolver, valErr, lastValResult)
 			return valErr
 		}
 	}
 
 	if r.crd.HasMutationRules() && !r.crd.ShouldMutateFirst() {
-		if mutErr := r.applyReconcileTimeMutation(ctx, resolver, obj); mutErr != nil {
+		var mutErr error
+		resolver, mutErr = r.applyReconcileTimeMutation(ctx, resolver, obj)
+		if mutErr != nil {
 			logger.FromContext(ctx).Warn().Err(mutErr).
 				Str("name", obj.GetName()).
 				Msg("reconcile mutation failed — continuing")

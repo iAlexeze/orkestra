@@ -37,6 +37,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/children"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -111,9 +112,12 @@ func runStatusPatch[PTR domain.Object](
 		patch["observedGeneration"] = obj.GetGeneration()
 	}
 
-	// ── Layer 2: Declared status fields (conditional) ─────────────────────
-	// Only written on successful reconcile. Errors in field resolution are
-	// logged as warnings and do not fail the reconcile.
+	// ── Layer 2: Declared status fields ───────────────────────────────────
+	// Conditional fields (with when:/anyOf:) are always evaluated so that
+	// status can reflect why reconcile failed (e.g. external health check result).
+	// Unconditional fields are only written on success — on error they would
+	// write stale or misleading values (e.g. phase: Active while denied).
+	// Errors in field resolution are logged as warnings and do not fail the reconcile.
 	logger.FromContext(ctx).Debug().
 		Str("name", obj.GetName()).
 		Bool("has_status_config", r.operatorBox.Status != nil && r.operatorBox.Status.HasFields()).
@@ -121,8 +125,18 @@ func runStatusPatch[PTR domain.Object](
 		AnErr("reconcile_err", reconcileErr).
 		Msg("status: layer2 evaluation")
 
-	if r.operatorBox.Status != nil && r.operatorBox.Status.HasFields() && reconcileErr == nil {
-		resolved, err := resolver.ResolveStatusFields(r.operatorBox.Status.Fields)
+	if r.operatorBox.Status != nil && r.operatorBox.Status.HasFields() {
+		fields := r.operatorBox.Status.Fields
+		if reconcileErr != nil {
+			var conditional []orktypes.StatusFieldSpec
+			for _, f := range fields {
+				if len(f.When) > 0 || len(f.AnyOf) > 0 {
+					conditional = append(conditional, f)
+				}
+			}
+			fields = conditional
+		}
+		resolved, err := resolver.ResolveStatusFields(fields)
 		if err != nil {
 			logger.FromContext(ctx).Warn().Err(err).
 				Str("name", obj.GetName()).

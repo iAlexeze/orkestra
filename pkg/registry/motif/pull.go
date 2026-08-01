@@ -2,6 +2,14 @@
 //
 // PullImport fetches a motif OCI artifact to the local registry cache.
 // Used as the pre-pull step before validate, generate, or run commands.
+//
+// Authoring-time only: every caller (ork pull, ork e2e) is already
+// !runtime && !gateway tagged. LoadImport in loader.go (not gated) is the
+// path pkg/katalog's motif-import expansion actually uses, and it goes
+// through merger.PullMotifToDir, not this file.
+
+//go:build !runtime && !gateway
+
 package motif
 
 import (

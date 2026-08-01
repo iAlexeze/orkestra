@@ -3,7 +3,6 @@ package reconciler
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -85,6 +84,9 @@ func (r *ValidationResult) Error() error {
 // data is resolver.Data() — the full CR map, works for both typed and unstructured.
 // resolver is optional — when non-nil, template expressions in comparison values
 // and messages are resolved against the full resolver context (notes, profiles, etc.).
+// operator: unique rules check against a UniquenessChecker injected into data
+// via resolver.WithUniquenessChecker — see orktypes.UniquenessChecker; they
+// always pass when none was injected.
 // Called from generic.go before runTemplateReconcile (or after runMutation
 // when mutateFirst: true).
 func runValidation(data map[string]interface{}, resolver *orktmpl.Resolver, cfg *orktypes.ValidationConfig, crdName string) *ValidationResult {
@@ -95,29 +97,40 @@ func runValidation(data map[string]interface{}, resolver *orktmpl.Resolver, cfg 
 
 	for _, rule := range cfg.Rules {
 		var eval orktypes.TemplateEvaluator
+		// resolver is a *orktmpl.Resolver — nil-check before converting to
+		// the orktypes.TemplateResolver interface, since a typed nil
+		// wrapped in an interface value is not itself a nil interface.
+		var tr orktypes.TemplateResolver
 		if resolver != nil {
 			eval = resolver.TemplateEvaluator()
+			tr = resolver
 		}
 		if !orktypes.EvaluateWhen(data, rule.When, rule.AnyOf, eval) {
 			continue
 		}
-		violation := evaluateValidationRule(data, resolver, rule)
-		if violation == nil {
+		ruleViolation := orktypes.EvaluateValidationRule(data, tr, rule)
+		if ruleViolation == nil {
 			continue
 		}
 
 		action := orktypes.EffectiveAction(rule.Action)
-		violation.Action = action
+		violation := ValidationViolation{
+			Field:   ruleViolation.Field,
+			Rule:    ruleViolation.Rule,
+			Value:   ruleViolation.Value,
+			Message: ruleViolation.Message,
+			Action:  action,
+		}
 
-		result.Violations = append(result.Violations, *violation)
-		validationRejectedDetail.WithLabelValues(crdName, rule.Field, ruleType(rule)).Inc()
+		result.Violations = append(result.Violations, violation)
+		validationRejectedDetail.WithLabelValues(crdName, rule.Field, orktypes.RuleTypeLabel(rule)).Inc()
 
 		switch action {
 		case orktypes.ValidationActionDeny:
 			result.Deny = true
 			result.Passed = false
 		case orktypes.ValidationActionWarn:
-			result.Warnings = append(result.Warnings, *violation)
+			result.Warnings = append(result.Warnings, violation)
 			// Warn does NOT set Deny, does NOT set Passed=false
 		}
 	}
@@ -138,186 +151,6 @@ func runValidation(data map[string]interface{}, resolver *orktmpl.Resolver, cfg 
 	}
 
 	return result
-}
-
-// evaluateValidationRule evaluates one rule against the CR data map.
-// Returns a ValidationViolation if the rule fails, nil if it passes.
-func evaluateValidationRule(data map[string]interface{}, resolver *orktmpl.Resolver, rule orktypes.ValidationRule) *ValidationViolation {
-	op, expected := resolveValidationOp(rule)
-
-	// Resolve template expressions in comparison values and messages.
-	// Notes are called by name directly: {{ inBusinessHours }}, {{ allowedRegistry }}.
-	if resolver != nil && orktypes.IsTemplate(expected) {
-		if resolved, err := resolver.Resolve(expected); err == nil {
-			expected = resolved
-		}
-	}
-	message := rule.Message
-	if resolver != nil && orktypes.IsTemplate(message) {
-		if resolved, err := resolver.Resolve(message); err == nil {
-			message = resolved
-		}
-	}
-
-	// displayField is always the original expression — shown in violation messages.
-	// When field is a template, the resolved value is the result of the expression
-	// directly (not a CR path), so we skip resolveField and use it as fieldVal.
-	displayField := rule.Field
-	isTemplate := orktypes.IsTemplate(rule.Field)
-
-	var fieldVal string
-	var found bool
-	if isTemplate && resolver != nil {
-		fieldVal, _ = resolver.Resolve(rule.Field)
-		found = fieldVal != ""
-	} else {
-		fieldVal, found = resolveField(data, rule.Field)
-	}
-
-	// Build a violation helper
-	fail := func() *ValidationViolation {
-		return &ValidationViolation{
-			Field:   displayField,
-			Rule:    string(op),
-			Value:   fieldVal,
-			Message: message,
-			Action:  rule.Action,
-		}
-	}
-
-	switch op {
-	case orktypes.ConditionExists:
-		if !found || fieldVal == "" {
-			return fail()
-		}
-
-	case orktypes.ConditionNotExists:
-		if found && fieldVal != "" {
-			return fail()
-		}
-
-	case orktypes.ConditionEquals:
-		if !found || fieldVal != expected {
-			return fail()
-		}
-
-	case orktypes.ConditionNotEquals:
-		if found && fieldVal == expected {
-			return fail()
-		}
-
-	case orktypes.ConditionContains:
-		if !found || !strings.Contains(fieldVal, expected) {
-			return fail()
-		}
-
-	case orktypes.ConditionPrefix:
-		if !found || !strings.HasPrefix(fieldVal, expected) {
-			return fail()
-		}
-
-	case orktypes.ConditionSuffix:
-		if !found || !strings.HasSuffix(fieldVal, expected) {
-			return fail()
-		}
-
-	case orktypes.ConditionGt: // used as Min when coming from rule.Min
-		cv, err := strconv.ParseFloat(expected, 64)
-		if err != nil {
-			logger.Warn().Str("field", rule.Field).Str("val", expected).
-				Msg("validation: min/gt requires numeric value — rule skipped")
-			return nil
-		}
-		fv, err := strconv.ParseFloat(fieldVal, 64)
-		if err != nil || fv < cv {
-			return fail()
-		}
-
-	case orktypes.ConditionLt: // used as Max when coming from rule.Max
-		cv, err := strconv.ParseFloat(expected, 64)
-		if err != nil {
-			logger.Warn().Str("field", rule.Field).Str("val", expected).
-				Msg("validation: max/lt requires numeric value — rule skipped")
-			return nil
-		}
-		fv, err := strconv.ParseFloat(fieldVal, 64)
-		if err != nil || fv > cv {
-			return fail()
-		}
-	}
-
-	return nil // rule passed
-}
-
-// resolveValidationOp resolves the effective operator and comparison value
-// from a ValidationRule, handling all shorthand fields.
-func resolveValidationOp(r orktypes.ValidationRule) (orktypes.ConditionOperator, string) {
-	// Shorthands take precedence — listed in order of typical usage
-	if r.Equals != "" {
-		return orktypes.ConditionEquals, r.Equals
-	}
-	if r.NotEquals != "" {
-		return orktypes.ConditionNotEquals, r.NotEquals
-	}
-	if r.Prefix != "" {
-		return orktypes.ConditionPrefix, r.Prefix
-	}
-	if r.Suffix != "" {
-		return orktypes.ConditionSuffix, r.Suffix
-	}
-	if r.Contains != "" {
-		return orktypes.ConditionContains, r.Contains
-	}
-	if r.Min != "" {
-		// Min maps to Gt — field must be >= min (we check field >= min)
-		// We store min as Gt target but evaluate as >=
-		return orktypes.ConditionGt, r.Min
-	}
-	if r.Max != "" {
-		// Max maps to Lt — field must be <= max
-		return orktypes.ConditionLt, r.Max
-	}
-	if r.GreaterThan != "" {
-		return orktypes.ConditionGt, r.GreaterThan
-	}
-	if r.LessThan != "" {
-		return orktypes.ConditionLt, r.LessThan
-	}
-
-	if r.Operator != "" {
-		return r.Operator, r.Value
-	}
-	// No operator and no value — default to exists check
-	return orktypes.ConditionExists, ""
-}
-
-// ruleType returns a short string identifying the rule type for the metric label.
-func ruleType(r orktypes.ValidationRule) string {
-	if r.Equals != "" {
-		return "equals"
-	}
-	if r.NotEquals != "" {
-		return "notEquals"
-	}
-	if r.Prefix != "" {
-		return "prefix"
-	}
-	if r.Suffix != "" {
-		return "suffix"
-	}
-	if r.Contains != "" {
-		return "contains"
-	}
-	if r.Min != "" {
-		return "min"
-	}
-	if r.Max != "" {
-		return "max"
-	}
-	if r.Operator != "" {
-		return string(r.Operator)
-	}
-	return "exists"
 }
 
 // ─────────────────────────────────────────────────────────────

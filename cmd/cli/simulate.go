@@ -142,7 +142,7 @@ func runSimulate(ctx context.Context, katalogFile, crFile, crdName string, maxCy
 		if !ok {
 			continue
 		}
-		cr, ok := crs[strings.ToLower(crdEntry.APITypes.Kind)]
+		in, ok := resolveCRInputs(crs, crdEntry.APITypes.Kind)
 		if !ok {
 			if len(targets) > 1 {
 				fmt.Printf("  %s no CR found for %s — skipped\n\n", dim("note:"), crdEntry.APITypes.Kind)
@@ -150,15 +150,10 @@ func runSimulate(ctx context.Context, katalogFile, crFile, crdName string, maxCy
 			}
 			return fmt.Errorf("no CR found for CRD %q (kind: %s) in %s", name, crdEntry.APITypes.Kind, crFile)
 		}
-		// Pass all other CRs as peers so cross: declarations can read sibling CRDs.
 		crdOpts := opts
-		crdOpts.Peers = make(map[string]*unstructured.Unstructured, len(crs))
-		for k, v := range crs {
-			if k != strings.ToLower(crdEntry.APITypes.Kind) {
-				crdOpts.Peers[k] = v
-			}
-		}
-		if err := simulateOne(ctx, kat, name, cr, maxCycles, crdOpts, debugOps, nil); err != nil {
+		crdOpts.Peers = in.peers
+		crdOpts.ExistingInstances = in.existing
+		if err := simulateOne(ctx, kat, name, in.cr, maxCycles, crdOpts, debugOps, nil); err != nil {
 			return err
 		}
 	}
@@ -452,10 +447,13 @@ func filterOps(ops []simulate.Op, verbs ...string) []simulate.Op {
 }
 
 // parseMultiDocCRs splits a YAML file on document separators and returns all
-// valid CR documents keyed by lowercase kind. Supports single- and multi-doc
-// CR files (multiple CRs separated by ---).
-func parseMultiDocCRs(data []byte) map[string]*unstructured.Unstructured {
-	crs := map[string]*unstructured.Unstructured{}
+// valid CR documents grouped by lowercase kind, in file order. Supports
+// single- and multi-doc CR files (multiple CRs separated by ---).
+//
+// Multiple documents of the SAME kind are all kept (not last-one-wins) —
+// see resolveCRInputs for how the extras are used.
+func parseMultiDocCRs(data []byte) map[string][]*unstructured.Unstructured {
+	crs := map[string][]*unstructured.Unstructured{}
 	dec := yaml.NewDecoder(bytes.NewReader(data))
 	for {
 		var node yaml.Node
@@ -479,10 +477,48 @@ func parseMultiDocCRs(data []byte) map[string]*unstructured.Unstructured {
 			continue
 		}
 		if kind := cr.GetKind(); kind != "" {
-			crs[strings.ToLower(kind)] = &cr
+			key := strings.ToLower(kind)
+			crs[key] = append(crs[key], &cr)
 		}
 	}
 	return crs
+}
+
+// crSimInputs is one target CRD's resolved simulation inputs, derived from a
+// multi-doc CR file by resolveCRInputs.
+type crSimInputs struct {
+	cr       *unstructured.Unstructured            // the CR under test — reconciled
+	peers    map[string]*unstructured.Unstructured // other kinds, first doc each — for cross:
+	existing []*unstructured.Unstructured          // same kind, docs after the first — NOT reconciled
+}
+
+// resolveCRInputs picks the CR to reconcile for crdEntry's kind out of a
+// multi-doc CR file, plus its simulation context.
+//
+// The FIRST document of the target kind is the CR under test — unchanged
+// behavior from a single-CR file. Any FURTHER documents of that same kind
+// are pre-existing instances: seeded into the fake dynamic client so
+// reconcile-time checks that list other instances (operator: unique) can
+// see them, but never reconciled themselves — same convention already used
+// for cross: peers, extended from "one doc per other kind" to "one or more
+// docs of the CRD's own kind". Documents of OTHER kinds become cross: peers,
+// one per kind (first document wins), exactly as before.
+func resolveCRInputs(crs map[string][]*unstructured.Unstructured, kind string) (crSimInputs, bool) {
+	kindKey := strings.ToLower(kind)
+	docs, ok := crs[kindKey]
+	if !ok || len(docs) == 0 {
+		return crSimInputs{}, false
+	}
+	out := crSimInputs{cr: docs[0], existing: docs[1:]}
+	if len(crs) > 1 {
+		out.peers = make(map[string]*unstructured.Unstructured, len(crs)-1)
+		for k, v := range crs {
+			if k != kindKey && len(v) > 0 {
+				out.peers[k] = v[0]
+			}
+		}
+	}
+	return out, true
 }
 
 // ── Simulate kind entry points ─────────────────────────────────────────────────
@@ -589,7 +625,7 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 		if !ok {
 			continue
 		}
-		cr, ok := crs[strings.ToLower(crdEntry.APITypes.Kind)]
+		in, ok := resolveCRInputs(crs, crdEntry.APITypes.Kind)
 		if !ok {
 			if len(targets) > 1 {
 				continue
@@ -597,14 +633,10 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 			return fmt.Errorf("no CR found for CRD %q (kind: %s) in %s", name, crdEntry.APITypes.Kind, crPath)
 		}
 		crdOpts := opts
-		crdOpts.Peers = make(map[string]*unstructured.Unstructured, len(crs))
-		for k, v := range crs {
-			if k != strings.ToLower(crdEntry.APITypes.Kind) {
-				crdOpts.Peers[k] = v
-			}
-		}
+		crdOpts.Peers = in.peers
+		crdOpts.ExistingInstances = in.existing
 		expect := simulate.ExpectForCRD(doc.Spec.Expect, name)
-		if err := simulateOne(ctx, kat, name, cr, cycles, crdOpts, debugOps, expect); err != nil {
+		if err := simulateOne(ctx, kat, name, in.cr, cycles, crdOpts, debugOps, expect); err != nil {
 			failed = append(failed, name)
 		}
 	}
@@ -784,18 +816,14 @@ observed cycle-1 create operations as expect: rules. Edit and refine from there.
 			if !ok {
 				continue
 			}
-			cr, ok := crs[strings.ToLower(crdEntry.APITypes.Kind)]
+			in, ok := resolveCRInputs(crs, crdEntry.APITypes.Kind)
 			if !ok {
 				continue
 			}
 			crdOpts := opts
-			crdOpts.Peers = make(map[string]*unstructured.Unstructured, len(crs))
-			for k, v := range crs {
-				if k != strings.ToLower(crdEntry.APITypes.Kind) {
-					crdOpts.Peers[k] = v
-				}
-			}
-			result, err := simulate.Run(cmd.Context(), kat, name, cr, 10, crdOpts)
+			crdOpts.Peers = in.peers
+			crdOpts.ExistingInstances = in.existing
+			result, err := simulate.Run(cmd.Context(), kat, name, in.cr, 10, crdOpts)
 			if err != nil {
 				return fmt.Errorf("simulating %s: %w", name, err)
 			}

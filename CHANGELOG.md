@@ -1,3 +1,284 @@
+## v0.7.13 — Kubernetes-native labels/envFrom, IDP additionalFields, external calls at admission/reconcile, protocol clients [UNRELEASED]
+
+### Blog: There Is No Kubernetes Expression Language
+
+New post — [blog/KEL](documentation/blog/06-there-is-no-kubernetes-expression-language.md). Covers KEL as a composable vocabulary of Go template functions, how notes build on it, and why Helm proved the pattern worked.
+
+### `validation.external` and `mutation.external`
+
+External HTTP calls can now be declared under `validation:` and `mutation:` in addition to `onReconcile:`. Calls declared here fire before the corresponding rule loop — at admission webhook time and, by default, at every reconcile.
+
+```yaml
+validation:
+  external:
+    - name: healthCheck
+      url: "{{ .spec.healthCheckUrl }}/health"
+      expectedStatus: 200
+      continueOnError: true
+      fires:
+        reconcile: false   # admission-only
+
+  rules:
+    - field: "{{ .external.healthCheck.status }}"
+      equals: "200"
+      action: deny
+      message: "health check failed — CR rejected"
+```
+
+`fires.reconcile: false` marks a call as admission-only. The reconciler skips it on resyncs; the webhook always runs it. When omitted, the call fires at both sites.
+
+Results from `validation.external` and `mutation.external` are now propagated back into the main reconcile resolver — status fields, resource templates, and subsequent steps can reference `.external.<name>.*` just like `onReconcile.external` results. This holds even on the denial path: when validation denies, status is patched with the enriched resolver, so phase and error fields reflect the external call outcome.
+
+The external call runner is now in `pkg/external` — shared by the reconciler and the gateway webhook.
+
+### `include:` in external call lists
+
+All `external:` lists now support per-item `include:` entries. An item with `include:` set is replaced in-place by the `calls:` list from the referenced file. Works in `onReconcile.external`, `onCreate.external`, `hooks.external`, `validation.external`, and `mutation.external`.
+
+```yaml
+onReconcile:
+  external:
+    - include: ./shared/auth-calls.yaml
+    - name: healthCheck
+      url: "{{ .spec.serviceUrl }}/health"
+```
+
+`./shared/auth-calls.yaml`:
+
+```yaml
+calls:
+  - name: tokenFetch
+    url: "{{ .spec.authUrl }}/token"
+    method: POST
+```
+
+### Protocol clients
+
+`external:` blocks now support a `protocol:` field selecting a native client instead of HTTP.
+
+| Protocol | `protocol:` value | `url:` | `query:` |
+|---|---|---|---|
+| HTTP (default) | `http` or omit | any URL | not used |
+| Prometheus | `prometheus` | Prometheus base URL | PromQL expression |
+| Redis | `redis` | `redis://host:port` | Redis command (`PING`, `LLEN jobs`, …) |
+| PostgreSQL | `postgres` | connection string | SQL query |
+| MongoDB | `mongo` | `mongodb://host:port` | `db.collection [filter]` |
+| Kafka | `kafka` | `kafka://broker:9092` | `group/topic` for lag, `@topic` for metadata |
+
+All protocols resolve before deployment evaluation and return results at `external.<name>.*`. `continueOnError: true` is supported on all of them.
+
+### Fix: Kafka consumer group lag
+
+`fetchGroupLag` now uses `kafka.Client.OffsetFetch` + `ListOffsets` to compute `latest − committed` per partition. Previously it called `Reader.ReadLag`, which returns lag from offset 0, not the group's committed position.
+
+### Fix: `file:` paths in included e2e steps
+
+Relative `file:` paths in `kubectl.apply` steps loaded via `include:` now resolve against the include file's own directory, not the root `e2e.yaml` directory.
+
+### Prometheus notes
+
+Seven template notes for working with Prometheus external results:
+
+- `promValue` — extract the first scalar value from a Prometheus instant query result
+- `promSum` / `promMax` — aggregate across multiple series
+- `promAboveThreshold` / `promBelowThreshold` — boolean threshold checks for `when:` conditions
+- `promSeriesCount` — number of series returned
+- `promLabelValues` — extract a label value from the first series
+
+### `exists` and `notExists` e2e assertions
+
+```yaml
+- name: field is populated
+  kubectl:
+    get:
+      - kind: MyApp
+        name: my-app
+        namespace: default
+        field: .status.connectionCount
+        exists: true
+```
+
+`exists: true` fails when the field is empty or missing. `notExists: true` fails when the field is present. Both work in all e2e assertion blocks (`kubectl`, `exec`, `http`, `expect`).
+
+### Runtime RBAC — automatic `secrets get` for `auth.secretRef`
+
+When any `external:` block in a Katalog uses `auth.secretRef`, the generated runtime RBAC now automatically includes a `secrets get` rule. No manual RBAC annotation required.
+
+### `GET /api/v1/query` endpoint
+
+The runtime now exposes `GET /api/v1/query?expr=<promql>` — a passthrough Prometheus query endpoint backed by the operator's own metrics. Useful for dashboards and autoscaler signals without a separate Prometheus instance.
+
+### Breaking: `labels`/`annotations` move to native map syntax
+
+`labels:` and `annotations:` move from a list of `{key, value}` pairs to a plain map — the shape every Kubernetes user already expects.
+
+```yaml
+# before
+labels:
+  - key: app
+    value: "{{ .metadata.name }}"
+  - key: tier
+    value: backend
+
+# after
+labels:
+  app: "{{ .metadata.name }}"
+  tier: backend
+```
+
+This also applies to `selector:`, `labelSelector:`, and `fieldSelector:` fields, which shared the same list shape under the internal `SelectorMap` type — now unified with `labels`/`annotations` under one `Labels` type, since both were already `map[string]string` underneath.
+
+### Kubernetes notes — single-key label, annotation, and status accessors
+
+Nine new notes complement the existing whole-map `labels`/`annotations`/`status` accessors with single-key equivalents:
+
+- `getLabel` / `getLabelInt` / `hasLabel` — read or check a single label key
+- `getAnnotation` / `getAnnotationInt` / `hasAnnotation` — read or check a single annotation key
+- `getStatus` / `hasStatus` — read or check a single status field, scalar or structured
+- `labelMatches` — check whether an object's labels contain every given key/value pair
+
+```yaml
+# value: '{{ getLabel .children.deployment "app.kubernetes.io/name" }}'
+# value: '{{ hasAnnotation . "autoscale/enabled" }}'
+# value: '{{ labelMatches .children.deployment "app" "frontend" "env" "prod" }}'
+```
+
+### Breaking: `envFrom.secretRef`/`configMapRef` move from a name list to a struct
+
+`envFrom.secretRef` and `envFrom.configMapRef` move from a plain list of names to a list of `{name, prefix, optional, keys, suffix}` refs. `prefix` and `optional` map directly onto Kubernetes' own `EnvFromSource`/`SecretEnvSource`/`ConfigMapEnvSource` fields — no behavior change for anyone only using those. `keys` and `suffix` are Orkestra additions with no Kubernetes equivalent: Kubernetes' `envFrom` is a blanket import with no per-key rename mechanism, so a ref that sets `keys` is expanded into individual `env:` entries instead of a native `envFrom` source. `suffix` without `keys` is now a validation error — there's nothing for it to rename during a blanket import.
+
+```yaml
+# before
+envFrom:
+  secretRef:
+    - myapp-creds
+  configMapRef:
+    - myapp-config
+
+# after
+envFrom:
+  secretRef:
+    - name: myapp-creds
+      prefix: "DB_"
+      optional: true
+    - name: myapp-feature-flags
+      keys: [ENABLE_BETA, ROLLOUT_PCT]
+      suffix: "_FLAG"
+  configMapRef:
+    - name: myapp-config
+```
+
+`SecretKeyRef`/`ConfigMapKeyRef` (used under `env.valueFrom`) also gain an `optional` field, mirroring `corev1.SecretKeySelector`/`ConfigMapKeySelector`.
+
+### `idp.additionalFields` — labels and annotations as self-service form fields
+
+`idp.fields` exposes `spec.*` to the IDP form — but team, environment, and feature flags are usually metadata, not spec data. `idp.additionalFields` exposes label and annotation keys the same way, written to `metadata.labels`/`metadata.annotations` on apply instead of `spec`. Each entry needs an explicit `type` (`string` default, `integer`, `number`, `boolean`, `enum`) since labels/annotations have no CRD schema to infer it from.
+
+```yaml
+idp:
+  enabled: true
+  fields:
+    image:
+      label: "Container Image"
+  additionalFields:
+    labels:
+      team:
+        label: "Team"
+        required: true
+    annotations:
+      canary.myorg.io:
+        label: "Enable canary rollout"
+        type: boolean
+```
+
+Validated at `ork validate` time: every key must be a syntactically valid Kubernetes label/annotation key, and no key may collide with `idp.fields` or the other `additionalFields` bucket. `idp.include` now also merges an `additionalFields:` block from the included file, the same way it already merged `fields:`.
+
+### `idp.fields.<name>.required` — enforced server-side, for every client
+
+`required: true` on an `idp.fields` or `idp.additionalFields` entry now synthesizes an implicit `exists` validation rule at katalog load time, with `message:` matching the field's `label:` automatically. This is enforced at the API server — the Control Center form, `curl`, a CI pipeline, `kubectl apply`, any Apply API client — not only the one that renders a required-field asterisk.
+
+```yaml
+idp:
+  fields:
+    targetRevision:
+      label: "Branch / Tag"
+      required: true
+# → synthesizes: { field: spec.targetRevision, operator: exists,
+#                  message: "Branch / Tag is required", action: deny }
+```
+
+The synthesized rule inherits the field's own `when:`/`anyOf:`, so a field required only under one branch of a discriminator (e.g. `workloadType: app`) stays conditionally required — not unconditionally — matching what a static CRD schema's `required: [...]` list can't express.
+
+### Fix: `operator: in` was never evaluated in `validation.rules`
+
+`operator: in` was defined for `when:`/`anyOf:` conditions but missing from the separate rule-evaluation switch in both the reconciler and the admission webhook — a `validation.rules` entry using it silently always passed instead of checking comma-separated membership. Both now evaluate it.
+
+The reconciler and the webhook no longer maintain separate copies of validation-rule evaluation, shorthand resolution, and field lookup — all now shared from `pkg/types` (`EvaluateValidationRule`, `ResolveValidationOp`, `ResolveScalarField`). That duplication is exactly how `operator: in` went unimplemented in both places at once.
+
+### `idp.fields.<name>.type: enum` — membership validated automatically
+
+`type: enum` on an `idp.fields`/`idp.additionalFields` entry now synthesizes an implicit `in` validation rule, the same way `required: true` synthesizes `exists`. Membership is checked only when the field has a value — an enum field that isn't also `required: true` can still be omitted, it just can't be set to something outside the declared list.
+
+```yaml
+idp:
+  fields:
+    workloadType:
+      label: "Workload Type"
+      type: enum
+      enum: [app, cert, monitoring, infra]
+# → synthesizes: { field: spec.workloadType, operator: in,
+#                  value: "app,cert,monitoring,infra",
+#                  message: "Workload Type must be one of: app, cert, monitoring, infra" }
+```
+
+### JSON object/array values in `onCreate` custom resource templates
+
+A resolved template value that looks like a JSON object or array (e.g. an IDP form field collecting raw JSON) now coerces into a real `map`/`slice` instead of being embedded as a literal string — `matchLabels: "{{ .spec.serviceSelector }}"` now produces a structured selector, not a JSON-string value in a field that expects a map. Same mechanism that already coerced resolved templates into `int`/`float`/`bool` (`TryCoerceString`, now shared from `pkg/types` instead of duplicated across the custom-resource resolver, the forEach-expansion path, and the conversion webhook — the forEach path had no coercion at all, a real pre-existing gap this closes).
+
+### New notes: Kubernetes and general input-format validation
+
+Two new note domains, exposed for use in `validation.rules` and `when:` conditions:
+
+- **Kubernetes format** — `isValidLabelValue`, `isValidLabelKey`, `isValidAnnotationKey`, `isDNS1123Subdomain`, wrapping the same `k8s.io/apimachinery` checks the API server itself uses.
+- **General input format** — `isValidEmail`, `isValidGitRepository`, `isValidURL`, `isValidImageRef`, `isValidJSON`, `isValidPort`.
+
+```yaml
+validation:
+  rules:
+    - field: "{{ isValidGitRepository .spec.repoURL }}"
+      equals: "true"
+      message: "Repository URL must be a valid git repository"
+      action: deny
+```
+
+### Resource schema reference — one page per resource kind
+
+`documentation/reference/schema/06-resources/` documents every Kubernetes built-in and custom resource declarable under `onCreate`/`onReconcile`/`onDelete` — fields, types, worked YAML examples, and lifecycle semantics (`reconcile: true`, `onDelete` cleanup). There was previously no reference for this at all. The `*TemplateSource` structs' Go doc comments are now the single source of truth, rendered by `hack/generate-resource-docs` (`make generate-resource-docs`, wired into `ork:` and validated in CI).
+
+### Breaking: `version` removed from every resource's `*TemplateSource`
+
+Every `onCreate`/`onReconcile`/`onDelete` resource declaration (deployments, services, secrets, etc.) had a `version:` field intended for pinning a specific OrkestraRegistry implementation per resource — a feature that was never built. It was accepted and silently discarded everywhere; nothing ever read it.
+
+### Helm and ORAS excluded from the runtime and gateway binaries
+
+`helm.sh/helm/v3` and `oras.land/oras-go` are gone entirely from `ork run` (runtime) and `ork gat` (gateway) — both are build-tag excluded (`!runtime && !gateway`) rather than just documented as unreachable. Both were only ever used for authoring-time Katalog imports (`imports.helm:`, `imports.registry:`, motif imports) — the runtime and gateway only ever read an already-merged `katalog.yaml` key from a ConfigMap (`ork generate bundle` resolves everything ahead of time), so neither binary needs them. This also removes the previously-accepted GO-2026-5932 (openpgp) and GO-2026-5622/5338/5064 (containerd) findings from `vuln-runtime`/`vuln-gateway` — they're gone, not just excused, so that check is now a hard gate (no `continue-on-error`). `vuln-orkestra` (the broad, dev-CLI-scoped scan where those findings still apply) moved to its own manually-triggered workflow.
+
+### New condition operators: `gte`, `lte`, `between`, `notBetween`, `notIn`, `notContains`, `regex`
+
+Available in both `when:`/`anyOf:` and `validation.rules`, with shorthand fields matching each operator name. Also fixes a real bug: `validation.rules`' `gt`/`lt` were accidentally inclusive when used explicitly (`Min`/`Max` shared their evaluation case) — `Min`/`Max` now resolve to the new `gte`/`lte` unchanged, and explicit `gt`/`lt` are properly strict. An unknown `operator:` value in `validation.rules`/`mutation.rules` is now rejected at katalog-load time instead of silently never matching.
+
+### `operator: unique` — designed and deferred until stable, now implemented
+
+`unique` was designed and declared as a valid operator from its introduction, with enforcement deliberately deferred until the reconciler could safely check other instances — a rule using it silently always passed in the meantime, in both `validation.rules` and `when:`/`anyOf:`. Now implemented: the reconciler injects a live checker (`template.Resolver.WithUniquenessChecker`) that lists other instances of the CRD and denies/gates on a matching field value, excluding the CR under evaluation — enforced identically wherever the operator appears. Still deferred at admission time — no live checker there yet — so a duplicate can be admitted and gets caught on the next reconcile instead.
+
+`ork simulate` can now exercise this: a CR file with two documents of the CRD's own kind reconciles the first and seeds the second into the fake dynamic client as a pre-existing instance (`pkg/registry/simulate/fixture/unique/`).
+
+### e2e output assertions now use the stable `Condition` evaluator — formerly deferred until stable
+
+e2e's shell-command and kubectl-output assertions (`equals`, `contains`, `regex`, `oneOf`, …) were kept hand-rolled and separate from `when:`/`anyOf:` until the shared `Condition`/`EvaluateOneCond` evaluator stabilized. Now unified — `pkg/registry/e2e`'s assertion logic delegates to `EvaluateOneCond` per field, so e2e assertions gain every `when:`/`anyOf:` operator (`gte`, `between`, `regex`, …) for free and can no longer drift from that behavior. Field names and error messages are unchanged.
+
+---
+
 ## v0.7.12 — Gateway Apply API, IDP, and codebase clarity
 
 ### Gateway Apply API

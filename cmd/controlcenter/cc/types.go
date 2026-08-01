@@ -248,6 +248,15 @@ type CRDSummary struct {
 	IdpEnabled               bool         `json:"idpEnabled,omitempty"`
 }
 
+// IDP field write targets — which part of the CR an IDPField's submitted
+// value gets written to. Mirrors the bucketing in handleIDPApplyForm and the
+// data-source attribute idp_form.html's collectPayload() reads client-side.
+const (
+	IDPFieldSourceSpec       = "spec"
+	IDPFieldSourceLabel      = "label"
+	IDPFieldSourceAnnotation = "annotation"
+)
+
 // IDPField is one rendered field in the IDP create form.
 type IDPField struct {
 	Name        string
@@ -262,6 +271,7 @@ type IDPField struct {
 	WhenJSON    string // JSON array of Condition — all must be true (AND)
 	AnyOfJSON   string // JSON array of Condition — at least one must be true (OR)
 	Disabled    string // non-empty → greyed-out field with this message
+	Source      string // IDPFieldSourceSpec (default) | IDPFieldSourceLabel | IDPFieldSourceAnnotation
 }
 
 // IDPSection is a group of fields sharing a section heading in the IDP form.

@@ -140,6 +140,9 @@ func (k *Katalog) KomposeRuntimeKatalog(
 		if err := populateStatusFieldsFromInclude(&entry, k.katalogDir); err != nil {
 			return nil, fmt.Errorf("CRD %q: %w", name, err)
 		}
+		if err := populateExternalCallsFromInclude(&entry, k.katalogDir); err != nil {
+			return nil, fmt.Errorf("CRD %q: %w", name, err)
+		}
 
 		// Enrich enabled CRDs
 		outcome, err := EnrichCRDEntry(&entry)
@@ -158,6 +161,23 @@ func (k *Katalog) KomposeRuntimeKatalog(
 	// Expand Motif imports declared in each operatorBox (resources, status, admission only)
 	if err := k.expandMotifImports(); err != nil {
 		return nil, err
+	}
+
+	// idp.fields / idp.additionalFields marked required: true get an implicit
+	// exists rule, and entries declaring type: enum get an implicit in rule —
+	// see CRDEntry.RequiredIDPFieldRules / EnumIDPFieldRules. Runs last, after
+	// every other rules source (inline, validation.include, motif imports)
+	// has settled, so it only ever appends.
+	for name, entry := range k.enabledCRDs {
+		synthesized := append(entry.RequiredIDPFieldRules(), entry.EnumIDPFieldRules()...)
+		if len(synthesized) == 0 {
+			continue
+		}
+		if entry.Validation == nil {
+			entry.Validation = &orktypes.ValidationConfig{}
+		}
+		entry.Validation.Rules = append(entry.Validation.Rules, synthesized...)
+		k.enabledCRDs[name] = entry
 	}
 
 	// initialize conversion registry and admission registry

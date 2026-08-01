@@ -78,22 +78,17 @@ spec:
           namespaces:
             - name: "{{ .spec.targetNamespace }}"
               labels:
-                - key: team
-                  value: "{{ .spec.team }}"
-                - key: tier
-                  value: "{{ .spec.tier }}"
-                - key: managed-by
-                  value: orkestra
+                team: "{{ .spec.team }}"
+                tier: "{{ .spec.tier }}"
+                managed-by: orkestra
               reconcile: true
 
           serviceAccounts:
             - name: "{{ .spec.owner }}"
               namespace: "{{ .spec.targetNamespace }}"
               labels:
-                - key: team
-                  value: "{{ .spec.team }}"
-                - key: managed-by
-                  value: orkestra
+                team: "{{ .spec.team }}"
+                managed-by: orkestra
               reconcile: true
 
           secrets:
@@ -109,10 +104,7 @@ spec:
               namespace: "{{ .spec.targetNamespace }}"
               profile: "{{ .spec.tier }}"
               labels:
-                - key: team
-                  value: "{{ .spec.team }}"
-                - key: tier
-                  value: "{{ .spec.tier }}"
-                - key: managed-by
-                  value: orkestra
+                team: "{{ .spec.team }}"
+                tier: "{{ .spec.tier }}"
+                managed-by: orkestra
               reconcile: true

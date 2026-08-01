@@ -131,8 +131,8 @@ func Resolve(src orktypes.PVTemplateSource, ownerName string) ResolvedPVSpec {
 		spec.ReclaimPolicy = "Retain"
 	}
 
-	for _, l := range src.Labels {
-		spec.Labels[l.Key] = l.Value
+	for k, v := range src.Labels {
+		spec.Labels[k] = v
 	}
 	spec.Labels[labels.ManagedKey] = labels.ManagedValue
 	spec.Labels[labels.OrkestraOwner] = ownerName

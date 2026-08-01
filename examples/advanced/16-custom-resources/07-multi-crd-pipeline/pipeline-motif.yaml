@@ -46,8 +46,7 @@ resources:
         namespace: "{{ .metadata.namespace }}"
         namespaced: true
         labels:
-          - key: ork.io/pipeline
-            value: "{{ .metadata.name }}"
+          ork.io/pipeline: "{{ .metadata.name }}"
       spec:
         image: "{{ default .inputs.loaderImage .inputs.image }}"
         replicas: "{{ .inputs.replicas }}"
@@ -63,8 +62,7 @@ resources:
         namespace: "{{ .metadata.namespace }}"
         namespaced: true
         labels:
-          - key: ork.io/pipeline
-            value: "{{ .metadata.name }}"
+          ork.io/pipeline: "{{ .metadata.name }}"
       spec:
         image: "{{ default .inputs.processorImage .inputs.image }}"
         replicas: "{{ .inputs.replicas }}"
@@ -80,8 +78,7 @@ resources:
         namespace: "{{ .metadata.namespace }}"
         namespaced: true
         labels:
-          - key: ork.io/pipeline
-            value: "{{ .metadata.name }}"
+          ork.io/pipeline: "{{ .metadata.name }}"
       spec:
         auditMode: "{{ .inputs.auditMode }}"
       hasStatus: true

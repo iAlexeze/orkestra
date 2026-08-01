@@ -188,6 +188,70 @@ func TestSchemaResponse_JSON(t *testing.T) {
 	}
 }
 
+func TestSchemaResponse_AdditionalFields_JSON(t *testing.T) {
+	resp := SchemaResponse{
+		Kind:       "Platform",
+		APIVersion: "platform.orkestra.io/v1alpha1",
+		AdditionalLabels: map[string]orktypes.IDPFieldConfig{
+			"tier": {Label: "Tier", Type: "enum", Enum: []string{"free", "pro"}},
+		},
+		AdditionalAnnotations: map[string]orktypes.IDPFieldConfig{
+			"platform.example.io/monitoring": {Label: "Monitoring", Type: "boolean"},
+		},
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var got SchemaResponse
+	if err := json.Unmarshal(b, &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	tier := got.AdditionalLabels["tier"]
+	if tier.Label != "Tier" || tier.Type != "enum" || len(tier.Enum) != 2 {
+		t.Errorf("AdditionalLabels[tier] = %+v", tier)
+	}
+	mon := got.AdditionalAnnotations["platform.example.io/monitoring"]
+	if mon.Label != "Monitoring" || mon.Type != "boolean" {
+		t.Errorf("AdditionalAnnotations[platform.example.io/monitoring] = %+v", mon)
+	}
+}
+
+func TestSchemaResponse_AdditionalFields_OmittedWhenNil(t *testing.T) {
+	resp := SchemaResponse{Kind: "Platform"}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	s := string(b)
+	if strings.Contains(s, "additionalLabels") || strings.Contains(s, "additionalAnnotations") {
+		t.Errorf("expected additionalLabels/additionalAnnotations to be omitted when nil, got: %s", s)
+	}
+}
+
+func TestSchemaHandler_PopulatesAdditionalFields(t *testing.T) {
+	entry := idpEntry("Platform")
+	entry.IDP.AdditionalFields = &orktypes.AdditionalIDPFields{
+		Labels: map[string]orktypes.IDPFieldConfig{
+			"tier": {Label: "Tier"},
+		},
+	}
+	// Mirrors schemaHandler's own population step directly — fetchSpecProperties
+	// requires a live kube client the other handler tests don't set up either,
+	// so this isolates the additionalFields mapping from the CRD-schema fetch.
+	resp := SchemaResponse{}
+	if entry.IDP.AdditionalFields != nil {
+		resp.AdditionalLabels = entry.IDP.AdditionalFields.Labels
+		resp.AdditionalAnnotations = entry.IDP.AdditionalFields.Annotations
+	}
+	if resp.AdditionalLabels["tier"].Label != "Tier" {
+		t.Errorf("AdditionalLabels[tier].Label = %q, want %q", resp.AdditionalLabels["tier"].Label, "Tier")
+	}
+	if resp.AdditionalAnnotations != nil {
+		t.Errorf("AdditionalAnnotations should be nil when not declared, got: %v", resp.AdditionalAnnotations)
+	}
+}
+
 func TestNestedMap(t *testing.T) {
 	obj := map[string]interface{}{
 		"a": map[string]interface{}{

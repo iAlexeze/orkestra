@@ -167,7 +167,7 @@ func (r *Resolver) Resolve(value string) (string, error) {
 	}
 
 	// Fast path — no template markers, static value
-	if !strings.Contains(value, "{{") {
+	if !orktypes.IsTemplate(value) {
 		return value, nil
 	}
 
@@ -248,9 +248,7 @@ func (r *Resolver) resolveProbes(src *orktypes.ProbesConfig) (*orktypes.ProbesCo
 //	Name      → ownerName + "-pod"      (applied later in pods.Resolve)
 //	Namespace → ownerNamespace          (applied here so downstream has it)
 func (r *Resolver) ResolvePodTemplate(src orktypes.PodTemplateSource) (orktypes.PodTemplateSource, error) {
-	resolved := orktypes.PodTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.PodTemplateSource{}
 
 	var err error
 
@@ -282,10 +280,10 @@ func (r *Resolver) ResolvePodTemplate(src orktypes.PodTemplateSource) (orktypes.
 		return resolved, fmt.Errorf("pod.namespace: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("pod.labels: %w", err)
 	}
-	if resolved.Annotations, err = r.ResolveLabels(src.Annotations); err != nil {
+	if resolved.Annotations, err = r.ResolveMap(src.Annotations); err != nil {
 		return resolved, fmt.Errorf("pod.annotations: %w", err)
 	}
 	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
@@ -309,9 +307,7 @@ func (r *Resolver) ResolvePodTemplate(src orktypes.PodTemplateSource) (orktypes.
 // Returns a new DeploymentTemplateSource with all expressions evaluated — safe to pass
 // directly to deployments.Resolve().
 func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSource) (orktypes.DeploymentTemplateSource, error) {
-	resolved := orktypes.DeploymentTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.DeploymentTemplateSource{}
 
 	var err error
 
@@ -345,10 +341,10 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 		return resolved, fmt.Errorf("deployment.namespace: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("deployment.labels: %w", err)
 	}
-	if resolved.Annotations, err = r.ResolveLabels(src.Annotations); err != nil {
+	if resolved.Annotations, err = r.ResolveMap(src.Annotations); err != nil {
 		return resolved, fmt.Errorf("deployment.annotations: %w", err)
 	}
 	// service account name
@@ -393,19 +389,12 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 	// EnvFrom resolution
 	if src.EnvFrom != nil {
 		resolved.EnvFrom = &orktypes.EnvFrom{}
-		for _, name := range src.EnvFrom.SecretRef {
-			rn, rerr := r.Resolve(name)
-			if rerr != nil {
-				return resolved, fmt.Errorf("envFrom.secretRef: %w", rerr)
-			}
-			resolved.EnvFrom.SecretRef = append(resolved.EnvFrom.SecretRef, rn)
+		var everr error
+		if resolved.EnvFrom.SecretRef, everr = r.ResolveEnvFromRefs(src.EnvFrom.SecretRef, "envFrom.secretRef"); everr != nil {
+			return resolved, everr
 		}
-		for _, name := range src.EnvFrom.ConfigMapRef {
-			rn, rerr := r.Resolve(name)
-			if rerr != nil {
-				return resolved, fmt.Errorf("envFrom.configMapRef: %w", rerr)
-			}
-			resolved.EnvFrom.ConfigMapRef = append(resolved.EnvFrom.ConfigMapRef, rn)
+		if resolved.EnvFrom.ConfigMapRef, everr = r.ResolveEnvFromRefs(src.EnvFrom.ConfigMapRef, "envFrom.configMapRef"); everr != nil {
+			return resolved, everr
 		}
 	}
 
@@ -433,9 +422,7 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 // Returns a new ReplicaSetTemplateSource with all expressions evaluated — safe to pass
 // directly to replicasets.Resolve().
 func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSource) (orktypes.ReplicaSetTemplateSource, error) {
-	resolved := orktypes.ReplicaSetTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.ReplicaSetTemplateSource{}
 
 	var err error
 
@@ -491,12 +478,12 @@ func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSour
 	}
 
 	// Labels
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("replicaset.labels: %w", err)
 	}
 
 	// Annotations
-	if resolved.Annotations, err = r.ResolveLabels(src.Annotations); err != nil {
+	if resolved.Annotations, err = r.ResolveMap(src.Annotations); err != nil {
 		return resolved, fmt.Errorf("replicaset.annotations: %w", err)
 	}
 
@@ -534,19 +521,12 @@ func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSour
 	// EnvFrom
 	if src.EnvFrom != nil {
 		resolved.EnvFrom = &orktypes.EnvFrom{}
-		for _, name := range src.EnvFrom.SecretRef {
-			rn, rerr := r.Resolve(name)
-			if rerr != nil {
-				return resolved, fmt.Errorf("envFrom.secretRef: %w", rerr)
-			}
-			resolved.EnvFrom.SecretRef = append(resolved.EnvFrom.SecretRef, rn)
+		var everr error
+		if resolved.EnvFrom.SecretRef, everr = r.ResolveEnvFromRefs(src.EnvFrom.SecretRef, "envFrom.secretRef"); everr != nil {
+			return resolved, everr
 		}
-		for _, name := range src.EnvFrom.ConfigMapRef {
-			rn, rerr := r.Resolve(name)
-			if rerr != nil {
-				return resolved, fmt.Errorf("envFrom.configMapRef: %w", rerr)
-			}
-			resolved.EnvFrom.ConfigMapRef = append(resolved.EnvFrom.ConfigMapRef, rn)
+		if resolved.EnvFrom.ConfigMapRef, everr = r.ResolveEnvFromRefs(src.EnvFrom.ConfigMapRef, "envFrom.configMapRef"); everr != nil {
+			return resolved, everr
 		}
 	}
 
@@ -572,9 +552,7 @@ func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSour
 
 // ResolveServiceTemplate resolves all template expressions in a ServiceTemplateSource.
 func (r *Resolver) ResolveServiceTemplate(src orktypes.ServiceTemplateSource) (orktypes.ServiceTemplateSource, error) {
-	resolved := orktypes.ServiceTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.ServiceTemplateSource{}
 
 	var err error
 
@@ -605,11 +583,11 @@ func (r *Resolver) ResolveServiceTemplate(src orktypes.ServiceTemplateSource) (o
 		return resolved, fmt.Errorf("service.namespace: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("service.labels: %w", err)
 	}
 
-	if resolved.Selector, err = r.ResolveSelectors(src.Selector); err != nil {
+	if resolved.Selector, err = r.ResolveMap(src.Selector); err != nil {
 		return resolved, fmt.Errorf("service.selector: %w", err)
 	}
 
@@ -618,9 +596,7 @@ func (r *Resolver) ResolveServiceTemplate(src orktypes.ServiceTemplateSource) (o
 
 // ResolveNamespaceTemplate resolves all template expressions in a NamespaceTemplateSource.
 func (r *Resolver) ResolveNamespaceTemplate(src orktypes.NamespaceTemplateSource) (orktypes.NamespaceTemplateSource, error) {
-	resolved := orktypes.NamespaceTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.NamespaceTemplateSource{}
 
 	var err error
 
@@ -628,7 +604,7 @@ func (r *Resolver) ResolveNamespaceTemplate(src orktypes.NamespaceTemplateSource
 		return resolved, fmt.Errorf("namespace.name: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("namespace.labels: %w", err)
 	}
 
@@ -650,7 +626,6 @@ func (r *Resolver) ResolveNamespaceTemplate(src orktypes.NamespaceTemplateSource
 // ResolveJobTemplate resolves all template expressions in a JobTemplateSource.
 func (r *Resolver) ResolveJobTemplate(src orktypes.JobTemplateSource) (orktypes.JobTemplateSource, error) {
 	resolved := orktypes.JobTemplateSource{
-		Version:      src.Version,
 		BackoffLimit: src.BackoffLimit,
 	}
 
@@ -700,7 +675,7 @@ func (r *Resolver) ResolveJobTemplate(src orktypes.JobTemplateSource) (orktypes.
 		resolved.Args = append(resolved.Args, rv)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("job.labels: %w", err)
 	}
 
@@ -721,9 +696,7 @@ func (r *Resolver) ResolveJobTemplate(src orktypes.JobTemplateSource) (orktypes.
 // Returns a new SecretTemplateSource with all expressions evaluated — safe to pass
 // directly to secrets.Resolve().
 func (r *Resolver) ResolveSecretTemplate(src orktypes.SecretTemplateSource) (orktypes.SecretTemplateSource, error) {
-	resolved := orktypes.SecretTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.SecretTemplateSource{}
 
 	var err error
 
@@ -746,7 +719,7 @@ func (r *Resolver) ResolveSecretTemplate(src orktypes.SecretTemplateSource) (ork
 	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
 		return resolved, fmt.Errorf("secret.sleep: %w", err)
 	}
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("secret.data: %w", err)
 	}
 
@@ -772,7 +745,7 @@ func (r *Resolver) ResolveSecretTemplate(src orktypes.SecretTemplateSource) (ork
 	// where .spec.targetNamespaces is a YAML list in the CR.
 
 	for i, v := range src.ToNamespaces {
-		if !strings.Contains(v, "{{") {
+		if !orktypes.IsTemplate(v) {
 			// Static string — no resolution needed
 			if v != "" {
 				resolved.ToNamespaces = append(resolved.ToNamespaces, v)
@@ -812,9 +785,7 @@ func (r *Resolver) ResolveSecretTemplate(src orktypes.SecretTemplateSource) (ork
 // Returns a new ConfigMapTemplateSource with all expressions evaluated — safe to pass
 // directly to configmaps.Resolve().
 func (r *Resolver) ResolveConfigMapTemplate(src orktypes.ConfigMapTemplateSource) (orktypes.ConfigMapTemplateSource, error) {
-	resolved := orktypes.ConfigMapTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.ConfigMapTemplateSource{}
 	var err error
 
 	// Resolve the template expressions
@@ -833,7 +804,7 @@ func (r *Resolver) ResolveConfigMapTemplate(src orktypes.ConfigMapTemplateSource
 	if resolved.FromConfigMap, err = r.Resolve(src.FromConfigMap); err != nil {
 		return resolved, fmt.Errorf("configmap.fromConfigMap: %w", err)
 	}
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("configmap.labels: %w", err)
 	}
 
@@ -859,7 +830,7 @@ func (r *Resolver) ResolveConfigMapTemplate(src orktypes.ConfigMapTemplateSource
 	// where .spec.targetNamespaces is a YAML list in the CR.
 
 	for i, v := range src.ToNamespaces {
-		if !strings.Contains(v, "{{") {
+		if !orktypes.IsTemplate(v) {
 			// Static string — no resolution needed
 			if v != "" {
 				resolved.ToNamespaces = append(resolved.ToNamespaces, v)
@@ -898,9 +869,7 @@ func (r *Resolver) ResolveConfigMapTemplate(src orktypes.ConfigMapTemplateSource
 
 // ResolveCronJobTemplate resolves all template expressions in a CronJobTemplateSource.
 func (r *Resolver) ResolveCronJobTemplate(src orktypes.CronJobTemplateSource) (orktypes.CronJobTemplateSource, error) {
-	resolved := orktypes.CronJobTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.CronJobTemplateSource{}
 
 	var err error
 
@@ -950,7 +919,7 @@ func (r *Resolver) ResolveCronJobTemplate(src orktypes.CronJobTemplateSource) (o
 		resolved.Args = append(resolved.Args, rv)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("cronjob.labels: %w", err)
 	}
 
@@ -962,9 +931,7 @@ func (r *Resolver) ResolveCronJobTemplate(src orktypes.CronJobTemplateSource) (o
 
 // ResolveServiceAccountTemplate resolves all template expressions in a ServiceAccountTemplateSource.
 func (r *Resolver) ResolveServiceAccountTemplate(src orktypes.ServiceAccountTemplateSource) (orktypes.ServiceAccountTemplateSource, error) {
-	resolved := orktypes.ServiceAccountTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.ServiceAccountTemplateSource{}
 
 	var err error
 
@@ -983,7 +950,7 @@ func (r *Resolver) ResolveServiceAccountTemplate(src orktypes.ServiceAccountTemp
 		return resolved, fmt.Errorf("serviceAccount.sleep: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("serviceaccount.labels: %w", err)
 	}
 
@@ -993,7 +960,6 @@ func (r *Resolver) ResolveServiceAccountTemplate(src orktypes.ServiceAccountTemp
 // ResolveRoleTemplate resolves all template expressions in a RoleTemplateSource.
 func (r *Resolver) ResolveRoleTemplate(src orktypes.RoleTemplateSource) (orktypes.RoleTemplateSource, error) {
 	resolved := orktypes.RoleTemplateSource{
-		Version:   src.Version,
 		Reconcile: src.Reconcile,
 	}
 
@@ -1014,7 +980,7 @@ func (r *Resolver) ResolveRoleTemplate(src orktypes.RoleTemplateSource) (orktype
 		return resolved, fmt.Errorf("role.sleep: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("role.labels: %w", err)
 	}
 
@@ -1041,7 +1007,6 @@ func (r *Resolver) ResolveRoleTemplate(src orktypes.RoleTemplateSource) (orktype
 // ResolveRoleBindingTemplate resolves all template expressions in a RoleBindingTemplateSource.
 func (r *Resolver) ResolveRoleBindingTemplate(src orktypes.RoleBindingTemplateSource) (orktypes.RoleBindingTemplateSource, error) {
 	resolved := orktypes.RoleBindingTemplateSource{
-		Version:   src.Version,
 		Reconcile: src.Reconcile,
 	}
 
@@ -1062,7 +1027,7 @@ func (r *Resolver) ResolveRoleBindingTemplate(src orktypes.RoleBindingTemplateSo
 		return resolved, fmt.Errorf("rolebinding.sleep: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("rolebinding.labels: %w", err)
 	}
 
@@ -1087,9 +1052,7 @@ func (r *Resolver) ResolveRoleBindingTemplate(src orktypes.RoleBindingTemplateSo
 
 // ResolveIngressTemplate resolves all template expressions in an IngressTemplateSource.
 func (r *Resolver) ResolveIngressTemplate(src orktypes.IngressTemplateSource) (orktypes.IngressTemplateSource, error) {
-	resolved := orktypes.IngressTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.IngressTemplateSource{}
 
 	var err error
 
@@ -1126,10 +1089,10 @@ func (r *Resolver) ResolveIngressTemplate(src orktypes.IngressTemplateSource) (o
 		return resolved, fmt.Errorf("ingress.namespace: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("ingress.labels: %w", err)
 	}
-	if resolved.Annotations, err = r.ResolveLabels(src.Annotations); err != nil {
+	if resolved.Annotations, err = r.ResolveMap(src.Annotations); err != nil {
 		return resolved, fmt.Errorf("ingress.annotations: %w", err)
 	}
 
@@ -1156,9 +1119,7 @@ func (r *Resolver) ResolveIngressTemplate(src orktypes.IngressTemplateSource) (o
 
 // ResolveHPATemplate resolves all template expressions in an HPATemplateSource.
 func (r *Resolver) ResolveHPATemplate(src orktypes.HPATemplateSource) (orktypes.HPATemplateSource, error) {
-	resolved := orktypes.HPATemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.HPATemplateSource{}
 
 	var err error
 
@@ -1195,7 +1156,7 @@ func (r *Resolver) ResolveHPATemplate(src orktypes.HPATemplateSource) (orktypes.
 		return resolved, fmt.Errorf("hpa.namespace: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("hpa.labels: %w", err)
 	}
 
@@ -1209,9 +1170,7 @@ func (r *Resolver) ResolveHPATemplate(src orktypes.HPATemplateSource) (orktypes.
 
 // ResolvePDBTemplate resolves all template expressions in a PDBTemplateSource.
 func (r *Resolver) ResolvePDBTemplate(src orktypes.PDBTemplateSource) (orktypes.PDBTemplateSource, error) {
-	resolved := orktypes.PDBTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.PDBTemplateSource{}
 
 	var err error
 
@@ -1233,11 +1192,11 @@ func (r *Resolver) ResolvePDBTemplate(src orktypes.PDBTemplateSource) (orktypes.
 		return resolved, fmt.Errorf("pdb.namespace: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("pdb.labels: %w", err)
 	}
 
-	if resolved.Selector, err = r.ResolveSelectors(src.Selector); err != nil {
+	if resolved.Selector, err = r.ResolveMap(src.Selector); err != nil {
 		return resolved, fmt.Errorf("pdb.selector: %w", err)
 	}
 
@@ -1255,9 +1214,7 @@ func (r *Resolver) ResolvePDBTemplate(src orktypes.PDBTemplateSource) (orktypes.
 
 // ResolveStatefulSetTemplate resolves all template expressions in a StatefulSetTemplateSource.
 func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSource) (orktypes.StatefulSetTemplateSource, error) {
-	resolved := orktypes.StatefulSetTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.StatefulSetTemplateSource{}
 
 	var err error
 
@@ -1320,10 +1277,10 @@ func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSo
 		return resolved, fmt.Errorf("statefulset.serviceAccountName: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("statefulset.labels: %w", err)
 	}
-	if resolved.Annotations, err = r.ResolveLabels(src.Annotations); err != nil {
+	if resolved.Annotations, err = r.ResolveMap(src.Annotations); err != nil {
 		return resolved, fmt.Errorf("statefulset.annotations: %w", err)
 	}
 
@@ -1361,19 +1318,12 @@ func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSo
 	// EnvFrom resolution
 	if src.EnvFrom != nil {
 		resolved.EnvFrom = &orktypes.EnvFrom{}
-		for _, name := range src.EnvFrom.SecretRef {
-			rn, rerr := r.Resolve(name)
-			if rerr != nil {
-				return resolved, fmt.Errorf("envFrom.secretRef: %w", rerr)
-			}
-			resolved.EnvFrom.SecretRef = append(resolved.EnvFrom.SecretRef, rn)
+		var everr error
+		if resolved.EnvFrom.SecretRef, everr = r.ResolveEnvFromRefs(src.EnvFrom.SecretRef, "envFrom.secretRef"); everr != nil {
+			return resolved, everr
 		}
-		for _, name := range src.EnvFrom.ConfigMapRef {
-			rn, rerr := r.Resolve(name)
-			if rerr != nil {
-				return resolved, fmt.Errorf("envFrom.configMapRef: %w", rerr)
-			}
-			resolved.EnvFrom.ConfigMapRef = append(resolved.EnvFrom.ConfigMapRef, rn)
+		if resolved.EnvFrom.ConfigMapRef, everr = r.ResolveEnvFromRefs(src.EnvFrom.ConfigMapRef, "envFrom.configMapRef"); everr != nil {
+			return resolved, everr
 		}
 	}
 
@@ -1400,7 +1350,6 @@ func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSo
 // ResolvePVCTemplate resolves all template expressions in a PVCTemplateSource.
 func (r *Resolver) ResolvePVCTemplate(src orktypes.PVCTemplateSource) (orktypes.PVCTemplateSource, error) {
 	resolved := orktypes.PVCTemplateSource{
-		Version:     src.Version,
 		AccessModes: src.AccessModes,
 		VolumeMode:  src.VolumeMode,
 	}
@@ -1431,7 +1380,7 @@ func (r *Resolver) ResolvePVCTemplate(src orktypes.PVCTemplateSource) (orktypes.
 		return resolved, fmt.Errorf("pvc.namespace: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("pvc.labels: %w", err)
 	}
 
@@ -1441,7 +1390,6 @@ func (r *Resolver) ResolvePVCTemplate(src orktypes.PVCTemplateSource) (orktypes.
 // ResolvePVTemplate resolves all template expressions in a PVTemplateSource.
 func (r *Resolver) ResolvePVTemplate(src orktypes.PVTemplateSource) (orktypes.PVTemplateSource, error) {
 	resolved := orktypes.PVTemplateSource{
-		Version:     src.Version,
 		AccessModes: src.AccessModes,
 	}
 
@@ -1472,7 +1420,7 @@ func (r *Resolver) ResolvePVTemplate(src orktypes.PVTemplateSource) (orktypes.PV
 		return resolved, fmt.Errorf("pv.sleep: %w", err)
 	}
 
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("pv.labels: %w", err)
 	}
 
@@ -1546,7 +1494,6 @@ func (r *Resolver) resolveVolumeMounts(src []orktypes.VolumeMount) ([]orktypes.V
 // ResolveNetworkPolicyTemplate resolves all template expressions in a NetworkPolicyTemplateSource.
 func (r *Resolver) ResolveNetworkPolicyTemplate(src orktypes.NetworkPolicyTemplateSource) (orktypes.NetworkPolicyTemplateSource, error) {
 	resolved := orktypes.NetworkPolicyTemplateSource{
-		Version:     src.Version,
 		PolicyTypes: src.PolicyTypes,
 		Ingress:     src.Ingress,
 		Egress:      src.Egress,
@@ -1572,12 +1519,12 @@ func (r *Resolver) ResolveNetworkPolicyTemplate(src orktypes.NetworkPolicyTempla
 	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
 		return resolved, fmt.Errorf("networkpolicy.sleep: %w", err)
 	}
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("networkpolicy.labels: %w", err)
 	}
 
 	for i, v := range src.ToNamespaces {
-		if !strings.Contains(v, "{{") {
+		if !orktypes.IsTemplate(v) {
 			if v != "" {
 				resolved.ToNamespaces = append(resolved.ToNamespaces, v)
 			}
@@ -1611,9 +1558,7 @@ func (r *Resolver) ResolveNetworkPolicyTemplate(src orktypes.NetworkPolicyTempla
 
 // ResolveResourceQuotaTemplate resolves all template expressions in a ResourceQuotaTemplateSource.
 func (r *Resolver) ResolveResourceQuotaTemplate(src orktypes.ResourceQuotaTemplateSource) (orktypes.ResourceQuotaTemplateSource, error) {
-	resolved := orktypes.ResourceQuotaTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.ResourceQuotaTemplateSource{}
 	var err error
 
 	if resolved.Profile, err = r.Resolve(src.Profile); err != nil {
@@ -1634,7 +1579,7 @@ func (r *Resolver) ResolveResourceQuotaTemplate(src orktypes.ResourceQuotaTempla
 	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
 		return resolved, fmt.Errorf("resourcequota.sleep: %w", err)
 	}
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("resourcequota.labels: %w", err)
 	}
 
@@ -1650,7 +1595,7 @@ func (r *Resolver) ResolveResourceQuotaTemplate(src orktypes.ResourceQuotaTempla
 	}
 
 	for i, v := range src.ToNamespaces {
-		if !strings.Contains(v, "{{") {
+		if !orktypes.IsTemplate(v) {
 			if v != "" {
 				resolved.ToNamespaces = append(resolved.ToNamespaces, v)
 			}
@@ -1684,9 +1629,7 @@ func (r *Resolver) ResolveResourceQuotaTemplate(src orktypes.ResourceQuotaTempla
 
 // ResolveLimitRangeTemplate resolves all template expressions in a LimitRangeTemplateSource.
 func (r *Resolver) ResolveLimitRangeTemplate(src orktypes.LimitRangeTemplateSource) (orktypes.LimitRangeTemplateSource, error) {
-	resolved := orktypes.LimitRangeTemplateSource{
-		Version: src.Version,
-	}
+	resolved := orktypes.LimitRangeTemplateSource{}
 	var err error
 
 	if resolved.Name, err = r.Resolve(src.Name); err != nil {
@@ -1704,7 +1647,7 @@ func (r *Resolver) ResolveLimitRangeTemplate(src orktypes.LimitRangeTemplateSour
 	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
 		return resolved, fmt.Errorf("limitrange.sleep: %w", err)
 	}
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("limitrange.labels: %w", err)
 	}
 
@@ -1734,7 +1677,7 @@ func (r *Resolver) ResolveLimitRangeTemplate(src orktypes.LimitRangeTemplateSour
 	}
 
 	for i, v := range src.ToNamespaces {
-		if !strings.Contains(v, "{{") {
+		if !orktypes.IsTemplate(v) {
 			if v != "" {
 				resolved.ToNamespaces = append(resolved.ToNamespaces, v)
 			}
@@ -1785,7 +1728,6 @@ func (r *Resolver) resolveStringMap(m map[string]string) (map[string]string, err
 // ResolveClusterRoleTemplate resolves all template expressions in a ClusterRoleTemplateSource.
 func (r *Resolver) ResolveClusterRoleTemplate(src orktypes.ClusterRoleTemplateSource) (orktypes.ClusterRoleTemplateSource, error) {
 	resolved := orktypes.ClusterRoleTemplateSource{
-		Version:   src.Version,
 		Reconcile: src.Reconcile,
 	}
 	var err error
@@ -1796,7 +1738,7 @@ func (r *Resolver) ResolveClusterRoleTemplate(src orktypes.ClusterRoleTemplateSo
 	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
 		return resolved, fmt.Errorf("clusterrole.sleep: %w", err)
 	}
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("clusterrole.labels: %w", err)
 	}
 
@@ -1822,7 +1764,6 @@ func (r *Resolver) ResolveClusterRoleTemplate(src orktypes.ClusterRoleTemplateSo
 // ResolveClusterRoleBindingTemplate resolves all template expressions in a ClusterRoleBindingTemplateSource.
 func (r *Resolver) ResolveClusterRoleBindingTemplate(src orktypes.ClusterRoleBindingTemplateSource) (orktypes.ClusterRoleBindingTemplateSource, error) {
 	resolved := orktypes.ClusterRoleBindingTemplateSource{
-		Version:   src.Version,
 		Reconcile: src.Reconcile,
 	}
 	var err error
@@ -1833,7 +1774,7 @@ func (r *Resolver) ResolveClusterRoleBindingTemplate(src orktypes.ClusterRoleBin
 	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
 		return resolved, fmt.Errorf("clusterrolebinding.sleep: %w", err)
 	}
-	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+	if resolved.Labels, err = r.ResolveMap(src.Labels); err != nil {
 		return resolved, fmt.Errorf("clusterrolebinding.labels: %w", err)
 	}
 

@@ -39,10 +39,8 @@ spec:
                 namespace: "{{ .metadata.namespace }}"
                 namespaced: true
                 labels:
-                  - key: storage.example.io/database
-                    value: "{{ .metadata.name }}"
-                  - key: storage.example.io/engine
-                    value: "{{ .spec.engine }}"
+                  storage.example.io/database: "{{ .metadata.name }}"
+                  storage.example.io/engine: "{{ .spec.engine }}"
               spec:
                 schedule: "{{ .spec.backup.schedule }}"
                 retention: "{{ .spec.backup.retention }}"

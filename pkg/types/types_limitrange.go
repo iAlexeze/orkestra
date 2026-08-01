@@ -50,9 +50,6 @@ package types
 //	        - "{{ .metadata.namespace }}"
 //	        - staging
 type LimitRangeTemplateSource struct {
-	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty"`
-
 	// Name — LimitRange name.
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`
 
@@ -81,7 +78,7 @@ type LimitRangeTemplateSource struct {
 	Limits []LimitRangeItem `yaml:"limits,omitempty" json:"limits,omitempty"`
 
 	// Labels — applied to LimitRange metadata.
-	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty"`
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty"`
 
 	// Conditions (when:) — all must pass for this resource to be applied.
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`

@@ -143,8 +143,8 @@ func Resolve(src orktypes.ServiceAccountTemplateSource, ownerName string) Resolv
 		spec.Name = ownerName + "-sa"
 	}
 
-	for _, l := range src.Labels {
-		spec.Labels[l.Key] = l.Value
+	for k, v := range src.Labels {
+		spec.Labels[k] = v
 	}
 
 	spec.Labels[labels.ManagedKey] = labels.ManagedValue

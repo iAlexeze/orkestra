@@ -97,10 +97,21 @@ commands:
 | `exitCode` | no | Expected exit code. Default `0` (success). Set non-zero to assert the command must fail — useful for admission webhook rejection tests. |
 | `outputContains` | no | The combined stdout+stderr must contain this substring. |
 | `outputNotContains` | no | The combined stdout+stderr must not contain this substring. |
+| `regex` | no | Output (trimmed) must match this RE2 regular expression (Go's `regexp` syntax). |
 | `equals` | no | Output (trimmed) must exactly match this string. |
 | `notEquals` | no | Output must not exactly match this string. |
-| `greaterThan` | no | Output (trimmed, parsed as a number) must be greater than this value. |
-| `lessThan` | no | Output (trimmed, parsed as a number) must be less than this value. |
+| `oneOf` | no | Output (trimmed) must exactly match one of these values. |
+| `notOneOf` | no | Output (trimmed) must not match any of these values. |
+| `greaterThan` | no | Output (trimmed, parsed as a number) must be greater than this value — **strict**. |
+| `lessThan` | no | Output (trimmed, parsed as a number) must be less than this value — **strict**. |
+| `greaterThanOrEqual` | no | Output must be greater than or equal to this value. |
+| `lessThanOrEqual` | no | Output must be less than or equal to this value. |
+| `between` | no | Output must be numerically within an inclusive range. Value is `"min,max"`. |
+| `notBetween` | no | Output must be numerically outside an inclusive range. Value is `"min,max"`. |
+| `exists` | no | Output (trimmed) must be non-empty — field is present and has a value. |
+| `notExists` | no | Output (trimmed) must be empty — field is absent or unset. |
+
+Multiple assertion fields on the same entry all apply — every one set must pass. These are evaluated with the same `Condition` operators as `when:`/`anyOf:` (see [when/anyOf conditions § Operators](../02-katalog/06-when-conditions.md#operators)), against a single synthetic `output` field holding the trimmed command output.
 
 ---
 

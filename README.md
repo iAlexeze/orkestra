@@ -176,6 +176,8 @@ Six Runtimes. 75 CRDs. One Control Center.
 
 **Not GitOps.** Katalogs define long-lived API contracts and are resolved at startup. Silently reloading them mid-flight is dangerous. Treat Katalog changes like any other runtime change — deploy through a pipeline.
 
+**Not a product — a primitive layer.** Notes, autoscaler, IDP mode, Katalogs — none of these are products. They are primitives ready for composition. What you build on top of them is.
+
 ---
 
 ## Documentation

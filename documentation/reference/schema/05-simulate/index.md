@@ -88,7 +88,7 @@ No `spec:`. Each imported file runs independently. The suite fails if any file f
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `katalog` | yes | | Path to the `katalog.yaml` (or `komposer.yaml`) |
-| `cr` | yes | | Path to the CR YAML file. Multi-doc YAML supported — each doc matched to its CRD by `kind` |
+| `cr` | yes | | Path to the CR YAML file. Multi-doc YAML supported — each doc matched to its CRD by `kind`. Extra docs of the CRD-under-test's OWN kind aren't reconciled — they're seeded as pre-existing instances so `operator: unique` (and similar reconcile-time checks that list other instances) can be simulated. Only the first doc of that kind is actually reconciled |
 | `cycles` | no | `10` | Maximum number of reconcile cycles to run |
 | `skipExternal` | no | `false` | Stub all `external:` HTTP calls with an empty 200 response instead of hitting the real network |
 

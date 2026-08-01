@@ -153,13 +153,13 @@ type CRDEntry struct {
 	// ── OperatorBox ────────────────────────────────────────────────────
 	OperatorBox OperatorBoxConfig `yaml:"operatorBox,omitempty" json:"operatorBox,omitempty"`
 
-	// Labels           []ResourceLabel  `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
+	// Labels           Labels  `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
 	// LabelSelector filters which resources this CRD entry reconciles.
 	// Only resources whose labels match ALL declared key-value pairs are watched.
 	// Required for built-in types (ConfigMap, Pod, etc.) — without a selector,
 	// Orkestra would reconcile every instance in the cluster.
 	// For custom CRDs this is optional — can narrow scope within a CRD.
-	LabelSelector SelectorMap `yaml:"labelSelector,omitempty"`
+	LabelSelector Labels `yaml:"labelSelector,omitempty"`
 
 	// FieldSelector filters which resources this CRD entry reconciles.
 	// Only resources whose *fields* match ALL declared key-value expressions
@@ -179,7 +179,7 @@ type CRDEntry struct {
 	//
 	// Field selectors are optional for all types. When omitted, Orkestra will
 	// watch all objects permitted by LabelSelector and namespace restrictions.
-	FieldSelector SelectorMap `yaml:"fieldSelector,omitempty"`
+	FieldSelector Labels `yaml:"fieldSelector,omitempty"`
 
 	// RegistryRef is the OCI or Git reference this CRD entry was loaded from.
 	// Set by the merger after loadRegistrySource resolves the pattern.
@@ -282,15 +282,23 @@ type IDPConfig struct {
 	// Default: false.
 	Enabled bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
 
-	// Include is a path (relative to the katalog file) to a YAML file whose
-	// top-level keys are IDPFieldConfig entries. Expanded at load time — the
-	// result is merged into Fields, with inline Fields taking precedence.
+	// Include is a path (relative to the katalog file) to a YAML file with a
+	// "fields:" map and/or an "additionalFields:" block (same shape as the
+	// inline equivalents below). Expanded at load time — the result is merged
+	// into Fields and AdditionalFields respectively, with inline entries
+	// taking precedence per key.
 	Include string `yaml:"include,omitempty" json:"include,omitempty"`
 
 	// Fields provides presentation hints layered on top of the CRD's OpenAPI
 	// schema. Each key matches a field path in spec. Hints are merged with the
 	// schema at GET /api/v1/schema/{kind} time — they do not replace the schema.
 	Fields map[string]IDPFieldConfig `yaml:"fields,omitempty" json:"fields,omitempty"`
+
+	// AdditionalFields exposes labels/annotations as self-service form fields,
+	// written to metadata.labels/metadata.annotations on apply instead of spec.
+	// Unlike Fields, these have no CRD schema to infer type/enum from — declare
+	// them explicitly on the IDPFieldConfig.
+	AdditionalFields *AdditionalIDPFields `yaml:"additionalFields,omitempty" json:"additionalFields,omitempty"`
 
 	// IgnoreFields lists spec field names that should never appear in the IDP
 	// form, even though they exist in the CRD schema. Use this to hide
@@ -311,6 +319,16 @@ type IDPConfig struct {
 	// Can be overridden per-request with ?overwrite=true regardless of this setting.
 	// Default: false.
 	ForceConflict bool `yaml:"forceConflict,omitempty" json:"forceConflict,omitempty"`
+}
+
+// AdditionalIDPFields declares label/annotation keys as self-service IDP form
+// fields, written to metadata.labels/metadata.annotations on apply.
+type AdditionalIDPFields struct {
+	// Labels maps a Kubernetes label key to its form field config.
+	Labels map[string]IDPFieldConfig `yaml:"labels,omitempty" json:"labels,omitempty"`
+
+	// Annotations maps a Kubernetes annotation key to its form field config.
+	Annotations map[string]IDPFieldConfig `yaml:"annotations,omitempty" json:"annotations,omitempty"`
 }
 
 // IDPFieldConfig holds display hints for one spec field in the IDP form.
@@ -344,17 +362,39 @@ type IDPFieldConfig struct {
 	// field to be visible. OR counterpart to When (AND).
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 
-	// Required, when true, marks the field as mandatory in the IDP form.
-	// The browser enforces this natively — the label shows an asterisk and the
-	// form cannot be submitted while the field is empty. Has no effect on
-	// fields that are currently hidden by a when: or anyOf: condition.
-	// For server-side enforcement use validation.rules with action: deny.
+	// Required, when true, marks the field as mandatory in the IDP form —
+	// the browser enforces this natively (asterisk on the label, form cannot
+	// be submitted while empty) — and is also enforced server-side: an
+	// implicit exists validation rule is synthesized automatically at
+	// katalog load time (see CRDEntry.RequiredIDPFieldRules), covering every
+	// client of the Apply API, not just the Control Center form. No matching
+	// validation.rules entry needs to be hand-written.
 	Required bool `yaml:"required,omitempty" json:"required,omitempty"`
 
 	// Disabled, when non-empty, renders the field greyed out with this string
 	// as the reason. The field is excluded from form submission.
 	// Use for maintenance windows or temporarily locked fields.
 	Disabled string `yaml:"disabled,omitempty" json:"disabled,omitempty"`
+
+	// Type is required for AdditionalFields entries (labels/annotations have
+	// no CRD schema to infer type from). Ignored for Fields entries, which
+	// always infer type from the CRD's OpenAPI schema.
+	// Supported: string (default), integer, number, boolean, enum.
+	Type string `yaml:"type,omitempty" json:"type,omitempty"`
+
+	// Enum lists valid values when Type == "enum". Required in that case.
+	Enum []string `yaml:"enum,omitempty" json:"enum,omitempty"`
+}
+
+// IsValidIDPFieldType reports whether t is a valid IDPFieldConfig.Type value.
+// "" (omitted) is valid — it means the default, string.
+func IsValidIDPFieldType(t string) bool {
+	switch t {
+	case "", "string", "integer", "number", "boolean", "enum":
+		return true
+	default:
+		return false
+	}
 }
 
 type ConversionVersionSpec struct {
@@ -381,6 +421,31 @@ type EndpointsConfig struct {
 // IDPEnabled reports whether IDP is configured and enabled for this CRD.
 func (c *CRDEntry) IDPEnabled() bool {
 	return c.IDP != nil && c.IDP.Enabled
+}
+
+// AdditionalLabelFields returns idp.additionalFields.labels. Nil-safe — returns
+// nil if IDP or AdditionalFields is not declared, same as ranging over a nil map.
+func (c *CRDEntry) AdditionalLabelFields() map[string]IDPFieldConfig {
+	if c.IDP == nil || c.IDP.AdditionalFields == nil {
+		return nil
+	}
+	return c.IDP.AdditionalFields.Labels
+}
+
+// AdditionalAnnotationFields returns idp.additionalFields.annotations.
+// Nil-safe — returns nil if IDP or AdditionalFields is not declared, same as
+// ranging over a nil map.
+func (c *CRDEntry) AdditionalAnnotationFields() map[string]IDPFieldConfig {
+	if c.IDP == nil || c.IDP.AdditionalFields == nil {
+		return nil
+	}
+	return c.IDP.AdditionalFields.Annotations
+}
+
+// HasAdditionalIDPFields reports whether this CRD declares any
+// idp.additionalFields labels or annotations.
+func (c *CRDEntry) HasAdditionalIDPFields() bool {
+	return len(c.AdditionalLabelFields()) > 0 || len(c.AdditionalAnnotationFields()) > 0
 }
 
 func (e EndpointsConfig) IsHealthEnabled() bool {

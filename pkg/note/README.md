@@ -79,6 +79,8 @@ Complete documentation is in [docs/](docs/README.md).
 | Inspect node topology | [22 — Node Notes](docs/22-node.md) |
 | Read StatefulSet revision state | [23 — StatefulSet Notes](docs/23-statefulset.md) |
 | Navigate ReplicaSet ownership | [24 — ReplicaSet Notes](docs/24-replicaset.md) |
+| Gate on Kubernetes label/annotation format | [31 — Kubernetes Validation Notes](docs/31-kube-validation.md) |
+| Check emails, git URLs, images, JSON, ports | [32 — Validation Notes](docs/32-validation.md) |
 
 ## Adding a new note
 

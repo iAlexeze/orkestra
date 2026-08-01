@@ -9,6 +9,7 @@ The schema is organised by kind. Each kind has its own subfolder.
 | [Komposer](03-komposer/) | `03-komposer/` | Compose multiple Katalogs from files, Helm, or OCI registries. |
 | [E2E](04-e2e/) | `04-e2e/` | Declarative end-to-end test for a Katalog. [spec](04-e2e/01-spec.md) · [setup](04-e2e/02-setup.md) · [expect](04-e2e/03-expect.md) |
 | [Simulate](05-simulate/) | `05-simulate/` | In-memory reconciler verification — no cluster. [field reference](05-simulate/index.md) |
+| [Resources](06-resources/) | `06-resources/` | Kubernetes built-ins and custom resources declarable under `onCreate`, `onReconcile`, and `onDelete`. One page per kind. |
 
 ---
 

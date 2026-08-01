@@ -1,4 +1,4 @@
-.PHONY: build orkcc clean test test-unit test-race test-integration test-all test-coverage test-coverage-text vet vuln certs docs docs-sync docs-build docs-serve hugo-install generate-notes generate-e2e-example test-fixture-note test-fixture-reconciler ork-gateway-linux docker-gateway gateway-reload runtime-reload controlcenter-reload reload docker-devserver release-devserver
+.PHONY: build orkcc clean test test-unit test-controlcenter test-race test-integration test-all test-coverage test-coverage-text vet vuln vuln-orkestra vuln-controlcenter vuln-runtime vuln-gateway certs docs docs-sync docs-build docs-serve hugo-install generate-notes generate-e2e-example generate-resource-docs test-fixture-note test-fixture-reconciler ork-gateway-linux docker-gateway gateway-reload runtime-reload controlcenter-reload reload docker-devserver release-devserver
 
 # ── Configuration ────────────────────────────────────────────────────────────
 ORKESTRA_DIR := .
@@ -30,7 +30,12 @@ generate-e2e-example:
 	@bash scripts/generate-e2e-example.sh
 	@echo "✅ documentation/reference/schema/04-e2e/08-complete-example.md updated"
 
-ork: generate-notes generate-e2e-example
+generate-resource-docs:
+	@echo "Generating resource schema docs..."
+	go run ./hack/generate-resource-docs
+	@echo "✅ documentation/reference/schema/06-resources/*.md updated"
+
+ork: generate-notes generate-e2e-example generate-resource-docs
 	@echo "Building Orkestra..."
 	@mkdir -p $(OUTPUT_DIR)
 	cd $(ORKESTRA_DIR) && gofmt -w .
@@ -280,8 +285,8 @@ reload: runtime-reload gateway-reload controlcenter-reload
 
 # ── Primary targets ───────────────────────────────────────────────────────────
 
-# Default: vet + unit tests. Fast, no external dependencies.
-test: vet test-unit
+# Default: vet + unit tests (both modules). Fast, no external dependencies.
+test: vet test-unit test-controlcenter
 
 # ── Unit tests ────────────────────────────────────────────────────────────────
 # All tests under pkg/ that are not guarded by //go:build integration.
@@ -291,6 +296,12 @@ test: vet test-unit
 test-unit:
 	@echo "Running unit tests..."
 	go test ./pkg/... -v -short -count=1
+
+# Control Center is a separate Go module (github.com/orkspace/orkestra-cc) —
+# its own go.mod, so it needs its own `go test` invocation from its directory.
+test-controlcenter:
+	@echo "Running Control Center unit tests..."
+	cd $(CONTROL_CENTER_DIR) && go test ./... -v -short -count=1
 
 # ── Race detector ─────────────────────────────────────────────────────────────
 # Same as test-unit with Go's race detector enabled.
@@ -314,7 +325,7 @@ test-integration:
 	go test ./tests/integration/... -v -tags=integration -count=1 -timeout=120s
 
 # ── Full suite ────────────────────────────────────────────────────────────────
-test-all: test-unit test-integration
+test-all: test-unit test-controlcenter test-integration
 
 # ── Coverage ──────────────────────────────────────────────────────────────────
 # HTML report written to coverage.html — open with: xdg-open coverage.html
@@ -422,5 +433,59 @@ vet:
 	@echo "Running go vet..."
 	go vet ./...
 
-vuln:
-	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+# Known, verified-non-exploitable findings as of this writing, in
+# vuln-orkestra only — it's manually triggered (see .github/workflows/vuln-orkestra.yml), so
+# these don't need continue-on-error to avoid blocking merges, but the
+# reasoning stays here for whoever re-triggers it. Re-verify before
+# dismissing a finding as one of these; don't assume a new CVE ID is the
+# same story.
+#
+# Neither finding below reaches vuln-controlcenter (separate module, never
+# imported Helm or ORAS), vuln-runtime, or vuln-gateway: Helm
+# (pkg/merger/helm.go, pkg/merger/helm_cache.go) and ORAS
+# (pkg/registry/client.go, pkg/registry/motif/pull.go) are both build-tag
+# excluded from the runtime and gateway binaries — see the comments atop
+# those files. Both are authoring-time-only (ork push/pull/generate bundle);
+# the runtime and gateway only ever read an already-merged katalog.yaml key
+# from a ConfigMap. validate-pr.yml's vuln-check (controlcenter/runtime/
+# gateway) has no known findings left to accept — it runs as a hard gate.
+#
+#   - GO-2026-5932 (golang.org/x/crypto/openpgp, no fix — package is
+#     permanently unmaintained): reachable only through pkg/merger/helm.go's
+#     resolveRemoteChart, via Helm SDK's action.Pull chart-signature
+#     verification. Verified in helm.sh/helm/v3/pkg/action/pull.go that
+#     NewPullWithOpts starts from a zero-value Pull{} (Verify defaults to
+#     false), and Orkestra's own call site never sets pull.Verify = true —
+#     so the verification code path that would invoke openpgp is never
+#     exercised, regardless of what a Katalog's HelmSource points at.
+#   - GO-2026-5622 / GO-2026-5338 / GO-2026-5064 (github.com/containerd/containerd,
+#     no fix yet): all three are specifically about CRI checkpoint/restore, a
+#     container-runtime feature nothing in this codebase calls. containerd is
+#     a transitive dependency of Helm's OCI-artifact getter package, pulled
+#     in for unrelated image/content/compression handling.
+vuln: vuln-orkestra vuln-controlcenter vuln-runtime vuln-gateway
+
+# Scans the whole module under Go's default build config — which is actually
+# cmd/cli/run_dev.go's dev-CLI build (no tags set), not either production
+# binary. Broadest net: also catches issues in dev-only tooling, which still
+# matters (a compromised dev machine, supply-chain risk in what contributors
+# run locally) even though it never ships.
+vuln-orkestra:
+	go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
+
+# Control Center is a separate Go module — its own go.mod, own dependency
+# tree — so it needs its own govulncheck invocation from its directory.
+vuln-controlcenter:
+	cd $(CONTROL_CENTER_DIR) && go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
+
+# These two scope govulncheck to exactly what's reachable in the two
+# binaries that actually run in a cluster — same -tags used to build them
+# (see ork-linux / ork-gateway-linux below) — rather than vuln-orkestra's
+# whole-module, default-build-config scan. A finding here means the shipped
+# binary is actually affected; a finding only in vuln-orkestra means it's
+# confined to dev tooling.
+vuln-runtime:
+	go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 -tags runtime ./cmd/orkestra/...
+
+vuln-gateway:
+	go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 -tags gateway ./cmd/orkestra/...

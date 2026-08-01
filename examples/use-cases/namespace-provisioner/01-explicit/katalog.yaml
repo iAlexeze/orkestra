@@ -74,20 +74,16 @@ spec:
           namespaces:
             - name: "{{ .spec.targetNamespace }}"
               labels:
-                - key: team
-                  value: "{{ .spec.team }}"
-                - key: managed-by
-                  value: orkestra
+                team: "{{ .spec.team }}"
+                managed-by: orkestra
               reconcile: true
 
           serviceAccounts:
             - name: "{{ .spec.owner }}"
               namespace: "{{ .spec.targetNamespace }}"
               labels:
-                - key: team
-                  value: "{{ .spec.team }}"
-                - key: managed-by
-                  value: orkestra
+                team: "{{ .spec.team }}"
+                managed-by: orkestra
               reconcile: true
 
           secrets:
@@ -108,8 +104,6 @@ spec:
                 limits.cpu: "{{ .spec.limits.cpu }}"
                 limits.memory: "{{ .spec.limits.memory }}"
               labels:
-                - key: team
-                  value: "{{ .spec.team }}"
-                - key: managed-by
-                  value: orkestra
+                team: "{{ .spec.team }}"
+                managed-by: orkestra
               reconcile: true

@@ -177,11 +177,11 @@ func Resolve(src orktypes.NamespaceTemplateSource, ownerName string) ResolvedNam
 	}
 
 	if spec.Name == "" {
-		spec.Name = ownerName + "ns"
+		spec.Name = ownerName + "-ns"
 	}
 
-	for _, l := range src.Labels {
-		spec.Labels[l.Key] = l.Value
+	for k, v := range src.Labels {
+		spec.Labels[k] = v
 	}
 
 	spec.Labels[labels.ManagedKey] = labels.ManagedValue

@@ -31,8 +31,10 @@ imports:
 spec:
   crds:
     <crd-name>:
-      workers: 4
-      resync: 15s
+      operatorBox:
+        reconciler:
+          workers: 4
+          resync: 15s
 
     # <other-crd>:
     #   dependsOn:

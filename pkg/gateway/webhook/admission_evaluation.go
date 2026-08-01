@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	orkexternal "github.com/orkspace/orkestra/pkg/external"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -23,6 +24,7 @@ type validationViolation struct {
 }
 
 func (ws *WebhookServer) evaluateValidationRules(
+	ctx context.Context,
 	obj map[string]interface{},
 	cfg *orktypes.ValidationConfig,
 	kindName string,
@@ -31,13 +33,31 @@ func (ws *WebhookServer) evaluateValidationRules(
 	if ws.katalog != nil {
 		resolver = resolver.WithUserNotes(ws.katalog.Notes)
 	}
+	if calls := cfg.AdmissionExternal(); len(calls) > 0 {
+		var err error
+		resolver, err = orkexternal.Run(ctx, kindName, resolver, calls, ws.kubeClient)
+		if err != nil {
+			logger.FromContext(ctx).Warn().Err(err).Str("kind", kindName).Msg("admission/validate: external call failed")
+		}
+	}
+	data := resolver.Data()
 	for _, rule := range cfg.Rules {
-		if !orktypes.EvaluateWhen(obj, rule.When, rule.AnyOf, resolver.TemplateEvaluator()) {
+		if !orktypes.EvaluateWhen(data, rule.When, rule.AnyOf, resolver.TemplateEvaluator()) {
 			continue
 		}
-		v := evaluateOneRule(obj, resolver, rule)
-		if v == nil {
+		// operator: unique always passes here — no UniquenessChecker is
+		// injected into data at admission time, only at reconcile time
+		// (see orktypes.UniquenessChecker).
+		rv := orktypes.EvaluateValidationRule(data, resolver, rule)
+		if rv == nil {
 			continue
+		}
+		v := &validationViolation{
+			Field:    rv.Field,
+			Message:  rv.Message,
+			Got:      rv.Value,
+			RuleType: rv.Rule,
+			Action:   rule.Action,
 		}
 		switch orktypes.EffectiveAction(rule.Action) {
 		case orktypes.ValidationActionDeny:
@@ -47,127 +67,6 @@ func (ws *WebhookServer) evaluateValidationRules(
 		}
 	}
 	return
-}
-
-func evaluateOneRule(obj map[string]interface{}, resolver *orktmpl.Resolver, rule orktypes.ValidationRule) *validationViolation {
-	op, expected := resolveValidationOperator(rule)
-
-	// Resolve template expressions in comparison values and messages.
-	if orktypes.IsTemplate(expected) {
-		if resolved, err := resolver.Resolve(expected); err == nil {
-			expected = resolved
-		}
-	}
-	message := rule.Message
-	if orktypes.IsTemplate(message) {
-		if resolved, err := resolver.Resolve(message); err == nil {
-			message = resolved
-		}
-	}
-
-	// displayField preserves the original expression for error messages.
-	// When field is a template, the resolved value is the result directly.
-	displayField := rule.Field
-	var fieldVal string
-	var found bool
-	if orktypes.IsTemplate(rule.Field) {
-		fieldVal, _ = resolver.Resolve(rule.Field)
-		found = fieldVal != ""
-	} else {
-		fieldVal, found = resolveFieldPath(obj, rule.Field)
-	}
-
-	fail := func() *validationViolation {
-		return &validationViolation{
-			Field:    displayField,
-			Message:  message,
-			Got:      fieldVal,
-			RuleType: string(op),
-			Action:   rule.Action,
-		}
-	}
-
-	switch op {
-	case orktypes.ConditionExists:
-		if !found || fieldVal == "" {
-			return fail()
-		}
-	case orktypes.ConditionNotExists:
-		if found && fieldVal != "" {
-			return fail()
-		}
-	case orktypes.ConditionEquals:
-		if !found || fieldVal != expected {
-			return fail()
-		}
-	case orktypes.ConditionNotEquals:
-		if found && fieldVal == expected {
-			return fail()
-		}
-	case orktypes.ConditionContains:
-		if !found || !strings.Contains(fieldVal, expected) {
-			return fail()
-		}
-	case orktypes.ConditionPrefix:
-		if !found || !strings.HasPrefix(fieldVal, expected) {
-			return fail()
-		}
-	case orktypes.ConditionSuffix:
-		if !found || !strings.HasSuffix(fieldVal, expected) {
-			return fail()
-		}
-	case orktypes.ConditionGt:
-		cv, err := strconv.ParseFloat(expected, 64)
-		if err != nil {
-			logger.Warn().Str("field", rule.Field).Str("min", expected).
-				Msg("admission/validate: min value is not numeric — rule skipped")
-			return nil
-		}
-		fv, err := strconv.ParseFloat(fieldVal, 64)
-		if err != nil || fv < cv {
-			return fail()
-		}
-	case orktypes.ConditionLt:
-		cv, err := strconv.ParseFloat(expected, 64)
-		if err != nil {
-			logger.Warn().Str("field", rule.Field).Str("max", expected).
-				Msg("admission/validate: max value is not numeric — rule skipped")
-			return nil
-		}
-		fv, err := strconv.ParseFloat(fieldVal, 64)
-		if err != nil || fv > cv {
-			return fail()
-		}
-	}
-
-	return nil
-}
-
-func resolveValidationOperator(r orktypes.ValidationRule) (orktypes.ConditionOperator, string) {
-	switch {
-	case r.Equals != "":
-		return orktypes.ConditionEquals, r.Equals
-	case r.NotEquals != "":
-		return orktypes.ConditionNotEquals, r.NotEquals
-	case r.Prefix != "":
-		return orktypes.ConditionPrefix, r.Prefix
-	case r.Suffix != "":
-		return orktypes.ConditionSuffix, r.Suffix
-	case r.Contains != "":
-		return orktypes.ConditionContains, r.Contains
-	case r.GreaterThan != "":
-		return orktypes.ConditionGt, r.GreaterThan
-	case r.LessThan != "":
-		return orktypes.ConditionLt, r.LessThan
-	case r.Min != "":
-		return orktypes.ConditionGt, r.Min
-	case r.Max != "":
-		return orktypes.ConditionLt, r.Max
-	case r.Operator != "":
-		return r.Operator, r.Value
-	default:
-		return orktypes.ConditionExists, ""
-	}
 }
 
 // ── Mutation evaluation ───────────────────────────────────────────────────────
@@ -186,10 +85,18 @@ func (ws *WebhookServer) applyMutationRules(
 	if ws.katalog != nil {
 		resolver = resolver.WithUserNotes(ws.katalog.Notes)
 	}
+	if calls := cfg.AdmissionExternal(); len(calls) > 0 {
+		var err error
+		resolver, err = orkexternal.Run(ctx, kindName, resolver, calls, ws.kubeClient)
+		if err != nil {
+			logger.FromContext(ctx).Warn().Err(err).Str("kind", kindName).Msg("admission/mutate: external call failed")
+		}
+	}
 	var changes []fieldChange
 
+	mdata := resolver.Data()
 	for _, rule := range cfg.Rules {
-		if !orktypes.EvaluateWhen(obj, rule.When, rule.AnyOf, resolver.TemplateEvaluator()) {
+		if !orktypes.EvaluateWhen(mdata, rule.When, rule.AnyOf, resolver.TemplateEvaluator()) {
 			continue
 		}
 
@@ -207,8 +114,8 @@ func (ws *WebhookServer) applyMutationRules(
 		var err error
 
 		switch {
-		case rule.Override != nil && anyToString(rule.Override) != "":
-			raw, err := resolver.Resolve(anyToString(rule.Override))
+		case rule.Override != nil && orktypes.ScalarToString(rule.Override) != "":
+			raw, err := resolver.Resolve(orktypes.ScalarToString(rule.Override))
 			if err != nil {
 				return nil, fmt.Errorf("mutation rule override for field %q: %w", targetField, err)
 			}
@@ -216,11 +123,11 @@ func (ws *WebhookServer) applyMutationRules(
 			changeType = "override"
 
 		case rule.Default != nil:
-			currentVal, found := resolveFieldPath(obj, targetField)
+			currentVal, found := orktypes.ResolveScalarField(obj, targetField)
 			if found && currentVal != "" {
 				continue // already set, skip default
 			}
-			raw, err := resolver.Resolve(anyToString(rule.Default))
+			raw, err := resolver.Resolve(orktypes.ScalarToString(rule.Default))
 			if err != nil {
 				return nil, fmt.Errorf("mutation rule default for field %q: %w", targetField, err)
 			}
@@ -239,7 +146,7 @@ func (ws *WebhookServer) applyMutationRules(
 		}
 
 		// Compare with current value (as string for simplicity)
-		currentVal, _ := resolveFieldPath(obj, targetField)
+		currentVal, _ := orktypes.ResolveScalarField(obj, targetField)
 		if fmt.Sprintf("%v", typedVal) == currentVal {
 			continue // unchanged
 		}

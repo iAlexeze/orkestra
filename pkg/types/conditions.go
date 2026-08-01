@@ -48,6 +48,12 @@ type Condition struct {
 	// Contains is a shorthand for operator: contains.
 	Contains string `yaml:"contains,omitempty" json:"contains,omitempty"`
 
+	// NotContains is a shorthand for operator: notContains.
+	NotContains string `yaml:"notContains,omitempty" json:"notContains,omitempty"`
+
+	// Regex is a shorthand for operator: regex.
+	Regex string `yaml:"regex,omitempty" json:"regex,omitempty"`
+
 	// Prefix is a shorthand for operator: prefix.
 	Prefix string `yaml:"prefix,omitempty" json:"prefix,omitempty"`
 
@@ -65,6 +71,33 @@ type Condition struct {
 	// Numeric shorthands
 	GreaterThan string `yaml:"greaterThan,omitempty" json:"greaterThan,omitempty"`
 	LessThan    string `yaml:"lessThan,omitempty" json:"lessThan,omitempty"`
+
+	// GreaterThanOrEqual is a shorthand for operator: gte.
+	GreaterThanOrEqual string `yaml:"greaterThanOrEqual,omitempty" json:"greaterThanOrEqual,omitempty"`
+
+	// LessThanOrEqual is a shorthand for operator: lte.
+	LessThanOrEqual string `yaml:"lessThanOrEqual,omitempty" json:"lessThanOrEqual,omitempty"`
+
+	// Min is a shorthand for operator: gte. Same operator as GreaterThanOrEqual —
+	// reads better for a bound on a quantity (min: "1") than a direct comparison.
+	Min string `yaml:"min,omitempty" json:"min,omitempty"`
+
+	// Max is a shorthand for operator: lte. Same operator as LessThanOrEqual.
+	Max string `yaml:"max,omitempty" json:"max,omitempty"`
+
+	// Between is a shorthand for operator: between. Comma-separated "min,max",
+	// both inclusive.
+	Between string `yaml:"between,omitempty" json:"between,omitempty"`
+
+	// NotBetween is a shorthand for operator: notBetween. Comma-separated
+	// "min,max", same bounds as between.
+	NotBetween string `yaml:"notBetween,omitempty" json:"notBetween,omitempty"`
+
+	// In is a shorthand for operator: in. Comma-separated list.
+	In string `yaml:"in,omitempty" json:"in,omitempty"`
+
+	// NotIn is a shorthand for operator: notIn. Comma-separated list.
+	NotIn string `yaml:"notIn,omitempty" json:"notIn,omitempty"`
 
 	// ── Time-based fields (anyOf in autoscale conditions) ────────────────────
 
@@ -173,6 +206,12 @@ const (
 	// ConditionLt — field value is numerically less than condition value
 	ConditionLt ConditionOperator = "lt"
 
+	// ConditionGte — field value is numerically greater than or equal to condition value
+	ConditionGte ConditionOperator = "gte"
+
+	// ConditionLte — field value is numerically less than or equal to condition value
+	ConditionLte ConditionOperator = "lte"
+
 	// ConditionIn — field value is one of a comma-separated list.
 	// Empty string matches an empty field (for first-reconcile detection).
 	//   when:
@@ -181,10 +220,37 @@ const (
 	//       value: ",Pending"   # empty or "Pending"
 	ConditionIn ConditionOperator = "in"
 
-	// ConditionUnique — field value is unique across all existing CR instances.
-	//
-	// Only valid in validation rules (deny action). Checks the informer cache
-	// for any existing CR with the same field value.
+	// ConditionNotIn — field value is none of a comma-separated list.
+	ConditionNotIn ConditionOperator = "notIn"
+
+	// ConditionNotContains — field value does not contain the condition value as a substring
+	ConditionNotContains ConditionOperator = "notContains"
+
+	// ConditionRegex — field value matches the condition value as an RE2 regular expression
+	// (Go's regexp package — same syntax as re2, not PCRE). An invalid pattern
+	// fails the condition rather than erroring, same as a non-numeric gt/lt value.
+	ConditionRegex ConditionOperator = "regex"
+
+	// ConditionBetween — field value is numerically within an inclusive range.
+	// Value is a comma-separated "min,max" pair.
+	//   when:
+	//     - field: spec.replicas
+	//       operator: between
+	//       value: "1,10"
+	ConditionBetween ConditionOperator = "between"
+
+	// ConditionNotBetween — field value is numerically outside an inclusive
+	// range. Value is a comma-separated "min,max" pair, same as between.
+	ConditionNotBetween ConditionOperator = "notBetween"
+
+	// ConditionUnique — field value must not match any other existing
+	// instance of this CRD (the CR being evaluated is excluded from its own
+	// check). Works the same way in validation.rules and in when:/anyOf: —
+	// e.g. gating a template source or mutation rule on whether a field is
+	// still available. ONLY enforced at reconcile time, where the
+	// reconciler injects a live checker; the admission webhook does not, so
+	// a CR can still be admitted with a duplicate value and get caught on
+	// the next reconcile instead.
 	//
 	//	validation:
 	//	  rules:
@@ -193,9 +259,13 @@ const (
 	//	      message: "spec.domain must be unique across all instances"
 	//	      action: deny
 	//
-	// Not valid in when: blocks on template sources — uniqueness requires
-	// informer access which is not available during template evaluation.
-	// In when: context it is treated as always-true (see pkg/types/when/EvaluateOneCond).
+	//	when:
+	//	  - field: spec.domain
+	//	    operator: unique
+	//
+	// Always passes wherever no checker is injected — admission webhook,
+	// e2e, and any other context without live CRD access (see
+	// UniquenessChecker in validation_eval.go).
 	ConditionUnique ConditionOperator = "unique"
 
 	// ConditionTypeOf — check field type
@@ -220,3 +290,44 @@ const (
 	// ConditionTypeNull — field value is null or missing
 	ConditionTypeNull ConditionOperator = "typeNull"
 )
+
+// knownConditionOperators is the complete set of operator strings that
+// EvaluateValidationRule and EvaluateOneCond know how to evaluate.
+var knownConditionOperators = map[ConditionOperator]bool{
+	ConditionEquals:      true,
+	ConditionNotEquals:   true,
+	ConditionContains:    true,
+	ConditionPrefix:      true,
+	ConditionSuffix:      true,
+	ConditionExists:      true,
+	ConditionNotExists:   true,
+	ConditionGt:          true,
+	ConditionLt:          true,
+	ConditionGte:         true,
+	ConditionLte:         true,
+	ConditionIn:          true,
+	ConditionNotIn:       true,
+	ConditionNotContains: true,
+	ConditionRegex:       true,
+	ConditionBetween:     true,
+	ConditionNotBetween:  true,
+	ConditionUnique:      true,
+	ConditionTypeOf:      true,
+	ConditionTypeMap:     true,
+	ConditionTypeList:    true,
+	ConditionTypeString:  true,
+	ConditionTypeNumber:  true,
+	ConditionTypeBool:    true,
+	ConditionTypeNull:    true,
+}
+
+// IsValidConditionOperator reports whether op is one of the known operators
+// evaluated by EvaluateValidationRule / EvaluateOneCond. An unrecognized
+// operator string is silently skipped by both evaluators (the rule always
+// passes) rather than erroring — this is what katalog-load-time validation
+// should reject instead of letting through. Empty is not valid here; check
+// for that separately since it means "no explicit operator", not "unknown
+// operator" (a shorthand field or the exists-default may still apply).
+func IsValidConditionOperator(op ConditionOperator) bool {
+	return knownConditionOperators[op]
+}

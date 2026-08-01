@@ -73,13 +73,13 @@ func (r *GenericReconciler[PTR]) runTemplateReconcile(ctx context.Context, resol
 	// Step 4: external HTTP calls
 	// Runs after Git so external URLs can embed commit hashes or paths.
 	if t := r.operatorBox.OnReconcile; t != nil && len(t.External) > 0 {
-		resolver, err = runExternal(ctx, r.crd.GVKString(), resolver, t.External)
+		resolver, err = runExternal(ctx, r.crd.GVKString(), resolver, t.External, r.kube.Clientset())
 		if err != nil {
 			return resolver, fmt.Errorf("external calls: %w", err)
 		}
 	}
 	if t := r.operatorBox.OnCreate; t != nil && len(t.External) > 0 {
-		resolver, err = runExternal(ctx, r.crd.GVKString(), resolver, t.External)
+		resolver, err = runExternal(ctx, r.crd.GVKString(), resolver, t.External, r.kube.Clientset())
 		if err != nil {
 			return resolver, fmt.Errorf("external calls: %w", err)
 		}

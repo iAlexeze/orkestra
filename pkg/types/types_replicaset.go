@@ -5,10 +5,6 @@ package types
 
 // ReplicaSetTemplateSource declares one ReplicaSet to be managed by Orkestra.
 //
-// Declare under onCreate to create the ReplicaSet on first reconcile.
-// Declare under onReconcile to apply drift correction on every reconcile.
-// Declare under both to get idempotent creation and drift correction together.
-//
 // Minimal example — static values only:
 //
 //	onCreate:
@@ -39,9 +35,6 @@ package types
 //	          cpu: 500m
 //	          memory: 512Mi
 type ReplicaSetTemplateSource struct {
-	// Version — OrkestraRegistry implementation version to use. Omit for latest.
-	Version string `yaml:"version,omitempty" json:"version,omitempty" validate:"omitempty"`
-
 	// Name — ReplicaSet and primary container name.
 	// Supports template expressions.
 	// Default when omitted: "{{ .metadata.name }}-replicaset"
@@ -80,20 +73,44 @@ type ReplicaSetTemplateSource struct {
 	// Labels — applied to the ReplicaSet ObjectMeta and the pod template.
 	// Label values support template expressions.
 	// Orkestra always adds: managed-by=orkestra, orkestra-owner=<cr-name>
-	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
 
 	// Annotations — applied to the ReplicaSet ObjectMeta only.
 	// Annotation values support template expressions.
-	Annotations []ResourceLabel `yaml:"annotations,omitempty" json:"annotations,omitempty" validate:"omitempty"`
+	Annotations Labels `yaml:"annotations,omitempty" json:"annotations,omitempty" validate:"omitempty"`
 
 	// Resources — CPU and memory requests/limits for the primary container.
 	// Set resources.profile for a named preset, or resources.requests/limits for
 	// explicit values. Profile and explicit values are mutually exclusive.
+	//
+	//	resources:
+	//	  profile: burst
 	Resources *ResourceRequirements `yaml:"resources,omitempty" json:"resources,omitempty" validate:"omitempty"`
 
 	// Env — environment variables for the primary container, in Kubernetes-native list format.
+	// Each entry has a name and either a value or a valueFrom source.
+	// If omitted, no environment variables are added.
+	//
+	//	env:
+	//	  - name: LOG_LEVEL
+	//	    value: info
+	//	  - name: API_KEY
+	//	    valueFrom:
+	//	      secretKeyRef:
+	//	        name: myapp-secrets
+	//	        key: api-key
 	Env EnvVarList `yaml:"env,omitempty" json:"env,omitempty"`
 
+	// EnvFrom — bulk-load environment variables from Secrets and/or ConfigMaps
+	// into the primary container, in addition to any individual entries in env.
+	// Each secretRef/configMapRef entry names an existing Secret or ConfigMap;
+	// every key in it becomes an environment variable.
+	//
+	//	envFrom:
+	//	  secretRef:
+	//	    - name: myapp-secrets
+	//	  configMapRef:
+	//	    - name: myapp-config
 	EnvFrom *EnvFrom `yaml:"envFrom,omitempty" json:"envFrom,omitempty"`
 
 	// NodeSelector is a selector which must be true for the pod to fit on a node.

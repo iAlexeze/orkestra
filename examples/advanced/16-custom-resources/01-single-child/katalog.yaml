@@ -40,10 +40,8 @@ spec:
                 namespace: "{{ .metadata.namespace }}"
                 namespaced: true
                 labels:
-                  - key: platform.example.io/workspace
-                    value: "{{ .metadata.name }}"
-                  - key: platform.example.io/team
-                    value: "{{ .spec.team }}"
+                  platform.example.io/workspace: "{{ .metadata.name }}"
+                  platform.example.io/team: "{{ .spec.team }}"
               spec:
                 workspaceName: "{{ .metadata.name }}"
                 encryption: "{{ .spec.encryption }}"

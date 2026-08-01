@@ -101,16 +101,18 @@ func splitEnvUpper(key string, defaultValue []string) []string {
 
 func getBoolEnv(key string, defaultValue bool) bool {
 	if value := os.Getenv(key); value != "" {
-		valueBool, _ := strconv.ParseBool(value)
-		return valueBool
+		if valueBool, err := strconv.ParseBool(value); err == nil {
+			return valueBool
+		}
 	}
 	return defaultValue
 }
 
 func getIntEnv(key string, defaultValue int) int64 {
 	if value := os.Getenv(key); value != "" {
-		valueInt, _ := strconv.ParseInt(value, 10, 64)
-		return valueInt
+		if valueInt, err := strconv.ParseInt(value, 10, 64); err == nil {
+			return valueInt
+		}
 	}
 	return int64(defaultValue)
 }
@@ -118,8 +120,9 @@ func getIntEnv(key string, defaultValue int) int64 {
 // Duration in seconds
 func getDurEnv(key string, defaultValue int) time.Duration {
 	if value := os.Getenv(key); value != "" {
-		valueInt, _ := strconv.Atoi(value)
-		return time.Duration(valueInt) * time.Second
+		if valueInt, err := strconv.Atoi(value); err == nil {
+			return time.Duration(valueInt) * time.Second
+		}
 	}
 
 	return time.Duration(defaultValue) * time.Second

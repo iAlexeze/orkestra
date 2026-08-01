@@ -61,11 +61,13 @@ func buildNotes() template.FuncMap {
 	register(m, timeNotes())
 	register(m, dataNotes())
 	register(m, stringNotes())
+	register(m, validationNotes())
 	register(m, mathNotes())
 	register(m, typeNotes())
 	register(m, conditionalNotes())
 	register(m, randomNotes())
 	register(m, kubernetesNotes())
+	register(m, kubeValidationNotes())
 	register(m, quantityNotes())
 	register(m, listMapNotes())
 	register(m, safeAccessNotes())
@@ -85,6 +87,7 @@ func buildNotes() template.FuncMap {
 	register(m, semverNotes())
 	register(m, netNotes())
 	register(m, domainNotes())
+	register(m, prometheusNotes())
 
 	// In development
 	// Initial scaffolding and documentation

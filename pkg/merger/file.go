@@ -96,7 +96,19 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 	// so they become absolute before being merged into the top-level map.
 	// This allows ork run/validate -f /any/path/katalog.yaml to work from
 	// any working directory, even when the katalog is imported by a Komposer.
+	//
+	// katalogDir must be made genuinely absolute (not just joined once) —
+	// downstream resolution (e.g. populateAPITypesFromCRDFile in
+	// pkg/katalog/crdfile.go) re-checks filepath.IsAbs() on the already-
+	// joined path and re-joins it against katalogDir again if it's still
+	// relative, doubling the directory. A relative -f path with a real
+	// subdirectory (e.g. -f a/b/katalog.yaml run from elsewhere) used to
+	// silently double into a/b/a/b/crd.yaml — invisible when katalogDir
+	// happened to be "." (running from inside the katalog's own directory).
 	katalogDir := filepath.Dir(path)
+	if abs, err := filepath.Abs(katalogDir); err == nil {
+		katalogDir = abs
+	}
 
 	for name, crd := range doc.Spec.CRDs {
 		if name == "" {

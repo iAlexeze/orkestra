@@ -19,15 +19,16 @@ spec:
       crFiles:
         - ./cr.yaml
 
-      workers: 1
-      resync: 30s
-
       enrich:
         - owner
         - replicasets
         - events
 
       operatorBox:
+        reconciler:
+          workers: 1
+          resync: 30s
+
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}-app"

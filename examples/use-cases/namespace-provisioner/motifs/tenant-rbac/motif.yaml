@@ -38,10 +38,8 @@ resources:
   clusterRoles:
     - name: "{{ .inputs.team }}-ns-admin"
       labels:
-        - key: team
-          value: "{{ .inputs.team }}"
-        - key: managed-by
-          value: myorg
+        team: "{{ .inputs.team }}"
+        managed-by: myorg
       rules:
         - apiGroups: ["", "apps", "batch"]
           resources:
@@ -63,10 +61,8 @@ resources:
   clusterRoleBindings:
     - name: "{{ .inputs.team }}-ns-admin-binding"
       labels:
-        - key: team
-          value: "{{ .inputs.team }}"
-        - key: managed-by
-          value: myorg
+        team: "{{ .inputs.team }}"
+        managed-by: myorg
       roleRef:
         kind: ClusterRole
         name: "{{ .inputs.team }}-ns-admin"

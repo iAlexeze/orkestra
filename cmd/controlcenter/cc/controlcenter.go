@@ -991,6 +991,143 @@ func (cc *ControlCenter) handleIDPCreateForm(w http.ResponseWriter, r *http.Requ
 	cc.renderTemplate(w, "idp_form.html", data)
 }
 
+// FieldType defines the valid types for IDP additional fields.
+// These are the only types that are allowed for idp.additionalFields fields.
+type FieldType string
+
+const (
+	FieldTypeString  FieldType = "string"
+	FieldTypeInteger FieldType = "integer"
+	FieldTypeNumber  FieldType = "number"
+	FieldTypeBoolean FieldType = "boolean"
+	FieldTypeEnum    FieldType = "enum"
+)
+
+// idpFieldHint mirrors orktypes.IDPFieldConfig — the presentation-hint shape
+// shared by idp.fields, idp.additionalFields.labels, and
+// idp.additionalFields.annotations. Type/Enum only matter for the latter
+// two: spec fields always infer type/enum from the CRD's OpenAPI schema
+// (schemaResp.Properties) instead.
+type idpFieldHint struct {
+	Label       string            `json:"label"`
+	Placeholder string            `json:"placeholder"`
+	Hint        string            `json:"hint"`
+	Order       int               `json:"order"`
+	Category    string            `json:"category"`
+	Required    bool              `json:"required"`
+	Disabled    string            `json:"disabled"`
+	When        []json.RawMessage `json:"when"`
+	AnyOf       []json.RawMessage `json:"anyOf"`
+	Type        string            `json:"type"`
+	Enum        []string          `json:"enum"`
+}
+
+// idpSchemaProperty mirrors one entry of pkg/gateway/applyapi.SchemaResponse.Properties
+// — a CRD spec field as reported by the CRD's own OpenAPI schema. Type is always a JSON
+// Schema base type ("string", "integer", "number", "boolean") — CRD schemas never use
+// "enum" as a type; Enum is a constraint alongside "string", not a type of its own.
+type idpSchemaProperty struct {
+	Type        string      `json:"type"`
+	Enum        []string    `json:"enum"`
+	Description string      `json:"description"`
+	Default     interface{} `json:"default"`
+}
+
+// buildSpecIDPField builds an IDPField for one idp.fields entry (or an
+// undeclared spec property with no hint). Unlike additionalFields,
+// type/enum come from the CRD's OpenAPI schema (prop), not from the hint —
+// a schema enum is reported as Type: "string" with Enum populated, never
+// Type: "enum".
+func buildSpecIDPField(name string, prop idpSchemaProperty, hint idpFieldHint, required bool) IDPField {
+	label := hint.Label
+	if label == "" {
+		label = strings.ToUpper(name[:1]) + name[1:]
+	}
+	f := IDPField{
+		Name:        name,
+		Label:       label,
+		Hint:        hint.Hint,
+		Placeholder: hint.Placeholder,
+		Required:    required || hint.Required,
+		Category:    hint.Category,
+		Disabled:    hint.Disabled,
+		Source:      IDPFieldSourceSpec,
+	}
+	if f.Hint == "" {
+		f.Hint = prop.Description
+	}
+	// Pre-populate from CRD schema default:
+	if prop.Default != nil {
+		f.Default = fmt.Sprintf("%v", prop.Default)
+	}
+	// Encode when/anyOf as JSON strings for the template to embed as data attributes.
+	if len(hint.When) > 0 {
+		if b, err := json.Marshal(hint.When); err == nil {
+			f.WhenJSON = string(b)
+		}
+	}
+	if len(hint.AnyOf) > 0 {
+		if b, err := json.Marshal(hint.AnyOf); err == nil {
+			f.AnyOfJSON = string(b)
+		}
+	}
+	switch {
+	case len(prop.Enum) > 0:
+		f.InputType = "select"
+		f.Enum = prop.Enum
+	case prop.Type == string(FieldTypeBoolean):
+		f.InputType = "checkbox"
+	case prop.Type == string(FieldTypeInteger) || prop.Type == string(FieldTypeNumber):
+		f.InputType = "number"
+	default:
+		f.InputType = "text"
+	}
+	return f
+}
+
+// buildAdditionalIDPField builds an IDPField for one idp.additionalFields
+// entry. Unlike spec fields, type/enum come from the hint itself — there's
+// no CRD schema to infer them from.
+func buildAdditionalIDPField(name string, hint idpFieldHint, source string) IDPField {
+	label := hint.Label
+	if label == "" {
+		label = name
+	}
+	f := IDPField{
+		Name:        name,
+		Label:       label,
+		Hint:        hint.Hint,
+		Placeholder: hint.Placeholder,
+		Required:    hint.Required,
+		Category:    hint.Category,
+		Disabled:    hint.Disabled,
+		Source:      source,
+	}
+	if len(hint.When) > 0 {
+		if b, err := json.Marshal(hint.When); err == nil {
+			f.WhenJSON = string(b)
+		}
+	}
+	if len(hint.AnyOf) > 0 {
+		if b, err := json.Marshal(hint.AnyOf); err == nil {
+			f.AnyOfJSON = string(b)
+		}
+	}
+
+	switch {
+	case hint.Type == string(FieldTypeEnum) && len(hint.Enum) > 0:
+		f.InputType = "select"
+		f.Enum = hint.Enum
+	case hint.Type == string(FieldTypeBoolean):
+		f.InputType = "checkbox"
+	case hint.Type == string(FieldTypeInteger) || hint.Type == string(FieldTypeNumber):
+		f.InputType = "number"
+	default:
+		f.InputType = "text"
+	}
+	return f
+}
+
 // fetchIDPFields fetches the CRD schema from the gateway. The gateway merges
 // the OpenAPI spec properties with idp.fields hints (labels, hints, order)
 // from the Katalog, so a single call is enough.
@@ -1018,25 +1155,12 @@ func (cc *ControlCenter) fetchIDPFields(inst *Instance, crdName, kind string) ([
 
 	// SchemaResponse mirrors pkg/gateway/schema.SchemaResponse.
 	var schemaResp struct {
-		Properties map[string]struct {
-			Type        string      `json:"type"`
-			Enum        []string    `json:"enum"`
-			Description string      `json:"description"`
-			Default     interface{} `json:"default"`
-		} `json:"properties"`
-		Required     []string `json:"required"`
-		IgnoreFields []string `json:"ignoreFields"`
-		IDPFields    map[string]struct {
-			Label       string            `json:"label"`
-			Placeholder string            `json:"placeholder"`
-			Hint        string            `json:"hint"`
-			Order       int               `json:"order"`
-			Category    string            `json:"category"`
-			Required    bool              `json:"required"`
-			Disabled    string            `json:"disabled"`
-			When        []json.RawMessage `json:"when"`
-			AnyOf       []json.RawMessage `json:"anyOf"`
-		} `json:"idpFields"`
+		Properties            map[string]idpSchemaProperty `json:"properties"`
+		Required              []string                     `json:"required"`
+		IgnoreFields          []string                     `json:"ignoreFields"`
+		IDPFields             map[string]idpFieldHint      `json:"idpFields"`
+		AdditionalLabels      map[string]idpFieldHint      `json:"additionalLabels"`
+		AdditionalAnnotations map[string]idpFieldHint      `json:"additionalAnnotations"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&schemaResp); err != nil {
 		return nil, err
@@ -1062,50 +1186,25 @@ func (cc *ControlCenter) fetchIDPFields(inst *Instance, crdName, kind string) ([
 			continue
 		}
 		hint := schemaResp.IDPFields[name]
-		label := hint.Label
-		if label == "" {
-			label = strings.ToUpper(name[:1]) + name[1:]
-		}
-		f := IDPField{
-			Name:        name,
-			Label:       label,
-			Hint:        hint.Hint,
-			Placeholder: hint.Placeholder,
-			Required:    requiredSet[name] || hint.Required,
-			Category:    hint.Category,
-			Disabled:    hint.Disabled,
-		}
-		if f.Hint == "" {
-			f.Hint = prop.Description
-		}
-		// Pre-populate from CRD schema default:
-		if prop.Default != nil {
-			f.Default = fmt.Sprintf("%v", prop.Default)
-		}
-		// Encode when/anyOf as JSON strings for the template to embed as data attributes.
-		if len(hint.When) > 0 {
-			if b, err := json.Marshal(hint.When); err == nil {
-				f.WhenJSON = string(b)
-			}
-		}
-		if len(hint.AnyOf) > 0 {
-			if b, err := json.Marshal(hint.AnyOf); err == nil {
-				f.AnyOfJSON = string(b)
-			}
-		}
-		switch {
-		case len(prop.Enum) > 0:
-			f.InputType = "select"
-			f.Enum = prop.Enum
-		case prop.Type == "boolean":
-			f.InputType = "checkbox"
-		case prop.Type == "integer" || prop.Type == "number":
-			f.InputType = "number"
-		default:
-			f.InputType = "text"
-		}
+		f := buildSpecIDPField(name, prop, hint, requiredSet[name])
 		ordered = append(ordered, orderedField{field: f, order: hint.Order})
 	}
+
+	// idp.additionalFields — labels and annotations. No CRD schema counterpart,
+	// so type/enum come from the hint itself instead of schemaResp.Properties.
+	for name, hint := range schemaResp.AdditionalLabels {
+		ordered = append(ordered, orderedField{
+			field: buildAdditionalIDPField(name, hint, IDPFieldSourceLabel),
+			order: hint.Order,
+		})
+	}
+	for name, hint := range schemaResp.AdditionalAnnotations {
+		ordered = append(ordered, orderedField{
+			field: buildAdditionalIDPField(name, hint, IDPFieldSourceAnnotation),
+			order: hint.Order,
+		})
+	}
+
 	sort.Slice(ordered, func(i, j int) bool {
 		oi, oj := ordered[i].order, ordered[j].order
 		// order: 0 means unset — sort after all explicitly ordered fields.
@@ -1126,7 +1225,11 @@ func (cc *ControlCenter) fetchIDPFields(inst *Instance, crdName, kind string) ([
 		f := o.field
 		title := f.Category
 		if title == "" {
-			title = "Spec"
+			if f.Source == "spec" {
+				title = "Spec"
+			} else {
+				title = "Additional Fields"
+			}
 		}
 		if len(sections) == 0 || sections[len(sections)-1].Title != title {
 			sections = append(sections, IDPSection{Title: title})
@@ -1139,9 +1242,11 @@ func (cc *ControlCenter) fetchIDPFields(inst *Instance, crdName, kind string) ([
 // handleIDPApplyForm processes the IDP form POST: builds a CR and forwards to the gateway.
 func (cc *ControlCenter) handleIDPApplyForm(w http.ResponseWriter, r *http.Request, inst *Instance, kind, apiVersion string) {
 	var body struct {
-		Name      string         `json:"name"`
-		Namespace string         `json:"namespace"`
-		Spec      map[string]any `json:"spec"`
+		Name        string            `json:"name"`
+		Namespace   string            `json:"namespace"`
+		Spec        map[string]any    `json:"spec"`
+		Labels      map[string]string `json:"labels"`
+		Annotations map[string]string `json:"annotations"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -1150,14 +1255,21 @@ func (cc *ControlCenter) handleIDPApplyForm(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	metadata := map[string]any{
+		"name":      body.Name,
+		"namespace": body.Namespace,
+	}
+	if len(body.Labels) > 0 {
+		metadata["labels"] = body.Labels
+	}
+	if len(body.Annotations) > 0 {
+		metadata["annotations"] = body.Annotations
+	}
 	cr := map[string]any{
 		"apiVersion": apiVersion,
 		"kind":       kind,
-		"metadata": map[string]any{
-			"name":      body.Name,
-			"namespace": body.Namespace,
-		},
-		"spec": body.Spec,
+		"metadata":   metadata,
+		"spec":       body.Spec,
 	}
 	crJSON, _ := json.Marshal(cr)
 	applyURL := inst.GatewayEndpoint + "/api/v1/apply"

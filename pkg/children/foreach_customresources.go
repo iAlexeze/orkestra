@@ -50,24 +50,10 @@ func ExpandForEachCustomResources(resolver *orktmpl.Resolver, srcs []orktypes.Cu
 			}
 
 			// Resolve Labels into meta directly so the assignment below picks them up
-			if len(meta.Labels) > 0 {
-				resolved := make([]orktypes.ResourceLabel, 0, len(meta.Labels))
-				for _, l := range meta.Labels {
-					resolvedVal, _ := ir.Resolve(l.Value)
-					resolved = append(resolved, orktypes.ResourceLabel{Key: l.Key, Value: resolvedVal})
-				}
-				meta.Labels = resolved
-			}
+			meta.Labels = resolveMap(ir, meta.Labels)
 
 			// Resolve Annotations into meta directly
-			if len(meta.Annotations) > 0 {
-				resolved := make([]orktypes.ResourceLabel, 0, len(meta.Annotations))
-				for _, a := range meta.Annotations {
-					resolvedVal, _ := ir.Resolve(a.Value)
-					resolved = append(resolved, orktypes.ResourceLabel{Key: a.Key, Value: resolvedVal})
-				}
-				meta.Annotations = resolved
-			}
+			meta.Annotations = resolveMap(ir, meta.Annotations)
 
 			expanded.Metadata = meta
 
@@ -115,10 +101,18 @@ func resolveMapTemplates(ir *orktmpl.Resolver, in map[string]any) map[string]any
 func resolveValueTemplates(ir *orktmpl.Resolver, v any) any {
 	switch vv := v.(type) {
 	case string:
-		if rv, _ := ir.Resolve(vv); rv != "" {
-			return rv
+		rv, _ := ir.Resolve(vv)
+		if rv == "" {
+			return vv
 		}
-		return vv
+		// Same coercion as the non-forEach custom resource path
+		// (resolve_customresources.go) — without it, a forEach-expanded
+		// custom resource's numeric/boolean/JSON fields would be submitted
+		// as literal strings instead of native types.
+		if orktypes.IsTemplate(vv) {
+			return orktypes.TryCoerceString(rv)
+		}
+		return rv
 	case map[string]any:
 		return resolveMapTemplates(ir, vv)
 	case []any:

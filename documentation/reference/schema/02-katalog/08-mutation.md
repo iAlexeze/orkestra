@@ -49,11 +49,11 @@ Each rule sets one field. Rules are applied in order.
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `field` | yes | Dot-notation path in the CR (e.g. `spec.replicas`) |
-| `default` | one of | Set only if the field is **absent or empty**. Supports Go templates. |
+| `field` | yes | Dot-notation path in the CR (e.g. `spec.replicas`). Supports Go templates. |
+| `default` | one of | Set only if the field is **absent or empty**. Supports Go templates resolved against the CR and notes FuncMap. |
 | `override` | one of | **Always** set, regardless of current value. Supports Go templates. |
 | `valueType` | no | `string` (default), `int`, `float`, `bool` |
-| `when` | no | All conditions must pass for this rule to be applied (AND). Empty means unconditional. |
+| `when` | no | All conditions must pass for this rule to be applied (AND). Empty means unconditional. Conditions support Go template expressions via `EvaluateWhen`. |
 | `anyOf` | no | At least one condition must pass for this rule to be applied (OR). When both `when` and `anyOf` are declared, both blocks must pass. |
 
 Declare either `default` or `override` on each rule, not both.
@@ -79,6 +79,29 @@ mutation:
         - field: spec.environment
           equals: production
 ```
+
+## `mutation.external`
+
+External HTTP calls can be declared directly under `mutation:`. They fire before any mutation rule is applied, and their results are available in `default:` and `override:` template expressions as `.external.<name>.*`.
+
+```yaml
+mutation:
+  external:
+    - name: defaults
+      url: "{{ .spec.configServiceUrl }}/defaults"
+      continueOnError: true
+      fires:
+        reconcile: false   # admission-only
+
+  rules:
+    - field: spec.replicas
+      default: "{{ .external.defaults.replicas }}"
+      valueType: int
+```
+
+`fires.reconcile: false` means the call only runs at admission time. When omitted (default), the call runs on every reconcile as well.
+
+See [13-external.md](13-external.md) for the full field reference.
 
 ## `mutateFirst`
 
