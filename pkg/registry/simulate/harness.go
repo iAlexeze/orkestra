@@ -19,6 +19,7 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 )
@@ -63,6 +64,13 @@ type RunOptions struct {
 	// When set, cross: declarations in the reconciler can observe these CRs
 	// via the fake katalog registry instead of returning empty results.
 	Peers map[string]*unstructured.Unstructured
+
+	// ExistingInstances holds other, already-existing instances of the SAME
+	// CRD being simulated — from extra documents of the CR's own kind in a
+	// multi-doc CR file. They are seeded into the fake dynamic client (so
+	// reconcile-time checks that list other instances, like operator:
+	// unique, can see them) but are never themselves reconciled.
+	ExistingInstances []*unstructured.Unstructured
 }
 
 // Run simulates the operator against an in-memory cluster.
@@ -123,8 +131,19 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 		Kind:    crdEntry.APITypes.Kind,
 	}
 
-	// Build the fake cluster
-	fakeKube := NewFakeKubeclient(scheme)
+	// Build the fake cluster — seed the CR under test plus any pre-existing
+	// same-kind instances (opts.ExistingInstances, from extra documents of
+	// this CRD's own kind in a multi-doc CR file) into the dynamic client so
+	// reconcile-time checks that list other instances, like operator:
+	// unique, see real data instead of an empty list. cr itself is included
+	// (not just ExistingInstances) so the checker's self-exclusion by
+	// namespace/name is exercised against real data too.
+	dynamicObjects := make([]runtime.Object, 0, 1+len(opts.ExistingInstances))
+	dynamicObjects = append(dynamicObjects, cr)
+	for _, existing := range opts.ExistingInstances {
+		dynamicObjects = append(dynamicObjects, existing)
+	}
+	fakeKube := NewFakeKubeclient(scheme, dynamicObjects...)
 
 	// Pre-seed managed labels/annotations so the reconciler's idempotency
 	// guards skip those patches on every cycle.

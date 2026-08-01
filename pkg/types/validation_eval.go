@@ -12,6 +12,7 @@ package types
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -24,6 +25,54 @@ import (
 // pkg/types, so a reverse import would cycle.
 type TemplateResolver interface {
 	Resolve(value string) (string, error)
+}
+
+// UniquenessChecker reports whether no other existing instance of the CRD
+// under evaluation currently has the same value for a given field. Satisfied
+// structurally by the reconciler's live-list-backed implementation — this
+// package can't import pkg/runtime/reconciler, same reverse-import-cycle
+// reason as TemplateResolver.
+type UniquenessChecker interface {
+	// IsUnique reports whether no other CR of this kind currently has
+	// field == value. selfNamespace/selfName identify the CR under
+	// evaluation so it's excluded from the comparison — a CR is never a
+	// duplicate of its own already-stored value.
+	IsUnique(field, value, selfNamespace, selfName string) (bool, error)
+}
+
+// uniquenessCheckerKey is the data-map key an injected UniquenessChecker is
+// stored under — same convention as _cronWindows in when.go: state that
+// doesn't belong in a CR's template context travels alongside it in the
+// data map instead of as an explicit parameter on every evaluation
+// function. Set via template.Resolver.WithUniquenessChecker; only the
+// reconciler wires one in, so operator: unique is enforced identically in
+// both validation.rules and when:/anyOf: at reconcile time, and always
+// passes elsewhere (admission webhook, e2e, template-only contexts) where
+// there's no live CRD to check against.
+const uniquenessCheckerKey = "_uniquenessChecker"
+
+// resolveUnique evaluates operator: unique against a checker injected under
+// uniquenessCheckerKey, excluding the CR under evaluation by its own
+// metadata.namespace/name. Shared by EvaluateValidationRule and
+// applyOperator (when.go) so the operator behaves identically wherever it's
+// used.
+//
+// Returns true (pass) when no checker is injected or the checker errors —
+// uniqueness is enforced when a live checker is available, not required.
+func resolveUnique(data map[string]interface{}, field, fieldVal string) bool {
+	checker, ok := data[uniquenessCheckerKey].(UniquenessChecker)
+	if !ok || checker == nil {
+		return true
+	}
+	selfNS, _ := ResolveScalarField(data, "metadata.namespace")
+	selfName, _ := ResolveScalarField(data, "metadata.name")
+	unique, err := checker.IsUnique(field, fieldVal, selfNS, selfName)
+	if err != nil {
+		logger.Warn().Err(err).Str("field", field).
+			Msg("validation: unique check failed — rule skipped")
+		return true
+	}
+	return unique
 }
 
 // RuleViolation is the outcome of one failed ValidationRule.
@@ -98,14 +147,31 @@ func ResolveValidationOp(r ValidationRule) (ConditionOperator, string) {
 		return ConditionSuffix, r.Suffix
 	case r.Contains != "":
 		return ConditionContains, r.Contains
+	case r.NotContains != "":
+		return ConditionNotContains, r.NotContains
+	case r.Regex != "":
+		return ConditionRegex, r.Regex
 	case r.Min != "":
-		return ConditionGt, r.Min
+		// Min/Max are documented as inclusive bounds — Gte/Lte, not Gt/Lt.
+		return ConditionGte, r.Min
 	case r.Max != "":
-		return ConditionLt, r.Max
+		return ConditionLte, r.Max
 	case r.GreaterThan != "":
 		return ConditionGt, r.GreaterThan
 	case r.LessThan != "":
 		return ConditionLt, r.LessThan
+	case r.GreaterThanOrEqual != "":
+		return ConditionGte, r.GreaterThanOrEqual
+	case r.LessThanOrEqual != "":
+		return ConditionLte, r.LessThanOrEqual
+	case r.Between != "":
+		return ConditionBetween, r.Between
+	case r.NotBetween != "":
+		return ConditionNotBetween, r.NotBetween
+	case r.In != "":
+		return ConditionIn, r.In
+	case r.NotIn != "":
+		return ConditionNotIn, r.NotIn
 	case r.Operator != "":
 		return r.Operator, r.Value
 	default:
@@ -116,9 +182,9 @@ func ResolveValidationOp(r ValidationRule) (ConditionOperator, string) {
 // RuleTypeLabel returns a short string identifying a ValidationRule's
 // effective comparison for use as a low-cardinality metric label. Prefers
 // the shorthand name the katalog author actually wrote (e.g. "min", "max")
-// over the operator it resolves to (both "min" and "greaterThan" resolve to
-// ConditionGt), since that's the more actionable label for "which rule type
-// is causing the most friction" alerting.
+// over the operator it resolves to (min resolves to ConditionGte, not a
+// distinct "min" operator), since that's the more actionable label for
+// "which rule type is causing the most friction" alerting.
 func RuleTypeLabel(r ValidationRule) string {
 	switch {
 	case r.Equals != "":
@@ -131,6 +197,10 @@ func RuleTypeLabel(r ValidationRule) string {
 		return "suffix"
 	case r.Contains != "":
 		return "contains"
+	case r.NotContains != "":
+		return "notContains"
+	case r.Regex != "":
+		return "regex"
 	case r.Min != "":
 		return "min"
 	case r.Max != "":
@@ -139,6 +209,18 @@ func RuleTypeLabel(r ValidationRule) string {
 		return "greaterThan"
 	case r.LessThan != "":
 		return "lessThan"
+	case r.GreaterThanOrEqual != "":
+		return "greaterThanOrEqual"
+	case r.LessThanOrEqual != "":
+		return "lessThanOrEqual"
+	case r.Between != "":
+		return "between"
+	case r.NotBetween != "":
+		return "notBetween"
+	case r.In != "":
+		return "in"
+	case r.NotIn != "":
+		return "notIn"
 	case r.Operator != "":
 		return string(r.Operator)
 	default:
@@ -250,11 +332,56 @@ func EvaluateValidationRule(data map[string]interface{}, resolver TemplateResolv
 			return fail()
 		}
 
-	case ConditionGt: // used as Min when coming from rule.Min
+	case ConditionNotIn:
+		if !found || inCommaList(fieldVal, expected) {
+			return fail()
+		}
+
+	case ConditionNotContains:
+		if !found || strings.Contains(fieldVal, expected) {
+			return fail()
+		}
+
+	case ConditionRegex:
+		re, err := regexp.Compile(expected)
+		if err != nil {
+			logger.Warn().Str("field", rule.Field).Str("val", expected).
+				Msg("validation: regex is not a valid pattern — rule skipped")
+			return nil
+		}
+		if !found || !re.MatchString(fieldVal) {
+			return fail()
+		}
+
+	case ConditionGt: // strict — use min: or gte: for an inclusive bound
 		cv, err := strconv.ParseFloat(expected, 64)
 		if err != nil {
 			logger.Warn().Str("field", rule.Field).Str("val", expected).
-				Msg("validation: min/gt requires a numeric value — rule skipped")
+				Msg("validation: gt requires a numeric value — rule skipped")
+			return nil
+		}
+		fv, err := strconv.ParseFloat(fieldVal, 64)
+		if err != nil || fv <= cv {
+			return fail()
+		}
+
+	case ConditionLt: // strict — use max: or lte: for an inclusive bound
+		cv, err := strconv.ParseFloat(expected, 64)
+		if err != nil {
+			logger.Warn().Str("field", rule.Field).Str("val", expected).
+				Msg("validation: lt requires a numeric value — rule skipped")
+			return nil
+		}
+		fv, err := strconv.ParseFloat(fieldVal, 64)
+		if err != nil || fv >= cv {
+			return fail()
+		}
+
+	case ConditionGte: // used as Min when coming from rule.Min
+		cv, err := strconv.ParseFloat(expected, 64)
+		if err != nil {
+			logger.Warn().Str("field", rule.Field).Str("val", expected).
+				Msg("validation: gte requires a numeric value — rule skipped")
 			return nil
 		}
 		fv, err := strconv.ParseFloat(fieldVal, 64)
@@ -262,15 +389,49 @@ func EvaluateValidationRule(data map[string]interface{}, resolver TemplateResolv
 			return fail()
 		}
 
-	case ConditionLt: // used as Max when coming from rule.Max
+	case ConditionLte: // used as Max when coming from rule.Max
 		cv, err := strconv.ParseFloat(expected, 64)
 		if err != nil {
 			logger.Warn().Str("field", rule.Field).Str("val", expected).
-				Msg("validation: max/lt requires a numeric value — rule skipped")
+				Msg("validation: lte requires a numeric value — rule skipped")
 			return nil
 		}
 		fv, err := strconv.ParseFloat(fieldVal, 64)
 		if err != nil || fv > cv {
+			return fail()
+		}
+
+	case ConditionBetween:
+		lo, hi, ok := parseBetween(expected)
+		if !ok {
+			logger.Warn().Str("field", rule.Field).Str("val", expected).
+				Msg("validation: between requires \"min,max\" numeric values — rule skipped")
+			return nil
+		}
+		fv, err := strconv.ParseFloat(fieldVal, 64)
+		if err != nil || fv < lo || fv > hi {
+			return fail()
+		}
+
+	case ConditionNotBetween:
+		lo, hi, ok := parseBetween(expected)
+		if !ok {
+			logger.Warn().Str("field", rule.Field).Str("val", expected).
+				Msg("validation: notBetween requires \"min,max\" numeric values — rule skipped")
+			return nil
+		}
+		fv, err := strconv.ParseFloat(fieldVal, 64)
+		if err != nil || (fv >= lo && fv <= hi) {
+			return fail()
+		}
+
+	case ConditionUnique:
+		if _, hasChecker := data[uniquenessCheckerKey].(UniquenessChecker); !hasChecker {
+			// No checker injected (e.g. admission webhook) — always passes,
+			// same as EvaluateOneCond.
+			return nil
+		}
+		if !found || !resolveUnique(data, rule.Field, fieldVal) {
 			return fail()
 		}
 	}

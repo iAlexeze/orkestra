@@ -308,6 +308,10 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	if r.kat != nil && !r.kat.Notes.IsEmpty() {
 		resolver = resolver.WithUserNotes(r.kat.Notes)
 	}
+	// Gives operator: unique live CRD access for the rest of this reconcile
+	// pass — validation.rules and any when:/anyOf: block evaluated against
+	// this resolver (mutation rules, template sources) all share it.
+	resolver = resolver.WithUniquenessChecker(newUniquenessChecker(ctx, r.kube, r.crd.GVR(), r.crd.IsNamespaced()))
 	// Run hook-declared external calls before ScopedFor so their results are
 	// available as .external.<name>.* when args template expressions are evaluated.
 	// This gives typed hooks access to external systems without needing an HTTP

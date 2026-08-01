@@ -1,6 +1,9 @@
 package types
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 // ── ScalarToString ──────────────────────────────────────────────────────────
 
@@ -117,8 +120,8 @@ func TestResolveValidationOp_Shorthands(t *testing.T) {
 		{"prefix", ValidationRule{Prefix: "myorg/"}, ConditionPrefix, "myorg/"},
 		{"suffix", ValidationRule{Suffix: ":latest"}, ConditionSuffix, ":latest"},
 		{"contains", ValidationRule{Contains: "nginx"}, ConditionContains, "nginx"},
-		{"min maps to gt", ValidationRule{Min: "1"}, ConditionGt, "1"},
-		{"max maps to lt", ValidationRule{Max: "10"}, ConditionLt, "10"},
+		{"min maps to gte", ValidationRule{Min: "1"}, ConditionGte, "1"},
+		{"max maps to lte", ValidationRule{Max: "10"}, ConditionLte, "10"},
 		{"greaterThan maps to gt", ValidationRule{GreaterThan: "5"}, ConditionGt, "5"},
 		{"lessThan maps to lt", ValidationRule{LessThan: "5"}, ConditionLt, "5"},
 		{"explicit operator", ValidationRule{Operator: ConditionIn, Value: "a,b"}, ConditionIn, "a,b"},
@@ -191,7 +194,7 @@ func TestEvaluateValidationRule_Operators(t *testing.T) {
 		{"in: field missing — fails", specData(map[string]interface{}{}), ValidationRule{Field: "spec.workloadType", Operator: ConditionIn, Value: "app,cert", Message: "invalid"}, false},
 		{"in: whitespace around list entries is trimmed", specData(map[string]interface{}{"env": "prod"}), ValidationRule{Field: "spec.env", Operator: ConditionIn, Value: "dev, staging, prod", Message: "invalid"}, true},
 
-		// ── min (ConditionGt) ───────────────────────────────────────────────
+		// ── min (ConditionGte) — inclusive ───────────────────────────────────
 		{"min: value exactly at minimum — passes", specData(map[string]interface{}{"replicas": float64(1)}), ValidationRule{Field: "spec.replicas", Min: "1", Message: "at least 1 replica"}, true},
 		{"min: value above minimum — passes", specData(map[string]interface{}{"replicas": float64(5)}), ValidationRule{Field: "spec.replicas", Min: "1", Message: "at least 1 replica"}, true},
 		{"min: value below minimum — fails", specData(map[string]interface{}{"replicas": float64(0)}), ValidationRule{Field: "spec.replicas", Min: "1", Message: "at least 1 replica"}, false},
@@ -199,13 +202,47 @@ func TestEvaluateValidationRule_Operators(t *testing.T) {
 		{"min: non-numeric field value — fails", specData(map[string]interface{}{"replicas": "lots"}), ValidationRule{Field: "spec.replicas", Min: "1", Message: "at least 1 replica"}, false},
 		{"min: non-numeric config value — rule skipped (passes)", specData(map[string]interface{}{"replicas": float64(5)}), ValidationRule{Field: "spec.replicas", Min: "not-a-number", Message: "invalid config"}, true},
 
-		// ── max (ConditionLt) ───────────────────────────────────────────────
+		// ── max (ConditionLte) — inclusive ───────────────────────────────────
 		{"max: value at maximum — passes", specData(map[string]interface{}{"replicas": float64(10)}), ValidationRule{Field: "spec.replicas", Max: "10", Message: "no more than 10"}, true},
 		{"max: value above maximum — fails", specData(map[string]interface{}{"replicas": float64(15)}), ValidationRule{Field: "spec.replicas", Max: "10", Message: "no more than 10"}, false},
 		{"max: value below maximum — passes", specData(map[string]interface{}{"replicas": float64(3)}), ValidationRule{Field: "spec.replicas", Max: "10", Message: "no more than 10"}, true},
 		{"max: field missing — fails", specData(map[string]interface{}{}), ValidationRule{Field: "spec.replicas", Max: "10", Message: "no more than 10"}, false},
 		{"max: non-numeric field value — fails", specData(map[string]interface{}{"replicas": "many"}), ValidationRule{Field: "spec.replicas", Max: "10", Message: "no more than 10"}, false},
 		{"max: non-numeric config value — rule skipped (passes)", specData(map[string]interface{}{"replicas": float64(5)}), ValidationRule{Field: "spec.replicas", Max: "not-a-number", Message: "invalid config"}, true},
+
+		// ── explicit gt/lt — strict, unlike min/max ──────────────────────────
+		{"gt: value equal to bound — fails (strict)", specData(map[string]interface{}{"replicas": float64(1)}), ValidationRule{Field: "spec.replicas", GreaterThan: "1", Message: "must exceed 1"}, false},
+		{"gt: value above bound — passes", specData(map[string]interface{}{"replicas": float64(2)}), ValidationRule{Field: "spec.replicas", GreaterThan: "1", Message: "must exceed 1"}, true},
+		{"lt: value equal to bound — fails (strict)", specData(map[string]interface{}{"replicas": float64(10)}), ValidationRule{Field: "spec.replicas", LessThan: "10", Message: "must be under 10"}, false},
+		{"lt: value below bound — passes", specData(map[string]interface{}{"replicas": float64(9)}), ValidationRule{Field: "spec.replicas", LessThan: "10", Message: "must be under 10"}, true},
+
+		// ── explicit gte/lte — inclusive ──────────────────────────────────────
+		{"gte: value equal to bound — passes", specData(map[string]interface{}{"replicas": float64(1)}), ValidationRule{Field: "spec.replicas", GreaterThanOrEqual: "1", Message: "at least 1"}, true},
+		{"gte: value below bound — fails", specData(map[string]interface{}{"replicas": float64(0)}), ValidationRule{Field: "spec.replicas", GreaterThanOrEqual: "1", Message: "at least 1"}, false},
+		{"lte: value equal to bound — passes", specData(map[string]interface{}{"replicas": float64(10)}), ValidationRule{Field: "spec.replicas", LessThanOrEqual: "10", Message: "at most 10"}, true},
+		{"lte: value above bound — fails", specData(map[string]interface{}{"replicas": float64(11)}), ValidationRule{Field: "spec.replicas", LessThanOrEqual: "10", Message: "at most 10"}, false},
+
+		// ── between / notBetween — inclusive bounds ──────────────────────────
+		{"between: value inside range — passes", specData(map[string]interface{}{"replicas": float64(5)}), ValidationRule{Field: "spec.replicas", Between: "1,10", Message: "must be 1-10"}, true},
+		{"between: value at lower bound — passes", specData(map[string]interface{}{"replicas": float64(1)}), ValidationRule{Field: "spec.replicas", Between: "1,10", Message: "must be 1-10"}, true},
+		{"between: value at upper bound — passes", specData(map[string]interface{}{"replicas": float64(10)}), ValidationRule{Field: "spec.replicas", Between: "1,10", Message: "must be 1-10"}, true},
+		{"between: value outside range — fails", specData(map[string]interface{}{"replicas": float64(11)}), ValidationRule{Field: "spec.replicas", Between: "1,10", Message: "must be 1-10"}, false},
+		{"between: malformed range — rule skipped (passes)", specData(map[string]interface{}{"replicas": float64(5)}), ValidationRule{Field: "spec.replicas", Between: "not,numbers", Message: "invalid"}, true},
+		{"notBetween: value outside range — passes", specData(map[string]interface{}{"replicas": float64(11)}), ValidationRule{Field: "spec.replicas", NotBetween: "1,10", Message: "must not be 1-10"}, true},
+		{"notBetween: value inside range — fails", specData(map[string]interface{}{"replicas": float64(5)}), ValidationRule{Field: "spec.replicas", NotBetween: "1,10", Message: "must not be 1-10"}, false},
+
+		// ── notIn ─────────────────────────────────────────────────────────────
+		{"notIn: value not in list — passes", specData(map[string]interface{}{"workloadType": "custom"}), ValidationRule{Field: "spec.workloadType", NotIn: "app,cert,monitoring", Message: "reserved type"}, true},
+		{"notIn: value in list — fails", specData(map[string]interface{}{"workloadType": "app"}), ValidationRule{Field: "spec.workloadType", NotIn: "app,cert,monitoring", Message: "reserved type"}, false},
+
+		// ── contains / notContains ────────────────────────────────────────────
+		{"notContains: substring absent — passes", specData(map[string]interface{}{"image": "myorg/app:latest"}), ValidationRule{Field: "spec.image", NotContains: "docker.io", Message: "must not use docker.io"}, true},
+		{"notContains: substring present — fails", specData(map[string]interface{}{"image": "docker.io/app:latest"}), ValidationRule{Field: "spec.image", NotContains: "docker.io", Message: "must not use docker.io"}, false},
+
+		// ── regex ─────────────────────────────────────────────────────────────
+		{"regex: matches pattern — passes", specData(map[string]interface{}{"name": "app-prod-01"}), ValidationRule{Field: "spec.name", Regex: `^app-\w+-\d+$`, Message: "invalid name format"}, true},
+		{"regex: does not match pattern — fails", specData(map[string]interface{}{"name": "APP"}), ValidationRule{Field: "spec.name", Regex: `^app-\w+-\d+$`, Message: "invalid name format"}, false},
+		{"regex: invalid pattern — rule skipped (passes)", specData(map[string]interface{}{"name": "app"}), ValidationRule{Field: "spec.name", Regex: `(unclosed`, Message: "invalid"}, true},
 	}
 
 	for _, tt := range tests {
@@ -219,6 +256,80 @@ func TestEvaluateValidationRule_Operators(t *testing.T) {
 			}
 		})
 	}
+}
+
+// fakeUniquenessChecker is a test double for UniquenessChecker — the
+// concrete live-list-backed implementation lives in
+// pkg/runtime/reconciler/uniqueness.go and can't be imported here (this
+// package can't import the reconciler, same reverse-cycle reason the
+// interface exists in the first place).
+type fakeUniquenessChecker struct {
+	unique bool
+	err    error
+}
+
+func (f *fakeUniquenessChecker) IsUnique(field, value, selfNamespace, selfName string) (bool, error) {
+	return f.unique, f.err
+}
+
+func withUniqueChecker(data map[string]interface{}, checker UniquenessChecker) map[string]interface{} {
+	out := make(map[string]interface{}, len(data)+1)
+	for k, v := range data {
+		out[k] = v
+	}
+	out[uniquenessCheckerKey] = checker
+	return out
+}
+
+func TestEvaluateValidationRule_Unique(t *testing.T) {
+	rule := ValidationRule{Field: "spec.domain", Operator: ConditionUnique, Message: "must be unique"}
+	data := specData(map[string]interface{}{"domain": "a.example.com"})
+
+	t.Run("no checker injected — always passes", func(t *testing.T) {
+		v := EvaluateValidationRule(data, nil, rule)
+		if v != nil {
+			t.Errorf("expected pass with no checker injected — got violation: %+v", v)
+		}
+	})
+
+	t.Run("no checker injected — passes even when field is missing", func(t *testing.T) {
+		v := EvaluateValidationRule(specData(map[string]interface{}{}), nil, rule)
+		if v != nil {
+			t.Errorf("expected pass with no checker injected — got violation: %+v", v)
+		}
+	})
+
+	t.Run("checker present, field missing — fails", func(t *testing.T) {
+		d := withUniqueChecker(specData(map[string]interface{}{}), &fakeUniquenessChecker{unique: true})
+		v := EvaluateValidationRule(d, nil, rule)
+		if v == nil {
+			t.Error("expected violation — field is missing")
+		}
+	})
+
+	t.Run("checker reports unique — passes", func(t *testing.T) {
+		d := withUniqueChecker(data, &fakeUniquenessChecker{unique: true})
+		v := EvaluateValidationRule(d, nil, rule)
+		if v != nil {
+			t.Errorf("expected pass — got violation: %+v", v)
+		}
+	})
+
+	t.Run("checker reports duplicate — fails", func(t *testing.T) {
+		d := withUniqueChecker(data, &fakeUniquenessChecker{unique: false})
+		v := EvaluateValidationRule(d, nil, rule)
+		if v == nil {
+			t.Error("expected violation — checker reported a duplicate")
+		}
+	})
+
+	t.Run("checker errors — fails open (passes), rule skipped", func(t *testing.T) {
+		d := withUniqueChecker(data, &fakeUniquenessChecker{err: fmt.Errorf("list failed")})
+		v := EvaluateValidationRule(d, nil, rule)
+		if v != nil {
+			t.Errorf("expected pass on checker error — got violation: %+v", v)
+		}
+	})
 }
 
 func TestEvaluateValidationRule_ViolationFieldsArePopulated(t *testing.T) {

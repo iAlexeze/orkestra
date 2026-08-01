@@ -53,14 +53,20 @@ Every subcommand supports the same assertion fields:
 | `equals` | Output (trimmed) must exactly match this string |
 | `notEquals` | Output must not exactly match this string |
 | `oneOf` | Output (trimmed) must match one of the listed strings |
+| `notOneOf` | Output (trimmed) must not match any of the listed strings |
 | `outputContains` | Output must contain this substring |
 | `outputNotContains` | Output must not contain this substring |
-| `greaterThan` | Output (trimmed, parsed as a number) must be greater than this value |
-| `lessThan` | Output (trimmed, parsed as a number) must be less than this value |
+| `regex` | Output (trimmed) must match this RE2 regular expression (Go's `regexp` syntax) |
+| `greaterThan` | Output (trimmed, parsed as a number) must be greater than this value — **strict** |
+| `lessThan` | Output (trimmed, parsed as a number) must be less than this value — **strict** |
+| `greaterThanOrEqual` | Output must be greater than or equal to this value |
+| `lessThanOrEqual` | Output must be less than or equal to this value |
+| `between` | Output must be numerically within an inclusive range. Value is `"min,max"` |
+| `notBetween` | Output must be numerically outside an inclusive range. Value is `"min,max"` |
 | `exists` | Output (trimmed) must be non-empty — field is present and has a value |
 | `notExists` | Output (trimmed) must be empty — field is absent or unset |
 
-Multiple assertions on the same entry all apply. Empty fields are ignored. `greaterThan` and `lessThan` parse the output as `float64` — the check fails if the output is not numeric when either is set. `exists` and `notExists` check the trimmed output for presence or absence.
+Multiple assertions on the same entry all apply. Empty fields are ignored. These are evaluated with the same `Condition` operators as `when:`/`anyOf:` (see [when/anyOf conditions & Operators](../02-katalog/06-when-conditions.md#operators)), against a single synthetic `output` field holding the trimmed command output — the numeric comparisons fail if the output is not parseable as a number.
 
 `oneOf` is useful when the expected value is one of several valid strings — for example, a status field that reflects current runtime state:
 

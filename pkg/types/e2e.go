@@ -432,15 +432,37 @@ type E2ECommand struct {
 	// Set to non-zero to assert the command must fail — useful for
 	// admission webhook rejection tests.
 	ExitCode int `yaml:"exitCode,omitempty"`
+	// Equals asserts the combined stdout+stderr (trimmed) exactly matches this string.
+	Equals string `yaml:"equals,omitempty"`
+	// NotEquals asserts the combined stdout+stderr (trimmed) does not exactly match this string.
+	NotEquals string `yaml:"notEquals,omitempty"`
 	// OutputContains asserts the combined stdout+stderr contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the combined stdout+stderr does NOT contain this substring.
-	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string   `yaml:"greaterThan,omitempty"`
-	LessThan          string   `yaml:"lessThan,omitempty"`
-	Exists            bool     `yaml:"exists,omitempty"`
-	NotExists         bool     `yaml:"notExists,omitempty"`
-	OneOf             []string `yaml:"oneOf,omitempty"`
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	// Regex asserts the combined stdout+stderr (trimmed) matches this RE2 pattern.
+	Regex string `yaml:"regex,omitempty"`
+	// GreaterThan asserts the output (trimmed, parsed as a number) is greater than this value — strict.
+	GreaterThan string `yaml:"greaterThan,omitempty"`
+	// LessThan asserts the output (trimmed, parsed as a number) is less than this value — strict.
+	LessThan string `yaml:"lessThan,omitempty"`
+	// GreaterThanOrEqual asserts the output is greater than or equal to this value.
+	GreaterThanOrEqual string `yaml:"greaterThanOrEqual,omitempty"`
+	// LessThanOrEqual asserts the output is less than or equal to this value.
+	LessThanOrEqual string `yaml:"lessThanOrEqual,omitempty"`
+	// Between asserts the output (trimmed, parsed as a number) is within an
+	// inclusive range. Value is "min,max".
+	Between string `yaml:"between,omitempty"`
+	// NotBetween asserts the output is numerically outside an inclusive range. Value is "min,max".
+	NotBetween string `yaml:"notBetween,omitempty"`
+	// Exists asserts the output (trimmed) is non-empty.
+	Exists bool `yaml:"exists,omitempty"`
+	// NotExists asserts the output (trimmed) is empty.
+	NotExists bool `yaml:"notExists,omitempty"`
+	// OneOf asserts the output (trimmed) exactly matches one of these values.
+	OneOf []string `yaml:"oneOf,omitempty"`
+	// NotOneOf asserts the output (trimmed) matches none of these values.
+	NotOneOf []string `yaml:"notOneOf,omitempty"`
 }
 
 // E2EKubectl is the structured kubectl DSL block.
@@ -524,12 +546,29 @@ type E2EKubectlGet struct {
 	// OutputContains asserts the output contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
-	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string   `yaml:"greaterThan,omitempty"`
-	LessThan          string   `yaml:"lessThan,omitempty"`
-	Exists            bool     `yaml:"exists,omitempty"`
-	NotExists         bool     `yaml:"notExists,omitempty"`
-	OneOf             []string `yaml:"oneOf,omitempty"`
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	// Regex asserts the output (trimmed) matches this RE2 regular expression.
+	Regex string `yaml:"regex,omitempty"`
+	// GreaterThan asserts the output (trimmed, parsed as a number) is greater than this value — strict.
+	GreaterThan string `yaml:"greaterThan,omitempty"`
+	// LessThan asserts the output (trimmed, parsed as a number) is less than this value — strict.
+	LessThan string `yaml:"lessThan,omitempty"`
+	// GreaterThanOrEqual asserts the output is greater than or equal to this value.
+	GreaterThanOrEqual string `yaml:"greaterThanOrEqual,omitempty"`
+	// LessThanOrEqual asserts the output is less than or equal to this value.
+	LessThanOrEqual string `yaml:"lessThanOrEqual,omitempty"`
+	// Between asserts the output is numerically within an inclusive range. Value is "min,max".
+	Between string `yaml:"between,omitempty"`
+	// NotBetween asserts the output is numerically outside an inclusive range. Value is "min,max".
+	NotBetween string `yaml:"notBetween,omitempty"`
+	// Exists asserts the output (trimmed) is non-empty.
+	Exists bool `yaml:"exists,omitempty"`
+	// NotExists asserts the output (trimmed) is empty.
+	NotExists bool `yaml:"notExists,omitempty"`
+	// OneOf asserts the output (trimmed) exactly matches one of these values.
+	OneOf []string `yaml:"oneOf,omitempty"`
+	// NotOneOf asserts the output (trimmed) matches none of these values.
+	NotOneOf []string `yaml:"notOneOf,omitempty"`
 }
 
 // E2EKubectlLogs asserts container log output.
@@ -558,12 +597,29 @@ type E2EKubectlLogs struct {
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
 	// Useful for asserting no FATAL or ERROR lines were logged.
-	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string   `yaml:"greaterThan,omitempty"`
-	LessThan          string   `yaml:"lessThan,omitempty"`
-	Exists            bool     `yaml:"exists,omitempty"`
-	NotExists         bool     `yaml:"notExists,omitempty"`
-	OneOf             []string `yaml:"oneOf,omitempty"`
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	// Regex asserts the output (trimmed) matches this RE2 regular expression.
+	Regex string `yaml:"regex,omitempty"`
+	// GreaterThan asserts the output (trimmed, parsed as a number) is greater than this value — strict.
+	GreaterThan string `yaml:"greaterThan,omitempty"`
+	// LessThan asserts the output (trimmed, parsed as a number) is less than this value — strict.
+	LessThan string `yaml:"lessThan,omitempty"`
+	// GreaterThanOrEqual asserts the output is greater than or equal to this value.
+	GreaterThanOrEqual string `yaml:"greaterThanOrEqual,omitempty"`
+	// LessThanOrEqual asserts the output is less than or equal to this value.
+	LessThanOrEqual string `yaml:"lessThanOrEqual,omitempty"`
+	// Between asserts the output is numerically within an inclusive range. Value is "min,max".
+	Between string `yaml:"between,omitempty"`
+	// NotBetween asserts the output is numerically outside an inclusive range. Value is "min,max".
+	NotBetween string `yaml:"notBetween,omitempty"`
+	// Exists asserts the output (trimmed) is non-empty.
+	Exists bool `yaml:"exists,omitempty"`
+	// NotExists asserts the output (trimmed) is empty.
+	NotExists bool `yaml:"notExists,omitempty"`
+	// OneOf asserts the output (trimmed) exactly matches one of these values.
+	OneOf []string `yaml:"oneOf,omitempty"`
+	// NotOneOf asserts the output (trimmed) matches none of these values.
+	NotOneOf []string `yaml:"notOneOf,omitempty"`
 }
 
 // E2EKubectlDescribe asserts kubectl describe output.
@@ -584,12 +640,29 @@ type E2EKubectlDescribe struct {
 	// OutputContains asserts the output contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
-	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string   `yaml:"greaterThan,omitempty"`
-	LessThan          string   `yaml:"lessThan,omitempty"`
-	Exists            bool     `yaml:"exists,omitempty"`
-	NotExists         bool     `yaml:"notExists,omitempty"`
-	OneOf             []string `yaml:"oneOf,omitempty"`
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	// Regex asserts the output (trimmed) matches this RE2 regular expression.
+	Regex string `yaml:"regex,omitempty"`
+	// GreaterThan asserts the output (trimmed, parsed as a number) is greater than this value — strict.
+	GreaterThan string `yaml:"greaterThan,omitempty"`
+	// LessThan asserts the output (trimmed, parsed as a number) is less than this value — strict.
+	LessThan string `yaml:"lessThan,omitempty"`
+	// GreaterThanOrEqual asserts the output is greater than or equal to this value.
+	GreaterThanOrEqual string `yaml:"greaterThanOrEqual,omitempty"`
+	// LessThanOrEqual asserts the output is less than or equal to this value.
+	LessThanOrEqual string `yaml:"lessThanOrEqual,omitempty"`
+	// Between asserts the output is numerically within an inclusive range. Value is "min,max".
+	Between string `yaml:"between,omitempty"`
+	// NotBetween asserts the output is numerically outside an inclusive range. Value is "min,max".
+	NotBetween string `yaml:"notBetween,omitempty"`
+	// Exists asserts the output (trimmed) is non-empty.
+	Exists bool `yaml:"exists,omitempty"`
+	// NotExists asserts the output (trimmed) is empty.
+	NotExists bool `yaml:"notExists,omitempty"`
+	// OneOf asserts the output (trimmed) exactly matches one of these values.
+	OneOf []string `yaml:"oneOf,omitempty"`
+	// NotOneOf asserts the output (trimmed) matches none of these values.
+	NotOneOf []string `yaml:"notOneOf,omitempty"`
 }
 
 // E2EKubectlExec runs a command inside a running container and asserts its output.
@@ -618,12 +691,29 @@ type E2EKubectlExec struct {
 	// OutputContains asserts the output contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
-	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string   `yaml:"greaterThan,omitempty"`
-	LessThan          string   `yaml:"lessThan,omitempty"`
-	Exists            bool     `yaml:"exists,omitempty"`
-	NotExists         bool     `yaml:"notExists,omitempty"`
-	OneOf             []string `yaml:"oneOf,omitempty"`
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	// Regex asserts the output (trimmed) matches this RE2 regular expression.
+	Regex string `yaml:"regex,omitempty"`
+	// GreaterThan asserts the output (trimmed, parsed as a number) is greater than this value — strict.
+	GreaterThan string `yaml:"greaterThan,omitempty"`
+	// LessThan asserts the output (trimmed, parsed as a number) is less than this value — strict.
+	LessThan string `yaml:"lessThan,omitempty"`
+	// GreaterThanOrEqual asserts the output is greater than or equal to this value.
+	GreaterThanOrEqual string `yaml:"greaterThanOrEqual,omitempty"`
+	// LessThanOrEqual asserts the output is less than or equal to this value.
+	LessThanOrEqual string `yaml:"lessThanOrEqual,omitempty"`
+	// Between asserts the output is numerically within an inclusive range. Value is "min,max".
+	Between string `yaml:"between,omitempty"`
+	// NotBetween asserts the output is numerically outside an inclusive range. Value is "min,max".
+	NotBetween string `yaml:"notBetween,omitempty"`
+	// Exists asserts the output (trimmed) is non-empty.
+	Exists bool `yaml:"exists,omitempty"`
+	// NotExists asserts the output (trimmed) is empty.
+	NotExists bool `yaml:"notExists,omitempty"`
+	// OneOf asserts the output (trimmed) exactly matches one of these values.
+	OneOf []string `yaml:"oneOf,omitempty"`
+	// NotOneOf asserts the output (trimmed) matches none of these values.
+	NotOneOf []string `yaml:"notOneOf,omitempty"`
 }
 
 // E2EKubectlApply applies one or more manifests during an expect checkpoint.
@@ -693,12 +783,29 @@ type E2EKubectlEvents struct {
 	// OutputContains asserts the output contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
-	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string   `yaml:"greaterThan,omitempty"`
-	LessThan          string   `yaml:"lessThan,omitempty"`
-	Exists            bool     `yaml:"exists,omitempty"`
-	NotExists         bool     `yaml:"notExists,omitempty"`
-	OneOf             []string `yaml:"oneOf,omitempty"`
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	// Regex asserts the output (trimmed) matches this RE2 regular expression.
+	Regex string `yaml:"regex,omitempty"`
+	// GreaterThan asserts the output (trimmed, parsed as a number) is greater than this value — strict.
+	GreaterThan string `yaml:"greaterThan,omitempty"`
+	// LessThan asserts the output (trimmed, parsed as a number) is less than this value — strict.
+	LessThan string `yaml:"lessThan,omitempty"`
+	// GreaterThanOrEqual asserts the output is greater than or equal to this value.
+	GreaterThanOrEqual string `yaml:"greaterThanOrEqual,omitempty"`
+	// LessThanOrEqual asserts the output is less than or equal to this value.
+	LessThanOrEqual string `yaml:"lessThanOrEqual,omitempty"`
+	// Between asserts the output is numerically within an inclusive range. Value is "min,max".
+	Between string `yaml:"between,omitempty"`
+	// NotBetween asserts the output is numerically outside an inclusive range. Value is "min,max".
+	NotBetween string `yaml:"notBetween,omitempty"`
+	// Exists asserts the output (trimmed) is non-empty.
+	Exists bool `yaml:"exists,omitempty"`
+	// NotExists asserts the output (trimmed) is empty.
+	NotExists bool `yaml:"notExists,omitempty"`
+	// OneOf asserts the output (trimmed) exactly matches one of these values.
+	OneOf []string `yaml:"oneOf,omitempty"`
+	// NotOneOf asserts the output (trimmed) matches none of these values.
+	NotOneOf []string `yaml:"notOneOf,omitempty"`
 }
 
 // E2EKubectlAuth checks permissions via kubectl auth can-i and asserts the result.
@@ -720,12 +827,29 @@ type E2EKubectlAuth struct {
 	// OutputContains asserts the output contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
-	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string   `yaml:"greaterThan,omitempty"`
-	LessThan          string   `yaml:"lessThan,omitempty"`
-	Exists            bool     `yaml:"exists,omitempty"`
-	NotExists         bool     `yaml:"notExists,omitempty"`
-	OneOf             []string `yaml:"oneOf,omitempty"`
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	// Regex asserts the output (trimmed) matches this RE2 regular expression.
+	Regex string `yaml:"regex,omitempty"`
+	// GreaterThan asserts the output (trimmed, parsed as a number) is greater than this value — strict.
+	GreaterThan string `yaml:"greaterThan,omitempty"`
+	// LessThan asserts the output (trimmed, parsed as a number) is less than this value — strict.
+	LessThan string `yaml:"lessThan,omitempty"`
+	// GreaterThanOrEqual asserts the output is greater than or equal to this value.
+	GreaterThanOrEqual string `yaml:"greaterThanOrEqual,omitempty"`
+	// LessThanOrEqual asserts the output is less than or equal to this value.
+	LessThanOrEqual string `yaml:"lessThanOrEqual,omitempty"`
+	// Between asserts the output is numerically within an inclusive range. Value is "min,max".
+	Between string `yaml:"between,omitempty"`
+	// NotBetween asserts the output is numerically outside an inclusive range. Value is "min,max".
+	NotBetween string `yaml:"notBetween,omitempty"`
+	// Exists asserts the output (trimmed) is non-empty.
+	Exists bool `yaml:"exists,omitempty"`
+	// NotExists asserts the output (trimmed) is empty.
+	NotExists bool `yaml:"notExists,omitempty"`
+	// OneOf asserts the output (trimmed) exactly matches one of these values.
+	OneOf []string `yaml:"oneOf,omitempty"`
+	// NotOneOf asserts the output (trimmed) matches none of these values.
+	NotOneOf []string `yaml:"notOneOf,omitempty"`
 }
 
 // E2EKubectlCp copies a file out of a running container and asserts its content.
@@ -753,12 +877,29 @@ type E2EKubectlCp struct {
 	// OutputContains asserts the file content contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the file content does not contain this substring.
-	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string   `yaml:"greaterThan,omitempty"`
-	LessThan          string   `yaml:"lessThan,omitempty"`
-	Exists            bool     `yaml:"exists,omitempty"`
-	NotExists         bool     `yaml:"notExists,omitempty"`
-	OneOf             []string `yaml:"oneOf,omitempty"`
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	// Regex asserts the output (trimmed) matches this RE2 regular expression.
+	Regex string `yaml:"regex,omitempty"`
+	// GreaterThan asserts the output (trimmed, parsed as a number) is greater than this value — strict.
+	GreaterThan string `yaml:"greaterThan,omitempty"`
+	// LessThan asserts the output (trimmed, parsed as a number) is less than this value — strict.
+	LessThan string `yaml:"lessThan,omitempty"`
+	// GreaterThanOrEqual asserts the output is greater than or equal to this value.
+	GreaterThanOrEqual string `yaml:"greaterThanOrEqual,omitempty"`
+	// LessThanOrEqual asserts the output is less than or equal to this value.
+	LessThanOrEqual string `yaml:"lessThanOrEqual,omitempty"`
+	// Between asserts the output is numerically within an inclusive range. Value is "min,max".
+	Between string `yaml:"between,omitempty"`
+	// NotBetween asserts the output is numerically outside an inclusive range. Value is "min,max".
+	NotBetween string `yaml:"notBetween,omitempty"`
+	// Exists asserts the output (trimmed) is non-empty.
+	Exists bool `yaml:"exists,omitempty"`
+	// NotExists asserts the output (trimmed) is empty.
+	NotExists bool `yaml:"notExists,omitempty"`
+	// OneOf asserts the output (trimmed) exactly matches one of these values.
+	OneOf []string `yaml:"oneOf,omitempty"`
+	// NotOneOf asserts the output (trimmed) matches none of these values.
+	NotOneOf []string `yaml:"notOneOf,omitempty"`
 }
 
 // E2EKubectlTop queries live CPU and memory usage via kubectl top and asserts
@@ -782,12 +923,29 @@ type E2EKubectlTop struct {
 	// OutputContains asserts the output contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
-	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string   `yaml:"greaterThan,omitempty"`
-	LessThan          string   `yaml:"lessThan,omitempty"`
-	Exists            bool     `yaml:"exists,omitempty"`
-	NotExists         bool     `yaml:"notExists,omitempty"`
-	OneOf             []string `yaml:"oneOf,omitempty"`
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	// Regex asserts the output (trimmed) matches this RE2 regular expression.
+	Regex string `yaml:"regex,omitempty"`
+	// GreaterThan asserts the output (trimmed, parsed as a number) is greater than this value — strict.
+	GreaterThan string `yaml:"greaterThan,omitempty"`
+	// LessThan asserts the output (trimmed, parsed as a number) is less than this value — strict.
+	LessThan string `yaml:"lessThan,omitempty"`
+	// GreaterThanOrEqual asserts the output is greater than or equal to this value.
+	GreaterThanOrEqual string `yaml:"greaterThanOrEqual,omitempty"`
+	// LessThanOrEqual asserts the output is less than or equal to this value.
+	LessThanOrEqual string `yaml:"lessThanOrEqual,omitempty"`
+	// Between asserts the output is numerically within an inclusive range. Value is "min,max".
+	Between string `yaml:"between,omitempty"`
+	// NotBetween asserts the output is numerically outside an inclusive range. Value is "min,max".
+	NotBetween string `yaml:"notBetween,omitempty"`
+	// Exists asserts the output (trimmed) is non-empty.
+	Exists bool `yaml:"exists,omitempty"`
+	// NotExists asserts the output (trimmed) is empty.
+	NotExists bool `yaml:"notExists,omitempty"`
+	// OneOf asserts the output (trimmed) exactly matches one of these values.
+	OneOf []string `yaml:"oneOf,omitempty"`
+	// NotOneOf asserts the output (trimmed) matches none of these values.
+	NotOneOf []string `yaml:"notOneOf,omitempty"`
 }
 
 // E2EKubectlLeaderElection resolves the target pod by reading the current holder
@@ -840,12 +998,29 @@ type E2EKubectlPortForward struct {
 	// OutputContains asserts the output contains this substring.
 	OutputContains string `yaml:"outputContains,omitempty"`
 	// OutputNotContains asserts the output does not contain this substring.
-	OutputNotContains string   `yaml:"outputNotContains,omitempty"`
-	GreaterThan       string   `yaml:"greaterThan,omitempty"`
-	LessThan          string   `yaml:"lessThan,omitempty"`
-	Exists            bool     `yaml:"exists,omitempty"`
-	NotExists         bool     `yaml:"notExists,omitempty"`
-	OneOf             []string `yaml:"oneOf,omitempty"`
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	// Regex asserts the output (trimmed) matches this RE2 regular expression.
+	Regex string `yaml:"regex,omitempty"`
+	// GreaterThan asserts the output (trimmed, parsed as a number) is greater than this value — strict.
+	GreaterThan string `yaml:"greaterThan,omitempty"`
+	// LessThan asserts the output (trimmed, parsed as a number) is less than this value — strict.
+	LessThan string `yaml:"lessThan,omitempty"`
+	// GreaterThanOrEqual asserts the output is greater than or equal to this value.
+	GreaterThanOrEqual string `yaml:"greaterThanOrEqual,omitempty"`
+	// LessThanOrEqual asserts the output is less than or equal to this value.
+	LessThanOrEqual string `yaml:"lessThanOrEqual,omitempty"`
+	// Between asserts the output is numerically within an inclusive range. Value is "min,max".
+	Between string `yaml:"between,omitempty"`
+	// NotBetween asserts the output is numerically outside an inclusive range. Value is "min,max".
+	NotBetween string `yaml:"notBetween,omitempty"`
+	// Exists asserts the output (trimmed) is non-empty.
+	Exists bool `yaml:"exists,omitempty"`
+	// NotExists asserts the output (trimmed) is empty.
+	NotExists bool `yaml:"notExists,omitempty"`
+	// OneOf asserts the output (trimmed) exactly matches one of these values.
+	OneOf []string `yaml:"oneOf,omitempty"`
+	// NotOneOf asserts the output (trimmed) matches none of these values.
+	NotOneOf []string `yaml:"notOneOf,omitempty"`
 	// StatusCode asserts the HTTP response status code. When set, the response
 	// body is discarded and only the numeric status is checked (e.g. 404, 200).
 	// Cannot be combined with JQ, YQ, Equals, or OutputContains.
