@@ -195,7 +195,7 @@ func checkCommand(ctx context.Context, c orktypes.E2ECommand, workDir string) er
 		return fmt.Errorf("command %q: expected exit code %d, got %d\noutput: %s",
 			c.Run, c.ExitCode, exitCode, strings.TrimSpace(string(out)))
 	}
-	if err := applyAssertions(string(out), assertions{Equals: c.Equals, NotEquals: c.NotEquals, OutputContains: c.OutputContains, OutputNotContains: c.OutputNotContains, Regex: c.Regex, GreaterThan: c.GreaterThan, LessThan: c.LessThan, GreaterThanOrEqual: c.GreaterThanOrEqual, LessThanOrEqual: c.LessThanOrEqual, Between: c.Between, NotBetween: c.NotBetween, OneOf: c.OneOf, NotOneOf: c.NotOneOf, Exists: c.Exists, NotExists: c.NotExists}); err != nil {
+	if err := applyAssertions(string(out), commandAssertions(c)); err != nil {
 		return fmt.Errorf("command %q: %w\noutput: %s", c.Run, err, strings.TrimSpace(string(out)))
 	}
 	return nil
@@ -490,7 +490,12 @@ func checkKubectlDelete(ctx context.Context, cs kubernetes.Interface, e orktypes
 }
 
 func checkKubectlApply(ctx context.Context, e orktypes.E2EKubectlApply, workDir string) error {
+	var label string
+	var out []byte
+	var runErr error
+
 	if e.Inline != "" {
+		label = "kubectl apply (inline)"
 		args := []string{"apply", "-f", "-"}
 		if e.Namespace != "" {
 			args = append(args, "-n", e.Namespace)
@@ -500,24 +505,47 @@ func checkKubectlApply(ctx context.Context, e orktypes.E2EKubectlApply, workDir 
 			cmd.Dir = workDir
 		}
 		cmd.Stdin = strings.NewReader(e.Inline)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("kubectl apply (inline): %w\noutput: %s", err, strings.TrimSpace(string(out)))
+		out, runErr = cmd.CombinedOutput()
+	} else {
+		file := e.File
+		if !filepath.IsAbs(file) && workDir != "" {
+			file = filepath.Join(workDir, file)
 		}
-		return nil
+		label = fmt.Sprintf("kubectl apply -f %s", e.File)
+		args := []string{"apply", "-f", file}
+		if e.Namespace != "" {
+			args = append(args, "-n", e.Namespace)
+		}
+		var s string
+		s, runErr = runKubectl(ctx, workDir, args...)
+		out = []byte(s)
 	}
 
-	file := e.File
-	if !filepath.IsAbs(file) && workDir != "" {
-		file = filepath.Join(workDir, file)
+	return assertKubectlApplyOutput(label, out, runErr, e)
+}
+
+// assertKubectlApplyOutput checks the captured exit code and output of a
+// kubectl apply run against e's expectations. Split out from
+// checkKubectlApply so the exit-code/assertion logic is testable without
+// actually shelling out to kubectl — runErr is whatever
+// exec.Cmd.CombinedOutput() (or an equivalent) returned.
+func assertKubectlApplyOutput(label string, out []byte, runErr error, e orktypes.E2EKubectlApply) error {
+	exitCode := 0
+	if runErr != nil {
+		var exitErr *exec.ExitError
+		if errors.As(runErr, &exitErr) {
+			exitCode = exitErr.ExitCode()
+		} else {
+			return fmt.Errorf("%s: %w", label, runErr)
+		}
 	}
-	args := []string{"apply", "-f", file}
-	if e.Namespace != "" {
-		args = append(args, "-n", e.Namespace)
+
+	if exitCode != e.ExitCode {
+		return fmt.Errorf("%s: expected exit code %d, got %d\noutput: %s",
+			label, e.ExitCode, exitCode, strings.TrimSpace(string(out)))
 	}
-	out, err := runKubectl(ctx, workDir, args...)
-	if err != nil {
-		return fmt.Errorf("kubectl apply -f %s: %s", e.File, out)
+	if err := applyAssertions(string(out), kubectlApplyAssertions(e)); err != nil {
+		return fmt.Errorf("%s: %w\noutput: %s", label, err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }
@@ -570,7 +598,14 @@ func checkKubectlGet(ctx context.Context, e orktypes.E2EKubectlGet, workDir stri
 		return fmt.Errorf("kubectl get %s/%s: %w", e.Kind, e.Name, err)
 	}
 
-	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, Regex: e.Regex, GreaterThan: e.GreaterThan, LessThan: e.LessThan, GreaterThanOrEqual: e.GreaterThanOrEqual, LessThanOrEqual: e.LessThanOrEqual, Between: e.Between, NotBetween: e.NotBetween, OneOf: e.OneOf, NotOneOf: e.NotOneOf, Exists: e.Exists, NotExists: e.NotExists}); err != nil {
+	return assertKubectlGetOutput(out, e)
+}
+
+// assertKubectlGetOutput applies e's assertions to already-fetched (and
+// jq/yq-extracted) output. Split out from checkKubectlGet so this logic is
+// testable without kubectl or a cluster.
+func assertKubectlGetOutput(out string, e orktypes.E2EKubectlGet) error {
+	if err := applyAssertions(out, kubectlGetAssertions(e)); err != nil {
 		return fmt.Errorf("kubectl get %s/%s: %w\noutput: %s", e.Kind, e.Name, err, out)
 	}
 	return nil
@@ -629,7 +664,14 @@ func checkKubectlLogs(ctx context.Context, cs kubernetes.Interface, e orktypes.E
 		return fmt.Errorf("kubectl logs: %w", err)
 	}
 
-	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, Regex: e.Regex, GreaterThan: e.GreaterThan, LessThan: e.LessThan, GreaterThanOrEqual: e.GreaterThanOrEqual, LessThanOrEqual: e.LessThanOrEqual, Between: e.Between, NotBetween: e.NotBetween, OneOf: e.OneOf, NotOneOf: e.NotOneOf, Exists: e.Exists, NotExists: e.NotExists}); err != nil {
+	return assertKubectlLogsOutput(out, e)
+}
+
+// assertKubectlLogsOutput applies e's assertions to already-fetched (and
+// jq-extracted) log output. Split out so this logic is testable without
+// kubectl or a cluster.
+func assertKubectlLogsOutput(out string, e orktypes.E2EKubectlLogs) error {
+	if err := applyAssertions(out, kubectlLogsAssertions(e)); err != nil {
 		return fmt.Errorf("kubectl logs: %w\noutput: %s", err, out)
 	}
 	return nil
@@ -653,7 +695,14 @@ func checkKubectlDescribe(ctx context.Context, e orktypes.E2EKubectlDescribe, wo
 		return fmt.Errorf("kubectl describe %s: %s", e.Kind, out)
 	}
 
-	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, Regex: e.Regex, GreaterThan: e.GreaterThan, LessThan: e.LessThan, GreaterThanOrEqual: e.GreaterThanOrEqual, LessThanOrEqual: e.LessThanOrEqual, Between: e.Between, NotBetween: e.NotBetween, OneOf: e.OneOf, NotOneOf: e.NotOneOf, Exists: e.Exists, NotExists: e.NotExists}); err != nil {
+	return assertKubectlDescribeOutput(out, e)
+}
+
+// assertKubectlDescribeOutput applies e's assertions to already-fetched
+// describe output. Split out so this logic is testable without kubectl or
+// a cluster.
+func assertKubectlDescribeOutput(out string, e orktypes.E2EKubectlDescribe) error {
+	if err := applyAssertions(out, kubectlDescribeAssertions(e)); err != nil {
 		return fmt.Errorf("kubectl describe %s: %w\noutput: %s", e.Kind, err, out)
 	}
 	return nil
@@ -704,7 +753,14 @@ func checkKubectlExec(ctx context.Context, cs kubernetes.Interface, e orktypes.E
 		return fmt.Errorf("kubectl exec %s: %w", pod, err)
 	}
 
-	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, Regex: e.Regex, GreaterThan: e.GreaterThan, LessThan: e.LessThan, GreaterThanOrEqual: e.GreaterThanOrEqual, LessThanOrEqual: e.LessThanOrEqual, Between: e.Between, NotBetween: e.NotBetween, OneOf: e.OneOf, NotOneOf: e.NotOneOf, Exists: e.Exists, NotExists: e.NotExists}); err != nil {
+	return assertKubectlExecOutput(pod, out, e)
+}
+
+// assertKubectlExecOutput applies e's assertions to already-captured (and
+// jq/yq-extracted) exec output. Split out so this logic is testable
+// without kubectl or a cluster.
+func assertKubectlExecOutput(pod, out string, e orktypes.E2EKubectlExec) error {
+	if err := applyAssertions(out, kubectlExecAssertions(e)); err != nil {
 		return fmt.Errorf("kubectl exec %s: %w\noutput: %s", pod, err, out)
 	}
 	return nil
@@ -837,10 +893,17 @@ func doPortForwardGoRaw(ctx context.Context, cfg *rest.Config, ns, pod string, e
 	reqURL := fmt.Sprintf("http://localhost:%s%s", localPort, e.Path)
 	sp := orkutils.StartSpinner(fmt.Sprintf("%s %s (→ pod/%s)", method, reqURL, pod))
 
-	httpReq, err := http.NewRequestWithContext(ctx, method, reqURL, nil)
+	var reqBody io.Reader
+	if e.Body != "" {
+		reqBody = strings.NewReader(os.ExpandEnv(e.Body))
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, method, reqURL, reqBody)
 	if err != nil {
 		sp.Stop()
 		return "", fmt.Errorf("port-forward request: %w", err)
+	}
+	for k, v := range e.Headers {
+		httpReq.Header.Set(k, os.ExpandEnv(v))
 	}
 	resp, err := http.DefaultClient.Do(httpReq)
 	sp.Stop()
@@ -866,7 +929,7 @@ func assertPortForwardOutput(ctx context.Context, workDir, raw string, e orktype
 		return fmt.Errorf("kubectl port-forward %s%s: %w", target, e.Path, err)
 	}
 
-	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, Regex: e.Regex, GreaterThan: e.GreaterThan, LessThan: e.LessThan, GreaterThanOrEqual: e.GreaterThanOrEqual, LessThanOrEqual: e.LessThanOrEqual, Between: e.Between, NotBetween: e.NotBetween, OneOf: e.OneOf, NotOneOf: e.NotOneOf, Exists: e.Exists, NotExists: e.NotExists}); err != nil {
+	if err := applyAssertions(out, kubectlPortForwardAssertions(e)); err != nil {
 		return fmt.Errorf("kubectl port-forward %s%s: %w\noutput: %s", target, e.Path, err, out)
 	}
 	return nil
@@ -882,7 +945,14 @@ func checkKubectlEvents(ctx context.Context, e orktypes.E2EKubectlEvents, workDi
 	if err != nil {
 		return fmt.Errorf("kubectl events %s/%s: %s", e.Kind, e.Name, out)
 	}
-	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, Regex: e.Regex, GreaterThan: e.GreaterThan, LessThan: e.LessThan, GreaterThanOrEqual: e.GreaterThanOrEqual, LessThanOrEqual: e.LessThanOrEqual, Between: e.Between, NotBetween: e.NotBetween, OneOf: e.OneOf, NotOneOf: e.NotOneOf, Exists: e.Exists, NotExists: e.NotExists}); err != nil {
+	return assertKubectlEventsOutput(out, e)
+}
+
+// assertKubectlEventsOutput applies e's assertions to already-fetched
+// events output. Split out so this logic is testable without kubectl or a
+// cluster.
+func assertKubectlEventsOutput(out string, e orktypes.E2EKubectlEvents) error {
+	if err := applyAssertions(out, kubectlEventsAssertions(e)); err != nil {
 		return fmt.Errorf("kubectl events %s/%s: %w\noutput: %s", e.Kind, e.Name, err, out)
 	}
 	return nil
@@ -926,7 +996,7 @@ func checkKubectlAuth(ctx context.Context, cs kubernetes.Interface, e orktypes.E
 	if allowed {
 		out = "yes"
 	}
-	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, Regex: e.Regex, GreaterThan: e.GreaterThan, LessThan: e.LessThan, GreaterThanOrEqual: e.GreaterThanOrEqual, LessThanOrEqual: e.LessThanOrEqual, Between: e.Between, NotBetween: e.NotBetween, OneOf: e.OneOf, NotOneOf: e.NotOneOf, Exists: e.Exists, NotExists: e.NotExists}); err != nil {
+	if err := applyAssertions(out, kubectlAuthAssertions(e)); err != nil {
 		return fmt.Errorf("auth can-i %s %s: %w\nresult: %s", e.Verb, e.Resource, err, out)
 	}
 	return nil
@@ -976,7 +1046,14 @@ func checkKubectlCp(ctx context.Context, e orktypes.E2EKubectlCp, workDir string
 		return fmt.Errorf("kubectl cp %s: %w", src, err)
 	}
 
-	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, Regex: e.Regex, GreaterThan: e.GreaterThan, LessThan: e.LessThan, GreaterThanOrEqual: e.GreaterThanOrEqual, LessThanOrEqual: e.LessThanOrEqual, Between: e.Between, NotBetween: e.NotBetween, OneOf: e.OneOf, NotOneOf: e.NotOneOf, Exists: e.Exists, NotExists: e.NotExists}); err != nil {
+	return assertKubectlCpOutput(src, out, e)
+}
+
+// assertKubectlCpOutput applies e's assertions to the already-copied (and
+// jq/yq-extracted) file content. Split out so this logic is testable
+// without kubectl or a cluster.
+func assertKubectlCpOutput(src, out string, e orktypes.E2EKubectlCp) error {
+	if err := applyAssertions(out, kubectlCpAssertions(e)); err != nil {
 		return fmt.Errorf("kubectl cp %s: %w\noutput: %s", src, err, out)
 	}
 	return nil
@@ -1006,7 +1083,14 @@ func checkKubectlTop(ctx context.Context, e orktypes.E2EKubectlTop, workDir stri
 	if err != nil {
 		return fmt.Errorf("kubectl top %s: %s", kind, out)
 	}
-	if err := applyAssertions(out, assertions{Equals: e.Equals, NotEquals: e.NotEquals, OutputContains: e.OutputContains, OutputNotContains: e.OutputNotContains, Regex: e.Regex, GreaterThan: e.GreaterThan, LessThan: e.LessThan, GreaterThanOrEqual: e.GreaterThanOrEqual, LessThanOrEqual: e.LessThanOrEqual, Between: e.Between, NotBetween: e.NotBetween, OneOf: e.OneOf, NotOneOf: e.NotOneOf, Exists: e.Exists, NotExists: e.NotExists}); err != nil {
+	return assertKubectlTopOutput(kind, out, e)
+}
+
+// assertKubectlTopOutput applies e's assertions to already-fetched `kubectl
+// top` output. Split out so this logic is testable without kubectl or a
+// cluster.
+func assertKubectlTopOutput(kind, out string, e orktypes.E2EKubectlTop) error {
+	if err := applyAssertions(out, kubectlTopAssertions(e)); err != nil {
 		return fmt.Errorf("kubectl top %s: %w\noutput: %s", kind, err, out)
 	}
 	return nil
