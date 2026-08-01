@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -30,14 +30,14 @@ import (
 //	called      — "true"
 type mongoClient struct{}
 
-func (c *mongoClient) Fetch(ctx context.Context, spec orktypes.ExternalCallSpec, resolvedURL, resolvedQuery, credential string) (map[string]interface{}, error) {
+func (c *mongoClient) Fetch(ctx context.Context, spec orktypes.ExternalCallSpec, resolvedURL, resolvedQuery, _, credential string) (map[string]interface{}, error) {
 	if resolvedQuery == "" {
 		return errorResult("mongo: query: is required (e.g. \"mydb.mycollection\" or \"mydb.mycollection {\\\"status\\\":\\\"active\\\"}\")"), nil
 	}
 
 	timeout := defaultExternalTimeout
 	if spec.Timeout != "" {
-		if d, err := time.ParseDuration(spec.Timeout); err == nil {
+		if d, err := utils.ParseTimeDuration(spec.Timeout); err == nil {
 			timeout = d
 		}
 	}

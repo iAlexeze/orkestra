@@ -10,6 +10,7 @@ import (
 	"time"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 // HTTPTransport is the http.RoundTripper used for all external: HTTP calls.
@@ -36,7 +37,7 @@ func executeHTTPCall(
 ) orktypes.ExternalCallResult {
 	timeout := defaultExternalTimeout
 	if spec.Timeout != "" {
-		if d, err := time.ParseDuration(spec.Timeout); err == nil {
+		if d, err := utils.ParseTimeDuration(spec.Timeout); err == nil {
 			timeout = d
 		}
 	}

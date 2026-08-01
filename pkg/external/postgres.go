@@ -3,10 +3,10 @@ package external
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 // postgresClient executes a SQL query via the query: field.
@@ -23,14 +23,14 @@ import (
 //	called    — "true"
 type postgresClient struct{}
 
-func (c *postgresClient) Fetch(ctx context.Context, spec orktypes.ExternalCallSpec, resolvedURL, resolvedQuery, credential string) (map[string]interface{}, error) {
+func (c *postgresClient) Fetch(ctx context.Context, spec orktypes.ExternalCallSpec, resolvedURL, resolvedQuery, _, credential string) (map[string]interface{}, error) {
 	if resolvedQuery == "" {
 		return errorResult("postgres: query: is required"), nil
 	}
 
 	timeout := defaultExternalTimeout
 	if spec.Timeout != "" {
-		if d, err := time.ParseDuration(spec.Timeout); err == nil {
+		if d, err := utils.ParseTimeDuration(spec.Timeout); err == nil {
 			timeout = d
 		}
 	}

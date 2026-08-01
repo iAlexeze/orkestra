@@ -6,12 +6,12 @@ package external
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/metrics"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -57,6 +57,10 @@ func Run(
 		if err != nil {
 			return resolver, fmt.Errorf("external[%d].query: %w", i, err)
 		}
+		resolvedBody, err := resolver.Resolve(call.Body)
+		if err != nil {
+			return resolver, fmt.Errorf("external[%d].body: %w", i, err)
+		}
 		credential, _, err := resolveAuth(ctx, call.Auth, cs)
 		if err != nil {
 			return resolver, fmt.Errorf("external[%d] %q: %w", i, call.Name, err)
@@ -76,7 +80,7 @@ func Run(
 
 		if !cacheHit {
 			client := newProtocolClient(call.Protocol)
-			entry, err = client.Fetch(ctx, call, resolvedURL, resolvedQuery, credential)
+			entry, err = client.Fetch(ctx, call, resolvedURL, resolvedQuery, resolvedBody, credential)
 			if err != nil {
 				// Hard error from the client (e.g. context cancelled).
 				if !call.ContinueOnError {
@@ -87,7 +91,7 @@ func Run(
 			}
 
 			if call.CacheFor != "" {
-				if ttl, err := time.ParseDuration(call.CacheFor); err == nil {
+				if ttl, err := utils.ParseTimeDuration(call.CacheFor); err == nil {
 					key := cacheKey(gvk, call.Name, resolvedURL, resolvedQuery)
 					cacheSet(key, entry, ttl)
 				}

@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 // prometheusClient executes Prometheus instant queries via the HTTP API.
@@ -30,14 +30,14 @@ type promData struct {
 	Result     []interface{} `json:"result"`
 }
 
-func (c *prometheusClient) Fetch(ctx context.Context, spec orktypes.ExternalCallSpec, resolvedURL, resolvedQuery, credential string) (map[string]interface{}, error) {
+func (c *prometheusClient) Fetch(ctx context.Context, spec orktypes.ExternalCallSpec, resolvedURL, resolvedQuery, _, credential string) (map[string]interface{}, error) {
 	if resolvedQuery == "" {
 		return errorResult("prometheus: query: is required"), nil
 	}
 
 	timeout := defaultExternalTimeout
 	if spec.Timeout != "" {
-		if d, err := time.ParseDuration(spec.Timeout); err == nil {
+		if d, err := utils.ParseTimeDuration(spec.Timeout); err == nil {
 			timeout = d
 		}
 	}
