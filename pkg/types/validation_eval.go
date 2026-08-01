@@ -148,8 +148,12 @@ func ResolveValidationOp(r ValidationRule) (ConditionOperator, string) {
 		return ConditionNotEquals, r.NotEquals
 	case r.Prefix != "":
 		return ConditionPrefix, r.Prefix
+	case r.NotPrefix != "":
+		return ConditionNotPrefix, r.NotPrefix
 	case r.Suffix != "":
 		return ConditionSuffix, r.Suffix
+	case r.NotSuffix != "":
+		return ConditionNotSuffix, r.NotSuffix
 	case r.Contains != "":
 		return ConditionContains, r.Contains
 	case r.NotContains != "":
@@ -332,8 +336,18 @@ func EvaluateValidationRule(data map[string]interface{}, resolver TemplateResolv
 			return fail()
 		}
 
+	case ConditionNotPrefix:
+		if !found || strings.HasPrefix(fieldVal, expected) {
+			return fail()
+		}
+
 	case ConditionSuffix:
 		if !found || !strings.HasSuffix(fieldVal, expected) {
+			return fail()
+		}
+
+	case ConditionNotSuffix:
+		if !found || strings.HasSuffix(fieldVal, expected) {
 			return fail()
 		}
 

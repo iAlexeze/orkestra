@@ -39,7 +39,7 @@ func verifyExpectation(ctx context.Context, exp orktypes.E2EExpectation, workDir
 		return errSkipped
 	}
 	if exp.Wait != "" {
-		if d, err := time.ParseDuration(exp.Wait); err == nil && d > 0 {
+		if d, err := orkutils.ParseTimeDuration(exp.Wait); err == nil && d > 0 {
 			select {
 			case <-time.After(d):
 			case <-ctx.Done():
@@ -48,7 +48,7 @@ func verifyExpectation(ctx context.Context, exp orktypes.E2EExpectation, workDir
 		}
 	}
 
-	timeout, err := time.ParseDuration(exp.Timeout)
+	timeout, err := orkutils.ParseTimeDuration(exp.Timeout)
 	if err != nil || timeout <= 0 {
 		timeout = 60 * time.Second
 	}
@@ -877,7 +877,7 @@ func doPortForwardGoRaw(ctx context.Context, cfg *rest.Config, ns, pod string, e
 	}
 
 	if e.Wait != "" {
-		if d, err := time.ParseDuration(e.Wait); err == nil && d > 0 {
+		if d, err := orkutils.ParseTimeDuration(e.Wait); err == nil && d > 0 {
 			select {
 			case <-time.After(d):
 			case <-ctx.Done():

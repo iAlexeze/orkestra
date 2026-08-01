@@ -9,12 +9,97 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/orkspace/orkestra/pkg/registry/simulate"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // noopLookup is a CRD lookup that always returns nil — used in tests that
 // don't exercise the forceConflict path.
 func noopLookup(_ string) *orktypes.CRDEntry { return nil }
+
+// appRequestBody is a minimal, valid AppRequest apply body. name is omitted
+// when empty, matching what a client that never set metadata.name sends.
+func appRequestBody(name string) []byte {
+	metadata := map[string]any{}
+	if name != "" {
+		metadata["name"] = name
+	}
+	body, _ := json.Marshal(map[string]any{
+		"apiVersion": "platform.myorg.io/v1",
+		"kind":       "AppRequest",
+		"metadata":   metadata,
+		"spec":       map[string]any{"image": "nginx"},
+	})
+	return body
+}
+
+func TestApplyHandler_MissingName_Rejected(t *testing.T) {
+	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
+	h := applyHandler(kube, noopLookup, orktypes.NoteRegistry{})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/apply", bytes.NewReader(appRequestBody("")))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", rr.Code)
+	}
+	var resp ApplyResponse
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp.Accepted {
+		t.Error("Accepted should be false when name is missing and idp.name is not declared")
+	}
+	if resp.Message != "name is required" {
+		t.Errorf("Message = %q, want %q", resp.Message, "name is required")
+	}
+	if len(resp.Violations) != 1 || resp.Violations[0].Field != "metadata.name" {
+		t.Errorf("Violations = %+v, want one violation on metadata.name", resp.Violations)
+	}
+}
+
+func TestApplyHandler_NameSupplied_NotRejected(t *testing.T) {
+	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
+	h := applyHandler(kube, noopLookup, orktypes.NoteRegistry{})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/apply", bytes.NewReader(appRequestBody("payments-api")))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	// Whatever happens downstream against the fake dynamic client, it must
+	// not be the "name is required" rejection — a name was supplied.
+	if rr.Code == http.StatusUnprocessableEntity {
+		var resp ApplyResponse
+		if err := json.NewDecoder(rr.Body).Decode(&resp); err == nil && resp.Message == "name is required" {
+			t.Errorf("got the missing-name rejection even though a name was supplied: %+v", resp)
+		}
+	}
+}
+
+func TestApplyHandler_IDPName_ResolvesWithoutClientName(t *testing.T) {
+	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
+	lookup := func(kind string) *orktypes.CRDEntry {
+		if kind != "AppRequest" {
+			return nil
+		}
+		return &orktypes.CRDEntry{
+			IDP: &orktypes.IDPConfig{Enabled: true, Name: "resolved-name"},
+		}
+	}
+	h := applyHandler(kube, lookup, orktypes.NoteRegistry{})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/apply", bytes.NewReader(appRequestBody("")))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	// idp.name is declared, so the client never having sent a name must not
+	// produce the missing-name rejection — it resolves to "resolved-name" instead.
+	if rr.Code == http.StatusUnprocessableEntity {
+		var resp ApplyResponse
+		if err := json.NewDecoder(rr.Body).Decode(&resp); err == nil && resp.Message == "name is required" {
+			t.Errorf("got the missing-name rejection even though idp.name is declared: %+v", resp)
+		}
+	}
+}
 
 func TestApplyHandler_MethodNotAllowed(t *testing.T) {
 	h := applyHandler(nil, noopLookup, orktypes.NoteRegistry{})
@@ -58,12 +143,12 @@ func TestApplyHandler_EmptyBody(t *testing.T) {
 
 func TestApplyResponse_JSON(t *testing.T) {
 	resp := ApplyResponse{
-		Accepted:        true,
-		Name:            "my-app",
-		Namespace:       "team-payments",
-		Kind:            "PlatformResource",
-		APIVersion:      "platform.orkestra.io/v1alpha1",
-		ResourceVersion: "12345",
+		Accepted:   true,
+		Name:       "my-app",
+		Namespace:  "team-payments",
+		Kind:       "PlatformResource",
+		APIVersion: "platform.orkestra.io/v1alpha1",
+		PollURL:    "/api/v1/resources/PlatformResource/team-payments/my-app",
 	}
 	b, err := json.Marshal(resp)
 	if err != nil {

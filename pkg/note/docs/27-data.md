@@ -108,6 +108,47 @@ name: "{{ truncateName (slugify .spec.projectName) 52 }}-svc"
 
 ---
 
+### `repoSlug`
+
+Extract a Kubernetes-safe name from a repository reference — the last path segment (repo name), with a trailing `.git` stripped, then slugified. Works with git URLs, org/repo shorthand, or a bare repo name — the platform team's repository enum values don't need to be pre-cleaned.
+
+Keywords: data, repo, repository, slug, git, name, idp
+
+```yaml
+# idp.name derives the CR's metadata.name from the repo the developer picked —
+# no name field for them (or CI) to supply at all.
+idp:
+  enabled: true
+  name: '{{ repoSlug .spec.repository }}'
+
+# "myorg/payments-api"                    → "payments-api"
+# "git@github.com:myorg/payments-api.git" → "payments-api"
+# "https://github.com/myorg/payments-api" → "payments-api"
+```
+
+---
+
+### `lookup`
+
+Return the value paired with a key in a flat list of alternating key/value pairs — the first match wins. Returns `""` if the key matches none, same as a missing field elsewhere. A trailing unpaired argument is ignored rather than erroring.
+
+Keywords: data, lookup, map, table, switch, derive
+
+```yaml
+# Derive team from the repository the developer picked — platform team
+# curates both the repository enum and the mapping, developer picks neither.
+notes:
+  functions:
+    - name: teamName
+      expression: |
+        {{ lookup .spec.repository
+             "myorg/payments-api"  "team-payments"
+             "myorg/orders-api"    "team-orders"
+             "myorg/inventory-api" "team-inventory" }}
+```
+
+---
+
 ## Quick reference
 
 | Note | Accepts | Returns | Notes |
@@ -118,3 +159,5 @@ name: "{{ truncateName (slugify .spec.projectName) 52 }}-svc"
 | `sha256sum` | `s string` | `string` | first 8 hex chars of SHA256 |
 | `truncateName` | `s string, maxLen int` | `string` | no suffix — use for Kubernetes names |
 | `slugify` | `s string` | `string` | lowercase, dashes, trimmed |
+| `repoSlug` | `s string` | `string` | last path segment of a repo ref, slugified |
+| `lookup` | `key string, pairs ...string` | `string` | first-match key/value lookup, `""` if none |

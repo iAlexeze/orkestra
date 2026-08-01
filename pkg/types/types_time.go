@@ -1,6 +1,10 @@
 package types
 
-import "time"
+import (
+	"time"
+
+	"github.com/orkspace/orkestra/pkg/utils"
+)
 
 // TimeWindow declares a clock-based active window.
 type TimeWindow struct {
@@ -27,7 +31,8 @@ type DayOfWeekCondition struct {
 	NotIn []string `yaml:"notIn,omitempty" json:"notIn,omitempty"`
 }
 
-// Duration is a time.Duration that unmarshals from YAML strings like "15s", "2m", "1h".
+// Duration is a time.Duration that unmarshals from YAML strings — Go's units
+// ("15s", "2m", "1h") plus d/w/mo/y ("10d", "2w", "3mo", "1y").
 type Duration struct {
 	time.Duration
 }
@@ -41,7 +46,7 @@ func (d *Duration) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		d.Duration = 0
 		return nil
 	}
-	parsed, err := time.ParseDuration(s)
+	parsed, err := utils.ParseTimeDuration(s)
 	if err != nil {
 		return err
 	}

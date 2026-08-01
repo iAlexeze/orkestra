@@ -43,6 +43,24 @@ var (
 	workloadMetricsMu      sync.Mutex
 )
 
+// jiraTransitions records POST /jira/transition calls, keyed by issueKey —
+// readable back via GET /jira/issues/{key}. There's no real Jira here, so
+// this in-memory store is the only way 03-jira-slack (idp example) can
+// verify the call actually fired instead of just trusting a 200.
+var jiraTransitions sync.Map
+
+// slackMessages records POST /slack/notify calls, readable back via
+// GET /slack/messages.
+var (
+	slackMessages   []slackMessage
+	slackMessagesMu sync.Mutex
+)
+
+type slackMessage struct {
+	Channel string `json:"channel"`
+	Text    string `json:"text"`
+}
+
 // certGet returns whether the cert is currently issued (true) or pending (false).
 func certGet(name string) bool {
 	if v, ok := certState.Load(name); ok {
@@ -129,6 +147,9 @@ func printDevBanner(port int) {
 	fmt.Printf("  GET  /workload-metrics          → worker pool metrics (baseline: low pendingJobs)\n")
 	fmt.Printf("  POST /workload-metrics/flip     → toggle between baseline and high-load payload\n")
 	fmt.Printf("  POST /jira/transition           → Jira transition stub (issueKey + transition → transitioned)\n")
+	fmt.Printf("  GET  /jira/issues               → every transition recorded via /jira/transition\n")
+	fmt.Printf("  GET  /jira/issues/:key          → transition last recorded for that key (404 if none)\n")
 	fmt.Printf("  POST /slack/notify              → Slack notify stub (channel + text → ok)\n")
+	fmt.Printf("  GET  /slack/messages            → every message recorded via /slack/notify\n")
 	fmt.Printf("──────────────────────────────────────────\n\n")
 }

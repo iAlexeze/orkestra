@@ -16,8 +16,6 @@ package katalog
 
 import (
 	"time"
-
-	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // securityEnvDefaults returns the SecurityConfig from konfig, or a zero
@@ -530,7 +528,7 @@ func (k *Katalog) CertAutoRotate() bool {
 //	YAML absent or empty                                  → fall back to TLS_ROTATION_THRESHOLD env (default: "30d")
 func (k *Katalog) CertRotationThreshold() time.Duration {
 	raw := k.Security.CertRotationThresholdVal(k.securityEnvDefaults().CertRotationThresholdStr())
-	if d, err := orktypes.ParseTimeDuration(raw); err == nil {
+	if d, err := parseTimeDuration(raw); err == nil {
 		return d
 	}
 	return 30 * 24 * time.Hour
@@ -545,7 +543,7 @@ func (k *Katalog) CertRotationThreshold() time.Duration {
 //	YAML absent or empty                                  → fall back to TLS_ROTATE_AFTER env (default: "1y")
 func (k *Katalog) CertValidFor() time.Duration {
 	raw := k.Security.ValidForVal(k.securityEnvDefaults().CertValidForStr())
-	if d, err := orktypes.ParseTimeDuration(raw); err == nil {
+	if d, err := parseTimeDuration(raw); err == nil {
 		return d
 	}
 	return 365 * 24 * time.Hour

@@ -93,6 +93,15 @@ func deleteResource(w http.ResponseWriter, r *http.Request, kube kubeclient.Kube
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// resourcePath builds the canonical /api/v1/resources/{kind}/{namespace}/{name}
+// path for a CR. namespace is "" for cluster-scoped kinds — parsePath treats
+// an empty middle segment as "no namespace", so the result is a literal
+// doubled slash (e.g. /api/v1/resources/AppRequest//payments-api), which is
+// the documented shape for cluster-scoped lookups, not a bug.
+func resourcePath(kind, namespace, name string) string {
+	return fmt.Sprintf("/api/v1/resources/%s/%s/%s", kind, namespace, name)
+}
+
 // parsePath extracts kind, namespace, and optional name from
 // /api/v1/resources/{kind}/{namespace}[/{name}]
 func parsePath(path string) (kind, ns, name string, err error) {

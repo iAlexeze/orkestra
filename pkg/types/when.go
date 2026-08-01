@@ -167,8 +167,12 @@ func applyOperator(op ConditionOperator, fieldVal, expected string, data map[str
 		return re.MatchString(fieldVal)
 	case ConditionPrefix:
 		return typeHasPrefix(fieldVal, expected)
+	case ConditionNotPrefix:
+		return !typeHasPrefix(fieldVal, expected)
 	case ConditionSuffix:
 		return typeHasSuffix(fieldVal, expected)
+	case ConditionNotSuffix:
+		return !typeHasSuffix(fieldVal, expected)
 	case ConditionGt:
 		fv, _ := typeParseFloat(fieldVal) // absent = 0
 		ev, ee := typeParseFloat(expected)
@@ -343,8 +347,14 @@ func ResolveConditionOp(c Condition) (ConditionOperator, string) {
 	if c.Prefix != "" {
 		return ConditionPrefix, c.Prefix
 	}
+	if c.NotPrefix != "" {
+		return ConditionNotPrefix, c.NotPrefix
+	}
 	if c.Suffix != "" {
 		return ConditionSuffix, c.Suffix
+	}
+	if c.NotSuffix != "" {
+		return ConditionNotSuffix, c.NotSuffix
 	}
 	if c.Contains != "" {
 		return ConditionContains, c.Contains

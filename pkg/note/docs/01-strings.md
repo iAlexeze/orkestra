@@ -4,18 +4,27 @@ String notes manipulate text values. They cover the cases that come up constantl
 
 ## Reference
 
-### `toLower` / `toUpper`
+### `toLower`
 
-Convert a string to all lowercase or all uppercase.
+Convert a string to all lowercase.
 
-Keywords: string, case, lowercase, uppercase, transform, text
+Keywords: string, case, lowercase, transform, text
 
 ```yaml
 # value: "{{ toLower .spec.environment }}"
 # production → production
 # PRODUCTION → production
+```
 
+### `toUpper`
+
+Convert a string to all uppercase.
+
+Keywords: string, case, uppercase, transform, text
+
+```yaml
 # value: "{{ toUpper .spec.tier }}"
+# PREMIUM → PREMIUM
 # premium → PREMIUM
 ```
 
@@ -47,30 +56,47 @@ Keywords: string, trim, cutset, strip, clean
 
 ---
 
-### `trimPrefix` / `trimSuffix`
+### `trimPrefix`
 
-Remove a specific prefix or suffix if present.
+Remove a specific prefix if present.
 
-Keywords: string, trim, prefix, suffix, strip, remove
+Keywords: string, trim, prefix, strip, remove
 
 ```yaml
 # value: "{{ trimPrefix .metadata.name \"app-\" }}"
 # "app-frontend" → "frontend"
+```
 
+### `trimSuffix`
+
+Remove a specific suffix if present.
+
+Keywords: string, trim, suffix, strip, remove
+```yaml
 # value: "{{ trimSuffix .spec.image \":latest\" }}"
 # "nginx:latest" → "nginx"
 ```
 
 ---
 
-### `hasPrefix` / `hasSuffix`
+### `hasPrefix`
+Return `true` if the string starts with the given substring. Useful in `when:` conditions via a template expression.
 
-Return `true` if the string starts or ends with the given substring. Useful in `when:` conditions via a template expression.
-
-Keywords: string, prefix, suffix, check, boolean, contains
+Keywords: string, prefix, check, boolean, contains
 
 ```yaml
-# value: "{{ hasPrefix .spec.image \"gcr.io/\" }}"
+# value: '{{ hasPrefix .spec.image "gcr.io/" }}'
+# "gcr.io/myproject/app:v1" → true
+```
+
+### `hasSuffix`
+
+Return `true` if the string ends with the given substring.
+
+Keywords: string, suffix, check, boolean, contains
+
+```yaml
+# value: '{{ hasSuffix .spec.image "v1" }}'
 # "gcr.io/myproject/app:v1" → true
 ```
 

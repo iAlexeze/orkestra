@@ -320,13 +320,31 @@ type IDPConfig struct {
 	// Default: false.
 	ForceConflict bool `yaml:"forceConflict,omitempty" json:"forceConflict,omitempty"`
 
+	// Name is a template expression the Apply API resolves server-side to
+	// decide the CR's metadata.name — e.g. '{{ repoSlug .spec.repository }}'.
+	// Once set, it always wins over whatever (if anything) the client sent.
+	// Applies regardless of CRD scope (metadata.name exists either way),
+	// but is optional, unlike Namespace below: most CRDs still want the
+	// caller to choose a name (multiple concurrent instances of one repo —
+	// PR previews, ephemeral environments). Set this only when instances are
+	// 1:1 with some other identity the caller already supplies (repository,
+	// team) and redeploys should update the same CR in place rather than
+	// create a new one — a stable environment where only the image tag
+	// or few configuration changes between deploys.
+	//
+	// When unset, the Apply API requires the caller to supply metadata.name
+	// and rejects the request with a structured violation if it's empty,
+	// rather than leaving it to the Kubernetes API server's own generic
+	// rejection.
+	Name string `yaml:"name,omitempty" json:"name,omitempty"`
+
 	// Namespace is a template expression the Apply API resolves server-side
 	// to decide which namespace a new CR is created in — e.g. '{{ teamName }}'.
-	// Once set, it always wins over whatever (if anything) the client sent;
-	// the Control Center form and any Apply API caller never need to render
-	// or submit namespace themselves — name plus the declared fields is the
-	// whole contract. A plain literal (no template) is valid too, for a CRD
-	// whose instances always land in one fixed namespace.
+	// Same resolution mechanics as Name above, but only applies to namespaced
+	// CRDs, and — unlike Name — is required rather than optional: the
+	// Control Center form and any Apply API caller never need to render or
+	// submit namespace themselves. A plain literal (no template) is valid
+	// too, for a CRD whose instances always land in one fixed namespace.
 	//
 	// Required when the CRD is namespaced (the default) and idp.enabled is
 	// true — see Katalog.validateIDPNamespace. Meaningless, and rejected at
@@ -460,6 +478,19 @@ type EndpointsConfig struct {
 // IDPEnabled reports whether IDP is configured and enabled for this CRD.
 func (c *CRDEntry) IDPEnabled() bool {
 	return c.IDP != nil && c.IDP.Enabled
+}
+
+// HasIDPName reports whether idp.name is declared — the Apply API only
+// resolves and applies a name override when this is true.
+func (c *CRDEntry) HasIDPName() bool {
+	return c.IDP != nil && c.IDP.Name != ""
+}
+
+// RequireIDPName reports whether an Apply API caller (and the Control Center
+// form) must supply metadata.name themselves — true unless idp.name is
+// declared, in which case the name is resolved server-side instead.
+func (c *CRDEntry) RequireIDPName() bool {
+	return !c.HasIDPName()
 }
 
 // HasIDPNamespace reports whether idp.namespace is declared — the Apply API
