@@ -555,6 +555,45 @@ func (c *CRDEntry) HasRestrictedNamespaces() bool {
 	return len(c.RestrictedNamespaces) > 0
 }
 
+// IsNamespaceAuthorized returns true if the namespace is allowed for this CRD.
+// 
+// Authorization rules:
+//   - If only allowedNamespaces is set: namespace must be in the list
+//   - If only restrictedNamespaces is set: namespace must NOT be in the list
+//   - If both are set: namespace must be in allowedNamespaces AND NOT in restrictedNamespaces
+//   - If neither is set: all namespaces are allowed
+func (c *CRDEntry) IsNamespaceAuthorized(namespace string) bool {
+    // If both are empty, all namespaces are allowed
+    if !c.HasAllowedNamespaces() && !c.HasRestrictedNamespaces() {
+        return true
+    }
+
+    // Check allowedNamespaces (if set)
+    if c.HasAllowedNamespaces() {
+        allowed := false
+        for _, ns := range c.AllowedNamespaces {
+            if ns == namespace {
+                allowed = true
+                break
+            }
+        }
+        if !allowed {
+            return false
+        }
+    }
+
+    // Check restrictedNamespaces (if set)
+    if c.HasRestrictedNamespaces() {
+        for _, ns := range c.RestrictedNamespaces {
+            if ns == namespace {
+                return false // namespace is restricted
+            }
+        }
+    }
+
+    return true
+}
+
 // IsValidServiceType reports whether the provided service type is valid.
 // Accepted values (case‑insensitive):
 //   - ClusterIP
