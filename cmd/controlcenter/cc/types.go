@@ -246,6 +246,7 @@ type CRDSummary struct {
 	KatalogNamespace         string       `json:"katalogNamespace,omitempty"`
 	Endpoints                EndpointInfo `json:"endpoints,omitempty"`
 	IdpEnabled               bool         `json:"idpEnabled,omitempty"`
+	RequireIDPName           bool         `json:"requireIdpName,omitempty"`
 }
 
 // IDP field write targets — which part of the CR an IDPField's submitted
@@ -282,14 +283,15 @@ type IDPSection struct {
 
 // IDPFormData is the view model for idp_form.html.
 type IDPFormData struct {
-	KatalogName string
-	CRDName     string
-	Kind        string
-	APIVersion  string
-	BackURL     string
-	Namespaced  bool
-	Sections    []IDPSection
-	Error       string
+	KatalogName    string
+	CRDName        string
+	Kind           string
+	APIVersion     string
+	BackURL        string
+	Namespaced     bool
+	RequireIDPName bool
+	Sections       []IDPSection
+	Error          string
 }
 
 // CRDHealth is the response from the /katalog/{crd}/health endpoint

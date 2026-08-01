@@ -57,8 +57,14 @@ type Condition struct {
 	// Prefix is a shorthand for operator: prefix.
 	Prefix string `yaml:"prefix,omitempty" json:"prefix,omitempty"`
 
+	// NotPrefix is a shorthand for operator: notPrefix.
+	NotPrefix string `yaml:"notPrefix,omitempty" json:"notPrefix,omitempty"`
+
 	// Suffix is a shorthand for operator: suffix.
 	Suffix string `yaml:"suffix,omitempty" json:"suffix,omitempty"`
+
+	// NotSuffix is a shorthand for operator: notSuffix.
+	NotSuffix string `yaml:"notSuffix,omitempty" json:"notSuffix,omitempty"`
 
 	// Exists is a shorthand for operator: exists.
 	// When true, the condition passes when the field is present and non-empty.
@@ -185,8 +191,14 @@ const (
 	// ConditionPrefix — field value starts with the condition value
 	ConditionPrefix ConditionOperator = "prefix"
 
+	// ConditionNotPrefix — field value does not start with the condition value
+	ConditionNotPrefix ConditionOperator = "notPrefix"
+
 	// ConditionSuffix — field value ends with the condition value
 	ConditionSuffix ConditionOperator = "suffix"
+
+	// ConditionNotSuffix — field value does not end with the condition value
+	ConditionNotSuffix ConditionOperator = "notSuffix"
 
 	// ConditionExists — the field is present and non-empty
 	// Value is ignored for this operator.
@@ -305,7 +317,9 @@ var knownConditionOperators = map[ConditionOperator]bool{
 	ConditionNotEquals:   true,
 	ConditionContains:    true,
 	ConditionPrefix:      true,
+	ConditionNotPrefix:   true,
 	ConditionSuffix:      true,
+	ConditionNotSuffix:   true,
 	ConditionExists:      true,
 	ConditionNotExists:   true,
 	ConditionGt:          true,

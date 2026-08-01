@@ -11,4 +11,7 @@ import (
 var (
 	// marks and icons
 	failureMark = utils.FailureMark
+
+	// duration parsing
+	parseTimeDuration = utils.ParseTimeDuration
 )

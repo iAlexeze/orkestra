@@ -1095,7 +1095,7 @@ func (r *Runner) runImports(ctx context.Context) []ImportResult {
 		ir := ImportResult{Path: imp.Path}
 
 		if imp.Wait != "" {
-			d, _ := time.ParseDuration(imp.Wait) // already validated at load time
+			d, _ := orkutils.ParseTimeDuration(imp.Wait) // already validated at load time
 			fmt.Printf("→ Waiting %s before %s...\n", imp.Wait, filepath.Base(imp.Path))
 			time.Sleep(d)
 		}

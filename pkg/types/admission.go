@@ -135,7 +135,9 @@ type ValidationRule struct {
 	Equals      string `yaml:"equals,omitempty" json:"equals,omitempty"`
 	NotEquals   string `yaml:"notEquals,omitempty" json:"notEquals,omitempty"`
 	Prefix      string `yaml:"prefix,omitempty" json:"prefix,omitempty"`
+	NotPrefix   string `yaml:"notPrefix,omitempty" json:"notPrefix,omitempty"`
 	Suffix      string `yaml:"suffix,omitempty" json:"suffix,omitempty"`
+	NotSuffix   string `yaml:"notSuffix,omitempty" json:"notSuffix,omitempty"`
 	Contains    string `yaml:"contains,omitempty" json:"contains,omitempty"`
 	Min         string `yaml:"min,omitempty" json:"min,omitempty"` // numeric, inclusive
 	Max         string `yaml:"max,omitempty" json:"max,omitempty"` // numeric, inclusive

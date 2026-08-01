@@ -6,6 +6,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/robfig/cron/v3"
 )
 
@@ -90,19 +91,19 @@ func noteTimeSince(s string) int64 {
 }
 
 // noteIsExpired returns true when the timestamp plus the given duration is in the past.
-// The duration string follows Go's time.ParseDuration format ("30m", "24h", "7d" not supported —
-// use "168h" for 7 days).
+// The duration string follows utils.ParseTimeDuration format — Go's units
+// (s, m, h) plus d/w/mo/y (e.g. "30m", "24h", "7d", "1y").
 //
 // Primary use: declarative rotation checks in when: conditions.
 //
-//	{{ isExpired (index .metadata.annotations "orkestra.orkspace.io/generated-at") "720h" }}
+//	{{ isExpired (index .metadata.annotations "orkestra.orkspace.io/generated-at") "30d" }}
 //	→ true when the annotation timestamp is more than 30 days old
 func noteIsExpired(timestamp interface{}, duration string) bool {
 	t, ok := parseTime(fmt.Sprint(timestamp))
 	if !ok {
 		return false
 	}
-	d, err := time.ParseDuration(duration)
+	d, err := utils.ParseTimeDuration(duration)
 	if err != nil {
 		return false
 	}
@@ -122,51 +123,54 @@ func noteTimeFormat(timestamp interface{}, layout string) string {
 	return t.UTC().Format(layout)
 }
 
-// noteDurationSeconds parses a Go duration string and returns the total seconds as int64.
-// Safe zero value (0) for empty or invalid input.
+// noteDurationSeconds parses an extended duration string (Go units plus
+// d/w/mo/y) and returns the total seconds as int64. Safe zero value (0) for
+// empty or invalid input.
 //
 //	{{ durationSeconds "5m" }}    → 300
 //	{{ durationSeconds "1h30m" }} → 5400
-//	{{ durationSeconds "24h" }}   → 86400
+//	{{ durationSeconds "7d" }}    → 604800
 func noteDurationSeconds(d string) int64 {
 	if d == "" {
 		return 0
 	}
-	dur, err := time.ParseDuration(d)
+	dur, err := utils.ParseTimeDuration(d)
 	if err != nil {
 		return 0
 	}
 	return int64(dur.Seconds())
 }
 
-// noteDurationAdd adds two Go duration strings and returns the result as a
-// canonical duration string. Safe zero value ("0s") for invalid input.
+// noteDurationAdd adds two extended duration strings (Go units plus d/w/mo/y)
+// and returns the result as a canonical Go duration string. Safe zero value
+// ("0s") for invalid input.
 //
 //	{{ durationAdd "5m" "30s" }}  → "5m30s"
 //	{{ durationAdd "1h" "90m" }}  → "2h30m0s"
+//	{{ durationAdd "1d" "12h" }}  → "36h0m0s"
 func noteDurationAdd(a, b string) string {
-	da, err := time.ParseDuration(a)
+	da, err := utils.ParseTimeDuration(a)
 	if err != nil {
 		return "0s"
 	}
-	db, err := time.ParseDuration(b)
+	db, err := utils.ParseTimeDuration(b)
 	if err != nil {
 		return "0s"
 	}
 	return (da + db).String()
 }
 
-// noteDurationValid reports whether s is a valid Go duration string.
-// Useful in validation rules.
+// noteDurationValid reports whether s is a valid extended duration string
+// (Go units plus d/w/mo/y). Useful in validation rules.
 //
 //	{{ durationValid "5m" }}   → true
-//	{{ durationValid "5d" }}   → false  (Go does not support days)
+//	{{ durationValid "5d" }}   → true
 //	{{ durationValid "" }}     → false
 func noteDurationValid(s string) bool {
 	if s == "" {
 		return false
 	}
-	_, err := time.ParseDuration(s)
+	_, err := utils.ParseTimeDuration(s)
 	return err == nil
 }
 

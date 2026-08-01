@@ -413,6 +413,7 @@ type CRDSummaryResponse struct {
 	ProviderCount            int                `json:"providerCount,omitempty"`
 	KatalogNamespace         string             `json:"katalogNamespace,omitempty"`
 	IDPEnabled               bool               `json:"idpEnabled,omitempty"`
+	RequireIDPName           bool               `json:"requireIdpName,omitempty"`
 }
 
 type OperatorBoxSummary struct {
@@ -534,6 +535,7 @@ func BuildKatalogHandler(
 				CrossAccess:      crd.CrossAccessEnabled(),
 				KatalogNamespace: crd.KatalogNamespace,
 				IDPEnabled:       crd.IDPEnabled(),
+				RequireIDPName:   crd.RequireIDPName(),
 				Endpoints: EndpointInfo{
 					Health:        "/katalog/" + strings.ToLower(crd.Name) + "/health",
 					Info:          "/katalog/" + strings.ToLower(crd.Name),

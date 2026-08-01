@@ -14,7 +14,7 @@ import (
 // HTTP clients return: status, body, error, called + auto-parsed JSON keys.
 // Non-HTTP clients return: result, raw, error, called + protocol-specific keys.
 type ProtocolClient interface {
-	Fetch(ctx context.Context, spec orktypes.ExternalCallSpec, resolvedURL, resolvedQuery, credential string) (map[string]interface{}, error)
+	Fetch(ctx context.Context, spec orktypes.ExternalCallSpec, resolvedURL, resolvedQuery, resolvedBody, credential string) (map[string]interface{}, error)
 }
 
 func newProtocolClient(protocol orktypes.ExternalProtocol) ProtocolClient {

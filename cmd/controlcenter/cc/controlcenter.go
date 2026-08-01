@@ -977,13 +977,14 @@ func (cc *ControlCenter) handleIDPCreateForm(w http.ResponseWriter, r *http.Requ
 
 	sections, fetchErr := cc.fetchIDPFields(inst, crdName, kind)
 	data := IDPFormData{
-		KatalogName: katalogName,
-		CRDName:     crdName,
-		Kind:        kind,
-		APIVersion:  apiVersion,
-		BackURL:     backURL,
-		Namespaced:  crdSummary.Namespaced,
-		Sections:    sections,
+		KatalogName:    katalogName,
+		CRDName:        crdName,
+		Kind:           kind,
+		APIVersion:     apiVersion,
+		BackURL:        backURL,
+		Namespaced:     crdSummary.Namespaced,
+		RequireIDPName: crdSummary.RequireIDPName,
+		Sections:       sections,
 	}
 	if fetchErr != nil {
 		data.Error = "Could not load schema: " + fetchErr.Error()
@@ -1258,6 +1259,11 @@ func (cc *ControlCenter) handleIDPApplyForm(w http.ResponseWriter, r *http.Reque
 	// resolved server-side by the Apply API from idp.namespace (which always
 	// wins over whatever a caller sends anyway); a cluster-scoped CRD has no
 	// namespace concept at all. See idp.namespace in the schema reference.
+	//
+	// body.Name is "" when idp.name is declared — the template omits the
+	// Name field entirely (see RequireIDPName), so there's nothing to collect.
+	// The Apply API resolves it server-side from idp.name the same way it
+	// resolves namespace.
 	metadata := map[string]any{
 		"name": body.Name,
 	}

@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	orkutils "github.com/orkspace/orkestra/pkg/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -37,7 +37,7 @@ func ValidateImports(baseDir string, imports []orktypes.E2EImport) []error {
 			errs = append(errs, fmt.Errorf("%s: expected kind E2E, got %q", imp.Path, head.Kind))
 		}
 		if imp.Wait != "" {
-			if _, err := time.ParseDuration(imp.Wait); err != nil {
+			if _, err := orkutils.ParseTimeDuration(imp.Wait); err != nil {
 				errs = append(errs, fmt.Errorf("%s: wait %q is not a valid duration: %w", imp.Path, imp.Wait, err))
 			}
 		}

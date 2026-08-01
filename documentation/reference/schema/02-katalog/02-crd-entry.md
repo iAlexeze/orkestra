@@ -246,6 +246,7 @@ spec:
 | `fields` | — | Optional form hints. Each key matches a field name in the CRD spec. Missing keys are rendered from the OpenAPI schema alone. |
 | `include` | — | Path (relative to the katalog file) to a YAML file containing a `fields:` key. Inline `fields:` take precedence over included values. Expanded at load time. |
 | `forceConflict` | `false` | When `true`, every Apply API request for this CRD uses `Force: true` on server-side apply — the gateway takes ownership of any conflicting fields rather than surfacing a conflict error. Equivalent to `helm --force-conflict`. Callers can still override per-request with `?overwrite=true`. |
+| `name` | — | Template expression resolving the CR's `metadata.name`. Optional, unlike `namespace` — when unset (the common case), the caller must supply a name. See [`idp.name`](#idpname) below. |
 | `namespace` | — | Template expression resolving the namespace a new CR is created in. Required on a namespaced CRD with `idp.enabled: true`; rejected on a cluster-scoped one. See [`idp.namespace`](#idpnamespace) below. |
 
 `idp/platformresource.yaml` (the include file):
@@ -279,9 +280,27 @@ fields:
 
 `order` isn't just cosmetic form layout. When multiple `required`/`type: enum` fields fail validation at once, only the first violation is reported as the headline denial reason — and synthesized rules are evaluated in the same order `order` puts the fields in, so the field a developer sees *first* on the form is also the one whose error they see first if several are wrong simultaneously. Two fields on the same CRD sharing a non-zero `order` value is a load-time error (`ork validate`) for exactly this reason — `0`/unset is the only value any number of fields may share, since it means "no preference," not a real position.
 
+### `idp.name`
+
+`metadata.name` exists on every CR regardless of scope, so `idp.name` doesn't care whether the CRD is namespaced or cluster-scoped — it applies uniformly either way. It's optional, not required, though: most CRDs still want the caller to choose a name, since multiple concurrent instances of the same underlying app are normal (PR previews, ephemeral environments), and a name is the only thing distinguishing them. Set `idp.name` only when instances are 1:1 with some other identity the caller already supplies, and a redeploy is meant to update that same CR in place rather than create a new one — a stable environment where only the image tag changes between deploys:
+
+```yaml
+idp:
+  enabled: true
+  name: '{{ repoSlug .spec.repository }}'
+```
+
+`idp.name` is a template expression the gateway resolves server-side, against exactly what the caller submitted (labels, annotations, spec — the same data `validation.rules` sees), and always wins over whatever (if anything) the caller sent. Once set, the Control Center form never renders a Name field.
+
+**When it's not set:** the Apply API requires the caller to supply `metadata.name`, and rejects the request immediately with a structured violation (`metadata.name is required`) if it's empty — the same clean-rejection treatment every other Apply API failure gets, rather than letting the request fall through to a raw Kubernetes "name is required" error from the SSA patch.
+
+**`requireIdpName`** — `GET /katalog` (and therefore the Control Center) exposes this as a computed field, `true` unless `idp.name` is declared. It's not something you set directly; it's derived from whether `idp.name` is present.
+
+If a templated `idp.name` resolves to something surprising, it's immediately visible in the Apply API's own response (`name`, `pollUrl`) rather than silently breaking anything.
+
 ### `idp.namespace`
 
-For a namespace-scoped CRD, something has to decide which namespace a self-service `POST /api/v1/apply` creates the CR in — and a form or a CI `curl` shouldn't be the one deciding it, any more than it should be the one choosing which Deployment image tag is "correct." `idp.namespace` is a template expression the gateway resolves server-side, against exactly what the caller submitted (labels, annotations, spec — the same data `validation.rules` sees), and always wins over whatever (if anything) the caller sent:
+For a namespace-scoped CRD, something has to decide which namespace a self-service `POST /api/v1/apply` creates the CR in — and a form or a CI `curl` shouldn't be the one deciding it, any more than it should be the one choosing which Deployment image tag is "correct." `idp.namespace` works the same way as `idp.name` above — a template expression the gateway resolves server-side against exactly what the caller submitted, always winning over whatever (if anything) the caller sent — but only applies to namespaced CRDs, and (unlike `idp.name`) is required rather than optional:
 
 ```yaml
 idp:
@@ -289,7 +308,7 @@ idp:
   namespace: '{{ teamName }}'    # or a note, or a literal: "platform-workloads"
 ```
 
-Once this is set, the Control Center form never renders a namespace field, and no Apply API caller — curl, CI, the Control Center — needs to know or supply one. `name` plus the declared fields is the whole contract.
+Once this is set, the Control Center form never renders a namespace field, and no Apply API caller — curl, CI, the Control Center — needs to know or supply one. `idp.name` plus `idp.namespace` (when both are set) leaves the declared fields as the whole contract, no Kubernetes identity questions left for the developer or CI to answer at all.
 
 Three things `ork validate` enforces about it:
 

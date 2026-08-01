@@ -328,9 +328,23 @@ kubectl:
       outputContains: '"accepted":false'
 ```
 
+### `idp.name` — server-side name resolution for the Apply API
+
+`metadata.name` exists on every CR regardless of scope, so unlike `idp.namespace` (below), `idp.name` isn't scope-dependent — but it is optional, since most CRDs still want the caller to choose a name (multiple concurrent instances of one repo — PR previews, ephemeral environments). Set `idp.name` only when instances are 1:1 with some identity the caller already supplies, and a redeploy should update that same CR in place rather than create a new one — a stable environment where only the image tag changes between deploys:
+
+```yaml
+idp:
+  enabled: true
+  name: '{{ repoSlug .spec.repository }}'
+```
+
+`idp.name` is a template expression the gateway's Apply API (`POST /api/v1/apply`) resolves server-side, against exactly what the caller submitted, and always wins over whatever (if anything) the caller sent. When *not* set, a name is required from the caller — the Apply API now rejects a request with an empty `metadata.name` immediately, as a structured violation (`metadata.name is required`), instead of letting the SSA patch fail with a raw Kubernetes error.
+
+`CRDEntry.RequireIDPName()` (`true` unless `idp.name` is declared) flows through the runtime's `/katalog` response as `requireIdpName` and into the Control Center's IDP form — the Name field is only rendered when `requireIdpName` is true.
+
 ### `idp.namespace` — server-side namespace resolution for the Apply API
 
-A namespaced CRD needs a namespace on every CR it creates — but a browser form or a CI `curl` has no business deciding which one. `idp.namespace` is a template expression the gateway's Apply API (`POST /api/v1/apply`) resolves server-side, against exactly what the caller submitted, and always wins over whatever (if anything) the caller sent:
+A namespaced CRD needs a namespace on every CR it creates — but a browser form or a CI `curl` has no business deciding which one. `idp.namespace` works the same way as `idp.name` above — a template expression the gateway's Apply API resolves server-side against exactly what the caller submitted, always winning over whatever (if anything) the caller sent — but only applies to namespaced CRDs, and unlike `idp.name`, is required rather than optional:
 
 ```yaml
 idp:
@@ -338,9 +352,33 @@ idp:
   namespace: '{{ teamName }}'
 ```
 
-Once set, no Apply API caller — Control Center, curl, CI — needs to know or send `namespace` at all; `name` plus the declared fields is the whole contract. The Control Center form no longer renders a namespace field for any CRD. `idp.namespace` routes into a namespace, it doesn't create one — the platform team provisions it ahead of time, the same way a namespaced CRD already requires. Only affects the Apply API: a raw `kubectl apply` is unaffected, since `kubectl` always resolves some namespace client-side before a request reaches the API server, so there's never a genuinely empty namespace for a webhook to fill in the way an omitted JSON field lets the Apply API detect intent — deliberately not implemented as a mutating webhook default for that reason.
+Once set, no Apply API caller — Control Center, curl, CI — needs to know or send `namespace` at all; `idp.name` plus `idp.namespace` (when both are set) is the whole contract. The Control Center form no longer renders a namespace field for any CRD. `idp.namespace` routes into a namespace, it doesn't create one — the platform team provisions it ahead of time, the same way a namespaced CRD already requires. Only affects the Apply API: a raw `kubectl apply` is unaffected, since `kubectl` always resolves some namespace client-side before a request reaches the API server, so there's never a genuinely empty namespace for a webhook to fill in the way an omitted JSON field lets the Apply API detect intent — deliberately not implemented as a mutating webhook default for that reason.
 
-Three checks at `ork validate` time: required on a namespaced CRD with `idp.enabled: true`; rejected on a cluster-scoped one (`namespaced: false`) — nothing to resolve into; rejected when templated and the CRD's informer is pinned to one fixed namespace (`allowedNamespaces` with exactly one entry, or the legacy `namespace:` field) — a CR resolved outside that one namespace would exist but never be reconciled, silently.
+Three checks at `ork validate` time: required on a namespaced CRD with `idp.enabled: true`; rejected on a cluster-scoped one (`namespaced: false`) — nothing to resolve into; rejected when templated and the CRD's informer is pinned to one fixed namespace (`allowedNamespaces` with exactly one entry, or the legacy `namespace:` field) — a CR resolved outside that one namespace would exist but never be reconciled, silently. No equivalent checks exist for `idp.name` — there's no cluster-scoped/pinned-namespace-style conflict for a name to run into.
+
+### `POST /api/v1/apply` response: `pollUrl` replaces `resourceVersion`
+
+A successful apply now returns `pollUrl` — the exact `GET /api/v1/resources/{kind}/{namespace}/{name}` path for the CR just applied — instead of `resourceVersion`, which nothing consumed. Callers can `jq -r '.pollUrl'` straight into a poll loop instead of hand-assembling the path from `kind`/`namespace`/`name`. Cluster-scoped CRDs get an empty namespace segment (`/api/v1/resources/AppRequest//payments-api`), matching the existing `GET`/`DELETE` path convention.
+
+### `repoSlug` and `lookup` notes
+
+`repoSlug` extracts a Kubernetes-safe name from a repository reference — the last path segment, `.git` stripped, then slugified. Works with git URLs, org/repo shorthand, or a bare name, so a platform-curated repository enum doesn't need pre-cleaned values: `{{ repoSlug "myorg/payments-api" }}` → `"payments-api"`.
+
+`lookup` returns the value paired with a key in a flat list of alternating key/value pairs — a derive-team-from-repository switch without a long `if`/`eq` chain:
+
+```yaml
+notes:
+  functions:
+    - name: teamName
+      expression: |
+        {{ lookup .spec.repository
+             "myorg/payments-api"  "team-payments"
+             "myorg/orders-api"    "team-orders" }}
+```
+
+### `notPrefix`/`notSuffix` condition operators
+
+`when:`/`anyOf:`/`validation.rules` had `prefix`/`suffix` and `notEquals`/`notContains`/`notIn`, but no negated prefix/suffix — a real gap, since RE2 (Go's regex engine) can't express "does not end with X" as a pattern either (no lookahead/lookbehind), leaving no shorthand way to write a rule like "reject `:latest` image tags". `notPrefix`/`notSuffix` close it, evaluated identically everywhere `Condition`/`ValidationRule` already are.
 
 ---
 

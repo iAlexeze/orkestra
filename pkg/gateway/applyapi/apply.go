@@ -48,8 +48,10 @@ type ApplyResponse struct {
 	Kind string `json:"kind,omitempty"`
 	// APIVersion is the CR apiVersion.
 	APIVersion string `json:"apiVersion,omitempty"`
-	// ResourceVersion is the Kubernetes resourceVersion after apply.
-	ResourceVersion string `json:"resourceVersion,omitempty"`
+	// PollURL is the GET /api/v1/resources/{kind}/{namespace}/{name} path for
+	// this CR — callers can jq it straight out of the response instead of
+	// hand-assembling it from Kind/Namespace/Name.
+	PollURL string `json:"pollUrl,omitempty"`
 	// Message carries the rejection reason on Accepted=false.
 	Message string `json:"message,omitempty"`
 	// Warnings is a list of advisory messages returned by the admission webhook
@@ -158,12 +160,40 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 			patchOpts.DryRun = []string{metav1.DryRunAll}
 		}
 
-		// idp.namespace, once declared, always decides — it overrides
-		// whatever (if anything) the client sent, so namespace stops being
-		// something any Apply API caller (Control Center, curl, CI) needs to
-		// know or supply. Resolved against exactly what the client submitted
-		// (labels/annotations/spec), same resolver+notes pattern the
-		// admission webhook uses for validation.rules.
+		// idp.name, once declared, always decides — it overrides whatever
+		// (if anything) the client sent. Resolved against exactly what the
+		// client submitted (labels/annotations/spec), same resolver+notes
+		// pattern the admission webhook uses for validation.rules. When it
+		// is not declared, a name is required from the caller — reject here
+		// with a structured violation instead of letting the SSA patch fail
+		// with a raw "metadata.name is required" from the API server.
+		if crd != nil && crd.HasIDPName() {
+			resolver := orktmpl.NewResolverFromMap(obj.Object).WithUserNotes(notes)
+			if resolved, err := resolver.Resolve(crd.IDP.Name); err == nil && resolved != "" {
+				obj.SetName(resolved)
+			} else {
+				logger.FromContext(r.Context()).Warn().
+					Str("kind", obj.GetKind()).
+					Str("idp.name", crd.IDP.Name).
+					Err(err).
+					Msg("apply API: idp.name did not resolve to a value")
+			}
+		} else if obj.GetName() == "" {
+			utils.WriteJSON(w, http.StatusUnprocessableEntity, ApplyResponse{
+				DryRun:  dryRun,
+				Message: "name is required",
+				Violations: []ApplyViolation{{
+					Field:    "metadata.name",
+					Message:  "name is required",
+					Severity: "error",
+				}},
+			})
+			return
+		}
+
+		// idp.namespace works the same way as idp.name above, so namespace
+		// stops being something any Apply API caller (Control Center, curl,
+		// CI) needs to know or supply.
 		if crd != nil && crd.HasIDPNamespace() {
 			resolver := orktmpl.NewResolverFromMap(obj.Object).WithUserNotes(notes)
 			if resolved, err := resolver.Resolve(crd.IDP.Namespace); err == nil && resolved != "" {
@@ -212,14 +242,14 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 		}
 
 		utils.WriteJSON(w, http.StatusOK, ApplyResponse{
-			Accepted:        true,
-			DryRun:          dryRun,
-			Name:            result.GetName(),
-			Namespace:       result.GetNamespace(),
-			Kind:            result.GetKind(),
-			APIVersion:      result.GetAPIVersion(),
-			ResourceVersion: result.GetResourceVersion(),
-			Warnings:        capture.collect(),
+			Accepted:   true,
+			DryRun:     dryRun,
+			Name:       result.GetName(),
+			Namespace:  result.GetNamespace(),
+			Kind:       result.GetKind(),
+			APIVersion: result.GetAPIVersion(),
+			PollURL:    resourcePath(result.GetKind(), result.GetNamespace(), result.GetName()),
+			Warnings:   capture.collect(),
 		})
 	}
 }
