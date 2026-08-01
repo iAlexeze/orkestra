@@ -110,7 +110,7 @@ func (s *ApplyAPIServer) Register(reg Registrar) {
 	reg.Register("/api/v1/apply", auth(applyHandler(s.kube, s.buildCRDLookup(), notes)))
 
 	// GET/DELETE /api/v1/resources/...
-	reg.Register("/api/v1/resources/", auth(resourcesHandler(s.kube, s.buildKindMapper())))
+	reg.Register("/api/v1/resources/", auth(resourcesHandler(s.kube, s.buildKindMapper(), s.buildCRDLookup(), notes)))
 
 	// GET /api/v1/schema/...
 	reg.Register("/api/v1/schema/", auth(schemaHandler(s.kube, s.buildCRDLookup(), s.buildCatalogLister())))

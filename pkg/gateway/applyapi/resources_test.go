@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -46,7 +47,7 @@ func TestResourcesHandler_UnknownKind(t *testing.T) {
 	errMapper := KindMapper(func(kind string) (schema.GroupVersionResource, error) {
 		return schema.GroupVersionResource{}, fmt.Errorf("no mapping for %q", kind)
 	})
-	h := resourcesHandler(nil, errMapper)
+	h := resourcesHandler(nil, errMapper, nil, orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/resources/unknown/default", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -58,7 +59,7 @@ func TestResourcesHandler_UnknownKind(t *testing.T) {
 func TestResourcesHandler_MethodNotAllowed(t *testing.T) {
 	h := resourcesHandler(nil, func(kind string) (schema.GroupVersionResource, error) {
 		return schema.GroupVersionResource{}, nil
-	})
+	}, nil, orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/resources/platform/default/x", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -70,7 +71,7 @@ func TestResourcesHandler_MethodNotAllowed(t *testing.T) {
 func TestResourcesHandler_BadPath(t *testing.T) {
 	h := resourcesHandler(nil, func(kind string) (schema.GroupVersionResource, error) {
 		return schema.GroupVersionResource{}, nil
-	})
+	}, nil, orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/resources/onlyone", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -82,7 +83,7 @@ func TestResourcesHandler_BadPath(t *testing.T) {
 func TestResourcesHandler_DeleteRequiresName(t *testing.T) {
 	h := resourcesHandler(nil, func(kind string) (schema.GroupVersionResource, error) {
 		return schema.GroupVersionResource{Group: "test", Version: "v1", Resource: "things"}, nil
-	})
+	}, nil, orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/resources/thing/default", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)

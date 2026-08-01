@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 )
 
@@ -33,7 +34,7 @@ type KindMapper func(kind string) (schema.GroupVersionResource, error)
 // Handler returns the http.HandlerFunc for /api/v1/resources/... routes.
 // URL pattern: /api/v1/resources/{kind}/{namespace}[/{name}]
 // The auth middleware must wrap this handler before registration.
-func resourcesHandler(kube kubeclient.KubeClient, mapper KindMapper) http.HandlerFunc {
+func resourcesHandler(kube kubeclient.KubeClient, mapper KindMapper, lookup func(kind string) *orktypes.CRDEntry, notes orktypes.NoteRegistry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		kind, ns, name, err := parsePath(r.URL.Path)
 		if err != nil {
@@ -52,7 +53,7 @@ func resourcesHandler(kube kubeclient.KubeClient, mapper KindMapper) http.Handle
 			if name == "" {
 				listResources(w, r, kube, gvr, ns)
 			} else {
-				getResource(w, r, kube, gvr, ns, name)
+				getResource(w, r, kube, gvr, ns, name, lookup, notes)
 			}
 		case http.MethodDelete:
 			if name == "" {
@@ -66,25 +67,96 @@ func resourcesHandler(kube kubeclient.KubeClient, mapper KindMapper) http.Handle
 	}
 }
 
-func getResource(w http.ResponseWriter, r *http.Request, kube kubeclient.KubeClient, gvr schema.GroupVersionResource, ns, name string) {
-	obj, err := kube.DynamicClient().Resource(gvr).Namespace(ns).Get(r.Context(), name, metav1.GetOptions{})
+func getResource(
+	w http.ResponseWriter,
+	r *http.Request,
+	kube kubeclient.KubeClient,
+	gvr schema.GroupVersionResource,
+	ns, name string,
+	lookup func(kind string) *orktypes.CRDEntry,
+	notes orktypes.NoteRegistry,
+) {
+	// When the CRD declares idp.allowedTokens, the authenticated token must
+	// have permission to perform the operation it is attempting.
+	if !checkIDPPermission(w, r, lookup(gvr.Resource), orktypes.IDPOpGet, gvr.Resource, ns) {
+		return
+	}
+
+	obj, err := kube.DynamicClient().Resource(gvr).Namespace(ns).
+		Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
 		writeKubeError(w, err)
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, obj.Object)
+
+	response := obj.Object
+
+	field := r.URL.Query().Get("field")
+	if field != "" {
+		value, ok := orktypes.ResolveScalarField(response, field)
+		if !ok {
+			http.Error(w, "invalid field path", http.StatusBadRequest)
+			return
+		}
+		// Return just the value
+		utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
+			"field": field,
+			"value": value,
+		})
+		return
+	}
+
+	// Evaluate idp.config.response against the full stored CR.
+	// At GET time .status is available because the runtime has written it —
+	// payload fields referencing status are now populated.
+	//
+	// EvaluatePayload returns nil when no config is declared, in which case
+	// we skip injecting the "payload" key so the response stays identical to
+	// today for CRDs without idp.config.response.
+	if payload := EvaluatePayload(obj.Object, lookup(obj.GetKind()), notes); payload != nil {
+		response["payload"] = payload
+	}
+
+	utils.WriteJSON(w, http.StatusOK, response)
 }
 
 func listResources(w http.ResponseWriter, r *http.Request, kube kubeclient.KubeClient, gvr schema.GroupVersionResource, ns string) {
+	// When the CRD declares idp.allowedTokens, the authenticated token must
+	// have permission to perform the operation it is attempting.
+	if !checkIDPPermission(w, r, nil, orktypes.IDPOpList, gvr.Resource, ns) {
+		return
+	}
+
 	list, err := kube.DynamicClient().Resource(gvr).Namespace(ns).List(r.Context(), metav1.ListOptions{})
 	if err != nil {
 		writeKubeError(w, err)
 		return
 	}
+	field := r.URL.Query().Get("field")
+	if field != "" {
+		value, ok := orktypes.ResolveScalarField(list.Object, field)
+		if !ok {
+			http.Error(w, "invalid field path", http.StatusBadRequest)
+			return
+		}
+		// Return just the value
+		utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
+			"field": field,
+			"value": value,
+		})
+		return
+	}
+
 	utils.WriteJSON(w, http.StatusOK, list.Object)
 }
 
 func deleteResource(w http.ResponseWriter, r *http.Request, kube kubeclient.KubeClient, gvr schema.GroupVersionResource, ns, name string) {
+	// When the CRD declares idp.allowedTokens, the authenticated token must
+	// have permission to perform the operation it is attempting.
+	if !checkIDPPermission(w, r, nil, orktypes.IDPOpDelete, gvr.Resource, ns) {
+		return
+	}
+
 	err := kube.DynamicClient().Resource(gvr).Namespace(ns).Delete(r.Context(), name, metav1.DeleteOptions{})
 	if err != nil {
 		writeKubeError(w, err)
@@ -131,4 +203,34 @@ func writeKubeError(w http.ResponseWriter, err error) {
 	default:
 		http.Error(w, msg, http.StatusInternalServerError)
 	}
+}
+
+// checkIDPPermission is a single function used by all resource handlers
+// (get, list, delete). Keeps the permission logic in one place so changes to
+// the model propagate automatically.
+//
+// Returns true when the request should proceed. Writes the 403 response and
+// returns false when it should not — callers must return immediately.
+func checkIDPPermission(
+	w http.ResponseWriter,
+	r *http.Request,
+	crd *orktypes.CRDEntry,
+	op, kind, namespace string,
+) bool {
+	if crd == nil || crd.IDP == nil || !crd.IDP.HasTokenRestrictions() {
+		// No restrictions declared — proceed.
+		return true
+	}
+
+	tokenName := TokenNameFromContext(r.Context())
+	allowed, reason := crd.IDP.TokenAllowed(tokenName, op, namespace)
+	if !allowed {
+		http.Error(
+			w,
+			reason.Message(tokenName, op, kind, namespace),
+			http.StatusForbidden,
+		)
+		return false
+	}
+	return true
 }
