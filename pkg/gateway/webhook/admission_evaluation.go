@@ -40,14 +40,22 @@ func (ws *WebhookServer) evaluateValidationRules(
 			logger.FromContext(ctx).Warn().Err(err).Str("kind", kindName).Msg("admission/validate: external call failed")
 		}
 	}
+	// operator: unique — checked against the runtime's own informer cache
+	// via HTTP (see runtimeUniquenessChecker), not a live List() the way the
+	// reconciler's checker works. Skipped (falls back to always-pass, same
+	// as before) when katalog/konfig aren't wired or the CRD can't be
+	// resolved — none of those should ever be true outside tests.
+	if ws.katalog != nil && ws.konfig != nil {
+		if crdName := ws.crdNameForKind(kindName); crdName != "" {
+			checker := newRuntimeUniquenessChecker(ctx, ws.runtimeEndpoint(), crdName)
+			resolver = resolver.WithUniquenessChecker(checker)
+		}
+	}
 	data := resolver.Data()
 	for _, rule := range cfg.Rules {
 		if !orktypes.EvaluateWhen(data, rule.When, rule.AnyOf, resolver.TemplateEvaluator()) {
 			continue
 		}
-		// operator: unique always passes here — no UniquenessChecker is
-		// injected into data at admission time, only at reconcile time
-		// (see orktypes.UniquenessChecker).
 		rv := orktypes.EvaluateValidationRule(data, resolver, rule)
 		if rv == nil {
 			continue

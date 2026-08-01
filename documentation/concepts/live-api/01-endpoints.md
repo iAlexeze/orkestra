@@ -200,6 +200,23 @@ curl -s localhost:8080/katalog/blockchainapp/cr | jq
 }
 ```
 
+**`?field=<dot-path>`** additionally resolves that field against each instance's full object (available in the informer cache even though the default response doesn't include it) and returns it as `"value"` on every item:
+
+```bash
+curl -s "localhost:8080/katalog/blockchainapp/cr?field=spec.domain" | jq
+```
+
+```json
+{
+  "crd": "blockchainapp",
+  "items": [
+    { "name": "my-chain", "namespace": "default", ..., "value": "chain.example.com" }
+  ]
+}
+```
+
+This is what powers `operator: unique` at admission time — the gateway queries this endpoint instead of doing its own live List() against the API server. See [unique](../../reference/schema/02-katalog/07-validation.md#validationrules).
+
 ---
 
 ### `GET /katalog/{crd}/cr/{name}`

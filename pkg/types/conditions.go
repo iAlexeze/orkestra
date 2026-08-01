@@ -247,10 +247,17 @@ const (
 	// instance of this CRD (the CR being evaluated is excluded from its own
 	// check). Works the same way in validation.rules and in when:/anyOf: —
 	// e.g. gating a template source or mutation rule on whether a field is
-	// still available. ONLY enforced at reconcile time, where the
-	// reconciler injects a live checker; the admission webhook does not, so
-	// a CR can still be admitted with a duplicate value and get caught on
-	// the next reconcile instead.
+	// still available.
+	//
+	// Enforced at reconcile time via a live List() the reconciler injects
+	// (pkg/runtime/reconciler/uniqueness.go) — the authoritative check,
+	// immune to cache staleness. Also enforced at admission time, as a
+	// fast best-effort early rejection: the gateway queries the runtime's
+	// own informer cache over HTTP (pkg/gateway/webhook/uniqueness.go)
+	// rather than doing a live List() itself. A stale cache there just
+	// means a duplicate slips through admission and gets caught on the
+	// next reconcile anyway — the reconcile-time guarantee never depends
+	// on admission catching it first.
 	//
 	//	validation:
 	//	  rules:
@@ -263,8 +270,8 @@ const (
 	//	  - field: spec.domain
 	//	    operator: unique
 	//
-	// Always passes wherever no checker is injected — admission webhook,
-	// e2e, and any other context without live CRD access (see
+	// Always passes wherever no checker is injected — e2e, simulate without
+	// a seeded fixture, and any other context without live CRD access (see
 	// UniquenessChecker in validation_eval.go).
 	ConditionUnique ConditionOperator = "unique"
 
