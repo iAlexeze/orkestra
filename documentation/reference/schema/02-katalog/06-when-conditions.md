@@ -53,7 +53,9 @@ Compare a dot-notation path into the CR against a value.
 | `contains` | `contains` | Field contains the substring |
 | `notContains` | `notContains` | Field does not contain the substring |
 | `prefix` | `prefix` | Field starts with the value |
+| `notPrefix` | `notPrefix` | Field does not start with the value |
 | `suffix` | `suffix` | Field ends with the value |
+| `notSuffix` | `notSuffix` | Field does not end with the value |
 | `regex` | `regex` | Field matches the value as an RE2 regular expression (Go's `regexp` syntax) |
 | `exists` | `exists: true` | Field is present and non-empty |
 | `notExists` | `notExists: true` | Field is absent or empty |

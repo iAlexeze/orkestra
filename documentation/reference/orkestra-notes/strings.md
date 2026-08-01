@@ -6,14 +6,14 @@ String notes manipulate text values. They cover the cases that come up constantl
 
 | Note | Description |
 |------|-------------|
-| `toLower` | Convert a string to all lowercase or all uppercase. |
-| `toUpper` | Convert a string to all lowercase or all uppercase. |
+| `toLower` | Convert a string to all lowercase. |
+| `toUpper` | Convert a string to all uppercase. |
 | `trimSpace` | Remove leading and trailing whitespace. |
 | `trim` | Remove all leading and trailing occurrences of a cutset string. |
-| `trimPrefix` | Remove a specific prefix or suffix if present. |
-| `trimSuffix` | Remove a specific prefix or suffix if present. |
-| `hasPrefix` | Return `true` if the string starts or ends with the given substring. |
-| `hasSuffix` | Return `true` if the string starts or ends with the given substring. |
+| `trimPrefix` | Remove a specific prefix if present. |
+| `trimSuffix` | Remove a specific suffix if present. |
+| `hasPrefix` | Return `true` if the string starts with the given substring. |
+| `hasSuffix` | Return `true` if the string ends with the given substring. |
 | `contains` | Return `true` if the string contains the substring. |
 | `replace` | Replace all occurrences of `old` with `new` in `s`. |
 | `split` | Split a string by a separator into a slice. |
@@ -31,15 +31,9 @@ String notes manipulate text values. They cover the cases that come up constantl
 # production → production
 # PRODUCTION → production
 
-# value: "{{ toUpper .spec.tier }}"
-# premium → PREMIUM
-
 # toUpper
-# value: "{{ toLower .spec.environment }}"
-# production → production
-# PRODUCTION → production
-
 # value: "{{ toUpper .spec.tier }}"
+# PREMIUM → PREMIUM
 # premium → PREMIUM
 
 # trimSpace
@@ -54,22 +48,16 @@ String notes manipulate text values. They cover the cases that come up constantl
 # value: "{{ trimPrefix .metadata.name \"app-\" }}"
 # "app-frontend" → "frontend"
 
-# value: "{{ trimSuffix .spec.image \":latest\" }}"
-# "nginx:latest" → "nginx"
-
 # trimSuffix
-# value: "{{ trimPrefix .metadata.name \"app-\" }}"
-# "app-frontend" → "frontend"
-
 # value: "{{ trimSuffix .spec.image \":latest\" }}"
 # "nginx:latest" → "nginx"
 
 # hasPrefix
-# value: "{{ hasPrefix .spec.image \"gcr.io/\" }}"
+# value: '{{ hasPrefix .spec.image "gcr.io/" }}'
 # "gcr.io/myproject/app:v1" → true
 
 # hasSuffix
-# value: "{{ hasPrefix .spec.image \"gcr.io/\" }}"
+# value: '{{ hasSuffix .spec.image "v1" }}'
 # "gcr.io/myproject/app:v1" → true
 
 # contains

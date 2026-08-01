@@ -207,7 +207,9 @@
 
         <form id="idp-form" autocomplete="off">
 
-          <!-- Identity fields -->
+          <!-- Identity fields — omitted entirely when idp.name is declared;
+               the name is derived server-side and never shown or submitted. -->
+          {{ if .RequireIDPName }}
           <div class="idp-section">
             <div class="idp-section-title">Identity</div>
 
@@ -216,6 +218,7 @@
               <input type="text" id="cr-name" name="__name" required placeholder="my-resource" pattern="[a-z0-9][a-z0-9\-]*[a-z0-9]?" title="Lowercase letters, numbers, and hyphens">
             </div>
           </div>
+          {{ end }}
 
           <!-- Spec fields — one section per Group -->
           {{ range .Sections }}

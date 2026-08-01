@@ -1,4 +1,4 @@
-.PHONY: build orkcc clean test test-unit test-controlcenter test-race test-integration test-all test-coverage test-coverage-text vet vuln vuln-orkestra vuln-controlcenter vuln-runtime vuln-gateway certs docs docs-sync docs-build docs-serve hugo-install generate-notes generate-e2e-example generate-resource-docs test-fixture-note test-fixture-reconciler ork-gateway-linux docker-gateway gateway-reload runtime-reload controlcenter-reload reload docker-devserver release-devserver
+.PHONY: build orkcc clean test test-unit test-controlcenter test-race test-integration test-all test-coverage test-coverage-text vet vuln vuln-orkestra vuln-controlcenter vuln-runtime vuln-gateway certs docs docs-sync docs-build docs-serve hugo-install generate-notes generate-e2e-example generate-resource-docs test-fixture-note test-fixture-reconciler ork-gateway-linux docker-gateway gateway-reload runtime-reload controlcenter-reload reload docker-devserver release-devserver devserver-reload
 
 # ── Configuration ────────────────────────────────────────────────────────────
 ORKESTRA_DIR := .
@@ -214,6 +214,28 @@ release-devserver: docker-devserver
 # ── Runtime Reload (local dev) ────────────────────────────────────────────────
 
 KIND_CLUSTER ?= orkestra-playground
+
+DEVSERVER_DEPLOYMENT ?= orkestra-dev-server
+DEVSERVER_CONTAINER_NAME ?= dev-server
+DEVSERVER_NAMESPACE ?= orkestra-system
+
+devserver-reload: docker-devserver
+	@echo "Generating unique tag..."
+	$(eval DEVSERVER_TAG := $(shell date +%s))
+	@echo "Tag: $(DEVSERVER_TAG)"
+
+	@echo "Retagging image..."
+	docker tag $(ORK_DEVSERVER_IMAGE) $(ORK_DEVSERVER_IMAGE)-$(DEVSERVER_TAG)
+
+	@echo "Loading image into kind cluster: $(KIND_CLUSTER)"
+	kind load docker-image $(ORK_DEVSERVER_IMAGE)-$(DEVSERVER_TAG) --name $(KIND_CLUSTER)
+	@echo "✔ Image loaded"
+
+	@echo "Updating deployment $(DEVSERVER_DEPLOYMENT) in namespace $(DEVSERVER_NAMESPACE)..."
+	kubectl -n $(DEVSERVER_NAMESPACE) set image deploy/$(DEVSERVER_DEPLOYMENT) \
+        $(DEVSERVER_CONTAINER_NAME)=$(ORK_DEVSERVER_IMAGE)-$(DEVSERVER_TAG)
+
+	@echo "✔ Dev server updated to image: $(ORK_DEVSERVER_IMAGE)-$(DEVSERVER_TAG)"
 RUNTIME_DEPLOYMENT ?= orkestra-runtime
 RUNTIME_CONTAINER_NAME ?= runtime
 RUNTIME_NAMESPACE  ?= orkestra-system
