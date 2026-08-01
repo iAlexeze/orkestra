@@ -20,6 +20,7 @@ Type notes inspect and convert the runtime Go types of values in the CR. Because
 | `toBool` | Convert a value to `bool`. |
 | `toString` | Convert any value to its string representation. |
 | `toJson` | Convert any value to its JSON representation. |
+| `toList` | Convert a comma-separated string to a list of trimmed strings. |
 
 ## Examples
 
@@ -147,6 +148,30 @@ normalize:
 
 # toJson
 # value: "{{ toJson .spec }}"    →  `{"replicas":3,"enabled":true}`
+
+# toList
+# value: "{{ toList .spec.excludeFields }}"
+# "a,b,c"   → ["a", "b", "c"]
+# "a, b, c" → ["a", "b", "c"]  (spaces trimmed)
+# ""        → []
+# "foo"     → ["foo"]
+idp:
+  config:
+    response:
+      exclude: '{{ toList (getAnnotation . "platform.myorg.io/exclude-fields") }}'
+notes:
+  - name: excludeForExternal
+    expression: |
+      {{ if eq (getLabel . "visibility") "external" }}
+        "metadata.managedFields,status.detailed,spec.internalSecrets"
+      {{ else }}
+        ""
+      {{ end }}
+
+idp:
+  config:
+    response:
+      exclude: '{{ toList (excludeForExternal) }}'
 when:
   - field: spec.schedule
     operator: typeOf

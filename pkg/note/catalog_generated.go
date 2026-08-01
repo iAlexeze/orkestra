@@ -1746,8 +1746,15 @@ var BuiltinNotes = []NoteInfo{
 		Name:        "toJson",
 		Domain:      "types",
 		Description: "Convert any value to its JSON representation. Returns an error for unrecognized types.",
-		Example:     "# value: \"{{ toJson .spec }}\"    →  `{\"replicas\":3,\"enabled\":true}`\nwhen:\n  - field: spec.schedule\n    operator: typeOf\n    value: map       # same string that typeOf returns",
+		Example:     "# value: \"{{ toJson .spec }}\"    →  `{\"replicas\":3,\"enabled\":true}`",
 		Keywords:    []string{"type", "convert", "json", "serialize", "format", "encode"},
+	},
+	{
+		Name:        "toList",
+		Domain:      "types",
+		Description: "Convert a comma-separated string to a list of trimmed strings. Returns an empty list for empty strings. Essential for dynamic exclusion lists in `idp.config.response` and other places where a comma-separated value needs to be treated as a list.",
+		Example:     "# value: \"{{ toList .spec.excludeFields }}\"\n# \"a,b,c\"   → [\"a\", \"b\", \"c\"]\n# \"a, b, c\" → [\"a\", \"b\", \"c\"]  (spaces trimmed)\n# \"\"        → []\n# \"foo\"     → [\"foo\"]\nidp:\n  config:\n    response:\n      exclude: '{{ toList (getAnnotation . \"platform.myorg.io/exclude-fields\") }}'\nnotes:\n  - name: excludeForExternal\n    expression: |\n      {{ if eq (getLabel . \"visibility\") \"external\" }}\n        \"metadata.managedFields,status.detailed,spec.internalSecrets\"\n      {{ else }}\n        \"\"\n      {{ end }}\n\nidp:\n  config:\n    response:\n      exclude: '{{ toList (excludeForExternal) }}'\nwhen:\n  - field: spec.schedule\n    operator: typeOf\n    value: map       # same string that typeOf returns",
+		Keywords:    []string{"type", "convert", "list", "slice", "split", "parse", "csv"},
 	},
 	{
 		Name:        "toString",

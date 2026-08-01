@@ -178,6 +178,48 @@ Keywords: type, convert, json, serialize, format, encode
 
 ---
 
+### `toList`
+
+Convert a comma-separated string to a list of trimmed strings. Returns an empty list for empty strings. Essential for dynamic exclusion lists in `idp.config.response` and other places where a comma-separated value needs to be treated as a list.
+
+Keywords: type, convert, list, slice, split, parse, csv
+
+```yaml
+# value: "{{ toList .spec.excludeFields }}"
+# "a,b,c"   → ["a", "b", "c"]
+# "a, b, c" → ["a", "b", "c"]  (spaces trimmed)
+# ""        → []
+# "foo"     → ["foo"]
+```
+
+**Typical usage with `idp.config.response`:**
+
+```yaml
+idp:
+  config:
+    response:
+      exclude: '{{ toList (getAnnotation . "platform.myorg.io/exclude-fields") }}'
+```
+
+**Usage with notes block:**
+
+```yaml
+notes:
+  - name: excludeForExternal
+    expression: |
+      {{ if eq (getLabel . "visibility") "external" }}
+        "metadata.managedFields,status.detailed,spec.internalSecrets"
+      {{ else }}
+        ""
+      {{ end }}
+
+idp:
+  config:
+    response:
+      exclude: '{{ toList (excludeForExternal) }}'
+```
+---
+
 ## The `typeOf` + `when:` connection
 
 The same type names that `typeOf` returns in templates are used by the `operator: typeOf` condition in `when:` blocks:
@@ -211,6 +253,7 @@ This symmetry means you can use `typeOf` in status fields to surface the detecte
 | `toBool` | `(v any)` | `bool` |
 | `toString` | `(v any)` | `string` |
 | `toJson` | `(v any)` | `string` |
+| `toList` | `(v any)` | `[]string` |
 
 
 ---
