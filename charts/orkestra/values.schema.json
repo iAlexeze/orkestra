@@ -123,6 +123,16 @@
             "annotations": { "type": "object" }
           }
         },
+        "ingress": {
+          "type": "object",
+          "properties": {
+            "enabled":     { "type": "boolean" },
+            "className":   { "type": "string" },
+            "annotations": { "type": "object" },
+            "hosts":       { "type": "array" },
+            "tls":         { "type": "array" }
+          }
+        },
         "resources": { "$ref": "#/$defs/resources" },
         "server": {
           "type": "object",
