@@ -87,6 +87,11 @@ func (s *ApplyAPIServer) ReloadTokens(ctx context.Context) error {
 
 // Register wires all Apply API routes onto the given Registrar.
 func (s *ApplyAPIServer) Register(reg Registrar) {
+	var notes orktypes.NoteRegistry
+	if s.kat != nil {
+		notes = s.kat.Notes
+	}
+
 	// auth closes over s so that token lookups always read the current TokenSet
 	// even after a ReloadTokens call swaps the pointer.
 	auth := func(h http.Handler) http.HandlerFunc {
@@ -102,7 +107,7 @@ func (s *ApplyAPIServer) Register(reg Registrar) {
 	}
 
 	// POST /api/v1/apply
-	reg.Register("/api/v1/apply", auth(applyHandler(s.kube, s.buildCRDLookup())))
+	reg.Register("/api/v1/apply", auth(applyHandler(s.kube, s.buildCRDLookup(), notes)))
 
 	// GET/DELETE /api/v1/resources/...
 	reg.Register("/api/v1/resources/", auth(resourcesHandler(s.kube, s.buildKindMapper())))

@@ -319,6 +319,35 @@ type IDPConfig struct {
 	// Can be overridden per-request with ?overwrite=true regardless of this setting.
 	// Default: false.
 	ForceConflict bool `yaml:"forceConflict,omitempty" json:"forceConflict,omitempty"`
+
+	// Namespace is a template expression the Apply API resolves server-side
+	// to decide which namespace a new CR is created in — e.g. '{{ teamName }}'.
+	// Once set, it always wins over whatever (if anything) the client sent;
+	// the Control Center form and any Apply API caller never need to render
+	// or submit namespace themselves — name plus the declared fields is the
+	// whole contract. A plain literal (no template) is valid too, for a CRD
+	// whose instances always land in one fixed namespace.
+	//
+	// Required when the CRD is namespaced (the default) and idp.enabled is
+	// true — see Katalog.validateIDPNamespace. Meaningless, and rejected at
+	// load time, on a cluster-scoped CRD (namespaced: false) — there's no
+	// namespace to resolve into.
+	//
+	// This only affects the Apply API (POST /api/v1/apply). Raw kubectl
+	// callers are unaffected: kubectl always resolves some namespace
+	// client-side before a request reaches the API server (typically
+	// "default"), so there is never a genuinely empty namespace for a
+	// webhook to fill in the way an omitted JSON field lets the Apply API
+	// detect intent — deliberately not implemented as a mutating webhook
+	// default for that reason.
+	//
+	// Resolves into an existing namespace; it does not create one. The
+	// platform team provisions whatever namespace(s) this can resolve to
+	// ahead of time (setup.apply in e2e, real onboarding in production) —
+	// same as a cluster-scoped CRD's onCreate provisioning a namespace as a
+	// child resource is a different, complementary answer to the same
+	// "developer shouldn't have to pick a namespace" problem.
+	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty"`
 }
 
 // AdditionalIDPFields declares label/annotation keys as self-service IDP form
@@ -431,6 +460,12 @@ type EndpointsConfig struct {
 // IDPEnabled reports whether IDP is configured and enabled for this CRD.
 func (c *CRDEntry) IDPEnabled() bool {
 	return c.IDP != nil && c.IDP.Enabled
+}
+
+// HasIDPNamespace reports whether idp.namespace is declared — the Apply API
+// only resolves and applies a namespace override when this is true.
+func (c *CRDEntry) HasIDPNamespace() bool {
+	return c.IDP != nil && c.IDP.Namespace != ""
 }
 
 // AdditionalLabelFields returns idp.additionalFields.labels. Nil-safe — returns

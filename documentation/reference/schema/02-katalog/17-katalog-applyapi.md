@@ -53,6 +53,8 @@ Token scope is not per-CRD. Namespace restriction is handled by `allowedNamespac
 
 `GET /api/v1/schema/{kind}` is only served for CRDs where `idp.enabled: true`.
 
+For a namespaced CRD, `POST /api/v1/apply` resolves the target namespace itself when `idp.namespace` is declared on the CRD entry — the caller never sends `namespace` at all. See [`idp.namespace`](02-crd-entry.md#idpnamespace).
+
 ## Security
 
 No new security configuration. Every property the Apply API enforces is already declared on the CRD entry:

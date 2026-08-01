@@ -21,7 +21,7 @@ func (k *Katalog) validateEnvFromRefs() error {
 func errSuffixRequiresKeys(crd, resource, phase, refKind, refName string) error {
 	return fmt.Errorf(`
 ──────────────────────────────────────────────
-❌ envFrom.%s %q declares suffix without keys
+%s envFrom.%s %q declares suffix without keys
    CRD:      %s
    Resource: %s
    Phase:    %s
@@ -30,5 +30,5 @@ Kubernetes cannot rename keys during a blanket envFrom import — suffix only
 applies when keys also selects which keys to expand individually.
 
 Fix: add a keys: list alongside suffix, or remove suffix for a blanket import.
-──────────────────────────────────────────────`, refKind, refName, crd, resource, phase)
+──────────────────────────────────────────────`, failureMark(), refKind, refName, crd, resource, phase)
 }

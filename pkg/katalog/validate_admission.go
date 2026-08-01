@@ -64,7 +64,7 @@ func checkConditionOperators(conditions []orktypes.Condition, crdName, field str
 func errUnknownOperator(op orktypes.ConditionOperator, crd, field string) error {
 	return fmt.Errorf(`
 ──────────────────────────────────────────────
-❌ Unknown operator %q
+%s Unknown operator %q
    CRD: %s
    field: %s
 
@@ -76,7 +76,7 @@ Allowed values:
   • in, notIn
   • unique
   • typeOf, typeMap, typeList, typeString, typeNumber, typeBool, typeNull
-──────────────────────────────────────────────`, op, crd, field)
+──────────────────────────────────────────────`, failureMark(), op, crd, field)
 }
 
 // validateValidationRuleLinks rejects a validation.rules entry's link: value
@@ -123,24 +123,24 @@ func checkLink(rule orktypes.ValidationRule, crd orktypes.CRDEntry) error {
 func errUnknownLink(link, crd, field string) error {
 	return fmt.Errorf(`
 ──────────────────────────────────────────────
-❌ link %q does not match any idp field
+%s link %q does not match any idp field
    CRD: %s
    field: %s
 
 link: must name a key declared in idp.fields, idp.additionalFields.labels,
 or idp.additionalFields.annotations for this CRD.
-──────────────────────────────────────────────`, link, crd, field)
+──────────────────────────────────────────────`, failureMark(), link, crd, field)
 }
 
 func errRedundantLink(link, crd string) error {
 	return fmt.Errorf(`
 ──────────────────────────────────────────────
-❌ link %q is redundant
+%s link %q is redundant
    CRD: %s
 
 This rule's field is already "spec.%s" — already a clean display name on
 its own. link: only matters when field is a template expression that isn't
 itself a valid display name (e.g. wraps getLabel/getAnnotation, or a notes:
 function). Remove link: here.
-──────────────────────────────────────────────`, link, crd, link)
+──────────────────────────────────────────────`, failureMark(), link, crd, link)
 }

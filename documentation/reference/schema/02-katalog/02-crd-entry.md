@@ -246,6 +246,7 @@ spec:
 | `fields` | — | Optional form hints. Each key matches a field name in the CRD spec. Missing keys are rendered from the OpenAPI schema alone. |
 | `include` | — | Path (relative to the katalog file) to a YAML file containing a `fields:` key. Inline `fields:` take precedence over included values. Expanded at load time. |
 | `forceConflict` | `false` | When `true`, every Apply API request for this CRD uses `Force: true` on server-side apply — the gateway takes ownership of any conflicting fields rather than surfacing a conflict error. Equivalent to `helm --force-conflict`. Callers can still override per-request with `?overwrite=true`. |
+| `namespace` | — | Template expression resolving the namespace a new CR is created in. Required on a namespaced CRD with `idp.enabled: true`; rejected on a cluster-scoped one. See [`idp.namespace`](#idpnamespace) below. |
 
 `idp/platformresource.yaml` (the include file):
 
@@ -277,6 +278,30 @@ fields:
 | `disabled` | Non-empty string — field is rendered greyed-out with this message. Useful for platform-managed fields that should be visible but not editable. |
 
 `order` isn't just cosmetic form layout. When multiple `required`/`type: enum` fields fail validation at once, only the first violation is reported as the headline denial reason — and synthesized rules are evaluated in the same order `order` puts the fields in, so the field a developer sees *first* on the form is also the one whose error they see first if several are wrong simultaneously. Two fields on the same CRD sharing a non-zero `order` value is a load-time error (`ork validate`) for exactly this reason — `0`/unset is the only value any number of fields may share, since it means "no preference," not a real position.
+
+### `idp.namespace`
+
+For a namespace-scoped CRD, something has to decide which namespace a self-service `POST /api/v1/apply` creates the CR in — and a form or a CI `curl` shouldn't be the one deciding it, any more than it should be the one choosing which Deployment image tag is "correct." `idp.namespace` is a template expression the gateway resolves server-side, against exactly what the caller submitted (labels, annotations, spec — the same data `validation.rules` sees), and always wins over whatever (if anything) the caller sent:
+
+```yaml
+idp:
+  enabled: true
+  namespace: '{{ teamName }}'    # or a note, or a literal: "platform-workloads"
+```
+
+Once this is set, the Control Center form never renders a namespace field, and no Apply API caller — curl, CI, the Control Center — needs to know or supply one. `name` plus the declared fields is the whole contract.
+
+Three things `ork validate` enforces about it:
+
+- **Required on a namespaced CRD with `idp.enabled: true`.** CRDs are namespaced by default (`namespaced: false` opts out) — without `idp.namespace`, self-service creation has no way to know where the CR belongs.
+- **Rejected on a cluster-scoped CRD** (`namespaced: false`) — there's no namespace to resolve into, so declaring one is always a mistake, not a preference. (A cluster-scoped CRD sidesteps the whole namespace question a different way — see the note below.)
+- **Rejected when templated *and* the CRD's informer is pinned to one fixed namespace** (`allowedNamespaces` with exactly one entry, or the legacy `namespace:` field). A templated expression can resolve differently per submission; a CR placed outside the one namespace the informer watches would exist in the cluster but never be reconciled, silently.
+
+`idp.namespace` **routes into** a namespace — it doesn't create one. Whatever it can resolve to must already exist; the platform team provisions it ahead of time (`kubectl apply -f namespace.yaml` in a real rollout, `setup.apply` in an e2e fixture), the same way a namespaced CRD already requires today.
+
+This only affects the Apply API. A raw `kubectl apply` is unaffected either way — `kubectl` always resolves *some* namespace client-side before a request ever reaches the API server (typically `default`), so there's never a genuinely empty namespace for anything server-side to notice and fill in the way an omitted JSON field lets the Apply API detect intent. `idp.namespace` is deliberately not a mutating-webhook default for that reason — it would only ever see the wrong namespace to silently override, never a blank one to fill in.
+
+**The cluster-scoped alternative.** A CRD can sidestep this entirely by being cluster-scoped (`namespaced: false`) and having `onCreate` provision a namespace as a *child resource* of the CR instead — the CR itself has no namespace, so there's nothing for `idp.namespace` to resolve. Two different answers to the same "a developer shouldn't have to pick a namespace" problem, matched to two different scope choices: cluster-scoped + `onCreate`-provisions-a-child-namespace, or namespaced + `idp.namespace`-routes-into-a-platform-provisioned-one.
 
 ### `idp.additionalFields`
 

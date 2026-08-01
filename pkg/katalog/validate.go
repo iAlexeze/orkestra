@@ -292,5 +292,14 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 40. Validate idp.namespace — required on namespaced+idp-enabled CRDs,
+	//     rejected on cluster-scoped ones, incompatible with a pinned watch
+	//     scope when templated
+	// -------------------------------------------------------------------------
+	if err := k.validateIDPNamespace(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }

@@ -1,0 +1,14 @@
+package katalog
+
+import (
+	"github.com/orkspace/orkestra/pkg/utils"
+)
+
+// ── utils aliases ────────────────────────────────────────────────────────────
+// Import utils once here. All other files in this package use these names
+// directly — no per-file utils import needed.
+
+var (
+	// marks and icons
+	failureMark = utils.FailureMark
+)

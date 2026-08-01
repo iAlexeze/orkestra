@@ -1243,7 +1243,6 @@ func (cc *ControlCenter) fetchIDPFields(inst *Instance, crdName, kind string) ([
 func (cc *ControlCenter) handleIDPApplyForm(w http.ResponseWriter, r *http.Request, inst *Instance, kind, apiVersion string) {
 	var body struct {
 		Name        string            `json:"name"`
-		Namespace   string            `json:"namespace"`
 		Spec        map[string]any    `json:"spec"`
 		Labels      map[string]string `json:"labels"`
 		Annotations map[string]string `json:"annotations"`
@@ -1255,9 +1254,12 @@ func (cc *ControlCenter) handleIDPApplyForm(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Namespace is never sent by the form — for a namespaced CRD it's
+	// resolved server-side by the Apply API from idp.namespace (which always
+	// wins over whatever a caller sends anyway); a cluster-scoped CRD has no
+	// namespace concept at all. See idp.namespace in the schema reference.
 	metadata := map[string]any{
-		"name":      body.Name,
-		"namespace": body.Namespace,
+		"name": body.Name,
 	}
 	if len(body.Labels) > 0 {
 		metadata["labels"] = body.Labels
