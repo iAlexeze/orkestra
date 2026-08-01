@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -18,6 +19,10 @@ const (
 	KomponentRuntime = "runtime"
 	KomponentCC      = "control-center"
 	KomponentGateway = "gateway"
+
+	// Local development only
+	DevServer            = "devserver"
+	DevServerServiceName = "orkestra-dev-server"
 
 	runtimeLeaseName = orktypes.KonductorLeaseName
 )
@@ -40,6 +45,24 @@ func FindService(ctx context.Context, cs kubernetes.Interface, ns, komponent str
 		return nil, nil
 	}
 	svc := &list.Items[0]
+	return &FoundService{Name: svc.Name, Port: svc.Spec.Ports[0].Port}, nil
+}
+
+// FindServiceByName looks up a Service by its exact name in ns, bypassing the
+// komponent label — for services that aren't Orkestra komponents (e.g. the
+// devserver fixture deployed ad hoc by examples). Returns nil, nil when the
+// service doesn't exist (component not deployed), matching FindService.
+func FindServiceByName(ctx context.Context, cs kubernetes.Interface, ns, name string) (*FoundService, error) {
+	svc, err := cs.CoreV1().Services(ns).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get service %s: %w", name, err)
+	}
+	if len(svc.Spec.Ports) == 0 {
+		return nil, nil
+	}
 	return &FoundService{Name: svc.Name, Port: svc.Spec.Ports[0].Port}, nil
 }
 
