@@ -43,6 +43,10 @@ type Katalog struct {
 
 	// konfig for managing katalog-related user inputs from env
 	konfig *konfig.Konfig
+
+	// Warnings collects non‑fatal validation messages for this CRD.
+	Warnings orktypes.Warnings `json:"-"` // not serialized
+
 }
 
 // EnabledCRDs returns a map of enabled CRDs.

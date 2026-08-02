@@ -9,6 +9,10 @@ import (
 // directly — no per-file utils import needed.
 
 var (
+	// colors / styles
+	yellow = utils.Yellow
+	red    = utils.Red
+
 	// marks and icons
 	failureMark = utils.FailureMark
 

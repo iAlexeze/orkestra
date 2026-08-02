@@ -164,7 +164,7 @@ Examples:
 
 		// Print each CRD entry with enrichment info
 		for _, entry := range sortedEntries {
-			printCRDValidationLine(entry, k.IsDeletionProtectionEnabled(), k.IsStrictModeEnabled())
+			printCRDValidationLine(k, entry)
 			if full {
 				printCRDPermissions(perCRDPerms[entry.Name])
 				printCRDProfiles(entry)

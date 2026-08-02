@@ -88,3 +88,26 @@ func IsValidIDPOperation(s string) bool {
 	}
 	return false
 }
+
+// ValidIDPOperations returns the list of valid IDP operations.
+func ValidIDPOperations() []string {
+	return idpValidOperations
+}
+
+// Empty returns true if the permissions list has no entries.
+func (p IDPTokenPermissions) Empty() bool {
+	return len(p.Permissions) == 0
+}
+
+// HasWildcard returns true if the permissions include "*" (all operations).
+func (p IDPTokenPermissions) HasWildcard() bool {
+	return slices.Contains(p.Permissions, IDPOpAll)
+}
+
+// HasOperation returns true if the permission includes the given operation.
+func (p IDPTokenPermissions) HasOperation(op string) bool {
+	if p.HasWildcard() {
+		return true
+	}
+	return slices.Contains(p.Permissions, op)
+}

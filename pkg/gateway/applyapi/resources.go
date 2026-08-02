@@ -100,6 +100,7 @@ func getResource(
 		}
 		// Return just the value
 		utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
+			"name":  name,
 			"field": field,
 			"value": value,
 		})

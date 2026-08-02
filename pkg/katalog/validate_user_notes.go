@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"text/template"
 
-	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/note"
 )
 
@@ -54,10 +53,8 @@ func (k *Katalog) validateUserNotes() error {
 		}
 
 		if _, isBuiltin := builtins[n.Name]; isBuiltin && !n.Shadow {
-			logger.Warn().Msgf(
-				"notes %q shadows a built-in Orkestra note — add `shadow: true` to acknowledge",
-				n.Name,
-			)
+			k.Warnings.AddWarning(fmt.Sprintf("notes %q shadows a built-in Orkestra note — add `shadow: true` to acknowledge",
+				n.Name))
 		}
 	}
 	return nil

@@ -310,6 +310,13 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	}
 
 	// -------------------------------------------------------------------------
+	// 41. Validate gateway tokens (no duplicates)
+	// -------------------------------------------------------------------------
+	if err := k.validateGatewayTokens(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
 	// 42. Validate IDP tokens and namespace restrictions per CRD
 	// -------------------------------------------------------------------------
 	if err := k.validateIDPTokenRestrictions(); err != nil {

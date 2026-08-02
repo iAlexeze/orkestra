@@ -107,10 +107,7 @@ func (g *GatewayConfig) HasApplyAPI() bool {
 	if g.ApplyAPI == nil {
 		return false
 	}
-	if !g.ApplyAPI.Enabled {
-		return false
-	}
-	return g.ApplyAPI.HasAuth()
+	return g.ApplyAPI.Enabled
 }
 
 // ── ApplyAPIConfig methods ─────────────────────────────────────────
