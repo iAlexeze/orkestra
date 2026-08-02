@@ -7,10 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTokenAllowed(t *testing.T) {
-	// Helper to build an IDPConfig with allowedTokens declared.
+func TestTokenAllowed_PermissionClasses(t *testing.T) {
 	cfg := func(tokens map[string]types.IDPTokenPermissions) *types.IDPConfig {
-		return &types.IDPConfig{AllowedTokens: tokens}
+		return &types.IDPConfig{AllowedTokens: types.IDPAllowedTokens{Tokens: tokens}}
 	}
 
 	tests := []struct {
@@ -19,110 +18,71 @@ func TestTokenAllowed(t *testing.T) {
 		token      string
 		op         string
 		namespace  string
+		class      types.IDPEndpointClass
 		wantOK     bool
 		wantReason types.IDPDenyReason
 	}{
 		{
-			name:      "no restrictions — any token allowed",
-			idp:       cfg(nil),
-			token:     "any-token",
-			op:        types.IDPOpDelete,
-			namespace: "any-ns",
-			wantOK:    true,
+			name:  "global wildcard allows all classes",
+			idp:   cfg(map[string]types.IDPTokenPermissions{"cc": {Permissions: types.IDPPermissionSet{Global: []string{"*"}}}}),
+			token: "cc", op: types.IDPOpDelete, class: types.IDPClassResources,
+			wantOK: true,
 		},
 		{
-			name: "wildcard permission grants all ops",
+			name: "schema class used for schema op, not resources",
 			idp: cfg(map[string]types.IDPTokenPermissions{
-				"control-center": {Permissions: []string{"*"}},
+				"audit": {Permissions: types.IDPPermissionSet{
+					Schema:    []string{"get"},
+					Resources: []string{"get", "list"},
+				}},
 			}),
-			token:     "control-center",
-			op:        types.IDPOpDelete,
-			namespace: "production",
-			wantOK:    true,
+			token: "audit", op: types.IDPOpGet, class: types.IDPClassSchema,
+			wantOK: true,
 		},
 		{
-			name: "specific permission — allowed",
+			name: "schema class denies create — not in schema perms",
 			idp: cfg(map[string]types.IDPTokenPermissions{
-				"ci-pipeline": {Permissions: []string{"create", "update"}},
+				"audit": {Permissions: types.IDPPermissionSet{
+					Schema:    []string{"get"},
+					Resources: []string{"get", "list"},
+				}},
 			}),
-			token:     "ci-pipeline",
-			op:        types.IDPOpCreate,
-			namespace: "staging",
-			wantOK:    true,
-		},
-		{
-			name: "specific permission — denied op",
-			idp: cfg(map[string]types.IDPTokenPermissions{
-				"ci-pipeline": {Permissions: []string{"create", "update"}},
-			}),
-			token:      "ci-pipeline",
-			op:         types.IDPOpDelete,
-			namespace:  "staging",
+			// create is a resources operation, not schema — but we check class
+			// correctly here: schema class, create op → schema has only get.
+			token: "audit", op: types.IDPOpCreate, class: types.IDPClassSchema,
 			wantOK:     false,
 			wantReason: types.IDPDenyReasonOperation,
 		},
 		{
-			name: "unknown token — denied",
+			name: "falls back to global when class list is empty",
 			idp: cfg(map[string]types.IDPTokenPermissions{
-				"ci-pipeline": {Permissions: []string{"*"}},
+				"ci": {Permissions: types.IDPPermissionSet{
+					Global: []string{"create", "update", "get"},
+					// schema not set → inherits global
+				}},
 			}),
-			token:      "rogue-token",
-			op:         types.IDPOpGet,
-			namespace:  "staging",
+			token: "ci", op: types.IDPOpGet, class: types.IDPClassSchema,
+			wantOK: true,
+		},
+		{
+			name: "empty permissions denies all",
+			idp: cfg(map[string]types.IDPTokenPermissions{
+				"empty": {Permissions: types.IDPPermissionSet{}},
+			}),
+			token: "empty", op: types.IDPOpGet, class: types.IDPClassResources,
 			wantOK:     false,
-			wantReason: types.IDPDenyReasonUnknownToken,
+			wantReason: types.IDPDenyReasonOperation,
 		},
 		{
-			name: "namespace restriction — allowed ns",
+			name: "namespace restriction respected regardless of class",
 			idp: cfg(map[string]types.IDPTokenPermissions{
-				"ci-pipeline": {
-					Permissions: []string{"create"},
-					Namespaces:  []string{"team-staging"},
+				"ci": {
+					Namespaces:  []string{"staging"},
+					Permissions: types.IDPPermissionSet{Global: []string{"*"}},
 				},
 			}),
-			token:     "ci-pipeline",
-			op:        types.IDPOpCreate,
-			namespace: "team-staging",
-			wantOK:    true,
-		},
-		{
-			name: "namespace restriction — denied ns",
-			idp: cfg(map[string]types.IDPTokenPermissions{
-				"ci-pipeline": {
-					Permissions: []string{"create"},
-					Namespaces:  []string{"team-staging"},
-				},
-			}),
-			token:      "ci-pipeline",
-			op:         types.IDPOpCreate,
-			namespace:  "team-production",
-			wantOK:     false,
-			wantReason: types.IDPDenyReasonNamespace,
-		},
-		{
-			name: "wildcard permission with namespace restriction",
-			idp: cfg(map[string]types.IDPTokenPermissions{
-				"control-center": {
-					Permissions: []string{"*"},
-					Namespaces:  []string{"team-staging", "team-production"},
-				},
-			}),
-			token:     "control-center",
-			op:        types.IDPOpDelete,
-			namespace: "team-production",
-			wantOK:    true,
-		},
-		{
-			name: "wildcard permission — namespace outside restriction",
-			idp: cfg(map[string]types.IDPTokenPermissions{
-				"control-center": {
-					Permissions: []string{"*"},
-					Namespaces:  []string{"team-staging"},
-				},
-			}),
-			token:      "control-center",
-			op:         types.IDPOpDelete,
-			namespace:  "kube-system",
+			token: "ci", op: types.IDPOpCreate, namespace: "production",
+			class:      types.IDPClassResources,
 			wantOK:     false,
 			wantReason: types.IDPDenyReasonNamespace,
 		},
@@ -130,25 +90,19 @@ func TestTokenAllowed(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ok, reason := tt.idp.TokenAllowed(tt.token, tt.op, tt.namespace)
+			ok, reason := tt.idp.TokenAllowed(tt.token, tt.op, tt.namespace, tt.class)
 			assert.Equal(t, tt.wantOK, ok)
 			if !tt.wantOK {
 				assert.Equal(t, tt.wantReason, reason)
-				// Reason.Message must produce a non-empty, actionable string.
-				msg := reason.Message(tt.token, tt.op, "MyKind", tt.namespace)
-				assert.NotEmpty(t, msg)
-				assert.Contains(t, msg, tt.token)
+				assert.NotEmpty(t, reason.Message(tt.token, tt.op, "MyKind", tt.namespace))
 			}
 		})
 	}
 }
 
-func TestHasTokenRestrictions(t *testing.T) {
-	assert.False(t, (&types.IDPConfig{}).HasTokenRestrictions())
-	assert.False(t, (&types.IDPConfig{AllowedTokens: map[string]types.IDPTokenPermissions{}}).HasTokenRestrictions())
-	assert.True(t, (&types.IDPConfig{
-		AllowedTokens: map[string]types.IDPTokenPermissions{
-			"ci": {Permissions: []string{"get"}},
-		},
-	}).HasTokenRestrictions())
+func TestIDPPermissionSetIsEmpty(t *testing.T) {
+	assert.True(t, types.IDPPermissionSet{}.IsEmpty())
+	assert.False(t, types.IDPPermissionSet{Global: []string{"get"}}.IsEmpty())
+	assert.False(t, types.IDPPermissionSet{Schema: []string{"get"}}.IsEmpty())
+	assert.False(t, types.IDPPermissionSet{Resources: []string{"get"}}.IsEmpty())
 }

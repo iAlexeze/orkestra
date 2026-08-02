@@ -76,6 +76,12 @@ type ApplyAPIToken struct {
 	// Set the variable via extraEnv in the gateway and controlCenter Helm values.
 	// Literal values are not accepted.
 	Token string `yaml:"token,omitempty" json:"token,omitempty"`
+
+	// Include is a path (relative to the katalog file) to a YAML file with a
+	// "tokens:" list (same shape as the inline tokens below). Expanded at load
+	// time — the result is merged into Tokens, with inline entries taking
+	// precedence per token name.
+	Include string `yaml:"include,omitempty" json:"include,omitempty"`
 }
 
 // ApplyAPISecretRef locates a Kubernetes Secret that holds a bearer token.
