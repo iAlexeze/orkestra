@@ -10,24 +10,38 @@ import (
 // validateIDPTokenRestrictions confirms:
 //
 //  1. Every token name in idp.allowedTokens exists in gateway.applyAPI.auth.tokens.
-//     A typo here would silently deny a token that should have access.
-//
 //  2. Every permission string is one of the valid IDPOperation constants.
-//
-//  3. Every idp permitted namespace must be allowed at crd level.
-//
-//  4. (Warning) A token entry with an empty permissions list grants no access.
-//     Likely a misconfiguration; the token can authenticate but can do nothing.
-//
-//  5. (Warning) Namespace restrictions on a cluster-scoped CRD are silently
-//     ignored at runtime. Surface this so the author can remove the dead config.
+//  3. Schema permissions only support get/list — create/update/delete are ignored
+//     when schema inherits from global.
+//  4. When global is non-empty, class lists must be subsets of it.
+//  5. (Warning) All three permission lists are empty — the token grants nothing.
+//  6. (Warning) Namespace restrictions on a cluster-scoped CRD are ignored.
+//  7. Every idp permitted namespace must be allowed at crd level.
+//  8. (Warning) A token entry with an empty permissions list grants no access.
 func (k *Katalog) validateIDPTokenRestrictions() error {
-	// Build a set of token names that exist at the gateway level so we can
-	// cross-reference them cheaply.
 	gatewayTokens := k.gatewayTokenNames()
 	knownTokens := make(map[string]struct{}, len(gatewayTokens))
 	for _, name := range gatewayTokens {
 		knownTokens[name] = struct{}{}
+	}
+
+	allowedNamespaces := make(map[string]map[string]bool)
+	restrictedNamespaces := make(map[string]map[string]bool)
+
+	for _, crd := range k.enabledCRDs {
+		allowedNamespaces[crd.Name] = make(map[string]bool)
+		for _, ns := range crd.AllowedNamespaces {
+			allowedNamespaces[crd.Name][ns] = true
+		}
+		restrictedNamespaces[crd.Name] = make(map[string]bool)
+		for _, ns := range crd.RestrictedNamespaces {
+			restrictedNamespaces[crd.Name][ns] = true
+		}
+	}
+
+	validSchemaOps := map[string]bool{
+		orktypes.IDPOpGet:  true,
+		orktypes.IDPOpList: true,
 	}
 
 	for crdName, crd := range k.enabledCRDs {
@@ -35,8 +49,9 @@ func (k *Katalog) validateIDPTokenRestrictions() error {
 			continue
 		}
 
-		gatewayTokensStr := strings.Join(gatewayTokens, ", ")
-		for tokenName, perms := range crd.IDP.AllowedTokens {
+		for tokenName, perms := range crd.IDP.AllowedTokensMap() {
+			gatewayTokensStr := strings.Join(gatewayTokens, ", ")
+
 			// 1. Token must exist at the gateway level.
 			if _, ok := knownTokens[tokenName]; !ok {
 				return fmt.Errorf(
@@ -47,59 +62,91 @@ func (k *Katalog) validateIDPTokenRestrictions() error {
 				)
 			}
 
-			// 2. Every permission string must be a valid operation and unique
-			ops := strings.Join(orktypes.ValidIDPOperations(), ", ")
-			// 2. Every permission string must be a valid operation and unique
-			seenOps := make(map[string]bool)
-			var duplicates []string
-
-			for _, p := range perms.Permissions {
-				if !orktypes.IsValidIDPOperation(p) {
-					return fmt.Errorf(
-						"crd %q: idp.allowedTokens[%q].permissions: %q is not a valid operation\n"+
-							"  Valid values: %s",
-						crdName, tokenName, p, yellow(ops),
-					)
-				}
-				if seenOps[p] {
-					duplicates = append(duplicates, p)
-				}
-				seenOps[p] = true
-			}
-
-			if len(duplicates) > 0 {
-				return fmt.Errorf(
-					"crd %q: idp.allowedTokens[%q].permissions: duplicate operations found: %s",
-					crdName, tokenName, red(strings.Join(duplicates, ", ")),
-				)
-			}
-
-			// 3. Every namespace must be allowed at crd level
-			for _, ns := range perms.Namespaces {
-				if !crd.IsNamespaceAuthorized(ns) {
-					if crd.HasAllowedNamespaces() {
+			// 2. Validate every operation string in all three lists.
+			for _, list := range []struct {
+				name string
+				ops  []string
+			}{
+				{"global", perms.Permissions.Global},
+				{"schema", perms.Permissions.Schema},
+				{"resources", perms.Permissions.Resources},
+			} {
+				for _, op := range list.ops {
+					if !orktypes.IsValidIDPOperation(op) {
 						return fmt.Errorf(
-							"namespace %q is not allowed for CRD %q.\n"+
-								"Allowed namespaces: %s\n"+
-								"Unauthorized namespace: %s",
-							ns, crd.Name, strings.Join(crd.AllowedNamespaces, ","), red(ns),
-						)
-					}
-
-					if crd.HasRestrictedNamespaces() {
-						return fmt.Errorf(
-							"namespace %q is restricted for CRD %q.\n"+
-								"Restricted namespaces: %s\n"+
-								"Unauthorized namespace: %s",
-							ns, crd.Name, strings.Join(crd.RestrictedNamespaces, ","), red(ns),
+							"crd %q: idp.allowedTokens[%q].permissions.%s: %q is not a valid operation\n"+
+								"  Valid values: get, list, create, update, delete, *",
+							crdName, tokenName, list.name, op,
 						)
 					}
 				}
 			}
 
-			// 4. (Warning) Empty permissions list.
-			if perms.Empty() {
-				fmt.Printf("DEBUG: Empty permissions for %s/%s\n", crdName, tokenName)
+			// 3. Schema permissions validation.
+			if len(perms.Permissions.Schema) > 0 {
+				// Explicit schema list — validate each operation.
+				for _, op := range perms.Permissions.Schema {
+					if !validSchemaOps[op] {
+						return fmt.Errorf(
+							"crd %q: idp.allowedTokens[%q].permissions.schema: %q is not allowed for schema endpoints\n"+
+								"  Schema endpoints only support: get, list",
+							crdName, tokenName, op,
+						)
+					}
+				}
+			} else if len(perms.Permissions.Global) > 0 {
+				// Schema inherits from global — check for create/update/delete warnings.
+				for _, op := range perms.Permissions.Global {
+					if op == orktypes.IDPOpAll {
+						continue // Wildcard is fine
+					}
+					if !validSchemaOps[op] {
+						crd.Warnings.AddWarning(fmt.Sprintf(
+							"crd %q: idp.allowedTokens[%q].permissions.global contains %q which is not valid for schema endpoints — "+
+								"it will be ignored for schema and only apply to resources",
+							crdName, tokenName, op,
+						))
+					}
+				}
+			}
+
+			// 4. When global is non-empty, class lists must be subsets.
+			if perms.HasGlobalPermissions() && !perms.HasGlobalWildcard() {
+				globalSet := toStringSet(perms.Permissions.Global)
+
+				for _, classEntry := range []struct {
+					name string
+					ops  []string
+				}{
+					{"schema", perms.Permissions.Schema},
+					{"resources", perms.Permissions.Resources},
+				} {
+					for _, op := range classEntry.ops {
+						if op == orktypes.IDPOpAll {
+							return fmt.Errorf(
+								"crd %q: idp.allowedTokens[%q].permissions.%s: %q "+
+									"is broader than global permissions %v\n"+
+									"  Set global: [\"*\"] to allow wildcard, or remove \"*\" from %s.",
+								crdName, tokenName, classEntry.name, op,
+								perms.Permissions.Global, classEntry.name,
+							)
+						}
+						if !globalSet[op] {
+							return fmt.Errorf(
+								"crd %q: idp.allowedTokens[%q].permissions.%s: %q "+
+									"is not in global permissions %v\n"+
+									"  Class permissions must be a subset of global, "+
+									"or set global to empty for fine-grained mode.",
+								crdName, tokenName, classEntry.name, op,
+								perms.Permissions.Global,
+							)
+						}
+					}
+				}
+			}
+
+			// 5. (Warning) All permissions are empty — token grants nothing.
+			if perms.Permissions.IsEmpty() {
 				crd.Warnings.AddWarning(fmt.Sprintf(
 					"crd %q: idp.allowedTokens[%q] has no permissions declared — "+
 						"the token can authenticate but cannot perform any operation on this CRD",
@@ -107,13 +154,38 @@ func (k *Katalog) validateIDPTokenRestrictions() error {
 				))
 			}
 
-			// 5. (Warning) Namespace restrictions on a cluster-scoped CRD.
-			if !crd.IsNamespaced() && !perms.Empty() {
+			// 6. (Warning) Namespace restrictions on a cluster-scoped CRD.
+			if !crd.IsNamespaced() && perms.IsNamespaceRestricted() {
 				crd.Warnings.AddWarning(fmt.Sprintf(
 					"crd %q: idp.allowedTokens[%q].namespaces is set but %q is cluster-scoped — "+
 						"namespace restrictions are ignored for cluster-scoped resources",
 					crdName, tokenName, crdName,
 				))
+			}
+
+			// 7. Every namespace must be allowed at CRD level.
+			for _, ns := range perms.Namespaces {
+				if crd.HasAllowedNamespaces() {
+					if !allowedNamespaces[crdName][ns] {
+						allowedList := strings.Join(crd.AllowedNamespaces, ", ")
+						return fmt.Errorf(
+							"crd %q: idp.allowedTokens[%q].namespaces: %q is not in allowedNamespaces\n"+
+								"  Allowed namespaces: %s",
+							crdName, tokenName, ns, allowedList,
+						)
+					}
+				}
+
+				if crd.HasRestrictedNamespaces() {
+					if restrictedNamespaces[crdName][ns] {
+						restrictedList := strings.Join(crd.RestrictedNamespaces, ", ")
+						return fmt.Errorf(
+							"crd %q: idp.allowedTokens[%q].namespaces: %q is in restrictedNamespaces\n"+
+								"  Restricted namespaces: %s",
+							crdName, tokenName, ns, restrictedList,
+						)
+					}
+				}
 			}
 		}
 	}

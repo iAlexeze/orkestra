@@ -49,10 +49,11 @@ type Katalog struct {
 	Warnings orktypes.Warnings `json:"-"` // not serialized
 
 	// Indexes for O(1) lookups
-	kindIndex   map[string]string `yaml:"-" json:"-"` // kind -> crd name
-	gvkIndex    map[string]string `yaml:"-" json:"-"` // gvk.String() -> crd name
-	gvrIndex    map[string]string `yaml:"-" json:"-"` // gvr.String() -> crd name
-	targetIndex map[string]string `yaml:"-" json:"-"` // target -> crd name
+	kindIndex       map[string]string `yaml:"-" json:"-"` // kind -> crd name
+	apiVersionIndex map[string]string `yaml:"-" json:"-"` // apiVersion -> crd name
+	gvkIndex        map[string]string `yaml:"-" json:"-"` // gvk.String() -> crd name
+	gvrIndex        map[string]string `yaml:"-" json:"-"` // gvr.String() -> crd name
+	targetIndex     map[string]string `yaml:"-" json:"-"` // target -> crd name
 }
 
 // EnabledCRDs returns a map of enabled CRDs keyed by their name.
@@ -81,9 +82,18 @@ func (k *Katalog) ListEnabledCRDPointers() []*orktypes.CRDEntry {
 	return entries
 }
 
-// IDPEnabledCRDs returns all CRDs with IDP enabled.
-func (k *Katalog) IDPEnabledCRDs() []*orktypes.CRDEntry {
-	return k.idpEnabledCRDs
+// EnabledCRDsList returns a slice of all enabled CRD entries.
+func (k *Katalog) EnabledCRDsList() []orktypes.CRDEntry {
+	entries := make([]orktypes.CRDEntry, 0, len(k.enabledCRDs))
+	for _, crd := range k.enabledCRDs {
+		entries = append(entries, crd)
+	}
+	return entries
+}
+
+// EnabledCRDMap returns the raw map of enabled CRDs.
+func (k *Katalog) EnabledCRDMap() map[string]orktypes.CRDEntry {
+	return k.enabledCRDs
 }
 
 // AllCRDs returns all CRDs including disabled ones (from Spec).

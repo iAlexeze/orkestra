@@ -9,6 +9,9 @@ import (
 // AvailableTargets returns the targets of all IDP-enabled CRDs, sorted
 // alphabetically. Used in error messages ("available targets: app, database")
 // and in the catalog endpoint.
+// AvailableTargets returns the targets of all IDP-enabled CRDs, sorted
+// alphabetically. Used in error messages ("available targets: app, database")
+// and in the catalog endpoint.
 func (k *Katalog) AvailableTargets() []string {
 	targets := make([]string, 0, len(k.enabledCRDs))
 	for _, crd := range k.enabledCRDs {
@@ -33,4 +36,13 @@ func (k *Katalog) IDPCatalog() []*orktypes.CRDEntry {
 		return catalog[i].IDPTarget() < catalog[j].IDPTarget()
 	})
 	return catalog
+}
+
+// IDPEnabledCRDs returns all IDP-enabled CRD entries as a slice.
+// Uses cached idpEnabledCRDs if available, otherwise builds it.
+func (k *Katalog) IDPEnabledCRDs() []*orktypes.CRDEntry {
+	if k.idpEnabledCRDs == nil {
+		return k.BuildIDPEnabledCRDs()
+	}
+	return k.idpEnabledCRDs
 }

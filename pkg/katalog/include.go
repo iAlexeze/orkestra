@@ -13,6 +13,13 @@ func populateIDPFieldsFromInclude(entry *orktypes.CRDEntry, katalogDir string) e
 	return nil
 }
 
+func populateIDPAllowedTokensFromInclude(entry *orktypes.CRDEntry, katalogDir string) error {
+	if err := orktypes.ExpandIDPAllowedTokensInclude(entry.IDP, katalogDir); err != nil {
+		return fmt.Errorf("idp.allowedTokens: %w", err)
+	}
+	return nil
+}
+
 func populateStatusFieldsFromInclude(entry *orktypes.CRDEntry, katalogDir string) error {
 	if err := orktypes.ExpandStatusInclude(entry.OperatorBox.Status, katalogDir); err != nil {
 		return fmt.Errorf("status: %w", err)

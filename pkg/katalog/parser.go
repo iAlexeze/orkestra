@@ -109,6 +109,9 @@ func (k *Katalog) KomposeRuntimeKatalog(
 	if err := orktypes.ExpandProfileInclude(&k.Profiles, k.katalogDir); err != nil {
 		return nil, fmt.Errorf("profiles: %w", err)
 	}
+	if err := orktypes.ExpandApplyAPIAuth(k.Gateway, k.katalogDir); err != nil {
+		return nil, fmt.Errorf("applyAPI: %w", err)
+	}
 
 	for name, entry := range k.enabledCRDs {
 		// Populate APITypes from crdFile before enrichment so isFullySpecified sees
@@ -239,7 +242,7 @@ func (k *Katalog) KomposeRuntimeKatalog(
 	k.BuildIndexes()
 
 	// Build all IDP enabled CRDs
-	k.BuildAllIDEnabledCRDs()
+	k.idpEnabledCRDs = k.BuildIDPEnabledCRDs()
 
 	return k.enabledCRDs, nil
 }
