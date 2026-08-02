@@ -5,6 +5,7 @@ import (
 
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 // EvaluatePayload applies idp.config.response to a CR object and returns the
@@ -47,7 +48,7 @@ func EvaluatePayload(
 	var base map[string]interface{}
 	if cfg.UseDefault() {
 		// Deep copy so we never mutate the original fetched object.
-		base = deepCopyMap(obj)
+		base = utils.DeepCopyMap(obj)
 	} else {
 		base = make(map[string]interface{})
 	}
@@ -73,86 +74,17 @@ func EvaluatePayload(
 	// Resolve the exclude expression to a comma-separated list of paths,
 	// then strip each path from base.
 	if cfg.HasExclude() {
-		paths := resolveExclude(cfg.Exclude, resolver)
-		for _, path := range paths {
-			deleteNestedPath(base, path)
+		for _, path := range cfg.Exclude {
+			// Each entry may itself be a template expression — evaluate it.
+			// toList returns a []string from a comma-separated value, but here
+			// we handle the case where a single entry resolves to a plain path.
+			resolved, err := resolver.Resolve(path)
+			if err != nil || resolved == "<no value>" {
+				continue // silent — exclusion failures never break the response
+			}
+			utils.DeleteNestedPath(base, strings.TrimSpace(resolved))
 		}
 	}
 
 	return base
-}
-
-// resolveExclude resolves the exclude expression to a slice of dot-notation
-// field paths. Accepts a plain comma-separated string or a template expression
-// that resolves to one. Returns nil on error — exclusion failures are silent
-// (the field stays in the response rather than the whole request failing).
-func resolveExclude(expr string, resolver *orktmpl.Resolver) []string {
-	if expr == "" {
-		return nil
-	}
-
-	// If the expression contains template syntax, resolve it first.
-	var raw string
-	if orktypes.IsTemplate(expr) {
-		resolved, err := resolver.Resolve(expr)
-		if err != nil || resolved == "<no value>" {
-			return nil
-		}
-		raw = resolved
-	} else {
-		raw = expr
-	}
-
-	// Split comma-separated paths and trim whitespace.
-	parts := strings.Split(raw, ",")
-	paths := make([]string, 0, len(parts))
-	for _, p := range parts {
-		trimmed := strings.TrimSpace(p)
-		if trimmed != "" {
-			paths = append(paths, trimmed)
-		}
-	}
-	return paths
-}
-
-// deleteNestedPath removes a dot-notation path from a nested map in place.
-// Silently does nothing when the path does not exist — partial paths are not
-// errors. Supports arbitrary depth: "metadata.managedFields",
-// "status.observedGeneration", "metadata.annotations.internal-key".
-func deleteNestedPath(obj map[string]interface{}, path string) {
-	parts := strings.SplitN(path, ".", 2)
-	if len(parts) == 0 || obj == nil {
-		return
-	}
-
-	key := parts[0]
-	if len(parts) == 1 {
-		// Leaf — delete this key.
-		delete(obj, key)
-		return
-	}
-
-	// Intermediate — recurse into the nested map if it exists.
-	if nested, ok := obj[key].(map[string]interface{}); ok {
-		deleteNestedPath(nested, parts[1])
-	}
-}
-
-// deepCopyMap returns a shallow-to-one-level deep copy of a map[string]interface{}.
-// Nested maps are also copied; slices and scalar values share the same pointer.
-// Sufficient for our use case: we only modify top-level keys and nested map keys
-// via deleteNestedPath — we never mutate slice elements or scalar values.
-func deepCopyMap(src map[string]interface{}) map[string]interface{} {
-	if src == nil {
-		return nil
-	}
-	dst := make(map[string]interface{}, len(src))
-	for k, v := range src {
-		if nested, ok := v.(map[string]interface{}); ok {
-			dst[k] = deepCopyMap(nested)
-		} else {
-			dst[k] = v
-		}
-	}
-	return dst
 }

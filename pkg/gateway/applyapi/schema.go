@@ -46,14 +46,30 @@ func schemaHandler(kat *katalog.Katalog) http.HandlerFunc {
 		}
 
 		target := r.URL.Query().Get("target")
+
+		// ─── Catalog mode ──────────────────────────────────────────────────────
 		if target == "" {
+			// Check list permission on a representative CRD (or skip if none)
+			// For catalog, we check permission on the first available CRD,
+			// or allow if the user has any schema access.
+			if !hasAnySchemaPermission(r, kat.IDPEnabledCRDs) {
+				http.Error(w, "permission denied", http.StatusForbidden)
+				return
+			}
 			handleSchemaCatalog(w, r, kat.IDPEnabledCRDs)
 			return
 		}
 
+		// ─── Per-target mode ──────────────────────────────────────────────────
 		crd := kat.LookupByTarget(target)
 		if crd == nil || !crd.IDPEnabled() {
 			http.Error(w, "target not found", http.StatusNotFound)
+			return
+		}
+
+		// Check get permission on this specific target
+		if !checkIDPPermission(w, r, crd, orktypes.IDPClassSchema, orktypes.IDPOpGet, "") {
+			http.Error(w, "permission denied", http.StatusForbidden)
 			return
 		}
 
@@ -62,19 +78,12 @@ func schemaHandler(kat *katalog.Katalog) http.HandlerFunc {
 			title = crd.Kind()
 		}
 
-		var required []string
-		for _, field := range crd.IDPFields() {
-			if field.Required {
-				required = append(required, title)
-			}
-		}
-
 		utils.WriteJSON(w, http.StatusOK, SchemaResponse{
 			Target:      crd.IDPTarget(),
 			Title:       title,
 			Description: crd.IDP.Description,
 			Fields:      crd.IDPFields(),
-			Required: required,
+			Required:    getRequiredFields(crd),
 		})
 	}
 }
@@ -89,17 +98,10 @@ func handleSchemaCatalog(
 	p := utils.ParsePagination(r)
 
 	entries := make([]CatalogEntry, 0, len(all))
-	var required []string
 	for _, crd := range all {
 		title := crd.IDP.Title
 		if title == "" {
 			title = crd.Kind()
-		}
-
-		for _, field := range crd.IDPFields() {
-			if field.Required {
-				required = append(required, title)
-			}
 		}
 
 		entries = append(entries, CatalogEntry{
@@ -107,7 +109,7 @@ func handleSchemaCatalog(
 			Title:       title,
 			Description: crd.IDP.Description,
 			Category:    crd.IDP.Category,
-			Required:    required,
+			Required:    getRequiredFields(crd),
 		})
 	}
 
@@ -118,4 +120,41 @@ func handleSchemaCatalog(
 		Offset: p.Offset,
 		Items:  page,
 	})
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+// getRequiredFields returns the names of all required fields in the IDP config.
+func getRequiredFields(crd *orktypes.CRDEntry) []string {
+	var required []string
+	for name, field := range crd.IDPFields() {
+		if field.Required {
+			required = append(required, name)
+		}
+	}
+	return required
+}
+
+// hasAnySchemaPermission checks if the caller has any schema access.
+// Used for the catalog endpoint when listing all targets.
+func hasAnySchemaPermission(r *http.Request, catalog func() []*orktypes.CRDEntry) bool {
+	tokenName := TokenNameFromContext(r.Context())
+	if tokenName == "" {
+		return false
+	}
+
+	for _, crd := range catalog() {
+		if crd.IDP != nil && crd.IDP.HasTokenRestrictions() {
+			allowed, _ := crd.IDP.TokenAllowed(
+				tokenName, orktypes.IDPOpList, "", orktypes.IDPClassSchema,
+			)
+			if allowed {
+				return true
+			}
+		} else {
+			// No restrictions — any authenticated token can list
+			return true
+		}
+	}
+	return false
 }

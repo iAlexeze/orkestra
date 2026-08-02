@@ -9,10 +9,19 @@ import (
 )
 
 func TestIsTargetRequest(t *testing.T) {
-	assert.True(t, isTargetRequest(map[string]interface{}{"target": "app"}))
-	assert.True(t, isTargetRequest(map[string]interface{}{"target": "app", "apiVersion": "v1"}))
-	assert.False(t, isTargetRequest(map[string]interface{}{"apiVersion": "v1", "kind": "App"}))
-	assert.False(t, isTargetRequest(map[string]interface{}{}))
+	assert.True(t, IsTargetRequest(map[string]interface{}{
+		"target": "app",
+	}))
+	// target wins even when apiVersion is also present (gradual migration path)
+	assert.True(t, IsTargetRequest(map[string]interface{}{
+		"target":     "app",
+		"apiVersion": "v1",
+	}))
+	assert.False(t, IsTargetRequest(map[string]interface{}{
+		"apiVersion": "platform.myorg.io/v1",
+		"kind":       "App",
+	}))
+	assert.False(t, IsTargetRequest(map[string]interface{}{}))
 }
 
 func TestBuildCRFromTarget(t *testing.T) {

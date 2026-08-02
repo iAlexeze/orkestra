@@ -5,12 +5,13 @@
 //
 // Route layout:
 //
-//		POST   /api/v1/apply                          → applyHandler
-//	 	GET    /api/v1/resources/{kind}/{ns}          → resourcesHandler — list
-//		GET    /api/v1/resources/{kind}/{ns}[/{name}] → resourcesHandler — get
-//		DELETE /api/v1/resources/{kind}/{ns}/{name}   → resourcesHandler — delete
-//		GET    /api/v1/schema/                        → schemaHandler — (service catalog — IDP-enabled CRDs)
-//	 	GET    /api/v1/schema?target=<t>              → schemaHandler — schema for target
+//			POST   /api/v1/apply                          → applyHandler
+//		 	GET    /api/v1/resources/{kind}/{ns}          → resourcesHandler — list
+//			GET    /api/v1/resources/{kind}/{ns}[/{name}] → resourcesHandler — get
+//			DELETE /api/v1/resources/{kind}/{ns}/{name}   → resourcesHandler — delete
+//			GET    /api/v1/schema/                        → schemaHandler — (service catalog — IDP-enabled CRDs)
+//		 	GET    /api/v1/schema?target=<t>              → schemaHandler — schema for target
+//	  	GET    /api/v1/raw-schema?kind=<k>            → schemaHandler — raw Kubernetes OpenAPI spec schema
 //
 // All routes are wrapped by AuthMiddleware before registration.
 package applyapi
@@ -117,5 +118,8 @@ func (s *ApplyAPIServer) Register(reg Registrar) {
 	// GET /api/v1/schema/...
 	reg.Register("/api/v1/schema/", auth(schemaHandler(s.kat)))
 
-	logger.Info().Msg("apply API routes registered: /api/v1/apply, /api/v1/resources/, /api/v1/schema/")
+	// GET /api/v1/raw-schema
+	reg.Register("/api/v1/raw-schema", auth(rawSchemaHandler(s.kube, s.kat)))
+
+	logger.Info().Msg("apply API routes registered: /api/v1/apply, /api/v1/resources/, /api/v1/schema/, /api/v1/raw-schema")
 }

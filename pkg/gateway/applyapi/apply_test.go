@@ -36,7 +36,7 @@ func appRequestBody(name string) []byte {
 
 func TestApplyHandler_MissingName_Rejected(t *testing.T) {
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
-	h := applyHandler(kube, noopLookup, orktypes.NoteRegistry{})
+	h := applyHandler(kube, nil, orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/apply", bytes.NewReader(appRequestBody("")))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -61,7 +61,7 @@ func TestApplyHandler_MissingName_Rejected(t *testing.T) {
 
 func TestApplyHandler_NameSupplied_NotRejected(t *testing.T) {
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
-	h := applyHandler(kube, noopLookup, orktypes.NoteRegistry{})
+	h := applyHandler(kube, nil, orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/apply", bytes.NewReader(appRequestBody("payments-api")))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -78,15 +78,7 @@ func TestApplyHandler_NameSupplied_NotRejected(t *testing.T) {
 
 func TestApplyHandler_IDPName_ResolvesWithoutClientName(t *testing.T) {
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
-	lookup := func(kind string) *orktypes.CRDEntry {
-		if kind != "AppRequest" {
-			return nil
-		}
-		return &orktypes.CRDEntry{
-			IDP: &orktypes.IDPConfig{Enabled: true, Name: "resolved-name"},
-		}
-	}
-	h := applyHandler(kube, lookup, orktypes.NoteRegistry{})
+	h := applyHandler(kube, nil, orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/apply", bytes.NewReader(appRequestBody("")))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -102,7 +94,7 @@ func TestApplyHandler_IDPName_ResolvesWithoutClientName(t *testing.T) {
 }
 
 func TestApplyHandler_MethodNotAllowed(t *testing.T) {
-	h := applyHandler(nil, noopLookup, orktypes.NoteRegistry{})
+	h := applyHandler(nil, nil, orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/apply", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -112,7 +104,7 @@ func TestApplyHandler_MethodNotAllowed(t *testing.T) {
 }
 
 func TestApplyHandler_InvalidJSON(t *testing.T) {
-	h := applyHandler(nil, noopLookup, orktypes.NoteRegistry{})
+	h := applyHandler(nil, nil, orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/apply", strings.NewReader("not-json"))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -132,7 +124,7 @@ func TestApplyHandler_InvalidJSON(t *testing.T) {
 }
 
 func TestApplyHandler_EmptyBody(t *testing.T) {
-	h := applyHandler(nil, noopLookup, orktypes.NoteRegistry{})
+	h := applyHandler(nil, nil, orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/apply", bytes.NewReader([]byte{}))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)

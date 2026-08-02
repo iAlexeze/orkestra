@@ -20,7 +20,6 @@ package applyapi
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -56,7 +55,7 @@ func resourcesHandler(
 			return
 		}
 
-		if crd == nil || !crd.IDPEnabled() {
+		if !crd.IDPEnabled() {
 			http.Error(w, fmt.Sprintf("idp not enabled for %q", kind), http.StatusBadRequest)
 			return
 		}
@@ -93,7 +92,8 @@ func getResource(
 ) {
 	// When the CRD declares idp.allowedTokens, the authenticated token must
 	// have permission to perform the operation it is attempting.
-	if !checkIDPPermission(w, r, crd, orktypes.IDPOpGet, ns) {
+	if !checkIDPPermission(w, r, crd, orktypes.IDPClassResources, orktypes.IDPOpGet, ns) {
+		http.Error(w, "permission denied", http.StatusForbidden)
 		return
 	}
 
@@ -148,7 +148,8 @@ func listResources(
 	crd *orktypes.CRDEntry,
 	notes orktypes.NoteRegistry,
 ) {
-	if !checkIDPPermission(w, r, crd, orktypes.IDPOpList, ns) {
+	if !checkIDPPermission(w, r, crd, orktypes.IDPClassResources, orktypes.IDPOpList, ns) {
+		http.Error(w, "permission denied", http.StatusForbidden)
 		return
 	}
 
@@ -224,7 +225,8 @@ func deleteResource(
 		return
 	}
 
-	if !checkIDPPermission(w, r, crd, orktypes.IDPOpDelete, ns) {
+	if !checkIDPPermission(w, r, crd, orktypes.IDPClassResources, orktypes.IDPOpDelete, ns) {
+		http.Error(w, "permission denied", http.StatusForbidden)
 		return
 	}
 
@@ -238,46 +240,6 @@ func deleteResource(
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// resourcePath builds the canonical /api/v1/resources/{kind}/{namespace}/{name}
-// path for a CR. namespace is "" for cluster-scoped kinds — parsePath treats
-// an empty middle segment as "no namespace", so the result is a literal
-// doubled slash (e.g. /api/v1/resources/AppRequest//payments-api), which is
-// the documented shape for cluster-scoped lookups, not a bug.
-func resourcePath(kind, namespace, name string) string {
-	return fmt.Sprintf("/api/v1/resources/%s/%s/%s", kind, namespace, name)
-}
-
-// parsePath extracts kind, namespace, and optional name from
-// /api/v1/resources/{kind}/{namespace}[/{name}]
-func parsePath(path string) (kind, ns, name string, err error) {
-	// Strip prefix — the handler is registered at /api/v1/resources/
-	path = strings.TrimPrefix(path, "/api/v1/resources/")
-	path = strings.TrimPrefix(path, "/") // normalise double-slash
-
-	parts := strings.SplitN(path, "/", 3)
-	switch len(parts) {
-	case 2:
-		return parts[0], parts[1], "", nil
-	case 3:
-		return parts[0], parts[1], parts[2], nil
-	default:
-		return "", "", "", fmt.Errorf("path must be /{kind}/{namespace}[/{name}], got %q", path)
-	}
-}
-
-// writeKubeError maps common Kubernetes API errors to HTTP status codes.
-func writeKubeError(w http.ResponseWriter, err error) {
-	msg := err.Error()
-	switch {
-	case strings.Contains(msg, "not found") || strings.Contains(msg, "NotFound"):
-		http.Error(w, msg, http.StatusNotFound)
-	case strings.Contains(msg, "forbidden") || strings.Contains(msg, "Forbidden"):
-		http.Error(w, msg, http.StatusForbidden)
-	default:
-		http.Error(w, msg, http.StatusInternalServerError)
-	}
-}
-
 // checkIDPPermission is a single function used by all resource handlers
 // (get, list, delete). Keeps the permission logic in one place so changes to
 // the model propagate automatically.
@@ -288,8 +250,8 @@ func checkIDPPermission(
 	w http.ResponseWriter,
 	r *http.Request,
 	crd *orktypes.CRDEntry,
-	op string,
-	namespace string,
+	class orktypes.IDPEndpointClass,
+	op, ns string,
 ) bool {
 	if crd == nil || crd.IDP == nil || !crd.IDP.HasTokenRestrictions() {
 		// No restrictions declared — proceed.
@@ -297,11 +259,11 @@ func checkIDPPermission(
 	}
 
 	tokenName := TokenNameFromContext(r.Context())
-	allowed, reason := crd.IDP.TokenAllowed(tokenName, op, namespace)
+	allowed, reason := crd.IDP.TokenAllowed(tokenName, op, ns, class)
 	if !allowed {
 		http.Error(
 			w,
-			reason.Message(tokenName, op, crd.APITypes.Kind, namespace),
+			reason.Message(tokenName, op, crd.APITypes.Kind, ns),
 			http.StatusForbidden,
 		)
 		return false

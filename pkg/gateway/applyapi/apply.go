@@ -20,7 +20,6 @@ import (
 	"sync"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -50,9 +49,15 @@ type ApplyResponse struct {
 	Kind string `json:"kind,omitempty"`
 	// APIVersion is the CR apiVersion.
 	APIVersion string `json:"apiVersion,omitempty"`
-	// PollURL is the GET /api/v1/resources/{kind}/{namespace}/{name} path for
-	// this CR — callers can jq it straight out of the response instead of
-	// hand-assembling it from Kind/Namespace/Name.
+	// PollURL is the URL where the caller can GET the full state of this resource.
+	// By default, it points to /api/v1/resources/{kind}/{namespace}/{name}.
+	//
+	// The platform team can override this via idp.config.response.poll:
+	//   - poll.field:   appends ?field=<value> for lightweight polling
+	//   - poll.url:     replaces the URL entirely with a custom template
+	//
+	// Callers should use this URL for subsequent GET requests instead of
+	// assembling it themselves from Kind/Namespace/Name.
 	PollURL string `json:"pollUrl,omitempty"`
 	// Message carries the rejection reason on Accepted=false.
 	Message string `json:"message,omitempty"`
@@ -219,7 +224,7 @@ func applyHandler(
 				return
 			}
 
-			if crd == nil || !crd.IDPEnabled() {
+			if !crd.IDPEnabled() {
 				http.Error(w, fmt.Sprintf("idp not enabled for %q", full.GetKind()), http.StatusBadRequest)
 				return
 			}
@@ -258,7 +263,7 @@ func applyHandler(
 				op = orktypes.IDPOpUpdate
 			}
 
-			allowed, reason := crd.IDP.TokenAllowed(tokenName, op, obj.GetNamespace())
+			allowed, reason := crd.IDP.TokenAllowed(tokenName, op, obj.GetNamespace(), orktypes.IDPClassResources)
 			if !allowed {
 				msg := reason.Message(tokenName, op, obj.GetKind(), obj.GetNamespace())
 				utils.WriteJSON(w, http.StatusForbidden, ApplyResponse{
@@ -365,6 +370,16 @@ func applyHandler(
 			return
 		}
 
+		// Resolve configured polling url and field
+		resolver := orktmpl.NewResolverFromMap(raw).WithUserNotes(notes)
+		pollURL := resolvePollURL(
+			result.GetKind(),
+			result.GetNamespace(),
+			result.GetName(),
+			crd.GetIDPPollingConfig(),
+			resolver,
+		)
+
 		utils.WriteJSON(w, http.StatusOK, ApplyResponse{
 			Accepted:   true,
 			DryRun:     dryRun,
@@ -372,7 +387,7 @@ func applyHandler(
 			Namespace:  result.GetNamespace(),
 			Kind:       result.GetKind(),
 			APIVersion: result.GetAPIVersion(),
-			PollURL:    resourcePath(result.GetKind(), result.GetNamespace(), result.GetName()),
+			PollURL:    pollURL,
 			Warnings:   capture.collect(),
 			Payload:    payload,
 		})
@@ -424,47 +439,6 @@ func resolveIDPMeta(
 	}
 
 	return nil
-}
-
-// mapperRefresher is satisfied by kubeclient.KubeClient's real implementation,
-// deliberately not the interface itself — RefreshMapper is a real-cluster
-// discovery-cache concern that simulate's fake client has no reason to
-// implement, so resolveGVR type-asserts for it instead of widening the
-// shared interface.
-type mapperRefresher interface {
-	RefreshMapper()
-}
-
-// resolveGVR maps apiVersion+kind to a GroupVersionResource via the REST
-// mapper, retrying once after a cache refresh on a "no matches" error.
-//
-// The gateway's REST mapper is a DeferredDiscoveryRESTMapper built once at
-// startup — it caches whatever CRDs existed at that point and is never told
-// about ones applied afterward. The runtime avoids this because its
-// reconciler explicitly calls RefreshMapper() from its own post-start hooks
-// (pkg/runtime/kordinator/post_start_hooks.go) once it notices a CRD it was
-// waiting on now exists. The gateway has no equivalent watch loop, so
-// without this retry, an Apply API request for a CRD applied after the
-// gateway pod started 404s forever — "no REST mapping" / "the server could
-// not find the requested resource" — until the pod restarts and builds a
-// fresh cache.
-func resolveGVR(kube kubeclient.KubeClient, apiVersion, kind string) (schema.GroupVersionResource, error) {
-	gv, err := schema.ParseGroupVersion(apiVersion)
-	if err != nil {
-		return schema.GroupVersionResource{}, fmt.Errorf("invalid apiVersion %q: %w", apiVersion, err)
-	}
-	gk := schema.GroupKind{Group: gv.Group, Kind: kind}
-	mapping, err := kube.Mapper().RESTMapping(gk, gv.Version)
-	if err != nil && meta.IsNoMatchError(err) {
-		if r, ok := kube.(mapperRefresher); ok {
-			r.RefreshMapper()
-			mapping, err = kube.Mapper().RESTMapping(gk, gv.Version)
-		}
-	}
-	if err != nil {
-		return schema.GroupVersionResource{}, fmt.Errorf("no REST mapping for %s/%s: %w", apiVersion, kind, err)
-	}
-	return mapping.Resource, nil
 }
 
 func boolPtr(b bool) *bool { return &b }
