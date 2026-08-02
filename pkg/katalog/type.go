@@ -36,6 +36,7 @@ type Katalog struct {
 	// Internal — enabledCRDs is enriched and validated; Spec.CRDs holds all (including disabled)
 	metadata           orktypes.KatalogMeta         `yaml:"-" json:"-"`
 	enabledCRDs        map[string]orktypes.CRDEntry `yaml:"-" json:"-"`
+	idpEnabledCRDs     []*orktypes.CRDEntry         `yaml:"-" json:"-"`
 	withCRDFiles       []string                     `yaml:"-" json:"-"` // CRD names that declared crdFile, captured before the field is cleared
 	katalogDir         string                       `yaml:"-" json:"-"`
 	conversionRegistry *InMemoryConversionRegistry
@@ -47,11 +48,42 @@ type Katalog struct {
 	// Warnings collects non‑fatal validation messages for this CRD.
 	Warnings orktypes.Warnings `json:"-"` // not serialized
 
+	// Indexes for O(1) lookups
+	kindIndex   map[string]string `yaml:"-" json:"-"` // kind -> crd name
+	gvkIndex    map[string]string `yaml:"-" json:"-"` // gvk.String() -> crd name
+	gvrIndex    map[string]string `yaml:"-" json:"-"` // gvr.String() -> crd name
+	targetIndex map[string]string `yaml:"-" json:"-"` // target -> crd name
 }
 
-// EnabledCRDs returns a map of enabled CRDs.
+// EnabledCRDs returns a map of enabled CRDs keyed by their name.
 func (k *Katalog) EnabledCRDs() map[string]orktypes.CRDEntry {
 	return k.enabledCRDs
+}
+
+// ListEnabledCRDs returns a slice of all enabled CRD entries.
+// Use this for iteration when the map key is not needed.
+func (k *Katalog) ListEnabledCRDs() []orktypes.CRDEntry {
+	entries := make([]orktypes.CRDEntry, 0, len(k.enabledCRDs))
+	for _, crd := range k.enabledCRDs {
+		entries = append(entries, crd)
+	}
+	return entries
+}
+
+// ListEnabledCRDPointers returns a slice of pointers to all enabled CRD entries.
+// Use this when you need to modify CRD entries or avoid copying.
+func (k *Katalog) ListEnabledCRDPointers() []*orktypes.CRDEntry {
+	entries := make([]*orktypes.CRDEntry, 0, len(k.enabledCRDs))
+	for _, crd := range k.enabledCRDs {
+		crdCopy := crd
+		entries = append(entries, &crdCopy)
+	}
+	return entries
+}
+
+// IDPEnabledCRDs returns all CRDs with IDP enabled.
+func (k *Katalog) IDPEnabledCRDs() []*orktypes.CRDEntry {
+	return k.idpEnabledCRDs
 }
 
 // AllCRDs returns all CRDs including disabled ones (from Spec).

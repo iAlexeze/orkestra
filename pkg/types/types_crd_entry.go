@@ -314,6 +314,35 @@ func (c *CRDEntry) RequireIDPName() bool {
 	return !c.HasIDPName()
 }
 
+// IsIDPRequiredField reports whether the given field name is declared as a
+// required field in the IDP configuration.
+//
+// A field is considered required if:
+//   - It exists in idp.fields with required: true, or
+//   - It exists in idp.additionalFields.labels with required: true, or
+//   - It exists in idp.additionalFields.annotations with required: true
+//
+// Used by the Control Center to mark form fields as required and by the
+// gateway to validate target-mode requests before building the CR.
+func (c *CRDEntry) IsIDPRequiredField(field string) bool {
+	if c.IDP == nil {
+		return false
+	}
+	if c.IDP.Fields == nil || c.IDP.AdditionalFields == nil {
+		return false
+	}
+	if _, ok := c.IDP.Fields[field]; ok {
+		return true
+	}
+	if _, ok := c.IDP.AdditionalFields.Labels[field]; ok {
+		return true
+	}
+	if _, ok := c.IDP.AdditionalFields.Annotations[field]; ok {
+		return true
+	}
+	return false
+}
+
 // HasIDPNamespace reports whether idp.namespace is declared — the Apply API
 // only resolves and applies a namespace override when this is true.
 func (c *CRDEntry) HasIDPNamespace() bool {

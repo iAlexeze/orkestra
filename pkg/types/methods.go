@@ -214,6 +214,16 @@ func (c *CRDEntry) GVK() schema.GroupVersionKind {
 	return c.GroupVersionKind
 }
 
+// APIVersion returns the API version string (group/version) for this CRD.
+func (c *CRDEntry) APIVersion() string {
+	return c.GroupVersionKind.GroupVersion().String()
+}
+
+// Kind returns the kind string for this CRD.
+func (c *CRDEntry) Kind() string {
+	return c.GroupVersionKind.Kind
+}
+
 // GVKString returns the fully resolved GroupVersionKind for this CRD as a string.
 func (c *CRDEntry) GVKString() string {
 	return c.GroupVersionKind.String()

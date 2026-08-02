@@ -323,5 +323,12 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 42. Validate IDP targets per CRD; uniquness across the katalog
+	// -------------------------------------------------------------------------
+	if err := k.validateIDPTarget(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }

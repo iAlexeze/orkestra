@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -26,6 +27,7 @@ import (
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 
+	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -117,9 +119,13 @@ func scopedDynamic(kube kubeclient.KubeClient, capture *warningCapture) dynamic.
 	return d
 }
 
-// Handler returns the http.HandlerFunc for POST /api/v1/apply.
+// applyHandler returns the http.HandlerFunc for POST /api/v1/apply.
 // The auth middleware must wrap this handler before registration.
-func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes.CRDEntry, notes orktypes.NoteRegistry) http.HandlerFunc {
+func applyHandler(
+	kube kubeclient.KubeClient,
+	kat *katalog.Katalog,
+	notes orktypes.NoteRegistry,
+) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -134,19 +140,11 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 			return
 		}
 
-		// Decode into unstructured so we can resolve the GVR.
-		var obj unstructured.Unstructured
-		if err := json.Unmarshal(body, &obj); err != nil {
+		// Decode into a raw map first to detect target vs full CR mode.
+		var raw map[string]interface{}
+		if err := json.Unmarshal(body, &raw); err != nil {
 			utils.WriteJSON(w, http.StatusBadRequest, ApplyResponse{
 				Message: fmt.Sprintf("invalid JSON: %v", err),
-			})
-			return
-		}
-
-		gvr, err := resolveGVR(kube, obj.GetAPIVersion(), obj.GetKind())
-		if err != nil {
-			utils.WriteJSON(w, http.StatusBadRequest, ApplyResponse{
-				Message: fmt.Sprintf("unknown resource: %v", err),
 			})
 			return
 		}
@@ -154,7 +152,91 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 		dryRun := r.URL.Query().Get("dryRun") == "true"
 		overwrite := r.URL.Query().Get("overwrite") == "true"
 
-		crd := lookup(obj.GetKind())
+		var (
+			obj *unstructured.Unstructured
+			crd *orktypes.CRDEntry
+			gvr schema.GroupVersionResource
+		)
+
+		// ── Format detection ──────────────────────────────────────────────────
+		if isTargetRequest(raw) {
+			// ── Target mode ───────────────────────────────────────────────────
+			// Caller submitted flat fields alongside a target identifier.
+			// The gateway builds the full CR from the IDP field declaration.
+			target, _ := raw["target"].(string)
+			if strings.TrimSpace(target) == "" {
+				utils.WriteJSON(w, http.StatusBadRequest, ApplyResponse{
+					Message: `"target" must be a non-empty string`,
+				})
+				return
+			}
+
+			crd = kat.LookupByTarget(target)
+			if crd == nil {
+				utils.WriteJSON(w, http.StatusBadRequest, ApplyResponse{
+					Message: fmt.Sprintf(
+						"unknown target %q — available: %s",
+						target,
+						strings.Join(kat.AvailableTargets(), ", "),
+					),
+				})
+				return
+			}
+
+			built, err := BuildCRFromTarget(raw, crd, notes)
+			if err != nil {
+				utils.WriteJSON(w, http.StatusBadRequest, ApplyResponse{
+					Message: err.Error(),
+				})
+				return
+			}
+			obj = built
+			gvr = crd.GVR()
+
+		} else {
+			// ── Full CR mode ──────────────────────────────────────────────────
+			// Caller provided a complete Kubernetes CR. Unmarshal directly.
+			var full unstructured.Unstructured
+			if err := json.Unmarshal(body, &full); err != nil {
+				utils.WriteJSON(w, http.StatusBadRequest, ApplyResponse{
+					Message: fmt.Sprintf("invalid CR JSON: %v", err),
+				})
+				return
+			}
+
+			if full.GetKind() == "" || full.GetAPIVersion() == "" {
+				utils.WriteJSON(w, http.StatusBadRequest, ApplyResponse{
+					Message: `request must include "apiVersion" and "kind" in full CR mode`,
+				})
+				return
+			}
+
+			crd = kat.LookupByKind(full.GetKind())
+			if crd == nil {
+				utils.WriteJSON(w, http.StatusBadRequest, ApplyResponse{
+					Message: fmt.Sprintf("unknown kind %q", full.GetKind()),
+				})
+				return
+			}
+
+			if crd == nil || !crd.IDPEnabled() {
+				http.Error(w, fmt.Sprintf("idp not enabled for %q", full.GetKind()), http.StatusBadRequest)
+				return
+			}
+
+			// Resolve idp.name and idp.namespace when declared on the CRD.
+			// In full CR mode the submitted spec is the resolver data source.
+			obj = &full
+			if err := resolveIDPMeta(obj, crd, notes); err != nil {
+				utils.WriteJSON(w, http.StatusBadRequest, ApplyResponse{
+					Message: err.Error(),
+				})
+				return
+			}
+
+			// Resolve GVR from the CRD entry.
+			gvr = crd.GVR()
+		}
 
 		// ── Token permission check ────────────────────────────────────────────────
 		// When the CRD declares idp.allowedTokens, the authenticated token must
@@ -164,9 +246,8 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 		// for the resource before applying. SSA would succeed either way, but the
 		// permission model distinguishes them so platform teams can allow CI to
 		// create staging CRs without allowing it to overwrite production ones.
+		tokenName := TokenNameFromContext(r.Context())
 		if crd != nil && crd.IDP != nil && crd.IDP.HasTokenRestrictions() {
-			tokenName := TokenNameFromContext(r.Context())
-
 			// Determine create vs update before the SSA call.
 			op := orktypes.IDPOpCreate
 			_, probeErr := kube.DynamicClient().
@@ -179,11 +260,12 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 
 			allowed, reason := crd.IDP.TokenAllowed(tokenName, op, obj.GetNamespace())
 			if !allowed {
+				msg := reason.Message(tokenName, op, obj.GetKind(), obj.GetNamespace())
 				utils.WriteJSON(w, http.StatusForbidden, ApplyResponse{
-					Message: reason.Message(tokenName, op, obj.GetKind(), obj.GetNamespace()),
+					Message: msg,
 					Violations: []ApplyViolation{{
 						Field:    "metadata",
-						Message:  reason.Message(tokenName, op, obj.GetKind(), obj.GetNamespace()),
+						Message:  msg,
 						Severity: "error",
 					}},
 				})
@@ -197,14 +279,6 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 			overwrite = crd.IDP.ForceConflict
 		}
 
-		patchOpts := metav1.PatchOptions{
-			FieldManager: konfig.FieldManagerGateway,
-			Force:        boolPtr(overwrite),
-		}
-		if dryRun {
-			patchOpts.DryRun = []string{metav1.DryRunAll}
-		}
-
 		// idp.name, once declared, always decides — it overrides whatever
 		// (if anything) the client sent. Resolved against exactly what the
 		// client submitted (labels/annotations/spec), same resolver+notes
@@ -212,18 +286,9 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 		// is not declared, a name is required from the caller — reject here
 		// with a structured violation instead of letting the SSA patch fail
 		// with a raw "metadata.name is required" from the API server.
-		if crd != nil && crd.HasIDPName() {
-			resolver := orktmpl.NewResolverFromMap(obj.Object).WithUserNotes(notes)
-			if resolved, err := resolver.Resolve(crd.IDP.Name); err == nil && resolved != "" {
-				obj.SetName(resolved)
-			} else {
-				logger.FromContext(r.Context()).Warn().
-					Str("kind", obj.GetKind()).
-					Str("idp.name", crd.IDP.Name).
-					Err(err).
-					Msg("apply API: idp.name did not resolve to a value")
-			}
-		} else if obj.GetName() == "" {
+		// Note: In target mode, BuildCRFromTarget already handles this.
+		// In full CR mode, resolveIDPMeta handles it above.
+		if obj.GetName() == "" {
 			utils.WriteJSON(w, http.StatusUnprocessableEntity, ApplyResponse{
 				DryRun:  dryRun,
 				Message: "name is required",
@@ -239,23 +304,31 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 		// idp.namespace works the same way as idp.name above, so namespace
 		// stops being something any Apply API caller (Control Center, curl,
 		// CI) needs to know or supply.
-		if crd != nil && crd.HasIDPNamespace() {
-			resolver := orktmpl.NewResolverFromMap(obj.Object).WithUserNotes(notes)
-			if resolved, err := resolver.Resolve(crd.IDP.Namespace); err == nil && resolved != "" {
-				obj.SetNamespace(resolved)
-			} else {
-				logger.FromContext(r.Context()).Warn().
-					Str("kind", obj.GetKind()).
-					Str("idp.namespace", crd.IDP.Namespace).
-					Err(err).
-					Msg("apply API: idp.namespace did not resolve to a value")
-			}
+		if obj.GetNamespace() == "" {
+			utils.WriteJSON(w, http.StatusUnprocessableEntity, ApplyResponse{
+				DryRun:  dryRun,
+				Message: "namespace is required",
+				Violations: []ApplyViolation{{
+					Field:    "metadata.namespace",
+					Message:  "namespace is required",
+					Severity: "error",
+				}},
+			})
+			return
+		}
+
+		patchOpts := metav1.PatchOptions{
+			FieldManager: konfig.FieldManagerGateway,
+			Force:        boolPtr(overwrite),
+		}
+		if dryRun {
+			patchOpts.DryRun = []string{metav1.DryRunAll}
 		}
 
 		// Evaluate idp.config.response.payload against the submitted CR.
 		// At apply time the stored result is not yet available — we evaluate
 		// against the body we just applied. The caller can poll GET for live values.
-		payload := EvaluatePayload(obj.Object, lookup(obj.GetKind()), notes)
+		payload := EvaluatePayload(obj.Object, crd, notes)
 
 		ns := obj.GetNamespace()
 		capture := &warningCapture{}
@@ -304,6 +377,53 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 			Payload:    payload,
 		})
 	}
+}
+
+// resolveIDPMeta resolves idp.name and idp.namespace on a full CR in-place.
+// Called in full CR mode when the platform team has set these expressions on
+// the CRD — the submitted spec fields are the resolver data source.
+func resolveIDPMeta(
+	obj *unstructured.Unstructured,
+	crd *orktypes.CRDEntry,
+	notes orktypes.NoteRegistry,
+) error {
+	if crd.IDP == nil {
+		return nil
+	}
+
+	// Build resolver from the submitted spec so expressions like
+	// `{{ .repository }}` resolve against spec fields.
+	data := map[string]interface{}{}
+	if spec, ok := obj.Object["spec"].(map[string]interface{}); ok {
+		for k, v := range spec {
+			data[k] = v
+		}
+	}
+	resolver := orktmpl.NewResolverFromMap(data).WithUserNotes(notes)
+
+	if crd.HasIDPName() {
+		name, err := resolver.Resolve(crd.IDP.Name)
+		if err != nil || strings.TrimSpace(name) == "" {
+			return fmt.Errorf(
+				"idp.name %q could not be resolved: %w",
+				crd.IDP.Name, err,
+			)
+		}
+		obj.SetName(strings.TrimSpace(name))
+	}
+
+	if crd.HasIDPNamespace() {
+		ns, err := resolver.Resolve(crd.IDP.Namespace)
+		if err != nil || strings.TrimSpace(ns) == "" {
+			return fmt.Errorf(
+				"idp.namespace %q could not be resolved: %w",
+				crd.IDP.Namespace, err,
+			)
+		}
+		obj.SetNamespace(strings.TrimSpace(ns))
+	}
+
+	return nil
 }
 
 // mapperRefresher is satisfied by kubeclient.KubeClient's real implementation,

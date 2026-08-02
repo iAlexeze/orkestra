@@ -46,6 +46,10 @@ type IDPConfig struct {
 	// system-managed or operator-internal fields from developers.
 	IgnoreFields []string `yaml:"ignoreFields,omitempty" json:"ignoreFields,omitempty"`
 
+	// Title is the human-readable name shown in the Control Center catalog.
+	// Defaults to kind when not set.
+	Title string `yaml:"title,omitempty" json:"title,omitempty"`
+
 	// Category is a catalog label used when listing available schemas
 	// via GET /api/v1/schema/. Example: "Compute", "Data", "Security".
 	Category string `yaml:"category,omitempty" json:"category,omitempty"`
@@ -53,6 +57,12 @@ type IDPConfig struct {
 	// Description is a short human-readable summary shown in the service catalog.
 	// Falls back to the CRD-level description when not set.
 	Description string `yaml:"description,omitempty" json:"description,omitempty"`
+
+	// Target is the caller-facing identifier for this CRD in the Apply API.
+	// Defaults to the lowercased kind when not set.
+	// Must be lowercase alphanumeric with optional hyphens.
+	// Must be unique across all IDP-enabled CRDs in this Katalog.
+	Target string `yaml:"target,omitempty" json:"target,omitempty"`
 
 	// ForceConflict, when true, sets Force: true on every server-side apply
 	// for this CRD — the gateway takes ownership of any conflicting fields

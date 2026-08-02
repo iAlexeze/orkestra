@@ -235,5 +235,11 @@ func (k *Katalog) KomposeRuntimeKatalog(
 		return nil, err
 	}
 
+	// Build indexes for O(1) lookups
+	k.BuildIndexes()
+
+	// Build all IDP enabled CRDs
+	k.BuildAllIDEnabledCRDs()
+
 	return k.enabledCRDs, nil
 }
