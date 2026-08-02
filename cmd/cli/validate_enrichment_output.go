@@ -31,13 +31,13 @@ import (
 
 // printCRDValidationLine prints one CRD entry's validation result.
 // Shows enrichment clearly when it occurred, and any warnings.
-func printCRDValidationLine(entry orktypes.CRDEntry, katalogProtected, katalogStrictMode bool) {
+func printCRDValidationLine(k *katalog.Katalog, entry orktypes.CRDEntry) {
 	printCRDHeader(entry)
-	strictModeText := getStrictModeText(entry, katalogStrictMode)
+	strictModeText := getStrictModeText(entry, k.IsStrictModeEnabled())
 	printKindInfo(entry)
 	printModeResync(entry)
-	printProtectionStatus(entry, katalogProtected, strictModeText)
-	printWarnings(entry)
+	printProtectionStatus(entry, k.IsDeletionProtectionEnabled(), strictModeText)
+	printWarnings(entry.Warnings, k.Warnings)
 }
 
 // printCRDHeader prints the CRD name with appropriate icon.
@@ -135,15 +135,29 @@ func printProtectionStatus(entry orktypes.CRDEntry, katalogProtected bool, stric
 	fmt.Printf("    %s\n", gray(fullText))
 }
 
-// printWarnings prints any warnings associated with the CRD, with proper indentation.
-func printWarnings(entry orktypes.CRDEntry) {
-	for _, w := range entry.Warnings {
+// printWarnings prints any warnings associated with the CRD or Katalog,
+// with proper indentation.
+func printWarnings(crdWarnings, katalogWarnings []string) {
+	// Print CRD-level warnings
+	for _, w := range crdWarnings {
 		lines := strings.Split(w, "\n")
 		for i, line := range lines {
 			if i == 0 {
-				fmt.Printf("    warning: %s\n", gray(line))
+				fmt.Printf("    %s warning: %s\n", yellow("⚠"), gray(line))
 			} else {
-				fmt.Printf("             %s\n", gray(line)) // 13 spaces aligns with "warning: "
+				fmt.Printf("             %s\n", gray(line))
+			}
+		}
+	}
+
+	// Print Katalog-level warnings
+	for _, w := range katalogWarnings {
+		lines := strings.Split(w, "\n")
+		for i, line := range lines {
+			if i == 0 {
+				fmt.Printf("    %s warning: %s\n", yellow("⚠"), gray(line))
+			} else {
+				fmt.Printf("             %s\n", gray(line))
 			}
 		}
 	}

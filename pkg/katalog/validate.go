@@ -301,5 +301,27 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 41. Validate IDP response config — payload template compilation and
+	//     payload/exclude path conflicts (warnings, not errors).
+	// -------------------------------------------------------------------------
+	if err := k.validateIDPResponseConfig(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 41. Validate gateway tokens (no duplicates)
+	// -------------------------------------------------------------------------
+	if err := k.validateGatewayTokens(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 42. Validate IDP tokens and namespace restrictions per CRD
+	// -------------------------------------------------------------------------
+	if err := k.validateIDPTokenRestrictions(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }

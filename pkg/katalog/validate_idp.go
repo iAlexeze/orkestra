@@ -66,8 +66,8 @@ func errIDPOrderCollision(crd string, order int, names []string) error {
    CRD: %s
 
 Each idp.fields / idp.additionalFields entry needs a distinct order: value
-(0/unset doesn't count — any number of fields may leave it unset). Order now
-decides which field's violation is reported when more than one fails at
+(0/unset doesn't count — any number of fields may leave it unset).
+Order also decides which field's violation is reported when more than one fails at
 once, not just where it renders on the form.
 ──────────────────────────────────────────────`, failureMark(), strconv.Itoa(order), strings.Join(names, ", "), crd)
 }
@@ -169,9 +169,7 @@ func validateIDPAdditionalBucket(crdName, bucket string, fields map[string]orkty
 		}
 		seen[key] = bucketPath
 
-		// Validate that the type is one of the allowed types (checked in
-		// pkg/types, next to IDPFieldConfig itself — same pattern as
-		// orktypes.IsValidProtocol for validate_protocol.go).
+		// Validate that the type is one of the allowed types.
 		if !orktypes.IsValidIDPFieldType(cfg.Type) {
 			return errInvalidIDPType(crdName, bucket, key, cfg.Type)
 		}

@@ -97,9 +97,44 @@ type ApplyAPISecretRef struct {
 	RotateAfter string `yaml:"rotateAfter,omitempty" json:"rotateAfter,omitempty"`
 }
 
-// KatalogFile is the top-level structure of a crd-katalog.yaml file.
-// It contains optional sources (files and helm charts) plus inline CRDs.
-// Orkestra's in-built merger resolves all sources and merges everything into one KatalogSpec.
+// ── GatewayConfig methods ──────────────────────────────────────────
+
+// HasApplyAPI reports whether the Apply API is enabled and configured.
+func (g *GatewayConfig) HasApplyAPI() bool {
+	if g == nil {
+		return false
+	}
+	if g.ApplyAPI == nil {
+		return false
+	}
+	return g.ApplyAPI.Enabled
+}
+
+// ── ApplyAPIConfig methods ─────────────────────────────────────────
+
+// HasAuth reports whether the Apply API has authentication configured.
+func (a *ApplyAPIConfig) HasAuth() bool {
+	if a == nil {
+		return false
+	}
+	return a.Auth.HasTokens()
+}
+
+// ── ApplyAPIAuth methods ───────────────────────────────────────────
+
+// HasTokens reports whether at least one token is configured.
+func (a ApplyAPIAuth) HasTokens() bool {
+	return len(a.Tokens) > 0
+}
+
+// IsEmpty reports whether the auth struct is completely unconfigured.
+func (a ApplyAPIAuth) IsEmpty() bool {
+	return len(a.Tokens) == 0
+}
+
+// KatalogFile is the top-level structure of a katalog.yaml file.
+// It contains optional imports (files and helm charts) plus inline CRDs.
+// Orkestra's in-built merger resolves all imports and merges everything into one KatalogSpec.
 type KatalogFile struct {
 	APIVersion string          `yaml:"apiVersion"`
 	Kind       string          `yaml:"kind"`

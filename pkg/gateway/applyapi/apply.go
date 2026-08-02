@@ -60,6 +60,16 @@ type ApplyResponse struct {
 	// Violations is a structured list of field-level errors from admission or
 	// validation. Populated when Accepted=false and kubernetes returns Status details.
 	Violations []ApplyViolation `json:"violations,omitempty"`
+
+	// Payload carries the platform team's curated view of the submitted CR,
+	// evaluated from idp.config.response at apply time.
+	//
+	// At apply time .status is not yet available — payload fields that
+	// reference status resolve to "". The caller should poll
+	// GET /api/v1/resources/{kind}/{ns}/{name} for live status values.
+	//
+	// Omitted when the CRD has no idp.config.response declared.
+	Payload map[string]interface{} `json:"payload,omitempty"`
 }
 
 // ApplyViolation is one field-level error returned from Kubernetes on a failed apply.
@@ -146,6 +156,41 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 
 		crd := lookup(obj.GetKind())
 
+		// ── Token permission check ────────────────────────────────────────────────
+		// When the CRD declares idp.allowedTokens, the authenticated token must
+		// have permission to perform the operation it is attempting.
+		//
+		// We determine whether this is a create or update by probing the API server
+		// for the resource before applying. SSA would succeed either way, but the
+		// permission model distinguishes them so platform teams can allow CI to
+		// create staging CRs without allowing it to overwrite production ones.
+		if crd != nil && crd.IDP != nil && crd.IDP.HasTokenRestrictions() {
+			tokenName := TokenNameFromContext(r.Context())
+
+			// Determine create vs update before the SSA call.
+			op := orktypes.IDPOpCreate
+			_, probeErr := kube.DynamicClient().
+				Resource(gvr).
+				Namespace(obj.GetNamespace()).
+				Get(r.Context(), obj.GetName(), metav1.GetOptions{})
+			if probeErr == nil {
+				op = orktypes.IDPOpUpdate
+			}
+
+			allowed, reason := crd.IDP.TokenAllowed(tokenName, op, obj.GetNamespace())
+			if !allowed {
+				utils.WriteJSON(w, http.StatusForbidden, ApplyResponse{
+					Message: reason.Message(tokenName, op, obj.GetKind(), obj.GetNamespace()),
+					Violations: []ApplyViolation{{
+						Field:    "metadata",
+						Message:  reason.Message(tokenName, op, obj.GetKind(), obj.GetNamespace()),
+						Severity: "error",
+					}},
+				})
+				return
+			}
+		}
+
 		// CRD-level forceConflict is a katalog declaration; ?overwrite=true is a
 		// per-request override. Either one sets Force=true.
 		if !overwrite && crd != nil && crd.IDP != nil {
@@ -207,6 +252,11 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 			}
 		}
 
+		// Evaluate idp.config.response.payload against the submitted CR.
+		// At apply time the stored result is not yet available — we evaluate
+		// against the body we just applied. The caller can poll GET for live values.
+		payload := EvaluatePayload(obj.Object, lookup(obj.GetKind()), notes)
+
 		ns := obj.GetNamespace()
 		capture := &warningCapture{}
 		result, err := scopedDynamic(kube, capture).
@@ -237,6 +287,7 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 				Message:    message,
 				Warnings:   capture.collect(),
 				Violations: violations,
+				Payload:    payload,
 			})
 			return
 		}
@@ -250,6 +301,7 @@ func applyHandler(kube kubeclient.KubeClient, lookup func(kind string) *orktypes
 			APIVersion: result.GetAPIVersion(),
 			PollURL:    resourcePath(result.GetKind(), result.GetNamespace(), result.GetName()),
 			Warnings:   capture.collect(),
+			Payload:    payload,
 		})
 	}
 }
