@@ -307,6 +307,11 @@ func (c *CRDEntry) HasIDPName() bool {
 	return c.IDP != nil && c.IDP.Name != ""
 }
 
+// HasIDPFields reports whether this CRD declares any idp.fields.
+func (c *CRDEntry) HasIDPFields() bool {
+	return c.IDPEnabled() && c.IDP.Fields != nil && len(c.IDP.Fields) > 0
+}
+
 // RequireIDPName reports whether an Apply API caller (and the Control Center
 // form) must supply metadata.name themselves — true unless idp.name is
 // declared, in which case the name is resolved server-side instead.

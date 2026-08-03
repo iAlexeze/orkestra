@@ -103,7 +103,8 @@ The gateway Apply API is the uniform interface across all of those:
 | `GET /api/v1/resources/{kind}/{ns}/{name}` | Read CR state and status |
 | `GET /api/v1/resources/{kind}/{ns}` | List all CRs of a kind |
 | `DELETE /api/v1/resources/{kind}/{ns}/{name}` | Delete a CR |
-| `GET /api/v1/schema/{kind}` | Discover the CRD's spec schema and field hints |
+| `GET /api/v1/schema` | Discover the CRD's spec schema as fieldss |
+| `GET /api/v1/raw-schema` | Discover the CRD's raw spec schema and field hints |
 
 Every enforcement rule — admission, namespace protection, deletion protection — is the same regardless of delivery path. There is nothing to reconfigure per caller.
 
@@ -147,5 +148,6 @@ The pack runs three delivery paths against one `AppRequest` CRD — browser form
 
 ## Where to go next
 → [Additional Fields](01-additional-fields.md)
+→ [Target Mode](02-target-mode.md)
 
 → [Apply API reference](../../reference/schema/02-katalog/17-katalog-applyapi.md)

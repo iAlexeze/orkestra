@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/orkspace/orkestra/pkg/logger"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
@@ -76,7 +77,7 @@ func newCRSkeleton(crd *orktypes.CRDEntry) *unstructured.Unstructured {
 }
 
 // routeFields routes each submitted field to its declared destination:
-//   - idp.fields → spec
+//   - idp.fields → spec (supports nested dot-paths via 'path' field)
 //   - idp.additionalFields.labels → metadata.labels
 //   - idp.additionalFields.annotations → metadata.annotations
 //   - unknown fields are silently ignored
@@ -90,10 +91,13 @@ func routeFields(
 	annotations := meta["annotations"].(map[string]interface{})
 	spec := obj.Object["spec"].(map[string]interface{})
 
-	// Build O(1) destination sets from the IDP field declarations.
-	specFields := make(map[string]struct{}, len(crd.IDP.Fields))
-	for name := range crd.IDP.Fields {
-		specFields[name] = struct{}{}
+	// Build lookup maps
+	//   - specPathLookup: field name → spec path (flat or nested)
+	//   - labelFields: field name → config (for labels)
+	//   - annotationFields: field name → config (for annotations)
+	specPathLookup := make(map[string]string, len(crd.IDP.Fields))
+	for name, config := range crd.IDP.Fields {
+		specPathLookup[name] = config.SpecPath(name)
 	}
 	labelFields := crd.AdditionalLabelFields()
 	annotationFields := crd.AdditionalAnnotationFields()
@@ -104,19 +108,37 @@ func routeFields(
 			continue
 		}
 
-		switch {
-		case utils.SetContains(specFields, key):
-			spec[key] = value
-
-		case utils.MapContains(labelFields, key):
-			labels[key] = fmt.Sprintf("%v", value)
-
-		case utils.MapContains(annotationFields, key):
-			annotations[key] = fmt.Sprintf("%v", value)
-
-		default:
-			// Unknown field — silently ignored.
+		// ─── Spec fields (supports nested via path) ──────────────────────
+		if specPath, ok := specPathLookup[key]; ok {
+			if utils.IsNestedPath(specPath) {
+				// Nested path — set at the dot-notation path
+				if err := utils.SetNestedPath(spec, specPath, value); err != nil {
+					// Log error but continue — don't fail the request
+					logger.Error().Err(err).
+						Str("path", specPath).
+						Msg("apply api: failed to set spec path")
+					continue
+				}
+			} else {
+				// Flat path — direct assignment
+				spec[specPath] = value
+			}
+			continue
 		}
+
+		// ─── Labels ──────────────────────────────────────────────────────
+		if utils.MapContains(labelFields, key) {
+			labels[key] = fmt.Sprintf("%v", value)
+			continue
+		}
+
+		// ─── Annotations ──────────────────────────────────────────────────
+		if utils.MapContains(annotationFields, key) {
+			annotations[key] = fmt.Sprintf("%v", value)
+			continue
+		}
+
+		// Unknown field — silently ignored.
 	}
 }
 

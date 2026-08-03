@@ -20,5 +20,6 @@ var (
 	parseTimeDuration = utils.ParseTimeDuration
 
 	// helpers
-	toStringSet = utils.ToStringSet
+	toStringSet  = utils.ToStringSet
+	isNestedPath = utils.IsNestedPath
 )

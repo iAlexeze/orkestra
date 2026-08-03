@@ -356,6 +356,22 @@ Once set, no Apply API caller — Control Center, curl, CI — needs to know or 
 
 Three checks at `ork validate` time: required on a namespaced CRD with `idp.enabled: true`; rejected on a cluster-scoped one (`namespaced: false`) — nothing to resolve into; rejected when templated and the CRD's informer is pinned to one fixed namespace (`allowedNamespaces` with exactly one entry, or the legacy `namespace:` field) — a CR resolved outside that one namespace would exist but never be reconciled, silently. No equivalent checks exist for `idp.name` — there's no cluster-scoped/pinned-namespace-style conflict for a name to run into.
 
+### `idp.fields.path` — nested spec paths
+
+`idp.fields` entries now support a `path:` field mapping a flat field name to a nested dot-notation path in the CRD `spec`. Callers submit flat fields; the gateway maps them to nested locations.
+
+```yaml
+idp:
+  fields:
+    cpu:
+      path: app.resources.cpu
+      label: "CPU Request"
+```
+
+`ork validate` ensures paths are unique, formatted correctly, and warns on nested paths (schema existence validation coming later).
+
+→ [Nested fields with `path` reference](./documentation/reference/schema/02-katalog/21-idp-nested-spec.md)
+
 ### `POST /api/v1/apply` response: `pollUrl` replaces `resourceVersion`
 
 A successful apply now returns `pollUrl` — the exact `GET /api/v1/resources/{kind}/{namespace}/{name}` path for the CR just applied — instead of `resourceVersion`, which nothing consumed. Callers can `jq -r '.pollUrl'` straight into a poll loop instead of hand-assembling the path from `kind`/`namespace`/`name`. Cluster-scoped CRDs get an empty namespace segment (`/api/v1/resources/AppRequest//payments-api`), matching the existing `GET`/`DELETE` path convention.
