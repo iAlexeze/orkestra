@@ -102,7 +102,7 @@ func (s *ApplyAPIServer) Register(reg Registrar) {
 			bearer := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 			name := s.matches(strings.TrimSpace(bearer))
 			if name == "" {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				writeJSONError(w, http.StatusUnauthorized, "Unauthorized", "invalid token")
 				return
 			}
 			h.ServeHTTP(w, r.WithContext(contextWithTokenName(r.Context(), name)))
@@ -116,10 +116,10 @@ func (s *ApplyAPIServer) Register(reg Registrar) {
 	reg.Register("/api/v1/resources/", auth(resourcesHandler(s.kube, s.kat, notes)))
 
 	// GET /api/v1/schema/...
-	reg.Register("/api/v1/schema/", auth(schemaHandler(s.kat)))
+	reg.Register("/api/v1/schema", auth(schemaHandler(s.kat)))
 
 	// GET /api/v1/raw-schema
 	reg.Register("/api/v1/raw-schema", auth(rawSchemaHandler(s.kube, s.kat)))
 
-	logger.Info().Msg("apply API routes registered: /api/v1/apply, /api/v1/resources/, /api/v1/schema/, /api/v1/raw-schema")
+	logger.Info().Msg("apply API routes registered: /api/v1/apply, /api/v1/resources/, /api/v1/schema, /api/v1/raw-schema")
 }

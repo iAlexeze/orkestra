@@ -1,6 +1,7 @@
 package applyapi
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
@@ -41,7 +42,7 @@ type CatalogEntry struct {
 func schemaHandler(kat *katalog.Katalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed", "only GET requests are supported")
 			return
 		}
 
@@ -53,7 +54,7 @@ func schemaHandler(kat *katalog.Katalog) http.HandlerFunc {
 			// For catalog, we check permission on the first available CRD,
 			// or allow if the user has any schema access.
 			if !hasAnySchemaPermission(r, kat.IDPEnabledCRDs) {
-				http.Error(w, "permission denied", http.StatusForbidden)
+				writeJSONError(w, http.StatusForbidden, "permission denied", "token lacks required permission")
 				return
 			}
 			handleSchemaCatalog(w, r, kat.IDPEnabledCRDs)
@@ -63,13 +64,14 @@ func schemaHandler(kat *katalog.Katalog) http.HandlerFunc {
 		// ─── Per-target mode ──────────────────────────────────────────────────
 		crd := kat.LookupByTarget(target)
 		if crd == nil || !crd.IDPEnabled() {
-			http.Error(w, "target not found", http.StatusNotFound)
+			writeJSONError(w, http.StatusNotFound, "target not found",
+				fmt.Sprintf("target %q not found", target),
+			)
 			return
 		}
 
 		// Check get permission on this specific target
 		if !checkIDPPermission(w, r, crd, orktypes.IDPClassSchema, orktypes.IDPOpGet, "") {
-			http.Error(w, "permission denied", http.StatusForbidden)
 			return
 		}
 
@@ -78,7 +80,7 @@ func schemaHandler(kat *katalog.Katalog) http.HandlerFunc {
 			title = crd.Kind()
 		}
 
-		utils.WriteJSON(w, http.StatusOK, SchemaResponse{
+		writeJSON(w, http.StatusOK, SchemaResponse{
 			Target:      crd.IDPTarget(),
 			Title:       title,
 			Description: crd.IDP.Description,
@@ -95,7 +97,7 @@ func handleSchemaCatalog(
 	catalog func() []*orktypes.CRDEntry,
 ) {
 	all := catalog()
-	p := utils.ParsePagination(r)
+	p := parsePagination(r)
 
 	entries := make([]CatalogEntry, 0, len(all))
 	for _, crd := range all {
@@ -114,7 +116,7 @@ func handleSchemaCatalog(
 	}
 
 	page, total := utils.PageItems(entries, p)
-	utils.WriteJSON(w, http.StatusOK, utils.PaginatedResponse[CatalogEntry]{
+	writeJSON(w, http.StatusOK, utils.PaginatedResponse[CatalogEntry]{
 		Total:  total,
 		Limit:  p.Limit,
 		Offset: p.Offset,

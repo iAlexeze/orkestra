@@ -312,64 +312,53 @@ func ExpandIDPInclude(idp *IDPConfig, baseDir string) error {
 	return nil
 }
 
-// ExpandApplyAPIAuthTokens resolves include entries in GatewayConfig.ApplyAPI.Auth.
+// ExpandApplyAPIAuth resolves include entries in GatewayConfig.ApplyAPI.Auth.
 // If auth.Include is set, it reads the referenced file, unmarshals its "tokens:" list,
 // and merges it with the inline tokens. Inline tokens override included tokens
 // with the same name.
 // The include path is resolved relative to baseDir. Cleared after expansion.
-// ExpandApplyAPIAuthTokens resolves include entries in a []ApplyAPIToken list.
-// An entry with include: set is replaced in-place by the "tokens:" list from the
-// referenced file. Entries without include: are kept as-is.
-// The include path is resolved relative to baseDir.
-// Inline tokens override included tokens with the same name.
 func ExpandApplyAPIAuth(gw *GatewayConfig, baseDir string) error {
-	if gw == nil || gw.ApplyAPI == nil || gw.ApplyAPI.Auth.Tokens == nil {
+	if gw == nil || gw.ApplyAPI == nil {
 		return nil
 	}
-	tokens := gw.ApplyAPI.Auth.Tokens
-	if len(tokens) == 0 {
+	auth := &gw.ApplyAPI.Auth
+	if auth.Include == "" {
 		return nil
 	}
 
-	var expanded []ApplyAPIToken
-	var includedTokens []ApplyAPIToken
-	var inlineTokens []ApplyAPIToken
+	path := auth.Include
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(baseDir, path)
+	}
 
-	for _, token := range tokens {
-		if token.Include == "" {
-			inlineTokens = append(inlineTokens, token)
-			continue
-		}
-		path := token.Include
-		if !filepath.IsAbs(path) {
-			path = filepath.Join(baseDir, path)
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("reading external include %q: %w", token.Include, err)
-		}
-		var f struct {
-			Tokens []ApplyAPIToken `yaml:"tokens"`
-		}
-		if err := orkutils.StrictUnmarshal(data, &f); err != nil {
-			return fmt.Errorf("parsing external include %q: %w", token.Include, err)
-		}
-		includedTokens = append(includedTokens, f.Tokens...)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("reading applyAPI.auth.include %q: %w", auth.Include, err)
+	}
+
+	var f struct {
+		Tokens []ApplyAPIToken `yaml:"tokens"`
+	}
+	if err := orkutils.StrictUnmarshal(data, &f); err != nil {
+		return fmt.Errorf("parsing applyAPI.auth.include %q: %w", auth.Include, err)
 	}
 
 	// Merge: included tokens first, then inline overrides by name
 	merged := make(map[string]ApplyAPIToken)
-	for _, t := range includedTokens {
+	for _, t := range f.Tokens {
 		merged[t.Name] = t
 	}
-	for _, t := range inlineTokens {
+	for _, t := range auth.Tokens {
 		merged[t.Name] = t
 	}
 
-	expanded = make([]ApplyAPIToken, 0, len(merged))
+	// Convert map back to slice
+	auth.Tokens = make([]ApplyAPIToken, 0, len(merged))
 	for _, t := range merged {
-		expanded = append(expanded, t)
+		auth.Tokens = append(auth.Tokens, t)
 	}
+	auth.Include = ""
+
 	return nil
 }
 
@@ -384,7 +373,7 @@ func ExpandIDPAllowedTokensInclude(idp *IDPConfig, baseDir string) error {
 	}
 
 	at := idp.AllowedTokens
-	if at.Include == "" || len(at.Tokens) == 0 {
+	if at.Include == "" {
 		return nil
 	}
 
@@ -406,18 +395,17 @@ func ExpandIDPAllowedTokensInclude(idp *IDPConfig, baseDir string) error {
 	}
 
 	// Merge: included tokens first, then inline overrides
-	if at.Tokens == nil {
-		at.Tokens = make(map[string]IDPTokenPermissions)
-	}
-	// First copy included tokens
+	merged := make(map[string]IDPTokenPermissions)
 	for k, v := range f.AllowedTokens {
-		at.Tokens[k] = v
+		merged[k] = v
 	}
-	// Then override with inline tokens (same map, so just reassign)
 	for k, v := range at.Tokens {
-		at.Tokens[k] = v
+		merged[k] = v
 	}
-	at.Include = ""
+
+	// Assign merged result back
+	idp.AllowedTokens.Tokens = merged
+	idp.AllowedTokens.Include = ""
 
 	return nil
 }

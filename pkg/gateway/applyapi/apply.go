@@ -32,7 +32,6 @@ import (
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 // ApplyResponse is returned for every POST /api/v1/apply request.
@@ -133,13 +132,13 @@ func applyHandler(
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed", "only POST requests are supported")
 			return
 		}
 
 		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20)) // 1 MiB cap
 		if err != nil {
-			utils.WriteJSON(w, http.StatusBadRequest, ApplyResponse{
+			writeJSON(w, http.StatusBadRequest, ApplyResponse{
 				Message: "failed to read request body",
 			})
 			return
@@ -148,7 +147,7 @@ func applyHandler(
 		// Decode into a raw map first to detect target vs full CR mode.
 		var raw map[string]interface{}
 		if err := json.Unmarshal(body, &raw); err != nil {
-			utils.WriteJSON(w, http.StatusBadRequest, ApplyResponse{
+			writeJSON(w, http.StatusBadRequest, ApplyResponse{
 				Message: fmt.Sprintf("invalid JSON: %v", err),
 			})
 			return
@@ -158,9 +157,10 @@ func applyHandler(
 		overwrite := r.URL.Query().Get("overwrite") == "true"
 
 		var (
-			obj *unstructured.Unstructured
-			crd *orktypes.CRDEntry
-			gvr schema.GroupVersionResource
+			obj       *unstructured.Unstructured
+			crd       *orktypes.CRDEntry
+			gvr       schema.GroupVersionResource
+			patchBody []byte
 		)
 
 		// ── Format detection ──────────────────────────────────────────────────
@@ -170,7 +170,7 @@ func applyHandler(
 			// The gateway builds the full CR from the IDP field declaration.
 			target, _ := raw["target"].(string)
 			if strings.TrimSpace(target) == "" {
-				utils.WriteJSON(w, http.StatusBadRequest, ApplyResponse{
+				writeJSON(w, http.StatusBadRequest, ApplyResponse{
 					Message: `"target" must be a non-empty string`,
 				})
 				return
@@ -178,7 +178,7 @@ func applyHandler(
 
 			crd = kat.LookupByTarget(target)
 			if crd == nil {
-				utils.WriteJSON(w, http.StatusBadRequest, ApplyResponse{
+				writeJSON(w, http.StatusBadRequest, ApplyResponse{
 					Message: fmt.Sprintf(
 						"unknown target %q — available: %s",
 						target,
@@ -190,7 +190,7 @@ func applyHandler(
 
 			built, err := BuildCRFromTarget(raw, crd, notes)
 			if err != nil {
-				utils.WriteJSON(w, http.StatusBadRequest, ApplyResponse{
+				writeJSON(w, http.StatusBadRequest, ApplyResponse{
 					Message: err.Error(),
 				})
 				return
@@ -198,19 +198,27 @@ func applyHandler(
 			obj = built
 			gvr = crd.GVR()
 
+			// ─── Marshal built CR for the patch body ──────────────────────
+			patchBody, err = json.Marshal(obj.Object)
+			if err != nil {
+				writeJSON(w, http.StatusInternalServerError, ApplyResponse{
+					Message: "failed to marshal built CR",
+				})
+				return
+			}
+
 		} else {
 			// ── Full CR mode ──────────────────────────────────────────────────
-			// Caller provided a complete Kubernetes CR. Unmarshal directly.
 			var full unstructured.Unstructured
 			if err := json.Unmarshal(body, &full); err != nil {
-				utils.WriteJSON(w, http.StatusBadRequest, ApplyResponse{
+				writeJSON(w, http.StatusBadRequest, ApplyResponse{
 					Message: fmt.Sprintf("invalid CR JSON: %v", err),
 				})
 				return
 			}
 
 			if full.GetKind() == "" || full.GetAPIVersion() == "" {
-				utils.WriteJSON(w, http.StatusBadRequest, ApplyResponse{
+				writeJSON(w, http.StatusBadRequest, ApplyResponse{
 					Message: `request must include "apiVersion" and "kind" in full CR mode`,
 				})
 				return
@@ -218,29 +226,30 @@ func applyHandler(
 
 			crd = kat.LookupByKind(full.GetKind())
 			if crd == nil {
-				utils.WriteJSON(w, http.StatusBadRequest, ApplyResponse{
+				writeJSON(w, http.StatusBadRequest, ApplyResponse{
 					Message: fmt.Sprintf("unknown kind %q", full.GetKind()),
 				})
 				return
 			}
 
 			if !crd.IDPEnabled() {
-				http.Error(w, fmt.Sprintf("idp not enabled for %q", full.GetKind()), http.StatusBadRequest)
+				writeJSONError(w, http.StatusBadRequest, "idp not enabled",
+					fmt.Sprintf("IDP is not enabled for kind %q", full.GetKind()),
+				)
 				return
 			}
 
-			// Resolve idp.name and idp.namespace when declared on the CRD.
-			// In full CR mode the submitted spec is the resolver data source.
 			obj = &full
+			gvr = crd.GVR()
+			patchBody = body // raw body is already a valid CR
+
+			// Resolve idp.name and idp.namespace when declared on the CRD.
 			if err := resolveIDPMeta(obj, crd, notes); err != nil {
-				utils.WriteJSON(w, http.StatusBadRequest, ApplyResponse{
+				writeJSON(w, http.StatusBadRequest, ApplyResponse{
 					Message: err.Error(),
 				})
 				return
 			}
-
-			// Resolve GVR from the CRD entry.
-			gvr = crd.GVR()
 		}
 
 		// ── Token permission check ────────────────────────────────────────────────
@@ -266,7 +275,7 @@ func applyHandler(
 			allowed, reason := crd.IDP.TokenAllowed(tokenName, op, obj.GetNamespace(), orktypes.IDPClassResources)
 			if !allowed {
 				msg := reason.Message(tokenName, op, obj.GetKind(), obj.GetNamespace())
-				utils.WriteJSON(w, http.StatusForbidden, ApplyResponse{
+				writeJSON(w, http.StatusForbidden, ApplyResponse{
 					Message: msg,
 					Violations: []ApplyViolation{{
 						Field:    "metadata",
@@ -294,7 +303,7 @@ func applyHandler(
 		// Note: In target mode, BuildCRFromTarget already handles this.
 		// In full CR mode, resolveIDPMeta handles it above.
 		if obj.GetName() == "" {
-			utils.WriteJSON(w, http.StatusUnprocessableEntity, ApplyResponse{
+			writeJSON(w, http.StatusUnprocessableEntity, ApplyResponse{
 				DryRun:  dryRun,
 				Message: "name is required",
 				Violations: []ApplyViolation{{
@@ -310,7 +319,7 @@ func applyHandler(
 		// stops being something any Apply API caller (Control Center, curl,
 		// CI) needs to know or supply.
 		if obj.GetNamespace() == "" {
-			utils.WriteJSON(w, http.StatusUnprocessableEntity, ApplyResponse{
+			writeJSON(w, http.StatusUnprocessableEntity, ApplyResponse{
 				DryRun:  dryRun,
 				Message: "namespace is required",
 				Violations: []ApplyViolation{{
@@ -331,8 +340,6 @@ func applyHandler(
 		}
 
 		// Evaluate idp.config.response.payload against the submitted CR.
-		// At apply time the stored result is not yet available — we evaluate
-		// against the body we just applied. The caller can poll GET for live values.
 		payload := EvaluatePayload(obj.Object, crd, notes)
 
 		ns := obj.GetNamespace()
@@ -340,14 +347,29 @@ func applyHandler(
 		result, err := scopedDynamic(kube, capture).
 			Resource(gvr).
 			Namespace(ns).
-			Patch(r.Context(), obj.GetName(), k8stypes.ApplyPatchType, body, patchOpts)
+			Patch(r.Context(), obj.GetName(), k8stypes.ApplyPatchType, patchBody, patchOpts)
 		if err != nil {
+			// ─── Capture detailed error information ──────────────────────────────
+			errorDetails := map[string]interface{}{
+				"kind":       obj.GetKind(),
+				"name":       obj.GetName(),
+				"namespace":  obj.GetNamespace(),
+				"gvr":        gvr.String(),
+				"apiVersion": obj.GetAPIVersion(),
+				"error":      err.Error(),
+			}
+
+			// Log the full error details
 			logger.FromContext(r.Context()).Warn().
 				Str("kind", obj.GetKind()).
 				Str("name", obj.GetName()).
 				Bool("dryRun", dryRun).
+				Str("gvr", gvr.String()).
+				Str("namespace", obj.GetNamespace()).
 				Err(err).
+				Interface("errorDetails", errorDetails).
 				Msg("apply API: SSA rejected")
+
 			violations := extractViolations(err)
 			// err.Error() is the raw K8s-wrapped string — right for kubectl
 			// (which just prints whatever the API server returns, unaffected
@@ -360,12 +382,16 @@ func applyHandler(
 			if len(violations) > 0 && violations[0].Message != "" {
 				message = violations[0].Message
 			}
-			utils.WriteJSON(w, http.StatusUnprocessableEntity, ApplyResponse{
+
+			writeJSON(w, http.StatusUnprocessableEntity, ApplyResponse{
 				DryRun:     dryRun,
 				Message:    message,
 				Warnings:   capture.collect(),
 				Violations: violations,
-				Payload:    payload,
+				// Add the error details to the response for debugging
+				Payload: map[string]interface{}{
+					"debug": errorDetails,
+				},
 			})
 			return
 		}
@@ -380,7 +406,7 @@ func applyHandler(
 			resolver,
 		)
 
-		utils.WriteJSON(w, http.StatusOK, ApplyResponse{
+		writeJSON(w, http.StatusOK, ApplyResponse{
 			Accepted:   true,
 			DryRun:     dryRun,
 			Name:       result.GetName(),

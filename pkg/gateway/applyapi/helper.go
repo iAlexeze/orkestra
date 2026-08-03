@@ -5,8 +5,33 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/logger"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+)
+
+// ─── Package-level aliases ──────────────────────────────────────────────────
+// These aliases reduce import repetition across files and provide a single
+// place to reference commonly used utilities in this package.
+
+var (
+	// writeJSON writes a JSON response with the given status code and data.
+	writeJSON = utils.WriteJSON
+
+	// writeJSONError writes a structured JSON error response.
+	writeJSONError = utils.WriteJSONError
+
+	// parsePagination extracts limit and offset from request query parameters.
+	parsePagination = utils.ParsePagination
+
+	// resolveScalarField resolves a dot-notation path (e.g., "status.phase")
+	// against a map and returns the value as a string.
+	resolveScalarField = orktypes.ResolveScalarField
 )
 
 // resolvePollURL builds the poll URL for the Apply API response.
@@ -81,4 +106,37 @@ func writeKubeError(w http.ResponseWriter, err error) {
 	default:
 		http.Error(w, msg, http.StatusInternalServerError)
 	}
+}
+
+// debugResourceExistenceOnSSAError checks resource existence and returns structured logs and response
+// if the resource does not exist. Used by SSA.
+func debugResourceExistenceOnSSAError(obj *unstructured.Unstructured, gvr schema.GroupVersionResource, w http.ResponseWriter, r *http.Request, kube kubeclient.KubeClient) bool {
+	// ─── Debug: Log the GVR and check if the resource exists ──────────────────
+	logger.FromContext(r.Context()).Debug().
+		Str("gvr", gvr.String()).
+		Str("namespace", obj.GetNamespace()).
+		Str("name", obj.GetName()).
+		Str("apiVersion", obj.GetAPIVersion()).
+		Str("kind", obj.GetKind()).
+		Msg("apply API: debugging SSA patch")
+
+	// Check if the CRD exists
+	_, crdErr := kube.DynamicClient().Resource(gvr).Namespace(obj.GetNamespace()).
+		Get(r.Context(), obj.GetName(), metav1.GetOptions{})
+	if crdErr != nil {
+		logger.FromContext(r.Context()).Warn().
+			Str("gvr", gvr.String()).
+			Err(crdErr).
+			Msg("apply API: resource not found or CRD not registered")
+		writeJSON(w, http.StatusUnprocessableEntity, ApplyResponse{
+			Message: "resource not found",
+			Violations: []ApplyViolation{{
+				Field:    "metadata",
+				Message:  "resource not found",
+				Severity: "error",
+			}},
+		})
+		return false
+	}
+	return true
 }

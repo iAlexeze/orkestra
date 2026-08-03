@@ -6,6 +6,7 @@ import (
 
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -44,8 +45,24 @@ func BuildCRFromTarget(
 	crd *orktypes.CRDEntry,
 	notes orktypes.NoteRegistry,
 ) (*unstructured.Unstructured, error) {
+	// 1. Build the CR skeleton
+	obj := newCRSkeleton(crd)
 
-	obj := &unstructured.Unstructured{
+	// 2. Route fields to their destinations
+	routeFields(raw, crd, obj)
+
+	// 3. Resolve idp.name and idp.namespace
+	if err := resolveIDPIdentity(raw, crd, notes, obj); err != nil {
+		return nil, err
+	}
+
+	return obj, nil
+}
+
+// newCRSkeleton creates a blank CR with the correct apiVersion, kind,
+// and empty metadata/spec structures.
+func newCRSkeleton(crd *orktypes.CRDEntry) *unstructured.Unstructured {
+	return &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": crd.APIVersion(),
 			"kind":       crd.Kind(),
@@ -56,7 +73,18 @@ func BuildCRFromTarget(
 			"spec": map[string]interface{}{},
 		},
 	}
+}
 
+// routeFields routes each submitted field to its declared destination:
+//   - idp.fields → spec
+//   - idp.additionalFields.labels → metadata.labels
+//   - idp.additionalFields.annotations → metadata.annotations
+//   - unknown fields are silently ignored
+func routeFields(
+	raw map[string]interface{},
+	crd *orktypes.CRDEntry,
+	obj *unstructured.Unstructured,
+) {
 	meta := obj.Object["metadata"].(map[string]interface{})
 	labels := meta["labels"].(map[string]interface{})
 	annotations := meta["annotations"].(map[string]interface{})
@@ -72,39 +100,55 @@ func BuildCRFromTarget(
 
 	// Route each submitted value to its declared destination.
 	for key, value := range raw {
-		switch key {
-		case "target":
-			// The routing key itself is not a field value.
+		if key == "target" {
 			continue
 		}
 
 		switch {
-		case setContains(specFields, key):
+		case utils.SetContains(specFields, key):
 			spec[key] = value
 
-		case mapContains(labelFields, key):
-			// Labels must be strings. Convert with Sprintf for safety.
+		case utils.MapContains(labelFields, key):
 			labels[key] = fmt.Sprintf("%v", value)
 
-		case mapContains(annotationFields, key):
+		case utils.MapContains(annotationFields, key):
 			annotations[key] = fmt.Sprintf("%v", value)
 
-			// Unknown field — silently ignored. The caller may pass extra keys;
-			// only declared fields are meaningful. Callers receive field shapes
-			// from the schema API so unknown fields indicate a client bug, not a
-			// server error.
+		default:
+			// Unknown field — silently ignored.
+		}
+	}
+}
+
+// resolveIDPIdentity resolves idp.name and idp.namespace using the flat field map.
+// Notes are available so expressions like `{{ repoSlug .repository }}` work.
+func resolveIDPIdentity(
+	raw map[string]interface{},
+	crd *orktypes.CRDEntry,
+	notes orktypes.NoteRegistry,
+	obj *unstructured.Unstructured,
+) error {
+	// Build a resolver data map that exposes both:
+	//   .repository  (flat, from the request — target mode)
+	//   .spec.repository (nested — for expressions written the Kubernetes way)
+	data := make(map[string]interface{}, len(raw)+1)
+	for k, v := range raw {
+		data[k] = v
+	}
+	// Merge the built CR so .spec.*, .metadata.* work too
+	for k, v := range obj.Object {
+		if _, exists := data[k]; !exists {
+			data[k] = v
 		}
 	}
 
-	// Resolve idp.name and idp.namespace using the flat field map as data.
-	// Notes are available so expressions like `{{ repoSlug .repository }}`
-	// can call the same note library used in Katalog status fields.
-	resolver := orktmpl.NewResolverFromMap(raw).WithUserNotes(notes)
+	resolver := orktmpl.NewResolverFromMap(data).WithUserNotes(notes)
 
+	// Resolve idp.name and idp.namespace
 	if crd.HasIDPName() {
 		name, err := resolver.Resolve(crd.IDP.Name)
 		if err != nil || strings.TrimSpace(name) == "" {
-			return nil, fmt.Errorf(
+			return fmt.Errorf(
 				"idp.name expression %q could not be resolved — "+
 					"check that the required fields are present in the request: %w",
 				crd.IDP.Name, err,
@@ -116,7 +160,7 @@ func BuildCRFromTarget(
 	if crd.HasIDPNamespace() {
 		ns, err := resolver.Resolve(crd.IDP.Namespace)
 		if err != nil || strings.TrimSpace(ns) == "" {
-			return nil, fmt.Errorf(
+			return fmt.Errorf(
 				"idp.namespace expression %q could not be resolved — "+
 					"check that the required fields are present in the request: %w",
 				crd.IDP.Namespace, err,
@@ -125,20 +169,5 @@ func BuildCRFromTarget(
 		obj.SetNamespace(strings.TrimSpace(ns))
 	}
 
-	return obj, nil
-}
-
-// setContains is a nil-safe struct{} map membership check.
-func setContains(s map[string]struct{}, key string) bool {
-	_, ok := s[key]
-	return ok
-}
-
-// mapContains is a nil-safe IDPFieldConfig map membership check.
-func mapContains(m map[string]orktypes.IDPFieldConfig, key string) bool {
-	if m == nil {
-		return false
-	}
-	_, ok := m[key]
-	return ok
+	return nil
 }

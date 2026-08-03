@@ -93,3 +93,18 @@ func DeepCopyMap(src map[string]interface{}) map[string]interface{} {
 	}
 	return dst
 }
+
+// SetContains is a nil-safe struct{} map membership check.
+func SetContains(s map[string]struct{}, key string) bool {
+	_, ok := s[key]
+	return ok
+}
+
+// MapContains is a nil-safe map membership check for any value type.
+func MapContains[V any](m map[string]V, key string) bool {
+	if m == nil {
+		return false
+	}
+	_, ok := m[key]
+	return ok
+}

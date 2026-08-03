@@ -374,9 +374,65 @@ func (c *CRDEntry) HasAdditionalIDPFields() bool {
 	return len(c.AdditionalLabelFields()) > 0 || len(c.AdditionalAnnotationFields()) > 0
 }
 
-// HasResponseConfig reports whether the CRD has an IDP response configuration.
-func (c *CRDEntry) HasResponseConfig() bool {
+// ─── IDP Response Config Methods ────────────────────────────────────────────
+
+// HasIDPResponseConfig reports whether the CRD has an IDP response configuration.
+func (c *CRDEntry) HasIDPResponseConfig() bool {
 	return c.IDP != nil && c.IDP.Config != nil && c.IDP.Config.Response != nil
+}
+
+// GetIDPResponseConfig returns the IDP response configuration, or nil if not set.
+func (c *CRDEntry) GetIDPResponseConfig() *IDPResponseConfig {
+	if c.IDP == nil || c.IDP.Config == nil {
+		return nil
+	}
+	return c.IDP.Config.Response
+}
+
+// IDPResponseUseDefault reports whether the full CR should be the starting point.
+// Returns true when Default is nil (omitted) or explicitly true.
+func (c *CRDEntry) IDPResponseUseDefault() bool {
+	cfg := c.GetIDPResponseConfig()
+	if cfg == nil {
+		return true
+	}
+	return cfg.UseDefault()
+}
+
+// IDPResponseHasPayload reports whether any payload expressions are declared.
+func (c *CRDEntry) IDPResponseHasPayload() bool {
+	cfg := c.GetIDPResponseConfig()
+	if cfg == nil {
+		return false
+	}
+	return cfg.HasPayload()
+}
+
+// IDPResponseHasExclude reports whether an exclude expression is declared.
+func (c *CRDEntry) IDPResponseHasExclude() bool {
+	cfg := c.GetIDPResponseConfig()
+	if cfg == nil {
+		return false
+	}
+	return cfg.HasExclude()
+}
+
+// IDPResponseExclude returns the exclude list, or nil if not set.
+func (c *CRDEntry) IDPResponseExclude() []string {
+	cfg := c.GetIDPResponseConfig()
+	if cfg == nil {
+		return nil
+	}
+	return cfg.Exclude
+}
+
+// IDPResponsePayload returns the payload map, or nil if not set.
+func (c *CRDEntry) IDPResponsePayload() map[string]string {
+	cfg := c.GetIDPResponseConfig()
+	if cfg == nil {
+		return nil
+	}
+	return cfg.Payload
 }
 
 func (e EndpointsConfig) IsHealthEnabled() bool {

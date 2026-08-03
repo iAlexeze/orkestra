@@ -16,4 +16,4 @@ For the full command reference see [documentation/reference/cli](../../documenta
 
 ## Design docs
 
-- [build-tags.md](docs/build-tags.md) — how `//go:build runtime` and `//go:build gateway` control which sub-commands ship in each image
+- [build-tags](docs/build-tags.md) — how `//go:build runtime` and `//go:build gateway` control which sub-commands ship in each image

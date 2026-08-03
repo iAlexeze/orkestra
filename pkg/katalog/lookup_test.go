@@ -35,7 +35,7 @@ func TestBuildIndexes(t *testing.T) {
 		},
 	}
 
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	// Test kind index
 	if name, ok := k.kindIndex["App"]; !ok || name != "app" {
@@ -107,7 +107,7 @@ func TestLookupByKind(t *testing.T) {
 			"database": testCRDEntry("Database", "", false),
 		},
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	tests := []struct {
 		name     string
@@ -146,7 +146,7 @@ func TestLookupByTarget(t *testing.T) {
 			"database": testCRDEntry("Database", "db", true),
 		},
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	tests := []struct {
 		name     string
@@ -186,7 +186,7 @@ func TestLookupByTargetOrKind(t *testing.T) {
 			"cache":    testCRDEntry("Cache", "", false),
 		},
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	tests := []struct {
 		name       string
@@ -237,7 +237,7 @@ func TestLookupByGVKString(t *testing.T) {
 	if err := k.setGroupVersionKind(); err != nil {
 		t.Fatalf("failed to set defaults: %v", err)
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	// Use the exact format that GVKString() returns
 	gvk := schema.GroupVersionKind{
@@ -287,7 +287,7 @@ func TestLookupByGVRString(t *testing.T) {
 	if err := k.setGroupVersionKind(); err != nil {
 		t.Fatalf("failed to set defaults: %v", err)
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	gvr := schema.GroupVersionResource{
 		Group:    "platform.myorg.io",
@@ -325,7 +325,7 @@ func TestMustLookupByTarget(t *testing.T) {
 			"app": testCRDEntry("App", "smartapp", true),
 		},
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	// Should not panic
 	crd := k.MustLookupByTarget("smartapp")
@@ -353,7 +353,7 @@ func TestMustLookupByKind(t *testing.T) {
 			},
 		},
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	// Should not panic
 	crd := k.MustLookupByKind("App")
@@ -381,7 +381,7 @@ func TestIsKindRegistered(t *testing.T) {
 			},
 		},
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	if !k.IsKindRegistered("App") {
 		t.Error("expected App to be registered")
@@ -397,7 +397,7 @@ func TestIsTargetRegistered(t *testing.T) {
 			"app": testCRDEntry("App", "smartapp", true),
 		},
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	if !k.IsTargetRegistered("smartapp") {
 		t.Error("expected smartapp to be registered")
@@ -414,7 +414,7 @@ func TestListTargets(t *testing.T) {
 			"database": testCRDEntry("Database", "db", true),
 		},
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	targets := k.ListTargets()
 	if len(targets) != 2 {
@@ -444,7 +444,7 @@ func TestListKinds(t *testing.T) {
 			},
 		},
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	kinds := k.ListKinds()
 	if len(kinds) != 2 {
@@ -467,7 +467,7 @@ func TestLookup_EmptyKatalog(t *testing.T) {
 	k := &Katalog{
 		enabledCRDs: map[string]orktypes.CRDEntry{},
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	if crd := k.LookupByKind("App"); crd != nil {
 		t.Errorf("expected nil, got %+v", crd)
@@ -489,7 +489,7 @@ func TestLookup_CRDWithoutIDP(t *testing.T) {
 			},
 		},
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	// Should still find by kind
 	if crd := k.LookupByKind("Cache"); crd == nil {
@@ -510,7 +510,7 @@ func TestLookupByKind_CaseInsensitive(t *testing.T) {
 			},
 		},
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	// Exact match should work
 	if crd := k.LookupByKind("App"); crd == nil {
@@ -555,7 +555,7 @@ func TestLookupByAPIVersionAndKind(t *testing.T) {
 			},
 		},
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	tests := []struct {
 		name       string
@@ -681,7 +681,7 @@ func TestLookupByAPIVersionAndKind_EmptyInput(t *testing.T) {
 			},
 		},
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	tests := []struct {
 		name       string
@@ -720,7 +720,7 @@ func TestLookupByAPIVersionAndKind_IndexExists(t *testing.T) {
 	if err := k.setGroupVersionKind(); err != nil {
 		t.Fatalf("failed to set defaults: %v", err)
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	// Check that the index was built correctly
 	expectedKey := strings.ToLower("platform.myorg.io/v1" + "App")
@@ -771,7 +771,7 @@ func TestLookupByAPIVersionAndKind_MultipleEntries(t *testing.T) {
 	if err := k.setGroupVersionKind(); err != nil {
 		t.Fatalf("failed to set defaults: %v", err)
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	// Should find the v1 App
 	crd := k.LookupByAPIVersionAndKind("platform.myorg.io/v1", "App")
@@ -818,7 +818,7 @@ func TestLookupByAPIVersionAndKind_InvalidAPIVersion(t *testing.T) {
 	if err := k.setGroupVersionKind(); err != nil {
 		t.Fatalf("failed to set defaults: %v", err)
 	}
-	k.BuildIndexes()
+	k.setGroupVersionKind()
 
 	// Test with malformed apiVersion
 	tests := []struct {

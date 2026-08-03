@@ -20,11 +20,13 @@ package applyapi
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/logger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 )
@@ -44,19 +46,31 @@ func resourcesHandler(
 	return func(w http.ResponseWriter, r *http.Request) {
 		kind, ns, name, err := parsePath(r.URL.Path)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeJSONError(w, http.StatusBadRequest, "invalid path",
+				fmt.Sprintf("could not parse path: %v", err),
+			)
 			return
 		}
+
+		// ─── Debug: Log available kinds ──────────────────────────────────────────────
+		logger.FromContext(r.Context()).Debug().
+			Str("kind", kind).
+			Str("availableKinds", strings.Join(kat.ListKinds(), ", ")).
+			Msg("resourcesHandler: lookup")
 
 		// Resolve CRD entry — accept both lowercased kind and target identifier.
 		crd := kat.LookupByKind(kind)
 		if crd == nil {
-			http.Error(w, fmt.Sprintf("unknown kind or target %q", kind), http.StatusNotFound)
+			writeJSONError(w, http.StatusNotFound, "kind not found",
+				fmt.Sprintf("unknown kind %q", kind),
+			)
 			return
 		}
 
 		if !crd.IDPEnabled() {
-			http.Error(w, fmt.Sprintf("idp not enabled for %q", kind), http.StatusBadRequest)
+			writeJSONError(w, http.StatusBadRequest, "idp not enabled",
+				fmt.Sprintf("IDP is not enabled for kind %q", kind),
+			)
 			return
 		}
 
@@ -69,12 +83,16 @@ func resourcesHandler(
 			}
 		case http.MethodDelete:
 			if name == "" {
-				http.Error(w, "name required for DELETE", http.StatusBadRequest)
+				writeJSONError(w, http.StatusBadRequest, "name required",
+					"DELETE requires a resource name",
+				)
 				return
 			}
 			deleteResource(w, r, kube, ns, name, crd)
 		default:
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed",
+				fmt.Sprintf("method %q is not supported for /api/v1/resources", r.Method),
+			)
 		}
 	}
 }
@@ -93,7 +111,6 @@ func getResource(
 	// When the CRD declares idp.allowedTokens, the authenticated token must
 	// have permission to perform the operation it is attempting.
 	if !checkIDPPermission(w, r, crd, orktypes.IDPClassResources, orktypes.IDPOpGet, ns) {
-		http.Error(w, "permission denied", http.StatusForbidden)
 		return
 	}
 
@@ -107,15 +124,17 @@ func getResource(
 
 	response := obj.Object
 
+	// ── Step 1: Check for ?field= query param (lightweight polling) ──────
 	field := r.URL.Query().Get("field")
 	if field != "" {
-		value, ok := orktypes.ResolveScalarField(response, field)
+		value, ok := resolveScalarField(response, field)
 		if !ok {
-			http.Error(w, "invalid field path", http.StatusBadRequest)
+			writeJSONError(w, http.StatusBadRequest, "invalid field path",
+				fmt.Sprintf("field %q not found", field),
+			)
 			return
 		}
-		// Return just the value
-		utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"name":  name,
 			"field": field,
 			"value": value,
@@ -123,18 +142,26 @@ func getResource(
 		return
 	}
 
-	// Evaluate idp.config.response against the full stored CR.
-	// At GET time .status is available because the runtime has written it —
-	// payload fields referencing status are now populated.
-	//
-	// EvaluatePayload returns nil when no config is declared, in which case
-	// we skip injecting the "payload" key so the response stays identical to
-	// today for CRDs without idp.config.response.
-	if payload := EvaluatePayload(obj.Object, crd, notes); payload != nil {
+	// ── Step 2: Apply exclusions ──────────────────────────────────────────
+	// ApplyExclusions strips paths listed in idp.config.response.exclude.
+	ApplyExclusions(response, crd, notes)
+
+	// ── Step 3: Evaluate payload ──────────────────────────────────────────
+	// EvaluatePayload returns ONLY the fields defined in idp.config.response.payload.
+	payload := EvaluatePayload(response, crd, notes)
+
+	// ── Step 4: Return response ──────────────────────────────────────────
+	if payload != nil {
+		// When default: false, return only the payload.
+		if !crd.GetIDPResponseConfig().UseDefault() {
+			writeJSON(w, http.StatusOK, payload)
+			return
+		}
+		// When default: true, inject payload alongside the CR.
 		response["payload"] = payload
 	}
 
-	utils.WriteJSON(w, http.StatusOK, response)
+	writeJSON(w, http.StatusOK, response)
 }
 
 // listResources handles GET /api/v1/resources/{kind}/{ns}.
@@ -149,11 +176,10 @@ func listResources(
 	notes orktypes.NoteRegistry,
 ) {
 	if !checkIDPPermission(w, r, crd, orktypes.IDPClassResources, orktypes.IDPOpList, ns) {
-		http.Error(w, "permission denied", http.StatusForbidden)
 		return
 	}
 
-	p := utils.ParsePagination(r)
+	p := parsePagination(r)
 
 	listOpts := metav1.ListOptions{
 		Limit:    int64(p.Limit),
@@ -171,29 +197,50 @@ func listResources(
 	}
 
 	field := r.URL.Query().Get("field")
+	usePayload := crd.HasIDPResponseConfig() && crd.GetIDPResponseConfig().HasPayload()
 
-	// Evaluate payload for each item when configured.
-	items := list.Items
-	type itemWithPayload struct {
+	// ── Build items ──────────────────────────────────────────────────────
+	type responseItem struct {
 		Object  map[string]interface{} `json:"object"`
 		Payload map[string]interface{} `json:"payload,omitempty"`
 	}
-	result := make([]itemWithPayload, 0, len(items))
-	for _, item := range items {
-		entry := itemWithPayload{Object: item.Object}
-		if payload := EvaluatePayload(item.Object, crd, notes); payload != nil {
+
+	items := make([]responseItem, 0, len(list.Items))
+	for _, item := range list.Items {
+		obj := item.Object
+
+		// Step 1: Apply exclusions to each item
+		ApplyExclusions(obj, crd, notes)
+
+		// Step 2: Build payload for each item
+		var payload map[string]interface{}
+		if usePayload {
+			payload = EvaluatePayload(obj, crd, notes)
+		}
+
+		entry := responseItem{Object: obj}
+		// If default: false, use payload as the primary response
+		if !crd.GetIDPResponseConfig().UseDefault() {
+			entry.Object = nil
+		}
+		if payload != nil {
 			entry.Payload = payload
 		}
-		result = append(result, entry)
+
+		items = append(items, entry)
+
+		// ── ?field= query param ──────────────────────────────────────────
 		if field != "" {
-			value, ok := orktypes.ResolveScalarField(item.Object, field)
+			value, ok := resolveScalarField(obj, field)
 			if !ok {
-				http.Error(w, "invalid field path", http.StatusBadRequest)
+				writeJSONError(w, http.StatusBadRequest, "invalid field path",
+					fmt.Sprintf("field %q not found", field),
+				)
 				return
 			}
-			// Return just the value
-			utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
-				"name":  entry.Object["metadata"].(map[string]interface{})["name"],
+			name, _ := obj["metadata"].(map[string]interface{})["name"].(string)
+			writeJSON(w, http.StatusOK, map[string]interface{}{
+				"name":  name,
 				"field": field,
 				"value": value,
 			})
@@ -201,12 +248,13 @@ func listResources(
 		}
 	}
 
-	utils.WriteJSON(w, http.StatusOK, utils.PaginatedResponse[itemWithPayload]{
-		Total:    len(result), // client-side total for this page
+	// ── Return paginated response ───────────────────────────────────────
+	writeJSON(w, http.StatusOK, utils.PaginatedResponse[responseItem]{
+		Total:    len(items),
 		Limit:    p.Limit,
 		Offset:   p.Offset,
-		Continue: list.GetContinue(), // Kubernetes server-side continue token
-		Items:    result,
+		Continue: list.GetContinue(),
+		Items:    items,
 	})
 }
 
@@ -221,12 +269,13 @@ func deleteResource(
 	crd *orktypes.CRDEntry,
 ) {
 	if name == "" {
-		http.Error(w, "name is required for DELETE", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "name required",
+			"DELETE requires a resource name",
+		)
 		return
 	}
 
 	if !checkIDPPermission(w, r, crd, orktypes.IDPClassResources, orktypes.IDPOpDelete, ns) {
-		http.Error(w, "permission denied", http.StatusForbidden)
 		return
 	}
 
@@ -261,11 +310,7 @@ func checkIDPPermission(
 	tokenName := TokenNameFromContext(r.Context())
 	allowed, reason := crd.IDP.TokenAllowed(tokenName, op, ns, class)
 	if !allowed {
-		http.Error(
-			w,
-			reason.Message(tokenName, op, crd.APITypes.Kind, ns),
-			http.StatusForbidden,
-		)
+		writeJSONError(w, http.StatusForbidden, "permission denied", reason.Message(tokenName, op, crd.APITypes.Kind, ns))
 		return false
 	}
 	return true

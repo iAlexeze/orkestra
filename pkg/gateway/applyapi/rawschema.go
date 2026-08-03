@@ -1,6 +1,7 @@
 package applyapi
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
@@ -74,27 +75,43 @@ func rawSchemaHandler(
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed", "only GET requests are supported")
 			return
 		}
 
 		kind := r.URL.Query().Get("kind")
 		if kind == "" {
-			http.Error(w, `"kind" query parameter is required`, http.StatusBadRequest)
+			writeJSONError(w, http.StatusBadRequest, "missing parameter", `"kind" query parameter is required`)
 			return
 		}
+
 		apiVersion := r.URL.Query().Get("apiVersion")
 
 		var crd *orktypes.CRDEntry
 		if apiVersion != "" && kind != "" {
 			crd = kat.LookupByAPIVersionAndKind(apiVersion, kind)
+			if crd == nil {
+				// Try kind-only as fallback, but note the mismatch
+				crd = kat.LookupByKind(kind)
+				if crd != nil {
+					// ─── Return the warning as the response ──────────────
+					writeJSON(w, http.StatusBadRequest, utils.H{
+						"error":      "apiVersion mismatch",
+						"message":    fmt.Sprintf("kind %q found, but apiVersion %q did not match the stored version %q", kind, apiVersion, crd.APIVersion()),
+						"kind":       kind,
+						"apiVersion": crd.APIVersion(),
+					})
+					return
+				}
+			}
 		} else {
 			crd = kat.LookupByKind(kind)
 		}
 
-		// Resolve the CRD entry.
 		if crd == nil {
-			http.Error(w, "kind not found", http.StatusNotFound)
+			writeJSONError(w, http.StatusNotFound, "kind not found",
+				fmt.Sprintf("kind %q not found in the Katalog", kind),
+			)
 			return
 		}
 
@@ -105,10 +122,8 @@ func rawSchemaHandler(
 				tokenName, orktypes.IDPOpGet, "", orktypes.IDPClassSchema,
 			)
 			if !allowed {
-				http.Error(
-					w,
+				writeJSONError(w, http.StatusForbidden, "permission denied",
 					reason.Message(tokenName, orktypes.IDPOpGet, kind, ""),
-					http.StatusForbidden,
 				)
 				return
 			}
@@ -136,7 +151,7 @@ func rawSchemaHandler(
 		props, required := extractStorageSpecSchema(obj.Object)
 
 		resp := RawSchemaResponse{
-			Kind:       kind,
+			Kind:       crd.APITypes.Kind, // Use the stored kind for consistency
 			APIVersion: crd.APIVersion(),
 			Spec: RawSchemaSection{
 				Properties: props,
@@ -145,7 +160,6 @@ func rawSchemaHandler(
 		}
 
 		// Attach IDP label and annotation fields when declared.
-		// These are not in the Kubernetes schema — they are Orkestra extensions.
 		if crd.IDP != nil {
 			if labels := crd.AdditionalLabelFields(); len(labels) > 0 {
 				resp.Labels = labels
@@ -155,7 +169,7 @@ func rawSchemaHandler(
 			}
 		}
 
-		utils.WriteJSON(w, http.StatusOK, resp)
+		writeJSON(w, http.StatusOK, resp)
 	}
 }
 

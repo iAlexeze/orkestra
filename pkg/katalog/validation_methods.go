@@ -184,6 +184,10 @@ func (k *Katalog) setGroupVersionKind() error {
 
 		k.enabledCRDs[name] = crd
 	}
+
+	// Build indexes for O(1) lookups
+	k.BuildLookupIndexes()
+
 	return nil
 }
 
@@ -232,7 +236,7 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		// Handle plural name
 		if crd.APITypes.Plural == "" {
 			logger.Debug().Msgf("Plural name for %s is empty. Setting to '%ss'", crd.APITypes.Kind, crd.Name)
-			crd.APITypes.Plural = fmt.Sprintf("%ss", strings.ToLower(crd.Name))
+			crd.APITypes.Plural = fmt.Sprintf("%ss", strings.ToLower(crd.APITypes.Kind))
 		}
 
 		// Handle finalizers

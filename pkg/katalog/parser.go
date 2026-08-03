@@ -130,6 +130,10 @@ func (k *Katalog) KomposeRuntimeKatalog(
 		if err := populateIDPFieldsFromInclude(&entry, k.katalogDir); err != nil {
 			return nil, fmt.Errorf("CRD %q: %w", name, err)
 		}
+		// Expand idp.allowedTokens include
+		if err := populateIDPAllowedTokensFromInclude(&entry, k.katalogDir); err != nil {
+			return nil, fmt.Errorf("CRD %q: %w", name, err)
+		}
 
 		// Expand validation.include, mutation.include, conversion.include and status.include.
 		if err := populateValidationRulesFromInclude(&entry, k.katalogDir); err != nil {
@@ -237,9 +241,6 @@ func (k *Katalog) KomposeRuntimeKatalog(
 	if err := k.setDefaults(kfg); err != nil {
 		return nil, err
 	}
-
-	// Build indexes for O(1) lookups
-	k.BuildIndexes()
 
 	// Build all IDP enabled CRDs
 	k.idpEnabledCRDs = k.BuildIDPEnabledCRDs()

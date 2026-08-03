@@ -11,9 +11,16 @@ import (
 // Index Building
 // -----------------------------------------------------------------------------
 
-// BuildIndexes builds lookup indexes after CRDs are loaded.
+// BuildLookupIndexes builds O(1) lookup maps indexes after CRDs are loaded.
 // All indexes are stored in lowercase for case-insensitive lookups.
-func (k *Katalog) BuildIndexes() {
+// After this runs, the Katalog supports:
+//   - LookupByKind
+//   - LookupByTarget
+//   - LookupByGVKString
+//   - LookupByGVRString
+//
+// Called last in setGroupVersionKind.
+func (k *Katalog) BuildLookupIndexes() {
 	k.apiVersionIndex = make(map[string]string)
 	k.kindIndex = make(map[string]string)
 	k.gvkIndex = make(map[string]string)

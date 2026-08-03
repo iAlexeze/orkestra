@@ -13,7 +13,7 @@ import (
 //   - Payload template compilation errors (error)
 func (k *Katalog) validateIDPResponseConfig() error {
 	for crdName, crd := range k.enabledCRDs {
-		if !crd.HasResponseConfig() {
+		if !crd.HasIDPResponseConfig() {
 			continue
 		}
 
