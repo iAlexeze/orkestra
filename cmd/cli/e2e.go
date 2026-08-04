@@ -479,11 +479,6 @@ func init() {
 	e2eCmd.Flags().Bool("dry-run", false, "Print what would run without executing. Single file: runs validate. ./...: lists discovered files.")
 	e2eCmd.Flags().String("report-file", "", "Write test results as markdown to this file (e.g. $GITHUB_STEP_SUMMARY). Results are always printed to stdout.")
 
-	// Shadow global flags
-	e2eCmd.Flags().Bool("debug", false, "")
-	e2eCmd.Flags().String("kubeconfig", "", "")
-	e2eCmd.Flags().Bool("verbose", false, "")
-	e2eCmd.Flags().MarkHidden("debug")
-	e2eCmd.Flags().MarkHidden("kubeconfig")
-	e2eCmd.Flags().MarkHidden("verbose")
+	// Shadow global flags so they don't appear under `ork e2e`
+	shadowGlobalCommandFlags(e2eCmd)
 }

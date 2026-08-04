@@ -30,16 +30,9 @@ func init() {
 	rootCmd.AddCommand(controlCmd)
 
 	// Shadow global flags so they don't appear under `ork control`
-	controlCmd.Flags().Bool("debug", false, "")
-	controlCmd.Flags().String("kubeconfig", "", "")
 	controlCmd.Flags().StringSlice("katalog", nil, "")
-	controlCmd.Flags().Bool("verbose", false, "")
-
-	// Hide them from help output
-	controlCmd.Flags().MarkHidden("debug")
-	controlCmd.Flags().MarkHidden("kubeconfig")
 	controlCmd.Flags().MarkHidden("katalog")
-	controlCmd.Flags().MarkHidden("verbose")
+	shadowGlobalCommandFlags(controlCmd)
 }
 
 var controlCmd = &cobra.Command{

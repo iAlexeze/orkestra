@@ -10,6 +10,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/katalog"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
+	"github.com/spf13/cobra"
 )
 
 // ── utils aliases ────────────────────────────────────────────────────────────
@@ -23,6 +24,8 @@ var (
 	dim     = utils.Dim
 	cyan    = utils.Cyan
 	green   = utils.Green
+	blue    = utils.Blue
+	white   = utils.White
 	yellow  = utils.Yellow
 	red     = utils.Red
 	magenta = utils.Magenta
@@ -44,6 +47,45 @@ var (
 	isRunningInCluster = utils.IsRunningInCluster
 	writeFileAndFormat = utils.WriteFileAndFormat
 )
+
+// Shadow global command flags
+func shadowGlobalCommandFlags(cmd *cobra.Command, flags ...string) {
+	// Shadow standard global flags for all commands
+	if cmd.Parent() != nil {
+		if cmd.Flags().Lookup("debug") == nil {
+			cmd.Flags().Bool("debug", false, "")
+			cmd.Flags().MarkHidden("debug")
+		}
+		if cmd.Flags().Lookup("kubeconfig") == nil {
+			cmd.Flags().String("kubeconfig", "", "")
+			cmd.Flags().MarkHidden("kubeconfig")
+		}
+		if cmd.Flags().Lookup("verbose") == nil {
+			cmd.Flags().Bool("verbose", false, "")
+			cmd.Flags().MarkHidden("verbose")
+		}
+	}
+
+	// Shadow specific flags passed as arguments
+	for _, f := range flags {
+		if cmd.PersistentFlags().Lookup(f) == nil {
+			switch f {
+			case "file":
+				cmd.PersistentFlags().StringSlice("file", nil, "")
+				cmd.PersistentFlags().MarkHidden("file")
+				// case "placeholder":
+				// 	cmd.PersistentFlags().StringP("placeholder", "p", "", "")
+				// 	cmd.PersistentFlags().MarkHidden("placeholder")
+				// Add other flags as needed
+			}
+		}
+	}
+
+	// Process all subcommands
+	for _, subCmd := range cmd.Commands() {
+		shadowGlobalCommandFlags(subCmd, flags...)
+	}
+}
 
 // ── printTemplateSummary ──────────────────────────────────────────────────────
 

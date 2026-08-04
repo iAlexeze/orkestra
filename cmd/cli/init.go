@@ -193,14 +193,5 @@ func init() {
 	initCmd.Flags().Bool("refresh-cache", false, "Fetch pack from GitHub Releases instead of using the built-in copy")
 
 	// Shadow global flags so they don't appear under `ork init`
-	initCmd.Flags().Bool("debug", false, "")
-	initCmd.Flags().String("kubeconfig", "", "")
-	initCmd.Flags().StringSlice("katalog", nil, "")
-	initCmd.Flags().Bool("verbose", false, "")
-
-	// Hide them from help output
-	initCmd.Flags().MarkHidden("debug")
-	initCmd.Flags().MarkHidden("kubeconfig")
-	initCmd.Flags().MarkHidden("katalog")
-	initCmd.Flags().MarkHidden("verbose")
+	shadowGlobalCommandFlags(initCmd, "file")
 }

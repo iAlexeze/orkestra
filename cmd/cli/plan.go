@@ -245,11 +245,6 @@ func init() {
 	planCmd.Flags().String("cm", "", "ConfigMap name (or path to a local ConfigMap YAML) holding the deployed Katalog — requires cluster access")
 	planCmd.Flags().StringP("namespace", "n", "orkestra-system", "Namespace of the deployed Katalog ConfigMap")
 
-	// Shadow global flags
-	planCmd.Flags().Bool("debug", false, "")
-	planCmd.Flags().String("kubeconfig", "", "")
-	planCmd.Flags().Bool("verbose", false, "")
-	planCmd.Flags().MarkHidden("debug")
-	planCmd.Flags().MarkHidden("kubeconfig")
-	planCmd.Flags().MarkHidden("verbose")
+	// Shadow global flags so they don't appear under `ork plan`
+	shadowGlobalCommandFlags(planCmd)
 }

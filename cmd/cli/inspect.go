@@ -299,10 +299,5 @@ func init() {
 	rootCmd.AddCommand(inspectCmd)
 
 	// Shadow global flags
-	inspectCmd.Flags().Bool("debug", false, "")
-	inspectCmd.Flags().String("kubeconfig", "", "")
-	inspectCmd.Flags().Bool("verbose", false, "")
-	inspectCmd.Flags().MarkHidden("debug")
-	inspectCmd.Flags().MarkHidden("kubeconfig")
-	inspectCmd.Flags().MarkHidden("verbose")
+	shadowGlobalCommandFlags(inspectCmd, "file")
 }

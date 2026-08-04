@@ -204,13 +204,6 @@ func init() {
 	proxyCmd.Flags().Int("dev-server-port", 9999, "Local port for Dev Server")
 	proxyCmd.Flags().String("context", "", "Kubernetes context to use")
 
-	// Shadow global flags
-	proxyCmd.Flags().Bool("debug", false, "")
-	proxyCmd.Flags().String("kubeconfig", "", "")
-	proxyCmd.Flags().StringSlice("file", nil, "")
-	proxyCmd.Flags().Bool("verbose", false, "")
-	proxyCmd.Flags().MarkHidden("debug")
-	proxyCmd.Flags().MarkHidden("kubeconfig")
-	proxyCmd.Flags().MarkHidden("file")
-	proxyCmd.Flags().MarkHidden("verbose")
+	// Shadow global flags so they don't appear under `ork proxy`
+	shadowGlobalCommandFlags(proxyCmd, "file")
 }
