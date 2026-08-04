@@ -9,7 +9,6 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/orkspace/orkestra/pkg/katalog"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/spf13/cobra"
 )
@@ -165,8 +164,8 @@ With --target, --kind, or --name, shows fields for a specific CRD.`,
 				return fmt.Errorf("CRD %q is not IDP-enabled", crd.Name)
 			}
 
-			fields := crd.IDPFields()
-			if len(fields) == 0 {
+			entries := sortedFieldEntries(crd)
+			if len(entries) == 0 {
 				fmt.Printf("\nNo fields defined for CRD %q\n", crd.Name)
 				return nil
 			}
@@ -177,47 +176,6 @@ With --target, --kind, or --name, shows fields for a specific CRD.`,
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 			fmt.Fprintln(w, "FIELD\tTYPE\tPATH\tSOURCE\tREQUIRED")
 
-			// ── Sort fields by name ─────────────────────────────────────────────────────
-			type fieldEntry struct {
-				Name     string
-				Config   orktypes.IDPFieldConfig
-				SpecPath string
-				Source   string
-			}
-
-			entries := make([]fieldEntry, 0, len(fields))
-			for name, config := range fields {
-				specPath := config.SpecPath(name)
-				source := "spec"
-				if _, ok := crd.AdditionalLabelFields()[name]; ok {
-					source = "label"
-				} else if _, ok := crd.AdditionalAnnotationFields()[name]; ok {
-					source = "annotation"
-				}
-				entries = append(entries, fieldEntry{
-					Name:     name,
-					Config:   config,
-					SpecPath: specPath,
-					Source:   source,
-				})
-			}
-
-			// Sort by name only
-			// Debug: print entries before sorting
-			for _, e := range entries {
-				fmt.Printf("BEFORE: %s\n", e.Name)
-			}
-
-			sort.Slice(entries, func(i, j int) bool {
-				return entries[i].Name < entries[j].Name
-			})
-
-			// Debug: print entries after sorting
-			for _, e := range entries {
-				fmt.Printf("AFTER: %s\n", e.Name)
-			}
-
-			// ─── Print sorted entries ──────────────────────────────────────────────────
 			for _, entry := range entries {
 				required := ""
 				if entry.Config.Required {
@@ -237,16 +195,24 @@ With --target, --kind, or --name, shows fields for a specific CRD.`,
 		}
 
 		// ── All fields across all CRDs ──────────────────────────────────────
+		crds := k.IDPEnabledCRDs()
+		sort.Slice(crds, func(i, j int) bool {
+			if crds[i] == nil || crds[j] == nil {
+				return false
+			}
+			return crds[i].Name < crds[j].Name
+		})
+
 		var totalFields int
 		fmt.Printf("\nIDP Fields\n")
 		fmt.Printf("%s\n", strings.Repeat("─", 70))
 
-		for _, crd := range k.IDPEnabledCRDs() {
+		for _, crd := range crds {
 			if crd == nil {
 				continue
 			}
-			fields := crd.IDPFields()
-			if len(fields) == 0 {
+			entries := sortedFieldEntries(crd)
+			if len(entries) == 0 {
 				continue
 			}
 
@@ -254,19 +220,12 @@ With --target, --kind, or --name, shows fields for a specific CRD.`,
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 			fmt.Fprintln(w, "  FIELD\tTYPE\tPATH\tSOURCE")
 
-			for name, config := range fields {
-				specPath := config.SpecPath(name)
-				source := "spec"
-				if _, ok := crd.AdditionalLabelFields()[name]; ok {
-					source = "label"
-				} else if _, ok := crd.AdditionalAnnotationFields()[name]; ok {
-					source = "annotation"
-				}
+			for _, entry := range entries {
 				fmt.Fprintf(w, "  %s\t%s\t%s\t%s\n",
-					name,
-					config.FieldType(),
-					specPath,
-					source,
+					entry.Name,
+					entry.Config.FieldType(),
+					entry.SpecPath,
+					entry.Source,
 				)
 				totalFields++
 			}
@@ -276,7 +235,7 @@ With --target, --kind, or --name, shows fields for a specific CRD.`,
 		if totalFields == 0 {
 			fmt.Println("\nNo IDP fields found.")
 		} else {
-			fmt.Printf("\nTotal: %d fields across %d CRDs\n", totalFields, len(k.IDPEnabledCRDs()))
+			fmt.Printf("\nTotal: %d fields across %d CRDs\n", totalFields, len(crds))
 		}
 		fmt.Println()
 		return nil
@@ -706,66 +665,6 @@ Examples:
 	},
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
-
-// resolveCRD resolves a CRD by target, kind, or name.
-func resolveCRD(kat *katalog.Katalog, target, kind, name string) (*orktypes.CRDEntry, error) {
-	var crd *orktypes.CRDEntry
-
-	switch {
-	case target != "":
-		crd = kat.LookupByTarget(target)
-		if crd == nil {
-			return nil, fmt.Errorf("%s target %q not found", failureMark(), target)
-		}
-	case kind != "":
-		crd = kat.LookupByKind(kind)
-		if crd == nil {
-			return nil, fmt.Errorf("%s kind %q not found", failureMark(), kind)
-		}
-	case name != "":
-		entry, ok := kat.CRDEntry(name)
-		if !ok {
-			return nil, fmt.Errorf("%s CRD %q not found", failureMark(), name)
-		}
-		crd = &entry
-	default:
-		return nil, fmt.Errorf("one of --target, --kind, or --name is required")
-	}
-
-	return crd, nil
-}
-
-// printCanIResult prints the permission check result.
-func printCanIResult(allowed bool, token, op string, crd *orktypes.CRDEntry, namespace, reason string, details []string) {
-	if op == "*" {
-		op = "perform all operations"
-	}
-
-	fmt.Println()
-	if allowed {
-		fmt.Printf("%s %s can %s on %q", successMark(), token, op, crd.IDPTarget())
-		if namespace != "" {
-			fmt.Printf(" in namespace %q", namespace)
-		}
-		fmt.Println()
-	} else {
-		fmt.Printf("%s %s cannot %s on %q", failureMark(), token, op, crd.IDPTarget())
-		if namespace != "" {
-			fmt.Printf(" in namespace %q", namespace)
-		}
-		fmt.Println()
-		fmt.Printf("  Reason: %s\n", reason)
-		if len(details) > 0 {
-			fmt.Printf("  Available:\n")
-			for _, detail := range details {
-				fmt.Printf("    - %s\n", detail)
-			}
-		}
-	}
-	fmt.Println()
-}
-
 // ── init ────────────────────────────────────────────────────────────────────
 
 func init() {
@@ -814,17 +713,5 @@ func init() {
 	rootCmd.AddCommand(idpCmd)
 
 	// Shadow global flags
-	idpCmds := []*cobra.Command{
-		idpCmd,
-		idpValidateCmd,
-		idpSchemaCmd,
-		idpFieldsCmd,
-		idpTokensCmd,
-		idpTargetsCmd,
-		idpCanICmd,
-		idpResponseCmd,
-	}
-	for _, cmd := range idpCmds {
-		shadowGlobalCommandFlags(cmd)
-	}
+	shadowGlobalCommandFlags(idpCmd)
 }

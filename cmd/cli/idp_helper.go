@@ -4,6 +4,7 @@ package cli
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
@@ -15,6 +16,8 @@ var (
 	validIDPOperations      = strings.Join(orktypes.ValidIDPOperations(), ", ")
 	validIDPEndpointClasses = strings.Join(orktypes.ValidIDPEndpointClasses(), ", ")
 )
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
 // ── buildKatalog ────────────────────────────────────────────────────────────
 
@@ -32,6 +35,101 @@ func buildKatalog(cmd *cobra.Command) (*katalog.Katalog, error) {
 	}
 
 	return k, nil
+}
+
+// resolveCRD resolves a CRD by target, kind, or name.
+func resolveCRD(kat *katalog.Katalog, target, kind, name string) (*orktypes.CRDEntry, error) {
+	var crd *orktypes.CRDEntry
+
+	switch {
+	case target != "":
+		crd = kat.LookupByTarget(target)
+		if crd == nil {
+			return nil, fmt.Errorf("%s target %q not found", failureMark(), target)
+		}
+	case kind != "":
+		crd = kat.LookupByKind(kind)
+		if crd == nil {
+			return nil, fmt.Errorf("%s kind %q not found", failureMark(), kind)
+		}
+	case name != "":
+		entry, ok := kat.CRDEntry(name)
+		if !ok {
+			return nil, fmt.Errorf("%s CRD %q not found", failureMark(), name)
+		}
+		crd = &entry
+	default:
+		return nil, fmt.Errorf("one of --target, --kind, or --name is required")
+	}
+
+	return crd, nil
+}
+
+// printCanIResult prints the permission check result.
+func printCanIResult(allowed bool, token, op string, crd *orktypes.CRDEntry, namespace, reason string, details []string) {
+	if op == "*" {
+		op = "perform all operations"
+	}
+
+	fmt.Println()
+	if allowed {
+		fmt.Printf("%s %s can %s on %q", successMark(), token, op, crd.IDPTarget())
+		if namespace != "" {
+			fmt.Printf(" in namespace %q", namespace)
+		}
+		fmt.Println()
+	} else {
+		fmt.Printf("%s %s cannot %s on %q", failureMark(), token, op, crd.IDPTarget())
+		if namespace != "" {
+			fmt.Printf(" in namespace %q", namespace)
+		}
+		fmt.Println()
+		fmt.Printf("  Reason: %s\n", reason)
+		if len(details) > 0 {
+			fmt.Printf("  Available:\n")
+			for _, detail := range details {
+				fmt.Printf("    - %s\n", detail)
+			}
+		}
+	}
+	fmt.Println()
+}
+
+// ── Field sorting helper ─────────────────────────────────────────────────────
+
+type fieldEntry struct {
+	Name     string
+	Config   orktypes.IDPFieldConfig
+	SpecPath string
+	Source   string
+}
+
+// sortedFieldEntries returns a sorted list of field entries for a CRD.
+func sortedFieldEntries(crd *orktypes.CRDEntry) []fieldEntry {
+	fields := crd.IDPFields()
+	entries := make([]fieldEntry, 0, len(fields))
+
+	for name, config := range fields {
+		specPath := config.SpecPath(name)
+		source := "spec"
+		if _, ok := crd.AdditionalLabelFields()[name]; ok {
+			source = "label"
+		} else if _, ok := crd.AdditionalAnnotationFields()[name]; ok {
+			source = "annotation"
+		}
+		entries = append(entries, fieldEntry{
+			Name:     name,
+			Config:   config,
+			SpecPath: specPath,
+			Source:   source,
+		})
+	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Name < entries[j].Name
+	})
+
+	return entries
 }
 
 // ── printIDPValidationSummary ──────────────────────────────────────────────
