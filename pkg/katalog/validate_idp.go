@@ -11,10 +11,10 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// validateIDP runs all IDP-related validations.
+// ValidateIDP runs all IDP-related validations.
 // This is the single entry point for IDP validation, keeping the main
 // pipeline clean and grouping all IDP checks together.
-func (k *Katalog) validateIDP() error {
+func (k *Katalog) ValidateIDP() error {
 	// 1. Validate idp.additionalFields (key syntax, enum, uniqueness)
 	if err := k.validateIDPAdditionalFields(); err != nil {
 		return err

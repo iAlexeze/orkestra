@@ -545,6 +545,11 @@ func (c *CRDEntry) AllAllowedNamespaces() AllowedNamespaces {
 	return c.AllowedNamespaces
 }
 
+// IsNamespaceRestricted returns true if either allowedNamespaces or restrictedNamespaces is not empty
+func (c *CRDEntry) IsNamespaceRestricted() bool {
+	return c.HasAllowedNamespaces() || c.HasRestrictedNamespaces()
+}
+
 // AllowedNamespacesOnly reports if only allowedNamespaces is defined for this crd.
 func (c *CRDEntry) AllowedNamespacesOnly() bool {
 	return len(c.AllowedNamespaces) > 0 && len(c.RestrictedNamespaces) == 0

@@ -312,6 +312,14 @@ func (c *CRDEntry) HasIDPFields() bool {
 	return c.IDPEnabled() && c.IDP.Fields != nil && len(c.IDP.Fields) > 0
 }
 
+// HasIDPTokenRestrictions reports whether this CRD declares any token restrictions.
+func (c *CRDEntry) HasIDPTokenRestrictions() bool {
+	if c.IDP == nil {
+		return false
+	}
+	return c.IDPEnabled() && c.IDP.HasTokenRestrictions()
+}
+
 // RequireIDPName reports whether an Apply API caller (and the Control Center
 // form) must supply metadata.name themselves — true unless idp.name is
 // declared, in which case the name is resolved server-side instead.

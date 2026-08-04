@@ -236,9 +236,12 @@ func (k *Katalog) KomposeRuntimeKatalog(
 		k.conversionRegistry.registerConversionRulesFromSpec(entry)
 	}
 
-	// Apply defaults so CLI tools (simulate, validate, plan) get the same
+	// Apply defaults/GVK so CLI tools (simulate, validate, plan) get the same
 	// field values as the runtime without needing to call ValidateConfig.
 	if err := k.setDefaults(kfg); err != nil {
+		return nil, err
+	}
+	if err := k.setGroupVersionKind(); err != nil {
 		return nil, err
 	}
 

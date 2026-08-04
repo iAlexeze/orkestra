@@ -164,3 +164,8 @@ func (r *IDPResponseConfig) HasPayload() bool {
 func (r *IDPResponseConfig) HasExclude() bool {
 	return len(r.Exclude) > 0
 }
+
+// HasPoll reports whether the polling config is declared.
+func (r *IDPResponseConfig) HasPoll() bool {
+	return r.Poll != nil
+}
