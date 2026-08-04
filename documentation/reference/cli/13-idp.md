@@ -148,6 +148,7 @@ ork idp fields
 | `--target` | `-t` | Target to show fields for |
 | `--kind` | `-k` | Kind to show fields for |
 | `--name` | `-n` | CRD name to show fields for |
+| `--sort-by` | | Sort fields by `"name"` (default) or `"order"` |
 
 ### Examples
 
@@ -163,6 +164,9 @@ ork idp fields --kind AppRequest
 
 # List fields for a specific CRD name
 ork idp fields --name application
+
+# Sort fields by order (as declared in the Katalog)
+ork idp fields --target smartapp --sort-by order
 ```
 
 ### Output (All fields)
@@ -173,11 +177,11 @@ IDP Fields
 
 CRD: application (target: smartapp)
   FIELD           TYPE    PATH                    SOURCE
-  repository      string  app.repository          spec
-  image           string  app.image               spec
   cpu             string  app.resources.cpu       spec
-  team            string                          label
   environment     string                          label
+  image           string  app.image               spec
+  repository      string  app.repository          spec
+  team            string                          label
 
 Total: 5 fields across 1 CRD
 ```
@@ -188,13 +192,25 @@ Total: 5 fields across 1 CRD
 Fields for: application (target: smartapp)
 ──────────────────────────────────────────────────────────────────────
 FIELD           TYPE    PATH                    SOURCE      REQUIRED
-repository      string  app.repository          spec        ✓
-image           string  app.image               spec        ✓
 cpu             string  app.resources.cpu       spec
-team            string                          label       ✓
 environment     string                          label
+image           string  app.image               spec        ✓
+repository      string  app.repository          spec        ✓
+team            string                          label       ✓
 ```
 
+### Output (Sorted by `order`)
+
+```text
+Fields for: application (target: smartapp)
+──────────────────────────────────────────────────────────────────────
+FIELD           TYPE    PATH                    SOURCE      REQUIRED  ORDER
+repository      string  app.repository          spec        ✓         1
+image           string  app.image               spec        ✓         2
+team            string                          label       ✓         3
+cpu             string  app.resources.cpu       spec                  4
+environment     string                          label                 5
+```
 ---
 
 ## `ork idp tokens`
