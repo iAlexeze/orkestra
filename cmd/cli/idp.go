@@ -147,6 +147,15 @@ With --target, --kind, or --name, shows fields for a specific CRD.`,
 		target, _ := cmd.Flags().GetString("target")
 		kind, _ := cmd.Flags().GetString("kind")
 		name, _ := cmd.Flags().GetString("name")
+		sortBy, _ := cmd.Flags().GetString("sort-by")
+
+		// Validate sortBy
+		if sortBy != "" && sortBy != "name" && sortBy != "order" {
+			return fmt.Errorf("%s --sort-by must be 'name' or 'order'", failureMark())
+		}
+		if sortBy == "" {
+			sortBy = "name"
+		}
 
 		k, err := buildKatalog(cmd)
 		if err != nil {
@@ -164,7 +173,7 @@ With --target, --kind, or --name, shows fields for a specific CRD.`,
 				return fmt.Errorf("CRD %q is not IDP-enabled", crd.Name)
 			}
 
-			entries := sortedFieldEntries(crd)
+			entries := sortedFieldEntries(crd, sortBy)
 			if len(entries) == 0 {
 				fmt.Printf("\nNo fields defined for CRD %q\n", crd.Name)
 				return nil
@@ -211,7 +220,7 @@ With --target, --kind, or --name, shows fields for a specific CRD.`,
 			if crd == nil {
 				continue
 			}
-			entries := sortedFieldEntries(crd)
+			entries := sortedFieldEntries(crd, sortBy)
 			if len(entries) == 0 {
 				continue
 			}
@@ -682,6 +691,7 @@ func init() {
 	idpFieldsCmd.Flags().StringP("target", "t", "", "Target to show fields for")
 	idpFieldsCmd.Flags().StringP("kind", "k", "", "Kind to show fields for")
 	idpFieldsCmd.Flags().StringP("name", "n", "", "CRD name to show fields for")
+	idpFieldsCmd.Flags().String("sort-by", "name", "Sort fields by 'name' (default) or 'order'")
 	idpCmd.AddCommand(idpFieldsCmd)
 
 	// Tokens

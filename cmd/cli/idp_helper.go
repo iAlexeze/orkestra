@@ -105,7 +105,8 @@ type fieldEntry struct {
 }
 
 // sortedFieldEntries returns a sorted list of field entries for a CRD.
-func sortedFieldEntries(crd *orktypes.CRDEntry) []fieldEntry {
+// sortBy: "name" (default) or "order"
+func sortedFieldEntries(crd *orktypes.CRDEntry, sortBy string) []fieldEntry {
 	fields := crd.IDPFields()
 	entries := make([]fieldEntry, 0, len(fields))
 
@@ -125,9 +126,30 @@ func sortedFieldEntries(crd *orktypes.CRDEntry) []fieldEntry {
 		})
 	}
 
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].Name < entries[j].Name
-	})
+	switch sortBy {
+	case "order":
+		sort.Slice(entries, func(i, j int) bool {
+			// Fields with order 0 (unset) go after explicitly ordered fields
+			oi, oj := entries[i].Config.Order, entries[j].Config.Order
+			if oi == 0 && oj == 0 {
+				return entries[i].Name < entries[j].Name
+			}
+			if oi == 0 {
+				return false
+			}
+			if oj == 0 {
+				return true
+			}
+			if oi != oj {
+				return oi < oj
+			}
+			return entries[i].Name < entries[j].Name
+		})
+	default: // "name"
+		sort.Slice(entries, func(i, j int) bool {
+			return entries[i].Name < entries[j].Name
+		})
+	}
 
 	return entries
 }
