@@ -218,11 +218,15 @@ type EndpointInfo struct {
 
 // CRDSummary is a summary of a CRD
 type CRDSummary struct {
-	Name                     string       `json:"name"`
-	Description              string       `json:"description,omitempty"`
-	Mode                     string       `json:"mode,omitempty"`
-	GVK                      string       `json:"gvk,omitempty"`
-	GVR                      string       `json:"gvr,omitempty"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Mode        string `json:"mode,omitempty"`
+	GVK         string `json:"gvk,omitempty"`
+	GVR         string `json:"gvr,omitempty"`
+	// Target is the identifier this CRD is addressed by in the Apply API and
+	// schema API (idp.target, or the lowercased kind when unset). Empty when
+	// IDP isn't enabled for this CRD.
+	Target                   string       `json:"target,omitempty"`
 	Namespaced               bool         `json:"namespaced"`
 	Namespace                string       `json:"namespace,omitempty"`
 	CrossAccess              bool         `json:"crossAccess"`
@@ -249,15 +253,6 @@ type CRDSummary struct {
 	RequireIDPName           bool         `json:"requireIdpName,omitempty"`
 }
 
-// IDP field write targets — which part of the CR an IDPField's submitted
-// value gets written to. Mirrors the bucketing in handleIDPApplyForm and the
-// data-source attribute idp_form.html's collectPayload() reads client-side.
-const (
-	IDPFieldSourceSpec       = "spec"
-	IDPFieldSourceLabel      = "label"
-	IDPFieldSourceAnnotation = "annotation"
-)
-
 // IDPField is one rendered field in the IDP create form.
 type IDPField struct {
 	Name        string
@@ -267,12 +262,10 @@ type IDPField struct {
 	Hint        string
 	Enum        []string
 	Required    bool
-	Default     string // pre-populated value from CRD schema default:
 	Category    string // section heading for visual grouping
 	WhenJSON    string // JSON array of Condition — all must be true (AND)
 	AnyOfJSON   string // JSON array of Condition — at least one must be true (OR)
 	Disabled    string // non-empty → greyed-out field with this message
-	Source      string // IDPFieldSourceSpec (default) | IDPFieldSourceLabel | IDPFieldSourceAnnotation
 }
 
 // IDPSection is a group of fields sharing a section heading in the IDP form.
@@ -283,8 +276,13 @@ type IDPSection struct {
 
 // IDPFormData is the view model for idp_form.html.
 type IDPFormData struct {
-	KatalogName    string
-	CRDName        string
+	KatalogName string
+	CRDName     string
+	// Target is the identifier submitted to the gateway's Apply API
+	// (idp.target, or the lowercased kind when unset).
+	Target string
+	// Kind/APIVersion are display-only — shown in the page header, not used
+	// to build the submitted payload (the gateway builds the CR).
 	Kind           string
 	APIVersion     string
 	BackURL        string

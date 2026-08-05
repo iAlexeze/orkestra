@@ -109,11 +109,15 @@ type WorkerStats struct {
 }
 
 type CRDInfoResponse struct {
-	Name              string                     `json:"name"`
-	Description       string                     `json:"description"`
-	Mode              string                     `json:"mode"`
-	GVK               string                     `json:"gvk"`
-	GVR               string                     `json:"gvr"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Mode        string `json:"mode"`
+	GVK         string `json:"gvk"`
+	GVR         string `json:"gvr"`
+	// Target is the identifier callers use against the Apply API and schema
+	// API (idp.target, or the lowercased kind when unset). Empty when IDP is
+	// not enabled for this CRD.
+	Target            string                     `json:"target,omitempty"`
 	Namespaced        bool                       `json:"namespaced"`
 	Namespace         string                     `json:"namespace"`
 	DependsOn         []string                   `json:"dependsOn,omitempty"`
@@ -264,6 +268,7 @@ func BuildCRDInfoHandler(
 			Mode:              crd.Mode.String(),
 			GVK:               crd.GVKString(),
 			GVR:               crd.GroupVersionResource.String(),
+			Target:            crd.IDPTargetOrEmpty(),
 			Namespaced:        crd.IsNamespaced(),
 			Namespace:         crd.Namespace,
 			DependsOn:         crd.DependsOn.Names(),
@@ -414,6 +419,10 @@ type CRDSummaryResponse struct {
 	KatalogNamespace         string             `json:"katalogNamespace,omitempty"`
 	IDPEnabled               bool               `json:"idpEnabled,omitempty"`
 	RequireIDPName           bool               `json:"requireIdpName,omitempty"`
+	// Target is the identifier callers use against the Apply API and schema
+	// API (idp.target, or the lowercased kind when unset). Empty when IDP is
+	// not enabled for this CRD.
+	Target string `json:"target,omitempty"`
 }
 
 type OperatorBoxSummary struct {
@@ -536,6 +545,7 @@ func BuildKatalogHandler(
 				KatalogNamespace: crd.KatalogNamespace,
 				IDPEnabled:       crd.IDPEnabled(),
 				RequireIDPName:   crd.RequireIDPName(),
+				Target:           crd.IDPTargetOrEmpty(),
 				Endpoints: EndpointInfo{
 					Health:        "/katalog/" + strings.ToLower(crd.Name) + "/health",
 					Info:          "/katalog/" + strings.ToLower(crd.Name),

@@ -21,13 +21,14 @@ All requests arrive at `ControlCenter.ServeHTTP`, which strips the `/controlcent
 | `/katalog/{name}/crd/{crd}/raw` | `handleProxyCRDSpec` | — (JSON proxy) |
 | `/katalog/{name}/crd/{crd}/enriched` | `handleProxyCRDSpec` | — (JSON proxy) |
 | `/katalog/{name}/crd/{crd}/cr` | `handleCRList` | `cr_list.html` |
+| `/katalog/{name}/crd/{crd}/cr/create` | `handleIDPCreateForm` (GET renders, POST applies) | `idp_form.html` |
 | `/katalog/{name}/crd/{crd}/cr/{crname}` | `handleCRDetail` (cluster-scoped) | `cr_detail.html` |
 | `/katalog/{name}/crd/{crd}/cr/{ns}/{crname}` | `handleCRDetail` (namespaced) | `cr_detail.html` |
 | `GET /api/instances` | `handleListInstances` | — (JSON) |
 | `POST /api/instances` | `handleAddInstance` | — (JSON) |
 | `PUT /api/instances/{url}` | `handleUpdateInstance` | — (JSON) |
 | `DELETE /api/instances/{url}` | `handleDeleteInstance` | — (JSON) |
-| `GET /api/idp/schema/{kind}` | `handleIDPSchema` | — (JSON proxy) |
+| `GET /api/idp/schema/{target}` | `handleIDPSchema` | — (JSON proxy) |
 | `POST /api/idp/apply` | `handleIDPApply` | — (JSON proxy) |
 
 ## Katalog sub-routing
@@ -56,9 +57,9 @@ len(crParts) == 3  →  namespaced CR detail       (/cr/{ns}/{name})
 
 ## IDP proxy endpoints
 
-`/api/idp/schema/{kind}` and `/api/idp/apply` are server-side proxies to the companion gateway's Apply API. The CC holds the `GATEWAY_TOKEN` bearer token; the browser never sees it. All IDP form traffic flows through these two routes — schema fetch and CR apply — so the gateway can be behind a different origin without CORS or token-exposure issues.
+`/api/idp/schema/{target}` and `/api/idp/apply` are standalone server-side proxies to the companion gateway's Apply API, for callers that want the gateway's raw JSON directly rather than the rendered form. The CC holds the `GATEWAY_TOKEN` bearer token; the browser never sees it. The `[+ Create]` form itself doesn't use these — see [06-idp-form.md](06-idp-form.md) for its actual request flow (`handleIDPCreateForm`/`fetchIDPFields`/`handleIDPApplyForm`).
 
-`handleIDPSchema` forwards `GET {gatewayEndpoint}/api/v1/schema/{kind}`. `handleIDPApply` forwards `POST {gatewayEndpoint}/api/v1/apply` with the request body unchanged. Both respond with the gateway's status code and JSON body verbatim.
+`handleIDPSchema` forwards `GET {gatewayEndpoint}/api/v1/schema?target={target}`. `handleIDPApply` forwards `POST {gatewayEndpoint}/api/v1/apply` with the request body unchanged. Both respond with the gateway's status code and JSON body verbatim.
 
 ## Template rendering
 
