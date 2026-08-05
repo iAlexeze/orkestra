@@ -121,9 +121,29 @@ onReconcile:
 
 `once: true` — the token is generated on first reconcile and never overwritten. The new team's CI reads the Secret from the cluster and uses the `token` key as the bearer token. Access provisioning is operator-managed — no manual token creation.
 
-### Scoping
+### Scoping — `idp.allowedTokens`
 
-Static tokens are not scoped to specific CRDs or namespaces. Namespace restriction is handled by `namespaceProtection` on the CRD entry. If a pipeline should only create CRs in `team-payments`, set `allowedNamespaces: [team-payments]` on the CRD entry — the gateway enforces it on every request regardless of which token was used.
+Two independent layers, both enforced on every request:
+
+- **`allowedNamespaces`/`restrictedNamespaces` on the CRD entry** — topology, the same for every caller. If a CRD should only ever exist in `team-payments`, set `allowedNamespaces: [team-payments]` — every token, every caller, sees that boundary.
+- **`idp.allowedTokens`, per CRD** — identity. Which operations (`get`/`list`/`create`/`update`/`delete`/`*`), on which endpoint class (`resources`/`schema`/`global`), in which namespaces, *for this specific token*. Two tokens against the same CRD can get different answers — a `ci-pipeline` token that can create in `staging` but not touch `production`; a `security-audit` token that's read-only everywhere.
+
+```yaml
+idp:
+  allowedTokens:
+    ci-pipeline:
+      namespaces: [team-payments-staging]
+      permissions:
+        resources: [create, update, get, list]   # no delete
+```
+
+Checked in `checkIDPPermission` before the apply/read/list/delete handler runs — a denied request never reaches SSA. Returns `403` with a message naming exactly which check failed (unknown token, wrong namespace, missing operation), not a silent drop or generic `401`. `ork validate` checks token names against `gateway.applyAPI.auth.tokens`, rejects invalid operations and duplicate entries, and rejects a token namespace the CRD itself doesn't allow.
+
+A CRD with no `idp.allowedTokens` block places no restriction here — any gateway-level token can call any endpoint the Apply API exposes for it, bounded only by the CRD-level namespace rules above.
+
+→ [Token Scoping](../../../../documentation/concepts/idp/03-token-scoping.md) — full model, worked multi-token example
+
+→ [IDP token permissions](../../../../documentation/security/08-idp-permissions.md) — the security write-up
 
 ## Adding a new auth mode
 

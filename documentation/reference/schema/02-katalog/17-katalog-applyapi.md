@@ -76,6 +76,76 @@ curl -X POST /api/v1/apply \
   -d '{"apiVersion": "platform.myorg.io/v1", "kind": "AppRequest", ...}'
 ```
 
+### Nested fields with `path`
+
+A submitted field name doesn't have to match its location in `spec`. Set `path` on the field:
+
+```yaml
+idp:
+  fields:
+    cpu:
+      label: "CPU Request"
+      path: app.resources.cpu   # spec.app.resources.cpu
+```
+
+Callers still submit the flat name (`{"target": "app", "cpu": "500m"}`) — the gateway writes it to the nested location. Omit `path` and the field name is used flat (`spec.cpu`).
+
+## Response shape
+
+A successful apply returns `ApplyResponse` (`200`/`201`):
+
+```json
+{
+  "accepted": true,
+  "name": "payments-api",
+  "namespace": "team-payments-staging",
+  "kind": "AppRequest",
+  "apiVersion": "platform.myorg.io/v1",
+  "pollUrl": "/api/v1/resources/AppRequest/team-payments-staging/payments-api",
+  "warnings": [],
+  "payload": { "phase": "", "serviceURL": "https://payments-api.staging.myorg.io" }
+}
+```
+
+A rejected apply returns `422` with structured, field-level violations instead of a raw Kubernetes error string:
+
+```json
+{
+  "accepted": false,
+  "message": "name is required",
+  "violations": [
+    { "field": "metadata.name", "message": "name is required", "severity": "error" }
+  ]
+}
+```
+
+`violations[].field` is a dot-notation path (`spec.environment`, `metadata.name`) — enough for a form to highlight the offending input directly, rather than parsing a message string. `warnings` carries admission-webhook advisories even on a successful apply — the same experience `kubectl apply` gives on the command line.
+
+### `idp.config.response` — shaping what callers see back
+
+Controls `pollUrl` and `payload` above:
+
+```yaml
+idp:
+  config:
+    response:
+      default: true              # include the full CR alongside payload (default)
+      payload:
+        phase:      '{{ .status.phase }}'
+        serviceURL: 'https://{{ .metadata.name }}.{{ .spec.environment }}.myorg.io'
+      exclude:
+        - metadata.managedFields
+      poll:
+        field: status.phase      # → pollUrl gets ?field=status.phase appended
+```
+
+- **`payload`** — named template expressions, evaluated against the CR (`.spec`, `.metadata` at apply time; `.status` too once the runtime has written it, at `GET /api/v1/resources/...`). Unresolvable expressions become `""`, never an error.
+- **`default: false`** — `payload` becomes the entire response instead of riding alongside the full CR. Use this to keep a curated, stable response shape independent of what the CRD's spec looks like.
+- **`exclude`** — dot-notation paths stripped from the full-CR portion of `GET`/list responses (e.g. hiding `metadata.managedFields`). Applied before `payload`, and never removes a `payload` key.
+- **`poll`** — overrides the derived `pollUrl`. `field` appends `?field=<path>` for lightweight single-value polling; `url` replaces the whole URL with a template.
+
+→ [`idp.config.response` field reference](20-idp.md#idpconfigresponse)
+
 ## `idp.allowedTokens` — fine-grained permissions
 
 Per-CRD token scoping with operation-level permissions and namespace restrictions.
@@ -138,16 +208,16 @@ Both follow established merge semantics: included entries are loaded first, then
 
 ## Security
 
-No new security configuration. Every property the Apply API enforces is already declared on the CRD entry:
+Nothing here needs a new configuration surface to learn — every property the Apply API enforces is declared right on the CRD entry, same as it would be for any other caller:
 
 | Property | Where it lives |
 |----------|----------------|
 | Admission rules | `security.webhooks.admission` + `validation` / `mutation` blocks |
-| Namespace restriction | `allowedNamespaces` / `restrictedNamespaces` on the CRD entry |
-| Token permissions | `idp.allowedTokens` on the CRD entry |
+| Namespace restriction (topology — same for every caller) | `allowedNamespaces` / `restrictedNamespaces` on the CRD entry |
+| Token permissions (identity — per caller) | `idp.allowedTokens` on the CRD entry — a real, separate authorization layer; see [IDP token permissions](../../../security/08-idp-permissions.md) |
 | Deletion protection | `security.deletionProtection` |
 
-The Apply API calls the same validation functions the webhook path calls. There is no divergence between what `kubectl apply` would enforce and what `POST /api/v1/apply` enforces.
+The Apply API calls the same validation functions the webhook path calls. There is no divergence between what `kubectl apply` would enforce and what `POST /api/v1/apply` enforces — `idp.allowedTokens` is the one addition specific to the Apply API, since `kubectl` has no notion of a bearer token to scope.
 
 ## Per-CRD: `idp`
 
@@ -158,6 +228,8 @@ Which CRDs appear with a **[+ Create]** button in the Control Center and have th
 ## See also
 
 → [concepts/idp](../../../concepts/idp/) — conceptual overview
+
+→ [security/idp-permissions](../../../security/08-idp-permissions.md) — `idp.allowedTokens` as a security layer, not just a config block
 
 → [pkg/gateway](https://github.com/orkspace/orkestra/blob/main/pkg/gateway/README.md) — developer documentation
 

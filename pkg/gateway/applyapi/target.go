@@ -38,6 +38,9 @@ func isTargetRequest(raw map[string]interface{}) bool {
 //	idp.name:      '{{ repoSlug .repository }}'  → .repository from the request
 //	idp.namespace: '{{ .team }}-{{ .environment }}' → .team and .environment
 //
+// When idp.name isn't declared, the caller's own "name" field is used as-is,
+// matching full CR mode's metadata.name behavior for the same case.
+//
 // Returns an error only when idp.name or idp.namespace are declared but
 // cannot be resolved to a non-empty string — SSA would reject the CR anyway,
 // so we surface the error here with a clearer message.
@@ -180,6 +183,10 @@ func resolveIDPIdentity(
 				crd.IDP.Name, err,
 			)
 		}
+		obj.SetName(strings.TrimSpace(name))
+	} else if name, ok := raw["name"].(string); ok && strings.TrimSpace(name) != "" {
+		// idp.name not declared — use the caller-supplied name, matching
+		// full CR mode's behavior for the same case.
 		obj.SetName(strings.TrimSpace(name))
 	}
 

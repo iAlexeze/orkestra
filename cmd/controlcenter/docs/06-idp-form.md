@@ -1,6 +1,8 @@
 # 06 — IDP Self-Service Form
 
-The IDP form is the browser-native delivery path for the Apply API. A platform team declares `idp.enabled: true` on a CRD entry; from that moment, any developer with access to the Control Center can create instances of that CRD by filling a form — no YAML, no `kubectl`, no cluster credentials.
+The IDP form is the browser-native delivery path for the Apply API's target mode. A platform team declares `idp.enabled: true` and `idp.fields`/`idp.additionalFields` on a CRD entry; from that moment, any developer with access to the Control Center can create instances of that CRD by filling a form — no YAML, no `kubectl`, no cluster credentials, and no knowledge of the CRD's Kubernetes shape.
+
+Control Center never constructs a Kubernetes CR itself. It submits a flat `{"target": "<target>", ...fields}` payload to the gateway's Apply API; the gateway (`pkg/gateway/applyapi`) resolves the target to a CRD and builds the CR via `BuildCRFromTarget`, using the CRD's `idp.fields`/`idp.additionalFields` declarations to route each field into `spec`, `metadata.labels`, or `metadata.annotations`, and `idp.name`/`idp.namespace` to resolve identity.
 
 ## Activation
 
@@ -8,91 +10,80 @@ Three things must all be true for the `[+ Create]` button to appear:
 
 1. `gateway.applyAPI.enabled: true` on the Katalog
 2. `idp.enabled: true` on the CRD entry
-3. `ORK_CC_APPLY_TOKEN` set on the CC process
+3. `GATEWAY_TOKEN` set on the CC process
 
-The runtime sets `CRDSummary.IDPEnabled` in its `/katalog` response (field: `"idpEnabled"`). The CC reads it during the background fetch and passes it to `CRListView.IDPEnabled`. The button is suppressed server-side when no Apply token is configured so the route is never advertised without auth.
+The runtime sets `CRDSummaryResponse.IDPEnabled` and `CRDSummaryResponse.Target` in its `/katalog` response (`"idpEnabled"`, `"target"`). CC mirrors both onto `CRDSummary`. `Target` is the identifier CC submits to the gateway — it comes from `idp.target` if the platform team set one, otherwise the lowercased Kind — CC never derives it itself. `handleIDPCreateForm` redirects back if `IdpEnabled` is false or `Target` is empty (IDP not actually usable for this CRD).
 
 ## Request flow
 
 ```
-Browser GET /controlcenter/katalog/{kat}/crd/{crd}/idp
+Browser GET /controlcenter/katalog/{kat}/crd/{crd}/cr/create
   │
-  ├─ handleIDPCreate reads Instance.GatewayEndpoint
-  ├─ FetchIDPSchema → GET {gateway}/api/v1/schema/{kind}
-  │    Authorization: Bearer {ORK_CC_APPLY_TOKEN}
-  │    ← SchemaResponse { kind, apiVersion, properties, idpFields }
+  ├─ handleIDPCreateForm looks up CRDSummary.Target for this CRD
+  ├─ fetchIDPFields → GET {gateway}/api/v1/schema?target={target}
+  │    Authorization: Bearer {GATEWAY_TOKEN}
+  │    ← SchemaResponse { target, title, description, fields, required }
+  │      fields is a FLAT map[string]IDPFieldConfig — no spec/label/
+  │      annotation distinction. The gateway resolves that at apply time
+  │      from the same idp.fields/idp.additionalFields declaration.
   │
-  └─ renderTemplate("idp_form.html", IDPFormView)
-       Fields assembled by buildIDPFormFields:
-         OpenAPI property type  →  HTML input type
-         string                 →  <input type="text">
-         string + enum          →  <select>
-         integer / number       →  <input type="number">
-         boolean                →  <input type="checkbox">
-         IDP hint.label         →  <label>
-         IDP hint.placeholder   →  placeholder=""
-         IDP hint.hint          →  hint text below the field
-         IDP hint.order         →  sort order (low values first)
+  └─ renderTemplate("idp_form.html", IDPFormData)
+       Fields assembled by buildIDPField, one per schemaResp.Fields entry:
+         field.type   →  HTML input type (string→text, integer/number→number,
+                          boolean→checkbox, enum(+values)→select)
+         field.label       →  <label> (falls back to the capitalized field name)
+         field.placeholder →  placeholder=""
+         field.hint        →  hint text below the field
+         field.order       →  sort order (0/unset sorts last)
+         field.category    →  section heading (fields with no category group
+                               under a single default "Fields" section)
+         field.when/anyOf  →  data-when/data-anyof — evaluated client-side to
+                               show/hide the field as the form is filled
 
-Browser POST /controlcenter/katalog/{kat}/crd/{crd}/idp
-  Body: { "name": "...", "namespace": "...", "spec": { ... } }
+Browser POST /controlcenter/katalog/{kat}/crd/{crd}/cr/create
+  Body: { "target": "<target>", "name": "...", ...flatFields }
+    (collectPayload() in idp_form.html builds this directly — one flat
+    object, field name → value, no bucketing. "name" is only present when
+    RequireIDPName is true; the Identity section is omitted entirely from
+    the form when idp.name is declared, since the gateway resolves the name
+    server-side in that case.)
   │
-  ├─ handleIDPCreate parses the JSON body
-  ├─ FetchIDPSchema again → gets apiVersion and kind
-  ├─ Wraps into full CR envelope:
-  │    { apiVersion, kind, metadata: { name, namespace }, spec }
-  ├─ PostIDPApply → POST {gateway}/api/v1/apply
-  │    Authorization: Bearer {ORK_CC_APPLY_TOKEN}
-  │    ← status code + gateway response body
+  ├─ handleIDPApplyForm decodes the body, overwrites "target" with the
+  │    server-resolved value (never trusts a client-supplied one), and
+  │    forwards the flat payload as-is
+  ├─ proxyIDPRequest → POST {gateway}/api/v1/apply
+  │    Authorization: Bearer {GATEWAY_TOKEN}
+  │    ← status code + gateway response body (the gateway builds the CR)
   │
   └─ Returns gateway response JSON to browser
-       JS redirects to CR list on 200/201
-       JS shows inline error on any other status
+       JS redirects to CR list on 200/201 with no warnings
+       JS shows inline violations (field-level) or a rejection banner otherwise
 ```
 
-The Apply token is never sent to the browser. The CC backend holds it in `Config.ApplyToken` and injects it into the gateway request headers.
+The gateway token is never sent to the browser. The CC backend holds it in `cc.gatewayToken` and injects it into the gateway request headers via `proxyIDPRequest`.
 
 ## Field rendering
 
-`buildIDPFormFields` in `cc/cr_types.go` merges the two sources:
+`fetchIDPFields` in `cc/controlcenter.go` calls `buildIDPField` once per entry in `SchemaResponse.Fields` — there is only one field source now, not two. Each entry decodes into `idpFieldHint` (mirrors `orktypes.IDPFieldConfig`), which carries its own `type`/`enum` — there's no CRD OpenAPI schema involved and no separate "required" list to merge (each field's `required` is already final).
 
-| Source | Provides |
-|--------|---------|
-| `SchemaResponse.Properties` (OpenAPI) | field names, types, enum values |
-| `SchemaResponse.IDPFields` (katalog hints) | labels, placeholders, hints, sort order |
-
-Fields without an IDP hint are still rendered — they get the raw field name as the label and default sort order 999. Fields with an IDP hint but absent from the OpenAPI schema are silently dropped (schema is authoritative for existence).
+One capability this dropped versus the old CRD-schema-driven approach: pre-populating a field's value from the CRD's OpenAPI `default:` — `IDPFieldConfig` has no `Default`, so the schema API doesn't expose one. If defaults become worth restoring, that's a schema-API change (`IDPFieldConfig.Default` + `SchemaResponse`), not something CC can add on its own.
 
 ## Configuration
 
-| Env var | CC struct | Purpose |
+| Env var | CC field | Purpose |
 |---------|-----------|---------|
-| `ORK_CC_APPLY_TOKEN` | `Config.ApplyToken` | Bearer token for gateway Apply API calls; must match a token declared in `gateway.applyAPI.auth.tokens` |
+| `GATEWAY_TOKEN` | `ControlCenter.gatewayToken` | Bearer token for gateway Apply API calls; must match a token declared in `gateway.applyAPI.auth.tokens` |
 
-Set it alongside the gateway's self-bootstrapped secret:
+## Files involved
 
-```yaml
-# helm values
-controlcenter:
-  env:
-    ORK_CC_APPLY_TOKEN:
-      valueFrom:
-        secretKeyRef:
-          name: ork-apply-token
-          key: token
-```
+| File | Role |
+|------|------|
+| `pkg/runtime/kordinator/crd_health_handers.go` | `CRDSummaryResponse.Target`/`IDPEnabled` — from `crd.IDPTargetOrEmpty()`/`crd.IDPEnabled()` |
+| `pkg/gateway/applyapi/schema.go` | `SchemaResponse` — the flat field contract CC consumes |
+| `pkg/gateway/applyapi/target.go` | `BuildCRFromTarget` — builds the CR the gateway applies; CC never sees this shape |
+| `cc/types.go` | `CRDSummary.Target`; `IDPField`, `IDPSection`, `IDPFormData` |
+| `cc/controlcenter.go` | `handleIDPCreateForm`, `fetchIDPFields`, `buildIDPField`, `handleIDPApplyForm`, `handleIDPSchema` |
+| `cc/assets/templates/idp_form.html` | form page — `collectPayload()` builds the flat POST body |
+| `cc/idp_fields_test.go` | `buildIDPField` coverage |
 
-## Files changed
-
-| File | Change |
-|------|--------|
-| `pkg/kordinator/crd_health_handers.go` | `CRDSummaryResponse.IDPEnabled` — set from `crd.IDP != nil && crd.IDP.Enabled` |
-| `cc/konfig.go` | `ControlCenterKonfig.ApplyToken` — from `ORK_CC_APPLY_TOKEN` |
-| `cc/controlcenter.go` | `Config.ApplyToken`; `/idp` route case; `handleIDPCreate`; `handleCRList` now sets `IDPEnabled` |
-| `cc/types.go` | `CRDSummary.IDPEnabled` |
-| `cc/cr_types.go` | `CRListView.{IDPEnabled,GatewayEndpoint,CreateURL}`; `IDPField`, `IDPSchemaResponse`, `IDPFormField`, `IDPFormView`; `buildIDPFormFields` |
-| `cc/client.go` | `FetchIDPSchema`, `PostIDPApply` |
-| `cc/assets/templates/cr_list.html` | `[+ Create]` button when `IDPEnabled` |
-| `cc/assets/templates/idp_form.html` | new — full self-service form page |
-
-→ Next: see the `examples/use-cases/idp` example pack for an end-to-end walkthrough.
+→ Next: the `examples/use-cases/idp` example pack is being rethought from scratch for target mode — not yet updated, don't treat it as current.

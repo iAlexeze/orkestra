@@ -233,13 +233,13 @@
 
               {{ if eq .InputType "checkbox" }}
               <div class="idp-checkbox-row">
-                <input type="checkbox" id="field-{{ .Name }}" name="{{ .Name }}" data-type="boolean" data-source="{{ .Source }}"
+                <input type="checkbox" id="field-{{ .Name }}" name="{{ .Name }}" data-type="boolean"
                   {{ if .Disabled }}disabled{{ end }}>
                 <label for="field-{{ .Name }}">{{ .Label }}{{ if .Required }} <span style="color:var(--text-muted)">*</span>{{ end }}</label>
               </div>
               {{ else if eq .InputType "select" }}
               <label for="field-{{ .Name }}">{{ .Label }}{{ if .Required }} <span style="color:var(--text-muted)">*</span>{{ end }}</label>
-              <select id="field-{{ .Name }}" name="{{ .Name }}" data-type="string" data-source="{{ .Source }}"
+              <select id="field-{{ .Name }}" name="{{ .Name }}" data-type="string"
                 {{ if and .Required (not .Disabled) }}required{{ end }}
                 {{ if .Disabled }}disabled{{ end }}>
                 <option value="">— select —</option>
@@ -249,16 +249,14 @@
               </select>
               {{ else if eq .InputType "number" }}
               <label for="field-{{ .Name }}">{{ .Label }}{{ if .Required }} <span style="color:var(--text-muted)">*</span>{{ end }}</label>
-              <input type="number" id="field-{{ .Name }}" name="{{ .Name }}" data-type="number" data-source="{{ .Source }}"
+              <input type="number" id="field-{{ .Name }}" name="{{ .Name }}" data-type="number"
                 {{ if .Placeholder }}placeholder="{{ .Placeholder }}"{{ end }}
-                {{ if .Default }}value="{{ .Default }}"{{ end }}
                 {{ if and .Required (not .Disabled) }}required{{ end }}
                 {{ if .Disabled }}disabled{{ end }}>
               {{ else }}
               <label for="field-{{ .Name }}">{{ .Label }}{{ if .Required }} <span style="color:var(--text-muted)">*</span>{{ end }}</label>
-              <input type="text" id="field-{{ .Name }}" name="{{ .Name }}" data-type="string" data-source="{{ .Source }}"
+              <input type="text" id="field-{{ .Name }}" name="{{ .Name }}" data-type="string"
                 {{ if .Placeholder }}placeholder="{{ .Placeholder }}"{{ end }}
-                {{ if .Default }}value="{{ .Default }}"{{ end }}
                 {{ if and .Required (not .Disabled) }}required{{ end }}
                 {{ if .Disabled }}disabled{{ end }}>
               {{ end }}
@@ -293,6 +291,7 @@
     var btnPreview = document.getElementById('idp-preview');
     var status     = document.getElementById('idp-status');
     var backURL    = {{ .BackURL | js }};
+    var target     = {{ .Target | js }};
 
     // ── Condition evaluation ────────────────────────────────────────────────
     function evalCond(cond) {
@@ -422,13 +421,11 @@
     }
 
     // ── Payload collection ──────────────────────────────────────────────────
-    // Each field's data-source ("spec" | "label" | "annotation") decides which
-    // bucket it lands in — the server writes each bucket to a different part
-    // of the CR (spec.*, metadata.labels, metadata.annotations). Labels and
-    // annotations are always strings, regardless of data-type, since that's
-    // all Kubernetes metadata values can be.
+    // Flat target-mode payload — the gateway resolves which field goes where
+    // (spec, label, annotation) from the Katalog's idp.fields declaration;
+    // the form just submits the field names and values it was given.
     function collectPayload() {
-      var spec = {}, labels = {}, annotations = {}, name = '';
+      var payload = { target: target }, name = '';
       form.querySelectorAll('input, select').forEach(function (el) {
         var n = el.name;
         if (!n) return;
@@ -437,16 +434,14 @@
         if (wrap && wrap.style.display === 'none') return;
         if (el.disabled) return;
         var t = el.getAttribute('data-type');
-        var source = el.getAttribute('data-source') || 'spec';
         var v = (t === 'boolean') ? el.checked
               : (t === 'number')  ? (el.value !== '' ? Number(el.value) : undefined)
               : el.value;
         if (v === undefined || v === '') return;
-        if (source === 'label')           { labels[n] = String(v); }
-        else if (source === 'annotation') { annotations[n] = String(v); }
-        else                              { spec[n] = v; }
+        payload[n] = v;
       });
-      return { name: name, spec: spec, labels: labels, annotations: annotations };
+      if (name) payload.name = name;
+      return payload;
     }
 
     // ── Submit / Preview ────────────────────────────────────────────────────

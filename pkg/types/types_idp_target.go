@@ -24,6 +24,16 @@ func (c *CRDEntry) HasIDPTarget() bool {
 	return c.IDPEnabled() && c.APITypes.Kind != ""
 }
 
+// IDPTargetOrEmpty returns IDPTarget when HasIDPTarget is true, "" otherwise.
+// For API responses that expose target as an omitempty field to callers that
+// shouldn't see a target for a CRD they can't actually address by one.
+func (c *CRDEntry) IDPTargetOrEmpty() string {
+	if !c.HasIDPTarget() {
+		return ""
+	}
+	return c.IDPTarget()
+}
+
 // IDPFields returns a flat map of every IDP-declared field — spec fields from
 // idp.fields, label fields from idp.additionalFields.labels, and annotation
 // fields from idp.additionalFields.annotations.

@@ -245,6 +245,53 @@ func TestResolveIDPIdentity_OnlyName(t *testing.T) {
 	assert.Empty(t, obj.GetNamespace())
 }
 
+func TestResolveIDPIdentity_NoIDPName_FallsBackToRawName(t *testing.T) {
+	notes := orktypes.NoteRegistry{}
+
+	crd := &orktypes.CRDEntry{
+		APITypes: orktypes.APITypes{
+			Kind: "AppRequest",
+		},
+		IDP: &orktypes.IDPConfig{
+			// idp.name not declared.
+		},
+	}
+
+	raw := map[string]interface{}{
+		"target": "smartapp",
+		"name":   "my-app",
+	}
+
+	obj := newCRSkeleton(crd)
+
+	err := resolveIDPIdentity(raw, crd, notes, obj)
+	require.NoError(t, err)
+	assert.Equal(t, "my-app", obj.GetName())
+}
+
+func TestResolveIDPIdentity_NoIDPName_NoRawName_StaysEmpty(t *testing.T) {
+	notes := orktypes.NoteRegistry{}
+
+	crd := &orktypes.CRDEntry{
+		APITypes: orktypes.APITypes{
+			Kind: "AppRequest",
+		},
+		IDP: &orktypes.IDPConfig{
+			// idp.name not declared, caller sent no "name" either.
+		},
+	}
+
+	raw := map[string]interface{}{
+		"target": "smartapp",
+	}
+
+	obj := newCRSkeleton(crd)
+
+	err := resolveIDPIdentity(raw, crd, notes, obj)
+	require.NoError(t, err)
+	assert.Empty(t, obj.GetName())
+}
+
 func TestResolveIDPIdentity_MissingName(t *testing.T) {
 	notes := orktypes.NoteRegistry{}
 
