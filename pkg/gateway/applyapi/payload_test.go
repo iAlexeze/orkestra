@@ -75,7 +75,10 @@ func TestEvaluatePayload(t *testing.T) {
 		assert.Equal(t, "", result["phase"])
 	})
 
-	t.Run("default true includes full CR plus payload", func(t *testing.T) {
+	t.Run("payload ignores default regardless of value", func(t *testing.T) {
+		// Default controls whether the caller (resources.go/apply.go) merges
+		// the payload into the full CR or returns it alone — EvaluatePayload
+		// itself always returns only the declared payload fields.
 		crd := appCRD()
 		tr := true
 		crd.IDP.Config = &orktypes.IDPConfig_Config{
@@ -90,35 +93,18 @@ func TestEvaluatePayload(t *testing.T) {
 		result := EvaluatePayload(obj, crd, noopNotes())
 		require.NotNil(t, result)
 		assert.Equal(t, "value", result["extra"])
-		// default true — spec is preserved
 		_, hasSpec := result["spec"]
-		assert.True(t, hasSpec)
+		assert.False(t, hasSpec, "EvaluatePayload never includes the full CR")
 	})
 
-	t.Run("default false returns only payload fields", func(t *testing.T) {
-		crd := appCRD()
-		f := false
-		crd.IDP.Config = &orktypes.IDPConfig_Config{
-			Response: &orktypes.IDPResponseConfig{
-				Default: &f,
-				Payload: map[string]string{"extra": "value"},
-			},
-		}
-		obj := map[string]interface{}{
-			"spec": map[string]interface{}{"image": "myimage"},
-		}
-		result := EvaluatePayload(obj, crd, noopNotes())
-		require.NotNil(t, result)
-		assert.Equal(t, "value", result["extra"])
-		_, hasSpec := result["spec"]
-		assert.False(t, hasSpec, "spec must not appear when default: false")
-	})
-
-	t.Run("exclude strips declared paths", func(t *testing.T) {
+	t.Run("payload ignores exclude entirely", func(t *testing.T) {
+		// Exclude is applied by ApplyExclusions at the resource GET/list
+		// level, before EvaluatePayload runs — not by EvaluatePayload itself.
 		crd := appCRD()
 		crd.IDP.Config = &orktypes.IDPConfig_Config{
 			Response: &orktypes.IDPResponseConfig{
-				Exclude: []string{"metadata.managedFields", "status.observedGeneration"},
+				Exclude: []string{"metadata.managedFields"},
+				Payload: map[string]string{"name": `{{ .metadata.name }}`},
 			},
 		}
 		obj := map[string]interface{}{
@@ -126,20 +112,11 @@ func TestEvaluatePayload(t *testing.T) {
 				"name":          "my-app",
 				"managedFields": []interface{}{"something"},
 			},
-			"status": map[string]interface{}{
-				"phase":              "Ready",
-				"observedGeneration": 1,
-			},
 		}
 		result := EvaluatePayload(obj, crd, noopNotes())
 		require.NotNil(t, result)
-		meta := result["metadata"].(map[string]interface{})
-		_, hasMF := meta["managedFields"]
-		assert.False(t, hasMF, "managedFields must be excluded")
-		assert.Equal(t, "my-app", meta["name"])
-		status := result["status"].(map[string]interface{})
-		_, hasOG := status["observedGeneration"]
-		assert.False(t, hasOG, "observedGeneration must be excluded")
-		assert.Equal(t, "Ready", status["phase"])
+		assert.Equal(t, "my-app", result["name"])
+		_, hasManagedFields := result["managedFields"]
+		assert.False(t, hasManagedFields, "payload only ever contains declared keys")
 	})
 }

@@ -26,7 +26,7 @@ func ApplyExclusions(
 	crd *orktypes.CRDEntry,
 	notes orktypes.NoteRegistry,
 ) {
-	if !crd.HasIDPResponseConfig() {
+	if crd == nil || !crd.HasIDPResponseConfig() {
 		return
 	}
 
