@@ -188,7 +188,7 @@ func AuthMiddleware(ts *TokenSet, next http.Handler) http.Handler {
 		bearer = strings.TrimSpace(bearer)
 		name := ts.Matches(bearer)
 		if name == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			writeJSONError(w, http.StatusUnauthorized, "Unauthorized", "invalid token")
 			return
 		}
 		ctx := contextWithTokenName(r.Context(), name)

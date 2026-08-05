@@ -58,6 +58,12 @@ type ApplyAPIAuth struct {
 	// Tokens is the list of accepted bearer tokens. Every Apply API request
 	// must include Authorization: Bearer <token> matching one entry.
 	Tokens []ApplyAPIToken `yaml:"tokens,omitempty" json:"tokens,omitempty"`
+
+	// Include is a path (relative to the katalog file) to a YAML file with a
+	// "tokens:" list (same shape as the inline tokens below). Expanded at load
+	// time — the result is merged into Tokens, with inline entries taking
+	// precedence per token name.
+	Include string `yaml:"include,omitempty" json:"include,omitempty"`
 }
 
 // ApplyAPIToken is one bearer token entry.

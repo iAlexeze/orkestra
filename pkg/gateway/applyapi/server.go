@@ -5,11 +5,13 @@
 //
 // Route layout:
 //
-//	POST   /api/v1/apply                          → applyHandler
-//	GET    /api/v1/resources/{kind}/{ns}[/{name}] → resourcesHandler
-//	DELETE /api/v1/resources/{kind}/{ns}/{name}   → resourcesHandler
-//	GET    /api/v1/schema/                        → schemaHandler (service catalog — IDP-enabled CRDs)
-//	GET    /api/v1/schema/{kind}                  → schemaHandler (CRD schema + idpFields)
+//			POST   /api/v1/apply                          → applyHandler
+//		 	GET    /api/v1/resources/{kind}/{ns}          → resourcesHandler — list
+//			GET    /api/v1/resources/{kind}/{ns}[/{name}] → resourcesHandler — get
+//			DELETE /api/v1/resources/{kind}/{ns}/{name}   → resourcesHandler — delete
+//			GET    /api/v1/schema/                        → schemaHandler — (service catalog — IDP-enabled CRDs)
+//		 	GET    /api/v1/schema?target=<t>              → schemaHandler — schema for target
+//	  	GET    /api/v1/raw-schema?kind=<k>            → schemaHandler — raw Kubernetes OpenAPI spec schema
 //
 // All routes are wrapped by AuthMiddleware before registration.
 package applyapi
@@ -20,8 +22,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-
-	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
@@ -91,6 +91,9 @@ func (s *ApplyAPIServer) Register(reg Registrar) {
 	if s.kat != nil {
 		notes = s.kat.Notes
 	}
+	if !s.kat.HasIDPEnabled() {
+		return
+	}
 
 	// auth closes over s so that token lookups always read the current TokenSet
 	// even after a ReloadTokens call swaps the pointer.
@@ -99,7 +102,7 @@ func (s *ApplyAPIServer) Register(reg Registrar) {
 			bearer := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 			name := s.matches(strings.TrimSpace(bearer))
 			if name == "" {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				writeJSONError(w, http.StatusUnauthorized, "Unauthorized", "invalid token")
 				return
 			}
 			h.ServeHTTP(w, r.WithContext(contextWithTokenName(r.Context(), name)))
@@ -107,75 +110,16 @@ func (s *ApplyAPIServer) Register(reg Registrar) {
 	}
 
 	// POST /api/v1/apply
-	reg.Register("/api/v1/apply", auth(applyHandler(s.kube, s.buildCRDLookup(), notes)))
+	reg.Register("/api/v1/apply", auth(applyHandler(s.kube, s.kat, notes)))
 
 	// GET/DELETE /api/v1/resources/...
-	reg.Register("/api/v1/resources/", auth(resourcesHandler(s.kube, s.buildKindMapper(), s.buildCRDLookup(), notes)))
+	reg.Register("/api/v1/resources/", auth(resourcesHandler(s.kube, s.kat, notes)))
 
 	// GET /api/v1/schema/...
-	reg.Register("/api/v1/schema/", auth(schemaHandler(s.kube, s.buildCRDLookup(), s.buildCatalogLister())))
+	reg.Register("/api/v1/schema", auth(schemaHandler(s.kat)))
 
-	logger.Info().Msg("apply API routes registered: /api/v1/apply, /api/v1/resources/, /api/v1/schema/")
-}
+	// GET /api/v1/raw-schema
+	reg.Register("/api/v1/raw-schema", auth(rawSchemaHandler(s.kube, s.kat)))
 
-// buildKindMapper returns a KindMapper that resolves kind/plural names to GVRs
-// from the Katalog's enabled CRDs.
-func (s *ApplyAPIServer) buildKindMapper() KindMapper {
-	index := make(map[string]schema.GroupVersionResource)
-	if s.kat == nil {
-		return func(kind string) (schema.GroupVersionResource, error) {
-			return schema.GroupVersionResource{}, fmt.Errorf("no CRD registered for kind %q", kind)
-		}
-	}
-	for _, crd := range s.kat.Enabled() {
-		key := strings.ToLower(crd.APITypes.Kind)
-		index[key] = crd.GVR()
-		// Also index by plural for callers that use the resource name.
-		index[strings.ToLower(crd.APITypes.Plural)] = crd.GVR()
-	}
-	return func(kind string) (schema.GroupVersionResource, error) {
-		gvr, ok := index[strings.ToLower(kind)]
-		if !ok {
-			return schema.GroupVersionResource{}, fmt.Errorf("no CRD registered for kind %q", kind)
-		}
-		return gvr, nil
-	}
-}
-
-// buildCatalogLister returns a CatalogLister of all IDP-enabled CRDEntries.
-func (s *ApplyAPIServer) buildCatalogLister() CatalogLister {
-	if s.kat == nil {
-		return func() []*orktypes.CRDEntry { return nil }
-	}
-	var entries []*orktypes.CRDEntry
-	for i := range s.kat.Enabled() {
-		crd := s.kat.Enabled()[i]
-		if !crd.IDPEnabled() {
-			continue
-		}
-		crdCopy := crd
-		entries = append(entries, &crdCopy)
-	}
-	return func() []*orktypes.CRDEntry { return entries }
-}
-
-// buildCRDLookup returns a CRDLookup that finds a CRDEntry by kind name.
-// Only returns entries where idp.enabled: true.
-func (s *ApplyAPIServer) buildCRDLookup() CRDLookup {
-	index := make(map[string]*orktypes.CRDEntry)
-	if s.kat == nil {
-		return func(kind string) *orktypes.CRDEntry { return nil }
-	}
-	for i := range s.kat.Enabled() {
-		crd := s.kat.Enabled()[i]
-		if !crd.IDPEnabled() {
-			continue
-		}
-		key := strings.ToLower(crd.APITypes.Kind)
-		crdCopy := crd // avoid loop-variable capture
-		index[key] = &crdCopy
-	}
-	return func(kind string) *orktypes.CRDEntry {
-		return index[strings.ToLower(kind)]
-	}
+	logger.Info().Msg("apply API routes registered: /api/v1/apply, /api/v1/resources/, /api/v1/schema, /api/v1/raw-schema")
 }

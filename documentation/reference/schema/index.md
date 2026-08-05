@@ -19,18 +19,18 @@ All fields that live inside a Katalog `spec.crds.<name>` entry:
 
 | Pattern | Covers |
 |----------|--------|
-| [00-metadata.md](02-katalog/00-metadata.md) | `metadata` — name, author, version, tags, deprecation |
-| [01-top-level.md](02-katalog/01-top-level.md) | Top-level Katalog structure |
-| [02-crd-entry.md](02-katalog/02-crd-entry.md) | Fields inside `spec.crds.<name>` |
-| [03-apitypes.md](02-katalog/03-apitypes.md) | `apiTypes` — group, kind, version, typed mode |
-| [04-operatorbox.md](02-katalog/04-operatorbox.md) | `operatorBox` — reconciliation strategy |
-| [05-status.md](02-katalog/05-status.md) | `status` — fields written after reconcile |
-| [06-when-conditions.md](02-katalog/06-when-conditions.md) | `when` / `anyOf` conditions |
-| [07-validation.md](02-katalog/07-validation.md) | `validation` — admission rules |
-| [08-mutation.md](02-katalog/08-mutation.md) | `mutation` — admission defaults and overrides |
-| [09-conversion.md](02-katalog/09-conversion.md) | `conversion` — multi-version CRD support |
-| [10-katalog-security.md](02-katalog/10-katalog-security.md) | `security` block |
-| [11-katalog-notification.md](02-katalog/11-katalog-notification.md) | `notification` block |
-| [12-katalog-providers.md](02-katalog/12-katalog-providers.md) | `providers` block |
-| [15-enrich.md](02-katalog/15-enrich.md) | `enrich` — post-reconcile enrichment |
-| [17-katalog-applyapi.md](02-katalog/17-katalog-applyapi.md) | `gateway.applyAPI` — Apply API config and per-CRD `idp:` block |
+| [metadata](02-katalog/00-metadata.md) | `metadata` — name, author, version, tags, deprecation |
+| [top-level](02-katalog/01-top-level.md) | Top-level Katalog structure |
+| [crd-entry](02-katalog/02-crd-entry.md) | Fields inside `spec.crds.<name>` |
+| [apitypes](02-katalog/03-apitypes.md) | `apiTypes` — group, kind, version, typed mode |
+| [operatorbox](02-katalog/04-operatorbox.md) | `operatorBox` — reconciliation strategy |
+| [status](02-katalog/05-status.md) | `status` — fields written after reconcile |
+| [when-conditions](02-katalog/06-when-conditions.md) | `when` / `anyOf` conditions |
+| [validation](02-katalog/07-validation.md) | `validation` — admission rules |
+| [mutation](02-katalog/08-mutation.md) | `mutation` — admission defaults and overrides |
+| [conversion](02-katalog/09-conversion.md) | `conversion` — multi-version CRD support |
+| [katalog-security](02-katalog/10-katalog-security.md) | `security` block |
+| [katalog-notification](02-katalog/11-katalog-notification.md) | `notification` block |
+| [katalog-providers](02-katalog/12-katalog-providers.md) | `providers` block |
+| [enrich](02-katalog/15-enrich.md) | `enrich` — post-reconcile enrichment |
+| [katalog-applyapi](02-katalog/17-katalog-applyapi.md) | `gateway.applyAPI` — Apply API config and per-CRD `idp:` block |

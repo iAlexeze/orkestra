@@ -2,6 +2,7 @@ package katalog
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -9,11 +10,10 @@ import (
 
 // validateIDPResponseConfig checks the IDP response configuration for:
 //   - Path conflicts between payload and exclude (exclude wins, surfaced as warning)
-//   - Exclude paths that don't exist in the CRD schema (warning)
 //   - Payload template compilation errors (error)
 func (k *Katalog) validateIDPResponseConfig() error {
 	for crdName, crd := range k.enabledCRDs {
-		if !crd.HasResponseConfig() {
+		if !crd.HasIDPResponseConfig() {
 			continue
 		}
 
@@ -28,26 +28,32 @@ func (k *Katalog) validateIDPResponseConfig() error {
 			payloadKeys[key] = true
 		}
 
-		// Resolve exclude paths (if possible at validation time)
-		excludePaths := config.Exclude
-		if excludePaths == "" {
+		// Resolve exclude paths (best-effort at validation time)
+		if !config.HasExclude() {
 			continue
 		}
+		excludePaths := config.Exclude
 
 		// If exclude is a template, we can't validate its contents at load time
-		if orktypes.IsTemplate(excludePaths) {
-			// Still check if it references any payload keys in the template itself
-			for key := range payloadKeys {
-				if strings.Contains(excludePaths, key) {
-					fmt.Printf("⚠️  CRD %q: exclude template references payload key %q — potential conflict\n", crdName, key)
-				}
+		for _, p := range excludePaths {
+			path := strings.TrimSpace(p)
+			if path == "" {
+				continue
 			}
-			continue
+			if orktypes.IsTemplate(path) {
+				// Still check if it references any payload keys in the template itself
+				for key := range payloadKeys {
+					if slices.Contains(excludePaths, key) {
+						warning := fmt.Sprintf("⚠️  CRD %q: exclude template references payload key %q — potential conflict\n", crdName, key)
+						crd.Warnings.AddWarning(warning)
+					}
+				}
+				continue
+			}
 		}
 
-		// Static exclude: split and validate
-		parts := strings.Split(excludePaths, ",")
-		for _, p := range parts {
+		// Static exclude: validate
+		for _, p := range excludePaths {
 			path := strings.TrimSpace(p)
 			if path == "" {
 				continue

@@ -312,6 +312,104 @@ func ExpandIDPInclude(idp *IDPConfig, baseDir string) error {
 	return nil
 }
 
+// ExpandApplyAPIAuth resolves include entries in GatewayConfig.ApplyAPI.Auth.
+// If auth.Include is set, it reads the referenced file, unmarshals its "tokens:" list,
+// and merges it with the inline tokens. Inline tokens override included tokens
+// with the same name.
+// The include path is resolved relative to baseDir. Cleared after expansion.
+func ExpandApplyAPIAuth(gw *GatewayConfig, baseDir string) error {
+	if gw == nil || gw.ApplyAPI == nil {
+		return nil
+	}
+	auth := &gw.ApplyAPI.Auth
+	if auth.Include == "" {
+		return nil
+	}
+
+	path := auth.Include
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(baseDir, path)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("reading applyAPI.auth.include %q: %w", auth.Include, err)
+	}
+
+	var f struct {
+		Tokens []ApplyAPIToken `yaml:"tokens"`
+	}
+	if err := orkutils.StrictUnmarshal(data, &f); err != nil {
+		return fmt.Errorf("parsing applyAPI.auth.include %q: %w", auth.Include, err)
+	}
+
+	// Merge: included tokens first, then inline overrides by name
+	merged := make(map[string]ApplyAPIToken)
+	for _, t := range f.Tokens {
+		merged[t.Name] = t
+	}
+	for _, t := range auth.Tokens {
+		merged[t.Name] = t
+	}
+
+	// Convert map back to slice
+	auth.Tokens = make([]ApplyAPIToken, 0, len(merged))
+	for _, t := range merged {
+		auth.Tokens = append(auth.Tokens, t)
+	}
+	auth.Include = ""
+
+	return nil
+}
+
+// ExpandIDPAllowedTokensInclude resolves the idp.allowedTokens include.
+// If at.Include is set, it reads the referenced file, unmarshals its "allowedTokens:" map,
+// and merges it with the inline tokens. Inline tokens override included tokens
+// with the same name.
+// The include path is resolved relative to baseDir. Cleared after expansion.
+func ExpandIDPAllowedTokensInclude(idp *IDPConfig, baseDir string) error {
+	if idp == nil {
+		return nil
+	}
+
+	at := idp.AllowedTokens
+	if at.Include == "" {
+		return nil
+	}
+
+	path := at.Include
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(baseDir, path)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("reading idp.allowedTokens.include %q: %w", at.Include, err)
+	}
+
+	var f struct {
+		AllowedTokens map[string]IDPTokenPermissions `yaml:"allowedTokens"`
+	}
+	if err := orkutils.StrictUnmarshal(data, &f); err != nil {
+		return fmt.Errorf("parsing idp.allowedTokens.include %q: %w", at.Include, err)
+	}
+
+	// Merge: included tokens first, then inline overrides
+	merged := make(map[string]IDPTokenPermissions)
+	for k, v := range f.AllowedTokens {
+		merged[k] = v
+	}
+	for k, v := range at.Tokens {
+		merged[k] = v
+	}
+
+	// Assign merged result back
+	idp.AllowedTokens.Tokens = merged
+	idp.AllowedTokens.Include = ""
+
+	return nil
+}
+
 // mergeIDPFieldConfigs merges included and inline IDPFieldConfig maps, inline
 // taking precedence. Returns nil when both inputs are empty, matching the
 // omitempty shape AdditionalIDPFields expects.

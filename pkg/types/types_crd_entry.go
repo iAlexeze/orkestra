@@ -314,6 +314,35 @@ func (c *CRDEntry) RequireIDPName() bool {
 	return !c.HasIDPName()
 }
 
+// IsIDPRequiredField reports whether the given field name is declared as a
+// required field in the IDP configuration.
+//
+// A field is considered required if:
+//   - It exists in idp.fields with required: true, or
+//   - It exists in idp.additionalFields.labels with required: true, or
+//   - It exists in idp.additionalFields.annotations with required: true
+//
+// Used by the Control Center to mark form fields as required and by the
+// gateway to validate target-mode requests before building the CR.
+func (c *CRDEntry) IsIDPRequiredField(field string) bool {
+	if c.IDP == nil {
+		return false
+	}
+	if c.IDP.Fields == nil || c.IDP.AdditionalFields == nil {
+		return false
+	}
+	if _, ok := c.IDP.Fields[field]; ok {
+		return true
+	}
+	if _, ok := c.IDP.AdditionalFields.Labels[field]; ok {
+		return true
+	}
+	if _, ok := c.IDP.AdditionalFields.Annotations[field]; ok {
+		return true
+	}
+	return false
+}
+
 // HasIDPNamespace reports whether idp.namespace is declared — the Apply API
 // only resolves and applies a namespace override when this is true.
 func (c *CRDEntry) HasIDPNamespace() bool {
@@ -345,9 +374,65 @@ func (c *CRDEntry) HasAdditionalIDPFields() bool {
 	return len(c.AdditionalLabelFields()) > 0 || len(c.AdditionalAnnotationFields()) > 0
 }
 
-// HasResponseConfig reports whether the CRD has an IDP response configuration.
-func (c *CRDEntry) HasResponseConfig() bool {
+// ─── IDP Response Config Methods ────────────────────────────────────────────
+
+// HasIDPResponseConfig reports whether the CRD has an IDP response configuration.
+func (c *CRDEntry) HasIDPResponseConfig() bool {
 	return c.IDP != nil && c.IDP.Config != nil && c.IDP.Config.Response != nil
+}
+
+// GetIDPResponseConfig returns the IDP response configuration, or nil if not set.
+func (c *CRDEntry) GetIDPResponseConfig() *IDPResponseConfig {
+	if c.IDP == nil || c.IDP.Config == nil {
+		return nil
+	}
+	return c.IDP.Config.Response
+}
+
+// IDPResponseUseDefault reports whether the full CR should be the starting point.
+// Returns true when Default is nil (omitted) or explicitly true.
+func (c *CRDEntry) IDPResponseUseDefault() bool {
+	cfg := c.GetIDPResponseConfig()
+	if cfg == nil {
+		return true
+	}
+	return cfg.UseDefault()
+}
+
+// IDPResponseHasPayload reports whether any payload expressions are declared.
+func (c *CRDEntry) IDPResponseHasPayload() bool {
+	cfg := c.GetIDPResponseConfig()
+	if cfg == nil {
+		return false
+	}
+	return cfg.HasPayload()
+}
+
+// IDPResponseHasExclude reports whether an exclude expression is declared.
+func (c *CRDEntry) IDPResponseHasExclude() bool {
+	cfg := c.GetIDPResponseConfig()
+	if cfg == nil {
+		return false
+	}
+	return cfg.HasExclude()
+}
+
+// IDPResponseExclude returns the exclude list, or nil if not set.
+func (c *CRDEntry) IDPResponseExclude() []string {
+	cfg := c.GetIDPResponseConfig()
+	if cfg == nil {
+		return nil
+	}
+	return cfg.Exclude
+}
+
+// IDPResponsePayload returns the payload map, or nil if not set.
+func (c *CRDEntry) IDPResponsePayload() map[string]string {
+	cfg := c.GetIDPResponseConfig()
+	if cfg == nil {
+		return nil
+	}
+	return cfg.Payload
 }
 
 func (e EndpointsConfig) IsHealthEnabled() bool {

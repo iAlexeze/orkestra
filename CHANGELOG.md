@@ -380,6 +380,86 @@ notes:
 
 `when:`/`anyOf:`/`validation.rules` had `prefix`/`suffix` and `notEquals`/`notContains`/`notIn`, but no negated prefix/suffix — a real gap, since RE2 (Go's regex engine) can't express "does not end with X" as a pattern either (no lookahead/lookbehind), leaving no shorthand way to write a rule like "reject `:latest` image tags". `notPrefix`/`notSuffix` close it, evaluated identically everywhere `Condition`/`ValidationRule` already are.
 
+### `include:` support for gateway tokens and IDP allowedTokens
+
+`include:` is now supported in two new places, following the same pattern as `status.include`, `validation.include`, and `idp.include`:
+
+- **`gateway.applyAPI.auth.include`** — references a YAML file containing a `tokens:` list. Inline tokens override included tokens with the same name.
+
+```yaml
+gateway:
+  applyAPI:
+    auth:
+      include: ./shared/tokens.yaml
+      tokens:
+        - name: control-center
+          secretRef:
+            name: ork-apply-token
+            key: token
+```
+
+- **`idp.allowedTokens.include`** — references a YAML file containing an `allowedTokens:` map. Inline token entries override included entries with the same name.
+
+```yaml
+idp:
+  enabled: true
+  allowedTokens:
+    include: ./shared/allowed-tokens.yaml
+    tokens:
+      control-center:
+        permissions:
+          global: ["*"]
+```
+
+Both follow the established merge semantics: included entries are loaded first, then inline entries override by name.
+
+---
+
+### IDP enhancements: target, polling, token permissions, schema/raw APIs
+
+#### `idp.target` — caller-facing identifier
+
+Decouples the caller-facing identifier from the Kubernetes kind. Defaults to lowercased kind. Validated for uniqueness at `ork validate` time. `idp.target` gives platform teams a stable, caller-facing identifier that can evolve independently of the underlying CRD kind. With this, you can swap the underlying CRDs, and callers never know. When omitted, defaults to the lowercased kind. Targets are validated for uniqueness at ork validate time
+
+#### Apply API — target mode
+
+Callers can now submit `{"target": "smartapp", "fields...}` instead of a full CR. The gateway builds the CR from IDP fields. Full CR mode remains supported.
+
+#### Schema API — flat fields
+
+`GET /api/v1/schema?target=<t>` returns a flat map of all IDP fields (spec, labels, annotations). Callers no longer need to know Kubernetes structure.
+
+#### Raw Schema API
+
+`GET /api/v1/raw-schema?kind=<kind>&apiVersion=<version>` returns the raw OpenAPI spec from the CRD.
+
+#### Polling URL configuration
+
+`idp.config.response.poll.field` appends `?field=<value>` to the resolved poll URL. `poll.url` replaces the default URL entirely with a custom template. Both support templating.
+
+#### Token permissions — scoped
+
+`allowedTokens` now supports `global`, `schema`, and `resources` permission lists. Schema permissions only allow `get`/`list`. Validated at `ork validate` time.
+
+#### `exclude` as a list
+
+`idp.config.response.exclude` is a list of paths to be removed from the response.
+
+#### `toList` note
+
+Converts a comma-separated string to a list. Essential for dynamic exclusion lists.
+
+---
+
+## API Surface Changes
+
+| Endpoint | Before | After |
+|----------|--------|-------|
+| `GET /api/v1/schema/{kind}` | Kubernetes-kind based | `?target=` — flat fields |
+| `GET /api/v1/schema/` | List of kinds | List of targets (paginated) |
+| `GET /api/v1/raw-schema` | — | New: `?kind=&apiVersion=` |
+| `POST /api/v1/apply` | Full CR only | Full CR + target mode |
+| `POST /api/v1/apply` response | `resourceVersion` | `pollUrl` (configurable) |
 ---
 
 ## v0.7.12 — Gateway Apply API, IDP, and codebase clarity

@@ -221,6 +221,9 @@ func (k *Katalog) Dependents(name string) []string {
 
 // Enabled returns only the enabled CRDs in the katalog.
 func (k *Katalog) Enabled() map[string]orktypes.CRDEntry {
+	if k == nil {
+		return nil
+	}
 	return k.enabledCRDs
 }
 

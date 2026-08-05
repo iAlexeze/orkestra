@@ -386,11 +386,17 @@ func (k *Katalog) ConversionWindow() int {
 // applyAPI: with no enabled: or endpoint: set, as in a CI-only Apply API
 // client setup).
 func (k *Katalog) IsGatewayEnabled() bool {
+	if k == nil {
+		return false
+	}
 	return k.Gateway != nil
 }
 
 // IsApplyAPIEnabled reports whether the Gateway Apply API flag is set.
 func (k *Katalog) IsApplyAPIEnabled() bool {
+	if k == nil {
+		return false
+	}
 	return k.Gateway != nil && k.Gateway.ApplyAPI != nil && k.Gateway.ApplyAPI.Enabled
 }
 
@@ -412,6 +418,9 @@ func (k *Katalog) HasApplyAPISecretRefs() bool {
 // has idp.enabled: true. This is the activation gate — callers should use this,
 // not IsApplyAPIEnabled, to decide whether to register IDP routes or RBAC.
 func (k *Katalog) HasIDPEnabled() bool {
+	if k == nil {
+		return false
+	}
 	if !k.IsApplyAPIEnabled() {
 		return false
 	}

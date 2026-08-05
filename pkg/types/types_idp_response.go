@@ -55,21 +55,98 @@ type IDPResponseConfig struct {
 	//     nextSteps:  '{{ nextSteps }}'
 	Payload map[string]string `yaml:"payload,omitempty" json:"payload,omitempty"`
 
-	// Exclude is a template expression that resolves to a list of dot-notation
-	// field paths to strip from the response after payload is applied.
+	// Exclude is a list of dot-notation field paths to strip from the response
+	// after payload is applied.
 	//
-	// Two forms are accepted:
-	//   exclude: "metadata.managedFields,status.observedGeneration"
-	//            — plain comma-separated string, trimmed and split
-	//   exclude: '{{ toList (getAnnotation . "platform.myorg.io/exclude") }}'
-	//            — template that resolves to a comma-separated string
+	// Static declaration:
 	//
-	// Use the built-in toList note to convert comma-separated strings (from
-	// annotations, notes, or literals) into the slice that the engine expects.
+	//	exclude:
+	//	  - metadata.managedFields
+	//	  - status.observedGeneration
+	//
+	// Dynamic via template expression in the list:
+	//
+	//	exclude:
+	//	  - '{{ toList (getAnnotation . "platform.myorg.io/exclude") }}'
 	//
 	// ork validate catches the case where a path appears in both payload and
 	// exclude — exclude wins, but the conflict is surfaced as a warning.
-	Exclude string `yaml:"exclude,omitempty" json:"exclude,omitempty"`
+	Exclude []string `yaml:"exclude,omitempty" json:"exclude,omitempty"`
+
+	// Poll configures how the pollUrl in the Apply API response is generated.
+	// When omitted, the default derived pollUrl is used.
+	// See IPDPollingConfig for override options.
+	Poll *IPDPollingConfig `yaml:"poll,omitempty" json:"poll,omitempty"`
+}
+
+// IPDPollingConfig configures how the poll URL is generated for the Apply API response.
+//
+// By default, PollURL is derived from the resource's kind, namespace, and name:
+//
+//	/api/v1/resources/{kind}/{namespace}/{name}
+//
+// Two overrides are available:
+//   - field: append ?field=<value> to the resolved poll URL for lightweight polling
+//   - url:   replace the default poll URL entirely with a custom template
+//
+// When both are set, url replaces the default, and field is appended to it.
+// When only field is set, it is appended to the default poll URL.
+//
+// Examples:
+//
+//	poll:
+//	  field: status.phase
+//	  → /api/v1/resources/App/default/my-app?field=status.phase
+//
+//	poll:
+//	  url: '/api/v2/resources/{{ .kind }}/{{ .namespace }}/{{ .name }}'
+//	  field: status.phase
+//	  → /api/v2/resources/App/default/my-app?field=status.phase
+//
+//	poll:
+//	  url: 'https://monitor.myorg.io/status/{{ .metadata.name }}'
+//	  field: ready
+//	  → https://monitor.myorg.io/status/my-app?field=ready
+type IPDPollingConfig struct {
+	// URL is the polling endpoint template.
+	// When set, it completely replaces the default derived pollUrl.
+	// Template expressions are evaluated against the CR at request time.
+	// Example: '/api/v2/resources/{{ .kind }}/{{ .namespace }}/{{ .name }}'
+	URL string `yaml:"url,omitempty" json:"url,omitempty"`
+
+	// Field is a shortcut for appending ?field=<value> to the default pollUrl.
+	// When set, the default pollUrl is used with ?field= appended.
+	// Example: 'status.phase' → /api/v1/resources/App/default/my-app?field=status.phase
+	Field string `yaml:"field,omitempty" json:"field,omitempty"`
+}
+
+// GetIDPPollingURL returns the polling URL for the Apply API response for this CRD.
+func (c *CRDEntry) GetIDPPollingURL() string {
+	if !c.HasIDPPolingConfig() {
+		return ""
+	}
+	return c.IDP.Config.Response.Poll.URL
+}
+
+// GetIDPPollingField returns the polling field for the Apply API response for this CRD.
+func (c *CRDEntry) GetIDPPollingField() string {
+	if !c.HasIDPPolingConfig() {
+		return ""
+	}
+	return c.IDP.Config.Response.Poll.Field
+}
+
+// GetIDPPollingConfig returns the polling config for the Apply API response for this CRD.
+func (c *CRDEntry) GetIDPPollingConfig() *IPDPollingConfig {
+	if !c.HasIDPPolingConfig() {
+		return nil
+	}
+	return c.IDP.Config.Response.Poll
+}
+
+// HasIDPPolingConfig reports whether the polling config is declared.
+func (c *CRDEntry) HasIDPPolingConfig() bool {
+	return c.IDP != nil && c.IDP.Config != nil && c.IDP.Config.Response != nil && c.IDP.Config.Response.Poll != nil
 }
 
 // UseDefault reports whether the full CR should be the starting point.
@@ -85,5 +162,5 @@ func (r *IDPResponseConfig) HasPayload() bool {
 
 // HasExclude reports whether an exclude expression is declared.
 func (r *IDPResponseConfig) HasExclude() bool {
-	return r.Exclude != ""
+	return len(r.Exclude) > 0
 }

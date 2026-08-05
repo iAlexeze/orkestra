@@ -46,6 +46,10 @@ type IDPConfig struct {
 	// system-managed or operator-internal fields from developers.
 	IgnoreFields []string `yaml:"ignoreFields,omitempty" json:"ignoreFields,omitempty"`
 
+	// Title is the human-readable name shown in the Control Center catalog.
+	// Defaults to kind when not set.
+	Title string `yaml:"title,omitempty" json:"title,omitempty"`
+
 	// Category is a catalog label used when listing available schemas
 	// via GET /api/v1/schema/. Example: "Compute", "Data", "Security".
 	Category string `yaml:"category,omitempty" json:"category,omitempty"`
@@ -53,6 +57,12 @@ type IDPConfig struct {
 	// Description is a short human-readable summary shown in the service catalog.
 	// Falls back to the CRD-level description when not set.
 	Description string `yaml:"description,omitempty" json:"description,omitempty"`
+
+	// Target is the caller-facing identifier for this CRD in the Apply API.
+	// Defaults to the lowercased kind when not set.
+	// Must be lowercase alphanumeric with optional hyphens.
+	// Must be unique across all IDP-enabled CRDs in this Katalog.
+	Target string `yaml:"target,omitempty" json:"target,omitempty"`
 
 	// ForceConflict, when true, sets Force: true on every server-side apply
 	// for this CRD — the gateway takes ownership of any conflicting fields
@@ -127,7 +137,20 @@ type IDPConfig struct {
 	//
 	// ork validate confirms that every token name in this map corresponds to an
 	// entry in gateway.applyAPI.auth.tokens.
-	AllowedTokens map[string]IDPTokenPermissions `yaml:"allowedTokens,omitempty" json:"allowedTokens,omitempty"`
+	AllowedTokens IDPAllowedTokens `yaml:"allowedTokens,omitempty" json:"allowedTokens,omitempty"`
+}
+
+// IDPAllowedTokens is a map of token names to permissions, with support for
+// external includes.
+type IDPAllowedTokens struct {
+	// Include is a path (relative to the katalog file) to a YAML file with an
+	// "allowedTokens:" map (same shape as the inline allowedTokens below).
+	// Expanded at load time — the result is merged into Tokens, with inline
+	// entries taking precedence per token name.
+	Include string `yaml:"include,omitempty" json:"include,omitempty"`
+
+	// Tokens is the map of token names to their permissions.
+	Tokens map[string]IDPTokenPermissions `yaml:"tokens,omitempty" json:"tokens,omitempty"`
 }
 
 // AdditionalIDPFields declares label/annotation keys as self-service IDP form
@@ -229,32 +252,61 @@ func IsValidIDPFieldType(t string) bool {
 // When false, any valid gateway token may access this CRD — backward-compatible
 // with the previous model where tokens were only checked for existence.
 func (i *IDPConfig) HasTokenRestrictions() bool {
-	return len(i.AllowedTokens) > 0
+	if i == nil {
+		return false
+	}
+	return len(i.AllowedTokens.Tokens) > 0
 }
 
-// TokenAllowed reports whether the named token may perform op in namespace on
-// this CRD. Returns true when no restrictions are declared (open access).
+// AllowedIDPTokens returns a list of token names allowed for this IDP configuration
+func (i *IDPConfig) AllowedIDPTokens() []string {
+	if i == nil {
+		return nil
+	}
+	var tokens []string
+	for token := range i.AllowedTokens.Tokens {
+		tokens = append(tokens, token)
+	}
+	return tokens
+}
+
+// TokenAllowed reports whether tokenName may perform op in namespace on this
+// CRD for the given endpoint class.
 //
+// Returns (true, IDPDenyReasonNone) when allowed.
+// Returns (false, reason) when denied; reason carries the specific cause so
+// callers can compose precise error messages without re-implementing the logic.
 // The check is intentionally three-stage for clarity in error messages:
 //  1. Is the token listed at all?   → 403 unknown token
 //  2. Is the namespace permitted?   → 403 namespace not allowed
 //  3. Is the operation permitted?   → 403 operation not allowed
-func (i *IDPConfig) TokenAllowed(tokenName, op, namespace string) (bool, IDPDenyReason) {
-	if !i.HasTokenRestrictions() {
-		// No restrictions — any valid token may proceed.
+func (c *IDPConfig) TokenAllowed(
+	tokenName, op, namespace string,
+	class IDPEndpointClass,
+) (bool, IDPDenyReason) {
+	if !c.HasTokenRestrictions() {
 		return true, IDPDenyReasonNone
 	}
 
-	perms, ok := i.AllowedTokens[tokenName]
+	perms, ok := c.AllowedTokens.Tokens[tokenName]
 	if !ok {
 		return false, IDPDenyReasonUnknownToken
 	}
 
-	if len(perms.Namespaces) > 0 && !slices.Contains(perms.Namespaces, namespace) {
-		return false, IDPDenyReasonNamespace
+	// For schema endpoints, skip namespace check entirely.
+	// Schema endpoints are cluster-scoped and don't have a namespace.
+	if class != IDPClassSchema {
+		if len(perms.Namespaces) > 0 && !slices.Contains(perms.Namespaces, namespace) {
+			return false, IDPDenyReasonNamespace
+		}
 	}
 
-	for _, p := range perms.Permissions {
+	active := perms.activePerms(class)
+	if len(active) == 0 {
+		return false, IDPDenyReasonOperation
+	}
+
+	for _, p := range active {
 		if p == IDPOpAll || p == op {
 			return true, IDPDenyReasonNone
 		}
