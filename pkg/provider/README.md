@@ -5,6 +5,13 @@ MongoDB, Stripe, Vault, or any API your operator needs to call. This document
 explains how the provider dispatch works internally and how to write, register,
 and test a new provider.
 
+> [!WARNING]
+> The provider system is still in active development. It's already wired into
+> the runtime and the providers listed under [Current providers](#current-providers)
+> are functional, but the interface, registration flow, and publishing format
+> are not yet stable and may change without a deprecation period. Not
+> recommended for production use yet.
+
 ---
 
 ## How providers flow through the runtime

@@ -32,22 +32,24 @@ The runtime has no role here. Adding the Apply API to the runtime would mean eit
 ```
 HealthServer   :8080   →  /katalog, /apply health
 WebhookServer  :8443   →  /validate, /mutate, /convert, /deletion-protection
-ApplyServer    :8080   →  /api/v1/apply, /api/v1/resources/..., /api/v1/schema/...
+ApplyServer    :8080   →  /api/v1/apply, /api/v1/resources/..., /api/v1/schema, /api/v1/raw-schema
 ```
 
 The Apply API runs on the health server (HTTP :8080), not the webhook server (HTTPS :8443). Webhook callers are the Kubernetes API server — they require mTLS. Apply API callers are humans and pipelines — they use bearer tokens over HTTPS if TLS is terminated at the ingress, or HTTP for in-cluster calls.
 
-## One field on the runtime
+## Two fields on the runtime
 
-The only change to the runtime is a new field in the `/katalog` response:
+The runtime's `/katalog` response carries `gatewayEndpoint`, and per CRD, `idpEnabled` and `target`:
 
 ```json
 {
   "gatewayEndpoint": "https://gateway.myorg.internal",
-  "idpEnabled": true
+  "crds": [
+    { "name": "application", "idpEnabled": true, "target": "smartapp" }
+  ]
 }
 ```
 
-`idpEnabled: true` when `gateway.applyAPI.enabled: true` in the Katalog. The Control Center reads this and renders the **[+ Create]** buttons. No new runtime endpoints.
+`idpEnabled: true` when the CRD has `idp.enabled: true`. `target` is `idp.target` (or the lowercased Kind when unset) — the identifier the Control Center submits to the gateway; it never derives one from Kind or GVK itself. The Control Center reads both and renders the **[+ Create]** button. No new runtime endpoints beyond these two fields.
 
 → Next: [02-apply.md](02-apply.md)

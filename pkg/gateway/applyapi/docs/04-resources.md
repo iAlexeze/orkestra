@@ -13,6 +13,10 @@ The Control Center uses these for its CR views. After an IDP form submit, the CC
 
 The gateway's resource endpoints exist for **external callers** — CI pipelines, Terraform providers, Slack bots — that have the gateway URL but not the runtime URL. They need to poll something after `POST /api/v1/apply`. A raw Kubernetes response (spec + status) is enough: check `status.phase` or `status.conditions`, and you know whether the operator reconciled.
 
+## Kind, not target
+
+Unlike `POST /api/v1/apply` and `GET /api/v1/schema`, these three endpoints resolve `{kind}` by Kubernetes Kind — `resourcesHandler` looks it up with `LookupByKind`, not `LookupByTargetOrKind`. A caller that applied with `{"target": "smartapp", ...}` needs the CR's actual Kind (`AppRequest`, say) to read, list, or delete it directly — `target` doesn't work here. In practice this rarely matters: `ApplyResponse.PollURL` already points to the correct `{kind}` path, so a caller that always follows `pollUrl` instead of assembling its own path never has to know or care about this asymmetry.
+
 ## GET /api/v1/resources/{kind}/{namespace}/{name}
 
 Returns the current state of a CR directly from Kubernetes — spec and status as stored, via the dynamic client.
@@ -62,13 +66,14 @@ Callers get the same answer from `DELETE /api/v1/resources/...` as they would fr
 
 ## Polling patterns
 
-Apply is synchronous up to the point where the CR is written to Kubernetes. What happens after — reconciliation, child resource creation, status transitions — is asynchronous. Poll GET to observe it.
+Apply is synchronous up to the point where the CR is written to Kubernetes. What happens after — reconciliation, child resource creation, status transitions — is asynchronous. Poll `pollUrl` from the apply response to observe it — don't assemble `/api/v1/resources/{kind}/{ns}/{name}` by hand, the platform team may have overridden it via `idp.config.response.poll`.
 
 ### Wait for Ready
 
 ```bash
-until curl -s -H "Authorization: Bearer $TOKEN" \
-  "${GATEWAY}/api/v1/resources/Application/team-payments/payments-api" \
+POLL_URL=$(curl -s -X POST .../api/v1/apply -d @app.json | jq -r '.pollUrl')
+
+until curl -s -H "Authorization: Bearer $TOKEN" "${GATEWAY}${POLL_URL}" \
   | jq -e '.status.conditions[]? | select(.type=="Ready" and .status=="True")' > /dev/null 2>&1; do
   sleep 3
 done
@@ -77,8 +82,10 @@ echo "Application is Ready"
 
 ### Wait for a specific phase
 
+With `idp.config.response.poll.field: status.phase` set, `pollUrl` already carries `?field=status.phase` — the response is the scalar value directly, not the full CR:
+
 ```bash
-until [ "$(curl -s ... | jq -r '.status.phase')" = "Deployed" ]; do
+until [ "$(curl -s -H "Authorization: Bearer $TOKEN" "${GATEWAY}${POLL_URL}" | jq -r '.value')" = "Deployed" ]; do
   sleep 3
 done
 ```

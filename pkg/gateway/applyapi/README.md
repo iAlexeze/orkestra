@@ -1,14 +1,15 @@
 # pkg/gateway/applyapi
 
-`applyapi` implements the Orkestra Apply API — a CRUD REST surface for Kubernetes Custom Resources served by the gateway process. It lets any HTTP client create, read, or delete CRs managed by Orkestra without a kubeconfig or kubectl.
+`applyapi` implements the Orkestra Apply API — a REST surface served by the gateway process for creating, reading, deleting, and discovering the schema of Custom Resources managed by Orkestra, without a kubeconfig or kubectl. Callers submit flat fields (**target mode**); the gateway builds and applies the Kubernetes CR. Full CR submission still works for advanced callers, but it isn't the primary contract.
 
 ```
-POST   /api/v1/apply
+POST   /api/v1/apply                              ← {"target": "...", ...fields} or a full CR
 GET    /api/v1/resources/{kind}/{namespace}/{name}
 GET    /api/v1/resources/{kind}/{namespace}
 DELETE /api/v1/resources/{kind}/{namespace}/{name}
-GET    /api/v1/schema/          ← service catalog (all IDP-enabled CRDs)
-GET    /api/v1/schema/{kind}    ← CRD schema + idpFields
+GET    /api/v1/schema                             ← catalog — every target this caller can see
+GET    /api/v1/schema?target=<t>                  ← flat field contract for one target
+GET    /api/v1/raw-schema?kind=<k>                ← raw OpenAPI v3 schema, for advanced callers
 ```
 
 ## Enabling
@@ -25,7 +26,7 @@ gateway:
           token: "${CI_ORK_TOKEN}"
 ```
 
-Enable the Create button in the Control Center per CRD:
+Enable the Create button in the Control Center per CRD, and give it a caller-facing identifier:
 
 ```yaml
 spec:
@@ -33,19 +34,24 @@ spec:
     application:
       idp:
         enabled: true
+        target: smartapp
+        fields:
+          repository:
+            label: "Repository"
+            required: true
 ```
 
 ## What callers can do
 
 | Caller | Path |
 |--------|------|
-| Control Center | POST + GET to render a form, submit, and display status |
-| CI pipeline | `curl POST /api/v1/apply` — no kubeconfig in the runner |
-| Terraform provider | create → POST, read → GET, destroy → DELETE |
-| Slack bot | parse command → build CR → POST → poll GET → reply |
-| Any HTTP client | any language, any platform |
+| Control Center | `GET ?target=` to render a form, `POST` to submit, `GET /resources/...` to poll status |
+| CI pipeline | `curl -X POST /api/v1/apply -d '{"target": "...", ...}'` — no kubeconfig in the runner |
+| Terraform provider | create → `POST`, read → `GET`, destroy → `DELETE` |
+| Slack bot | parse command → `POST` flat fields → poll `pollUrl` → reply |
+| Any HTTP client | any language, any platform — none of them need to know what a CRD is |
 
-Security — admission rules, namespace protection, deletion protection — is enforced exactly as it is for `kubectl apply` through the gateway webhook path. No new configuration.
+Security — admission rules, namespace protection, deletion protection — is enforced exactly as it is for `kubectl apply`, through the gateway webhook path, for both target mode and full CR mode. `idp.allowedTokens` adds one thing specific to this API: per-token, per-CRD operation and namespace scoping — see [05-auth.md](docs/05-auth.md#scoping-idpallowedtokens).
 
 ## Developer documentation
 
