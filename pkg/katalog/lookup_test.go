@@ -35,13 +35,15 @@ func TestBuildIndexes(t *testing.T) {
 		},
 	}
 
-	k.setGroupVersionKind()
+	if err := k.setGroupVersionKind(); err != nil {
+		t.Fatalf("setGroupVersionKind: %v", err)
+	}
 
-	// Test kind index
-	if name, ok := k.kindIndex["App"]; !ok || name != "app" {
+	// Test kind index — stored lowercase for case-insensitive lookups.
+	if name, ok := k.kindIndex["app"]; !ok || name != "app" {
 		t.Errorf("kindIndex: expected 'app', got '%s'", name)
 	}
-	if name, ok := k.kindIndex["Database"]; !ok || name != "database" {
+	if name, ok := k.kindIndex["database"]; !ok || name != "database" {
 		t.Errorf("kindIndex: expected 'database', got '%s'", name)
 	}
 
@@ -59,7 +61,7 @@ func TestBuildIndexes(t *testing.T) {
 		Version: "v1",
 		Kind:    "App",
 	}
-	if name, ok := k.gvkIndex[appGVK.String()]; !ok || name != "app" {
+	if name, ok := k.gvkIndex[strings.ToLower(appGVK.String())]; !ok || name != "app" {
 		t.Errorf("gvkIndex: expected 'app', got '%s'", name)
 	}
 
@@ -69,7 +71,7 @@ func TestBuildIndexes(t *testing.T) {
 		Version:  "v1",
 		Resource: "apps",
 	}
-	if name, ok := k.gvrIndex[appGVR.String()]; !ok || name != "app" {
+	if name, ok := k.gvrIndex[strings.ToLower(appGVR.String())]; !ok || name != "app" {
 		t.Errorf("gvrIndex: expected 'app', got '%s'", name)
 	}
 }
@@ -162,6 +164,48 @@ func TestLookupByTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			crd := k.LookupByTarget(tt.target)
+			if tt.expected == "" {
+				if crd != nil {
+					t.Errorf("expected nil, got %+v", crd)
+				}
+				return
+			}
+			if crd == nil {
+				t.Fatalf("expected CRD, got nil")
+			}
+			if crd.APITypes.Kind != tt.expected {
+				t.Errorf("expected kind %s, got %s", tt.expected, crd.APITypes.Kind)
+			}
+		})
+	}
+}
+
+func TestLookupByName(t *testing.T) {
+	k := &Katalog{
+		enabledCRDs: map[string]orktypes.CRDEntry{
+			"app":      testCRDEntry("App", "smartapp", true),
+			"database": testCRDEntry("Database", "db", true),
+		},
+	}
+	if err := k.setGroupVersionKind(); err != nil {
+		t.Fatalf("setGroupVersionKind: %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		query    string
+		expected string
+	}{
+		{"exact match", "app", "App"},
+		{"case-insensitive", "Database", "Database"},
+		{"whitespace trimmed", "  app  ", "App"},
+		{"not found", "unknown", ""},
+		{"empty", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			crd := k.LookupByName(tt.query)
 			if tt.expected == "" {
 				if crd != nil {
 					t.Errorf("expected nil, got %+v", crd)
@@ -349,11 +393,18 @@ func TestMustLookupByKind(t *testing.T) {
 	k := &Katalog{
 		enabledCRDs: map[string]orktypes.CRDEntry{
 			"app": {
-				APITypes: orktypes.APITypes{Kind: "App"},
+				APITypes: orktypes.APITypes{
+					Group:   "platform.myorg.io",
+					Version: "v1",
+					Kind:    "App",
+					Plural:  "apps",
+				},
 			},
 		},
 	}
-	k.setGroupVersionKind()
+	if err := k.setGroupVersionKind(); err != nil {
+		t.Fatalf("setGroupVersionKind: %v", err)
+	}
 
 	// Should not panic
 	crd := k.MustLookupByKind("App")
@@ -376,12 +427,12 @@ func TestMustLookupByKind(t *testing.T) {
 func TestIsKindRegistered(t *testing.T) {
 	k := &Katalog{
 		enabledCRDs: map[string]orktypes.CRDEntry{
-			"app": {
-				APITypes: orktypes.APITypes{Kind: "App"},
-			},
+			"app": testCRDEntry("App", "", false),
 		},
 	}
-	k.setGroupVersionKind()
+	if err := k.setGroupVersionKind(); err != nil {
+		t.Fatalf("setGroupVersionKind: %v", err)
+	}
 
 	if !k.IsKindRegistered("App") {
 		t.Error("expected App to be registered")
@@ -436,15 +487,13 @@ func TestListTargets(t *testing.T) {
 func TestListKinds(t *testing.T) {
 	k := &Katalog{
 		enabledCRDs: map[string]orktypes.CRDEntry{
-			"app": {
-				APITypes: orktypes.APITypes{Kind: "App"},
-			},
-			"database": {
-				APITypes: orktypes.APITypes{Kind: "Database"},
-			},
+			"app":      testCRDEntry("App", "", false),
+			"database": testCRDEntry("Database", "", false),
 		},
 	}
-	k.setGroupVersionKind()
+	if err := k.setGroupVersionKind(); err != nil {
+		t.Fatalf("setGroupVersionKind: %v", err)
+	}
 
 	kinds := k.ListKinds()
 	if len(kinds) != 2 {
@@ -455,11 +504,12 @@ func TestListKinds(t *testing.T) {
 	for _, k := range kinds {
 		found[k] = true
 	}
-	if !found["App"] {
-		t.Error("expected App in kinds")
+	// ListKinds reads kindIndex, which is stored lowercase.
+	if !found["app"] {
+		t.Error("expected app in kinds")
 	}
-	if !found["Database"] {
-		t.Error("expected Database in kinds")
+	if !found["database"] {
+		t.Error("expected database in kinds")
 	}
 }
 
@@ -483,13 +533,12 @@ func TestLookup_EmptyKatalog(t *testing.T) {
 func TestLookup_CRDWithoutIDP(t *testing.T) {
 	k := &Katalog{
 		enabledCRDs: map[string]orktypes.CRDEntry{
-			"cache": {
-				APITypes: orktypes.APITypes{Kind: "Cache"},
-				IDP:      nil,
-			},
+			"cache": testCRDEntry("Cache", "", false),
 		},
 	}
-	k.setGroupVersionKind()
+	if err := k.setGroupVersionKind(); err != nil {
+		t.Fatalf("setGroupVersionKind: %v", err)
+	}
 
 	// Should still find by kind
 	if crd := k.LookupByKind("Cache"); crd == nil {
@@ -505,12 +554,12 @@ func TestLookup_CRDWithoutIDP(t *testing.T) {
 func TestLookupByKind_CaseInsensitive(t *testing.T) {
 	k := &Katalog{
 		enabledCRDs: map[string]orktypes.CRDEntry{
-			"app": {
-				APITypes: orktypes.APITypes{Kind: "App"},
-			},
+			"app": testCRDEntry("App", "", false),
 		},
 	}
-	k.setGroupVersionKind()
+	if err := k.setGroupVersionKind(); err != nil {
+		t.Fatalf("setGroupVersionKind: %v", err)
+	}
 
 	// Exact match should work
 	if crd := k.LookupByKind("App"); crd == nil {
@@ -555,7 +604,9 @@ func TestLookupByAPIVersionAndKind(t *testing.T) {
 			},
 		},
 	}
-	k.setGroupVersionKind()
+	if err := k.setGroupVersionKind(); err != nil {
+		t.Fatalf("setGroupVersionKind: %v", err)
+	}
 
 	tests := []struct {
 		name       string
@@ -661,8 +712,8 @@ func TestLookupByAPIVersionAndKind(t *testing.T) {
 			if crd.APITypes.Kind != tt.wantKind {
 				t.Errorf("expected %q, got %q", tt.wantKind, crd.APITypes.Kind)
 			}
-			if crd.APITypes.Group != strings.Split(tt.apiVersion, "/")[0] {
-				t.Errorf("expected group %q, got %q", strings.Split(tt.apiVersion, "/")[0], crd.APITypes.Group)
+			if wantGroup := strings.Split(tt.apiVersion, "/")[0]; !strings.EqualFold(crd.APITypes.Group, strings.TrimSpace(wantGroup)) {
+				t.Errorf("expected group %q, got %q", wantGroup, crd.APITypes.Group)
 			}
 		})
 	}

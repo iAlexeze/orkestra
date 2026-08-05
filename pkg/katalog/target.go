@@ -13,6 +13,9 @@ import (
 // alphabetically. Used in error messages ("available targets: app, database")
 // and in the catalog endpoint.
 func (k *Katalog) AvailableTargets() []string {
+	if k == nil {
+		return nil
+	}
 	targets := make([]string, 0, len(k.enabledCRDs))
 	for _, crd := range k.enabledCRDs {
 		if crd.HasIDPTarget() {
@@ -26,6 +29,9 @@ func (k *Katalog) AvailableTargets() []string {
 // IDPCatalog returns all IDP-enabled CRD entries, sorted by target.
 // Used by the catalog endpoint to list available services.
 func (k *Katalog) IDPCatalog() []*orktypes.CRDEntry {
+	if k == nil {
+		return nil
+	}
 	catalog := make([]*orktypes.CRDEntry, 0, len(k.enabledCRDs))
 	for _, crd := range k.enabledCRDs {
 		if crd.HasIDPTarget() {
@@ -41,6 +47,9 @@ func (k *Katalog) IDPCatalog() []*orktypes.CRDEntry {
 // IDPEnabledCRDs returns all IDP-enabled CRD entries as a slice.
 // Uses cached idpEnabledCRDs if available, otherwise builds it.
 func (k *Katalog) IDPEnabledCRDs() []*orktypes.CRDEntry {
+	if k == nil {
+		return nil
+	}
 	if k.idpEnabledCRDs == nil {
 		return k.BuildIDPEnabledCRDs()
 	}
