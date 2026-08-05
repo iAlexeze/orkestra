@@ -9,10 +9,14 @@ import (
 	"testing"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/registry/simulate"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -119,10 +123,9 @@ func TestSchemaHandler(t *testing.T) {
 		handler.ServeHTTP(rr, r)
 		assert.Equal(t, http.StatusOK, rr.Code)
 
-		var resp map[string]interface{}
+		var resp utils.PaginatedResponse[CatalogEntry]
 		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
-		_, hasSchemas := resp["schemas"]
-		assert.True(t, hasSchemas)
+		assert.NotNil(t, resp.Items)
 	})
 
 	t.Run("schema returned for valid target", func(t *testing.T) {
@@ -226,8 +229,16 @@ func TestResourcesHandler_Routing(t *testing.T) {
 
 func TestResourcesHandler_Permissions(t *testing.T) {
 	kat := newKat(map[string]*orktypes.CRDEntry{"app": restrictedCRD()})
-	// kube is nil — permission check fires before any API call
-	h := ExportedResourcesHandler(nil, kat, orktypes.NoteRegistry{})
+
+	// The fake dynamic client needs its List kind registered for any GVR it
+	// will List() — "coding error" panic otherwise, not a graceful error.
+	scheme := runtime.NewScheme()
+	appGVK := schema.GroupVersionKind{Group: "platform.myorg.io", Version: "v1", Kind: "App"}
+	scheme.AddKnownTypeWithName(appGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(appGVK.GroupVersion().WithKind("AppList"), &unstructured.UnstructuredList{})
+
+	kube := simulate.NewFakeKubeclient(scheme)
+	h := ExportedResourcesHandler(kube, kat, orktypes.NoteRegistry{})
 
 	cases := []struct {
 		name     string
@@ -254,9 +265,9 @@ func TestResourcesHandler_Permissions(t *testing.T) {
 			r = requestWithToken(r, tc.token)
 			rr := httptest.NewRecorder()
 			h.ServeHTTP(rr, r)
-			// For 200 cases the handler will fail when it tries to call the
-			// nil kube client after the permission check passes — that produces
-			// a 500, not 403. We only assert the permission layer here.
+			// Only the permission layer is asserted here — the fake dynamic
+			// client has no seeded objects, so a 200-permitted "get" against a
+			// name that doesn't exist still returns 404, not 200.
 			if tc.wantCode == http.StatusForbidden {
 				assert.Equal(t, http.StatusForbidden, rr.Code)
 			} else {
@@ -351,13 +362,19 @@ func TestApplyHandler_Format(t *testing.T) {
 
 func TestApplyHandler_Permissions(t *testing.T) {
 	kat := newKat(map[string]*orktypes.CRDEntry{"app": restrictedCRD()})
-	h := ExportedApplyHandler(nil, kat, orktypes.NoteRegistry{})
+	// Real fake client, not nil — the permission check probes
+	// kube.DynamicClient() to distinguish create vs update before deciding
+	// whether the token is allowed, even for a token that will be denied
+	// outright regardless of operation.
+	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
+	h := ExportedApplyHandler(kube, kat, orktypes.NoteRegistry{})
 
 	t.Run("unknown token denied before SSA", func(t *testing.T) {
 		r := postJSON(t, "/api/v1/apply", map[string]interface{}{
-			"target": "app",
-			"name":   "my-app",
-			"team":   "payments",
+			"target":      "app",
+			"name":        "my-app",
+			"team":        "payments",
+			"environment": "staging",
 		})
 		r = requestWithToken(r, "rogue-token")
 		rr := httptest.NewRecorder()
