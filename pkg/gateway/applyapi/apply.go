@@ -209,17 +209,12 @@ func applyHandler(
 
 		} else {
 			// ── Full CR mode ──────────────────────────────────────────────────
-			var full unstructured.Unstructured
-			if err := json.Unmarshal(body, &full); err != nil {
-				writeJSON(w, http.StatusBadRequest, ApplyResponse{
-					Message: fmt.Sprintf("invalid CR JSON: %v", err),
-				})
-				return
-			}
+			// Built from the already-decoded raw map.
+			full := unstructured.Unstructured{Object: raw}
 
 			if full.GetKind() == "" || full.GetAPIVersion() == "" {
 				writeJSON(w, http.StatusBadRequest, ApplyResponse{
-					Message: `request must include "apiVersion" and "kind" in full CR mode`,
+					Message: `request must include either "target" (target mode) or "apiVersion" and "kind" (full CR mode)`,
 				})
 				return
 			}

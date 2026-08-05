@@ -9,14 +9,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/registry/simulate"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/runtime"
 )
-
-// noopLookup is a CRD lookup that always returns nil — used in tests that
-// don't exercise the forceConflict path.
-func noopLookup(_ string) *orktypes.CRDEntry { return nil }
 
 // appRequestBody is a minimal, valid AppRequest apply body. name is omitted
 // when empty, matching what a client that never set metadata.name sends.
@@ -34,9 +31,25 @@ func appRequestBody(name string) []byte {
 	return body
 }
 
+// appRequestKatalog builds a real, lookup-ready *katalog.Katalog with one
+// IDP-enabled "AppRequest" CRD.
+func appRequestKatalog(idpName string) *katalog.Katalog {
+	return katalog.NewFromEntryPointers(map[string]*orktypes.CRDEntry{
+		"apprequest": {
+			APITypes: orktypes.APITypes{
+				Group:   "platform.myorg.io",
+				Version: "v1",
+				Kind:    "AppRequest",
+				Plural:  "apprequests",
+			},
+			IDP: &orktypes.IDPConfig{Enabled: true, Name: idpName},
+		},
+	})
+}
+
 func TestApplyHandler_MissingName_Rejected(t *testing.T) {
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
-	h := applyHandler(kube, nil, orktypes.NoteRegistry{})
+	h := applyHandler(kube, appRequestKatalog(""), orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/apply", bytes.NewReader(appRequestBody("")))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -61,7 +74,7 @@ func TestApplyHandler_MissingName_Rejected(t *testing.T) {
 
 func TestApplyHandler_NameSupplied_NotRejected(t *testing.T) {
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
-	h := applyHandler(kube, nil, orktypes.NoteRegistry{})
+	h := applyHandler(kube, appRequestKatalog(""), orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/apply", bytes.NewReader(appRequestBody("payments-api")))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -78,7 +91,7 @@ func TestApplyHandler_NameSupplied_NotRejected(t *testing.T) {
 
 func TestApplyHandler_IDPName_ResolvesWithoutClientName(t *testing.T) {
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
-	h := applyHandler(kube, nil, orktypes.NoteRegistry{})
+	h := applyHandler(kube, appRequestKatalog("resolved-name"), orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/apply", bytes.NewReader(appRequestBody("")))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
