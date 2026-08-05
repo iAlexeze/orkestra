@@ -28,6 +28,9 @@ func NestedSlice(obj map[string]interface{}, keys ...string) ([]interface{}, boo
 // and returns the final map value.
 // Returns nil, false if any key in the path is missing or not a map.
 func NestedMap(obj map[string]interface{}, keys ...string) (map[string]interface{}, bool) {
+	if len(keys) == 0 {
+		return nil, false
+	}
 	cur := obj
 	for _, k := range keys {
 		next, ok := cur[k].(map[string]interface{})
