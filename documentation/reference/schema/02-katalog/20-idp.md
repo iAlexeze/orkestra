@@ -87,8 +87,50 @@ fields:
 | `anyOf` | At least one condition must pass for this field to be shown (OR). When both `when` and `anyOf` are declared, both blocks must pass. |
 | `required` | When `true`, marks the field as mandatory — enforced both client-side (the browser shows an asterisk and blocks submission while empty) and server-side: an implicit `exists` rule with `action: deny` is synthesized automatically at load time, so every caller of the Apply API is covered, not just the Control Center form. No matching `validation.rules` entry needs to be hand-written. Has no effect on fields currently hidden by a `when:` or `anyOf:` condition. |
 | `disabled` | Non-empty string — field is rendered greyed-out with this message. Useful for platform-managed fields that should be visible but not editable. |
+| `path` | — | Dot-notation path mapping the field to a nested location in the CRD `spec`. When set, the field value is written to `spec.<path>` instead of `spec.<name>`. See [`path` — nested spec paths](#idpfieldspath) below. |
 
+---
 `order` isn't just cosmetic form layout. When multiple `required`/`type: enum` fields fail validation at once, only the first violation is reported as the headline denial reason — and synthesized rules are evaluated in the same order `order` puts the fields in, so the field a developer sees *first* on the form is also the one whose error they see first if several are wrong simultaneously. Two fields on the same CRD sharing a non-zero `order` value is a load-time error (`ork validate`) for exactly this reason — `0`/unset is the only value any number of fields may share, since it means "no preference," not a real position.
+
+## `path` — nested spec paths
+
+By default, `idp.fields` maps field names directly to top-level `spec` paths:
+
+```yaml
+fields:
+  repository:
+    label: "Repository"
+  # → spec.repository
+```
+
+Use `path` to map a field to a nested location:
+
+```yaml
+fields:
+  repository:
+    path: app.repository
+    label: "Repository"
+  # → spec.app.repository
+
+  cpu:
+    path: app.resources.cpu
+    label: "CPU Request"
+  # → spec.app.resources.cpu
+```
+
+Callers submit flat field names — they don't need to know the nesting structure. The gateway maps the field to the correct location in the CRD.
+
+```json
+POST /api/v1/apply
+{
+  "target": "app",
+  "repository": "myorg/app",
+  "cpu": "500m"
+}
+```
+
+→ [Full `path` reference](21-idp-nested-spec.md)
+
 
 ## `idp.name`
 

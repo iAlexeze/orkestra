@@ -11,6 +11,56 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
+// validateIDP runs all IDP-related validations.
+// This is the single entry point for IDP validation, keeping the main
+// pipeline clean and grouping all IDP checks together.
+func (k *Katalog) validateIDP() error {
+	// 1. Validate idp.additionalFields (key syntax, enum, uniqueness)
+	if err := k.validateIDPAdditionalFields(); err != nil {
+		return err
+	}
+
+	// 2. Validate idp.fields path configurations (uniqueness, format, nested)
+	if err := k.validateIDPFieldPaths(); err != nil {
+		return err
+	}
+
+	// 3. Validate idp field order: values don't collide
+	if err := k.validateIDPFieldOrder(); err != nil {
+		return err
+	}
+
+	// 4. Validate idp.namespace — required on namespaced+idp-enabled CRDs,
+	//    rejected on cluster-scoped ones, incompatible with a pinned watch
+	//    scope when templated
+	if err := k.validateIDPNamespace(); err != nil {
+		return err
+	}
+
+	// 5. Validate IDP response config — payload template compilation and
+	//    payload/exclude path conflicts (warnings, not errors)
+	if err := k.validateIDPResponseConfig(); err != nil {
+		return err
+	}
+
+	// 6. Validate IDP tokens and namespace restrictions per CRD
+	if err := k.validateIDPTokenRestrictions(); err != nil {
+		return err
+	}
+
+	// 7. Validate IDP targets per CRD; uniqueness across the katalog
+	if err := k.validateIDPTarget(); err != nil {
+		return err
+	}
+
+	// 8. Validate IDP response config (depends on CRD)
+	if err := k.validateIDPResponseConfig(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // validateIDPAdditionalFields checks idp.additionalFields.labels/annotations
 // keys are syntactically valid Kubernetes label/annotation keys, that
 // type: enum fields declare a non-empty enum, and that no key collides with

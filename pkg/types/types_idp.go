@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	"slices"
+	"strings"
 )
 
 // IDPDenyReason is returned by TokenAllowed to let the caller compose a
@@ -226,6 +227,12 @@ type IDPFieldConfig struct {
 
 	// Enum lists valid values when Type == "enum". Required in that case.
 	Enum []string `yaml:"enum,omitempty" json:"enum,omitempty"`
+
+	// Path is the dot-notation path in the CRD spec where this field belongs.
+	// Example: "app.repository", "scaling.minReplicas"
+	// When set, the field is mapped to this nested path.
+	// When empty, the field name is used as the path (flat).
+	Path string `yaml:"path,omitempty" json:"path,omitempty"`
 }
 
 // IDPConfig_Config is the container for gateway-level CRD configuration.
@@ -246,6 +253,25 @@ func IsValidIDPFieldType(t string) bool {
 	default:
 		return false
 	}
+}
+
+// SpecPath returns the dot-notation path to use in the CRD spec.
+// If Path is set, use Path. Otherwise, use the field name.
+func (f IDPFieldConfig) SpecPath(name string) string {
+	if f.Path != "" {
+		return f.Path
+	}
+	return name
+}
+
+// IsNested returns true if the spec path contains a dot.
+func (f IDPFieldConfig) IsNested(name string) bool {
+	return strings.Contains(f.SpecPath(name), ".")
+}
+
+// HasSpecPath returns true if the spec path is set.
+func (f IDPFieldConfig) HasSpecPath() bool {
+	return f.Path != ""
 }
 
 // HasTokenRestrictions reports whether any per-token access rules are declared.

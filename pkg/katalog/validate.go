@@ -265,9 +265,9 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	}
 
 	// -------------------------------------------------------------------------
-	// 36. Validate idp.additionalFields (key syntax, enum, uniqueness)
+	// 36. Validate IDP configuration
 	// -------------------------------------------------------------------------
-	if err := k.validateIDPAdditionalFields(); err != nil {
+	if err := k.validateIDP(); err != nil {
 		return nil, err
 	}
 
@@ -286,47 +286,9 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	}
 
 	// -------------------------------------------------------------------------
-	// 39. Validate idp field order: values don't collide
-	// -------------------------------------------------------------------------
-	if err := k.validateIDPFieldOrder(); err != nil {
-		return nil, err
-	}
-
-	// -------------------------------------------------------------------------
-	// 40. Validate idp.namespace — required on namespaced+idp-enabled CRDs,
-	//     rejected on cluster-scoped ones, incompatible with a pinned watch
-	//     scope when templated
-	// -------------------------------------------------------------------------
-	if err := k.validateIDPNamespace(); err != nil {
-		return nil, err
-	}
-
-	// -------------------------------------------------------------------------
-	// 41. Validate IDP response config — payload template compilation and
-	//     payload/exclude path conflicts (warnings, not errors).
-	// -------------------------------------------------------------------------
-	if err := k.validateIDPResponseConfig(); err != nil {
-		return nil, err
-	}
-
-	// -------------------------------------------------------------------------
 	// 41. Validate gateway tokens (no duplicates)
 	// -------------------------------------------------------------------------
 	if err := k.validateGatewayTokens(); err != nil {
-		return nil, err
-	}
-
-	// -------------------------------------------------------------------------
-	// 42. Validate IDP tokens and namespace restrictions per CRD
-	// -------------------------------------------------------------------------
-	if err := k.validateIDPTokenRestrictions(); err != nil {
-		return nil, err
-	}
-
-	// -------------------------------------------------------------------------
-	// 42. Validate IDP targets per CRD; uniquness across the katalog
-	// -------------------------------------------------------------------------
-	if err := k.validateIDPTarget(); err != nil {
 		return nil, err
 	}
 
