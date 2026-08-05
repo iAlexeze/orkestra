@@ -773,12 +773,5 @@ func init() {
 	validateCmd.Flags().Bool("profiles", false, "Quiet mode: print only the merged profile registry, skip full validate output")
 
 	// Shadow global flags so they don't appear under `ork validate`
-	validateCmd.Flags().Bool("debug", false, "")
-	validateCmd.Flags().String("kubeconfig", "", "")
-	validateCmd.Flags().Bool("verbose", false, "")
-
-	// Hide them from help output
-	validateCmd.Flags().MarkHidden("debug")
-	validateCmd.Flags().MarkHidden("kubeconfig")
-	validateCmd.Flags().MarkHidden("verbose")
+	shadowGlobalCommandFlags(validateCmd)
 }

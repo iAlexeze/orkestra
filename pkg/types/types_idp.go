@@ -255,6 +255,14 @@ func IsValidIDPFieldType(t string) bool {
 	}
 }
 
+// FieldType returns the configured type for this field or default to "string".
+func (f IDPFieldConfig) FieldType() string {
+	if f.Type != "" {
+		return f.Type
+	}
+	return "string"
+}
+
 // SpecPath returns the dot-notation path to use in the CRD spec.
 // If Path is set, use Path. Otherwise, use the field name.
 func (f IDPFieldConfig) SpecPath(name string) string {

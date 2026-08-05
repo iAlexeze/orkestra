@@ -6,6 +6,8 @@ import (
 
 const (
 	ColorReset     = "\033[0m"
+	ColorBlack     = "\033[30m"
+	ColorWhite     = "\033[37m"
 	ColorRed       = "\033[31m"
 	ColorGreen     = "\033[32m"
 	ColorYellow    = "\033[33m"
@@ -26,6 +28,8 @@ func Colorize(color, text string) string {
 	return color + text + ColorReset
 }
 
+func Black(text string) string     { return Colorize(ColorBlack, text) }
+func White(text string) string     { return Colorize(ColorWhite, text) }
 func Red(text string) string       { return Colorize(ColorRed, text) }
 func Green(text string) string     { return Colorize(ColorGreen, text) }
 func Yellow(text string) string    { return Colorize(ColorYellow, text) }

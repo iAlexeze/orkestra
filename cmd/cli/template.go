@@ -207,12 +207,6 @@ func init() {
 	templateCmd.Flags().StringP("output", "o", "", "Write output to file instead of stdout")
 	templateCmd.Flags().Bool("no-validate", false, "Skip validation (show expanded state even if invalid)")
 
-	// Shadow global flags
-	templateCmd.Flags().Bool("debug", false, "")
-	templateCmd.Flags().String("kubeconfig", "", "")
-	templateCmd.Flags().Bool("verbose", false, "")
-
-	templateCmd.Flags().MarkHidden("debug")
-	templateCmd.Flags().MarkHidden("kubeconfig")
-	templateCmd.Flags().MarkHidden("verbose")
+	// Shadow global flags so they don't appear under `ork template`
+	shadowGlobalCommandFlags(templateCmd)
 }

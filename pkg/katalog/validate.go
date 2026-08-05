@@ -267,7 +267,7 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	// -------------------------------------------------------------------------
 	// 36. Validate IDP configuration
 	// -------------------------------------------------------------------------
-	if err := k.validateIDP(); err != nil {
+	if err := k.ValidateIDP(); err != nil {
 		return nil, err
 	}
 

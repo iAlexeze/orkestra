@@ -322,13 +322,8 @@ func init() {
 	pushCmd.Flags().IntVar(&pushE2EWorkers, "workers", 0, "Number of kind worker nodes for the e2e gate cluster (0 = control-plane only)")
 	rootCmd.AddCommand(pushCmd)
 
-	// Shadow global flags
-	pushCmd.Flags().Bool("debug", false, "")
-	pushCmd.Flags().String("kubeconfig", "", "")
-	pushCmd.Flags().Bool("verbose", false, "")
-	pushCmd.Flags().MarkHidden("debug")
-	pushCmd.Flags().MarkHidden("kubeconfig")
-	pushCmd.Flags().MarkHidden("verbose")
+	// Shadow global flags so they don't appear under `ork push`
+	shadowGlobalCommandFlags(pushCmd, "file")
 }
 
 // detectTypedKatalog parses a katalog.yaml and returns a PatternTyped if any

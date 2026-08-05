@@ -20,7 +20,7 @@ import (
 //  8. Every idp permitted namespace must be allowed at crd level.
 //  9. (Warning) A token entry with an empty permissions list grants no access.
 func (k *Katalog) validateIDPTokenRestrictions() error {
-	gatewayTokens := k.gatewayTokenNames()
+	gatewayTokens := k.GatewayTokenNames()
 	knownTokens := make(map[string]struct{}, len(gatewayTokens))
 	for _, name := range gatewayTokens {
 		knownTokens[name] = struct{}{}
@@ -241,9 +241,9 @@ func (k *Katalog) validateGatewayTokens() error {
 	return nil
 }
 
-// gatewayTokenNames returns the names of all tokens declared in
+// GatewayTokenNames returns the names of all tokens declared in
 // gateway.applyAPI.auth.tokens. Returns nil when the gateway is not enabled.
-func (k *Katalog) gatewayTokenNames() []string {
+func (k *Katalog) GatewayTokenNames() []string {
 	if !k.IsGatewayEnabled() {
 		return nil
 	}

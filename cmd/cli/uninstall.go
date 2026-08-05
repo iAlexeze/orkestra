@@ -104,18 +104,8 @@ func runUninstall(yes, dryRun bool) error {
 // Register uninstall command and shadow global flags so they don't appear here.
 func init() {
 	uninstallCmd := newUninstallCmd()
+	rootCmd.AddCommand(uninstallCmd)
 
 	// Shadow global flags (so they don't show under `ork uninstall`)
-	uninstallCmd.Flags().Bool("debug", false, "")
-	uninstallCmd.Flags().String("kubeconfig", "", "")
-	uninstallCmd.Flags().StringSlice("katalog", nil, "")
-	uninstallCmd.Flags().Bool("verbose", false, "")
-
-	// Hide them from help output
-	uninstallCmd.Flags().MarkHidden("debug")
-	uninstallCmd.Flags().MarkHidden("kubeconfig")
-	uninstallCmd.Flags().MarkHidden("katalog")
-	uninstallCmd.Flags().MarkHidden("verbose")
-
-	rootCmd.AddCommand(uninstallCmd)
+	shadowGlobalCommandFlags(uninstallCmd, "file")
 }

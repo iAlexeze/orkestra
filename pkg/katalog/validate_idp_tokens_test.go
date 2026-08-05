@@ -556,7 +556,7 @@ func TestValidateIDPTokenRestrictions_GatewayAuthEmpty(t *testing.T) {
 
 func TestGatewayTokenNames(t *testing.T) {
 	k := katalogWithGatewayTokens("ci-pipeline", "control-center")
-	names := k.gatewayTokenNames()
+	names := k.GatewayTokenNames()
 	if len(names) != 2 {
 		t.Fatalf("expected 2 tokens, got %d: %v", len(names), names)
 	}
@@ -567,7 +567,7 @@ func TestGatewayTokenNames(t *testing.T) {
 
 func TestGatewayTokenNames_WithTokens(t *testing.T) {
 	k := katalogWithGatewayTokens("ci-pipeline", "control-center")
-	names := k.gatewayTokenNames()
+	names := k.GatewayTokenNames()
 
 	if len(names) != 2 {
 		t.Fatalf("expected 2 tokens, got %d: %v", len(names), names)
@@ -582,7 +582,7 @@ func TestGatewayTokenNames_WithTokens(t *testing.T) {
 
 func TestGatewayTokenNames_NoTokens(t *testing.T) {
 	k := katalogWithGatewayTokens() // no tokens
-	names := k.gatewayTokenNames()
+	names := k.GatewayTokenNames()
 	if names != nil {
 		t.Errorf("expected nil, got %v", names)
 	}
@@ -602,7 +602,7 @@ func TestGatewayTokenNames_GatewayDisabled(t *testing.T) {
 			},
 		},
 	}
-	names := k.gatewayTokenNames()
+	names := k.GatewayTokenNames()
 	if names != nil {
 		t.Errorf("expected nil when ApplyAPI disabled, got %v", names)
 	}

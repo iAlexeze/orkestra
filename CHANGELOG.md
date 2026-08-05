@@ -1,4 +1,4 @@
-## v0.7.13 — Kubernetes-native labels/envFrom, IDP additionalFields, external calls at admission/reconcile, protocol clients [UNRELEASED]
+## v0.7.13 — Kubernetes-native labels/envFrom, IDP additionalFields, `ork idp` CLI, external calls at admission/reconcile, protocol clients [UNRELEASED]
 
 ### Blog: There Is No Kubernetes Expression Language
 
@@ -230,6 +230,19 @@ idp:
 #                  value: "app,cert,monitoring,infra",
 #                  message: "Workload Type must be one of: app, cert, monitoring, infra" }
 ```
+
+### `ork idp` CLI
+
+Added `ork idp` command for inspecting and validating IDP configurations.
+
+Subcommands:
+- `validate` — Validate IDP configuration in a Katalog (`--full` for detailed breakdown)
+- `schema` — Show the flat schema for an IDP target (`--target`, `--kind`, `--name`)
+- `fields` — List IDP fields with their paths and types (`--target`, `--kind`, `--name`)
+- `tokens` — Show token permissions for a CRD (`--target`, `--kind`, `--name`)
+- `targets` — List all IDP targets in a Katalog
+- `can-i` — Check if a token can perform an operation (`--token`, `--target`, `--operation`, `--namespace`)
+- `response` — Show the IDP response configuration (`--target`, `--preview`)
 
 ### JSON object/array values in `onCreate` custom resource templates
 

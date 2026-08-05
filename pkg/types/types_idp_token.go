@@ -28,14 +28,19 @@ const (
 	IDPOpAll IDPOperation = "*"
 )
 
-// idpValidOperations is the authoritative set used by ork validate.
+// idpValidOperations is the authoritative set used by ork validate and ork idp.
 var idpValidOperations = []string{
 	IDPOpGet, IDPOpList, IDPOpCreate, IDPOpUpdate, IDPOpDelete, IDPOpAll,
 }
 
+// idpValidClasses is the authoritative set used by ork idp
+var idpValidClasses = []string{
+	IDPClassSchema, IDPClassResources,
+}
+
 // IDPEndpointClass identifies which Apply API endpoint group a permission
 // applies to.
-type IDPEndpointClass string
+type IDPEndpointClass = string
 
 const (
 	// IDPClassSchema covers GET /api/v1/schema and GET /api/v1/raw-schema.
@@ -152,6 +157,21 @@ func IsValidIDPOperation(s string) bool {
 // ValidIDPOperations returns the list of valid IDP operations.
 func ValidIDPOperations() []string {
 	return idpValidOperations
+}
+
+// IsValidIDPEndpointClass reports whether is one of the declared IDPClass constants.
+func IsValidIDPEndpointClass(s string) bool {
+	for _, class := range idpValidClasses {
+		if s == class {
+			return true
+		}
+	}
+	return false
+}
+
+// ValidIDPEndpointClasses returns the list of valid IDP endpoint classes.
+func ValidIDPEndpointClasses() []string {
+	return idpValidClasses
 }
 
 // HasNamespace returns true if the token is allowed in the given namespace.

@@ -115,32 +115,7 @@ func init() {
 	rootCmd.AddCommand(notesCmd)
 
 	// Shadow global flags
-	// notesCmd
-	notesCmd.Flags().Bool("debug", false, "")
-	notesCmd.Flags().String("kubeconfig", "", "")
-	notesCmd.Flags().Bool("verbose", false, "")
-	notesCmd.Flags().MarkHidden("debug")
-	notesCmd.Flags().MarkHidden("kubeconfig")
-	notesCmd.Flags().MarkHidden("verbose")
-	notesCmd.Flags().StringSliceP("file", "f", nil, "")
-
-	// notesSearchCmd
-	notesSearchCmd.Flags().Bool("debug", false, "")
-	notesSearchCmd.Flags().String("kubeconfig", "", "")
-	notesSearchCmd.Flags().Bool("verbose", false, "")
-	notesSearchCmd.Flags().MarkHidden("debug")
-	notesSearchCmd.Flags().MarkHidden("kubeconfig")
-	notesSearchCmd.Flags().MarkHidden("verbose")
-	notesSearchCmd.Flags().StringSliceP("file", "f", nil, "")
-
-	// notesShowCmd
-	notesShowCmd.Flags().Bool("debug", false, "")
-	notesShowCmd.Flags().String("kubeconfig", "", "")
-	notesShowCmd.Flags().Bool("verbose", false, "")
-	notesShowCmd.Flags().MarkHidden("debug")
-	notesShowCmd.Flags().MarkHidden("kubeconfig")
-	notesShowCmd.Flags().MarkHidden("verbose")
-	notesShowCmd.Flags().StringSliceP("file", "f", nil, "")
+	shadowGlobalCommandFlags(notesCmd)
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
