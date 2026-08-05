@@ -29,12 +29,12 @@ None of these know about each other. A field rename in the CRD touches all of th
 
 Every platform team ends up wanting the same thing: a developer describes what they want, and the right Kubernetes resources appear and stay correct — forever, without anyone watching. Big platforms already prove this pattern works: an ArgoCD `Application`, a Crossplane claim, a Terraform Cloud run are all just a CR that some controller watches and reconciles. Orkestra doesn't invent a new pattern — it generalizes that one to any CRD a platform team defines, instead of tying it to one product's shape.
 
-**The CR is the entry point.** Every delivery path — a browser form, `kubectl apply`, a CI pipeline, a Slack bot — ends at the same place: a CR applied to the cluster. Nothing downstream cares how it got there.
+**The gateway is the entry point. The CR is the internal contract.** A developer, a CI pipeline, and a Slack bot don't apply a CR — they call an API: what's available to create (`GET /api/v1/schema`), what does it need (`GET /api/v1/schema?target=...`), create or update it (`POST /api/v1/apply`), read it back (`GET /api/v1/resources/...`), list it, delete it. The CR is what the gateway builds behind that API to hand to the runtime — an implementation detail the caller never has to see.
 
-Four pieces make that entry point real, and each one is a plain Orkestra component, not a new system:
+Four pieces make that surface real, and each one is a plain Orkestra component, not a new system:
 
-- **The Katalog is the declaration.** One file: what the CR accepts, what's valid, what gets built when one appears, who's allowed to submit one.
-- **The gateway is the validation and admission surface.** Every apply — from any caller — goes through the same schema check, the same `validation.rules`, the same auth tokens, and comes back as a server-side apply on the CR. It's the error handler and the security boundary, in one place, before anything reaches etcd.
+- **The Katalog is the declaration.** One file: what a caller can submit, what's valid, what gets built when it lands, who's allowed to submit it.
+- **The gateway is the whole caller-facing surface.** Schema discovery, create/update, read, list, delete, permissions — one API, the same for every caller. It's also the validation and admission boundary: every request goes through the same schema check, the same `validation.rules`, the same auth tokens, before anything reaches etcd. A CR is what it produces internally, not what it hands back to you.
 - **The runtime is what keeps it in sync, forever.** It watches for CRs and reconciles. One CRD or twenty attached to the same katalog — the reconcile loop doesn't change shape per kind.
 - **The Control Center is a client, not a special one.** It calls the gateway's API the same way any other caller does. Anything that can consume an HTTP API — a CLI, a Slack bot, a homegrown React app — can build the same self-service experience against the same contract.
 
@@ -59,6 +59,7 @@ spec:
     application:
       idp:
         enabled: true
+        target: application
         fields:
           environment:
             label: "Environment"
@@ -70,7 +71,9 @@ spec:
             order: 2
 ```
 
-That is the IDP. Two config blocks on the Katalog the platform team already had. The gateway self-bootstraps its token Secret on first start. The Control Center reads `idpEnabled` from the runtime and shows a `[+ Create]` button.
+That is the IDP. Two config blocks on the Katalog the platform team already had. The gateway self-bootstraps its token Secret on first start. The Control Center reads `idpEnabled` and `target` from the runtime and shows a `[+ Create]` button.
+
+`target` — `application` above — is what callers actually say, not `Application` the Kind or `applications.platform.myorg.io` the plural resource. It defaults to the lowercased Kind, so most CRDs need nothing here at all; set it explicitly when the Kind is too verbose or ambiguous for a form label. Every gateway call — schema discovery, apply, read — is keyed by `target`, never by Kind or GVK. → [Target Mode](02-target-mode.md)
 
 `fields` exposes `spec.*` — the workload data the operator computes with. Not everything a form should collect belongs there, though: a team name, a feature flag, an external ticket reference are metadata, not spec data. `idp.additionalFields` is the release valve — a surface, on any CRD entry in the katalog, for exactly what shouldn't be forced into `spec`. It exposes label and annotation keys as form fields the same way `fields` exposes spec ones, written straight to `metadata` instead.
 
@@ -83,30 +86,31 @@ There's one more thing a self-service caller shouldn't have to decide: **which n
 
 ---
 
-## One CR, any delivery path
+## One gateway, any delivery path
 
-The reconciler does not know how a CR arrived. It reconciles when one appears.
-
-```text
-Browser form          ↓
-kubectl apply         ↓
-CI curl POST          ↓  →  CR in Kubernetes  →  runtime reconciles
-Slack bot             ↓
-GitHub webhook        ↓
-```
-
-The gateway Apply API is the uniform interface across all of those:
+A browser form, a CI pipeline, and a Slack bot are the same caller as far as the gateway is concerned — each hits the same endpoints, in whatever order the interaction calls for: discover what's available, submit fields, read status back.
 
 | Endpoint | Purpose |
 |----------|---------|
-| `POST /api/v1/apply` | Create or update a CR |
-| `GET /api/v1/resources/{kind}/{ns}/{name}` | Read CR state and status |
-| `GET /api/v1/resources/{kind}/{ns}` | List all CRs of a kind |
-| `DELETE /api/v1/resources/{kind}/{ns}/{name}` | Delete a CR |
-| `GET /api/v1/schema` | Discover the CRD's spec schema as fieldss |
-| `GET /api/v1/raw-schema` | Discover the CRD's raw spec schema and field hints |
+| `GET /api/v1/schema` | List every target available to this caller |
+| `GET /api/v1/schema?target=<t>` | The flat field contract for one target — what to submit, what's required |
+| `POST /api/v1/apply` | Create or update — `{"target": "<t>", ...fields}` |
+| `GET /api/v1/resources/{target}/{ns}/{name}` | Read status back |
+| `GET /api/v1/resources/{target}/{ns}` | List everything of that target |
+| `DELETE /api/v1/resources/{target}/{ns}/{name}` | Delete |
 
-Every enforcement rule — admission, namespace protection, deletion protection — is the same regardless of delivery path. There is nothing to reconfigure per caller.
+None of these mention Kubernetes. A caller that only ever touches this table never learns what a CRD, a GVK, or `spec` even are — those exist one layer down, where the gateway hands a built CR to the runtime. The reconciler, in turn, doesn't know how that CR arrived — a form submit and a `kubectl apply` reconcile identically once the CR exists. Every enforcement rule — admission, namespace protection, deletion protection — is the same regardless of which endpoint got called. There is nothing to reconfigure per caller.
+
+Advanced callers can skip the field contract and submit a full CR directly (`{"apiVersion": ..., "kind": ..., "spec": ...}` instead of `{"target": ...}`) — the gateway detects which shape you're using and both land on the same CR. → [Target Mode](02-target-mode.md) covers the two side by side.
+
+---
+
+## Not every token gets the same answer
+
+`gateway.applyAPI.auth.tokens` in the first example declared two tokens — `control-center` and `ci-pipeline` — and said nothing about what either is allowed to do. By default, nothing distinguishes them: any valid token can call any endpoint the Apply API exposes for a CRD. `idp.allowedTokens`, declared per CRD, is what gives them different answers — which operations, on which endpoints, in which namespaces, per token. A token that leaks in a build log still can't touch production, and can't be used to change what the form itself looks like.
+
+→ [Token Scoping](03-token-scoping.md) — the full model, with a realistic multi-token example
+→ [IDP token permissions](../../security/08-idp-permissions.md) — the security write-up: denial responses, what `ork validate` enforces
 
 ---
 
@@ -120,7 +124,7 @@ A developer opens the Control Center. The `Application` row shows a `[+ Create]`
 └────────────────────────────────────────────────────┘
 ```
 
-The form is generated from the CRD's OpenAPI schema combined with the `idp.fields`/`idp.additionalFields` presentation hints. No separate form builder. No schema duplication. The Control Center reads the schema from the gateway and renders it — field types determine input types, enum values become dropdowns, hints appear below the field. It's doing nothing a different client couldn't: the same developer working in CI uses a token and `curl` against the same `POST /api/v1/apply` endpoint instead.
+The form is generated from `GET /api/v1/schema?target=application` — the same flat field contract any other caller would fetch. No separate form builder. No schema duplication, and no CRD OpenAPI schema leaking into the browser: field types determine input types, enum values become dropdowns, hints appear below the field. It's doing nothing a different client couldn't — the same developer working in CI uses a token and `curl` against the same `POST /api/v1/apply` endpoint instead.
 
 ---
 
@@ -130,7 +134,7 @@ The form is generated from the CRD's OpenAPI schema combined with the `idp.field
 - A Backstage plugin
 - A custom admission webhook deployment
 - A notification pipeline (the `external:` block in the Katalog handles Jira/Slack after deployment)
-- A form schema separate from the CRD schema
+- A form schema separate from the gateway's field contract
 
 A Terraform provider is not one of these — nothing here ships one today. The Apply API is a plain REST surface, so writing one is straightforward, but it is not built for you yet.
 
@@ -149,5 +153,6 @@ The pack runs three delivery paths against one `AppRequest` CRD — browser form
 ## Where to go next
 → [Additional Fields](01-additional-fields.md)
 → [Target Mode](02-target-mode.md)
+→ [Token Scoping](03-token-scoping.md)
 
 → [Apply API reference](../../reference/schema/02-katalog/17-katalog-applyapi.md)

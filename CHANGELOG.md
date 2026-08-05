@@ -351,13 +351,15 @@ idp:
   name: '{{ repoSlug .spec.repository }}'
 ```
 
-`idp.name` is a template expression the gateway's Apply API (`POST /api/v1/apply`) resolves server-side, against exactly what the caller submitted, and always wins over whatever (if anything) the caller sent. When *not* set, a name is required from the caller — the Apply API now rejects a request with an empty `metadata.name` immediately, as a structured violation (`metadata.name is required`), instead of letting the SSA patch fail with a raw Kubernetes error.
+`idp.name` is a template expression the gateway's Apply API resolves server-side, against exactly what the caller submitted, and always wins over whatever (if anything) the caller sent — the same in full CR mode (`POST /api/v1/apply` with a complete CR) and target mode (`{"target": ..., ...fields}`). When *not* set, a name is required from the caller instead — `metadata.name` in full CR mode, a flat `"name"` field in target mode — and the Apply API rejects a request with an empty one immediately, as a structured violation (`metadata.name is required`), instead of letting the SSA patch fail with a raw Kubernetes error.
 
 `CRDEntry.RequireIDPName()` (`true` unless `idp.name` is declared) flows through the runtime's `/katalog` response as `requireIdpName` and into the Control Center's IDP form — the Name field is only rendered when `requireIdpName` is true.
 
+→ [Target Mode — `idp.name` and `idp.namespace`](./documentation/concepts/idp/02-target-mode.md#idpname-and-idpnamespace)
+
 ### `idp.namespace` — server-side namespace resolution for the Apply API
 
-A namespaced CRD needs a namespace on every CR it creates — but a browser form or a CI `curl` has no business deciding which one. `idp.namespace` works the same way as `idp.name` above — a template expression the gateway's Apply API resolves server-side against exactly what the caller submitted, always winning over whatever (if anything) the caller sent — but only applies to namespaced CRDs, and unlike `idp.name`, is required rather than optional:
+A namespaced CRD needs a namespace on every CR it creates — but a browser form or a CI `curl` has no business deciding which one. `idp.namespace` works the same way as `idp.name` above — a template expression the gateway's Apply API resolves server-side against exactly what the caller submitted, always winning over whatever (if anything) the caller sent, the same in full CR mode and target mode — but only applies to namespaced CRDs, and unlike `idp.name`, is required rather than optional:
 
 ```yaml
 idp:
@@ -384,6 +386,18 @@ idp:
 `ork validate` ensures paths are unique, formatted correctly, and warns on nested paths (schema existence validation coming later).
 
 → [Nested fields with `path` reference](./documentation/reference/schema/02-katalog/21-idp-nested-spec.md)
+
+### Control Center: the `[+ Create]` form now uses target mode
+
+The IDP create form built a full Kubernetes CR client-side — the browser knew which submitted field belonged in `spec` versus `metadata.labels`/`metadata.annotations`, and the server reassembled `apiVersion`/`kind`/`metadata`/`spec` before forwarding to the gateway. It now submits the same flat `{"target": "...", ...fields}` shape any other caller would, and the gateway builds the CR — Control Center no longer constructs one. The schema fetch that feeds the form moved with it: `GET /api/v1/schema/{kind}` (a path shape the gateway never actually served — this was silently 404ing) became `GET /api/v1/schema?target=<target>`. The runtime's `/katalog` response now carries a `target` field per CRD alongside `idpEnabled`, so Control Center never has to derive one from `Kind`/GVK.
+
+### Fix: `idp.allowedTokens` warnings were never surfaced
+
+Three validation warnings — a token's `global` permissions containing an operation invalid for schema endpoints, a token with no permissions declared, namespace restrictions on a cluster-scoped CRD — were attached to a loop-local copy of the CRD entry and never written back to the Katalog, so they silently never appeared anywhere. Fixed by writing the mutated entry back to the Katalog's CRD map after each warning.
+
+### New: `idp.allowedTokens` security page
+
+`idp.allowedTokens` is a real, separate authorization layer — per-token operation and namespace scoping on the Apply API — not a variant of the existing CRD-level `allowedNamespaces`/`restrictedNamespaces` (which governs informer/admission topology the same way for every caller). Documented at [security/idp-permissions](./documentation/security/08-idp-permissions.md).
 
 ### `POST /api/v1/apply` response: `pollUrl` replaces `resourceVersion`
 

@@ -1,14 +1,16 @@
 # Target Mode
 
-The Apply API accepts a simplified request format where callers submit a `target` and flat fields instead of a full Kubernetes CR. The gateway builds the CR from the IDP configuration.
+A developer knows the repository and the image tag. They do not know — and should not need to know — `apiVersion`, `kind`, `metadata`, or the difference between `spec` and `labels`. Target mode is the Apply API request format built for that developer: submit a `target` and flat fields, get a CR back. The gateway builds it.
 
 ---
 
-## Why target mode exists
+## The problem
 
-Every self-service caller — a browser form, a CI pipeline, a Slack bot — has the same problem: they want to describe what they need, not construct a Kubernetes object. A developer knows the repository and the image tag; they shouldn't need to know `apiVersion`, `kind`, `metadata`, or the difference between `spec` and `labels`.
+Every self-service caller — a browser form, a CI pipeline, a Slack bot — has the same problem: they want to describe what they need, not construct a Kubernetes object.
 
-Target mode hides Kubernetes behind the IDP contract. The platform team defines the fields. The gateway handles the rest.
+Full CR mode doesn't solve this — it just moves the Kubernetes object one layer up. The caller still has to know `apiVersion`, still has to know which field is `spec` and which is `metadata.labels`, still has to reconstruct the CR shape by hand on every call. That's fine for `kubectl` and existing integrations. It's the wrong contract for a developer filling out a form.
+
+Target mode hides Kubernetes behind the IDP contract instead. The platform team defines the fields once. Every caller — form, pipeline, bot — submits the same flat shape, and the gateway does the construction.
 
 ---
 
@@ -218,16 +220,6 @@ At apply time, `.status` is not yet available. Callers should poll `pollUrl` to 
 
 ---
 
-## Try it
-
-```bash
-ork init --pack use-cases/idp
-```
-
-Follow the README — it walks through target mode from schema discovery to apply to polling.
-
----
-
 ## See also
 
 → [`idp.target` schema reference](../../reference/schema/02-katalog/20-idp#idptarget)
@@ -239,3 +231,5 @@ Follow the README — it walks through target mode from schema discovery to appl
 → [Apply API reference](../../reference/schema/02-katalog/17-katalog-applyapi.md)
 
 → [Additional Fields](01-additional-fields.md)
+
+→ [Token Scoping](03-token-scoping.md)

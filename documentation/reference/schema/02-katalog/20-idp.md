@@ -144,7 +144,7 @@ idp:
 
 `idp.name` is a template expression the gateway resolves server-side, against exactly what the caller submitted (labels, annotations, spec — the same data `validation.rules` sees), and always wins over whatever (if anything) the caller sent. Once set, the Control Center form never renders a Name field.
 
-**When it's not set:** the Apply API requires the caller to supply `metadata.name`, and rejects the request immediately with a structured violation (`metadata.name is required`) if it's empty — the same clean-rejection treatment every other Apply API failure gets, rather than letting the request fall through to a raw Kubernetes "name is required" error from the SSA patch.
+**When it's not set:** the Apply API requires the caller to supply a name themselves — `metadata.name` in full CR mode, a flat `"name"` field in target mode — and rejects the request immediately with a structured violation (`metadata.name is required`) if it's empty, the same clean-rejection treatment every other Apply API failure gets, rather than letting the request fall through to a raw Kubernetes "name is required" error from the SSA patch.
 
 **`requireIdpName`** — `GET /katalog` (and therefore the Control Center) exposes this as a computed field, `true` unless `idp.name` is declared. It's not something you set directly; it's derived from whether `idp.name` is present.
 
@@ -209,8 +209,6 @@ Validated at `ork validate` time: every key must be a syntactically valid Kubern
 → [concepts/idp — Additional Fields](../../../concepts/idp/01-additional-fields.md) — why this exists, and the boolean-checkbox gotcha with `hasAnnotation`
 
 Without any `idp:` block on the CRD entry, the CRD is not exposed via the Apply API regardless of what the Katalog-level `gateway.applyAPI` config says.
-
-Here are the documentation entries for the new IDP features:
 
 ---
 
