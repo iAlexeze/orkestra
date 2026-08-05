@@ -6,6 +6,7 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func TestNewCRSkeleton(t *testing.T) {
@@ -14,6 +15,9 @@ func TestNewCRSkeleton(t *testing.T) {
 			Group:   "platform.myorg.io",
 			Version: "v1",
 			Kind:    "AppRequest",
+		},
+		GroupVersionKind: schema.GroupVersionKind{
+			Group: "platform.myorg.io", Version: "v1", Kind: "AppRequest",
 		},
 	}
 
@@ -331,6 +335,9 @@ func TestNewBuildCRFromTarget(t *testing.T) {
 			Group:   "platform.myorg.io",
 			Version: "v1",
 			Kind:    "AppRequest",
+		},
+		GroupVersionKind: schema.GroupVersionKind{
+			Group: "platform.myorg.io", Version: "v1", Kind: "AppRequest",
 		},
 		IDP: &orktypes.IDPConfig{
 			Name:      "{{ repoSlug .repository }}",

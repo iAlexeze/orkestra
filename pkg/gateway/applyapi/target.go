@@ -144,10 +144,14 @@ func resolveIDPIdentity(
 
 	resolver := orktmpl.NewResolverFromMap(data).WithUserNotes(notes)
 
-	// Resolve idp.name and idp.namespace
+	// Resolve idp.name and idp.namespace. Every field the expression
+	// references must be present — ResolveStrict reports a missing field
+	// even when the composite result is non-empty (e.g. "{{ .team }}-{{ .environment }}"
+	// with both fields absent still renders "-", which a plain empty-string
+	// check wouldn't catch).
 	if crd.HasIDPName() {
-		name, err := resolver.Resolve(crd.IDP.Name)
-		if err != nil || strings.TrimSpace(name) == "" {
+		name, missing, err := resolver.ResolveStrict(crd.IDP.Name)
+		if err != nil || missing || strings.TrimSpace(name) == "" {
 			return fmt.Errorf(
 				"idp.name expression %q could not be resolved — "+
 					"check that the required fields are present in the request: %w",
@@ -158,8 +162,8 @@ func resolveIDPIdentity(
 	}
 
 	if crd.HasIDPNamespace() {
-		ns, err := resolver.Resolve(crd.IDP.Namespace)
-		if err != nil || strings.TrimSpace(ns) == "" {
+		ns, missing, err := resolver.ResolveStrict(crd.IDP.Namespace)
+		if err != nil || missing || strings.TrimSpace(ns) == "" {
 			return fmt.Errorf(
 				"idp.namespace expression %q could not be resolved — "+
 					"check that the required fields are present in the request: %w",

@@ -6,6 +6,7 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func TestIsTargetRequest(t *testing.T) {
@@ -31,6 +32,9 @@ func TestBuildCRFromTarget(t *testing.T) {
 			Version: "v1",
 			Kind:    "App",
 			Plural:  "apps",
+		},
+		GroupVersionKind: schema.GroupVersionKind{
+			Group: "platform.myorg.io", Version: "v1", Kind: "App",
 		},
 		IDP: &orktypes.IDPConfig{
 			Target:    "app",
@@ -88,6 +92,8 @@ func TestBuildCRFromTarget(t *testing.T) {
 		raw := map[string]interface{}{
 			"target":        "app",
 			"repository":    "myorg/payments-api",
+			"team":          "payments",
+			"environment":   "staging",
 			"unknown-field": "should be ignored",
 		}
 		obj, err := BuildCRFromTarget(raw, appCRD, orktypes.NoteRegistry{})
@@ -99,7 +105,12 @@ func TestBuildCRFromTarget(t *testing.T) {
 	})
 
 	t.Run("apiVersion and kind set from CRD entry", func(t *testing.T) {
-		raw := map[string]interface{}{"target": "app", "repository": "myorg/payments-api"}
+		raw := map[string]interface{}{
+			"target":      "app",
+			"repository":  "myorg/payments-api",
+			"team":        "payments",
+			"environment": "staging",
+		}
 		obj, err := BuildCRFromTarget(raw, appCRD, orktypes.NoteRegistry{})
 		require.NoError(t, err)
 		assert.Equal(t, "platform.myorg.io/v1", obj.GetAPIVersion())
