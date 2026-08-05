@@ -608,55 +608,80 @@ func TestGatewayTokenNames_GatewayDisabled(t *testing.T) {
 	}
 }
 
-// func TestValidateIDPTokenRestrictions_EmptyPermissionsWarning(t *testing.T) {
-// 	k := katalogWithGatewayTokens("ci-pipeline")
-// 	k.enabledCRDs = map[string]orktypes.CRDEntry{
-// 		"myresource": {
-// 			IDP: &orktypes.IDPConfig{
-// 				AllowedTokens: orktypes.IDPAllowedTokens{
-// 					Tokens: map[string]orktypes.IDPTokenPermissions{
-// 						"ci-pipeline": {
-// 							Permissions: orktypes.IDPPermissionSet{},
-// 						},
-// 					},
-// 				},
-// 			},
-// 			Warnings: orktypes.Warnings{},
-// 		},
-// 	}
-// 	if err := k.validateIDPTokenRestrictions(); err != nil {
-// 		t.Fatalf("unexpected error: %v", err)
-// 	}
-// 	crd := k.enabledCRDs["myresource"]
-// 	if !crd.Warnings.HasWarnings() {
-// 		t.Fatal("expected warning for empty permissions")
-// 	}
-// }
+func TestValidateIDPTokenRestrictions_EmptyPermissionsWarning(t *testing.T) {
+	k := katalogWithGatewayTokens("ci-pipeline")
+	k.enabledCRDs = map[string]orktypes.CRDEntry{
+		"myresource": {
+			IDP: &orktypes.IDPConfig{
+				AllowedTokens: orktypes.IDPAllowedTokens{
+					Tokens: map[string]orktypes.IDPTokenPermissions{
+						"ci-pipeline": {
+							Permissions: orktypes.IDPPermissionSet{},
+						},
+					},
+				},
+			},
+			Warnings: orktypes.Warnings{},
+		},
+	}
+	if err := k.validateIDPTokenRestrictions(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	crd := k.enabledCRDs["myresource"]
+	if !crd.Warnings.HasWarnings() {
+		t.Fatal("expected warning for empty permissions")
+	}
+}
 
-// func TestValidateIDPTokenRestrictions_ClusterScopedCRDWithNamespaces(t *testing.T) {
-// 	k := katalogWithGatewayTokens("ci-pipeline")
-// 	falsePtr := false
-// 	k.enabledCRDs = map[string]orktypes.CRDEntry{
-// 		"clusterresource": {
-// 			IDP: &orktypes.IDPConfig{
-// 				AllowedTokens: orktypes.IDPAllowedTokens{
-// 					Tokens: map[string]orktypes.IDPTokenPermissions{
-// 						"ci-pipeline": permsWithNamespaces(
-// 							[]string{"get"},
-// 							"staging",
-// 						),
-// 					},
-// 				},
-// 			},
-// 			Namespaced: &falsePtr,
-// 			Warnings:   orktypes.Warnings{},
-// 		},
-// 	}
-// 	if err := k.validateIDPTokenRestrictions(); err != nil {
-// 		t.Fatalf("unexpected error: %v", err)
-// 	}
-// 	crd := k.enabledCRDs["clusterresource"]
-// 	if !crd.Warnings.HasWarnings() {
-// 		t.Fatal("expected warning for namespace restrictions on cluster-scoped CRD")
-// 	}
-// }
+func TestValidateIDPTokenRestrictions_ClusterScopedCRDWithNamespaces(t *testing.T) {
+	k := katalogWithGatewayTokens("ci-pipeline")
+	falsePtr := false
+	k.enabledCRDs = map[string]orktypes.CRDEntry{
+		"clusterresource": {
+			IDP: &orktypes.IDPConfig{
+				AllowedTokens: orktypes.IDPAllowedTokens{
+					Tokens: map[string]orktypes.IDPTokenPermissions{
+						"ci-pipeline": permsWithNamespaces(
+							[]string{"get"},
+							"staging",
+						),
+					},
+				},
+			},
+			Namespaced: &falsePtr,
+			Warnings:   orktypes.Warnings{},
+		},
+	}
+	if err := k.validateIDPTokenRestrictions(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	crd := k.enabledCRDs["clusterresource"]
+	if !crd.Warnings.HasWarnings() {
+		t.Fatal("expected warning for namespace restrictions on cluster-scoped CRD")
+	}
+}
+
+func TestValidateIDPTokenRestrictions_SchemaInheritsInvalidGlobalOpWarning(t *testing.T) {
+	k := katalogWithGatewayTokens("ci-pipeline")
+	k.enabledCRDs = map[string]orktypes.CRDEntry{
+		"myresource": {
+			IDP: &orktypes.IDPConfig{
+				AllowedTokens: orktypes.IDPAllowedTokens{
+					Tokens: map[string]orktypes.IDPTokenPermissions{
+						// No explicit schema list — schema inherits from global,
+						// but "create" isn't valid for schema endpoints.
+						"ci-pipeline": perms("get", "create"),
+					},
+				},
+			},
+			Warnings: orktypes.Warnings{},
+		},
+	}
+	if err := k.validateIDPTokenRestrictions(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	crd := k.enabledCRDs["myresource"]
+	if !crd.Warnings.HasWarnings() {
+		t.Fatal("expected warning for global op not valid on schema endpoints")
+	}
+}

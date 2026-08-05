@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 // -----------------------------------------------------------------------------
@@ -219,6 +220,11 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 
 		if crd.Name == "" {
 			return fmt.Errorf("CRD with key '%s': empty name after normalisation", name)
+		}
+
+		// Standard Kubernetes name check.
+		if errs := validation.IsDNS1123Label(crd.Name); len(errs) > 0 {
+			return fmt.Errorf("CRD with key '%s': invalid name %q: %s", name, crd.Name, strings.Join(errs, "; "))
 		}
 
 		// Handle namespaced and cluster-scoped crds
