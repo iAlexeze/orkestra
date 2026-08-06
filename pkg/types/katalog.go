@@ -9,7 +9,7 @@ package types
 //	  enabled: true     # explicitly enable gateway installation
 //	  standalone: true  # gateway runs without a companion runtime operator
 //	  endpoint: ""      # leave empty when standalone; sets this when paired with runtime
-//	  applyAPI:
+//	  api:
 //	    enabled: true
 //	    auth:
 //	      tokens:
@@ -37,27 +37,27 @@ type GatewayConfig struct {
 	// Leave empty in standalone deployments.
 	Endpoint string `yaml:"endpoint,omitempty" json:"endpoint,omitempty"`
 
-	// ApplyAPI enables the CRUD REST surface for CRs on this gateway.
-	ApplyAPI *ApplyAPIConfig `yaml:"applyAPI,omitempty" json:"applyAPI,omitempty"`
+	// API enables the CRUD REST surface for CRs on this gateway.
+	API *GatewayAPIConfig `yaml:"api,omitempty" json:"api,omitempty"`
 }
 
-// ApplyAPIConfig enables and configures the Gateway Apply API.
-type ApplyAPIConfig struct {
-	// Enabled activates the Apply API handlers on the gateway.
+// APIConfig enables and configures the Gateway Gateway API.
+type GatewayAPIConfig struct {
+	// Enabled activates the Gateway API handlers on the gateway.
 	// When true, the gateway registers POST /api/v1/apply,
 	// GET/DELETE /api/v1/resources/..., and GET /api/v1/schema/... routes.
 	// Default: false.
 	Enabled bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
 
-	// Auth configures bearer token authentication for Apply API requests.
-	Auth ApplyAPIAuth `yaml:"auth,omitempty" json:"auth,omitempty"`
+	// Auth configures bearer token authentication for Gateway API requests.
+	Auth APIAuth `yaml:"auth,omitempty" json:"auth,omitempty"`
 }
 
-// ApplyAPIAuth holds the token list for Apply API authentication.
-type ApplyAPIAuth struct {
-	// Tokens is the list of accepted bearer tokens. Every Apply API request
+// APIAuth holds the token list for Gateway API authentication.
+type APIAuth struct {
+	// Tokens is the list of accepted bearer tokens. Every Gateway API request
 	// must include Authorization: Bearer <token> matching one entry.
-	Tokens []ApplyAPIToken `yaml:"tokens,omitempty" json:"tokens,omitempty"`
+	Tokens []APIToken `yaml:"tokens,omitempty" json:"tokens,omitempty"`
 
 	// Include is a path (relative to the katalog file) to a YAML file with a
 	// "tokens:" list (same shape as the inline tokens below). Expanded at load
@@ -66,9 +66,9 @@ type ApplyAPIAuth struct {
 	Include string `yaml:"include,omitempty" json:"include,omitempty"`
 }
 
-// ApplyAPIToken is one bearer token entry.
+// APIToken is one bearer token entry.
 // Exactly one of SecretRef or Token must be set.
-type ApplyAPIToken struct {
+type APIToken struct {
 	// Name is a human-readable identifier used in logs and audit output.
 	Name string `yaml:"name" json:"name"`
 
@@ -76,7 +76,7 @@ type ApplyAPIToken struct {
 	// If the Secret does not exist, the gateway creates it with a generated
 	// uuidv4 token. If rotateAfter is set, the gateway rotates the token
 	// using the same annotation-based rotation as pkg/runners.
-	SecretRef *ApplyAPISecretRef `yaml:"secretRef,omitempty" json:"secretRef,omitempty"`
+	SecretRef *APISecretRef `yaml:"secretRef,omitempty" json:"secretRef,omitempty"`
 
 	// Token is an ${ENV_VAR} reference expanded at startup.
 	// Set the variable via extraEnv in the gateway and controlCenter Helm values.
@@ -84,8 +84,8 @@ type ApplyAPIToken struct {
 	Token string `yaml:"token,omitempty" json:"token,omitempty"`
 }
 
-// ApplyAPISecretRef locates a Kubernetes Secret that holds a bearer token.
-type ApplyAPISecretRef struct {
+// APISecretRef locates a Kubernetes Secret that holds a bearer token.
+type APISecretRef struct {
 	// Name is the Kubernetes Secret name.
 	Name string `yaml:"name" json:"name"`
 
@@ -105,36 +105,36 @@ type ApplyAPISecretRef struct {
 
 // ── GatewayConfig methods ──────────────────────────────────────────
 
-// HasApplyAPI reports whether the Apply API is enabled and configured.
-func (g *GatewayConfig) HasApplyAPI() bool {
+// HasAPI reports whether the Gateway API is enabled and configured.
+func (g *GatewayConfig) HasAPI() bool {
 	if g == nil {
 		return false
 	}
-	if g.ApplyAPI == nil {
+	if g.API == nil {
 		return false
 	}
-	return g.ApplyAPI.Enabled
+	return g.API.Enabled
 }
 
-// ── ApplyAPIConfig methods ─────────────────────────────────────────
+// ── APIConfig methods ─────────────────────────────────────────
 
-// HasAuth reports whether the Apply API has authentication configured.
-func (a *ApplyAPIConfig) HasAuth() bool {
+// HasAuth reports whether the Gateway API has authentication configured.
+func (a *GatewayAPIConfig) HasAuth() bool {
 	if a == nil {
 		return false
 	}
 	return a.Auth.HasTokens()
 }
 
-// ── ApplyAPIAuth methods ───────────────────────────────────────────
+// ── APIAuth methods ───────────────────────────────────────────
 
 // HasTokens reports whether at least one token is configured.
-func (a ApplyAPIAuth) HasTokens() bool {
+func (a APIAuth) HasTokens() bool {
 	return len(a.Tokens) > 0
 }
 
 // IsEmpty reports whether the auth struct is completely unconfigured.
-func (a ApplyAPIAuth) IsEmpty() bool {
+func (a APIAuth) IsEmpty() bool {
 	return len(a.Tokens) == 0
 }
 

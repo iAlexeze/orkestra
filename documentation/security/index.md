@@ -22,7 +22,7 @@ Orkestra's security model has five interlocking layers, each described in its ow
 | **Namespace isolation** | CRs are confined to the namespaces you allow | [Namespace protection](05-namespace-protection.md) |
 | **Validation pipeline** | Strict parsing and multi-stage validation before anything runs | [Validation pipeline](06-validation-pipeline.md) |
 | **Pod security** | Workload containers run with hardened security contexts | [Pod security](07-pod-security.md) |
-| **IDP token permissions** | Per-caller operation and namespace scoping on the Apply API | [IDP token permissions](08-idp-permissions.md) |
+| **Serve token permissions** | Per-caller operation and namespace scoping on the Gateway API | [Serve token permissions](08-serve-permissions.md) |
 
 These layers are independent and can be enabled in any combination. You do not need all five to get value from any one of them.
 
@@ -173,4 +173,4 @@ Report security issues privately with reproduction steps, relevant logs, and an 
 - **[Namespace Protection](./05-namespace-protection.md)** — admission and runtime enforcement
 - **[Validation Pipeline](./06-validation-pipeline.md)** — strict parsing, offline validation, and minimal cluster access
 - **[Pod Security](./07-pod-security.md)** — container and pod security context profiles
-- **[IDP Token Permissions](./08-idp-permissions.md)** — per-caller operation and namespace scoping on the Apply API
+- **[Serve Token Permissions](./08-serve-permissions.md)** — per-caller operation and namespace scoping on the Gateway API

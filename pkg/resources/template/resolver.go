@@ -168,8 +168,8 @@ func (r *Resolver) Resolve(value string) (string, error) {
 
 // ResolveStrict evaluates value like Resolve, but also reports whether any
 // referenced field was missing (rendered "<no value>" before stripping).
-// Callers that require every referenced field to be present — idp.name,
-// idp.namespace — use this to catch composite templates (e.g.
+// Callers that require every referenced field to be present — serve.name,
+// serve.namespace — use this to catch composite templates (e.g.
 // "{{ .team }}-{{ .environment }}") that would otherwise silently resolve
 // to a non-empty but meaningless string like "-" when all fields are absent.
 func (r *Resolver) ResolveStrict(value string) (out string, missing bool, err error) {

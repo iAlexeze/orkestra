@@ -188,22 +188,22 @@ imports:
 
 → Full Motif import schema: [motif](../01-motif/index.md)
 
-## `idp`
+## `serve`
 
-Controls whether this CRD is exposed through the Gateway Apply API and the Control Center's IDP form. Requires `gateway.applyAPI.enabled: true` at the Katalog level.
+Controls whether this CRD is exposed through the Gateway API and the Control Center's Serve form. Requires `gateway.api.enabled: true` at the Katalog level.
 
 ```yaml
 spec:
   crds:
     platformResource:
-      idp:
+      serve:
         enabled: true
         category: "Compute"
         description: "Deploy and manage platform workloads"
-        ignoreFields:
+        ignore:
           - spec.internalRef
           - spec.managedBy
-        include: ./idp/platformresource.yaml   # or inline fields:
+        include: ./serve/platformresource.yaml   # or inline fields:
         fields:
           environment:
             label: "Environment"
@@ -235,11 +235,11 @@ spec:
             order: 99
 ```
 
-**Full reference:** → [idp](20-idp.md) — `idp.fields`, `idp.additionalFields`, `idp.name`, `idp.namespace`, `idp.config.response`, `idp.allowedTokens`.
+**Full reference:** → [serve](20-serve.md) — `serve.fields`, `serve labels/annotations`, `serve.name`, `serve.namespace`, `serve.config.response`, `serve.tokens`.
 
 ## See also
 **Conceptual overview:** → [concepts/idp](../../../concepts/idp/)
-**Apply API:** → [katalog-applyapi](17-katalog-applyapi.md)
+**Gateway API:** → [gateway-api](17-gateway-api.md)
 
 ---
 
@@ -253,4 +253,4 @@ spec:
 | `conversion` | [conversion](09-conversion.md) |
 | `validation` | [validation](07-validation.md) |
 | `mutation` | [mutation](08-mutation.md) |
-| `idp` | [idp](20-idp.md) |
+| `serve` | [serve](20-serve.md) |

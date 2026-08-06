@@ -45,7 +45,7 @@ var (
 
 // jiraTransitions records POST /jira/transition calls, keyed by issueKey —
 // readable back via GET /jira/issues/{key}. There's no real Jira here, so
-// this in-memory store is the only way 03-jira-slack (idp example) can
+// this in-memory store is the only way 03-jira-slack (serve example) can
 // verify the call actually fired instead of just trusting a 200.
 var jiraTransitions sync.Map
 

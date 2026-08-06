@@ -42,7 +42,7 @@ Adding an IDP is enabling the interface to what is already running, not standing
 
 ```yaml
 gateway:
-  applyAPI:
+  api:
     enabled: true
     auth:
       tokens:
@@ -57,7 +57,7 @@ gateway:
 spec:
   crds:
     application:
-      idp:
+      serve:
         enabled: true
         target: application
         fields:
@@ -71,18 +71,18 @@ spec:
             order: 2
 ```
 
-That is the IDP. Two config blocks on the Katalog the platform team already had. The gateway self-bootstraps its token Secret on first start. The Control Center reads `idpEnabled` and `target` from the runtime and shows a `[+ Create]` button.
+That is the IDP. Two config blocks on the Katalog the platform team already had. The gateway self-bootstraps its token Secret on first start. The Control Center reads `serveEnabled` and `target` from the runtime and shows a `[+ Create]` button.
 
 `target` — `application` above — is what callers actually say, not `Application` the Kind or `applications.platform.myorg.io` the plural resource. It defaults to the lowercased Kind, so most CRDs need nothing here at all; set it explicitly when the Kind is too verbose or ambiguous for a form label. Every gateway call — schema discovery, apply, read — is keyed by `target`, never by Kind or GVK. → [Target Mode](02-target-mode.md)
 
-`fields` exposes `spec.*` — the workload data the operator computes with. Not everything a form should collect belongs there, though: a team name, a feature flag, an external ticket reference are metadata, not spec data. `idp.additionalFields` is the release valve — a surface, on any CRD entry in the katalog, for exactly what shouldn't be forced into `spec`. It exposes label and annotation keys as form fields the same way `fields` exposes spec ones, written straight to `metadata` instead.
+`fields` exposes `spec.*` — the workload data the operator computes with. Not everything a form should collect belongs there, though: a team name, a feature flag, an external ticket reference are metadata, not spec data. `serve.labels` and `serve.annotations` close that gap — a surface, on any CRD entry in the katalog, for exactly what shouldn't be forced into `spec`. They expose label and annotation keys as form fields the same way `fields` exposes spec ones, written straight to `metadata` instead.
 
 `order` above looks like form layout, and it is — but it's also validation priority: when more than one field fails at once, only the first violation becomes the headline denial reason, evaluated in the same order the fields render in. Two fields sharing a non-zero `order` is a load-time error for that reason, not just a rendering ambiguity.
 
-There's one more thing a self-service caller shouldn't have to decide: **which namespace**. A CRD is namespaced by default, and someone has to place a new CR *somewhere* — but a developer filling in a form, or a CI job doing a `curl`, has no business making that call. `idp.namespace` is a template expression (`'{{ teamName }}'`, or a plain literal) the gateway resolves server-side against whatever the caller submitted, and it always wins over whatever they sent — so `namespace` never appears on the form and no caller ever needs to supply one. It routes into a namespace the platform team already provisioned; it doesn't create one. A cluster-scoped CRD sidesteps the question entirely a different way — no namespace on the CR at all, with `onCreate` provisioning one as a child resource instead — two answers to the same problem, matched to two different scope choices.
+There's one more thing a self-service caller shouldn't have to decide: **which namespace**. A CRD is namespaced by default, and someone has to place a new CR *somewhere* — but a developer filling in a form, or a CI job doing a `curl`, has no business making that call. `serve.namespace` is a template expression (`'{{ teamName }}'`, or a plain literal) the gateway resolves server-side against whatever the caller submitted, and it always wins over whatever they sent — so `namespace` never appears on the form and no caller ever needs to supply one. It routes into a namespace the platform team already provisioned; it doesn't create one. A cluster-scoped CRD sidesteps the question entirely a different way — no namespace on the CR at all, with `onCreate` provisioning one as a child resource instead — two answers to the same problem, matched to two different scope choices.
 
 → [Additional Fields in depth](01-additional-fields.md)
-→ [`idp.namespace` reference](../../reference/schema/02-katalog/02-crd-entry.md#idpnamespace)
+→ [`serve.namespace` reference](../../reference/schema/02-katalog/20-serve.md#servenamespace)
 
 ---
 
@@ -107,10 +107,10 @@ Advanced callers can skip the field contract and submit a full CR directly (`{"a
 
 ## Not every token gets the same answer
 
-`gateway.applyAPI.auth.tokens` in the first example declared two tokens — `control-center` and `ci-pipeline` — and said nothing about what either is allowed to do. By default, nothing distinguishes them: any valid token can call any endpoint the Apply API exposes for a CRD. `idp.allowedTokens`, declared per CRD, is what gives them different answers — which operations, on which endpoints, in which namespaces, per token. A token that leaks in a build log still can't touch production, and can't be used to change what the form itself looks like.
+`gateway.api.auth.tokens` in the first example declared two tokens — `control-center` and `ci-pipeline` — and said nothing about what either is allowed to do. By default, nothing distinguishes them: any valid token can call any endpoint the Gateway API exposes for a CRD. `serve.tokens`, declared per CRD, closes that gap — which operations, on which endpoints, in which namespaces, per token. A token that leaks in a build log still can't touch production, and can't be used to change what the form itself looks like.
 
 → [Token Scoping](03-token-scoping.md) — the full model, with a realistic multi-token example
-→ [IDP token permissions](../../security/08-idp-permissions.md) — the security write-up: denial responses, what `ork validate` enforces
+→ [Serve token permissions](../../security/08-serve-permissions.md) — the security write-up: denial responses, what `ork validate` enforces
 
 ---
 
@@ -136,7 +136,7 @@ The form is generated from `GET /api/v1/schema?target=application` — the same 
 - A notification pipeline (the `external:` block in the Katalog handles Jira/Slack after deployment)
 - A form schema separate from the gateway's field contract
 
-A Terraform provider is not one of these — nothing here ships one today. The Apply API is a plain REST surface, so writing one is straightforward, but it is not built for you yet.
+A Terraform provider is not one of these — nothing here ships one today. The Gateway API is a plain REST surface, so writing one is straightforward, but it is not built for you yet.
 
 All of those are either unnecessary or reduced to configuration.
 
@@ -155,4 +155,4 @@ The pack runs three delivery paths against one `AppRequest` CRD — browser form
 → [Target Mode](02-target-mode.md)
 → [Token Scoping](03-token-scoping.md)
 
-→ [Apply API reference](../../reference/schema/02-katalog/17-katalog-applyapi.md)
+→ [Gateway API reference](../../reference/schema/02-katalog/17-gateway-api.md)

@@ -21,7 +21,7 @@ All calls go through `cc/client.go`. The generic helper `getJSON[T]` handles JSO
 
 ## Gateway API endpoints
 
-When a runtime advertises a companion gateway via `"gatewayEndpoint"` in its `/katalog` response, the Control Center also queries the gateway for webhook stats and (when IDP is enabled) proxies schema and apply requests:
+When a runtime advertises a companion gateway via `"gatewayEndpoint"` in its `/katalog` response, the Control Center also queries the gateway for webhook stats and (when Serve is enabled) proxies schema and apply requests:
 
 | Endpoint | Go type | Used by |
 |----------|---------|---------|
@@ -33,13 +33,13 @@ The gateway URL is stored on `Instance.GatewayEndpoint` when the runtime katalog
 
 ## IDP mode
 
-When the runtime includes `"idpEnabled": true` and a non-empty `"target"` on a `CRDSummaryResponse` entry in the `/katalog` response, the CR list page for that CRD renders a `[+ Create]` button linking to `/katalog/{kat}/crd/{crd}/cr/create`. That route fetches the flat field schema for `Target` (`GET /api/v1/schema?target=...`) and renders `idp_form.html`. On submit, the browser POSTs a flat `{"target": "...", ...fields}` object back to the same route; `handleIDPApplyForm` forwards it to the gateway's `POST /api/v1/apply`, which builds the CR. Control Center never constructs a CR itself — see [06-idp-form.md](06-idp-form.md).
+When the runtime includes `"serveEnabled": true` and a non-empty `"target"` on a `CRDSummaryResponse` entry in the `/katalog` response, the CR list page for that CRD renders a `[+ Create]` button linking to `/katalog/{kat}/crd/{crd}/cr/create`. That route fetches the flat field schema for `Target` (`GET /api/v1/schema?target=...`) and renders `idp_form.html`. On submit, the browser POSTs a flat `{"target": "...", ...fields}` object back to the same route; `handleIDPApplyForm` forwards it to the gateway's `POST /api/v1/apply`, which builds the CR. Control Center never constructs a CR itself — see [06-idp-form.md](06-idp-form.md).
 
 The `GATEWAY_TOKEN` env var on the CC is the bearer token sent to the gateway. The browser only ever talks to the CC — no cross-origin requests, no token exposure.
 
 ```
 KatalogResponse.CRDs[].IdpEnabled  ← per-CRD flag from runtime /katalog
-KatalogResponse.CRDs[].Target      ← idp.target (or lowercased kind); empty when IDP disabled
+KatalogResponse.CRDs[].Target      ← serve.target (or lowercased kind); empty when Serve disabled
 KatalogResponse.GatewayEndpoint    ← stored on Instance; used by CC proxy handlers
 ControlCenter.gatewayToken         ← from GATEWAY_TOKEN env var; never sent to browser
 ```

@@ -978,17 +978,17 @@ func (cc *ControlCenter) handleIDPCreateForm(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	sections, fetchErr := cc.fetchIDPFields(inst, target)
+	sections, fetchErr := cc.fetchAllServeFields(inst, target)
 	data := IDPFormData{
-		KatalogName:    katalogName,
-		CRDName:        crdName,
-		Target:         target,
-		Kind:           kind,
-		APIVersion:     apiVersion,
-		BackURL:        backURL,
-		Namespaced:     crdSummary.Namespaced,
-		RequireIDPName: crdSummary.RequireIDPName,
-		Sections:       sections,
+		KatalogName:      katalogName,
+		CRDName:          crdName,
+		Target:           target,
+		Kind:             kind,
+		APIVersion:       apiVersion,
+		BackURL:          backURL,
+		Namespaced:       crdSummary.Namespaced,
+		RequireServeName: crdSummary.RequireServeName,
+		Sections:         sections,
 	}
 	if fetchErr != nil {
 		data.Error = "Could not load schema: " + fetchErr.Error()
@@ -1008,11 +1008,11 @@ const (
 	FieldTypeEnum    FieldType = "enum"
 )
 
-// idpFieldHint mirrors one entry of pkg/gateway/applyapi.SchemaResponse.Fields
-// (itself orktypes.IDPFieldConfig) — the gateway's flat, caller-facing field
+// serveFieldHint mirrors one entry of pkg/gateway/api.SchemaResponse.Fields
+// (itself orktypes.ServeFieldConfig) — the gateway's flat, caller-facing field
 // contract. It doesn't distinguish where a field routes to (spec, label,
 // annotation) — the gateway resolves that from the Katalog, not the caller.
-type idpFieldHint struct {
+type serveFieldHint struct {
 	Label       string            `json:"label"`
 	Placeholder string            `json:"placeholder"`
 	Hint        string            `json:"hint"`
@@ -1026,11 +1026,11 @@ type idpFieldHint struct {
 	Enum        []string          `json:"enum"`
 }
 
-// buildIDPField builds an IDPField for one gateway schema field entry.
+// buildServeField builds an ServeField for one gateway schema field entry.
 // Type/enum come from the field's own declared type — the gateway's flat
 // schema doesn't distinguish where a field routes to (spec, label,
 // annotation), so neither does the form.
-func buildIDPField(name string, hint idpFieldHint) IDPField {
+func buildServeField(name string, hint serveFieldHint) ServeField {
 	label := hint.Label
 	if label == "" {
 		label = name
@@ -1038,7 +1038,7 @@ func buildIDPField(name string, hint idpFieldHint) IDPField {
 			label = strings.ToUpper(label[:1]) + label[1:]
 		}
 	}
-	f := IDPField{
+	f := ServeField{
 		Name:        name,
 		Label:       label,
 		Hint:        hint.Hint,
@@ -1072,8 +1072,8 @@ func buildIDPField(name string, hint idpFieldHint) IDPField {
 	return f
 }
 
-// fetchIDPFields fetches the flat field schema for target from the gateway.
-func (cc *ControlCenter) fetchIDPFields(inst *Instance, target string) ([]IDPSection, error) {
+// fetchAllServeFields fetches the flat field schema for target from the gateway.
+func (cc *ControlCenter) fetchAllServeFields(inst *Instance, target string) ([]IDPSection, error) {
 	if inst.GatewayEndpoint == "" {
 		return nil, fmt.Errorf("no gateway endpoint configured")
 	}
@@ -1094,22 +1094,22 @@ func (cc *ControlCenter) fetchIDPFields(inst *Instance, target string) ([]IDPSec
 		return nil, fmt.Errorf("%s", strings.TrimSpace(string(body)))
 	}
 
-	// schemaResp mirrors pkg/gateway/applyapi.SchemaResponse — a flat field
+	// schemaResp mirrors pkg/gateway/api.SchemaResponse — a flat field
 	// map, no CRD-schema/bucket distinction.
 	var schemaResp struct {
-		Fields map[string]idpFieldHint `json:"fields"`
+		Fields map[string]serveFieldHint `json:"fields"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&schemaResp); err != nil {
 		return nil, err
 	}
 
 	type orderedField struct {
-		field IDPField
+		field ServeField
 		order int
 	}
 	var ordered []orderedField
 	for name, hint := range schemaResp.Fields {
-		ordered = append(ordered, orderedField{field: buildIDPField(name, hint), order: hint.Order})
+		ordered = append(ordered, orderedField{field: buildServeField(name, hint), order: hint.Order})
 	}
 
 	sort.Slice(ordered, func(i, j int) bool {
@@ -1143,7 +1143,7 @@ func (cc *ControlCenter) fetchIDPFields(inst *Instance, target string) ([]IDPSec
 }
 
 // handleIDPApplyForm processes the IDP form POST: forwards the flat
-// target-mode payload the form submitted to the gateway's Apply API. The
+// target-mode payload the form submitted to the Gateway API. The
 // gateway builds the CR from target — this handler doesn't construct one.
 func (cc *ControlCenter) handleIDPApplyForm(w http.ResponseWriter, r *http.Request, inst *Instance, target string) {
 	var body map[string]interface{}

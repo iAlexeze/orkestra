@@ -1019,8 +1019,8 @@ type E2EKubectlPortForward struct {
 	// Method is the HTTP method. Defaults to GET.
 	Method string `yaml:"method,omitempty"`
 	// Headers are added to the request, e.g. Authorization for a token-gated
-	// endpoint like the gateway's Apply API. Values go through os.ExpandEnv
-	// (same ${VAR} syntax as gateway.applyAPI.auth.tokens.token), so a CI
+	// endpoint like the Gateway API. Values go through os.ExpandEnv
+	// (same ${VAR} syntax as gateway.api.auth.tokens.token), so a CI
 	// secret never needs to be written into the YAML file.
 	//
 	//	headers:

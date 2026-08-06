@@ -267,7 +267,7 @@ kubectl:
         lease: my-operator-leader
       outputContains: "ok"
 
-    # authenticated POST — e.g. a gateway Apply API behind a bearer token
+    # authenticated POST — e.g. a gateway Gateway API behind a bearer token
     - service: orkestra-gateway
       namespace: orkestra-system
       port: 8443
@@ -289,7 +289,7 @@ kubectl:
 | `port` | yes | Port to forward (used as both local and remote) |
 | `path` | no | HTTP path to request via curl after port-forward is ready |
 | `method` | no | HTTP method. Default: `GET` |
-| `headers` | no | Map of request headers, e.g. `Authorization` for a token-gated endpoint. Values go through `os.ExpandEnv` (`${VAR}` syntax, same as `gateway.applyAPI.auth.tokens.token`) so a CI secret never needs to be written into the e2e file |
+| `headers` | no | Map of request headers, e.g. `Authorization` for a token-gated endpoint. Values go through `os.ExpandEnv` (`${VAR}` syntax, same as `gateway.api.auth.tokens.token`) so a CI secret never needs to be written into the e2e file |
 | `body` | no | Request body for `POST`/`PUT`/`PATCH`. Also goes through `os.ExpandEnv` |
 | `wait` | no | Duration to sleep after the port-forward is ready but before sending the curl request (Go duration: `5s`, `10s`). Useful when the endpoint needs time to stabilize |
 | `jq` | no | jq expression applied to the response before asserting |

@@ -223,7 +223,7 @@ type CRDSummary struct {
 	Mode        string `json:"mode,omitempty"`
 	GVK         string `json:"gvk,omitempty"`
 	GVR         string `json:"gvr,omitempty"`
-	// Target is the identifier this CRD is addressed by in the Apply API and
+	// Target is the identifier this CRD is addressed by in the Gateway API and
 	// schema API (idp.target, or the lowercased kind when unset). Empty when
 	// IDP isn't enabled for this CRD.
 	Target                   string       `json:"target,omitempty"`
@@ -250,11 +250,11 @@ type CRDSummary struct {
 	KatalogNamespace         string       `json:"katalogNamespace,omitempty"`
 	Endpoints                EndpointInfo `json:"endpoints,omitempty"`
 	IdpEnabled               bool         `json:"idpEnabled,omitempty"`
-	RequireIDPName           bool         `json:"requireIdpName,omitempty"`
+	RequireServeName         bool         `json:"requireServeName,omitempty"`
 }
 
-// IDPField is one rendered field in the IDP create form.
-type IDPField struct {
+// ServeField is one rendered field in the IDP create form.
+type ServeField struct {
 	Name        string
 	Label       string
 	InputType   string // "text" | "number" | "select" | "checkbox"
@@ -271,25 +271,25 @@ type IDPField struct {
 // IDPSection is a group of fields sharing a section heading in the IDP form.
 type IDPSection struct {
 	Title  string
-	Fields []IDPField
+	Fields []ServeField
 }
 
 // IDPFormData is the view model for idp_form.html.
 type IDPFormData struct {
 	KatalogName string
 	CRDName     string
-	// Target is the identifier submitted to the gateway's Apply API
+	// Target is the identifier submitted to the gateway's Gateway API
 	// (idp.target, or the lowercased kind when unset).
 	Target string
 	// Kind/APIVersion are display-only — shown in the page header, not used
 	// to build the submitted payload (the gateway builds the CR).
-	Kind           string
-	APIVersion     string
-	BackURL        string
-	Namespaced     bool
-	RequireIDPName bool
-	Sections       []IDPSection
-	Error          string
+	Kind             string
+	APIVersion       string
+	BackURL          string
+	Namespaced       bool
+	RequireServeName bool
+	Sections         []IDPSection
+	Error            string
 }
 
 // CRDHealth is the response from the /katalog/{crd}/health endpoint

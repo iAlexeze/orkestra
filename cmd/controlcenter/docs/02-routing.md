@@ -57,7 +57,7 @@ len(crParts) == 3  →  namespaced CR detail       (/cr/{ns}/{name})
 
 ## IDP proxy endpoints
 
-`/api/idp/schema/{target}` and `/api/idp/apply` are standalone server-side proxies to the companion gateway's Apply API, for callers that want the gateway's raw JSON directly rather than the rendered form. The CC holds the `GATEWAY_TOKEN` bearer token; the browser never sees it. The `[+ Create]` form itself doesn't use these — see [06-idp-form.md](06-idp-form.md) for its actual request flow (`handleIDPCreateForm`/`fetchIDPFields`/`handleIDPApplyForm`).
+`/api/idp/schema/{target}` and `/api/idp/apply` are standalone server-side proxies to the companion gateway's Gateway API, for callers that want the gateway's raw JSON directly rather than the rendered form. The CC holds the `GATEWAY_TOKEN` bearer token; the browser never sees it. The `[+ Create]` form itself doesn't use these — see [06-idp-form.md](06-idp-form.md) for its actual request flow (`handleIDPCreateForm`/`fetchIDPFields`/`handleIDPApplyForm`).
 
 `handleIDPSchema` forwards `GET {gatewayEndpoint}/api/v1/schema?target={target}`. `handleIDPApply` forwards `POST {gatewayEndpoint}/api/v1/apply` with the request body unchanged. Both respond with the gateway's status code and JSON body verbatim.
 

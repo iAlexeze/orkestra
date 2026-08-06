@@ -94,7 +94,7 @@ Every CRD declared in a Katalog becomes a complete, isolated operator. Nothing t
 | **Prometheus metrics** | Reconcile totals, queue depth, error rate — labeled by GVK. |
 | **Deletion protection** | Orkestra and everything it manages cannot be accidentally `kubectl delete`. |
 | **Control Center** | Realtime visibility per CRD, per Katalog, across instances. Auto-generated operator docs — overview, reconcile mode, child resources, kubectl reference, access control. |
-| **Developer portal** | `idp.enabled: true` on any CRD surfaces a self-service form in the Control Center. Users submit CRs through a browser — no kubectl, no YAML. |
+| **Developer portal** | `serve.enabled: true` on any CRD surfaces a self-service form in the Control Center. Users submit CRs through a browser — no kubectl, no YAML. |
 
 ---
 
@@ -170,13 +170,13 @@ Six Runtimes. 75 CRDs. One Control Center.
 
 **Not an operator — a runtime for operators.** Each CRD in a Katalog becomes its own operator. Orkestra is the runtime that runs them all.
 
-**Not an IDP — but every operator can become one.** `idp.enabled: true` on any CRD exposes a self-service form in the Control Center. Users submit CRs through a browser without kubectl or YAML. The IDP is the operator — Orkestra just surfaces it.
+**Not a developer portal by default — but every operator can become one.** `serve.enabled: true` on any CRD exposes a self-service form in the Control Center. Users submit CRs through a browser without kubectl or YAML. The developer portal is the operator — Orkestra just surfaces it.
 
 **Not a replacement for Go.** Hooks and constructors exist for exactly this reason. ~90% of operators are declarative; ~10% need code. Orkestra handles the 90% and gives the 10% a clean interface — the same informer, queue, health, and metrics infrastructure, with a single function to implement.
 
 **Not GitOps.** Katalogs define long-lived API contracts and are resolved at startup. Silently reloading them mid-flight is dangerous. Treat Katalog changes like any other runtime change — deploy through a pipeline.
 
-**Not a product — a primitive layer.** Notes, autoscaler, IDP mode, Katalogs — none of these are products. They are primitives ready for composition. What you build on top of them is.
+**Not a product — a primitive layer.** Notes, autoscaler, serve mode, Katalogs — none of these are products. They are primitives ready for composition. What you build on top of them is.
 
 ---
 

@@ -1,4 +1,4 @@
-## v0.7.13 — Kubernetes-native labels/envFrom, IDP additionalFields, `ork idp` CLI, external calls at admission/reconcile, protocol clients [UNRELEASED]
+## v0.7.13 — Kubernetes-native labels/envFrom, serve labels/annotations, `ork serve` CLI, external calls at admission/reconcile, protocol clients
 
 ### Blog: There Is No Kubernetes Expression Language
 
@@ -170,35 +170,34 @@ envFrom:
 
 `SecretKeyRef`/`ConfigMapKeyRef` (used under `env.valueFrom`) also gain an `optional` field, mirroring `corev1.SecretKeySelector`/`ConfigMapKeySelector`.
 
-### `idp.additionalFields` — labels and annotations as self-service form fields
+### `serve labels/annotations` — labels and annotations as self-service form fields
 
-`idp.fields` exposes `spec.*` to the IDP form — but team, environment, and feature flags are usually metadata, not spec data. `idp.additionalFields` exposes label and annotation keys the same way, written to `metadata.labels`/`metadata.annotations` on apply instead of `spec`. Each entry needs an explicit `type` (`string` default, `integer`, `number`, `boolean`, `enum`) since labels/annotations have no CRD schema to infer it from.
+`serve.fields` exposes `spec.*` to the Serve form — but team, environment, and feature flags are usually metadata, not spec data. `serve labels/annotations` exposes label and annotation keys the same way, written to `metadata.labels`/`metadata.annotations` on apply instead of `spec`. Each entry needs an explicit `type` (`string` default, `integer`, `number`, `boolean`, `enum`) since labels/annotations have no CRD schema to infer it from.
 
 ```yaml
-idp:
+serve:
   enabled: true
   fields:
     image:
       label: "Container Image"
-  additionalFields:
-    labels:
-      team:
-        label: "Team"
-        required: true
-    annotations:
-      canary.myorg.io:
-        label: "Enable canary rollout"
-        type: boolean
+  labels:
+    team:
+      label: "Team"
+      required: true
+  annotations:
+    canary.myorg.io:
+      label: "Enable canary rollout"
+      type: boolean
 ```
 
-Validated at `ork validate` time: every key must be a syntactically valid Kubernetes label/annotation key, and no key may collide with `idp.fields` or the other `additionalFields` bucket. `idp.include` now also merges an `additionalFields:` block from the included file, the same way it already merged `fields:`.
+Validated at `ork validate` time: every key must be a syntactically valid Kubernetes label/annotation key, and no key may collide with `serve.fields` or the other bucket. `serve.include` now also merges `labels:` and `annotations:` blocks from the included file, the same way it already merged `fields:`.
 
-### `idp.fields.<name>.required` — enforced server-side, for every client
+### `serve.fields.<name>.required` — enforced server-side, for every client
 
-`required: true` on an `idp.fields` or `idp.additionalFields` entry now synthesizes an implicit `exists` validation rule at katalog load time, with `message:` matching the field's `label:` automatically. This is enforced at the API server — the Control Center form, `curl`, a CI pipeline, `kubectl apply`, any Apply API client — not only the one that renders a required-field asterisk.
+`required: true` on an `serve.fields` or `serve labels/annotations` entry now synthesizes an implicit `exists` validation rule at katalog load time, with `message:` matching the field's `label:` automatically. This is enforced at the API server — the Control Center form, `curl`, a CI pipeline, `kubectl apply`, any Gateway API client — not only the one that renders a required-field asterisk.
 
 ```yaml
-idp:
+serve:
   fields:
     targetRevision:
       label: "Branch / Tag"
@@ -215,12 +214,12 @@ The synthesized rule inherits the field's own `when:`/`anyOf:`, so a field requi
 
 The reconciler and the webhook no longer maintain separate copies of validation-rule evaluation, shorthand resolution, and field lookup — all now shared from `pkg/types` (`EvaluateValidationRule`, `ResolveValidationOp`, `ResolveScalarField`). That duplication is exactly how `operator: in` went unimplemented in both places at once.
 
-### `idp.fields.<name>.type: enum` — membership validated automatically
+### `serve.fields.<name>.type: enum` — membership validated automatically
 
-`type: enum` on an `idp.fields`/`idp.additionalFields` entry now synthesizes an implicit `in` validation rule, the same way `required: true` synthesizes `exists`. Membership is checked only when the field has a value — an enum field that isn't also `required: true` can still be omitted, it just can't be set to something outside the declared list.
+`type: enum` on an `serve.fields`/`serve labels/annotations` entry now synthesizes an implicit `in` validation rule, the same way `required: true` synthesizes `exists`. Membership is checked only when the field has a value — an enum field that isn't also `required: true` can still be omitted, it just can't be set to something outside the declared list.
 
 ```yaml
-idp:
+serve:
   fields:
     workloadType:
       label: "Workload Type"
@@ -231,22 +230,22 @@ idp:
 #                  message: "Workload Type must be one of: app, cert, monitoring, infra" }
 ```
 
-### `ork idp` CLI
+### `ork serve` CLI
 
-Added `ork idp` command for inspecting and validating IDP configurations.
+Added `ork serve` command for inspecting and validating Serve configurations.
 
 Subcommands:
-- `validate` — Validate IDP configuration in a Katalog (`--full` for detailed breakdown)
-- `schema` — Show the flat schema for an IDP target (`--target`, `--kind`, `--name`)
-- `fields` — List IDP fields with their paths and types (`--target`, `--kind`, `--name`)
+- `validate` — Validate Serve configuration in a Katalog (`--full` for detailed breakdown)
+- `schema` — Show the flat schema for a Serve target (`--target`, `--kind`, `--name`)
+- `fields` — List serve fields with their paths and types (`--target`, `--kind`, `--name`)
 - `tokens` — Show token permissions for a CRD (`--target`, `--kind`, `--name`)
-- `targets` — List all IDP targets in a Katalog
+- `targets` — List all serve targets in a Katalog
 - `can-i` — Check if a token can perform an operation (`--token`, `--target`, `--operation`, `--namespace`)
-- `response` — Show the IDP response configuration (`--target`, `--preview`)
+- `response` — Show the serve response configuration (`--target`, `--preview`)
 
 ### JSON object/array values in `onCreate` custom resource templates
 
-A resolved template value that looks like a JSON object or array (e.g. an IDP form field collecting raw JSON) now coerces into a real `map`/`slice` instead of being embedded as a literal string — `matchLabels: "{{ .spec.serviceSelector }}"` now produces a structured selector, not a JSON-string value in a field that expects a map. Same mechanism that already coerced resolved templates into `int`/`float`/`bool` (`TryCoerceString`, now shared from `pkg/types` instead of duplicated across the custom-resource resolver, the forEach-expansion path, and the conversion webhook — the forEach path had no coercion at all, a real pre-existing gap this closes).
+A resolved template value that looks like a JSON object or array (e.g. a Serve form field collecting raw JSON) now coerces into a real `map`/`slice` instead of being embedded as a literal string — `matchLabels: "{{ .spec.serviceSelector }}"` now produces a structured selector, not a JSON-string value in a field that expects a map. Same mechanism that already coerced resolved templates into `int`/`float`/`bool` (`TryCoerceString`, now shared from `pkg/types` instead of duplicated across the custom-resource resolver, the forEach-expansion path, and the conversion webhook — the forEach path had no coercion at all, a real pre-existing gap this closes).
 
 ### New notes: Kubernetes and general input-format validation
 
@@ -293,9 +292,9 @@ Available in both `when:`/`anyOf:` and `validation.rules`, with shorthand fields
 
 e2e's shell-command and kubectl-output assertions (`equals`, `contains`, `regex`, `oneOf`, …) were kept hand-rolled and separate from `when:`/`anyOf:` until the shared `Condition`/`EvaluateOneCond` evaluator stabilized. Now unified — `pkg/registry/e2e`'s assertion logic delegates to `EvaluateOneCond` per field, so e2e assertions gain every `when:`/`anyOf:` operator (`gte`, `between`, `regex`, …) for free and can no longer drift from that behavior. Field names and error messages are unchanged.
 
-### `idp.fields`/`idp.additionalFields` `link:` — a clean display field, decoupled from the evaluation expression
+### `serve.fields`/`serve labels/annotations` `link:` — a clean display field, decoupled from the evaluation expression
 
-A validation rule's `field:` is often a template expression once it targets `idp.additionalFields` — e.g. `{{ getLabel . "team" }}` rather than a plain `spec.team`. Clients that highlight the offending form field from a violation's `Field` had nothing usable to match against in that case. `link:` fixes this: a plain, non-template field name naming the `idp.fields`/`idp.additionalFields` key a rule concerns, used as the violation's reported field instead of the raw expression. Validated at load time — `link:` must match a real idp field, and is rejected as redundant if it just repeats an already-clean `spec.<name>` field.
+A validation rule's `field:` is often a template expression once it targets `serve labels/annotations` — e.g. `{{ getLabel . "team" }}` rather than a plain `spec.team`. Clients that highlight the offending form field from a violation's `Field` had nothing usable to match against in that case. `link:` fixes this: a plain, non-template field name naming the `serve.fields`/`serve labels/annotations` key a rule concerns, used as the violation's reported field instead of the raw expression. Validated at load time — `link:` must match a real serve field, and is rejected as redundant if it just repeats an already-clean `spec.<name>` field.
 
 ```yaml
 validation:
@@ -309,7 +308,7 @@ validation:
 
 Synthesized `required`/`enum` rules set `link:` automatically.
 
-`order` now also decides validation priority, not just form layout: synthesized rules are prepended ahead of hand-written ones, so when a field fails both a missing-value check and a content check at once, `DenialMessage()` (which reports only the first violation) leads with "required" rather than a less useful content error. Field order itself is deterministic now too — `allIDPFieldRefs` sorts by `order` instead of ranging over a Go map — and two fields on one CRD sharing a non-zero `order:` is a load-time error.
+`order` now also decides validation priority, not just form layout: synthesized rules are prepended ahead of hand-written ones, so when a field fails both a missing-value check and a content check at once, `DenialMessage()` (which reports only the first violation) leads with "required" rather than a less useful content error. Field order itself is deterministic now too — `allServeFieldRefs` sorts by `order` instead of ranging over a Go map — and two fields on one CRD sharing a non-zero `order:` is a load-time error.
 
 ### `kubectl.apply` gains `exitCode` and full assertions — for admission-rejection e2e tests
 
@@ -323,9 +322,9 @@ kubectl:
       outputContains: "spec.domain must be unique"
 ```
 
-### `kubectl.port-forward` gains `headers`/`body` — for testing token-gated endpoints like the gateway Apply API
+### `kubectl.port-forward` gains `headers`/`body` — for testing token-gated endpoints like the gateway Gateway API
 
-Previously every `kubectl.port-forward` request was an unauthenticated `GET`. `headers` (a string map) and `body` now let an entry send an authenticated `POST`/`PUT`/`PATCH` — e.g. asserting on the gateway's Apply API. Both go through `os.ExpandEnv` (`${VAR}` syntax, same convention as `gateway.applyAPI.auth.tokens.token`), so a CI secret never has to be written into the e2e file:
+Previously every `kubectl.port-forward` request was an unauthenticated `GET`. `headers` (a string map) and `body` now let an entry send an authenticated `POST`/`PUT`/`PATCH` — e.g. asserting on the gateway's Gateway API. Both go through `os.ExpandEnv` (`${VAR}` syntax, same convention as `gateway.api.auth.tokens.token`), so a CI secret never has to be written into the e2e file:
 
 ```yaml
 kubectl:
@@ -341,42 +340,42 @@ kubectl:
       outputContains: '"accepted":false'
 ```
 
-### `idp.name` — server-side name resolution for the Apply API
+### `serve.name` — server-side name resolution for the Gateway API
 
-`metadata.name` exists on every CR regardless of scope, so unlike `idp.namespace` (below), `idp.name` isn't scope-dependent — but it is optional, since most CRDs still want the caller to choose a name (multiple concurrent instances of one repo — PR previews, ephemeral environments). Set `idp.name` only when instances are 1:1 with some identity the caller already supplies, and a redeploy should update that same CR in place rather than create a new one — a stable environment where only the image tag changes between deploys:
+`metadata.name` exists on every CR regardless of scope, so unlike `serve.namespace` (below), `serve.name` isn't scope-dependent — but it is optional, since most CRDs still want the caller to choose a name (multiple concurrent instances of one repo — PR previews, ephemeral environments). Set `serve.name` only when instances are 1:1 with some identity the caller already supplies, and a redeploy should update that same CR in place rather than create a new one — a stable environment where only the image tag changes between deploys:
 
 ```yaml
-idp:
+serve:
   enabled: true
   name: '{{ repoSlug .spec.repository }}'
 ```
 
-`idp.name` is a template expression the gateway's Apply API resolves server-side, against exactly what the caller submitted, and always wins over whatever (if anything) the caller sent — the same in full CR mode (`POST /api/v1/apply` with a complete CR) and target mode (`{"target": ..., ...fields}`). When *not* set, a name is required from the caller instead — `metadata.name` in full CR mode, a flat `"name"` field in target mode — and the Apply API rejects a request with an empty one immediately, as a structured violation (`metadata.name is required`), instead of letting the SSA patch fail with a raw Kubernetes error.
+`serve.name` is a template expression the gateway's Gateway API resolves server-side, against exactly what the caller submitted, and always wins over whatever (if anything) the caller sent — the same in full CR mode (`POST /api/v1/apply` with a complete CR) and target mode (`{"target": ..., ...fields}`). When *not* set, a name is required from the caller instead — `metadata.name` in full CR mode, a flat `"name"` field in target mode — and the Gateway API rejects a request with an empty one immediately, as a structured violation (`metadata.name is required`), instead of letting the SSA patch fail with a raw Kubernetes error.
 
-`CRDEntry.RequireIDPName()` (`true` unless `idp.name` is declared) flows through the runtime's `/katalog` response as `requireIdpName` and into the Control Center's IDP form — the Name field is only rendered when `requireIdpName` is true.
+`CRDEntry.RequireServeName()` (`true` unless `serve.name` is declared) flows through the runtime's `/katalog` response as `requireServeName` and into the Control Center's Serve form — the Name field is only rendered when `requireServeName` is true.
 
-→ [Target Mode — `idp.name` and `idp.namespace`](./documentation/concepts/idp/02-target-mode.md#idpname-and-idpnamespace)
+→ [Target Mode — `serve.name` and `serve.namespace`](./documentation/concepts/idp/02-target-mode.md#idpname-and-idpnamespace)
 
-### `idp.namespace` — server-side namespace resolution for the Apply API
+### `serve.namespace` — server-side namespace resolution for the Gateway API
 
-A namespaced CRD needs a namespace on every CR it creates — but a browser form or a CI `curl` has no business deciding which one. `idp.namespace` works the same way as `idp.name` above — a template expression the gateway's Apply API resolves server-side against exactly what the caller submitted, always winning over whatever (if anything) the caller sent, the same in full CR mode and target mode — but only applies to namespaced CRDs, and unlike `idp.name`, is required rather than optional:
+A namespaced CRD needs a namespace on every CR it creates — but a browser form or a CI `curl` has no business deciding which one. `serve.namespace` works the same way as `serve.name` above — a template expression the gateway's Gateway API resolves server-side against exactly what the caller submitted, always winning over whatever (if anything) the caller sent, the same in full CR mode and target mode — but only applies to namespaced CRDs, and unlike `serve.name`, is required rather than optional:
 
 ```yaml
-idp:
+serve:
   enabled: true
   namespace: '{{ teamName }}'
 ```
 
-Once set, no Apply API caller — Control Center, curl, CI — needs to know or send `namespace` at all; `idp.name` plus `idp.namespace` (when both are set) is the whole contract. The Control Center form no longer renders a namespace field for any CRD. `idp.namespace` routes into a namespace, it doesn't create one — the platform team provisions it ahead of time, the same way a namespaced CRD already requires. Only affects the Apply API: a raw `kubectl apply` is unaffected, since `kubectl` always resolves some namespace client-side before a request reaches the API server, so there's never a genuinely empty namespace for a webhook to fill in the way an omitted JSON field lets the Apply API detect intent — deliberately not implemented as a mutating webhook default for that reason.
+Once set, no Gateway API caller — Control Center, curl, CI — needs to know or send `namespace` at all; `serve.name` plus `serve.namespace` (when both are set) is the whole contract. The Control Center form no longer renders a namespace field for any CRD. `serve.namespace` routes into a namespace, it doesn't create one — the platform team provisions it ahead of time, the same way a namespaced CRD already requires. Only affects the Gateway API: a raw `kubectl apply` is unaffected, since `kubectl` always resolves some namespace client-side before a request reaches the API server, so there's never a genuinely empty namespace for a webhook to fill in the way an omitted JSON field lets the Gateway API detect intent — deliberately not implemented as a mutating webhook default for that reason.
 
-Three checks at `ork validate` time: required on a namespaced CRD with `idp.enabled: true`; rejected on a cluster-scoped one (`namespaced: false`) — nothing to resolve into; rejected when templated and the CRD's informer is pinned to one fixed namespace (`allowedNamespaces` with exactly one entry, or the legacy `namespace:` field) — a CR resolved outside that one namespace would exist but never be reconciled, silently. No equivalent checks exist for `idp.name` — there's no cluster-scoped/pinned-namespace-style conflict for a name to run into.
+Three checks at `ork validate` time: required on a namespaced CRD with `serve.enabled: true`; rejected on a cluster-scoped one (`namespaced: false`) — nothing to resolve into; rejected when templated and the CRD's informer is pinned to one fixed namespace (`allowedNamespaces` with exactly one entry, or the legacy `namespace:` field) — a CR resolved outside that one namespace would exist but never be reconciled, silently. No equivalent checks exist for `serve.name` — there's no cluster-scoped/pinned-namespace-style conflict for a name to run into.
 
-### `idp.fields.path` — nested spec paths
+### `serve.fields.path` — nested spec paths
 
-`idp.fields` entries now support a `path:` field mapping a flat field name to a nested dot-notation path in the CRD `spec`. Callers submit flat fields; the gateway maps them to nested locations.
+`serve.fields` entries now support a `path:` field mapping a flat field name to a nested dot-notation path in the CRD `spec`. Callers submit flat fields; the gateway maps them to nested locations.
 
 ```yaml
-idp:
+serve:
   fields:
     cpu:
       path: app.resources.cpu
@@ -385,19 +384,19 @@ idp:
 
 `ork validate` ensures paths are unique, formatted correctly, and warns on nested paths (schema existence validation coming later).
 
-→ [Nested fields with `path` reference](./documentation/reference/schema/02-katalog/21-idp-nested-spec.md)
+→ [Nested fields with `path` reference](./documentation/reference/schema/02-katalog/21-serve-nested-spec.md)
 
 ### Control Center: the `[+ Create]` form now uses target mode
 
-The IDP create form built a full Kubernetes CR client-side — the browser knew which submitted field belonged in `spec` versus `metadata.labels`/`metadata.annotations`, and the server reassembled `apiVersion`/`kind`/`metadata`/`spec` before forwarding to the gateway. It now submits the same flat `{"target": "...", ...fields}` shape any other caller would, and the gateway builds the CR — Control Center no longer constructs one. The schema fetch that feeds the form moved with it: `GET /api/v1/schema/{kind}` (a path shape the gateway never actually served — this was silently 404ing) became `GET /api/v1/schema?target=<target>`. The runtime's `/katalog` response now carries a `target` field per CRD alongside `idpEnabled`, so Control Center never has to derive one from `Kind`/GVK.
+The Serve form built a full Kubernetes CR client-side — the browser knew which submitted field belonged in `spec` versus `metadata.labels`/`metadata.annotations`, and the server reassembled `apiVersion`/`kind`/`metadata`/`spec` before forwarding to the gateway. It now submits the same flat `{"target": "...", ...fields}` shape any other caller would, and the gateway builds the CR — Control Center no longer constructs one. The schema fetch that feeds the form moved with it: `GET /api/v1/schema/{kind}` (a path shape the gateway never actually served — this was silently 404ing) became `GET /api/v1/schema?target=<target>`. The runtime's `/katalog` response now carries a `target` field per CRD alongside `serveEnabled`, so Control Center never has to derive one from `Kind`/GVK.
 
-### Fix: `idp.allowedTokens` warnings were never surfaced
+### Fix: `serve.tokens` warnings were never surfaced
 
 Three validation warnings — a token's `global` permissions containing an operation invalid for schema endpoints, a token with no permissions declared, namespace restrictions on a cluster-scoped CRD — were attached to a loop-local copy of the CRD entry and never written back to the Katalog, so they silently never appeared anywhere. Fixed by writing the mutated entry back to the Katalog's CRD map after each warning.
 
-### New: `idp.allowedTokens` security page
+### New: `serve.tokens` security page
 
-`idp.allowedTokens` is a real, separate authorization layer — per-token operation and namespace scoping on the Apply API — not a variant of the existing CRD-level `allowedNamespaces`/`restrictedNamespaces` (which governs informer/admission topology the same way for every caller). Documented at [security/idp-permissions](./documentation/security/08-idp-permissions.md).
+`serve.tokens` is a real, separate authorization layer — per-token operation and namespace scoping on the Gateway API — not a variant of the existing CRD-level `allowedNamespaces`/`restrictedNamespaces` (which governs informer/admission topology the same way for every caller). Documented at [security/serve-permissions](./documentation/security/08-serve-permissions.md).
 
 ### `POST /api/v1/apply` response: `pollUrl` replaces `resourceVersion`
 
@@ -423,15 +422,13 @@ notes:
 
 `when:`/`anyOf:`/`validation.rules` had `prefix`/`suffix` and `notEquals`/`notContains`/`notIn`, but no negated prefix/suffix — a real gap, since RE2 (Go's regex engine) can't express "does not end with X" as a pattern either (no lookahead/lookbehind), leaving no shorthand way to write a rule like "reject `:latest` image tags". `notPrefix`/`notSuffix` close it, evaluated identically everywhere `Condition`/`ValidationRule` already are.
 
-### `include:` support for gateway tokens and IDP allowedTokens
+### `gateway.api.auth.include:` — external token file
 
-`include:` is now supported in two new places, following the same pattern as `status.include`, `validation.include`, and `idp.include`:
-
-- **`gateway.applyAPI.auth.include`** — references a YAML file containing a `tokens:` list. Inline tokens override included tokens with the same name.
+`include:` is now supported in `gateway.api.auth`, following the same pattern as `status.include`, `validation.include`, and `serve.include`. References a YAML file containing a `tokens:` list. Inline tokens override included tokens with the same name.
 
 ```yaml
 gateway:
-  applyAPI:
+  api:
     auth:
       include: ./shared/tokens.yaml
       tokens:
@@ -441,36 +438,23 @@ gateway:
             key: token
 ```
 
-- **`idp.allowedTokens.include`** — references a YAML file containing an `allowedTokens:` map. Inline token entries override included entries with the same name.
-
-```yaml
-idp:
-  enabled: true
-  allowedTokens:
-    include: ./shared/allowed-tokens.yaml
-    tokens:
-      control-center:
-        permissions:
-          global: ["*"]
-```
-
-Both follow the established merge semantics: included entries are loaded first, then inline entries override by name.
+Included entries are loaded first, then inline entries override by name.
 
 ---
 
-### IDP enhancements: target, polling, token permissions, schema/raw APIs
+### Serve enhancements: target, polling, token permissions, schema/raw APIs
 
-#### `idp.target` — caller-facing identifier
+#### `serve.target` — caller-facing identifier
 
-Decouples the caller-facing identifier from the Kubernetes kind. Defaults to lowercased kind. Validated for uniqueness at `ork validate` time. `idp.target` gives platform teams a stable, caller-facing identifier that can evolve independently of the underlying CRD kind. With this, you can swap the underlying CRDs, and callers never know. When omitted, defaults to the lowercased kind. Targets are validated for uniqueness at ork validate time
+Decouples the caller-facing identifier from the Kubernetes kind. Defaults to lowercased kind. Validated for uniqueness at `ork validate` time. `serve.target` gives platform teams a stable, caller-facing identifier that can evolve independently of the underlying CRD kind. With this, you can swap the underlying CRDs, and callers never know. When omitted, defaults to the lowercased kind. Targets are validated for uniqueness at ork validate time
 
-#### Apply API — target mode
+#### Gateway API — target mode
 
-Callers can now submit `{"target": "smartapp", "fields...}` instead of a full CR. The gateway builds the CR from IDP fields. Full CR mode remains supported.
+Callers can now submit `{"target": "smartapp", "fields...}` instead of a full CR. The gateway builds the CR from Serve fields. Full CR mode remains supported.
 
 #### Schema API — flat fields
 
-`GET /api/v1/schema?target=<t>` returns a flat map of all IDP fields (spec, labels, annotations). Callers no longer need to know Kubernetes structure.
+`GET /api/v1/schema?target=<t>` returns a flat map of all Serve fields (spec, labels, annotations). Callers no longer need to know Kubernetes structure.
 
 #### Raw Schema API
 
@@ -478,7 +462,7 @@ Callers can now submit `{"target": "smartapp", "fields...}` instead of a full CR
 
 #### Polling URL configuration
 
-`idp.config.response.poll.field` appends `?field=<value>` to the resolved poll URL. `poll.url` replaces the default URL entirely with a custom template. Both support templating.
+`serve.config.response.poll.field` appends `?field=<value>` to the resolved poll URL. `poll.url` replaces the default URL entirely with a custom template. Both support templating.
 
 #### Token permissions — scoped
 
@@ -486,7 +470,7 @@ Callers can now submit `{"target": "smartapp", "fields...}` instead of a full CR
 
 #### `exclude` as a list
 
-`idp.config.response.exclude` is a list of paths to be removed from the response.
+`serve.config.response.exclude` is a list of paths to be removed from the response.
 
 #### `toList` note
 
@@ -505,26 +489,26 @@ Converts a comma-separated string to a list. Essential for dynamic exclusion lis
 | `POST /api/v1/apply` response | `resourceVersion` | `pollUrl` (configurable) |
 ---
 
-## v0.7.12 — Gateway Apply API, IDP, and codebase clarity
+## v0.7.12 — Gateway API, IDP, and codebase clarity
 
-### Gateway Apply API
+### Gateway API
 
-Three new endpoints served by the gateway process when `gateway.applyAPI.enabled: true`:
+Three new endpoints served by the gateway process when `gateway.api.enabled: true`:
 
 - `POST /api/v1/apply` — server-side apply a CR body; returns `accepted`, `name`, `namespace`, `resourceVersion`
 - `GET /api/v1/resources/{kind}/{ns}[/{name}]` — read or list CRs without kubeconfig
 - `DELETE /api/v1/resources/{kind}/{ns}/{name}` — delete a CR
-- `GET /api/v1/schema/{kind}` — return the CRD's spec properties with `idp.fields` hints merged in; only available when `idp.enabled: true`
+- `GET /api/v1/schema/{kind}` — return the CRD's spec properties with `serve.fields` hints merged in; only available when `serve.enabled: true`
 
-All routes require a bearer token. Tokens are declared in `gateway.applyAPI.auth.tokens` and can reference a `secretRef` (self-bootstrapped by the gateway on first start if the Secret does not exist) or an environment variable.
+All routes require a bearer token. Tokens are declared in `gateway.api.auth.tokens` and can reference a `secretRef` (self-bootstrapped by the gateway on first start if the Secret does not exist) or an environment variable.
 
-### IDP — developer self-service in the Control Center
+### Serve — developer self-service in the Control Center
 
-`idp.enabled: true` on a CRD entry surfaces a **[+ Create]** button in the Control Center. The button links to a full-page form that reads field labels, hints, placeholders, and order from `idp.fields` via the gateway's `/api/v1/schema/{kind}` endpoint. The gateway token is injected server-side — the browser never sees it.
+`serve.enabled: true` on a CRD entry surfaces a **[+ Create]** button in the Control Center. The button links to a full-page form that reads field labels, hints, placeholders, and order from `serve.fields` via the gateway's `/api/v1/schema/{kind}` endpoint. The gateway token is injected server-side — the browser never sees it.
 
 ```yaml
 gateway:
-  applyAPI:
+  api:
     enabled: true
     auth:
       tokens:
@@ -536,7 +520,7 @@ gateway:
 spec:
   crds:
     apprequest:
-      idp:
+      serve:
         enabled: true
         fields:
           team:
@@ -557,7 +541,7 @@ The runtime's `/katalog/{crd}/cr` and `/katalog/{crd}/cr/{ns}/{name}` responses 
 
 ### Gateway RBAC — least-privilege `customresourcedefinitions get`
 
-When `idp.enabled: true` on a CRD, the generated RBAC bundle now includes a `get` rule on `apiextensions.k8s.io/customresourcedefinitions` scoped to that CRD's full resource name (`{plural}.{group}`). This allows the gateway to read the OpenAPI schema for the `/api/v1/schema/{kind}` endpoint without cluster-wide CRD read access.
+When `serve.enabled: true` on a CRD, the generated RBAC bundle now includes a `get` rule on `apiextensions.k8s.io/customresourcedefinitions` scoped to that CRD's full resource name (`{plural}.{group}`). This allows the gateway to read the OpenAPI schema for the `/api/v1/schema/{kind}` endpoint without cluster-wide CRD read access.
 
 ### Notes in validation and mutation rules
 
@@ -628,12 +612,12 @@ Conditions are evaluated using the same `EvaluateWhen` engine as template `when:
 
 Admission webhook rules honour `when:` and `anyOf:` in the same way as reconcile-time rules.
 
-### `idp.fields.<name>.required` — browser-native form field enforcement
+### `serve.fields.<name>.required` — browser-native form field enforcement
 
-Setting `required: true` on an IDP field marks it as mandatory in the Control Center form. The browser enforces it natively — the label shows an asterisk and the form cannot be submitted while the field is empty. Fields hidden by a `when:` or `anyOf:` condition are automatically excluded from browser constraint validation.
+Setting `required: true` on an serve field marks it as mandatory in the Control Center form. The browser enforces it natively — the label shows an asterisk and the form cannot be submitted while the field is empty. Fields hidden by a `when:` or `anyOf:` condition are automatically excluded from browser constraint validation.
 
 ```yaml
-idp:
+serve:
   fields:
     productionApproval:
       label: "Production Approval Ticket"
@@ -643,7 +627,7 @@ idp:
           equals: production
 ```
 
-`required` in IDP is a form UX annotation only — it does not affect the Apply API or the admission webhook. For server-side enforcement use `validation.rules` with `action: deny`.
+`required` in serve is a form UX annotation only — it does not affect the Gateway API or the admission webhook. For server-side enforcement use `validation.rules` with `action: deny`.
 
 ### `include:` strict YAML parsing
 
@@ -651,7 +635,7 @@ All `include:` expansion functions now use `StrictUnmarshal` (unknown fields pro
 
 ### `include:` extended to all major Katalog blocks
 
-Previously `include:` was only supported in `e2e expect:`. It now works across `validation.rules`, `mutation.rules`, `conversion.paths`, `status.fields`, `notes.functions`, `profiles`, `idp.fields`, and `simulate ops:`.
+Previously `include:` was only supported in `e2e expect:`. It now works across `validation.rules`, `mutation.rules`, `conversion.paths`, `status.fields`, `notes.functions`, `profiles`, `serve.fields`, and `simulate ops:`.
 
 Each include file uses the same root key as the inline block and is expanded in place before the runtime sees the declaration. See `documentation/concepts/composition/02-include.md` for the full reference and domain layout pattern.
 
@@ -737,7 +721,7 @@ Orkestra's packages are now organised by component. No API or behaviour changes 
 → `pkg/devserver` → `pkg/tools/devserver`
 → `pkg/proxy` → `pkg/tools/proxy`
 
-New shared package `pkg/secrets` extracts secret lifecycle helpers used by both the runtime and the gateway Apply API.
+New shared package `pkg/secrets` extracts secret lifecycle helpers used by both the runtime and the gateway Gateway API.
 
 ---
 

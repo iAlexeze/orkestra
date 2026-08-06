@@ -89,10 +89,10 @@ func (ws *WebhookServer) housekeeper(ctx context.Context) error {
 	hasNamespaceProtection := kat.IsNamespaceProtectionEnabled() && len(kat.NamespaceProtectionGVRs()) > 0
 	hasStrictMode := kat.IsStrictModeEnabled()
 	hasConversion := ws.convEnabled
-	hasIDP := kat.HasIDPEnabled()
+	hasServe := kat.HasServeEnabled()
 
-	if !hasAdmission && !hasDeletionProtection && !hasNamespaceProtection && !hasStrictMode && !hasConversion && !hasIDP {
-		logger.Debug().Msg("housekeeper disabled: no admission, protection, conversion, or IDP declared")
+	if !hasAdmission && !hasDeletionProtection && !hasNamespaceProtection && !hasStrictMode && !hasConversion && !hasServe {
+		logger.Debug().Msg("housekeeper disabled: no admission, protection, conversion, or serve declared")
 		return nil
 	}
 
@@ -659,7 +659,7 @@ func (ws *WebhookServer) reconcileNamespaceProtectionWebhook() {
 	}
 }
 
-// reconcileTokenSecrets checks that every Apply API secretRef token secret exists.
+// reconcileTokenSecrets checks that every Gateway API secretRef token secret exists.
 // If any are missing, the tokenReloader callback is invoked to recreate them and
 // refresh the in-memory token set. Detection relies on the safety ticker — token
 // secret deletion does not break in-flight requests (the TokenSet is in memory),
@@ -669,7 +669,7 @@ func (ws *WebhookServer) reconcileTokenSecrets() {
 		return
 	}
 	kat := ws.katalog
-	if !kat.HasApplyAPISecretRefs() {
+	if !kat.HasGatewayAPISecretRefs() {
 		return
 	}
 
@@ -679,7 +679,7 @@ func (ws *WebhookServer) reconcileTokenSecrets() {
 	defer cancel()
 
 	anyMissing := false
-	for _, t := range kat.Gateway.ApplyAPI.Auth.Tokens {
+	for _, t := range kat.Gateway.API.Auth.Tokens {
 		if t.SecretRef == nil {
 			continue
 		}
@@ -694,13 +694,13 @@ func (ws *WebhookServer) reconcileTokenSecrets() {
 					Str("secret", t.SecretRef.Name).
 					Str("namespace", ns).
 					Str("token", t.Name).
-					Msg("housekeeper: apply API token secret missing — will reload")
+					Msg("housekeeper: gateway API token secret missing — will reload")
 				anyMissing = true
 			} else {
 				logger.Error().Err(err).
 					Str("secret", t.SecretRef.Name).
 					Str("namespace", ns).
-					Msg("housekeeper: failed to check apply API token secret")
+					Msg("housekeeper: failed to check gateway API token secret")
 				metrics.RecordWebhookReconciliationFailure("token-secret")
 			}
 		}
@@ -708,10 +708,10 @@ func (ws *WebhookServer) reconcileTokenSecrets() {
 
 	if anyMissing && ws.tokenReloader != nil {
 		if err := ws.tokenReloader(ctx); err != nil {
-			logger.Error().Err(err).Msg("housekeeper: apply API token reload failed")
+			logger.Error().Err(err).Msg("housekeeper: gateway API token reload failed")
 			metrics.RecordWebhookReconciliationFailure("token-secret")
 		} else {
-			logger.Info().Msg("housekeeper: apply API tokens reloaded")
+			logger.Info().Msg("housekeeper: gateway API tokens reloaded")
 			metrics.RecordWebhookReconciled("token-secret")
 		}
 	}

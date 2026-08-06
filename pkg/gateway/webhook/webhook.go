@@ -174,8 +174,8 @@ type WebhookServer struct {
 	// Full konfig for namespace access during shutdown cleanup.
 	konfig *konfig.Konfig
 
-	// tokenReloader is called by the housekeeper when an Apply API token secret
-	// goes missing. Set via SetTokenReloader from the ApplyAPIServer.
+	// tokenReloader is called by the housekeeper when an Gateway API token secret
+	// goes missing. Set via SetTokenReloader from the APIServer.
 	tokenReloader func(ctx context.Context) error
 }
 
@@ -343,7 +343,7 @@ func (ws *WebhookServer) SetCertManager(m certManagerIface) {
 	ws.certMgr = m
 }
 
-// SetTokenReloader registers a callback that the housekeeper calls when an Apply API
+// SetTokenReloader registers a callback that the housekeeper calls when an Gateway API
 // token secret is found to be missing during reconciliation. The callback should
 // recreate any missing secrets and reload the in-memory token set.
 func (ws *WebhookServer) SetTokenReloader(fn func(ctx context.Context) error) {

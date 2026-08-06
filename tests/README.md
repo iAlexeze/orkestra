@@ -41,7 +41,7 @@ outputs without talking to Kubernetes or the filesystem, it belongs here.
 | `pkg/registry/motif` | 51.4% | Motif loading, validation, expansion |
 | `pkg/utils` | 47.8% | Template rendering, merge helpers, YAML formatting |
 | `pkg/tools/generate` | 40.7% | Pure code-gen helpers (spec path extraction, type inference, alias dedup) |
-| `pkg/gateway/applyapi` | 37.7% | Apply API auth and token resolution |
+| `pkg/gateway/api` | 37.7% | Gateway API auth and token resolution |
 | `pkg/merger` | 25.6% | Katalog/Komposer merge, provider/security/notification accumulation |
 | `pkg/metrics` | 24.7% | Prometheus counter/gauge wrappers |
 | `pkg/tools/migrate` | 82.7% | Reconcile method migration to Orkestra constructor signature |

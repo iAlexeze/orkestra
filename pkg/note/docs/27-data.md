@@ -112,12 +112,12 @@ name: "{{ truncateName (slugify .spec.projectName) 52 }}-svc"
 
 Extract a Kubernetes-safe name from a repository reference — the last path segment (repo name), with a trailing `.git` stripped, then slugified. Works with git URLs, org/repo shorthand, or a bare repo name — the platform team's repository enum values don't need to be pre-cleaned.
 
-Keywords: data, repo, repository, slug, git, name, idp
+Keywords: data, repo, repository, slug, git, name, serve
 
 ```yaml
-# idp.name derives the CR's metadata.name from the repo the developer picked —
+# serve.name derives the CR's metadata.name from the repo the developer picked —
 # no name field for them (or CI) to supply at all.
-idp:
+serve:
   enabled: true
   name: '{{ repoSlug .spec.repository }}'
 
