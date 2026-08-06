@@ -1,63 +1,63 @@
-# ork idp
+# ork serve
 
-Inspect and validate Internal Developer Platform (IDP) configurations.
+Inspect and validate Internal Developer Platform (Serve) configurations.
 
-The IDP is the contract between platform teams and developers. These commands let you inspect and validate IDP configurations without needing to run the gateway or access a cluster.
+The Serve is the contract between platform teams and developers. These commands let you inspect and validate Serve configurations without needing to run the gateway or access a cluster.
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| [`validate`](#ork-idp-validate) | Validate IDP configuration in a Katalog |
-| [`schema`](#ork-idp-schema) | Show the flat schema for an IDP target |
-| [`fields`](#ork-idp-fields) | List all IDP fields with their paths and types |
-| [`tokens`](#ork-idp-tokens) | Show token permissions for a CRD |
-| [`targets`](#ork-idp-targets) | List all IDP targets in a Katalog |
-| [`can-i`](#ork-idp-can-i) | Check if a token can perform an operation |
-| [`response`](#ork-idp-response) | Show the IDP response configuration |
+| [`validate`](#ork-serve-validate) | Validate Serve configuration in a Katalog |
+| [`schema`](#ork-serve-schema) | Show the flat schema for an Serve target |
+| [`fields`](#ork-serve-fields) | List all Serve fields with their paths and types |
+| [`tokens`](#ork-serve-tokens) | Show token permissions for a CRD |
+| [`targets`](#ork-serve-targets) | List all Serve targets in a Katalog |
+| [`can-i`](#ork-serve-can-i) | Check if a token can perform an operation |
+| [`response`](#ork-serve-response) | Show the Serve response configuration |
 
 ---
 
-## `ork idp validate`
+## `ork serve validate`
 
-Validate IDP configuration in a Katalog.
+Validate Serve configuration in a Katalog.
 
-This runs the same IDP-specific validations as `ork validate`, but only for IDP concerns: fields, paths, tokens, response config, and namespace rules. It does not check the full Katalog schema — only the IDP portions.
+This runs the same serve-specific validations as `ork validate`, but only for Serve concerns: fields, paths, tokens, response config, and namespace rules. It does not check the full Katalog schema — only the Serve portions.
 
 ```bash
-ork idp validate
+ork serve validate
 ```
 
 ### Flags
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--full` | | Show a detailed breakdown of the IDP configuration for each IDP-enabled CRD. |
+| `--full` | | Show a detailed breakdown of the Serve configuration for each serve-enabled CRD. |
 
 ### Examples
 
 ```bash
-# Validate IDP configuration
-ork idp validate
+# Validate Serve configuration
+ork serve validate
 ```
 
 ### Output
 
 ```text
-✓ IDP configuration is valid
+✓ Serve configuration is valid
 ```
 
 ### With `--full`
 
 ```bash
-# Validate IDP configuration with detailed breakdown
-ork idp validate --full
+# Validate Serve configuration with detailed breakdown
+ork serve validate --full
 ```
 
 ### Output
 
 ```text
-IDP Configuration Summary
+Serve Configuration Summary
 ──────────────────────────────────────────────────────────────────────
 
 ✅ application
@@ -79,19 +79,19 @@ IDP Configuration Summary
   response:  none (default CR response)
 
 ──────────────────────────────────────────────────────────────────────
-✓ IDP configuration is valid
-  2 IDP-enabled CRD(s)
+✓ Serve configuration is valid
+  2 serve-enabled CRD(s)
 ```
 ---
 
-## `ork idp schema`
+## `ork serve schema`
 
-Show the flat schema for an IDP target.
+Show the flat schema for an Serve target.
 
 This displays the fields that callers can submit for a target, including their labels, types, enums, and paths. The output is the same flat field structure returned by the gateway's `GET /api/v1/schema?target=<t>` endpoint.
 
 ```bash
-ork idp schema [flags]
+ork serve schema [flags]
 ```
 
 ### Flags
@@ -108,13 +108,13 @@ One of `--target`, `--kind`, or `--name` is required.
 
 ```bash
 # Show schema by target
-ork idp schema --target smartapp
+ork serve schema --target smartapp
 
 # Show schema by kind
-ork idp schema --kind AppRequest
+ork serve schema --kind AppRequest
 
 # Show schema by CRD name
-ork idp schema --name application
+ork serve schema --name application
 ```
 
 ### Output
@@ -131,14 +131,14 @@ replicas        Replicas         integer scaling.replicas
 
 ---
 
-## `ork idp fields`
+## `ork serve fields`
 
-List IDP fields with their paths and types.
+List Serve fields with their paths and types.
 
-This shows fields declared in `idp.fields` and `idp.additionalFields` across all IDP-enabled CRDs. With `--target`, `--kind`, or `--name`, shows fields for a specific CRD.
+This shows fields declared in `serve.fields` and `serve labels/annotations` across all serve-enabled CRDs. With `--target`, `--kind`, or `--name`, shows fields for a specific CRD.
 
 ```bash
-ork idp fields
+ork serve fields
 ```
 
 ### Flags
@@ -154,25 +154,25 @@ ork idp fields
 
 ```bash
 # List all fields across all CRDs
-ork idp fields
+ork serve fields
 
 # List fields for a specific target
-ork idp fields --target smartapp
+ork serve fields --target smartapp
 
 # List fields for a specific kind
-ork idp fields --kind AppRequest
+ork serve fields --kind AppRequest
 
 # List fields for a specific CRD name
-ork idp fields --name application
+ork serve fields --name application
 
 # Sort fields by order (as declared in the Katalog)
-ork idp fields --target smartapp --sort-by order
+ork serve fields --target smartapp --sort-by order
 ```
 
 ### Output (All fields)
 
 ```text
-IDP Fields
+Serve Fields
 ──────────────────────────────────────────────────────────────────────
 
 CRD: application (target: smartapp)
@@ -213,14 +213,14 @@ environment     string                          label                 5
 ```
 ---
 
-## `ork idp tokens`
+## `ork serve tokens`
 
-Show token permissions for an IDP-enabled CRD.
+Show token permissions for an serve-enabled CRD.
 
-This displays the `allowedTokens` configuration, including which tokens have access, their permissions (`global`/`schema`/`resources`), and namespace restrictions.
+This displays the `serve.tokens` configuration, including which tokens have access, their permissions (`global`/`schema`/`resources`), and namespace restrictions.
 
 ```bash
-ork idp tokens [flags]
+ork serve tokens [flags]
 ```
 
 ### Flags
@@ -237,7 +237,7 @@ One of `--target`, `--kind`, or `--name` is required.
 
 ```bash
 # Show tokens by target
-ork idp tokens --target smartapp
+ork serve tokens --target smartapp
 ```
 
 ### Output
@@ -253,27 +253,27 @@ monitoring               get,list get,list           *
 
 ---
 
-## `ork idp targets`
+## `ork serve targets`
 
-List all IDP-enabled targets in a Katalog.
+List all serve-enabled targets in a Katalog.
 
 This shows each target, its CRD kind, and whether it has fields defined.
 
 ```bash
-ork idp targets
+ork serve targets
 ```
 
 ### Examples
 
 ```bash
 # List all targets
-ork idp targets
+ork serve targets
 ```
 
 ### Output
 
 ```text
-IDP Targets
+Serve Targets
 ──────────────────────────────────────────────────────────────────────
 TARGET      KIND        FIELDS  TOKENS
 smartapp    AppRequest  12      yes
@@ -284,14 +284,14 @@ database    Database    8       no
 
 ---
 
-## `ork idp can-i`
+## `ork serve can-i`
 
 Check if a token can perform an operation.
 
-This evaluates the same permission checks that the gateway applies to incoming Apply API requests. It considers token existence, permissions (`global`/`schema`/`resources` scopes), namespace restrictions, and target existence.
+This evaluates the same permission checks that the gateway applies to incoming Gateway API requests. It considers token existence, permissions (`global`/`schema`/`resources` scopes), namespace restrictions, and target existence.
 
 ```bash
-ork idp can-i [flags]
+ork serve can-i [flags]
 ```
 
 ### Flags
@@ -312,13 +312,13 @@ One of `--target`, `--kind`, or `--name` is required.
 
 ```bash
 # Check if token can create
-ork idp can-i --token control-center --target smartapp --operation create
+ork serve can-i --token control-center --target smartapp --operation create
 
 # Check if token can delete in a namespace
-ork idp can-i --token ci-pipeline --target smartapp --operation delete --namespace staging
+ork serve can-i --token ci-pipeline --target smartapp --operation delete --namespace staging
 
 # Check if token can list
-ork idp can-i --token monitoring --target smartapp --operation list
+ork serve can-i --token monitoring --target smartapp --operation list
 ```
 
 ### Output (Allowed)
@@ -339,16 +339,16 @@ ork idp can-i --token monitoring --target smartapp --operation list
 
 ---
 
-## `ork idp response`
+## `ork serve response`
 
-Show the IDP response configuration.
+Show the Serve response configuration.
 
-This displays what callers will see in the Apply API response based on `idp.config.response`. It shows `default: true/false`, payload fields (with their template expressions), excluded paths, and poll URL configuration.
+This displays what callers will see in the Gateway API response based on `serve.config.response`. It shows `default: true/false`, payload fields (with their template expressions), excluded paths, and poll URL configuration.
 
 No cluster access is required — this reads the Katalog directly.
 
 ```bash
-ork idp response [flags]
+ork serve response [flags]
 ```
 
 ### Flags
@@ -366,10 +366,10 @@ One of `--target`, `--kind`, or `--name` is required.
 
 ```bash
 # Show response config
-ork idp response --target smartapp
+ork serve response --target smartapp
 
 # Show response config with preview
-ork idp response --target smartapp --preview
+ork serve response --target smartapp --preview
 ```
 
 ### Output
@@ -423,7 +423,6 @@ Excluded fields:
 
 - [`ork validate`](03-validate.md) — full Katalog validation
 - [`idp` concept](../../concepts/idp/) — conceptual overview
-- [`idp.fields` schema reference](../../reference/schema/02-katalog/20-idp.md#idpfieldsname)
-- [`idp.config.response` schema reference](../../reference/schema/02-katalog/20-idp.md#idpconfigresponse)
-- [`idp.allowedTokens` schema reference](../../reference/schema/02-katalog/20-idp.md#idpallowedtokens)
-```text
+- [`serve.fields` schema reference](../../reference/schema/02-katalog/20-serve.md#servefieldsname)
+- [`serve.config.response` schema reference](../../reference/schema/02-katalog/20-serve.md#serveconfigresponse)
+- [`serve.tokens` schema reference](../../reference/schema/02-katalog/20-serve.md#servetokens)

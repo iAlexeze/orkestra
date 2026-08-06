@@ -69,9 +69,9 @@ name: "{{ slugify .spec.teamName }}-operator"
 name: "{{ truncateName (slugify .spec.projectName) 52 }}-svc"
 
 # repoSlug
-# idp.name derives the CR's metadata.name from the repo the developer picked —
+# serve.name derives the CR's metadata.name from the repo the developer picked —
 # no name field for them (or CI) to supply at all.
-idp:
+serve:
   enabled: true
   name: '{{ repoSlug .spec.repository }}'
 

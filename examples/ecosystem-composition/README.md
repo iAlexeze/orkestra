@@ -70,7 +70,7 @@ Each katalog in this pack already declares `gateway.enabled: true` — the gatew
 | [05 — All-in-One](05-all-in-one/README.md) | `PlatformResource` | All four tools, one CRD, `workloadType` discriminator |
 | [06 — IDP](06-idp/README.md) | `PlatformResource` | Same CRD, same operator — Control Center form replaces `kubectl apply` |
 
-Work through them in order. Each example is self-contained. `04` builds on `00`–`03` and adds the full policy layer. `05` shows the trade-off between focused CRDs and a single unified CRD. `06` adds the Apply API and shows the Control Center as a developer portal — read it after `05`.
+Work through them in order. Each example is self-contained. `04` builds on `00`–`03` and adds the full policy layer. `05` shows the trade-off between focused CRDs and a single unified CRD. `06` adds the Gateway API and shows the Control Center as a developer portal — read it after `05`.
 
 ---
 

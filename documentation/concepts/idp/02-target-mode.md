@@ -1,6 +1,6 @@
 # Target Mode
 
-A developer knows the repository and the image tag. They do not know — and should not need to know — `apiVersion`, `kind`, `metadata`, or the difference between `spec` and `labels`. Target mode is the Apply API request format built for that developer: submit a `target` and flat fields, get a CR back. The gateway builds it.
+A developer knows the repository and the image tag. They do not know — and should not need to know — `apiVersion`, `kind`, `metadata`, or the difference between `spec` and `labels`. Target mode is the Gateway API request format built for that developer: submit a `target` and flat fields, get a CR back. The gateway builds it.
 
 ---
 
@@ -10,16 +10,16 @@ Every self-service caller — a browser form, a CI pipeline, a Slack bot — has
 
 Full CR mode doesn't solve this — it just moves the Kubernetes object one layer up. The caller still has to know `apiVersion`, still has to know which field is `spec` and which is `metadata.labels`, still has to reconstruct the CR shape by hand on every call. That's fine for `kubectl` and existing integrations. It's the wrong contract for a developer filling out a form.
 
-Target mode hides Kubernetes behind the IDP contract instead. The platform team defines the fields once. Every caller — form, pipeline, bot — submits the same flat shape, and the gateway does the construction.
+Target mode hides Kubernetes behind the IDP contract. The platform team defines the fields once. Every caller — form, pipeline, bot — submits the same flat shape, and the gateway does the construction.
 
 ---
 
 ## How it works
 
-The Katalog declares `idp.target` and `idp.fields`:
+The Katalog declares `serve.target` and `serve.fields`:
 
 ```yaml
-idp:
+serve:
   enabled: true
   target: app
   name: '{{ repoSlug .repository }}'
@@ -51,8 +51,8 @@ POST /api/v1/apply
 The gateway:
 
 1. Looks up the CRD by `target`
-2. Routes fields to `spec`, `metadata.labels`, or `metadata.annotations` based on `idp.fields` and `idp.additionalFields`
-3. Resolves `idp.name` and `idp.namespace`
+2. Routes fields to `spec`, `metadata.labels`, or `metadata.annotations` based on `serve.fields`, `serve.labels`, and `serve.annotations`
+3. Resolves `serve.name` and `serve.namespace`
 4. Applies the full CR via SSA
 
 The caller never sees the CR.
@@ -119,12 +119,12 @@ Callers don't need to know about `spec`, `labels`, or `annotations` — they jus
 
 ---
 
-## `idp.target` — the caller-facing identifier
+## `serve.target` — the caller-facing identifier
 
-`idp.target` decouples the caller-facing identifier from the Kubernetes `kind`.
+`serve.target` decouples the caller-facing identifier from the Kubernetes `kind`.
 
 ```yaml
-idp:
+serve:
   enabled: true
   target: app   # callers use this, not "App" or "apprequests"
 ```
@@ -135,12 +135,12 @@ If omitted, defaults to the lowercased `kind` (e.g., `kind: App` → `target: ap
 
 ---
 
-## `idp.name` and `idp.namespace`
+## `serve.name` and `serve.namespace`
 
-Target mode resolves `idp.name` and `idp.namespace` server-side, so callers don't need to know them:
+Target mode resolves `serve.name` and `serve.namespace` server-side, so callers don't need to know them:
 
 ```yaml
-idp:
+serve:
   enabled: true
   name: '{{ repoSlug .repository }}'          # → "payments-api"
   namespace: '{{ teamName }}-{{ environment }}' # → "team-payments-staging"
@@ -148,7 +148,7 @@ idp:
 
 Callers never supply `metadata.name` or `metadata.namespace` in target mode.
 
-When `idp.name` is not declared, the caller must supply a name. When `idp.namespace` is not declared on a namespaced CRD, the gateway rejects the request — self-service creation has no way to know where the CR belongs.
+When `serve.name` is not declared, the caller must supply a name. When `serve.namespace` is not declared on a namespaced CRD, the gateway rejects the request — self-service creation has no way to know where the CR belongs.
 
 ---
 
@@ -157,7 +157,7 @@ When `idp.name` is not declared, the caller must supply a name. When `idp.namesp
 Fields can map to nested locations in the CRD `spec` using `path`:
 
 ```yaml
-idp:
+serve:
   fields:
     repository:
       path: app.repository
@@ -187,7 +187,7 @@ spec:
       cpu: 500m
 ```
 
-→ [Nested fields with `path` reference](../../reference/schema/02-katalog/20-idp#idpfieldspath)
+→ [Nested fields with `path` reference](../../reference/schema/02-katalog/20-serve.md#servefieldspath)
 
 ---
 
@@ -211,24 +211,24 @@ A successful target-mode apply returns:
 }
 ```
 
-- **`pollUrl`** — where to GET the resource (configurable via `idp.config.response.poll`)
-- **`payload`** — the platform team's curated view (`idp.config.response.payload`)
+- **`pollUrl`** — where to GET the resource (configurable via `serve.config.response.poll`)
+- **`payload`** — the platform team's curated view (`serve.config.response.payload`)
 
 At apply time, `.status` is not yet available. Callers should poll `pollUrl` to see status updates.
 
-→ [`idp.config.response` reference](../../reference/schema/02-katalog/20-idp.md#idpconfigresponse)
+→ [`serve.config.response` reference](../../reference/schema/02-katalog/20-serve.md#serveconfigresponse)
 
 ---
 
 ## See also
 
-→ [`idp.target` schema reference](../../reference/schema/02-katalog/20-idp#idptarget)
+→ [`serve.target` schema reference](../../reference/schema/02-katalog/20-serve.md#servetarget)
 
-→ [`idp.fields` schema reference](../../reference/schema/02-katalog/20-idp#idpfieldsname)
+→ [`serve.fields` schema reference](../../reference/schema/02-katalog/20-serve.md#servefieldsname)
 
-→ [`idp.namespace` reference](../../reference/schema/02-katalog/20-idp#idpnamespace)
+→ [`serve.namespace` reference](../../reference/schema/02-katalog/20-serve.md#servenamespace)
 
-→ [Apply API reference](../../reference/schema/02-katalog/17-katalog-applyapi.md)
+→ [Gateway API reference](../../reference/schema/02-katalog/17-gateway-api.md)
 
 → [Additional Fields](01-additional-fields.md)
 

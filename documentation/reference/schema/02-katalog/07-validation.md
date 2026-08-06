@@ -88,7 +88,7 @@ Each rule describes one check. Rules are evaluated in order.
 | `valueType` | no | `string` (default), `int`, `float`, `bool` |
 | `when` | no | All conditions must pass for this rule to be evaluated (AND). Empty means unconditional. Conditions support Go template expressions via `EvaluateWhen`. |
 | `anyOf` | no | At least one condition must pass for this rule to be evaluated (OR). When both `when` and `anyOf` are declared, both blocks must pass. |
-| `link` | no | The `idp.fields`/`idp.additionalFields` key this rule concerns, when `field:` isn't already a plain, self-describing path — see [Linking a rule to its form field](#linking-a-rule-to-its-form-field-link) below. |
+| `link` | no | The `serve.fields`/`serve labels/annotations` key this rule concerns, when `field:` isn't already a plain, self-describing path — see [Linking a rule to its form field](#linking-a-rule-to-its-form-field-link) below. |
 
 *Use either an operator+value pair or a shorthand field.
 
@@ -96,10 +96,10 @@ Each rule describes one check. Rules are evaluated in order.
 
 ### Required fields are enforced automatically
 
-`required: true` on an `idp.fields` or `idp.additionalFields` entry isn't just a form hint — at katalog load time, every `required: true` entry gets an implicit `exists` rule synthesized automatically, with `message:` already matching the field's `label:`. This is enforced at the API server for every client — the Control Center form, `curl`, a CI pipeline, a custom UI, `kubectl apply` — not only the one that happens to render a required-field asterisk. You don't hand-write a `validation.rules` entry for plain "this field must be present" checks — marking the field required is enough:
+`required: true` on an `serve.fields` or `serve labels/annotations` entry isn't just a form hint — at katalog load time, every `required: true` entry gets an implicit `exists` rule synthesized automatically, with `message:` already matching the field's `label:`. This is enforced at the API server for every client — the Control Center form, `curl`, a CI pipeline, a custom UI, `kubectl apply` — not only the one that happens to render a required-field asterisk. You don't hand-write a `validation.rules` entry for plain "this field must be present" checks — marking the field required is enough:
 
 ```yaml
-idp:
+serve:
   fields:
     targetRevision:
       label: "Branch / Tag"
@@ -108,14 +108,14 @@ idp:
 #                  message: "Branch / Tag is required", action: deny }
 ```
 
-`idp.additionalFields.labels`/`.annotations` entries synthesize the same way, through `getLabel`/`getAnnotation` rather than a raw dot-path — required annotation keys with dots (the Kubernetes-recommended `prefix/name` shape) are handled correctly without you needing to know that dot-path resolution would otherwise misparse them.
+`serve.labels`/`.annotations` entries synthesize the same way, through `getLabel`/`getAnnotation` rather than a raw dot-path — required annotation keys with dots (the Kubernetes-recommended `prefix/name` shape) are handled correctly without you needing to know that dot-path resolution would otherwise misparse them.
 
 ### Enum fields are validated automatically
 
-`type: enum` on an `idp.fields` or `idp.additionalFields` entry also synthesizes a rule — an `in` check against the declared `enum:` list, with the same label-matching message. Membership is checked only when the field has a value: an enum field that isn't also `required: true` can still be omitted entirely, it just can't be set to something outside the list.
+`type: enum` on an `serve.fields` or `serve labels/annotations` entry also synthesizes a rule — an `in` check against the declared `enum:` list, with the same label-matching message. Membership is checked only when the field has a value: an enum field that isn't also `required: true` can still be omitted entirely, it just can't be set to something outside the list.
 
 ```yaml
-idp:
+serve:
   fields:
     workloadType:
       label: "Workload Type"
@@ -128,14 +128,14 @@ idp:
 #                  action: deny }
 ```
 
-`idp.fields` entries backed by a spec field don't infer `enum:` from the CRD's OpenAPI schema for this purpose — declare it explicitly to opt a field into this synthesis, the same way `idp.additionalFields` already requires `type`/`enum` since those have no CRD schema to infer from.
+`serve.fields` entries backed by a spec field don't infer `enum:` from the CRD's OpenAPI schema for this purpose — declare it explicitly to opt a field into this synthesis, the same way `serve labels/annotations` already requires `type`/`enum` since those have no CRD schema to infer from.
 
-### IDP-aware messages for hand-written rules
+### Serve-aware messages for hand-written rules
 
 Auto-synthesis covers plain existence and enum membership. For anything more specific — a range, a prefix, a cross-field comparison — you still write the `validation.rules` entry by hand, and there the same principle applies: write `message:` using the field's `label:` instead of its raw `spec.*` path. A developer submitting through the Control Center form saw the label, not the YAML path — an error that echoes the path back is a translation the developer has to do themselves.
 
 ```yaml
-idp:
+serve:
   fields:
     image:
       label: "Container Image"
@@ -157,19 +157,18 @@ This applies whether the rule fires from a form submission, `kubectl apply`, or 
 
 ### Linking a rule to its form field (`link:`)
 
-`message:` fixes what the developer *reads*. `link:` fixes what the Control Center (or any Apply API client) *highlights* — which requires knowing which rendered field a violation concerns, not just a human-readable sentence about it.
+`message:` fixes what the developer *reads*. `link:` fixes what the Control Center (or any Gateway API client) *highlights* — which requires knowing which rendered field a violation concerns, not just a human-readable sentence about it.
 
-For a plain `field: spec.image`, that's free: the violation reports `"spec.image"`, and a client strips the `spec.` prefix to get `"image"`, the same key the field was rendered under. But `idp.additionalFields` entries (labels and annotations) can't be a plain dot-path — they resolve through `getLabel`/`getAnnotation` template expressions instead, because e.g. an annotation key following the Kubernetes `prefix/name` shape contains dots that a dot-path resolver would misparse as extra segments. A hand-written rule on a *spec* field can end up in the same situation, wrapping it in something like `isValidGitRepository` instead of comparing it directly. Either way, the violation reports the raw expression — `{{ getLabel . "team" }}` or `{{ isValidGitRepository .spec.repoURL }}` — which isn't a field name a client can match against anything it rendered.
+For a plain `field: spec.image`, that's free: the violation reports `"spec.image"`, and a client strips the `spec.` prefix to get `"image"`, the same key the field was rendered under. But `serve labels/annotations` entries (labels and annotations) can't be a plain dot-path — they resolve through `getLabel`/`getAnnotation` template expressions instead, because e.g. an annotation key following the Kubernetes `prefix/name` shape contains dots that a dot-path resolver would misparse as extra segments. A hand-written rule on a *spec* field can end up in the same situation, wrapping it in something like `isValidGitRepository` instead of comparing it directly. Either way, the violation reports the raw expression — `{{ getLabel . "team" }}` or `{{ isValidGitRepository .spec.repoURL }}` — which isn't a field name a client can match against anything it rendered.
 
 `link:` closes that gap — it's the plain key, reported instead of `field:` in the violation:
 
 ```yaml
-idp:
-  additionalFields:
-    labels:
-      team:
-        label: "Team"
-        required: true
+serve:
+  labels:
+    team:
+      label: "Team"
+      required: true
 
 validation:
   rules:
@@ -182,9 +181,9 @@ validation:
 
 Without `link: team`, this violation reports `field: '{{ isDNS1123Subdomain (getLabel . "team") }}'` — nothing a form can highlight. With it, the violation reports `field: "team"`, matching the rendered field directly.
 
-`link:` is validated at katalog-load time: it must name a key declared in `idp.fields`, `idp.additionalFields.labels`, or `idp.additionalFields.annotations` on the same CRD — a typo or a stale reference to a renamed/removed field is a load-time error, not a silently-broken highlight discovered later. Pointing it at a spec field whose `field:` is already exactly `spec.<name>` is also an error — at that point `field:` is already a clean key on its own, so the link is redundant.
+`link:` is validated at katalog-load time: it must name a key declared in `serve.fields`, `serve.labels`, or `serve.annotations` on the same CRD — a typo or a stale reference to a renamed/removed field is a load-time error, not a silently-broken highlight discovered later. Pointing it at a spec field whose `field:` is already exactly `spec.<name>` is also an error — at that point `field:` is already a clean key on its own, so the link is redundant.
 
-Required/enum rules synthesized from `idp.additionalFields` set `link:` automatically — you only write it by hand for custom rules.
+Required/enum rules synthesized from `serve labels/annotations` set `link:` automatically — you only write it by hand for custom rules.
 
 One thing this unlocks: multiple rules can target the same field. Before `link:`, there was pressure to cram every check for one field into a single expression, because that expression doubled as the only thing identifying which field it concerned. With `link:` decoupling "which check" from "which field," each check can be its own rule with its own message:
 

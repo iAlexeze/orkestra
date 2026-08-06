@@ -1,20 +1,20 @@
 # Token Scoping
 
-Every example so far has assumed one caller. Real platforms have several: a Control Center that needs full access, a CI pipeline that should only touch staging, a production deploy path that can create but never delete, an audit tool that should only ever read. They authenticate with the same gateway, against the same CRD, through the same `POST /api/v1/apply` — but they should not all be able to do the same things. `idp.allowedTokens` is what makes that true.
+Every example so far has assumed one caller. Real platforms have several: a Control Center that needs full access, a CI pipeline that should only touch staging, a production deploy path that can create but never delete, an audit tool that should only ever read. They authenticate with the same gateway, against the same CRD, through the same `POST /api/v1/apply` — but they should not all be able to do the same things. `serve.tokens` is what makes that true.
 
 ---
 
 ## Without it, every token is equal
 
-`gateway.applyAPI.auth.tokens` declares which bearer tokens the gateway accepts at all — but by itself, a valid token can call any endpoint the Apply API exposes for a CRD. That's fine for a single-caller setup. It stops being fine the moment a CI token and a human-facing Control Center token exist side by side: a leaked CI token, without `idp.allowedTokens`, is exactly as powerful as the token behind your production create button.
+`gateway.api.auth.tokens` declares which bearer tokens the gateway accepts at all — but by itself, a valid token can call any endpoint the Gateway API exposes for a CRD. That's fine for a single-caller setup. It stops being fine the moment a CI token and a human-facing Control Center token exist side by side: a leaked CI token, without `serve.tokens`, is exactly as powerful as the token behind your production create button.
 
-`idp.allowedTokens`, declared per CRD, closes that gap:
+`serve.tokens`, declared per CRD, closes that gap:
 
 ```yaml
-idp:
+serve:
   enabled: true
   target: smartapp
-  allowedTokens:
+  tokens:
     control-center:
       namespaces: [default]
       permissions:
@@ -39,11 +39,13 @@ idp:
 
 Four tokens, four different answers, one CRD. `ci-pipeline` can ship to staging but not touch production, and can read the schema (to generate its own pipeline config from it) but never write anything through the `schema` endpoints — not that there's anything to write there anyway, `schema` only ever supports `get`/`list`. `prod-deploy` can ship to production but can't delete anything there, and has no `schema` permissions declared at all, so `GET /api/v1/schema?target=smartapp` is a `403` for it. `security-audit` can read everywhere it's listed and write nowhere. None of this is a namespace-watch rule — the runtime still watches whatever the CRD's own `allowedNamespaces` says, for every token equally. This is authorization scoped to *who's asking*, layered on top of that.
 
+`serve.tokens` is the per-CRD scoping layer. `gateway.api.auth.tokens` is still where the tokens themselves are declared — `serve.tokens` just references names from that list and says what each one may do on this specific CRD.
+
 ---
 
 ## Three scopes, not one
 
-Permissions aren't a single list — they're three, matching the three kinds of thing the Apply API exposes:
+Permissions aren't a single list — they're three, matching the three kinds of thing the Gateway API exposes:
 
 | Scope | Governs | Valid operations |
 |-------|---------|-------------------|
@@ -72,8 +74,8 @@ Not a silent drop, not a generic `401`:
 
 ## See also
 
-→ [IDP token permissions](../../security/08-idp-permissions.md) — the security-model write-up: denial responses, `ork validate` checks, how this layers with `allowedNamespaces`
+→ [Serve token permissions](../../security/08-serve-permissions.md) — the security-model write-up: denial responses, `ork validate` checks, how this layers with `allowedNamespaces`
 
-→ [Apply API reference — `idp.allowedTokens`](../../reference/schema/02-katalog/17-katalog-applyapi.md#idpallowedtokens--fine-grained-permissions) — full field reference
+→ [Gateway API reference — `serve.tokens`](../../reference/schema/02-katalog/17-gateway-api.md#servetokens--fine-grained-permissions) — fine-grained permissions
 
 → [Namespace protection](../../security/05-namespace-protection.md) — the CRD-level layer every token's `namespaces` list is still bounded by

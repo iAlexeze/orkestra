@@ -155,7 +155,7 @@ normalize:
 # "a, b, c" → ["a", "b", "c"]  (spaces trimmed)
 # ""        → []
 # "foo"     → ["foo"]
-idp:
+serve:
   config:
     response:
       exclude: '{{ toList (getAnnotation . "platform.myorg.io/exclude-fields") }}'
@@ -168,7 +168,7 @@ notes:
         ""
       {{ end }}
 
-idp:
+serve:
   config:
     response:
       exclude: '{{ toList (excludeForExternal) }}'

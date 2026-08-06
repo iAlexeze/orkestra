@@ -1,10 +1,10 @@
-# gateway.applyAPI
+# gateway.api
 
-The `gateway.applyAPI` block enables the Orkestra Apply API — a CRUD REST surface for Custom Resources served by the gateway process.
+The `gateway.api` block enables the Orkestra Gateway API — a CRUD REST surface for Custom Resources served by the gateway process.
 
 ```yaml
 gateway:
-  applyAPI:
+  api:
     enabled: false              # opt-in
     auth:
       include: ./tokens.yaml    # load tokens from external file
@@ -23,16 +23,16 @@ gateway:
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `enabled` | `false` | Enable the Apply API. When `true`, the gateway registers `POST /api/v1/apply`, `GET/DELETE /api/v1/resources/...`, `GET /api/v1/schema`, and `GET /api/v1/raw-schema` handlers. Also surfaces `idpEnabled: true` in the runtime `/katalog` response so the Control Center can render **[+ Create]** buttons. |
+| `enabled` | `false` | Enable the Gateway API. When `true`, the gateway registers `POST /api/v1/apply`, `GET/DELETE /api/v1/resources/...`, `GET /api/v1/schema`, and `GET /api/v1/raw-schema` handlers. Also surfaces `serveEnabled: true` in the runtime `/katalog` response so the Control Center can render **[+ Create]** buttons. |
 | `auth.include` | — | Path (relative to the Katalog file) to a YAML file containing a `tokens:` list. Inline `tokens:` entries override included entries with the same name. Expanded at load time. |
 
 ## `auth.tokens`
 
-A list of bearer token entries. Every Apply API request must include `Authorization: Bearer <token>` matching one of these values.
+A list of bearer token entries. Every Gateway API request must include `Authorization: Bearer <token>` matching one of these values.
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `name` | yes | Human-readable identifier for logging and audit. Not sent in the request. Also used in `idp.allowedTokens` to reference this token. |
+| `name` | yes | Human-readable identifier for logging and audit. Not sent in the request. Also used in `serve.tokens` to reference this token. |
 | `secretRef.name` | — | Kubernetes Secret name to read the token value from. |
 | `secretRef.key` | — | Key within the Secret. |
 | `secretRef.namespace` | — | Secret namespace. Defaults to Orkestra's own namespace. |
@@ -41,7 +41,7 @@ A list of bearer token entries. Every Apply API request must include `Authorizat
 
 One of `secretRef` or `token` is required per entry. `secretRef` is the production pattern — the gateway reads the Secret at startup using its in-cluster ServiceAccount. If the Secret does not exist and `secretRef` is configured, the gateway creates it with a generated `uuidv4` token.
 
-Token scope is not per-CRD. Per-CRD restriction is handled by `idp.allowedTokens` — see below.
+Token scope is not per-CRD. Per-CRD restriction is handled by `serve.tokens` — see below.
 
 ## Endpoints
 
@@ -51,15 +51,15 @@ Token scope is not per-CRD. Per-CRD restriction is handled by `idp.allowedTokens
 | `GET /api/v1/resources/{kind}/{namespace}/{name}` | Read a CR's current spec and status. |
 | `GET /api/v1/resources/{kind}/{namespace}` | List all CRs of a kind in a namespace. |
 | `DELETE /api/v1/resources/{kind}/{namespace}/{name}` | Delete a CR (respects deletion protection). |
-| `GET /api/v1/schema` | Service catalog — lists all IDP-enabled targets with pagination (`limit`, `offset`). |
+| `GET /api/v1/schema` | Service catalog — lists all serve-enabled targets with pagination (`limit`, `offset`). |
 | `GET /api/v1/schema?target=<t>` | Returns a flat field schema for a specific target. Callers don't need to know about `spec`, `labels`, or `annotations` — just fields. |
 | `GET /api/v1/raw-schema?kind=<k>&apiVersion=<v>` | Returns the raw OpenAPI v3 schema for a CRD. For advanced callers who need direct access to the Kubernetes schema. Optional `apiVersion` for multi-version CRDs. |
 
-`GET /api/v1/schema` and `GET /api/v1/schema?target=<t>` are only served for CRDs where `idp.enabled: true`.
+`GET /api/v1/schema` and `GET /api/v1/schema?target=<t>` are only served for CRDs where `serve.enabled: true`.
 
-## `idp.target` and target mode
+## `serve.target` and target mode
 
-When a CRD has `idp.target` set, callers can use **target mode**:
+When a CRD has `serve.target` set, callers can use **target mode**:
 
 ```bash
 # Target mode — submit fields, not a CR
@@ -67,7 +67,7 @@ curl -X POST /api/v1/apply \
   -d '{"target": "smartapp", "repository": "...", "image": "...", "environment": "staging"}'
 ```
 
-The gateway builds the full CR from the IDP field declarations. Callers don't need to know `apiVersion`, `kind`, `spec`, or `metadata` structure.
+The gateway builds the full CR from the serve field declarations. Callers don't need to know `apiVersion`, `kind`, `spec`, or `metadata` structure.
 
 **Full CR mode** still works for backward compatibility:
 
@@ -81,7 +81,7 @@ curl -X POST /api/v1/apply \
 A submitted field name doesn't have to match its location in `spec`. Set `path` on the field:
 
 ```yaml
-idp:
+serve:
   fields:
     cpu:
       label: "CPU Request"
@@ -121,12 +121,12 @@ A rejected apply returns `422` with structured, field-level violations instead o
 
 `violations[].field` is a dot-notation path (`spec.environment`, `metadata.name`) — enough for a form to highlight the offending input directly, rather than parsing a message string. `warnings` carries admission-webhook advisories even on a successful apply — the same experience `kubectl apply` gives on the command line.
 
-### `idp.config.response` — shaping what callers see back
+### `serve.config.response` — shaping what callers see back
 
 Controls `pollUrl` and `payload` above:
 
 ```yaml
-idp:
+serve:
   config:
     response:
       default: true              # include the full CR alongside payload (default)
@@ -144,15 +144,15 @@ idp:
 - **`exclude`** — dot-notation paths stripped from the full-CR portion of `GET`/list responses (e.g. hiding `metadata.managedFields`). Applied before `payload`, and never removes a `payload` key.
 - **`poll`** — overrides the derived `pollUrl`. `field` appends `?field=<path>` for lightweight single-value polling; `url` replaces the whole URL with a template.
 
-→ [`idp.config.response` field reference](20-idp.md#idpconfigresponse)
+→ [`serve.config.response` field reference](20-serve.md#serveconfigresponse)
 
-## `idp.allowedTokens` — fine-grained permissions
+## `serve.tokens` — fine-grained permissions
 
 Per-CRD token scoping with operation-level permissions and namespace restrictions.
 
 ```yaml
-idp:
-  allowedTokens:
+serve:
+  tokens:
     control-center:
       namespaces: ["default"]
       permissions:
@@ -171,7 +171,7 @@ idp:
 | `resources` | `POST /api/v1/apply`, `GET/DELETE /api/v1/resources` | `get`, `list`, `create`, `update`, `delete`, `*` |
 
 `ork validate` ensures:
-- Token names exist in `gateway.applyAPI.auth.tokens`
+- Token names exist in `gateway.api.auth.tokens`
 - Schema permissions only contain `get`/`list`
 - Namespaces are within CRD's `allowedNamespaces` and outside `restrictedNamespaces`
 
@@ -183,7 +183,7 @@ idp:
 
 ```yaml
 gateway:
-  applyAPI:
+  api:
     auth:
       include: ./shared/tokens.yaml
       tokens:
@@ -193,11 +193,11 @@ gateway:
             key: token
 ```
 
-### IDP allowedTokens
+### serve.tokens
 
 ```yaml
-idp:
-  allowedTokens:
+serve:
+  tokens:
     include: ./shared/allowed-tokens.yaml
     control-center:   # overrides if in included file
       permissions:
@@ -208,29 +208,29 @@ Both follow established merge semantics: included entries are loaded first, then
 
 ## Security
 
-Nothing here needs a new configuration surface to learn — every property the Apply API enforces is declared right on the CRD entry, same as it would be for any other caller:
+Nothing here needs a new configuration surface to learn — every property the Gateway API enforces is declared right on the CRD entry, same as it would be for any other caller:
 
 | Property | Where it lives |
 |----------|----------------|
 | Admission rules | `security.webhooks.admission` + `validation` / `mutation` blocks |
 | Namespace restriction (topology — same for every caller) | `allowedNamespaces` / `restrictedNamespaces` on the CRD entry |
-| Token permissions (identity — per caller) | `idp.allowedTokens` on the CRD entry — a real, separate authorization layer; see [IDP token permissions](../../../security/08-idp-permissions.md) |
+| Token permissions (identity — per caller) | `serve.tokens` on the CRD entry — a real, separate authorization layer; see [Serve token permissions](../../../security/08-serve-permissions.md) |
 | Deletion protection | `security.deletionProtection` |
 
-The Apply API calls the same validation functions the webhook path calls. There is no divergence between what `kubectl apply` would enforce and what `POST /api/v1/apply` enforces — `idp.allowedTokens` is the one addition specific to the Apply API, since `kubectl` has no notion of a bearer token to scope.
+The Gateway API calls the same validation functions the webhook path calls. There is no divergence between what `kubectl apply` would enforce and what `POST /api/v1/apply` enforces — `serve.tokens` is the one addition specific to the Gateway API, since `kubectl` has no notion of a bearer token to scope.
 
-## Per-CRD: `idp`
+## Per-CRD: `serve`
 
 Which CRDs appear with a **[+ Create]** button in the Control Center and have their schema served via `/api/v1/schema` is controlled per CRD entry.
 
-→ [crd-entry.md — idp block](02-crd-entry.md#idp)
+→ [crd-entry.md — serve block](02-crd-entry.md#serve)
 
 ## See also
 
 → [concepts/idp](../../../concepts/idp/) — conceptual overview
 
-→ [security/idp-permissions](../../../security/08-idp-permissions.md) — `idp.allowedTokens` as a security layer, not just a config block
+→ [security/serve-permissions](../../../security/08-serve-permissions.md) — `serve.tokens` as a security layer, not just a config block
 
 → [pkg/gateway](https://github.com/orkspace/orkestra/blob/main/pkg/gateway/README.md) — developer documentation
 
-→ [contributing-controlcenter.md](../../../contributing/contributing-controlcenter.md) — IDP follow-on contributions
+→ [contributing-controlcenter.md](../../../contributing/contributing-controlcenter.md) — Serve follow-on contributions

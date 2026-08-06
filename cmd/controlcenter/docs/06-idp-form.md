@@ -1,18 +1,20 @@
-# 06 — IDP Self-Service Form
+# 06 — IDP Form
 
-The IDP form is the browser-native delivery path for the Apply API's target mode. A platform team declares `idp.enabled: true` and `idp.fields`/`idp.additionalFields` on a CRD entry; from that moment, any developer with access to the Control Center can create instances of that CRD by filling a form — no YAML, no `kubectl`, no cluster credentials, and no knowledge of the CRD's Kubernetes shape.
+The IDP form is the Control Center's browser-native delivery path for the Gateway API's target mode. A platform team declares `serve.enabled: true` and `serve.fields`/`serve.labels`/`serve.annotations` on a CRD entry; from that moment, any developer with access to the Control Center can create instances of that CRD by filling a form — no YAML, no `kubectl`, no cluster credentials, and no knowledge of the CRD's Kubernetes shape.
 
-Control Center never constructs a Kubernetes CR itself. It submits a flat `{"target": "<target>", ...fields}` payload to the gateway's Apply API; the gateway (`pkg/gateway/applyapi`) resolves the target to a CRD and builds the CR via `BuildCRFromTarget`, using the CRD's `idp.fields`/`idp.additionalFields` declarations to route each field into `spec`, `metadata.labels`, or `metadata.annotations`, and `idp.name`/`idp.namespace` to resolve identity.
+The Control Center calls itself an IDP form because that is its framing of the surface — a developer self-service portal. The underlying Orkestra schema uses `serve.*` keys; the CC is just one client of those, and it chooses to present them as an IDP.
+
+Control Center never constructs a Kubernetes CR itself. It submits a flat `{"target": "<target>", ...fields}` payload to the gateway's Gateway API; the gateway (`pkg/gateway/api`) resolves the target to a CRD and builds the CR via `BuildCRFromTarget`, using the CRD's `serve.fields`/`serve.labels`/`serve.annotations` declarations to route each field into `spec`, `metadata.labels`, or `metadata.annotations`, and `serve.name`/`serve.namespace` to resolve identity.
 
 ## Activation
 
 Three things must all be true for the `[+ Create]` button to appear:
 
-1. `gateway.applyAPI.enabled: true` on the Katalog
-2. `idp.enabled: true` on the CRD entry
+1. `gateway.api.enabled: true` on the Katalog
+2. `serve.enabled: true` on the CRD entry
 3. `GATEWAY_TOKEN` set on the CC process
 
-The runtime sets `CRDSummaryResponse.IDPEnabled` and `CRDSummaryResponse.Target` in its `/katalog` response (`"idpEnabled"`, `"target"`). CC mirrors both onto `CRDSummary`. `Target` is the identifier CC submits to the gateway — it comes from `idp.target` if the platform team set one, otherwise the lowercased Kind — CC never derives it itself. `handleIDPCreateForm` redirects back if `IdpEnabled` is false or `Target` is empty (IDP not actually usable for this CRD).
+The runtime sets `CRDSummaryResponse.IDPEnabled` and `CRDSummaryResponse.Target` in its `/katalog` response (`"serveEnabled"`, `"target"`). CC mirrors both onto `CRDSummary`. `Target` is the identifier CC submits to the gateway — it comes from `serve.target` if the platform team set one, otherwise the lowercased Kind — CC never derives it itself. `handleIDPCreateForm` redirects back if `IdpEnabled` is false or `Target` is empty (serve not actually usable for this CRD).
 
 ## Request flow
 
@@ -25,7 +27,7 @@ Browser GET /controlcenter/katalog/{kat}/crd/{crd}/cr/create
   │    ← SchemaResponse { target, title, description, fields, required }
   │      fields is a FLAT map[string]IDPFieldConfig — no spec/label/
   │      annotation distinction. The gateway resolves that at apply time
-  │      from the same idp.fields/idp.additionalFields declaration.
+  │      from the same serve.fields/serve.labels/serve.annotations declaration.
   │
   └─ renderTemplate("idp_form.html", IDPFormData)
        Fields assembled by buildIDPField, one per schemaResp.Fields entry:
@@ -44,8 +46,8 @@ Browser POST /controlcenter/katalog/{kat}/crd/{crd}/cr/create
   Body: { "target": "<target>", "name": "...", ...flatFields }
     (collectPayload() in idp_form.html builds this directly — one flat
     object, field name → value, no bucketing. "name" is only present when
-    RequireIDPName is true; the Identity section is omitted entirely from
-    the form when idp.name is declared, since the gateway resolves the name
+    RequireServeName is true; the Identity section is omitted entirely from
+    the form when serve.name is declared, since the gateway resolves the name
     server-side in that case.)
   │
   ├─ handleIDPApplyForm decodes the body, overwrites "target" with the
@@ -64,23 +66,23 @@ The gateway token is never sent to the browser. The CC backend holds it in `cc.g
 
 ## Field rendering
 
-`fetchIDPFields` in `cc/controlcenter.go` calls `buildIDPField` once per entry in `SchemaResponse.Fields` — there is only one field source now, not two. Each entry decodes into `idpFieldHint` (mirrors `orktypes.IDPFieldConfig`), which carries its own `type`/`enum` — there's no CRD OpenAPI schema involved and no separate "required" list to merge (each field's `required` is already final).
+`fetchIDPFields` in `cc/controlcenter.go` calls `buildIDPField` once per entry in `SchemaResponse.Fields` — there is only one field source now, not two. Each entry decodes into `idpFieldHint` (mirrors `orktypes.ServeFieldConfig`), which carries its own `type`/`enum` — there's no CRD OpenAPI schema involved and no separate "required" list to merge (each field's `required` is already final).
 
-One capability this dropped versus the old CRD-schema-driven approach: pre-populating a field's value from the CRD's OpenAPI `default:` — `IDPFieldConfig` has no `Default`, so the schema API doesn't expose one. If defaults become worth restoring, that's a schema-API change (`IDPFieldConfig.Default` + `SchemaResponse`), not something CC can add on its own.
+One capability this dropped versus the old CRD-schema-driven approach: pre-populating a field's value from the CRD's OpenAPI `default:` — `ServeFieldConfig` has no `Default`, so the schema API doesn't expose one. If defaults become worth restoring, that's a schema-API change (`ServeFieldConfig.Default` + `SchemaResponse`), not something CC can add on its own.
 
 ## Configuration
 
 | Env var | CC field | Purpose |
 |---------|-----------|---------|
-| `GATEWAY_TOKEN` | `ControlCenter.gatewayToken` | Bearer token for gateway Apply API calls; must match a token declared in `gateway.applyAPI.auth.tokens` |
+| `GATEWAY_TOKEN` | `ControlCenter.gatewayToken` | Bearer token for gateway API calls; must match a token declared in `gateway.api.auth.tokens` |
 
 ## Files involved
 
 | File | Role |
 |------|------|
-| `pkg/runtime/kordinator/crd_health_handers.go` | `CRDSummaryResponse.Target`/`IDPEnabled` — from `crd.IDPTargetOrEmpty()`/`crd.IDPEnabled()` |
-| `pkg/gateway/applyapi/schema.go` | `SchemaResponse` — the flat field contract CC consumes |
-| `pkg/gateway/applyapi/target.go` | `BuildCRFromTarget` — builds the CR the gateway applies; CC never sees this shape |
+| `pkg/runtime/kordinator/crd_health_handers.go` | `CRDSummaryResponse.Target`/`IDPEnabled` — from `crd.ServeTargetOrEmpty()`/`crd.IsServeEnabled()` |
+| `pkg/gateway/api/schema.go` | `SchemaResponse` — the flat field contract CC consumes |
+| `pkg/gateway/api/target.go` | `BuildCRFromTarget` — builds the CR the gateway applies; CC never sees this shape |
 | `cc/types.go` | `CRDSummary.Target`; `IDPField`, `IDPSection`, `IDPFormData` |
 | `cc/controlcenter.go` | `handleIDPCreateForm`, `fetchIDPFields`, `buildIDPField`, `handleIDPApplyForm`, `handleIDPSchema` |
 | `cc/assets/templates/idp_form.html` | form page — `collectPayload()` builds the flat POST body |

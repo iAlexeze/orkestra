@@ -1,11 +1,11 @@
 ## Nested Spec Paths
 
-### `idp.fields.path` 
+### `serve.fields.path` 
 
-By default, `idp.fields` maps field names directly to top-level `spec` paths. Use `path` to map a field to a nested location in the CRD `spec`.
+By default, `serve.fields` maps field names directly to top-level `spec` paths. Use `path` to map a field to a nested location in the CRD `spec`.
 
 ```yaml
-idp:
+serve:
   fields:
     # Flat field — maps to spec.repository
     repository:
@@ -73,10 +73,10 @@ spec:
     maxReplicas: integer
 ```
 
-**IDP Config:**
+**Serve Config:**
 
 ```yaml
-idp:
+serve:
   fields:
     repository:
       path: app.repository
@@ -124,8 +124,8 @@ spec:
 
 ### Related
 
-→ [`idp.fields`](20-idp.md#idpfieldsname) — field configuration reference
+→ [`serve.fields`](20-serve.md#servefieldsname) — field configuration reference
 
-→ [`idp.additionalFields`](20-idp.md#idpadditionalfields) — labels and annotations as fields
+→ [`serve labels/annotations`](20-serve.md#serve-labelsannotations) — labels and annotations as fields
 
 → [Target Mode API](../../../concepts/idp/02-target-mode.md) — submitting fields instead of CRs
