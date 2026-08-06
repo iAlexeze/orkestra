@@ -9,7 +9,7 @@ runtime:
   imagePullSecrets: []
   image:
     repository: ghcr.io/orkspace/orkestra
-    tag: "0.7.12"
+    tag: "0.7.13"
     pullPolicy: IfNotPresent
   replicaCount: 2
   service:
@@ -138,7 +138,7 @@ gateway:
   imagePullSecrets: []
   image:
     repository: ghcr.io/orkspace/orkestra-gateway
-    tag: "0.7.12"
+    tag: "0.7.13"
     pullPolicy: IfNotPresent
   replicaCount: 2
   resources:
@@ -153,6 +153,27 @@ gateway:
   service:
     type: ClusterIP
     annotations: {}
+  # Exposes the gateway's Gateway API (POST /api/v1/apply, GET /api/v1/resources/...,
+  # GET /api/v1/schema/...) to callers outside the cluster — a CI pipeline, a
+  # Control Center running elsewhere. Routes to the http port (Gateway API +
+  # health), never https (the admission/conversion webhook port — that's
+  # called by the Kubernetes API server itself, not an external client, and
+  # has no business behind a public ingress).
+  ingress:
+    enabled: false # Disabled by default – enable and set hosts
+    className: ""
+    annotations: {}
+    hosts: []
+    # hosts:
+    #   - host: gateway.mycompany.com
+    #     paths:
+    #       - path: /
+    #         pathType: Prefix
+    tls: []
+    # tls:
+    #   - hosts:
+    #       - gateway.mycompany.com
+    #     secretName: gateway-tls
   # PDB
   pdb:
     enabled: true
@@ -248,7 +269,7 @@ controlCenter:
   imagePullSecrets: []
   image:
     repository: ghcr.io/orkspace/orkestra-cc
-    tag: "0.7.12"
+    tag: "0.7.13"
     pullPolicy: IfNotPresent
   replicaCount: 1
   resources:
@@ -289,6 +310,10 @@ controlCenter:
     #       - path: /
     #         pathType: Prefix
     tls: []
+    # tls:
+    #   - hosts:
+    #       - gateway.mycompany.com
+    #     secretName: gateway-tls
   # Security (control center doesn't need root)
   securityContext:
     allowPrivilegeEscalation: false
@@ -327,7 +352,7 @@ controlCenter:
     #  - podSelector:
     #      matchLabels:
     #        app: prometheus
-  # Gateway Apply API token for the Control Center IDP proxy.
+  # Gateway Gateway API token for the Control Center IDP proxy.
   # Point secretRef at the Secret the gateway auto-creates on first start.
   # Leave name empty to disable (no GATEWAY_TOKEN env injected).
   gatewayToken:
