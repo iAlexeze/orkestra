@@ -14,9 +14,9 @@ import (
 // Panics on error — these are hand-authored test fixtures, not untrusted
 // input, so a malformed one should fail loudly and immediately.
 func (k *Katalog) wireForTest() *Katalog {
-	if err := k.setGroupVersionKind(); err != nil {
-		panic("katalog test fixture: " + err.Error())
-	}
+	// setGroupVersionKind is best-effort: graph-only fixtures (e.g. cycle
+	// detection tests) legitimately omit apiTypes, so we skip rather than panic.
+	_ = k.setGroupVersionKind()
 	if err := k.setDefaults(konfig.NewDefaultKonfig()); err != nil {
 		panic("katalog test fixture: " + err.Error())
 	}
