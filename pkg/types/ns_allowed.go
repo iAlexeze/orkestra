@@ -89,9 +89,9 @@ func (c *CRDEntry) SingleNamespace() string {
 // only one fixed namespace — either via IsSingleNamespace (AllowedNamespaces
 // with exactly one entry) or the legacy per-CRD Namespace field
 // (cmd/internal/runtime_konstructor.go's dynamic-CRD fallback). A CRD whose
-// idp.namespace resolves differently per submission (e.g. by team) can never
+// serve.namespace resolves differently per submission (e.g. by team) can never
 // be watched this way — whatever it creates outside the pinned namespace
-// would sit unreconciled forever. See Katalog.validateIDPNamespace.
+// would sit unreconciled forever. See Katalog.validateServeNamespace.
 func (c *CRDEntry) PinnedToNamespace() bool {
 	return c.IsSingleNamespace() || c.Namespace != ""
 }

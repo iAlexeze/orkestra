@@ -33,7 +33,7 @@ func registerHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/v1/data/", handle(opaPolicyHandler))
 	// 09-cert-readiness
 	mux.HandleFunc("/certs/", handle(certsHandler))
-	// 03-jira-slack (idp example)
+	// 03-jira-slack (serve example)
 	mux.HandleFunc("/jira/transition", handle(jiraTransitionHandler))
 	mux.HandleFunc("/jira/issues", handle(jiraIssueHandler))  // no key → list all
 	mux.HandleFunc("/jira/issues/", handle(jiraIssueHandler)) // /jira/issues/{key} → single lookup

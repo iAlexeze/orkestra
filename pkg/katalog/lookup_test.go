@@ -9,7 +9,7 @@ import (
 )
 
 // Helper to create a test CRD entry with all required fields
-func testCRDEntry(kind, target string, idpEnabled bool) orktypes.CRDEntry {
+func testCRDEntry(kind, target string, serveEnabled bool) orktypes.CRDEntry {
 	entry := orktypes.CRDEntry{
 		APITypes: orktypes.APITypes{
 			Group:   "platform.myorg.io",
@@ -18,8 +18,8 @@ func testCRDEntry(kind, target string, idpEnabled bool) orktypes.CRDEntry {
 			Plural:  kind + "s",
 		},
 	}
-	if idpEnabled || target != "" {
-		entry.IDP = &orktypes.IDPConfig{
+	if serveEnabled || target != "" {
+		entry.Serve = &orktypes.ServeConfig{
 			Enabled: true,
 			Target:  target,
 		}
@@ -83,22 +83,22 @@ func TestBuildAllIDEnabledCRDs(t *testing.T) {
 			"database": testCRDEntry("Database", "", false),
 			"cache": {
 				APITypes: orktypes.APITypes{Kind: "Cache"},
-				IDP:      nil,
+				Serve:    nil,
 			},
 		},
 	}
 
-	idpEnabledCrds := k.BuildIDPEnabledCRDs()
+	serveEnabledCrds := k.BuildServeEnabledCRDs()
 
-	if len(idpEnabledCrds) != 1 {
-		t.Fatalf("expected 1 IDP-enabled CRD, got %d", len(idpEnabledCrds))
+	if len(serveEnabledCrds) != 1 {
+		t.Fatalf("expected 1 serve-enabled CRD, got %d", len(serveEnabledCrds))
 	}
 
-	if idpEnabledCrds[0].APITypes.Kind != "App" {
-		t.Errorf("expected App, got %s", idpEnabledCrds[0].APITypes.Kind)
+	if serveEnabledCrds[0].APITypes.Kind != "App" {
+		t.Errorf("expected App, got %s", serveEnabledCrds[0].APITypes.Kind)
 	}
-	if idpEnabledCrds[0].IDP.Target != "smartapp" {
-		t.Errorf("expected target smartapp, got %s", idpEnabledCrds[0].IDP.Target)
+	if serveEnabledCrds[0].Serve.Target != "smartapp" {
+		t.Errorf("expected target smartapp, got %s", serveEnabledCrds[0].Serve.Target)
 	}
 }
 
@@ -530,7 +530,7 @@ func TestLookup_EmptyKatalog(t *testing.T) {
 	}
 }
 
-func TestLookup_CRDWithoutIDP(t *testing.T) {
+func TestLookup_CRDWithoutServe(t *testing.T) {
 	k := &Katalog{
 		enabledCRDs: map[string]orktypes.CRDEntry{
 			"cache": testCRDEntry("Cache", "", false),
@@ -545,7 +545,7 @@ func TestLookup_CRDWithoutIDP(t *testing.T) {
 		t.Error("expected to find Cache by kind")
 	}
 
-	// Should not find by target (no IDP target)
+	// Should not find by target (no serve target)
 	if crd := k.LookupByTarget("cache"); crd != nil {
 		t.Errorf("expected nil for target, got %+v", crd)
 	}

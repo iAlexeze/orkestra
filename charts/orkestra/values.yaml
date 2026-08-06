@@ -181,9 +181,9 @@ gateway:
     type: ClusterIP
     annotations: {}
 
-  # Exposes the gateway's Apply API (POST /api/v1/apply, GET /api/v1/resources/...,
+  # Exposes the gateway's Gateway API (POST /api/v1/apply, GET /api/v1/resources/...,
   # GET /api/v1/schema/...) to callers outside the cluster — a CI pipeline, a
-  # Control Center running elsewhere. Routes to the http port (Apply API +
+  # Control Center running elsewhere. Routes to the http port (Gateway API +
   # health), never https (the admission/conversion webhook port — that's
   # called by the Kubernetes API server itself, not an external client, and
   # has no business behind a public ingress).
@@ -409,7 +409,7 @@ controlCenter:
     #  - podSelector:
     #      matchLabels:
     #        app: prometheus
-  # Gateway Apply API token for the Control Center IDP proxy.
+  # Gateway Gateway API token for the Control Center IDP proxy.
   # Point secretRef at the Secret the gateway auto-creates on first start.
   # Leave name empty to disable (no GATEWAY_TOKEN env injected).
   gatewayToken:

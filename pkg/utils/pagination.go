@@ -1,4 +1,4 @@
-// Pagination primitives for the Apply API list endpoints.
+// Pagination primitives for the Gateway API list endpoints.
 // Kept deliberately simple for v1 — offset/limit with an optional continue
 // token for Kubernetes list continuation.
 // ─────────────────────────────────────────────────────────────────────────────

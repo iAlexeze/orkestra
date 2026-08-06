@@ -183,7 +183,7 @@ type ValidationRule struct {
 	// When both When and AnyOf are declared, both blocks must pass.
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 
-	// Link names the idp.fields or idp.additionalFields (labels/annotations)
+	// Link names the serve.fields or serve.additionalFields (labels/annotations)
 	// key this rule concerns, for UI highlighting. Only needed when Field
 	// isn't already a plain, self-describing path — additionalFields
 	// entries always resolve through getLabel/getAnnotation template
@@ -192,20 +192,20 @@ type ValidationRule struct {
 	// check like isValidGitRepository) instead of comparing it directly.
 	// Neither is itself a valid display name. When set, violations report
 	// Link instead of Field as the offending field — the Control Center (or
-	// any Apply API client) matches it directly against the form field it
-	// rendered for that idp entry, no guessing at the expression required.
+	// any Gateway API client) matches it directly against the form field it
+	// rendered for that serve entry, no guessing at the expression required.
 	//
 	// Link is a plain literal string, not a template expression — it's the
-	// exact idp.fields / idp.additionalFields key itself, never resolved
+	// exact serve.fields / serve.additionalFields key itself, never resolved
 	// against the CR the way Field/Value/Message can be.
 	//
 	// Validated at katalog-load time: must match a key declared in
-	// idp.fields, idp.additionalFields.labels, or .additionalFields.annotations
+	// serve.fields, serve.labels, or .annotations
 	// for this CRD. Linking a spec field whose Field is already exactly
 	// "spec.<name>" is an error, though — at that point Field already is a
 	// clean display name on its own, so the link is always redundant.
 	//
-	// Automatically set by the required/enum rules idp.additionalFields
+	// Automatically set by the required/enum rules serve.additionalFields
 	// entries synthesize. Hand-written rules that target the same field
 	// (e.g. multiple focused checks split across separate rules instead of
 	// one compound expression) should set it too, so every rule touching

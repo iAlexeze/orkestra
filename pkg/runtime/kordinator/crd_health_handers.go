@@ -114,8 +114,8 @@ type CRDInfoResponse struct {
 	Mode        string `json:"mode"`
 	GVK         string `json:"gvk"`
 	GVR         string `json:"gvr"`
-	// Target is the identifier callers use against the Apply API and schema
-	// API (idp.target, or the lowercased kind when unset). Empty when IDP is
+	// Target is the identifier callers use against the Gateway API and schema
+	// API (serve.target, or the lowercased kind when unset). Empty when serve is
 	// not enabled for this CRD.
 	Target            string                     `json:"target,omitempty"`
 	Namespaced        bool                       `json:"namespaced"`
@@ -268,7 +268,7 @@ func BuildCRDInfoHandler(
 			Mode:              crd.Mode.String(),
 			GVK:               crd.GVKString(),
 			GVR:               crd.GroupVersionResource.String(),
-			Target:            crd.IDPTargetOrEmpty(),
+			Target:            crd.ServeTargetOrEmpty(),
 			Namespaced:        crd.IsNamespaced(),
 			Namespace:         crd.Namespace,
 			DependsOn:         crd.DependsOn.Names(),
@@ -417,10 +417,10 @@ type CRDSummaryResponse struct {
 	DeletionProtection       bool               `json:"deletionProtection"`
 	ProviderCount            int                `json:"providerCount,omitempty"`
 	KatalogNamespace         string             `json:"katalogNamespace,omitempty"`
-	IDPEnabled               bool               `json:"idpEnabled,omitempty"`
-	RequireIDPName           bool               `json:"requireIdpName,omitempty"`
-	// Target is the identifier callers use against the Apply API and schema
-	// API (idp.target, or the lowercased kind when unset). Empty when IDP is
+	ServeEnabled             bool               `json:"serveEnabled,omitempty"`
+	RequireServeName         bool               `json:"requireServeName,omitempty"`
+	// Target is the identifier callers use against the Gateway API and schema
+	// API (serve.target, or the lowercased kind when unset). Empty when serve is
 	// not enabled for this CRD.
 	Target string `json:"target,omitempty"`
 }
@@ -543,9 +543,9 @@ func BuildKatalogHandler(
 				ErrorRate:        h.ErrorRatePercent(),
 				CrossAccess:      crd.CrossAccessEnabled(),
 				KatalogNamespace: crd.KatalogNamespace,
-				IDPEnabled:       crd.IDPEnabled(),
-				RequireIDPName:   crd.RequireIDPName(),
-				Target:           crd.IDPTargetOrEmpty(),
+				ServeEnabled:     crd.ServeEnabled(),
+				RequireServeName: crd.RequireServeName(),
+				Target:           crd.ServeTargetOrEmpty(),
 				Endpoints: EndpointInfo{
 					Health:        "/katalog/" + strings.ToLower(crd.Name) + "/health",
 					Info:          "/katalog/" + strings.ToLower(crd.Name),

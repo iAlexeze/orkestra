@@ -266,90 +266,90 @@ func TestIsGatewayEnabled(t *testing.T) {
 		assert.True(t, k.IsGatewayEnabled())
 	})
 
-	t.Run("only applyAPI declared, no enabled/endpoint — enabled", func(t *testing.T) {
-		// The CI-only Apply API client scenario: no runtime pairing, no
+	t.Run("only gateway API declared, no enabled/endpoint — enabled", func(t *testing.T) {
+		// The CI-only Gateway API client scenario: no runtime pairing, no
 		// gateway.endpoint — just a CRUD surface for CI/Backstage/custom UIs
 		// to call. The gateway: block still declares real config, so it
 		// must count as enabled.
 		k := &Katalog{Gateway: &orktypes.GatewayConfig{
-			ApplyAPI: &orktypes.ApplyAPIConfig{Enabled: true},
+			API: &orktypes.GatewayAPIConfig{Enabled: true},
 		}}
 		assert.True(t, k.IsGatewayEnabled())
 	})
 }
 
-func TestIsApplyAPIEnabled(t *testing.T) {
+func TestIsGatewayAPIEnabled(t *testing.T) {
 	t.Run("nil gateway", func(t *testing.T) {
 		k := &Katalog{}
-		assert.False(t, k.IsApplyAPIEnabled())
+		assert.False(t, k.IsGatewayAPIEnabled())
 	})
 
-	t.Run("gateway present, applyAPI nil", func(t *testing.T) {
+	t.Run("gateway present, gateway API nil", func(t *testing.T) {
 		k := &Katalog{Gateway: &orktypes.GatewayConfig{}}
-		assert.False(t, k.IsApplyAPIEnabled())
+		assert.False(t, k.IsGatewayAPIEnabled())
 	})
 
-	t.Run("applyAPI present but not enabled", func(t *testing.T) {
-		k := &Katalog{Gateway: &orktypes.GatewayConfig{ApplyAPI: &orktypes.ApplyAPIConfig{}}}
-		assert.False(t, k.IsApplyAPIEnabled())
+	t.Run("gateway API present but not enabled", func(t *testing.T) {
+		k := &Katalog{Gateway: &orktypes.GatewayConfig{API: &orktypes.GatewayAPIConfig{}}}
+		assert.False(t, k.IsGatewayAPIEnabled())
 	})
 
-	t.Run("applyAPI enabled", func(t *testing.T) {
-		k := &Katalog{Gateway: &orktypes.GatewayConfig{ApplyAPI: &orktypes.ApplyAPIConfig{Enabled: true}}}
-		assert.True(t, k.IsApplyAPIEnabled())
+	t.Run("gateway API enabled", func(t *testing.T) {
+		k := &Katalog{Gateway: &orktypes.GatewayConfig{API: &orktypes.GatewayAPIConfig{Enabled: true}}}
+		assert.True(t, k.IsGatewayAPIEnabled())
 	})
 }
 
-func TestHasApplyAPISecretRefs(t *testing.T) {
-	t.Run("applyAPI disabled — false", func(t *testing.T) {
+func TestHasGatewayAPISecretRefs(t *testing.T) {
+	t.Run("gateway API disabled — false", func(t *testing.T) {
 		k := &Katalog{}
-		assert.False(t, k.HasApplyAPISecretRefs())
+		assert.False(t, k.HasGatewayAPISecretRefs())
 	})
 
 	t.Run("enabled, no tokens use secretRef", func(t *testing.T) {
-		k := &Katalog{Gateway: &orktypes.GatewayConfig{ApplyAPI: &orktypes.ApplyAPIConfig{
+		k := &Katalog{Gateway: &orktypes.GatewayConfig{API: &orktypes.GatewayAPIConfig{
 			Enabled: true,
-			Auth:    orktypes.ApplyAPIAuth{Tokens: []orktypes.ApplyAPIToken{{Name: "ci", Token: "${ORK_CI_TOKEN}"}}},
+			Auth:    orktypes.APIAuth{Tokens: []orktypes.APIToken{{Name: "ci", Token: "${ORK_CI_TOKEN}"}}},
 		}}}
-		assert.False(t, k.HasApplyAPISecretRefs())
+		assert.False(t, k.HasGatewayAPISecretRefs())
 	})
 
 	t.Run("enabled, one token uses secretRef", func(t *testing.T) {
-		k := &Katalog{Gateway: &orktypes.GatewayConfig{ApplyAPI: &orktypes.ApplyAPIConfig{
+		k := &Katalog{Gateway: &orktypes.GatewayConfig{API: &orktypes.GatewayAPIConfig{
 			Enabled: true,
-			Auth: orktypes.ApplyAPIAuth{Tokens: []orktypes.ApplyAPIToken{
+			Auth: orktypes.APIAuth{Tokens: []orktypes.APIToken{
 				{Name: "ci", Token: "${ORK_CI_TOKEN}"},
-				{Name: "cc", SecretRef: &orktypes.ApplyAPISecretRef{Name: "ork-apply-token", Key: "token"}},
+				{Name: "cc", SecretRef: &orktypes.APISecretRef{Name: "ork-apply-token", Key: "token"}},
 			}},
 		}}}
-		assert.True(t, k.HasApplyAPISecretRefs())
+		assert.True(t, k.HasGatewayAPISecretRefs())
 	})
 }
 
-func TestHasIDPEnabled(t *testing.T) {
-	t.Run("applyAPI disabled — false", func(t *testing.T) {
+func TestHasServeEnabled(t *testing.T) {
+	t.Run("gateway API disabled — false", func(t *testing.T) {
 		k := &Katalog{enabledCRDs: map[string]orktypes.CRDEntry{
-			"Website": {Name: "Website", IDP: &orktypes.IDPConfig{Enabled: true}},
+			"Website": {Name: "Website", Serve: &orktypes.ServeConfig{Enabled: true}},
 		}}
-		assert.False(t, k.HasIDPEnabled())
+		assert.False(t, k.HasServeEnabled())
 	})
 
-	t.Run("applyAPI enabled, no CRD opts into idp", func(t *testing.T) {
+	t.Run("gateway API enabled, no CRD opts into serve", func(t *testing.T) {
 		k := &Katalog{
-			Gateway:     &orktypes.GatewayConfig{ApplyAPI: &orktypes.ApplyAPIConfig{Enabled: true}},
+			Gateway:     &orktypes.GatewayConfig{API: &orktypes.GatewayAPIConfig{Enabled: true}},
 			enabledCRDs: map[string]orktypes.CRDEntry{"Website": {Name: "Website"}},
 		}
-		assert.False(t, k.HasIDPEnabled())
+		assert.False(t, k.HasServeEnabled())
 	})
 
-	t.Run("applyAPI enabled, one CRD opts into idp", func(t *testing.T) {
+	t.Run("gateway API enabled, one CRD opts into serve", func(t *testing.T) {
 		k := &Katalog{
-			Gateway: &orktypes.GatewayConfig{ApplyAPI: &orktypes.ApplyAPIConfig{Enabled: true}},
+			Gateway: &orktypes.GatewayConfig{API: &orktypes.GatewayAPIConfig{Enabled: true}},
 			enabledCRDs: map[string]orktypes.CRDEntry{
-				"Website": {Name: "Website", IDP: &orktypes.IDPConfig{Enabled: true}},
+				"Website": {Name: "Website", Serve: &orktypes.ServeConfig{Enabled: true}},
 			},
 		}
-		assert.True(t, k.HasIDPEnabled())
+		assert.True(t, k.HasServeEnabled())
 	})
 }
 

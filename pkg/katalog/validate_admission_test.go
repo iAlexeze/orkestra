@@ -100,12 +100,12 @@ func TestValidateAdmissionOperators_MutationRuleKnownOperator(t *testing.T) {
 	assert.NoError(t, k.validateAdmissionOperators())
 }
 
-func katalogWithIDPValidationRule(crdName string, idp *orktypes.IDPConfig, rules ...orktypes.ValidationRule) *Katalog {
+func katalogWithServeValidationRule(crdName string, srv *orktypes.ServeConfig, rules ...orktypes.ValidationRule) *Katalog {
 	return &Katalog{
 		enabledCRDs: map[string]orktypes.CRDEntry{
 			crdName: {
 				Name:       crdName,
-				IDP:        idp,
+				Serve:      srv,
 				Validation: &orktypes.ValidationConfig{Rules: rules},
 			},
 		},
@@ -120,20 +120,20 @@ func TestValidateValidationRuleLinks_NoLink(t *testing.T) {
 }
 
 func TestValidateValidationRuleLinks_MatchesAdditionalLabelField(t *testing.T) {
-	idp := &orktypes.IDPConfig{AdditionalFields: &orktypes.AdditionalIDPFields{
-		Labels: map[string]orktypes.IDPFieldConfig{"team": {Label: "Team"}},
-	}}
-	k := katalogWithIDPValidationRule("app", idp, orktypes.ValidationRule{
+	serve := &orktypes.ServeConfig{
+		Labels: map[string]orktypes.ServeFieldConfig{"team": {Label: "Team"}},
+	}
+	k := katalogWithServeValidationRule("app", serve, orktypes.ValidationRule{
 		Field: `{{ isDNS1123Subdomain team }}`, Link: "team", Equals: "true", Message: "must be a valid subdomain",
 	})
 	assert.NoError(t, k.validateValidationRuleLinks())
 }
 
 func TestValidateValidationRuleLinks_MatchesAdditionalAnnotationField(t *testing.T) {
-	idp := &orktypes.IDPConfig{AdditionalFields: &orktypes.AdditionalIDPFields{
-		Annotations: map[string]orktypes.IDPFieldConfig{"platform.myorg.io/jira-ticket": {Label: "Jira Ticket"}},
-	}}
-	k := katalogWithIDPValidationRule("app", idp, orktypes.ValidationRule{
+	serve := &orktypes.ServeConfig{
+		Annotations: map[string]orktypes.ServeFieldConfig{"platform.myorg.io/jira-ticket": {Label: "Jira Ticket"}},
+	}
+	k := katalogWithServeValidationRule("app", serve, orktypes.ValidationRule{
 		Field: `{{ getAnnotation . "platform.myorg.io/jira-ticket" }}`, Link: "platform.myorg.io/jira-ticket", Message: "must be set",
 	})
 	assert.NoError(t, k.validateValidationRuleLinks())
@@ -143,20 +143,20 @@ func TestValidateValidationRuleLinks_SpecFieldWithWrappingExpression(t *testing.
 	// link: pointing at a spec field is valid when Field wraps it in
 	// something other than the plain "spec.<name>" path — e.g. a format
 	// check built on a notes: function.
-	idp := &orktypes.IDPConfig{Fields: map[string]orktypes.IDPFieldConfig{
+	serve := &orktypes.ServeConfig{Fields: map[string]orktypes.ServeFieldConfig{
 		"repoURL": {Label: "Repository URL"},
 	}}
-	k := katalogWithIDPValidationRule("app", idp, orktypes.ValidationRule{
+	k := katalogWithServeValidationRule("app", serve, orktypes.ValidationRule{
 		Field: `{{ isValidGitRepository .spec.repoURL }}`, Link: "repoURL", Equals: "true", Message: "must be a valid git repository",
 	})
 	assert.NoError(t, k.validateValidationRuleLinks())
 }
 
 func TestValidateValidationRuleLinks_RedundantSpecFieldLink(t *testing.T) {
-	idp := &orktypes.IDPConfig{Fields: map[string]orktypes.IDPFieldConfig{
+	serve := &orktypes.ServeConfig{Fields: map[string]orktypes.ServeFieldConfig{
 		"team": {Label: "Team"},
 	}}
-	k := katalogWithIDPValidationRule("app", idp, orktypes.ValidationRule{
+	k := katalogWithServeValidationRule("app", serve, orktypes.ValidationRule{
 		Field: "spec.team", Link: "team", Operator: orktypes.ConditionExists, Message: "team is required",
 	})
 	err := k.validateValidationRuleLinks()
@@ -166,20 +166,20 @@ func TestValidateValidationRuleLinks_RedundantSpecFieldLink(t *testing.T) {
 }
 
 func TestValidateValidationRuleLinks_UnknownLink(t *testing.T) {
-	idp := &orktypes.IDPConfig{AdditionalFields: &orktypes.AdditionalIDPFields{
-		Labels: map[string]orktypes.IDPFieldConfig{"team": {Label: "Team"}},
-	}}
-	k := katalogWithIDPValidationRule("app", idp, orktypes.ValidationRule{
+	serve := &orktypes.ServeConfig{
+		Labels: map[string]orktypes.ServeFieldConfig{"team": {Label: "Team"}},
+	}
+	k := katalogWithServeValidationRule("app", serve, orktypes.ValidationRule{
 		Field: `{{ isDNS1123Subdomain typo }}`, Link: "typo", Equals: "true", Message: "must be valid",
 	})
 	err := k.validateValidationRuleLinks()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "typo")
-	assert.Contains(t, err.Error(), "does not match any idp field")
+	assert.Contains(t, err.Error(), "does not match any serve field")
 }
 
-func TestValidateValidationRuleLinks_NoIDPConfig(t *testing.T) {
-	k := katalogWithIDPValidationRule("app", nil, orktypes.ValidationRule{
+func TestValidateValidationRuleLinks_NoServeConfig(t *testing.T) {
+	k := katalogWithServeValidationRule("app", nil, orktypes.ValidationRule{
 		Field: `{{ isDNS1123Subdomain team }}`, Link: "team", Equals: "true", Message: "must be valid",
 	})
 	err := k.validateValidationRuleLinks()

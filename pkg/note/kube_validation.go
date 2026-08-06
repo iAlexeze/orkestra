@@ -13,7 +13,7 @@ import (
 // an annotation value, which is an unrestricted free-form string) follows
 // that same name format. ork validate already runs this exact check once,
 // at katalog-authoring time, against the keys a katalog author declares
-// under idp.additionalFields — but nothing checks the values a runtime
+// under serve.additionalFields — but nothing checks the values a runtime
 // client actually submits (curl, raw kubectl, a custom UI) until the
 // object reaches the real API server.
 //

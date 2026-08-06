@@ -80,9 +80,9 @@ Allowed values:
 }
 
 // validateValidationRuleLinks rejects a validation.rules entry's link: value
-// that either doesn't name any idp.fields / idp.additionalFields key on the
+// that either doesn't name any serve.fields / serve.additionalFields key on the
 // CRD (typo, or the field was renamed/removed and this rule wasn't updated),
-// or names an idp.fields key whose Field is already the redundant plain
+// or names an serve.fields key whose Field is already the redundant plain
 // "spec.<name>" form — link: only earns its keep when Field isn't already a
 // clean display name on its own. See ValidationRule.Link.
 func (k *Katalog) validateValidationRuleLinks() error {
@@ -103,17 +103,17 @@ func (k *Katalog) validateValidationRuleLinks() error {
 }
 
 func checkLink(rule orktypes.ValidationRule, crd orktypes.CRDEntry) error {
-	if crd.IDP != nil {
-		if _, ok := crd.IDP.Fields[rule.Link]; ok {
+	if crd.Serve != nil {
+		if _, ok := crd.Serve.Fields[rule.Link]; ok {
 			if rule.Field == "spec."+rule.Link {
 				return errRedundantLink(rule.Link, crd.Name)
 			}
 			return nil
 		}
-		if _, ok := crd.AdditionalLabelFields()[rule.Link]; ok {
+		if _, ok := crd.ServeLabels()[rule.Link]; ok {
 			return nil
 		}
-		if _, ok := crd.AdditionalAnnotationFields()[rule.Link]; ok {
+		if _, ok := crd.ServeAnnotations()[rule.Link]; ok {
 			return nil
 		}
 	}
@@ -123,12 +123,12 @@ func checkLink(rule orktypes.ValidationRule, crd orktypes.CRDEntry) error {
 func errUnknownLink(link, crd, field string) error {
 	return fmt.Errorf(`
 ──────────────────────────────────────────────
-%s link %q does not match any idp field
+%s link %q does not match any serve field
    CRD: %s
    field: %s
 
-link: must name a key declared in idp.fields, idp.additionalFields.labels,
-or idp.additionalFields.annotations for this CRD.
+link: must name a key declared in serve.fields, serve.labels,
+or serve.annotations for this CRD.
 ──────────────────────────────────────────────`, failureMark(), link, crd, field)
 }
 

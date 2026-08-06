@@ -109,8 +109,8 @@ func (k *Katalog) KomposeRuntimeKatalog(
 	if err := orktypes.ExpandProfileInclude(&k.Profiles, k.katalogDir); err != nil {
 		return nil, fmt.Errorf("profiles: %w", err)
 	}
-	if err := orktypes.ExpandApplyAPIAuth(k.Gateway, k.katalogDir); err != nil {
-		return nil, fmt.Errorf("applyAPI: %w", err)
+	if err := orktypes.ExpandGatewayAPIAuth(k.Gateway, k.katalogDir); err != nil {
+		return nil, fmt.Errorf("gateway API auth: %w", err)
 	}
 
 	for name, entry := range k.enabledCRDs {
@@ -126,12 +126,8 @@ func (k *Katalog) KomposeRuntimeKatalog(
 			entry.CRDFile = ""
 		}
 
-		// Expand idp.include before enrichment so field hints are fully resolved.
-		if err := populateIDPFieldsFromInclude(&entry, k.katalogDir); err != nil {
-			return nil, fmt.Errorf("CRD %q: %w", name, err)
-		}
-		// Expand idp.allowedTokens include
-		if err := populateIDPAllowedTokensFromInclude(&entry, k.katalogDir); err != nil {
+		// Expand serve.include before enrichment so field hints are fully resolved.
+		if err := populateAllServeFieldsFromInclude(&entry, k.katalogDir); err != nil {
 			return nil, fmt.Errorf("CRD %q: %w", name, err)
 		}
 
@@ -171,9 +167,9 @@ func (k *Katalog) KomposeRuntimeKatalog(
 		return nil, err
 	}
 
-	// idp.fields / idp.additionalFields marked required: true get an implicit
+	// serve.fields / serve.additionalFields marked required: true get an implicit
 	// exists rule, and entries declaring type: enum get an implicit in rule —
-	// see CRDEntry.RequiredIDPFieldRules / EnumIDPFieldRules. Runs last, after
+	// see CRDEntry.RequiredServeFieldRules / EnumServeFieldRules. Runs last, after
 	// every other rules source (inline, validation.include, motif imports)
 	// has settled.
 	//
@@ -183,14 +179,14 @@ func (k *Katalog) KomposeRuntimeKatalog(
 	// synthesized exists rule when the field is simply missing. Presence is
 	// the more fundamental problem — "team is required" is a more useful
 	// headline than "team must be a valid DNS subdomain" when the real issue
-	// is that team was never set at all. Same principle EnumIDPFieldRules
+	// is that team was never set at all. Same principle EnumServeFieldRules
 	// already applies to itself (its own synthesized rule's When prepends an
 	// exists gate ahead of the enum check). This only reorders relative to
 	// hand-written rules on the same field — it doesn't change any rule's
 	// own pass/fail outcome, and the full violations: list (what the
 	// Control Center highlights from) is unaffected either way.
 	for name, entry := range k.enabledCRDs {
-		synthesized := append(entry.RequiredIDPFieldRules(), entry.EnumIDPFieldRules()...)
+		synthesized := append(entry.RequiredServeFieldRules(), entry.EnumServeFieldRules()...)
 		if len(synthesized) == 0 {
 			continue
 		}
@@ -200,7 +196,7 @@ func (k *Katalog) KomposeRuntimeKatalog(
 		// KomposeRuntimeKatalog runs on both a raw katalog.yaml and an
 		// already-expanded bundle.yaml (ork generate bundle calls
 		// SerializeExpanded, which serializes the post-KomposeRuntimeKatalog
-		// state — synthesized rules included). idp.fields/idp.additionalFields
+		// state — synthesized rules included). serve.fields/serve.additionalFields
 		// required:/type: enum config is still present either way, so without
 		// this check, loading a bundle would re-synthesize and duplicate every
 		// rule already baked in from generate-bundle time. Synthesis is
@@ -245,8 +241,8 @@ func (k *Katalog) KomposeRuntimeKatalog(
 		return nil, err
 	}
 
-	// Build all IDP enabled CRDs
-	k.idpEnabledCRDs = k.BuildIDPEnabledCRDs()
+	// Build all serve enabled CRDs
+	k.serveEnabledCRDs = k.BuildServeEnabledCRDs()
 
 	return k.enabledCRDs, nil
 }

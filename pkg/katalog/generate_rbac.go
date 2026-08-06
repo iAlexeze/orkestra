@@ -419,11 +419,11 @@ func (k *Katalog) GenerateGatewayRBACRules() []rbacv1.PolicyRule {
 	}
 
 	// ───────────────────────────────────────────────
-	// Apply API — secretRef token bootstrap/rotation
+	// Gateway API — secretRef token bootstrap/rotation
 	// ───────────────────────────────────────────────
 	// get: read existing token; create: self-bootstrap when Secret is absent.
 	// Uses the same annotation-based rotation as pkg/runners secrets_once.go.
-	if k.HasApplyAPISecretRefs() {
+	if k.HasGatewayAPISecretRefs() {
 		rules = append(rules, rbacv1.PolicyRule{
 			APIGroups: []string{""},
 			Resources: []string{"secrets"},
@@ -432,11 +432,11 @@ func (k *Katalog) GenerateGatewayRBACRules() []rbacv1.PolicyRule {
 	}
 
 	// ───────────────────────────────────────────────
-	// Apply API — CR create/update/delete/get/list
+	// Gateway API — CR create/update/delete/get/list
 	// ───────────────────────────────────────────────
-	if k.HasIDPEnabled() {
+	if k.HasServeEnabled() {
 		for _, crd := range k.Enabled() {
-			if !crd.IDPEnabled() {
+			if !crd.ServeEnabled() {
 				continue
 			}
 			rules = append(rules, rbacv1.PolicyRule{

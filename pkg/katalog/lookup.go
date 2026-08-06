@@ -36,26 +36,26 @@ func (k *Katalog) BuildLookupIndexes() {
 		k.kindIndex[strings.ToLower(crd.Kind())] = name
 		k.gvkIndex[strings.ToLower(crd.GVKString())] = name
 		k.gvrIndex[strings.ToLower(crd.GVRString())] = name
-		if crd.HasIDPTarget() {
-			k.targetIndex[strings.ToLower(crd.IDPTarget())] = name
+		if crd.HasServeTarget() {
+			k.targetIndex[strings.ToLower(crd.ServeTarget())] = name
 		}
 	}
 }
 
-// BuildIDPEnabledCRDs returns a slice of all IDP-enabled CRDs.
+// BuildServeEnabledCRDs returns a slice of all serve-enabled CRDs.
 // Use for iteration when the map key is not needed.
-func (k *Katalog) BuildIDPEnabledCRDs() []*orktypes.CRDEntry {
+func (k *Katalog) BuildServeEnabledCRDs() []*orktypes.CRDEntry {
 	if k == nil {
 		return nil
 	}
-	idpEnabled := make([]*orktypes.CRDEntry, 0, len(k.enabledCRDs))
+	serveEnabled := make([]*orktypes.CRDEntry, 0, len(k.enabledCRDs))
 	for _, crd := range k.enabledCRDs {
-		if crd.IDPEnabled() {
+		if crd.ServeEnabled() {
 			entry := crd
-			idpEnabled = append(idpEnabled, &entry)
+			serveEnabled = append(serveEnabled, &entry)
 		}
 	}
-	return idpEnabled
+	return serveEnabled
 }
 
 // -----------------------------------------------------------------------------
