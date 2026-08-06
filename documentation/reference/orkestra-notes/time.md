@@ -12,9 +12,9 @@ All timestamp notes accept RFC3339, RFC3339Nano, `2006-01-02T15:04:05Z`, and `YY
 | `timeSince` | Return the number of seconds elapsed since a timestamp as an integer. |
 | `isExpired` | Return `true` when a timestamp plus a duration is in the past. |
 | `timeFormat` | Reformat a timestamp string using Go's time format layout. |
-| `durationSeconds` | Parse a Go duration string and return the total number of seconds as an integer. |
-| `durationAdd` | Add two Go duration strings and return the result as a canonical duration string. |
-| `durationValid` | Return `true` when the string is a valid Go duration. |
+| `durationSeconds` | Parse an extended duration string (Go units plus `d`/`w`/`mo`/`y`) and return the total number of seconds as an integer. |
+| `durationAdd` | Add two extended duration strings (Go units plus `d`/`w`/`mo`/`y`) and return the result as a canonical Go duration string. |
+| `durationValid` | Return `true` when the string is a valid extended duration (Go units plus `d`/`w`/`mo`/`y`). |
 | `weekday` | Return `true` when the current UTC day is Monday through Friday. |
 | `weekend` | Return `true` when the current UTC day is Saturday or Sunday. |
 | `timeInWindow` | Return `true` when the current UTC time falls within the window `[after, before)`. |
@@ -47,11 +47,11 @@ onCreate:
   secrets:
     - name: "{{ .metadata.name }}-token"
       once: true
-      rotateAfter: 720h
+      rotateAfter: 30d
 
 # Gate a resource on whether a timestamp annotation is past its TTL
 when:
-  - field: "{{ isExpired (index .metadata.annotations \"myorg.io/generated-at\") \"720h\" }}"
+  - field: "{{ isExpired (index .metadata.annotations \"myorg.io/generated-at\") \"30d\" }}"
     equals: "true"
 
 # timeFormat
@@ -69,7 +69,7 @@ status:
   fields:
     - path: resyncIntervalSeconds
       value: "{{ durationSeconds .spec.resyncInterval }}"
-      # "5m" → 300  |  "1h30m" → 5400
+      # "5m" → 300  |  "1h30m" → 5400  |  "7d" → 604800
 
 # durationAdd
 # Compute the total window from base + buffer
@@ -84,7 +84,7 @@ spec:
   crds:
     myApp:
       validate:
-        - message: "spec.rotationPeriod must be a valid Go duration (e.g. 720h, 30m)"
+        - message: "spec.rotationPeriod must be a valid duration (e.g. 30d, 90m, 1y)"
           deny:
             - field: "{{ durationValid .spec.rotationPeriod }}"
               equals: "false"

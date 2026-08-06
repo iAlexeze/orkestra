@@ -8,6 +8,7 @@ import (
 	"time"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/sasl/plain"
 )
@@ -37,14 +38,14 @@ import (
 //	called      — "true"
 type kafkaClient struct{}
 
-func (c *kafkaClient) Fetch(ctx context.Context, spec orktypes.ExternalCallSpec, resolvedURL, resolvedQuery, credential string) (map[string]interface{}, error) {
+func (c *kafkaClient) Fetch(ctx context.Context, spec orktypes.ExternalCallSpec, resolvedURL, resolvedQuery, _, credential string) (map[string]interface{}, error) {
 	if resolvedQuery == "" {
 		return errorResult("kafka: query: is required (\"group/topic\" or \"@topic\")"), nil
 	}
 
 	timeout := defaultExternalTimeout
 	if spec.Timeout != "" {
-		if d, err := time.ParseDuration(spec.Timeout); err == nil {
+		if d, err := utils.ParseTimeDuration(spec.Timeout); err == nil {
 			timeout = d
 		}
 	}

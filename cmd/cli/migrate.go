@@ -161,4 +161,7 @@ func init() {
 	migrateCmd.Flags().StringP("output", "o", "", "Write output to this directory (non-destructive; skips confirmation)")
 	migrateCmd.Flags().String("module", "", "Go module path for the migrated operator (e.g. github.com/myorg/my-operator)")
 	migrateCmd.Flags().String("name", "", "Operator name in kebab-case (e.g. my-operator); derived from receiver type if omitted")
+
+	// Shadow global flags so they don't appear under `ork migrate`
+	shadowGlobalCommandFlags(migrateCmd, "file")
 }

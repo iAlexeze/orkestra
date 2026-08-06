@@ -7,7 +7,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 // ParseBool interprets common boolean representations from template expressions.
@@ -47,7 +47,7 @@ func SleepIfNeeded(s string) error {
 		return nil
 	}
 
-	d, err := orktypes.ParseTimeDuration(s)
+	d, err := utils.ParseTimeDuration(s)
 	if err != nil {
 		return err
 	}

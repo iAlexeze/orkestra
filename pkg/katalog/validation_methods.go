@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 // -----------------------------------------------------------------------------
@@ -184,6 +185,10 @@ func (k *Katalog) setGroupVersionKind() error {
 
 		k.enabledCRDs[name] = crd
 	}
+
+	// Build indexes for O(1) lookups
+	k.BuildLookupIndexes()
+
 	return nil
 }
 
@@ -217,6 +222,11 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 			return fmt.Errorf("CRD with key '%s': empty name after normalisation", name)
 		}
 
+		// Standard Kubernetes name check.
+		if errs := validation.IsDNS1123Label(crd.Name); len(errs) > 0 {
+			return fmt.Errorf("CRD with key '%s': invalid name %q: %s", name, crd.Name, strings.Join(errs, "; "))
+		}
+
 		// Handle namespaced and cluster-scoped crds
 		if !crd.IsNamespaced() && crd.Namespace != "" {
 			logger.Warn().Msgf("%s is clusterscoped. Namespace %s will be ignored", crd.APITypes.Kind, crd.Namespace)
@@ -232,7 +242,7 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		// Handle plural name
 		if crd.APITypes.Plural == "" {
 			logger.Debug().Msgf("Plural name for %s is empty. Setting to '%ss'", crd.APITypes.Kind, crd.Name)
-			crd.APITypes.Plural = fmt.Sprintf("%ss", strings.ToLower(crd.Name))
+			crd.APITypes.Plural = fmt.Sprintf("%ss", strings.ToLower(crd.APITypes.Kind))
 		}
 
 		// Handle finalizers
@@ -519,7 +529,7 @@ func (k *Katalog) validateTimeDuration() error {
 			if orktypes.IsTemplate(e.Duration) {
 				continue
 			}
-			if _, err := orktypes.ParseTimeDuration(e.Duration); err != nil {
+			if _, err := parseTimeDuration(e.Duration); err != nil {
 				return durationError(name, e.ResourceName, "sleep", e.Duration, err)
 			}
 		}
@@ -531,13 +541,13 @@ func (k *Katalog) validateTimeDuration() error {
 		if crd.HasOnCreate() {
 			for _, s := range crd.OperatorBox.OnCreate.Secrets {
 				if s.RotateAfter != "" {
-					if _, err := orktypes.ParseTimeDuration(s.RotateAfter); err != nil {
+					if _, err := parseTimeDuration(s.RotateAfter); err != nil {
 						return durationError(name, s.Name, "rotateAfter", s.RotateAfter, err)
 					}
 				}
 				// Check per-secret TLS presence
 				if s.TLS != nil && s.TLS.ValidFor != "" {
-					if _, err := orktypes.ParseTimeDuration(s.TLS.ValidFor); err != nil {
+					if _, err := parseTimeDuration(s.TLS.ValidFor); err != nil {
 						return durationError(name, s.Name, "validFor", s.TLS.ValidFor, err)
 					}
 				}
@@ -547,13 +557,13 @@ func (k *Katalog) validateTimeDuration() error {
 		if crd.HasOnReconcile() {
 			for _, s := range crd.OperatorBox.OnReconcile.Secrets {
 				if s.RotateAfter != "" {
-					if _, err := orktypes.ParseTimeDuration(s.RotateAfter); err != nil {
+					if _, err := parseTimeDuration(s.RotateAfter); err != nil {
 						return durationError(name, s.Name, "rotateAfter", s.RotateAfter, err)
 					}
 				}
 				// Check per-secret TLS presence
 				if s.TLS != nil && s.TLS.ValidFor != "" {
-					if _, err := orktypes.ParseTimeDuration(s.TLS.ValidFor); err != nil {
+					if _, err := parseTimeDuration(s.TLS.ValidFor); err != nil {
 						return durationError(name, s.Name, "validFor", s.TLS.ValidFor, err)
 					}
 				}

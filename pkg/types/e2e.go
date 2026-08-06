@@ -728,6 +728,44 @@ type E2EKubectlApply struct {
 	Inline string `yaml:"inline,omitempty"`
 	// Namespace overrides the namespace for resources that don't declare one.
 	Namespace string `yaml:"namespace,omitempty"`
+
+	// ExitCode is the expected exit code. Default 0 (success). Set to
+	// non-zero to assert the apply must be rejected — e.g. an admission
+	// webhook denial — instead of treating any failure as a broken test.
+	// Same convention as E2ECommand.ExitCode.
+	ExitCode int `yaml:"exitCode,omitempty"`
+	// Equals asserts the combined stdout+stderr (trimmed) exactly matches this string.
+	Equals string `yaml:"equals,omitempty"`
+	// NotEquals asserts the combined stdout+stderr (trimmed) does not exactly match this string.
+	NotEquals string `yaml:"notEquals,omitempty"`
+	// OutputContains asserts the combined stdout+stderr contains this substring —
+	// e.g. the admission webhook's denial message.
+	OutputContains string `yaml:"outputContains,omitempty"`
+	// OutputNotContains asserts the combined stdout+stderr does NOT contain this substring.
+	OutputNotContains string `yaml:"outputNotContains,omitempty"`
+	// Regex asserts the combined stdout+stderr (trimmed) matches this RE2 pattern.
+	Regex string `yaml:"regex,omitempty"`
+	// GreaterThan asserts the output (trimmed, parsed as a number) is greater than this value — strict.
+	GreaterThan string `yaml:"greaterThan,omitempty"`
+	// LessThan asserts the output (trimmed, parsed as a number) is less than this value — strict.
+	LessThan string `yaml:"lessThan,omitempty"`
+	// GreaterThanOrEqual asserts the output is greater than or equal to this value.
+	GreaterThanOrEqual string `yaml:"greaterThanOrEqual,omitempty"`
+	// LessThanOrEqual asserts the output is less than or equal to this value.
+	LessThanOrEqual string `yaml:"lessThanOrEqual,omitempty"`
+	// Between asserts the output (trimmed, parsed as a number) is within an
+	// inclusive range. Value is "min,max".
+	Between string `yaml:"between,omitempty"`
+	// NotBetween asserts the output is numerically outside an inclusive range. Value is "min,max".
+	NotBetween string `yaml:"notBetween,omitempty"`
+	// Exists asserts the output (trimmed) is non-empty.
+	Exists bool `yaml:"exists,omitempty"`
+	// NotExists asserts the output (trimmed) is empty.
+	NotExists bool `yaml:"notExists,omitempty"`
+	// OneOf asserts the output (trimmed) exactly matches one of these values.
+	OneOf []string `yaml:"oneOf,omitempty"`
+	// NotOneOf asserts the output (trimmed) matches none of these values.
+	NotOneOf []string `yaml:"notOneOf,omitempty"`
 }
 
 // E2EKubectlDelete deletes resources during an expect checkpoint.
@@ -980,6 +1018,18 @@ type E2EKubectlPortForward struct {
 	Path string `yaml:"path,omitempty"`
 	// Method is the HTTP method. Defaults to GET.
 	Method string `yaml:"method,omitempty"`
+	// Headers are added to the request, e.g. Authorization for a token-gated
+	// endpoint like the Gateway API. Values go through os.ExpandEnv
+	// (same ${VAR} syntax as gateway.api.auth.tokens.token), so a CI
+	// secret never needs to be written into the YAML file.
+	//
+	//	headers:
+	//	  Authorization: "Bearer ${ORK_CI_TOKEN}"
+	Headers map[string]string `yaml:"headers,omitempty"`
+	// Body is sent as the request body for methods that accept one (POST,
+	// PUT, PATCH). Ignored for GET/HEAD/DELETE. Goes through os.ExpandEnv,
+	// same as Headers.
+	Body string `yaml:"body,omitempty"`
 	// Wait is an optional duration to sleep after the port-forward is ready
 	// but before the curl request is made. Useful when the endpoint needs a
 	// moment to stabilise after the connection is established.

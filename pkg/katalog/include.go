@@ -6,9 +6,9 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-func populateIDPFieldsFromInclude(entry *orktypes.CRDEntry, katalogDir string) error {
-	if err := orktypes.ExpandIDPInclude(entry.IDP, katalogDir); err != nil {
-		return fmt.Errorf("idp: %w", err)
+func populateAllServeFieldsFromInclude(entry *orktypes.CRDEntry, katalogDir string) error {
+	if err := orktypes.ExpandServeInclude(entry.Serve, katalogDir); err != nil {
+		return fmt.Errorf("serve: %w", err)
 	}
 	return nil
 }

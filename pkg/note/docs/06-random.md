@@ -36,7 +36,7 @@ Keywords: random, uuid, secret, token, id, identifier, generate, crypto
 # → "f47ac10b-58cc-4372-a567-0e02b2c3d479"
 ```
 
-**Use for:** Apply API tokens, OAuth client IDs, correlation IDs, any consumer that expects UUID-shaped values.
+**Use for:** Gateway API tokens, OAuth client IDs, correlation IDs, any consumer that expects UUID-shaped values.
 
 ---
 

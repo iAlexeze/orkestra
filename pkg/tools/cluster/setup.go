@@ -8,6 +8,7 @@ import (
 	"time"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 // HelmInstall installs or upgrades a Helm chart as declared in SetupHelmInstall.
@@ -74,7 +75,7 @@ func HelmUninstall(ctx context.Context, h orktypes.SetupHelmInstall) error {
 func WaitForResource(ctx context.Context, w orktypes.SetupWait) error {
 	timeout := 30 * time.Second
 	if w.Timeout != "" {
-		if d, err := time.ParseDuration(w.Timeout); err == nil {
+		if d, err := utils.ParseTimeDuration(w.Timeout); err == nil {
 			timeout = d
 		}
 	}

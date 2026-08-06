@@ -80,9 +80,9 @@ Each runtime exposes `/katalog`, `/katalog/{crd}`, and `/katalog/{crd}/health`. 
 
 ---
 
-## The Control Center as an IDP
+## The Control Center as a developer portal
 
-When a CRD entry has `idp.enabled: true` in its Katalog, the Control Center gains a `[+ Create]` button for that CRD:
+When a CRD entry has `serve.enabled: true` in its Katalog, the Control Center gains a `[+ Create]` button for that CRD:
 
 ```text
 ┌────────────────────────────────────────────────────┐
@@ -90,13 +90,13 @@ When a CRD entry has `idp.enabled: true` in its Katalog, the Control Center gain
 └────────────────────────────────────────────────────┘
 ```
 
-Clicking it opens a form generated directly from the CRD's OpenAPI schema and the `idp.fields` presentation hints declared in the Katalog — field labels, placeholders, and input order. No separate form builder. No schema duplication.
+Clicking it opens a form generated directly from the CRD's OpenAPI schema and the `serve.fields` presentation hints declared in the Katalog — field labels, placeholders, and input order. No separate form builder. No schema duplication.
 
 ```yaml
 spec:
   crds:
     application:
-      idp:
+      serve:
         enabled: true
         fields:
           environment:
@@ -109,6 +109,6 @@ spec:
             order: 2
 ```
 
-Submitting the form posts to the gateway Apply API. Every enforcement rule — admission, namespace protection, deletion protection — applies the same way as `kubectl apply`. The Control Center is one delivery path; CI pipelines, Terraform, and curl are others. The runtime does not distinguish between them.
+Submitting the form posts to the gateway Gateway API. Every enforcement rule — admission, namespace protection, deletion protection — applies the same way as `kubectl apply`. The Control Center is one delivery path; CI pipelines, Terraform, and curl are others. The runtime does not distinguish between them.
 
 → [Internal Developer Platform concept](../../concepts/idp/index.md)

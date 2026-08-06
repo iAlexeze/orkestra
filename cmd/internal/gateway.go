@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/orkspace/orkestra/domain"
-	applygateway "github.com/orkspace/orkestra/pkg/gateway/applyapi"
+	apigateway "github.com/orkspace/orkestra/pkg/gateway/api"
 	"github.com/orkspace/orkestra/pkg/gateway/certmanager"
 	gwhandlers "github.com/orkspace/orkestra/pkg/gateway/handlers"
 	"github.com/orkspace/orkestra/pkg/gateway/webhook"
@@ -119,17 +119,17 @@ func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	}
 	logger.Debug().Msg("gateway /katalog routes registered")
 
-	// ── 7b. Apply API ────────────────────────────────────────────────────────
+	// ── 7b. Gateway API ────────────────────────────────────────────────────────
 	// Registers POST /api/v1/apply, GET/DELETE /api/v1/resources/, GET /api/v1/schema/
-	// only when gateway.applyAPI.enabled: true in the Katalog and at least one
-	// CRD has idp.enabled: true.
-	applyAPI, applyAPIErr := applygateway.NewApplyAPIServer(ctx, kat, kube, kfg.Cluster().Namespace())
-	if applyAPIErr != nil {
-		logger.Fatal().Err(applyAPIErr).Msg("apply API setup failed")
+	// only when gateway.api.enabled: true in the Katalog and at least one
+	// CRD has serve.enabled: true.
+	api, apiErr := apigateway.NewAPIServer(ctx, kat, kube, kfg.Cluster().Namespace())
+	if apiErr != nil {
+		logger.Fatal().Err(apiErr).Msg("gateway API setup failed")
 	}
-	if applyAPI != nil {
-		applyAPI.Register(hs)
-		ws.SetTokenReloader(applyAPI.ReloadTokens)
+	if api != nil {
+		api.Register(hs)
+		ws.SetTokenReloader(api.ReloadTokens)
 	}
 
 	// ── 8. Komponent list ─────────────────────────────────────────────────────

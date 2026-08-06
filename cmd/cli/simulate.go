@@ -1115,11 +1115,6 @@ func init() {
 	simulateCmd.Flags().Bool("dev-server", false, "Start the mock dev server for external: examples")
 	simulateCmd.Flags().Int("dev-server-port", devserver.Port, "Port for the mock dev server")
 
-	// Shadow global flags
-	simulateCmd.Flags().Bool("debug", false, "")
-	simulateCmd.Flags().String("kubeconfig", "", "")
-	simulateCmd.Flags().Bool("verbose", false, "")
-	simulateCmd.Flags().MarkHidden("debug")
-	simulateCmd.Flags().MarkHidden("kubeconfig")
-	simulateCmd.Flags().MarkHidden("verbose")
+	// Shadow global flags so they don't appear under `ork simulate`
+	shadowGlobalCommandFlags(simulateCmd)
 }

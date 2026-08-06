@@ -4,51 +4,51 @@ import (
 	"testing"
 )
 
-// ── idp.include ───────────────────────────────────────────────────────────────
+// ── serve.include ───────────────────────────────────────────────────────────────
 
-func TestIDPInclude_ExpandsFields(t *testing.T) {
-	k := mustParseTestdata(t, "include/idp.yaml")
+func TestServeInclude_ExpandsFields(t *testing.T) {
+	k := mustParseTestdata(t, "include/serve.yaml")
 	crd, _ := k.Get("platform")
 	if crd == nil {
 		t.Fatal("platform CRD not found")
 	}
-	if crd.IDP == nil {
-		t.Fatal("IDP is nil")
+	if crd.Serve == nil {
+		t.Fatal("Serve is nil")
 	}
 	// Included fields
-	if _, ok := crd.IDP.Fields["team"]; !ok {
+	if _, ok := crd.Serve.Fields["team"]; !ok {
 		t.Error("included field 'team' missing")
 	}
-	if _, ok := crd.IDP.Fields["environment"]; !ok {
+	if _, ok := crd.Serve.Fields["environment"]; !ok {
 		t.Error("included field 'environment' missing")
 	}
 	// Inline field merged on top
-	if _, ok := crd.IDP.Fields["image"]; !ok {
+	if _, ok := crd.Serve.Fields["image"]; !ok {
 		t.Error("inline field 'image' missing")
 	}
 }
 
-func TestIDPInclude_InlineOverridesIncluded(t *testing.T) {
-	k := mustParseTestdata(t, "include/idp.yaml")
+func TestServeInclude_InlineOverridesIncluded(t *testing.T) {
+	k := mustParseTestdata(t, "include/serve.yaml")
 	crd, _ := k.Get("platform")
-	if crd == nil || crd.IDP == nil {
-		t.Fatal("platform CRD or IDP is nil")
+	if crd == nil || crd.Serve == nil {
+		t.Fatal("platform CRD or Serve is nil")
 	}
 	// 'team' from include has order 1; if an inline field with the same name
 	// were present it would win. Here 'image' is inline-only with order 3.
-	if f, ok := crd.IDP.Fields["image"]; !ok || f.Order != 3 {
-		t.Errorf("inline 'image' field: got order %d, want 3", crd.IDP.Fields["image"].Order)
+	if f, ok := crd.Serve.Fields["image"]; !ok || f.Order != 3 {
+		t.Errorf("inline 'image' field: got order %d, want 3", crd.Serve.Fields["image"].Order)
 	}
 }
 
-func TestIDPInclude_ClearedAfterExpansion(t *testing.T) {
-	k := mustParseTestdata(t, "include/idp.yaml")
+func TestServeInclude_ClearedAfterExpansion(t *testing.T) {
+	k := mustParseTestdata(t, "include/serve.yaml")
 	crd, _ := k.Get("platform")
-	if crd == nil || crd.IDP == nil {
-		t.Fatal("platform CRD or IDP is nil")
+	if crd == nil || crd.Serve == nil {
+		t.Fatal("platform CRD or Serve is nil")
 	}
-	if crd.IDP.Include != "" {
-		t.Errorf("IDP.Include not cleared after expansion, got %q", crd.IDP.Include)
+	if crd.Serve.Include != "" {
+		t.Errorf("Serve.Include not cleared after expansion, got %q", crd.Serve.Include)
 	}
 }
 

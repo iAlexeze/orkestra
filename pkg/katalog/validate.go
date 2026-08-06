@@ -265,9 +265,9 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	}
 
 	// -------------------------------------------------------------------------
-	// 36. Validate idp.additionalFields (key syntax, enum, uniqueness)
+	// 36. Validate Serve configuration
 	// -------------------------------------------------------------------------
-	if err := k.validateIDPAdditionalFields(); err != nil {
+	if err := k.ValidateServe(); err != nil {
 		return nil, err
 	}
 
@@ -275,6 +275,20 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	// 37. Validate validation.rules / mutation.rules operators are known
 	// -------------------------------------------------------------------------
 	if err := k.validateAdmissionOperators(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 38. Validate validation.rules link: values
+	// -------------------------------------------------------------------------
+	if err := k.validateValidationRuleLinks(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 41. Validate gateway tokens (no duplicates)
+	// -------------------------------------------------------------------------
+	if err := k.validateGatewayTokens(); err != nil {
 		return nil, err
 	}
 

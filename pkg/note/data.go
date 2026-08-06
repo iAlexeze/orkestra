@@ -17,6 +17,8 @@ import (
 // - sha256sum
 // - truncate
 // - slugify
+// - repoSlug
+// - lookup
 
 func dataNotes() template.FuncMap {
 	return template.FuncMap{
@@ -26,6 +28,8 @@ func dataNotes() template.FuncMap {
 		"sha256sum":    noteSHA256Sum,
 		"truncateName": noteTruncate,
 		"slugify":      noteSlugify,
+		"repoSlug":     noteRepoSlug,
+		"lookup":       noteLookup,
 	}
 }
 
@@ -100,4 +104,38 @@ func noteSlugify(s string) string {
 	s = slugNonAlnum.ReplaceAllString(s, "-")
 	s = slugMultiDash.ReplaceAllString(s, "-")
 	return strings.Trim(s, "-")
+}
+
+// noteRepoSlug extracts a Kubernetes-safe name from a repository reference —
+// the last path segment (repo name), with a trailing ".git" stripped, then
+// slugified. Works with git URLs, org/repo shorthand, or a bare repo name.
+//
+//	{{ repoSlug "myorg/payments-api" }}                    → "payments-api"
+//	{{ repoSlug "git@github.com:myorg/payments-api.git" }} → "payments-api"
+//	{{ repoSlug "https://github.com/myorg/payments-api" }} → "payments-api"
+//	{{ repoSlug "payments-api" }}                          → "payments-api"
+func noteRepoSlug(s string) string {
+	s = strings.TrimSuffix(strings.TrimRight(s, "/"), ".git")
+	if i := strings.LastIndexAny(s, "/:"); i >= 0 {
+		s = s[i+1:]
+	}
+	return noteSlugify(s)
+}
+
+// noteLookup returns the value paired with key in a flat list of alternating
+// key/value pairs — the first match wins. Returns "" if key matches none,
+// consistent with missingkey=zero elsewhere. A trailing unpaired argument is
+// ignored rather than causing an error.
+//
+//	{{ lookup .spec.repository
+//	     "myorg/payments-api"  "team-payments"
+//	     "myorg/orders-api"    "team-orders"
+//	     "myorg/inventory-api" "team-inventory" }}
+func noteLookup(key string, pairs ...string) string {
+	for i := 0; i+1 < len(pairs); i += 2 {
+		if pairs[i] == key {
+			return pairs[i+1]
+		}
+	}
+	return ""
 }

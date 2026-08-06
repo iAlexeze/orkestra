@@ -16,7 +16,7 @@ Every block that can grow long supports `include:`. The include file uses the sa
 
 | Block | `include:` field | File key | Order |
 |-------|-----------------|----------|-------|
-| `idp.fields` | `idp.include` | `fields:` | included first, inline wins on key conflict |
+| `serve.fields` | `serve.include` | `fields:` | included first, inline wins on key conflict |
 | `validation.rules` | `validation.include` | `rules:` | included first, inline appends after |
 | `mutation.rules` | `mutation.include` | `rules:` | included first, inline appends after |
 | `conversion.paths` | `conversion.include` | `paths:` | included first, inline appends after |

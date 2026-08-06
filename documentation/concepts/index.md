@@ -168,6 +168,6 @@ The [Health Subsystem](health-subsystem/) is Orkestra's liveness, readiness, and
 
 ## Internal Developer Platform
 
-An [Internal Developer Platform](idp/) built on Orkestra is not a separate application. It is the gateway, a Katalog with two config fields enabled, and optionally a form in the Control Center. The Gateway Apply API is a CRUD REST surface for CRs — any HTTP client can create, read, or delete the resources your operator manages, without kubeconfig or kubectl.
+An [Internal Developer Platform](idp/) built on Orkestra is not a separate application. It is the gateway, a Katalog with two config fields enabled, and optionally a form in the Control Center. The Gateway API is a CRUD REST surface for CRs — any HTTP client can create, read, or delete the resources your operator manages, without kubeconfig or kubectl.
 
 → [Read: Internal Developer Platform](idp/)

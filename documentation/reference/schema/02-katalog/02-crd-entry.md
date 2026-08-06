@@ -135,7 +135,7 @@ dependsOn:
 
 ## `enrich`
 
-→ [enrich.md](15-enrich.md)
+→ [enrich](15-enrich.md)
 
 ---
 
@@ -186,24 +186,24 @@ imports:
       port: "8080"
 ```
 
-→ Full Motif import schema: [motif.md](../01-motif/index.md)
+→ Full Motif import schema: [motif](../01-motif/index.md)
 
-## `idp`
+## `serve`
 
-Controls whether this CRD is exposed through the Gateway Apply API and the Control Center's IDP form. Requires `gateway.applyAPI.enabled: true` at the Katalog level.
+Controls whether this CRD is exposed through the Gateway API and the Control Center's Serve form. Requires `gateway.api.enabled: true` at the Katalog level.
 
 ```yaml
 spec:
   crds:
     platformResource:
-      idp:
+      serve:
         enabled: true
         category: "Compute"
         description: "Deploy and manage platform workloads"
-        ignoreFields:
+        ignore:
           - spec.internalRef
           - spec.managedBy
-        include: ./idp/platformresource.yaml   # or inline fields:
+        include: ./serve/platformresource.yaml   # or inline fields:
         fields:
           environment:
             label: "Environment"
@@ -235,85 +235,11 @@ spec:
             order: 99
 ```
 
-### `idp` top-level fields
+**Full reference:** → [serve](20-serve.md) — `serve.fields`, `serve labels/annotations`, `serve.name`, `serve.namespace`, `serve.config.response`, `serve.tokens`.
 
-| Field | Default | Description |
-|-------|---------|-------------|
-| `enabled` | `false` | `true` — this CRD gets a **[+ Create]** button in the Control Center and its schema is served at `GET /api/v1/schema/{kind}`. |
-| `category` | — | Category label shown in the schema catalog (`GET /api/v1/schema/`). Groups related CRDs in the service catalog. |
-| `description` | — | Short description shown in the catalog. Overrides the CRD-level description. |
-| `ignoreFields` | — | Dot-notation field paths excluded from the IDP form. Use for internal or platform-managed fields that should not be visible to users. |
-| `fields` | — | Optional form hints. Each key matches a field name in the CRD spec. Missing keys are rendered from the OpenAPI schema alone. |
-| `include` | — | Path (relative to the katalog file) to a YAML file containing a `fields:` key. Inline `fields:` take precedence over included values. Expanded at load time. |
-| `forceConflict` | `false` | When `true`, every Apply API request for this CRD uses `Force: true` on server-side apply — the gateway takes ownership of any conflicting fields rather than surfacing a conflict error. Equivalent to `helm --force-conflict`. Callers can still override per-request with `?overwrite=true`. |
-
-`idp/platformresource.yaml` (the include file):
-
-```yaml
-fields:
-  environment:
-    label: "Environment"
-    placeholder: "staging"
-    category: "Basics"
-    order: 1
-  team:
-    label: "Owning Team"
-    category: "Basics"
-    order: 2
-```
-
-### `idp.fields.<name>`
-
-| Field | Description |
-|-------|-------------|
-| `label` | Display label. Overrides the OpenAPI schema `description`. |
-| `hint` | Helper text shown below the field. |
-| `placeholder` | Input placeholder. |
-| `category` | Section heading in the form. Fields with the same category are grouped together. Empty defaults to `"Spec"`. |
-| `order` | Sort order within the form. Fields without `order` follow fields that have it. |
-| `when` | All conditions must pass for this field to be shown (AND). Uses the same `Condition` type as resource templates — see [06-when-conditions.md](06-when-conditions.md). Evaluated client-side in the Control Center; gateway/admission is the backstop. |
-| `anyOf` | At least one condition must pass for this field to be shown (OR). When both `when` and `anyOf` are declared, both blocks must pass. |
-| `required` | When `true`, marks the field as mandatory — enforced both client-side (the browser shows an asterisk and blocks submission while empty) and server-side: an implicit `exists` rule with `action: deny` is synthesized automatically at load time, so every caller of the Apply API is covered, not just the Control Center form. No matching `validation.rules` entry needs to be hand-written. Has no effect on fields currently hidden by a `when:` or `anyOf:` condition. |
-| `disabled` | Non-empty string — field is rendered greyed-out with this message. Useful for platform-managed fields that should be visible but not editable. |
-
-### `idp.additionalFields`
-
-Exposes label and annotation keys as self-service form fields, written to `metadata.labels`/`metadata.annotations` on apply instead of `spec`. Flat — `labels` and `annotations` are the only two buckets; there is no third kind of Kubernetes object-metadata field to add later.
-
-```yaml
-idp:
-  enabled: true
-  additionalFields:
-    labels:
-      team:
-        label: "Team"
-        placeholder: "team-payments"
-        required: true
-    annotations:
-      canary.myorg.io:
-        label: "Enable canary rollout"
-        type: boolean
-      cost-center.myorg.io:
-        label: "Cost Center"
-        type: enum
-        enum: ["finance", "engineering", "sales"]
-```
-
-Each entry is an `IDPFieldConfig` — the same shape as `idp.fields.<name>` above, plus two fields that only matter here (spec fields always infer these from the CRD's OpenAPI schema instead):
-
-| Field | Description |
-|-------|-------------|
-| `type` | Required for additionalFields — labels/annotations have no CRD schema to infer type from. One of `string` (default), `integer`, `number`, `boolean`, `enum`. |
-| `enum` | Valid values when `type: enum`. Required in that case — `ork validate` rejects `type: enum` with no `enum:` list. |
-
-Validated at `ork validate` time: every key must be a syntactically valid Kubernetes label/annotation key (`[prefix/]name`), and no key may collide with `idp.fields` or the other `additionalFields` bucket.
-
-→ [concepts/idp — Additional Fields](../../../concepts/idp/01-additional-fields.md) — why this exists, and the boolean-checkbox gotcha with `hasAnnotation`
-
-Without any `idp:` block on the CRD entry, the CRD is not exposed via the Apply API regardless of what the Katalog-level `gateway.applyAPI` config says.
-
-→ [17-katalog-applyapi.md](17-katalog-applyapi.md) — Katalog-level Apply API config
-→ [concepts/idp](../../../concepts/idp/) — conceptual overview
+## See also
+**Conceptual overview:** → [concepts/idp](../../../concepts/idp/)
+**Gateway API:** → [gateway-api](17-gateway-api.md)
 
 ---
 
@@ -321,9 +247,10 @@ Without any `idp:` block on the CRD entry, the CRD is not exposed via the Apply 
 
 | Field | Reference |
 |-------|-----------|
-| `apiTypes` | [apitypes.md](03-apitypes.md) |
-| `enrich` | [enrich.md](15-enrich.md) |
-| `operatorBox` | [operatorbox.md](04-operatorbox.md) |
-| `conversion` | [conversion.md](09-conversion.md) |
-| `validation` | [validation.md](07-validation.md) |
-| `mutation` | [mutation.md](08-mutation.md) |
+| `apiTypes` | [apitypes](03-apitypes.md) |
+| `enrich` | [enrich](15-enrich.md) |
+| `operatorBox` | [operatorbox](04-operatorbox.md) |
+| `conversion` | [conversion](09-conversion.md) |
+| `validation` | [validation](07-validation.md) |
+| `mutation` | [mutation](08-mutation.md) |
+| `serve` | [serve](20-serve.md) |

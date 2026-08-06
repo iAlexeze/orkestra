@@ -1,4 +1,5 @@
-// Tests for ParseTimeDuration and NeedsRotation (secret_rotation.go).
+// Tests for NeedsRotation (secret_rotation.go). ParseTimeDuration itself now
+// lives in pkg/utils — see pkg/utils/duration_test.go.
 package types_test
 
 import (
@@ -7,85 +8,7 @@ import (
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-// ── ParseTimeDuration ─────────────────────────────────────────────────────
-
-func TestParseTimeDuration_Empty(t *testing.T) {
-	_, err := orktypes.ParseTimeDuration("")
-	assert.Error(t, err)
-}
-
-func TestParseTimeDuration_Seconds(t *testing.T) {
-	d, err := orktypes.ParseTimeDuration("30s")
-	require.NoError(t, err)
-	assert.Equal(t, 30*time.Second, d)
-}
-
-func TestParseTimeDuration_Minutes(t *testing.T) {
-	d, err := orktypes.ParseTimeDuration("5m")
-	require.NoError(t, err)
-	assert.Equal(t, 5*time.Minute, d)
-}
-
-func TestParseTimeDuration_Hours(t *testing.T) {
-	d, err := orktypes.ParseTimeDuration("12h")
-	require.NoError(t, err)
-	assert.Equal(t, 12*time.Hour, d)
-}
-
-func TestParseTimeDuration_Days(t *testing.T) {
-	d, err := orktypes.ParseTimeDuration("10d")
-	require.NoError(t, err)
-	assert.Equal(t, 10*24*time.Hour, d)
-}
-
-func TestParseTimeDuration_Weeks(t *testing.T) {
-	d, err := orktypes.ParseTimeDuration("2w")
-	require.NoError(t, err)
-	assert.Equal(t, 14*24*time.Hour, d)
-}
-
-func TestParseTimeDuration_Months(t *testing.T) {
-	d, err := orktypes.ParseTimeDuration("3mo")
-	require.NoError(t, err)
-	assert.Equal(t, 90*24*time.Hour, d)
-}
-
-func TestParseTimeDuration_Years(t *testing.T) {
-	d, err := orktypes.ParseTimeDuration("1y")
-	require.NoError(t, err)
-	assert.Equal(t, 365*24*time.Hour, d)
-}
-
-func TestParseTimeDuration_FractionalYear(t *testing.T) {
-	d, err := orktypes.ParseTimeDuration("0.5y")
-	require.NoError(t, err)
-	// 0.5 * 365 days
-	assert.Equal(t, time.Duration(0.5*float64(365*24*time.Hour)), d)
-}
-
-func TestParseTimeDuration_FractionalMonths(t *testing.T) {
-	d, err := orktypes.ParseTimeDuration("1.5mo")
-	require.NoError(t, err)
-	assert.Equal(t, time.Duration(1.5*float64(30*24*time.Hour)), d)
-}
-
-func TestParseTimeDuration_InvalidYear(t *testing.T) {
-	_, err := orktypes.ParseTimeDuration("xy")
-	assert.Error(t, err)
-}
-
-func TestParseTimeDuration_InvalidDay(t *testing.T) {
-	_, err := orktypes.ParseTimeDuration("xd")
-	assert.Error(t, err)
-}
-
-func TestParseTimeDuration_InvalidGoSyntax(t *testing.T) {
-	_, err := orktypes.ParseTimeDuration("not-a-duration")
-	assert.Error(t, err)
-}
 
 // ── NeedsRotation ─────────────────────────────────────────────────────────────
 

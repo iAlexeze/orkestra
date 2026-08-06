@@ -57,8 +57,14 @@ type Condition struct {
 	// Prefix is a shorthand for operator: prefix.
 	Prefix string `yaml:"prefix,omitempty" json:"prefix,omitempty"`
 
+	// NotPrefix is a shorthand for operator: notPrefix.
+	NotPrefix string `yaml:"notPrefix,omitempty" json:"notPrefix,omitempty"`
+
 	// Suffix is a shorthand for operator: suffix.
 	Suffix string `yaml:"suffix,omitempty" json:"suffix,omitempty"`
+
+	// NotSuffix is a shorthand for operator: notSuffix.
+	NotSuffix string `yaml:"notSuffix,omitempty" json:"notSuffix,omitempty"`
 
 	// Exists is a shorthand for operator: exists.
 	// When true, the condition passes when the field is present and non-empty.
@@ -185,8 +191,14 @@ const (
 	// ConditionPrefix — field value starts with the condition value
 	ConditionPrefix ConditionOperator = "prefix"
 
+	// ConditionNotPrefix — field value does not start with the condition value
+	ConditionNotPrefix ConditionOperator = "notPrefix"
+
 	// ConditionSuffix — field value ends with the condition value
 	ConditionSuffix ConditionOperator = "suffix"
+
+	// ConditionNotSuffix — field value does not end with the condition value
+	ConditionNotSuffix ConditionOperator = "notSuffix"
 
 	// ConditionExists — the field is present and non-empty
 	// Value is ignored for this operator.
@@ -247,10 +259,17 @@ const (
 	// instance of this CRD (the CR being evaluated is excluded from its own
 	// check). Works the same way in validation.rules and in when:/anyOf: —
 	// e.g. gating a template source or mutation rule on whether a field is
-	// still available. ONLY enforced at reconcile time, where the
-	// reconciler injects a live checker; the admission webhook does not, so
-	// a CR can still be admitted with a duplicate value and get caught on
-	// the next reconcile instead.
+	// still available.
+	//
+	// Enforced at reconcile time via a live List() the reconciler injects
+	// (pkg/runtime/reconciler/uniqueness.go) — the authoritative check,
+	// immune to cache staleness. Also enforced at admission time, as a
+	// fast best-effort early rejection: the gateway queries the runtime's
+	// own informer cache over HTTP (pkg/gateway/webhook/uniqueness.go)
+	// rather than doing a live List() itself. A stale cache there just
+	// means a duplicate slips through admission and gets caught on the
+	// next reconcile anyway — the reconcile-time guarantee never depends
+	// on admission catching it first.
 	//
 	//	validation:
 	//	  rules:
@@ -263,8 +282,8 @@ const (
 	//	  - field: spec.domain
 	//	    operator: unique
 	//
-	// Always passes wherever no checker is injected — admission webhook,
-	// e2e, and any other context without live CRD access (see
+	// Always passes wherever no checker is injected — e2e, simulate without
+	// a seeded fixture, and any other context without live CRD access (see
 	// UniquenessChecker in validation_eval.go).
 	ConditionUnique ConditionOperator = "unique"
 
@@ -298,7 +317,9 @@ var knownConditionOperators = map[ConditionOperator]bool{
 	ConditionNotEquals:   true,
 	ConditionContains:    true,
 	ConditionPrefix:      true,
+	ConditionNotPrefix:   true,
 	ConditionSuffix:      true,
+	ConditionNotSuffix:   true,
 	ConditionExists:      true,
 	ConditionNotExists:   true,
 	ConditionGt:          true,

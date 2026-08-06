@@ -135,7 +135,9 @@ type ValidationRule struct {
 	Equals      string `yaml:"equals,omitempty" json:"equals,omitempty"`
 	NotEquals   string `yaml:"notEquals,omitempty" json:"notEquals,omitempty"`
 	Prefix      string `yaml:"prefix,omitempty" json:"prefix,omitempty"`
+	NotPrefix   string `yaml:"notPrefix,omitempty" json:"notPrefix,omitempty"`
 	Suffix      string `yaml:"suffix,omitempty" json:"suffix,omitempty"`
+	NotSuffix   string `yaml:"notSuffix,omitempty" json:"notSuffix,omitempty"`
 	Contains    string `yaml:"contains,omitempty" json:"contains,omitempty"`
 	Min         string `yaml:"min,omitempty" json:"min,omitempty"` // numeric, inclusive
 	Max         string `yaml:"max,omitempty" json:"max,omitempty"` // numeric, inclusive
@@ -180,6 +182,43 @@ type ValidationRule struct {
 	// AnyOf — at least one condition must pass for this rule to be evaluated (OR).
 	// When both When and AnyOf are declared, both blocks must pass.
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Link names the serve.fields or serve.additionalFields (labels/annotations)
+	// key this rule concerns, for UI highlighting. Only needed when Field
+	// isn't already a plain, self-describing path — additionalFields
+	// entries always resolve through getLabel/getAnnotation template
+	// expressions (or a notes: function built on one), and a hand-written
+	// rule on a spec field can do the same (e.g. wrapping it in a format
+	// check like isValidGitRepository) instead of comparing it directly.
+	// Neither is itself a valid display name. When set, violations report
+	// Link instead of Field as the offending field — the Control Center (or
+	// any Gateway API client) matches it directly against the form field it
+	// rendered for that serve entry, no guessing at the expression required.
+	//
+	// Link is a plain literal string, not a template expression — it's the
+	// exact serve.fields / serve.additionalFields key itself, never resolved
+	// against the CR the way Field/Value/Message can be.
+	//
+	// Validated at katalog-load time: must match a key declared in
+	// serve.fields, serve.labels, or .annotations
+	// for this CRD. Linking a spec field whose Field is already exactly
+	// "spec.<name>" is an error, though — at that point Field already is a
+	// clean display name on its own, so the link is always redundant.
+	//
+	// Automatically set by the required/enum rules serve.additionalFields
+	// entries synthesize. Hand-written rules that target the same field
+	// (e.g. multiple focused checks split across separate rules instead of
+	// one compound expression) should set it too, so every rule touching
+	// that field highlights consistently:
+	//
+	//	validation:
+	//	  rules:
+	//	    - field: '{{ isDNS1123Subdomain team }}'
+	//	      link: team
+	//	      equals: "true"
+	//	      message: "team must be a valid DNS subdomain"
+	//	      action: deny
+	Link string `yaml:"link,omitempty" json:"link,omitempty"`
 }
 
 // ValidationConfig holds all validation rules for a CRD.

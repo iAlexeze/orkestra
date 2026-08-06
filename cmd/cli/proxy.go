@@ -34,6 +34,7 @@ Examples:
 		runtimePort, _ := cmd.Flags().GetInt("runtime-port")
 		ccPort, _ := cmd.Flags().GetInt("cc-port")
 		gatewayPort, _ := cmd.Flags().GetInt("gateway-port")
+		devServerPort, _ := cmd.Flags().GetInt("dev-server-port")
 		kubeContext, _ := cmd.Flags().GetString("context")
 
 		include, err := proxyComponentsFromFor(cmd)
@@ -75,6 +76,16 @@ Examples:
 				Scheme:    "http",
 			})
 		}
+		if include.devServer {
+			targets = append(targets, proxy.ForwardTarget{
+				Label:       "Dev Server",
+				ServiceName: proxy.DevServerServiceName,
+				Komponent:   proxy.DevServer,
+				Namespace:   ns,
+				LocalPort:   devServerPort,
+				Scheme:      "http",
+			})
+		}
 
 		// Port conflict pre-check
 		portOK := true
@@ -103,9 +114,10 @@ Examples:
 
 // proxyIncludes tracks which components the user selected via --for.
 type proxyIncludes struct {
-	runtime bool
-	cc      bool
-	gateway bool
+	runtime   bool
+	cc        bool
+	gateway   bool
+	devServer bool
 }
 
 // proxyComponentsFromFor parses the --for flag using the same vocabulary as
@@ -114,7 +126,7 @@ type proxyIncludes struct {
 func proxyComponentsFromFor(cmd *cobra.Command) (proxyIncludes, error) {
 	forVal, _ := cmd.Flags().GetString("for")
 	if forVal == "" {
-		return proxyIncludes{runtime: true, cc: true, gateway: true}, nil
+		return proxyIncludes{runtime: true, cc: true, gateway: true, devServer: true}, nil
 	}
 	var inc proxyIncludes
 	var unknown []string
@@ -130,6 +142,8 @@ func proxyComponentsFromFor(cmd *cobra.Command) (proxyIncludes, error) {
 			inc.gateway = true
 		case "cc", "controlcenter", "control-center":
 			inc.cc = true
+		case "dev", "devserver", "dev-server":
+			inc.devServer = true
 		default:
 			unknown = append(unknown, part)
 		}
@@ -137,18 +151,19 @@ func proxyComponentsFromFor(cmd *cobra.Command) (proxyIncludes, error) {
 	if len(unknown) > 0 {
 		return proxyIncludes{}, fmt.Errorf(
 			"orkestra: unknown --for value(s): %s\n\nValid values are:\n"+
-				"  runtime   (alias: run)          — reconcilers, leader election\n"+
-				"  gateway   (alias: gw)            — TLS, admission webhooks\n"+
-				"  cc        (alias: controlcenter) — control center\n\n"+
+				"  runtime   	(alias: run)          	— reconcilers, leader election\n"+
+				"  gateway   	(alias: gw)            	— TLS, admission webhooks\n"+
+				"  cc        	(alias: controlcenter) 	— control center\n\n"+
+				"  devServer 	(alias: devserver)		— dev server\n\n"+
 				"Example: --for gateway\n"+
 				"         --for runtime,cc",
 			strings.Join(unknown, ", "),
 		)
 	}
-	if !inc.runtime && !inc.cc && !inc.gateway {
+	if !inc.runtime && !inc.cc && !inc.gateway && !inc.devServer {
 		return proxyIncludes{}, fmt.Errorf(
 			"orkestra: --for produced an empty component list\n\n" +
-				"Valid values are: runtime (run), gateway (gw), cc (controlcenter, control-center)",
+				"Valid values are: runtime (run), gateway (gw), cc (controlcenter, control-center) devserver (dev, devserver, dev-server)",
 		)
 	}
 	return inc, nil
@@ -186,15 +201,9 @@ func init() {
 	proxyCmd.Flags().Int("runtime-port", 8080, "Local port for Runtime")
 	proxyCmd.Flags().Int("cc-port", 8081, "Local port for Control Center")
 	proxyCmd.Flags().Int("gateway-port", 8443, "Local port for Gateway")
+	proxyCmd.Flags().Int("dev-server-port", 9999, "Local port for Dev Server")
 	proxyCmd.Flags().String("context", "", "Kubernetes context to use")
 
-	// Shadow global flags
-	proxyCmd.Flags().Bool("debug", false, "")
-	proxyCmd.Flags().String("kubeconfig", "", "")
-	proxyCmd.Flags().StringSlice("file", nil, "")
-	proxyCmd.Flags().Bool("verbose", false, "")
-	proxyCmd.Flags().MarkHidden("debug")
-	proxyCmd.Flags().MarkHidden("kubeconfig")
-	proxyCmd.Flags().MarkHidden("file")
-	proxyCmd.Flags().MarkHidden("verbose")
+	// Shadow global flags so they don't appear under `ork proxy`
+	shadowGlobalCommandFlags(proxyCmd, "file")
 }

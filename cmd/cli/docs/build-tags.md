@@ -66,4 +66,4 @@ The production binary (`-tags "runtime gateway"`) contains only:
 
 Everything else (`ork generate`, `ork doctor`, `ork validate`, etc.) is for the developer and is not shipped in the container image.
 
-→ See [cmd/internal/docs/01-overview.md](../../internal/docs/01-overview.md) for the runtime/gateway architectural split.
+→ See [internal overview](../../internal/docs/01-overview.md) for the runtime/gateway architectural split.

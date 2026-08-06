@@ -12,13 +12,13 @@ import (
 // returns a Go error. The runner reads entry["error"] and enforces continueOnError.
 type httpProtocolClient struct{}
 
-func (c *httpProtocolClient) Fetch(ctx context.Context, spec orktypes.ExternalCallSpec, resolvedURL, _, credential string) (map[string]interface{}, error) {
+func (c *httpProtocolClient) Fetch(ctx context.Context, spec orktypes.ExternalCallSpec, resolvedURL, _, resolvedBody, credential string) (map[string]interface{}, error) {
 	authHeader := "Authorization"
 	if spec.Auth != nil && spec.Auth.Header != "" {
 		authHeader = spec.Auth.Header
 	}
 
-	result := executeHTTPCall(ctx, spec, resolvedURL, spec.Body, credential, authHeader)
+	result := executeHTTPCall(ctx, spec, resolvedURL, resolvedBody, credential, authHeader)
 
 	entry := map[string]interface{}{}
 	if result.Body != "" {

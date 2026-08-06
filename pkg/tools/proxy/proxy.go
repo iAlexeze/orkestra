@@ -21,11 +21,18 @@ import (
 // ForwardTarget describes one component to port-forward.
 type ForwardTarget struct {
 	Label     string // display name, e.g. "Runtime"
-	Komponent string // KomponentRuntime | KomponentCC | KomponentGateway
-	Namespace string
-	LocalPort int
-	Scheme    string // "http" or "https"
-	ViaLease  bool   // true for Runtime: resolve pod from Lease, probe health before declaring connected
+	Komponent string // KomponentRuntime | KomponentCC | KomponentGateway — empty when ServiceName is set
+	// ServiceName looks up a Service by exact name instead of the komponent
+	// label — for non-Orkestra komponents like the devserver. Takes precedence
+	// over Komponent when set.
+	ServiceName string
+	Namespace   string
+	LocalPort   int
+	Scheme      string // "http" or "https"
+	ViaLease    bool   // true for Runtime: resolve pod from Lease, probe health before declaring connected
+	// FlagName is the CLI flag suffix used in "use --<FlagName>-port" hints
+	// (e.g. "cc" for --cc-port). Falls back to Komponent when empty.
+	FlagName string
 }
 
 // RunAll discovers and forwards all targets, printing status to out.
@@ -116,7 +123,12 @@ func forwardWithReconnect(ctx context.Context, cfg *rest.Config, cs kubernetes.I
 }
 
 func resolveTarget(ctx context.Context, cs kubernetes.Interface, t ForwardTarget) (pod, ns string, err error) {
-	svc, err := FindService(ctx, cs, t.Namespace, t.Komponent)
+	var svc *FoundService
+	if t.ServiceName != "" {
+		svc, err = FindServiceByName(ctx, cs, t.Namespace, t.ServiceName)
+	} else {
+		svc, err = FindService(ctx, cs, t.Namespace, t.Komponent)
+	}
 	if err != nil {
 		return "", "", err
 	}
@@ -147,6 +159,8 @@ func resolveRemotePort(t ForwardTarget) int32 {
 		return 8081
 	case KomponentGateway:
 		return 8080
+	case DevServer:
+		return 9999
 	}
 	return int32(t.LocalPort)
 }

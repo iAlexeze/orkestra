@@ -200,6 +200,23 @@ curl -s localhost:8080/katalog/blockchainapp/cr | jq
 }
 ```
 
+**`?field=<dot-path>`** additionally resolves that field against each instance's full object (available in the informer cache even though the default response doesn't include it) and returns it as `"value"` on every item:
+
+```bash
+curl -s "localhost:8080/katalog/blockchainapp/cr?field=spec.domain" | jq
+```
+
+```json
+{
+  "crd": "blockchainapp",
+  "items": [
+    { "name": "my-chain", "namespace": "default", ..., "value": "chain.example.com" }
+  ]
+}
+```
+
+This is what powers `operator: unique` at admission time — the gateway queries this endpoint instead of doing its own live List() against the API server. See [unique](../../reference/schema/02-katalog/07-validation.md#validationrules).
+
 ---
 
 ### `GET /katalog/{crd}/cr/{name}`
@@ -324,9 +341,9 @@ Accepts a notification event body and dispatches it to the configured SMTP or Sl
 
 ---
 
-## Apply API endpoints
+## Gateway API endpoints
 
-Served by the gateway when `gateway.applyAPI.enabled: true` in the Katalog. All routes require `Authorization: Bearer <token>`.
+Served by the gateway when `gateway.api.enabled: true` in the Katalog. All routes require `Authorization: Bearer <token>`.
 
 ### `POST /api/v1/apply`
 
@@ -373,7 +390,7 @@ Deletes a CR. Respects deletion protection — a protected CR returns a structur
 
 ### `GET /api/v1/schema/{kind}`
 
-Returns the OpenAPI spec schema for the CRD's `spec` properties. Only served for CRDs where `idp.enabled: true`. Used by the Control Center IDP form to render inputs from the schema without any additional configuration.
+Returns the OpenAPI spec schema for the CRD's `spec` properties. Only served for CRDs where `serve.enabled: true`. Used by the Control Center Serve form to render inputs from the schema without any additional configuration.
 
 ```json
 {

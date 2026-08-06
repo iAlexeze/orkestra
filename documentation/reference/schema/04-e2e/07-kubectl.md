@@ -266,6 +266,18 @@ kubectl:
       leaderElection:
         lease: my-operator-leader
       outputContains: "ok"
+
+    # authenticated POST — e.g. a gateway Gateway API behind a bearer token
+    - service: orkestra-gateway
+      namespace: orkestra-system
+      port: 8443
+      path: /api/v1/apply
+      method: POST
+      headers:
+        Authorization: "Bearer ${ORK_CI_TOKEN}"
+        Content-Type: application/json
+      body: '{"apiVersion":"platform.myorg.io/v1","kind":"AppRequest","metadata":{"name":"bad"},"spec":{"replicas":1}}'
+      outputContains: '"accepted":false'
 ```
 
 | Field | Required | Description |
@@ -277,6 +289,8 @@ kubectl:
 | `port` | yes | Port to forward (used as both local and remote) |
 | `path` | no | HTTP path to request via curl after port-forward is ready |
 | `method` | no | HTTP method. Default: `GET` |
+| `headers` | no | Map of request headers, e.g. `Authorization` for a token-gated endpoint. Values go through `os.ExpandEnv` (`${VAR}` syntax, same as `gateway.api.auth.tokens.token`) so a CI secret never needs to be written into the e2e file |
+| `body` | no | Request body for `POST`/`PUT`/`PATCH`. Also goes through `os.ExpandEnv` |
 | `wait` | no | Duration to sleep after the port-forward is ready but before sending the curl request (Go duration: `5s`, `10s`). Useful when the endpoint needs time to stabilize |
 | `jq` | no | jq expression applied to the response before asserting |
 | `yq` | no | yq expression applied to the response before asserting |
@@ -333,6 +347,12 @@ kubectl:
     # apply with a namespace override
     - file: ./fixtures/tenant-quota.yaml
       namespace: team-alpha
+
+    # assert a rejection — e.g. an admission webhook denial — instead of
+    # treating any apply failure as a broken test
+    - file: ./fixtures/duplicate-domain.yaml
+      exitCode: 1
+      outputContains: "spec.domain must be unique"
 ```
 
 | Field | Required | Description |
@@ -340,6 +360,10 @@ kubectl:
 | `file` | no | Path to a manifest file. Relative paths resolve from the `e2e.yaml` directory. Mutually exclusive with `inline` |
 | `inline` | no | Raw YAML or JSON manifest applied via stdin. Mutually exclusive with `file` |
 | `namespace` | no | Namespace override for resources that don't declare one |
+| `exitCode` | no | Expected exit code. Default `0` (success) — set non-zero to assert the apply must be *rejected* (e.g. an admission webhook denial) rather than treating any failure as a broken test |
+| `equals`, `notEquals`, `outputContains`, `outputNotContains`, `regex`, `greaterThan`, `lessThan`, `greaterThanOrEqual`, `lessThanOrEqual`, `between`, `notBetween`, `exists`, `notExists`, `oneOf`, `notOneOf` | no | Assertions on the combined stdout+stderr — same fields and semantics as [`commands:`](03-expect.md#commands) |
+
+Combined stdout+stderr is captured the same way regardless of `exitCode` — a webhook's denial message lands in `kubectl`'s stderr, so `outputContains` can assert on the actual rejection reason, not just that the apply failed.
 
 ---
 

@@ -97,13 +97,8 @@ func init() {
 	pullCmd.Flags().BoolP("motif", "m", false, "Resolve as a motif (uses ORK_MOTIFS_REGISTRY)")
 	rootCmd.AddCommand(pullCmd)
 
-	// Shadow global flags
-	pullCmd.Flags().Bool("debug", false, "")
-	pullCmd.Flags().String("kubeconfig", "", "")
-	pullCmd.Flags().Bool("verbose", false, "")
-	pullCmd.Flags().MarkHidden("debug")
-	pullCmd.Flags().MarkHidden("kubeconfig")
-	pullCmd.Flags().MarkHidden("verbose")
+	// Shadow global flags so they don't appear under `ork pull`
+	shadowGlobalCommandFlags(pullCmd)
 }
 
 // notifyTypedPull prints a build note when the pulled artifact is a typed operator.

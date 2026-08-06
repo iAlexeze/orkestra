@@ -170,4 +170,7 @@ func init() {
 	patternsCmd.Flags().BoolP("katalogs", "k", false, "Show only katalogs (kind: Katalog)")
 	patternsCmd.Flags().BoolP("motifs", "m", false, "Show only motifs (kind: Motif)")
 	rootCmd.AddCommand(patternsCmd)
+
+	// Shadow global flags so they don't appear under `ork patterns`
+	shadowGlobalCommandFlags(patternsCmd, "file")
 }

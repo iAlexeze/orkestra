@@ -3,6 +3,7 @@ package note
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"text/template"
 )
 
@@ -13,6 +14,7 @@ func typeNotes() template.FuncMap {
 		"toBool":   noteToBool,
 		"toString": noteToString,
 		"toJson":   noteToJson,
+		"toList":   toList,
 
 		// typeOf v — returns the type name as a string
 		// "string", "number", "bool", "map", "slice", "null", "unknown"
@@ -108,6 +110,34 @@ func noteToJson(v interface{}) (string, error) {
 		return "", fmt.Errorf("toJson: %w", err)
 	}
 	return string(b), nil
+}
+
+// toList converts a comma-separated string to a trimmed, de-duplicated slice.
+//
+// Designed for use in serve.config.response.exclude and anywhere else a template
+// expression needs to produce a list from a single string — annotations,
+// labels, or literal values.
+//
+// Usage in a Katalog:
+//
+//	exclude: '{{ toList (getAnnotation . "platform.myorg.io/exclude") }}'
+//	exclude: '{{ toList "metadata.managedFields,status.observedGeneration" }}'
+//
+// Returns an empty slice when the input is empty or blank. Whitespace around
+// each entry is trimmed. Blank entries (e.g. trailing comma) are dropped.
+func toList(s string) []string {
+	if strings.TrimSpace(s) == "" {
+		return []string{}
+	}
+	parts := strings.Split(s, ",")
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		trimmed := strings.TrimSpace(p)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }
 
 // typeOf — returns the runtime type name of any value.

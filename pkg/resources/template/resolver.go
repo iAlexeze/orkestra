@@ -162,13 +162,28 @@ var orkNotes = note.Map()
 // against the full CR map. Otherwise returned as-is (static value, no cost).
 // Missing CR fields resolve to "" (missingkey=zero — no error on absent keys).
 func (r *Resolver) Resolve(value string) (string, error) {
+	out, _, err := r.resolve(value)
+	return out, err
+}
+
+// ResolveStrict evaluates value like Resolve, but also reports whether any
+// referenced field was missing (rendered "<no value>" before stripping).
+// Callers that require every referenced field to be present — serve.name,
+// serve.namespace — use this to catch composite templates (e.g.
+// "{{ .team }}-{{ .environment }}") that would otherwise silently resolve
+// to a non-empty but meaningless string like "-" when all fields are absent.
+func (r *Resolver) ResolveStrict(value string) (out string, missing bool, err error) {
+	return r.resolve(value)
+}
+
+func (r *Resolver) resolve(value string) (string, bool, error) {
 	if value == "" {
-		return "", nil
+		return "", false, nil
 	}
 
 	// Fast path — no template markers, static value
 	if !orktypes.IsTemplate(value) {
-		return value, nil
+		return value, false, nil
 	}
 
 	funcs := orkNotes
@@ -179,20 +194,21 @@ func (r *Resolver) Resolve(value string) (string, error) {
 		Funcs(funcs).
 		Parse(value)
 	if err != nil {
-		return "", fmt.Errorf("parsing %q: %w", value, err)
+		return "", false, fmt.Errorf("parsing %q: %w", value, err)
 	}
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, r.data); err != nil {
-		return "", fmt.Errorf("executing %q: %w", value, err)
+		return "", false, fmt.Errorf("executing %q: %w", value, err)
 	}
 
 	// missingkey=zero makes missing map keys produce nil (interface{} zero value).
 	// Go's text/template renders nil interface{} as "<no value>", not "".
 	// Replace all occurrences so callers get "" as documented.
-	out := strings.TrimSpace(buf.String())
-	out = strings.ReplaceAll(out, "<no value>", "")
-	return out, nil
+	raw := strings.TrimSpace(buf.String())
+	missing := strings.Contains(raw, "<no value>")
+	out := strings.ReplaceAll(raw, "<no value>", "")
+	return out, missing, nil
 }
 
 // resolveResourceRequirements resolves template expressions in resources.profile.

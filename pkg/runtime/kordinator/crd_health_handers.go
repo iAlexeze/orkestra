@@ -109,11 +109,15 @@ type WorkerStats struct {
 }
 
 type CRDInfoResponse struct {
-	Name              string                     `json:"name"`
-	Description       string                     `json:"description"`
-	Mode              string                     `json:"mode"`
-	GVK               string                     `json:"gvk"`
-	GVR               string                     `json:"gvr"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Mode        string `json:"mode"`
+	GVK         string `json:"gvk"`
+	GVR         string `json:"gvr"`
+	// Target is the identifier callers use against the Gateway API and schema
+	// API (serve.target, or the lowercased kind when unset). Empty when serve is
+	// not enabled for this CRD.
+	Target            string                     `json:"target,omitempty"`
 	Namespaced        bool                       `json:"namespaced"`
 	Namespace         string                     `json:"namespace"`
 	DependsOn         []string                   `json:"dependsOn,omitempty"`
@@ -264,6 +268,7 @@ func BuildCRDInfoHandler(
 			Mode:              crd.Mode.String(),
 			GVK:               crd.GVKString(),
 			GVR:               crd.GroupVersionResource.String(),
+			Target:            crd.ServeTargetOrEmpty(),
 			Namespaced:        crd.IsNamespaced(),
 			Namespace:         crd.Namespace,
 			DependsOn:         crd.DependsOn.Names(),
@@ -412,7 +417,12 @@ type CRDSummaryResponse struct {
 	DeletionProtection       bool               `json:"deletionProtection"`
 	ProviderCount            int                `json:"providerCount,omitempty"`
 	KatalogNamespace         string             `json:"katalogNamespace,omitempty"`
-	IDPEnabled               bool               `json:"idpEnabled,omitempty"`
+	ServeEnabled             bool               `json:"serveEnabled,omitempty"`
+	RequireServeName         bool               `json:"requireServeName,omitempty"`
+	// Target is the identifier callers use against the Gateway API and schema
+	// API (serve.target, or the lowercased kind when unset). Empty when serve is
+	// not enabled for this CRD.
+	Target string `json:"target,omitempty"`
 }
 
 type OperatorBoxSummary struct {
@@ -533,7 +543,9 @@ func BuildKatalogHandler(
 				ErrorRate:        h.ErrorRatePercent(),
 				CrossAccess:      crd.CrossAccessEnabled(),
 				KatalogNamespace: crd.KatalogNamespace,
-				IDPEnabled:       crd.IDPEnabled(),
+				ServeEnabled:     crd.ServeEnabled(),
+				RequireServeName: crd.RequireServeName(),
+				Target:           crd.ServeTargetOrEmpty(),
 				Endpoints: EndpointInfo{
 					Health:        "/katalog/" + strings.ToLower(crd.Name) + "/health",
 					Info:          "/katalog/" + strings.ToLower(crd.Name),

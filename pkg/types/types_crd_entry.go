@@ -269,132 +269,10 @@ type CRDEntry struct {
 	// Required inputs not provided in with: are a validation error.
 	Imports []MotifImport `yaml:"imports,omitempty" json:"imports,omitempty"`
 
-	// IDP exposes this CRD through the Gateway Apply API as a developer portal
-	// surface. When enabled, the Control Center renders a [+ Create] button for
-	// this CRD and serves its schema via GET /api/v1/schema/{kind}.
-	IDP *IDPConfig `yaml:"idp,omitempty" json:"idp,omitempty"`
-}
-
-// IDPConfig declares IDP exposure settings for a CRD entry.
-type IDPConfig struct {
-	// Enabled surfaces this CRD in the Control Center as a self-service form.
-	// Requires gateway.applyAPI.enabled: true on the Katalog.
-	// Default: false.
-	Enabled bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
-
-	// Include is a path (relative to the katalog file) to a YAML file with a
-	// "fields:" map and/or an "additionalFields:" block (same shape as the
-	// inline equivalents below). Expanded at load time — the result is merged
-	// into Fields and AdditionalFields respectively, with inline entries
-	// taking precedence per key.
-	Include string `yaml:"include,omitempty" json:"include,omitempty"`
-
-	// Fields provides presentation hints layered on top of the CRD's OpenAPI
-	// schema. Each key matches a field path in spec. Hints are merged with the
-	// schema at GET /api/v1/schema/{kind} time — they do not replace the schema.
-	Fields map[string]IDPFieldConfig `yaml:"fields,omitempty" json:"fields,omitempty"`
-
-	// AdditionalFields exposes labels/annotations as self-service form fields,
-	// written to metadata.labels/metadata.annotations on apply instead of spec.
-	// Unlike Fields, these have no CRD schema to infer type/enum from — declare
-	// them explicitly on the IDPFieldConfig.
-	AdditionalFields *AdditionalIDPFields `yaml:"additionalFields,omitempty" json:"additionalFields,omitempty"`
-
-	// IgnoreFields lists spec field names that should never appear in the IDP
-	// form, even though they exist in the CRD schema. Use this to hide
-	// system-managed or operator-internal fields from developers.
-	IgnoreFields []string `yaml:"ignoreFields,omitempty" json:"ignoreFields,omitempty"`
-
-	// Category is a catalog label used when listing available schemas
-	// via GET /api/v1/schema/. Example: "Compute", "Data", "Security".
-	Category string `yaml:"category,omitempty" json:"category,omitempty"`
-
-	// Description is a short human-readable summary shown in the service catalog.
-	// Falls back to the CRD-level description when not set.
-	Description string `yaml:"description,omitempty" json:"description,omitempty"`
-
-	// ForceConflict, when true, sets Force: true on every server-side apply
-	// for this CRD — the gateway takes ownership of any conflicting fields
-	// rather than surfacing a conflict error. Equivalent to helm --force-conflict.
-	// Can be overridden per-request with ?overwrite=true regardless of this setting.
-	// Default: false.
-	ForceConflict bool `yaml:"forceConflict,omitempty" json:"forceConflict,omitempty"`
-}
-
-// AdditionalIDPFields declares label/annotation keys as self-service IDP form
-// fields, written to metadata.labels/metadata.annotations on apply.
-type AdditionalIDPFields struct {
-	// Labels maps a Kubernetes label key to its form field config.
-	Labels map[string]IDPFieldConfig `yaml:"labels,omitempty" json:"labels,omitempty"`
-
-	// Annotations maps a Kubernetes annotation key to its form field config.
-	Annotations map[string]IDPFieldConfig `yaml:"annotations,omitempty" json:"annotations,omitempty"`
-}
-
-// IDPFieldConfig holds display hints for one spec field in the IDP form.
-type IDPFieldConfig struct {
-	// Label overrides the field name in the rendered form.
-	Label string `yaml:"label,omitempty" json:"label,omitempty"`
-
-	// Placeholder is the input placeholder text.
-	Placeholder string `yaml:"placeholder,omitempty" json:"placeholder,omitempty"`
-
-	// Hint is descriptive text rendered below the field.
-	Hint string `yaml:"hint,omitempty" json:"hint,omitempty"`
-
-	// Order controls position in the rendered form. Lower values appear first.
-	// Fields with no order (0) appear after all explicitly ordered fields.
-	Order int `yaml:"order,omitempty" json:"order,omitempty"`
-
-	// Category is a section heading for visual grouping. Fields sharing a category
-	// are rendered under the same heading. Works with When — if all fields in
-	// a category are hidden, the heading is also hidden.
-	Category string `yaml:"category,omitempty" json:"category,omitempty"`
-
-	// When is a list of conditions that must ALL be true for this field to be
-	// visible. Evaluated client-side as the user fills the form. An empty When
-	// means the field is always visible.
-	// Supports: equals, notEquals, time, dayOfWeek, cron, negate — same as
-	// template source when: blocks.
-	When []Condition `yaml:"when,omitempty" json:"when,omitempty"`
-
-	// AnyOf is a list of conditions where at least ONE must be true for the
-	// field to be visible. OR counterpart to When (AND).
-	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
-
-	// Required, when true, marks the field as mandatory in the IDP form —
-	// the browser enforces this natively (asterisk on the label, form cannot
-	// be submitted while empty) — and is also enforced server-side: an
-	// implicit exists validation rule is synthesized automatically at
-	// katalog load time (see CRDEntry.RequiredIDPFieldRules), covering every
-	// client of the Apply API, not just the Control Center form. No matching
-	// validation.rules entry needs to be hand-written.
-	Required bool `yaml:"required,omitempty" json:"required,omitempty"`
-
-	// Disabled, when non-empty, renders the field greyed out with this string
-	// as the reason. The field is excluded from form submission.
-	// Use for maintenance windows or temporarily locked fields.
-	Disabled string `yaml:"disabled,omitempty" json:"disabled,omitempty"`
-
-	// Type is required for AdditionalFields entries (labels/annotations have
-	// no CRD schema to infer type from). Ignored for Fields entries, which
-	// always infer type from the CRD's OpenAPI schema.
-	// Supported: string (default), integer, number, boolean, enum.
-	Type string `yaml:"type,omitempty" json:"type,omitempty"`
-
-	// Enum lists valid values when Type == "enum". Required in that case.
-	Enum []string `yaml:"enum,omitempty" json:"enum,omitempty"`
-}
-
-// IsValidIDPFieldType reports whether t is a valid IDPFieldConfig.Type value.
-// "" (omitted) is valid — it means the default, string.
-func IsValidIDPFieldType(t string) bool {
-	switch t {
-	case "", "string", "integer", "number", "boolean", "enum":
-		return true
-	default:
-		return false
-	}
+	// Serve exposes this CRD through the Gateway API as a stable delivery surface.
+	// When enabled, the Control Center renders a [+ Create] button for this CRD
+	// and serves its schema via GET /api/v1/schema/{kind}.
+	Serve *ServeConfig `yaml:"serve,omitempty" json:"serve,omitempty"`
 }
 
 type ConversionVersionSpec struct {
@@ -418,34 +296,149 @@ type EndpointsConfig struct {
 	Info *bool `yaml:"info,omitempty" json:"info,omitempty"`
 }
 
-// IDPEnabled reports whether IDP is configured and enabled for this CRD.
-func (c *CRDEntry) IDPEnabled() bool {
-	return c.IDP != nil && c.IDP.Enabled
+// ServeEnabled reports whether serve is configured and enabled for this CRD.
+func (c *CRDEntry) ServeEnabled() bool {
+	return c.Serve != nil && c.Serve.Enabled
 }
 
-// AdditionalLabelFields returns idp.additionalFields.labels. Nil-safe — returns
-// nil if IDP or AdditionalFields is not declared, same as ranging over a nil map.
-func (c *CRDEntry) AdditionalLabelFields() map[string]IDPFieldConfig {
-	if c.IDP == nil || c.IDP.AdditionalFields == nil {
+// HasServeName reports whether serve.name is declared — the Gateway API only
+// resolves and applies a name override when this is true.
+func (c *CRDEntry) HasServeName() bool {
+	return c.Serve != nil && c.Serve.Name != ""
+}
+
+// HasServeFields reports whether this CRD declares any serve.fields.
+func (c *CRDEntry) HasServeFields() bool {
+	return c.ServeEnabled() && c.Serve.Fields != nil && len(c.Serve.Fields) > 0
+}
+
+// HasServeTokenRestrictions reports whether this CRD declares any token restrictions.
+func (c *CRDEntry) HasServeTokenRestrictions() bool {
+	if c.Serve == nil {
+		return false
+	}
+	return c.ServeEnabled() && c.Serve.HasTokenRestrictions()
+}
+
+// RequireServeName reports whether an Gateway API caller (and the Control Center
+// form) must supply metadata.name themselves — true unless serve.name is
+// declared, in which case the name is resolved server-side instead.
+func (c *CRDEntry) RequireServeName() bool {
+	return !c.HasServeName()
+}
+
+// IsServeRequiredField reports whether the given field name is declared as a
+// required field in the serve configuration.
+//
+// A field is considered required if:
+//   - It exists in serve.fields with required: true, or
+//   - It exists in serve.labels with required: true, or
+//   - It exists in serve.annotations with required: true
+//
+// Used by the Control Center to mark form fields as required and by the
+// gateway to validate target-mode requests before building the CR.
+func (c *CRDEntry) IsServeRequiredField(field string) bool {
+	if c.Serve == nil {
+		return false
+	}
+	if _, ok := c.Serve.Fields[field]; ok {
+		return true
+	}
+	if _, ok := c.Serve.Labels[field]; ok {
+		return true
+	}
+	if _, ok := c.Serve.Annotations[field]; ok {
+		return true
+	}
+	return false
+}
+
+// HasServeNamespace reports whether serve.namespace is declared — the Gateway API
+// only resolves and applies a namespace override when this is true.
+func (c *CRDEntry) HasServeNamespace() bool {
+	return c.Serve != nil && c.Serve.Namespace != ""
+}
+
+// ServeLabels returns serve.labels. Nil-safe.
+func (c *CRDEntry) ServeLabels() map[string]ServeFieldConfig {
+	if c.Serve == nil {
 		return nil
 	}
-	return c.IDP.AdditionalFields.Labels
+	return c.Serve.Labels
 }
 
-// AdditionalAnnotationFields returns idp.additionalFields.annotations.
-// Nil-safe — returns nil if IDP or AdditionalFields is not declared, same as
-// ranging over a nil map.
-func (c *CRDEntry) AdditionalAnnotationFields() map[string]IDPFieldConfig {
-	if c.IDP == nil || c.IDP.AdditionalFields == nil {
+// ServeAnnotations returns serve.annotations. Nil-safe.
+func (c *CRDEntry) ServeAnnotations() map[string]ServeFieldConfig {
+	if c.Serve == nil {
 		return nil
 	}
-	return c.IDP.AdditionalFields.Annotations
+	return c.Serve.Annotations
 }
 
-// HasAdditionalIDPFields reports whether this CRD declares any
-// idp.additionalFields labels or annotations.
-func (c *CRDEntry) HasAdditionalIDPFields() bool {
-	return len(c.AdditionalLabelFields()) > 0 || len(c.AdditionalAnnotationFields()) > 0
+// HasServeLabelsOrAnnotations reports whether this CRD declares any serve labels or annotations.
+func (c *CRDEntry) HasServeLabelsOrAnnotations() bool {
+	return len(c.ServeLabels()) > 0 || len(c.ServeAnnotations()) > 0
+}
+
+// ─── Serve Response Config Methods ────────────────────────────────────────────
+
+// HasServeResponseConfig reports whether the CRD has an serve response configuration.
+func (c *CRDEntry) HasServeResponseConfig() bool {
+	return c.Serve != nil && c.Serve.Config != nil && c.Serve.Config.Response != nil
+}
+
+// GetServeResponseConfig returns the serve response configuration, or nil if not set.
+func (c *CRDEntry) GetServeResponseConfig() *ServeResponseConfig {
+	if c.Serve == nil || c.Serve.Config == nil {
+		return nil
+	}
+	return c.Serve.Config.Response
+}
+
+// ServeResponseUseDefault reports whether the full CR should be the starting point.
+// Returns true when Default is nil (omitted) or explicitly true.
+func (c *CRDEntry) ServeResponseUseDefault() bool {
+	cfg := c.GetServeResponseConfig()
+	if cfg == nil {
+		return true
+	}
+	return cfg.UseDefault()
+}
+
+// ServeResponseHasPayload reports whether any payload expressions are declared.
+func (c *CRDEntry) ServeResponseHasPayload() bool {
+	cfg := c.GetServeResponseConfig()
+	if cfg == nil {
+		return false
+	}
+	return cfg.HasPayload()
+}
+
+// ServeResponseHasExclude reports whether an exclude expression is declared.
+func (c *CRDEntry) ServeResponseHasExclude() bool {
+	cfg := c.GetServeResponseConfig()
+	if cfg == nil {
+		return false
+	}
+	return cfg.HasExclude()
+}
+
+// ServeResponseExclude returns the exclude list, or nil if not set.
+func (c *CRDEntry) ServeResponseExclude() []string {
+	cfg := c.GetServeResponseConfig()
+	if cfg == nil {
+		return nil
+	}
+	return cfg.Exclude
+}
+
+// ServeResponsePayload returns the payload map, or nil if not set.
+func (c *CRDEntry) ServeResponsePayload() map[string]string {
+	cfg := c.GetServeResponseConfig()
+	if cfg == nil {
+		return nil
+	}
+	return cfg.Payload
 }
 
 func (e EndpointsConfig) IsHealthEnabled() bool {

@@ -266,60 +266,101 @@ func expandOpRules(rules []SimulateOpRule, baseDir string) ([]SimulateOpRule, er
 	return expanded, nil
 }
 
-// ExpandIDPInclude resolves the idp.include field by reading the referenced
-// file, unmarshaling its "fields:" and "additionalFields:" maps, and merging
-// them under the inline equivalents. Inline entries take precedence — included
-// keys present in both are overridden, per bucket (fields, additionalFields.labels,
-// additionalFields.annotations independently).
+// ExpandServeInclude resolves the serve.include field by reading the referenced
+// file, unmarshaling its "fields:", "labels:", and "annotations:" maps, and
+// merging them under the inline equivalents. Inline entries take precedence.
 // The include path is resolved relative to baseDir. Cleared after expansion.
-func ExpandIDPInclude(idp *IDPConfig, baseDir string) error {
-	if idp == nil || idp.Include == "" {
+func ExpandServeInclude(serve *ServeConfig, baseDir string) error {
+	if serve == nil || serve.Include == "" {
 		return nil
 	}
-	path := idp.Include
+	path := serve.Include
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(baseDir, path)
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("reading idp.include %q: %w", idp.Include, err)
+		return fmt.Errorf("reading serve.include %q: %w", serve.Include, err)
 	}
 	var f struct {
-		Fields           map[string]IDPFieldConfig `yaml:"fields"`
-		AdditionalFields *AdditionalIDPFields      `yaml:"additionalFields"`
+		Fields      map[string]ServeFieldConfig `yaml:"fields"`
+		Labels      map[string]ServeFieldConfig `yaml:"labels"`
+		Annotations map[string]ServeFieldConfig `yaml:"annotations"`
 	}
 	if err := orkutils.StrictUnmarshal(data, &f); err != nil {
-		return fmt.Errorf("parsing idp.include %q: %w", idp.Include, err)
+		return fmt.Errorf("parsing serve.include %q: %w", serve.Include, err)
 	}
-	merged := make(map[string]IDPFieldConfig, len(f.Fields)+len(idp.Fields))
+	merged := make(map[string]ServeFieldConfig, len(f.Fields)+len(serve.Fields))
 	for k, v := range f.Fields {
 		merged[k] = v
 	}
-	for k, v := range idp.Fields {
+	for k, v := range serve.Fields {
 		merged[k] = v
 	}
-	idp.Fields = merged
-
-	if f.AdditionalFields != nil {
-		if idp.AdditionalFields == nil {
-			idp.AdditionalFields = &AdditionalIDPFields{}
-		}
-		idp.AdditionalFields.Labels = mergeIDPFieldConfigs(f.AdditionalFields.Labels, idp.AdditionalFields.Labels)
-		idp.AdditionalFields.Annotations = mergeIDPFieldConfigs(f.AdditionalFields.Annotations, idp.AdditionalFields.Annotations)
-	}
-
-	idp.Include = ""
+	serve.Fields = merged
+	serve.Labels = mergeServeFieldConfigs(f.Labels, serve.Labels)
+	serve.Annotations = mergeServeFieldConfigs(f.Annotations, serve.Annotations)
+	serve.Include = ""
 	return nil
 }
 
-// mergeIDPFieldConfigs merges included and inline IDPFieldConfig maps, inline
-// taking precedence. Returns nil when both inputs are empty, matching the
-// omitempty shape AdditionalIDPFields expects.
-func mergeIDPFieldConfigs(included, inline map[string]IDPFieldConfig) map[string]IDPFieldConfig {
+// ExpandGatewayAPIAuth resolves include entries in GatewayConfig.API.Auth.
+// If auth.Include is set, it reads the referenced file, unmarshals its "tokens:" list,
+// and merges it with the inline tokens. Inline tokens override included tokens
+// with the same name.
+// The include path is resolved relative to baseDir. Cleared after expansion.
+func ExpandGatewayAPIAuth(gw *GatewayConfig, baseDir string) error {
+	if gw == nil || gw.API == nil {
+		return nil
+	}
+	auth := &gw.API.Auth
+	if auth.Include == "" {
+		return nil
+	}
+
+	path := auth.Include
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(baseDir, path)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("reading gateway.api.auth.include %q: %w", auth.Include, err)
+	}
+
+	var f struct {
+		Tokens []APIToken `yaml:"tokens"`
+	}
+	if err := orkutils.StrictUnmarshal(data, &f); err != nil {
+		return fmt.Errorf("parsing gateway.api.auth.include %q: %w", auth.Include, err)
+	}
+
+	// Merge: included tokens first, then inline overrides by name
+	merged := make(map[string]APIToken)
+	for _, t := range f.Tokens {
+		merged[t.Name] = t
+	}
+	for _, t := range auth.Tokens {
+		merged[t.Name] = t
+	}
+
+	// Convert map back to slice
+	auth.Tokens = make([]APIToken, 0, len(merged))
+	for _, t := range merged {
+		auth.Tokens = append(auth.Tokens, t)
+	}
+	auth.Include = ""
+
+	return nil
+}
+
+// mergeServeFieldConfigs merges included and inline ServeFieldConfig maps, inline
+// taking precedence. Returns nil when both inputs are empty.
+func mergeServeFieldConfigs(included, inline map[string]ServeFieldConfig) map[string]ServeFieldConfig {
 	if len(included) == 0 && len(inline) == 0 {
 		return nil
 	}
-	merged := make(map[string]IDPFieldConfig, len(included)+len(inline))
+	merged := make(map[string]ServeFieldConfig, len(included)+len(inline))
 	for k, v := range included {
 		merged[k] = v
 	}

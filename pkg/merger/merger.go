@@ -214,7 +214,7 @@ func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
 
 	// ── Restricted namespaces — additive ──────────────────────────────────
 	// Restrictions are additive: override adds to base, never removes
-	if len(override.RestrictedNamespaces) > 0 {
+	if override.HasRestrictedNamespaces() {
 		seen := map[string]struct{}{}
 		for _, ns := range result.RestrictedNamespaces {
 			seen[ns] = struct{}{}
@@ -228,7 +228,7 @@ func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
 
 	// ── Allowed namespaces — additive ─────────────────────────────────────
 	// Allowances are additive: override adds to base, never removes
-	if len(override.AllowedNamespaces) > 0 {
+	if override.HasAllowedNamespaces() {
 		seen := map[string]struct{}{}
 		for _, ns := range result.AllowedNamespaces {
 			seen[ns] = struct{}{}

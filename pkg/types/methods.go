@@ -214,6 +214,16 @@ func (c *CRDEntry) GVK() schema.GroupVersionKind {
 	return c.GroupVersionKind
 }
 
+// APIVersion returns the API version string (group/version) for this CRD.
+func (c *CRDEntry) APIVersion() string {
+	return c.GroupVersionKind.GroupVersion().String()
+}
+
+// Kind returns the kind string for this CRD.
+func (c *CRDEntry) Kind() string {
+	return c.GroupVersionKind.Kind
+}
+
 // GVKString returns the fully resolved GroupVersionKind for this CRD as a string.
 func (c *CRDEntry) GVKString() string {
 	return c.GroupVersionKind.String()
@@ -535,6 +545,11 @@ func (c *CRDEntry) AllAllowedNamespaces() AllowedNamespaces {
 	return c.AllowedNamespaces
 }
 
+// IsNamespaceRestricted returns true if either allowedNamespaces or restrictedNamespaces is not empty
+func (c *CRDEntry) IsNamespaceRestricted() bool {
+	return c.HasAllowedNamespaces() || c.HasRestrictedNamespaces()
+}
+
 // AllowedNamespacesOnly reports if only allowedNamespaces is defined for this crd.
 func (c *CRDEntry) AllowedNamespacesOnly() bool {
 	return len(c.AllowedNamespaces) > 0 && len(c.RestrictedNamespaces) == 0
@@ -553,6 +568,45 @@ func (c *CRDEntry) HasAllowedNamespaces() bool {
 // HasRestrictedNamespaces reports if restrictedNamespaces is defined for this crd.
 func (c *CRDEntry) HasRestrictedNamespaces() bool {
 	return len(c.RestrictedNamespaces) > 0
+}
+
+// IsNamespaceAuthorized returns true if the namespace is allowed for this CRD.
+//
+// Authorization rules:
+//   - If only allowedNamespaces is set: namespace must be in the list
+//   - If only restrictedNamespaces is set: namespace must NOT be in the list
+//   - If both are set: namespace must be in allowedNamespaces AND NOT in restrictedNamespaces
+//   - If neither is set: all namespaces are allowed
+func (c *CRDEntry) IsNamespaceAuthorized(namespace string) bool {
+	// If both are empty, all namespaces are allowed
+	if !c.HasAllowedNamespaces() && !c.HasRestrictedNamespaces() {
+		return true
+	}
+
+	// Check allowedNamespaces (if set)
+	if c.HasAllowedNamespaces() {
+		allowed := false
+		for _, ns := range c.AllowedNamespaces {
+			if ns == namespace {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return false
+		}
+	}
+
+	// Check restrictedNamespaces (if set)
+	if c.HasRestrictedNamespaces() {
+		for _, ns := range c.RestrictedNamespaces {
+			if ns == namespace {
+				return false // namespace is restricted
+			}
+		}
+	}
+
+	return true
 }
 
 // IsValidServiceType reports whether the provided service type is valid.

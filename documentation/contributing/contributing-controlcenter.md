@@ -1,6 +1,6 @@
 # Contributing to the Control Center
 
-The control center (`cmd/controlcenter`) is a lightweight Go web server with embedded HTML templates. It connects to one or more running Orkestra runtimes via their `/katalog` HTTP API and presents a read-only view of what is running.
+The control center (`cmd/controlcenter`) is a lightweight Go web server with embedded HTML templates. It connects to one or more running Orkestra runtimes via their `/katalog` HTTP API to present what is running, and — for CRDs with `serve.enabled: true` — to a companion gateway's Gateway API to let a developer create new instances through a form.
 
 ---
 
@@ -15,6 +15,7 @@ The control center currently surfaces:
 | CRD detail | `/katalog/{name}/crd/{crd}` | CRD config, worker count, recent reconcile status |
 | CR list | `/katalog/{name}/crd/{crd}/cr` | All custom resource instances |
 | CR detail | `/katalog/{name}/crd/{crd}/cr/{ns}/{name}` | One CR — spec, status, children, events |
+| IDP form | `/katalog/{name}/crd/{crd}/cr/create` | Self-service create form for CRDs with `serve.enabled: true` — submits target mode to the gateway, builds no CR itself |
 | Developer apps | `/katalog/{name}/app/{app}` | Developer Katalog view (orkdoctor path) |
 | In-package docs | `/docs` | Rendered ork-docs for the connected operator |
 | Metrics | `/metrics` | Metrics page — template exists, data not yet wired |
@@ -57,23 +58,17 @@ When a Katalog has a `gatewayEndpoint`, the control center knows the gateway URL
 
 ### IDP mode — follow-on improvements
 
-When `gateway.applyAPI.enabled: true`, the control center renders a **[+ Create]** button per CRD and a form generated from the CRD's OpenAPI schema (fetched from `GET {gatewayEndpoint}/api/v1/schema/{kind}`). The v1 form covers flat schemas only. Several improvements are open for contribution:
+When `gateway.api.enabled: true`, the control center renders a **[+ Create]** button per CRD and a form generated from the gateway's flat field schema (`GET {gatewayEndpoint}/api/v1/schema?target=<target>`) — one input per declared `serve.fields`/`serve labels/annotations` entry, no CRD or Kubernetes shape involved. The control center never sees `spec`, `metadata`, or an OpenAPI schema; the gateway resolves all of that server-side from `target`. See [Target Mode](../concepts/idp/02-target-mode.md).
+
+Per-CRD, per-token authorization already exists (`serve.tokens` — which operations, in which namespaces, for a given token) and needs no contribution here. See [Token Scoping](../concepts/idp/03-token-scoping.md). What's still open:
 
 **OIDC authentication**
 
-v1 uses static bearer tokens (`gateway.applyAPI.auth.tokens`). OIDC would let the CC use the user's existing session as the Apply API credential — no separate token needed. The gateway would validate the OIDC token against the configured issuer. See the Apply API spec for the auth block shape.
+Today's tokens are static bearer values (`gateway.api.auth.tokens`). OIDC would let the CC use the user's existing session as the Gateway API credential — no separate token needed. The gateway would validate the OIDC token against the configured issuer. See [05-auth.md](../../pkg/gateway/api/docs/05-auth.md) for the current auth pipeline this would extend.
 
 **Service account token review**
 
 For in-cluster callers (CI pipelines running inside the cluster), the gateway can validate Kubernetes service account tokens via the `TokenReview` API. This removes the need for any static token configuration for in-cluster use cases.
-
-**Nested schema rendering**
-
-v1 flattens `type: object` and `type: array` spec fields to a JSON textarea. A richer renderer would:
-- Expand `type: object` into an indented field group with one input per property
-- Expand `type: array` into a repeatable entry group with add/remove controls
-
-The form renderer lives in `cc/assets/` alongside the existing templates. The schema shape from `/api/v1/schema/{kind}` is the input.
 
 ---
 

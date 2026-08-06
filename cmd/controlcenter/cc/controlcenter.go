@@ -324,8 +324,8 @@ func (cc *ControlCenter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		cc.handleIDPApply(w, r)
 
 	case strings.HasPrefix(path, "/api/idp/schema/"):
-		kind := strings.TrimPrefix(path, "/api/idp/schema/")
-		cc.handleIDPSchema(w, r, kind)
+		target := strings.TrimPrefix(path, "/api/idp/schema/")
+		cc.handleIDPSchema(w, r, target)
 
 	case strings.HasPrefix(path, "/katalog/"):
 		// Strip leading slash and split
@@ -874,15 +874,15 @@ func (cc *ControlCenter) handleCRList(w http.ResponseWriter, r *http.Request, in
 	})
 }
 
-// handleIDPSchema proxies GET /api/v1/schema/{kind} from the gateway.
+// handleIDPSchema proxies GET /api/v1/schema?target=<target> from the gateway.
 // The gateway token is stored server-side — the browser never sees it.
-func (cc *ControlCenter) handleIDPSchema(w http.ResponseWriter, r *http.Request, kind string) {
+func (cc *ControlCenter) handleIDPSchema(w http.ResponseWriter, r *http.Request, target string) {
 	inst := cc.firstInstance()
 	if inst == nil || inst.GatewayEndpoint == "" {
 		http.Error(w, `{"error":"no gateway configured"}`, http.StatusServiceUnavailable)
 		return
 	}
-	cc.proxyIDPRequest(w, r, inst.GatewayEndpoint+"/api/v1/schema/"+kind, http.MethodGet, nil)
+	cc.proxyIDPRequest(w, r, inst.GatewayEndpoint+"/api/v1/schema?target="+url.QueryEscape(target), http.MethodGet, nil)
 }
 
 // handleIDPApply proxies POST /api/v1/apply to the gateway.
@@ -963,27 +963,32 @@ func (cc *ControlCenter) handleIDPCreateForm(w http.ResponseWriter, r *http.Requ
 			break
 		}
 	}
-	if crdSummary == nil || !crdSummary.IdpEnabled {
+	if crdSummary == nil || !crdSummary.IdpEnabled || crdSummary.Target == "" {
 		http.Redirect(w, r, backURL, http.StatusSeeOther)
 		return
 	}
 
+	target := crdSummary.Target
+	// Kind/APIVersion are display-only (page header) — the gateway builds
+	// the CR from target, it doesn't need them from the form.
 	kind, apiVersion := idpParseGVK(crdSummary.GVK)
 
 	if r.Method == http.MethodPost {
-		cc.handleIDPApplyForm(w, r, inst, kind, apiVersion)
+		cc.handleIDPApplyForm(w, r, inst, target)
 		return
 	}
 
-	sections, fetchErr := cc.fetchIDPFields(inst, crdName, kind)
+	sections, fetchErr := cc.fetchAllServeFields(inst, target)
 	data := IDPFormData{
-		KatalogName: katalogName,
-		CRDName:     crdName,
-		Kind:        kind,
-		APIVersion:  apiVersion,
-		BackURL:     backURL,
-		Namespaced:  crdSummary.Namespaced,
-		Sections:    sections,
+		KatalogName:      katalogName,
+		CRDName:          crdName,
+		Target:           target,
+		Kind:             kind,
+		APIVersion:       apiVersion,
+		BackURL:          backURL,
+		Namespaced:       crdSummary.Namespaced,
+		RequireServeName: crdSummary.RequireServeName,
+		Sections:         sections,
 	}
 	if fetchErr != nil {
 		data.Error = "Could not load schema: " + fetchErr.Error()
@@ -1003,12 +1008,11 @@ const (
 	FieldTypeEnum    FieldType = "enum"
 )
 
-// idpFieldHint mirrors orktypes.IDPFieldConfig — the presentation-hint shape
-// shared by idp.fields, idp.additionalFields.labels, and
-// idp.additionalFields.annotations. Type/Enum only matter for the latter
-// two: spec fields always infer type/enum from the CRD's OpenAPI schema
-// (schemaResp.Properties) instead.
-type idpFieldHint struct {
+// serveFieldHint mirrors one entry of pkg/gateway/api.SchemaResponse.Fields
+// (itself orktypes.ServeFieldConfig) — the gateway's flat, caller-facing field
+// contract. It doesn't distinguish where a field routes to (spec, label,
+// annotation) — the gateway resolves that from the Katalog, not the caller.
+type serveFieldHint struct {
 	Label       string            `json:"label"`
 	Placeholder string            `json:"placeholder"`
 	Hint        string            `json:"hint"`
@@ -1022,43 +1026,26 @@ type idpFieldHint struct {
 	Enum        []string          `json:"enum"`
 }
 
-// idpSchemaProperty mirrors one entry of pkg/gateway/applyapi.SchemaResponse.Properties
-// — a CRD spec field as reported by the CRD's own OpenAPI schema. Type is always a JSON
-// Schema base type ("string", "integer", "number", "boolean") — CRD schemas never use
-// "enum" as a type; Enum is a constraint alongside "string", not a type of its own.
-type idpSchemaProperty struct {
-	Type        string      `json:"type"`
-	Enum        []string    `json:"enum"`
-	Description string      `json:"description"`
-	Default     interface{} `json:"default"`
-}
-
-// buildSpecIDPField builds an IDPField for one idp.fields entry (or an
-// undeclared spec property with no hint). Unlike additionalFields,
-// type/enum come from the CRD's OpenAPI schema (prop), not from the hint —
-// a schema enum is reported as Type: "string" with Enum populated, never
-// Type: "enum".
-func buildSpecIDPField(name string, prop idpSchemaProperty, hint idpFieldHint, required bool) IDPField {
+// buildServeField builds an ServeField for one gateway schema field entry.
+// Type/enum come from the field's own declared type — the gateway's flat
+// schema doesn't distinguish where a field routes to (spec, label,
+// annotation), so neither does the form.
+func buildServeField(name string, hint serveFieldHint) ServeField {
 	label := hint.Label
 	if label == "" {
-		label = strings.ToUpper(name[:1]) + name[1:]
+		label = name
+		if len(label) > 0 {
+			label = strings.ToUpper(label[:1]) + label[1:]
+		}
 	}
-	f := IDPField{
+	f := ServeField{
 		Name:        name,
 		Label:       label,
 		Hint:        hint.Hint,
 		Placeholder: hint.Placeholder,
-		Required:    required || hint.Required,
+		Required:    hint.Required,
 		Category:    hint.Category,
 		Disabled:    hint.Disabled,
-		Source:      IDPFieldSourceSpec,
-	}
-	if f.Hint == "" {
-		f.Hint = prop.Description
-	}
-	// Pre-populate from CRD schema default:
-	if prop.Default != nil {
-		f.Default = fmt.Sprintf("%v", prop.Default)
 	}
 	// Encode when/anyOf as JSON strings for the template to embed as data attributes.
 	if len(hint.When) > 0 {
@@ -1071,49 +1058,6 @@ func buildSpecIDPField(name string, prop idpSchemaProperty, hint idpFieldHint, r
 			f.AnyOfJSON = string(b)
 		}
 	}
-	switch {
-	case len(prop.Enum) > 0:
-		f.InputType = "select"
-		f.Enum = prop.Enum
-	case prop.Type == string(FieldTypeBoolean):
-		f.InputType = "checkbox"
-	case prop.Type == string(FieldTypeInteger) || prop.Type == string(FieldTypeNumber):
-		f.InputType = "number"
-	default:
-		f.InputType = "text"
-	}
-	return f
-}
-
-// buildAdditionalIDPField builds an IDPField for one idp.additionalFields
-// entry. Unlike spec fields, type/enum come from the hint itself — there's
-// no CRD schema to infer them from.
-func buildAdditionalIDPField(name string, hint idpFieldHint, source string) IDPField {
-	label := hint.Label
-	if label == "" {
-		label = name
-	}
-	f := IDPField{
-		Name:        name,
-		Label:       label,
-		Hint:        hint.Hint,
-		Placeholder: hint.Placeholder,
-		Required:    hint.Required,
-		Category:    hint.Category,
-		Disabled:    hint.Disabled,
-		Source:      source,
-	}
-	if len(hint.When) > 0 {
-		if b, err := json.Marshal(hint.When); err == nil {
-			f.WhenJSON = string(b)
-		}
-	}
-	if len(hint.AnyOf) > 0 {
-		if b, err := json.Marshal(hint.AnyOf); err == nil {
-			f.AnyOfJSON = string(b)
-		}
-	}
-
 	switch {
 	case hint.Type == string(FieldTypeEnum) && len(hint.Enum) > 0:
 		f.InputType = "select"
@@ -1128,10 +1072,8 @@ func buildAdditionalIDPField(name string, hint idpFieldHint, source string) IDPF
 	return f
 }
 
-// fetchIDPFields fetches the CRD schema from the gateway. The gateway merges
-// the OpenAPI spec properties with idp.fields hints (labels, hints, order)
-// from the Katalog, so a single call is enough.
-func (cc *ControlCenter) fetchIDPFields(inst *Instance, crdName, kind string) ([]IDPSection, error) {
+// fetchAllServeFields fetches the flat field schema for target from the gateway.
+func (cc *ControlCenter) fetchAllServeFields(inst *Instance, target string) ([]IDPSection, error) {
 	if inst.GatewayEndpoint == "" {
 		return nil, fmt.Errorf("no gateway endpoint configured")
 	}
@@ -1139,8 +1081,7 @@ func (cc *ControlCenter) fetchIDPFields(inst *Instance, crdName, kind string) ([
 		return nil, fmt.Errorf("GATEWAY_TOKEN not set")
 	}
 
-	// ── Schema + idpFields from a single gateway call ────────────────────────
-	req, _ := http.NewRequest(http.MethodGet, inst.GatewayEndpoint+"/api/v1/schema/"+strings.ToLower(kind), nil) //nolint:noctx
+	req, _ := http.NewRequest(http.MethodGet, inst.GatewayEndpoint+"/api/v1/schema?target="+url.QueryEscape(target), nil) //nolint:noctx
 	req.Header.Set("Authorization", "Bearer "+cc.gatewayToken)
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -1153,56 +1094,22 @@ func (cc *ControlCenter) fetchIDPFields(inst *Instance, crdName, kind string) ([
 		return nil, fmt.Errorf("%s", strings.TrimSpace(string(body)))
 	}
 
-	// SchemaResponse mirrors pkg/gateway/schema.SchemaResponse.
+	// schemaResp mirrors pkg/gateway/api.SchemaResponse — a flat field
+	// map, no CRD-schema/bucket distinction.
 	var schemaResp struct {
-		Properties            map[string]idpSchemaProperty `json:"properties"`
-		Required              []string                     `json:"required"`
-		IgnoreFields          []string                     `json:"ignoreFields"`
-		IDPFields             map[string]idpFieldHint      `json:"idpFields"`
-		AdditionalLabels      map[string]idpFieldHint      `json:"additionalLabels"`
-		AdditionalAnnotations map[string]idpFieldHint      `json:"additionalAnnotations"`
+		Fields map[string]serveFieldHint `json:"fields"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&schemaResp); err != nil {
 		return nil, err
 	}
 
-	requiredSet := map[string]bool{}
-	for _, name := range schemaResp.Required {
-		requiredSet[name] = true
-	}
-	ignoreSet := map[string]bool{}
-	for _, name := range schemaResp.IgnoreFields {
-		ignoreSet[name] = true
-	}
-
 	type orderedField struct {
-		field IDPField
+		field ServeField
 		order int
 	}
 	var ordered []orderedField
-
-	for name, prop := range schemaResp.Properties {
-		if ignoreSet[name] {
-			continue
-		}
-		hint := schemaResp.IDPFields[name]
-		f := buildSpecIDPField(name, prop, hint, requiredSet[name])
-		ordered = append(ordered, orderedField{field: f, order: hint.Order})
-	}
-
-	// idp.additionalFields — labels and annotations. No CRD schema counterpart,
-	// so type/enum come from the hint itself instead of schemaResp.Properties.
-	for name, hint := range schemaResp.AdditionalLabels {
-		ordered = append(ordered, orderedField{
-			field: buildAdditionalIDPField(name, hint, IDPFieldSourceLabel),
-			order: hint.Order,
-		})
-	}
-	for name, hint := range schemaResp.AdditionalAnnotations {
-		ordered = append(ordered, orderedField{
-			field: buildAdditionalIDPField(name, hint, IDPFieldSourceAnnotation),
-			order: hint.Order,
-		})
+	for name, hint := range schemaResp.Fields {
+		ordered = append(ordered, orderedField{field: buildServeField(name, hint), order: hint.Order})
 	}
 
 	sort.Slice(ordered, func(i, j int) bool {
@@ -1219,17 +1126,13 @@ func (cc *ControlCenter) fetchIDPFields(inst *Instance, crdName, kind string) ([
 		}
 		return ordered[i].field.Name < ordered[j].field.Name
 	})
-	// Group sorted fields into sections by Group name.
+	// Group sorted fields into sections by Category name.
 	var sections []IDPSection
 	for _, o := range ordered {
 		f := o.field
 		title := f.Category
 		if title == "" {
-			if f.Source == "spec" {
-				title = "Spec"
-			} else {
-				title = "Additional Fields"
-			}
+			title = "Fields"
 		}
 		if len(sections) == 0 || sections[len(sections)-1].Title != title {
 			sections = append(sections, IDPSection{Title: title})
@@ -1239,44 +1142,28 @@ func (cc *ControlCenter) fetchIDPFields(inst *Instance, crdName, kind string) ([
 	return sections, nil
 }
 
-// handleIDPApplyForm processes the IDP form POST: builds a CR and forwards to the gateway.
-func (cc *ControlCenter) handleIDPApplyForm(w http.ResponseWriter, r *http.Request, inst *Instance, kind, apiVersion string) {
-	var body struct {
-		Name        string            `json:"name"`
-		Namespace   string            `json:"namespace"`
-		Spec        map[string]any    `json:"spec"`
-		Labels      map[string]string `json:"labels"`
-		Annotations map[string]string `json:"annotations"`
-	}
+// handleIDPApplyForm processes the IDP form POST: forwards the flat
+// target-mode payload the form submitted to the Gateway API. The
+// gateway builds the CR from target — this handler doesn't construct one.
+func (cc *ControlCenter) handleIDPApplyForm(w http.ResponseWriter, r *http.Request, inst *Instance, target string) {
+	var body map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, `{"error":"invalid request body"}`)
 		return
 	}
+	// target is always the server-resolved value for this route, not
+	// whatever the client sent (there's no client-supplied target to trust
+	// here — the route itself determines which CRD this form is for).
+	body["target"] = target
 
-	metadata := map[string]any{
-		"name":      body.Name,
-		"namespace": body.Namespace,
-	}
-	if len(body.Labels) > 0 {
-		metadata["labels"] = body.Labels
-	}
-	if len(body.Annotations) > 0 {
-		metadata["annotations"] = body.Annotations
-	}
-	cr := map[string]any{
-		"apiVersion": apiVersion,
-		"kind":       kind,
-		"metadata":   metadata,
-		"spec":       body.Spec,
-	}
-	crJSON, _ := json.Marshal(cr)
+	payload, _ := json.Marshal(body)
 	applyURL := inst.GatewayEndpoint + "/api/v1/apply"
 	if r.URL.Query().Get("dryRun") == "true" {
 		applyURL += "?dryRun=true"
 	}
-	cc.proxyIDPRequest(w, r, applyURL, http.MethodPost, bytes.NewReader(crJSON))
+	cc.proxyIDPRequest(w, r, applyURL, http.MethodPost, bytes.NewReader(payload))
 }
 
 // idpParseGVK splits "group/version, Kind=Kind" into (kind, apiVersion).

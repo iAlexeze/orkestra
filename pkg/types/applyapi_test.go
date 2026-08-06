@@ -6,10 +6,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func TestApplyAPIConfigYAML(t *testing.T) {
+func TestAPIConfigYAML(t *testing.T) {
 	input := `
 enabled: true
-applyAPI:
+api:
   enabled: true
   auth:
     tokens:
@@ -25,13 +25,13 @@ applyAPI:
 	if err := yaml.Unmarshal([]byte(input), &gw); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if gw.ApplyAPI == nil {
-		t.Fatal("ApplyAPI is nil")
+	if gw.API == nil {
+		t.Fatal("API is nil")
 	}
-	if !gw.ApplyAPI.Enabled {
-		t.Error("ApplyAPI.Enabled should be true")
+	if !gw.API.Enabled {
+		t.Error("API.Enabled should be true")
 	}
-	tokens := gw.ApplyAPI.Auth.Tokens
+	tokens := gw.API.Auth.Tokens
 	if len(tokens) != 2 {
 		t.Fatalf("want 2 tokens, got %d", len(tokens))
 	}
@@ -59,9 +59,9 @@ applyAPI:
 	}
 }
 
-func TestIDPConfigYAML(t *testing.T) {
+func TestServeConfigYAML(t *testing.T) {
 	input := `
-idp:
+serve:
   enabled: true
   fields:
     workloadType:
@@ -77,13 +77,13 @@ idp:
 	if err := yaml.Unmarshal([]byte(input), &entry); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if entry.IDP == nil {
-		t.Fatal("IDP is nil")
+	if entry.Serve == nil {
+		t.Fatal("serve is nil")
 	}
-	if !entry.IDP.Enabled {
-		t.Error("IDP.Enabled should be true")
+	if !entry.Serve.Enabled {
+		t.Error("serve.Enabled should be true")
 	}
-	wt, ok := entry.IDP.Fields["workloadType"]
+	wt, ok := entry.Serve.Fields["workloadType"]
 	if !ok {
 		t.Fatal("missing workloadType field")
 	}
@@ -93,17 +93,17 @@ idp:
 	if wt.Order != 1 {
 		t.Errorf("order = %d", wt.Order)
 	}
-	team := entry.IDP.Fields["team"]
+	team := entry.Serve.Fields["team"]
 	if team.Placeholder != "team-payments" {
 		t.Errorf("placeholder = %q", team.Placeholder)
 	}
 }
 
-func TestIDPConfigIgnoreFieldsAndWhen(t *testing.T) {
+func TestServeConfigIgnoreFieldsAndWhen(t *testing.T) {
 	input := `
-idp:
+serve:
   enabled: true
-  ignoreFields:
+  ignore:
     - internalId
     - createdBy
   category: "Compute"
@@ -132,21 +132,21 @@ idp:
 	if err := yaml.Unmarshal([]byte(input), &entry); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	idp := entry.IDP
-	if idp == nil {
-		t.Fatal("IDP is nil")
+	serve := entry.Serve
+	if serve == nil {
+		t.Fatal("serve is nil")
 	}
-	if len(idp.IgnoreFields) != 2 || idp.IgnoreFields[0] != "internalId" {
-		t.Errorf("IgnoreFields = %v", idp.IgnoreFields)
+	if len(serve.Ignore) != 2 || serve.Ignore[0] != "internalId" {
+		t.Errorf("Ignore = %v", serve.Ignore)
 	}
-	if idp.Category != "Compute" {
-		t.Errorf("Category = %q", idp.Category)
+	if serve.Category != "Compute" {
+		t.Errorf("Category = %q", serve.Category)
 	}
-	if idp.Description != "Self-service application deployment" {
-		t.Errorf("Description = %q", idp.Description)
+	if serve.Description != "Self-service application deployment" {
+		t.Errorf("Description = %q", serve.Description)
 	}
 
-	wt := idp.Fields["workloadType"]
+	wt := serve.Fields["workloadType"]
 	if wt.Category != "Basic" {
 		t.Errorf("workloadType.Category = %q", wt.Category)
 	}
@@ -154,7 +154,7 @@ idp:
 		t.Errorf("workloadType should have no when conditions")
 	}
 
-	repo := idp.Fields["repoURL"]
+	repo := serve.Fields["repoURL"]
 	if len(repo.When) != 1 {
 		t.Fatalf("repoURL.When len = %d, want 1", len(repo.When))
 	}
@@ -162,7 +162,7 @@ idp:
 		t.Errorf("repoURL.When[0] = %+v", repo.When[0])
 	}
 
-	cert := idp.Fields["certIssuer"]
+	cert := serve.Fields["certIssuer"]
 	if len(cert.When) != 2 {
 		t.Fatalf("certIssuer.When len = %d, want 2", len(cert.When))
 	}
@@ -172,7 +172,7 @@ idp:
 
 	// time-based when uses the same Condition infrastructure
 	inputWithTime := `
-idp:
+serve:
   enabled: true
   fields:
     environment:
@@ -191,7 +191,7 @@ idp:
 	if err := yaml.Unmarshal([]byte(inputWithTime), &entryTime); err != nil {
 		t.Fatalf("unmarshal time-when: %v", err)
 	}
-	pd := entryTime.IDP.Fields["prodDeploy"]
+	pd := entryTime.Serve.Fields["prodDeploy"]
 	if len(pd.When) != 1 {
 		t.Fatalf("prodDeploy.When len = %d, want 1", len(pd.When))
 	}
@@ -203,9 +203,9 @@ idp:
 	}
 }
 
-func TestIDPFieldAnyOfAndDisabled(t *testing.T) {
+func TestServeFieldAnyOfAndDisabled(t *testing.T) {
 	input := `
-idp:
+serve:
   enabled: true
   fields:
     environment:
@@ -227,7 +227,7 @@ idp:
 	if err := yaml.Unmarshal([]byte(input), &entry); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	pd := entry.IDP.Fields["prodDeploy"]
+	pd := entry.Serve.Fields["prodDeploy"]
 	if len(pd.AnyOf) != 2 {
 		t.Fatalf("prodDeploy.AnyOf len = %d, want 2", len(pd.AnyOf))
 	}
@@ -238,21 +238,21 @@ idp:
 		t.Errorf("prodDeploy.AnyOf[1].DayOfWeek = %+v", pd.AnyOf[1].DayOfWeek)
 	}
 
-	lf := entry.IDP.Fields["legacyFeature"]
+	lf := entry.Serve.Fields["legacyFeature"]
 	if lf.Disabled != "Deprecated — use NewFeature instead" {
 		t.Errorf("legacyFeature.Disabled = %q", lf.Disabled)
 	}
 }
 
-func TestApplyAPITokenValidation(t *testing.T) {
+func TestAPITokenValidation(t *testing.T) {
 	cases := []struct {
 		name    string
-		token   ApplyAPIToken
+		token   APIToken
 		wantSR  bool
 		wantEnv bool
 	}{
-		{"secretRef", ApplyAPIToken{Name: "x", SecretRef: &ApplyAPISecretRef{Name: "s", Key: "k"}}, true, false},
-		{"envvar", ApplyAPIToken{Name: "x", Token: "${MY_TOKEN}"}, false, true},
+		{"secretRef", APIToken{Name: "x", SecretRef: &APISecretRef{Name: "s", Key: "k"}}, true, false},
+		{"envvar", APIToken{Name: "x", Token: "${MY_TOKEN}"}, false, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

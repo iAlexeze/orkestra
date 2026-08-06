@@ -2,8 +2,8 @@
 //
 // Shared secret lifecycle utilities used by both the runtime and the gateway.
 //
-// These helpers live here rather than in pkg/runtime/runners/ because the gateway
-// Apply API also needs secret existence checks and rotation logic for token secret
+// These helpers live here rather than in pkg/runtime/runners/ because the Gateway
+// API also needs secret existence checks and rotation logic for token secret
 // management. Extracting them here avoids a gateway → runtime import.
 package secrets
 

@@ -38,17 +38,10 @@ var diffCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(diffCmd)
 
-	// Shadow global flags so they don't appear under `ork init`
-	diffCmd.Flags().Bool("debug", false, "")
-	diffCmd.Flags().String("kubeconfig", "", "")
+	// Shadow global flags so they don't appear under `ork diff`
 	diffCmd.Flags().StringSlice("katalog", nil, "")
-	diffCmd.Flags().Bool("verbose", false, "")
-
-	// Hide them from help output
-	diffCmd.Flags().MarkHidden("debug")
-	diffCmd.Flags().MarkHidden("kubeconfig")
 	diffCmd.Flags().MarkHidden("katalog")
-	diffCmd.Flags().MarkHidden("verbose")
+	shadowGlobalCommandFlags(diffCmd)
 }
 
 // Helper

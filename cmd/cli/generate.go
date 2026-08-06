@@ -437,14 +437,6 @@ func init() {
 	}
 
 	// Shadow global flags so they don't appear under `ork generate`
-	generateCmd.Flags().Bool("debug", false, "")
-	generateCmd.Flags().String("kubeconfig", "", "")
-	generateCmd.Flags().Bool("verbose", false, "")
-
-	// Hide them from help output
-	generateCmd.Flags().MarkHidden("debug")
-	generateCmd.Flags().MarkHidden("kubeconfig")
-	generateCmd.Flags().MarkHidden("verbose")
-
+	shadowGlobalCommandFlags(generateCmd)
 	cobra.MarkFlagRequired(generateCmd.Flags(), "katalog")
 }

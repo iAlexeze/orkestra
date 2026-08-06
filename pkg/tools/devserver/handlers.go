@@ -33,9 +33,12 @@ func registerHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/v1/data/", handle(opaPolicyHandler))
 	// 09-cert-readiness
 	mux.HandleFunc("/certs/", handle(certsHandler))
-	// 03-jira-slack (idp example)
+	// 03-jira-slack (serve example)
 	mux.HandleFunc("/jira/transition", handle(jiraTransitionHandler))
+	mux.HandleFunc("/jira/issues", handle(jiraIssueHandler))  // no key → list all
+	mux.HandleFunc("/jira/issues/", handle(jiraIssueHandler)) // /jira/issues/{key} → single lookup
 	mux.HandleFunc("/slack/notify", handle(slackNotifyHandler))
+	mux.HandleFunc("/slack/messages", handle(slackMessagesHandler))
 }
 
 // handle wraps a handler with debug logging.
@@ -313,12 +316,14 @@ func certsHandler(w http.ResponseWriter, r *http.Request) {
 
 // POST /jira/transition → 200 Jira transition response.
 // Mimics the Jira REST API POST /rest/api/2/issue/{key}/transitions wire format.
+// Stores the transition so GET /jira/issues/{key} can read it back.
 func jiraTransitionHandler(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		IssueKey   string `json:"issueKey"`
 		Transition string `json:"transition"`
 	}
 	json.NewDecoder(r.Body).Decode(&body) //nolint:errcheck
+	jiraTransitions.Store(body.IssueKey, body.Transition)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"issueKey":   body.IssueKey,
 		"transition": body.Transition,
@@ -326,17 +331,66 @@ func jiraTransitionHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GET /jira/issues → every transition recorded via POST /jira/transition so far.
+// GET /jira/issues/{key} → the transition last recorded for that issue key,
+// or 404 if /jira/transition was never called for it.
+func jiraIssueHandler(w http.ResponseWriter, r *http.Request) {
+	key := strings.TrimPrefix(r.URL.Path, "/jira/issues")
+	key = strings.Trim(key, "/")
+
+	if key == "" {
+		var issues []map[string]any
+		jiraTransitions.Range(func(k, v any) bool {
+			issues = append(issues, map[string]any{"issueKey": k, "transition": v})
+			return true
+		})
+		writeJSON(w, http.StatusOK, map[string]any{
+			"count":  len(issues),
+			"issues": issues,
+		})
+		return
+	}
+
+	transition, ok := jiraTransitions.Load(key)
+	if !ok {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "no transition recorded for issue " + key})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"issueKey":   key,
+		"transition": transition,
+	})
+}
+
 // POST /slack/notify → 200 Slack acknowledgement.
 // Accepts the Slack incoming-webhook wire format (channel + text).
+// Appends the message so GET /slack/messages can read it back.
 func slackNotifyHandler(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Channel string `json:"channel"`
 		Text    string `json:"text"`
 	}
 	json.NewDecoder(r.Body).Decode(&body) //nolint:errcheck
+
+	slackMessagesMu.Lock()
+	slackMessages = append(slackMessages, slackMessage{Channel: body.Channel, Text: body.Text})
+	slackMessagesMu.Unlock()
+
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":      true,
 		"channel": body.Channel,
+	})
+}
+
+// GET /slack/messages → every message recorded via POST /slack/notify so far.
+func slackMessagesHandler(w http.ResponseWriter, r *http.Request) {
+	slackMessagesMu.Lock()
+	messages := append([]slackMessage(nil), slackMessages...)
+	slackMessagesMu.Unlock()
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"count":    len(messages),
+		"messages": messages,
 	})
 }
 

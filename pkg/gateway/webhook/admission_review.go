@@ -56,8 +56,8 @@ type AdmissionResponse struct {
 // Details.Causes carries the same denials as clean, structured per-field
 // entries instead: this is what the real Kubernetes API server relays into
 // any client's error response (metav1.Status.Details), which is how
-// pkg/gateway/applyapi's ApplyResponse.Violations gets populated for the
-// Apply API — used by the Control Center form and any other client that
+// pkg/gateway/api's ApplyResponse.Violations gets populated for the
+// Gateway API — used by the Control Center form and any other client that
 // wants to show a field-focused error instead of the raw kubectl-style string.
 type AdmissionStatus struct {
 	Message string                `json:"message"`

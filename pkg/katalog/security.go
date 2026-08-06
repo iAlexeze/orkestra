@@ -16,8 +16,6 @@ package katalog
 
 import (
 	"time"
-
-	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // securityEnvDefaults returns the SecurityConfig from konfig, or a zero
@@ -382,27 +380,33 @@ func (k *Katalog) ConversionWindow() int {
 
 // IsGatewayEnabled reports whether this Katalog declares a gateway: block at
 // all — deliberately just a nil check, not a check of individual fields
-// within it (enabled, endpoint, applyAPI, …). Any declared gateway: block
+// within it (enabled, endpoint, api, …). Any declared gateway: block
 // means the katalog expects a gateway to exist; checking specific fields
 // undercounts as the block grows new standalone-meaningful sections (e.g.
-// applyAPI: with no enabled: or endpoint: set, as in a CI-only Apply API
+// api: with no enabled: or endpoint: set, as in a CI-only Gateway API
 // client setup).
 func (k *Katalog) IsGatewayEnabled() bool {
+	if k == nil {
+		return false
+	}
 	return k.Gateway != nil
 }
 
-// IsApplyAPIEnabled reports whether the Gateway Apply API flag is set.
-func (k *Katalog) IsApplyAPIEnabled() bool {
-	return k.Gateway != nil && k.Gateway.ApplyAPI != nil && k.Gateway.ApplyAPI.Enabled
-}
-
-// HasApplyAPISecretRefs reports whether any Apply API token entry uses secretRef.
-// Used by GenerateGatewayRBACRules to add secrets get/create permissions.
-func (k *Katalog) HasApplyAPISecretRefs() bool {
-	if !k.IsApplyAPIEnabled() {
+// IsGatewayAPIEnabled reports whether the Gateway Gateway API flag is set.
+func (k *Katalog) IsGatewayAPIEnabled() bool {
+	if k == nil {
 		return false
 	}
-	for _, t := range k.Gateway.ApplyAPI.Auth.Tokens {
+	return k.Gateway != nil && k.Gateway.API != nil && k.Gateway.API.Enabled
+}
+
+// HasGatewayAPISecretRefs reports whether any Gateway API token entry uses secretRef.
+// Used by GenerateGatewayRBACRules to add secrets get/create permissions.
+func (k *Katalog) HasGatewayAPISecretRefs() bool {
+	if !k.IsGatewayAPIEnabled() {
+		return false
+	}
+	for _, t := range k.Gateway.API.Auth.Tokens {
 		if t.SecretRef != nil {
 			return true
 		}
@@ -410,15 +414,18 @@ func (k *Katalog) HasApplyAPISecretRefs() bool {
 	return false
 }
 
-// HasIDPEnabled reports whether the Apply API is enabled and at least one CRD
-// has idp.enabled: true. This is the activation gate — callers should use this,
-// not IsApplyAPIEnabled, to decide whether to register IDP routes or RBAC.
-func (k *Katalog) HasIDPEnabled() bool {
-	if !k.IsApplyAPIEnabled() {
+// HasServeEnabled reports whether the Gateway API is enabled and at least one CRD
+// has serve.enabled: true. This is the activation gate — callers should use this,
+// not IsGatewayAPIEnabled, to decide whether to register serve routes or RBAC.
+func (k *Katalog) HasServeEnabled() bool {
+	if k == nil {
+		return false
+	}
+	if !k.IsGatewayAPIEnabled() {
 		return false
 	}
 	for _, crd := range k.Enabled() {
-		if crd.IDPEnabled() {
+		if crd.ServeEnabled() {
 			return true
 		}
 	}
@@ -530,7 +537,7 @@ func (k *Katalog) CertAutoRotate() bool {
 //	YAML absent or empty                                  → fall back to TLS_ROTATION_THRESHOLD env (default: "30d")
 func (k *Katalog) CertRotationThreshold() time.Duration {
 	raw := k.Security.CertRotationThresholdVal(k.securityEnvDefaults().CertRotationThresholdStr())
-	if d, err := orktypes.ParseTimeDuration(raw); err == nil {
+	if d, err := parseTimeDuration(raw); err == nil {
 		return d
 	}
 	return 30 * 24 * time.Hour
@@ -545,7 +552,7 @@ func (k *Katalog) CertRotationThreshold() time.Duration {
 //	YAML absent or empty                                  → fall back to TLS_ROTATE_AFTER env (default: "1y")
 func (k *Katalog) CertValidFor() time.Duration {
 	raw := k.Security.ValidForVal(k.securityEnvDefaults().CertValidForStr())
-	if d, err := orktypes.ParseTimeDuration(raw); err == nil {
+	if d, err := parseTimeDuration(raw); err == nil {
 		return d
 	}
 	return 365 * 24 * time.Hour

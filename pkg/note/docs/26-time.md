@@ -43,7 +43,7 @@ when:
 
 ### `isExpired`
 
-Return `true` when a timestamp plus a duration is in the past. The canonical way to drive rotation logic in `when:` conditions. Duration follows Go's `time.ParseDuration` format (`"30m"`, `"24h"`, `"720h"` for 30 days — Go does not support `"d"`).
+Return `true` when a timestamp plus a duration is in the past. The canonical way to drive rotation logic in `when:` conditions. Duration is an extended duration string — Go's units (`"30m"`, `"24h"`) plus `d`/`w`/`mo`/`y` (`"30d"`, `"1y"`).
 
 Keywords: time, expired, expiry, rotation, ttl, boolean, when, condition
 
@@ -53,11 +53,11 @@ onCreate:
   secrets:
     - name: "{{ .metadata.name }}-token"
       once: true
-      rotateAfter: 720h
+      rotateAfter: 30d
 
 # Gate a resource on whether a timestamp annotation is past its TTL
 when:
-  - field: "{{ isExpired (index .metadata.annotations \"myorg.io/generated-at\") \"720h\" }}"
+  - field: "{{ isExpired (index .metadata.annotations \"myorg.io/generated-at\") \"30d\" }}"
     equals: "true"
 ```
 
@@ -84,7 +84,7 @@ status:
 
 ### `durationSeconds`
 
-Parse a Go duration string and return the total number of seconds as an integer. Returns `0` for invalid input.
+Parse an extended duration string (Go units plus `d`/`w`/`mo`/`y`) and return the total number of seconds as an integer. Returns `0` for invalid input.
 
 Keywords: time, duration, seconds, parse, int, convert
 
@@ -93,14 +93,14 @@ status:
   fields:
     - path: resyncIntervalSeconds
       value: "{{ durationSeconds .spec.resyncInterval }}"
-      # "5m" → 300  |  "1h30m" → 5400
+      # "5m" → 300  |  "1h30m" → 5400  |  "7d" → 604800
 ```
 
 ---
 
 ### `durationAdd`
 
-Add two Go duration strings and return the result as a canonical duration string. Returns `"0s"` for invalid input.
+Add two extended duration strings (Go units plus `d`/`w`/`mo`/`y`) and return the result as a canonical Go duration string. Returns `"0s"` for invalid input.
 
 Keywords: time, duration, add, combine, string
 
@@ -117,16 +117,16 @@ status:
 
 ### `durationValid`
 
-Return `true` when the string is a valid Go duration. Use in validation rules to reject malformed duration fields. Note: Go does not support `d` (days) — `"720h"` is correct for 30 days.
+Return `true` when the string is a valid extended duration (Go units plus `d`/`w`/`mo`/`y`). Use in validation rules to reject malformed duration fields.
 
-Keywords: time, duration, valid, validate, boolean, check, go
+Keywords: time, duration, valid, validate, boolean, check
 
 ```yaml
 spec:
   crds:
     myApp:
       validate:
-        - message: "spec.rotationPeriod must be a valid Go duration (e.g. 720h, 30m)"
+        - message: "spec.rotationPeriod must be a valid duration (e.g. 30d, 90m, 1y)"
           deny:
             - field: "{{ durationValid .spec.rotationPeriod }}"
               equals: "false"

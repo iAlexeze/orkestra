@@ -40,13 +40,5 @@ func init() {
 	deleteClusterCmd.Flags().String("name", "ork-playground", "Cluster name")
 
 	// Shadow global flags
-	deleteCmd.PersistentFlags().StringSlice("file", nil, "")
-	deleteCmd.PersistentFlags().Bool("debug", false, "")
-	deleteCmd.PersistentFlags().String("kubeconfig", "", "")
-	deleteCmd.PersistentFlags().Bool("verbose", false, "")
-
-	deleteCmd.PersistentFlags().MarkHidden("file")
-	deleteCmd.PersistentFlags().MarkHidden("debug")
-	deleteCmd.PersistentFlags().MarkHidden("kubeconfig")
-	deleteCmd.PersistentFlags().MarkHidden("verbose")
+	shadowGlobalCommandFlags(deleteClusterCmd, "file")
 }

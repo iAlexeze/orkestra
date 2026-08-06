@@ -64,7 +64,7 @@ func checkConditionOperators(conditions []orktypes.Condition, crdName, field str
 func errUnknownOperator(op orktypes.ConditionOperator, crd, field string) error {
 	return fmt.Errorf(`
 ──────────────────────────────────────────────
-❌ Unknown operator %q
+%s Unknown operator %q
    CRD: %s
    field: %s
 
@@ -76,5 +76,71 @@ Allowed values:
   • in, notIn
   • unique
   • typeOf, typeMap, typeList, typeString, typeNumber, typeBool, typeNull
-──────────────────────────────────────────────`, op, crd, field)
+──────────────────────────────────────────────`, failureMark(), op, crd, field)
+}
+
+// validateValidationRuleLinks rejects a validation.rules entry's link: value
+// that either doesn't name any serve.fields / serve.additionalFields key on the
+// CRD (typo, or the field was renamed/removed and this rule wasn't updated),
+// or names an serve.fields key whose Field is already the redundant plain
+// "spec.<name>" form — link: only earns its keep when Field isn't already a
+// clean display name on its own. See ValidationRule.Link.
+func (k *Katalog) validateValidationRuleLinks() error {
+	for _, crd := range k.enabledCRDs {
+		if !crd.HasValidationRules() {
+			continue
+		}
+		for _, rule := range crd.Validation.Rules {
+			if rule.Link == "" {
+				continue
+			}
+			if err := checkLink(rule, crd); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func checkLink(rule orktypes.ValidationRule, crd orktypes.CRDEntry) error {
+	if crd.Serve != nil {
+		if _, ok := crd.Serve.Fields[rule.Link]; ok {
+			if rule.Field == "spec."+rule.Link {
+				return errRedundantLink(rule.Link, crd.Name)
+			}
+			return nil
+		}
+		if _, ok := crd.ServeLabels()[rule.Link]; ok {
+			return nil
+		}
+		if _, ok := crd.ServeAnnotations()[rule.Link]; ok {
+			return nil
+		}
+	}
+	return errUnknownLink(rule.Link, crd.Name, rule.Field)
+}
+
+func errUnknownLink(link, crd, field string) error {
+	return fmt.Errorf(`
+──────────────────────────────────────────────
+%s link %q does not match any serve field
+   CRD: %s
+   field: %s
+
+link: must name a key declared in serve.fields, serve.labels,
+or serve.annotations for this CRD.
+──────────────────────────────────────────────`, failureMark(), link, crd, field)
+}
+
+func errRedundantLink(link, crd string) error {
+	return fmt.Errorf(`
+──────────────────────────────────────────────
+%s link %q is redundant
+   CRD: %s
+
+This rule's field is already "spec.%s" — already a clean display name on
+its own. link: only matters when field is a template expression that isn't
+itself a valid display name (e.g. wraps getLabel/getAnnotation, or a notes:
+function). Remove link: here.
+──────────────────────────────────────────────`, failureMark(), link, crd, link)
 }

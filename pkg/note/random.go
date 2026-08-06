@@ -101,7 +101,7 @@ func randomHex(n int) (string, error) {
 //
 // Use with once: true on secrets. Same entropy as randomHex 16, formatted
 // as a UUID for systems that expect that shape (Kubernetes UIDs, OAuth client
-// IDs, correlation IDs, Apply API tokens).
+// IDs, correlation IDs, Gateway API tokens).
 func uuidv4() (string, error) {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
