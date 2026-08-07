@@ -213,6 +213,42 @@ kubectl get statefulset,service -n default
 
 ---
 
+## Test admission rules locally — no cluster required
+
+`ork gate` evaluates the same validation and mutation rules that the reconciler and webhook enforce, directly against a CR file. Use it before deploying to confirm whether a CR would pass or fail.
+
+### Good CR — passes
+
+```bash
+ork gate -f katalog.yaml --cr cr-good.yaml
+```
+
+```
+◆  BlockchainApp  (blockchainapp)
+  ✓ 2/2 validation rules passed
+  note: no mutations apply
+```
+
+### Bad CR — denied before it can cause the degraded state
+
+```bash
+ork gate -f katalog.yaml --cr cr-bad.yaml
+```
+
+```
+◆  BlockchainApp  (blockchainapp)
+  ✗ spec.image  images must come from the internal registry (myorg/)
+
+  ✗ 1/2 validation rules passed · ✗ 1 denial
+  note: no mutations apply
+
+admission denied
+```
+
+The denial you see here is the same one the reconciler surfaces as a `ValidationFailed` condition when the bad CR is applied to the cluster (Steps 4–6). Running `ork gate` first catches it before the operator ever enters the degraded → pending → recovering arc.
+
+---
+
 ## E2E
 
 ```bash
