@@ -31,6 +31,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -190,6 +191,12 @@ func docText(cg *ast.CommentGroup) string {
 // tab-indented lines are preformatted code) into Markdown, using the same
 // parser/printer godoc itself uses. Handles paragraphs, code blocks, and
 // links without hand-rolled tab detection.
+// orderedListEscape matches comment.Printer.Markdown()'s escaped list markers
+// at the start of a line, e.g. "1\." or "10\." — CommonMark literal escapes
+// the printer emits to prevent unintended list rendering, but since our output
+// IS the Markdown target, the backslash shows up verbatim. Strip it.
+var orderedListEscape = regexp.MustCompile(`(?m)^(\d+)\\\.`)
+
 func renderDocText(text string) string {
 	if strings.TrimSpace(text) == "" {
 		return ""
@@ -197,7 +204,8 @@ func renderDocText(text string) string {
 	var p comment.Parser
 	doc := p.Parse(text)
 	var pr comment.Printer
-	return strings.TrimSpace(fencifyCodeBlocks(string(pr.Markdown(doc))))
+	md := orderedListEscape.ReplaceAllString(string(pr.Markdown(doc)), "$1.")
+	return strings.TrimSpace(fencifyCodeBlocks(md))
 }
 
 // fencifyCodeBlocks converts comment.Printer's tab-indented code blocks
