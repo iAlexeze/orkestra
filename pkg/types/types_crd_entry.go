@@ -2,6 +2,8 @@
 package types
 
 import (
+	"sort"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -382,6 +384,45 @@ func (c *CRDEntry) HasServeLabelsOrAnnotations() bool {
 
 // ─── Serve Response Config Methods ────────────────────────────────────────────
 
+// ServeAliases returns all enabled non-primary target entries.
+// Disabled entries and the primary entry are excluded.
+// Returns nil when no qualifying entries exist.
+func (c *CRDEntry) ServeAliases() map[string]*ServeTargetConfig {
+	if !c.ServeEnabled() || c.Serve == nil {
+		return nil
+	}
+	result := make(map[string]*ServeTargetConfig)
+	for name, cfg := range c.Serve.Target.Entries {
+		if cfg == nil || cfg.Primary || !cfg.IsEnabled() {
+			continue
+		}
+		result[name] = cfg
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+
+// HasServeAliases reports whether this CRD has any enabled non-primary target entries.
+func (c *CRDEntry) HasServeAliases() bool {
+	return len(c.ServeAliases()) > 0
+}
+
+// AliasNames returns a sorted slice of alias names for this CRD, or nil if none.
+func (c *CRDEntry) AliasNames() []string {
+	aliases := c.ServeAliases()
+	if len(aliases) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(aliases))
+	for name := range aliases {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
 // HasServeResponseConfig reports whether the CRD has an serve response configuration.
 func (c *CRDEntry) HasServeResponseConfig() bool {
 	return c.Serve != nil && c.Serve.Config != nil && c.Serve.Config.Response != nil
@@ -439,6 +480,49 @@ func (c *CRDEntry) ServeResponsePayload() map[string]string {
 		return nil
 	}
 	return cfg.Payload
+}
+
+// ServeResponseConfigFor returns the response configuration that applies to a
+// caller using the given alias. Resolution:
+//  1. Alias declares its own response config → alias config.
+//  2. CRD-level serve.config.response.
+//  3. nil (no config declared — caller receives full CR unchanged).
+func (c *CRDEntry) ServeResponseConfigFor(alias string) *ServeResponseConfig {
+	if alias != "" && c.Serve != nil {
+		if entryCfg, ok := c.Serve.Target.Entries[alias]; ok {
+			if cfg := entryCfg.ResponseConfig(); cfg != nil {
+				return cfg
+			}
+		}
+	}
+	return c.GetServeResponseConfig()
+}
+
+// ServeTokensFor returns the token permissions map that applies to a caller
+// using the given alias. Falls back to CRD-level tokens when the entry
+// declares none or when alias is empty.
+func (c *CRDEntry) ServeTokensFor(alias string) map[string]ServeTokenPermissions {
+	if alias != "" && c.Serve != nil {
+		if entryCfg, ok := c.Serve.Target.Entries[alias]; ok && entryCfg.HasTokenRestrictions() {
+			return entryCfg.Tokens
+		}
+	}
+	if c.Serve != nil {
+		return c.Serve.Tokens
+	}
+	return nil
+}
+
+// TokenAllowedFor reports whether tokenName may perform op in namespace on this
+// CRD using the token permissions resolved for the given alias.
+// Alias-specific tokens take precedence over CRD-level tokens when declared.
+// Delegates to ServeConfig.TokenAllowed with the resolved token set.
+func (c *CRDEntry) TokenAllowedFor(
+	alias, tokenName, op, namespace string,
+	class ServeEndpointClass,
+) (bool, ServeDenyReason) {
+	cfg := &ServeConfig{Tokens: c.ServeTokensFor(alias)}
+	return cfg.TokenAllowed(tokenName, op, namespace, class)
 }
 
 func (e EndpointsConfig) IsHealthEnabled() bool {

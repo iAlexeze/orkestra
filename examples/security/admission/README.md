@@ -299,6 +299,61 @@ A safety poll (`HOUSEKEEPER_SYNC_INTERVAL`, default 30 s) continues in parallel 
 
 ---
 
+## Test admission rules locally — no cluster required
+
+`ork gate` evaluates the same validation and mutation rules that the webhook enforces, directly against a CR file. No cluster, no deployment, no TLS.
+
+### Valid CR — all rules pass
+
+```bash
+ork gate -f katalog.yaml --cr cr-valid.yaml
+```
+
+```
+◆  Platform  (platform)
+  ✓ 4/4 validation rules passed
+  note: no mutations apply
+```
+
+All four rules pass. No mutations fire because every field is already set.
+
+### Bad CR — image prefix denied
+
+```bash
+ork gate -f katalog.yaml --cr cr-bad.yaml
+```
+
+```
+◆  Platform  (platform)
+  ✗ spec.image  images must come from the internal registry (registry.internal/)
+
+  ✗ 3/4 validation rules passed · ✗ 1 denial
+  note: no mutations apply
+
+admission denied
+```
+
+The same denial the webhook would return at `kubectl apply` time — without touching the cluster.
+
+### Minimal CR — mutateFirst in action
+
+```bash
+ork gate -f katalog.yaml --cr cr-mutated.yaml
+```
+
+```
+◆  Platform  (platform)
+  ✓ 4/4 validation rules passed
+  ↳ spec.replicas     (absent) → 2    default
+  ↳ spec.environment  (absent) → development  default
+  ↳ spec.rateLimit    (absent) → 100  default
+  ✓ 3 mutations would be applied
+```
+
+Because `mutateFirst: true` is set, `ork gate` applies the three defaults before running validation — matching what the real webhook does. Without mutation, `replicas` would fail `greaterThan: 0` and `environment` would fail the `in` check. With mutation applied first, all four rules pass.
+
+---
+
 ## E2E
 
 Run the full lifecycle in one command — spins up a kind cluster, deploys the operator, applies the valid CR, asserts admission behaviour, then tears down:

@@ -114,6 +114,16 @@ Advanced callers can skip the field contract and submit a full CR directly (`{"a
 
 ---
 
+## Multiple surfaces, one CRD
+
+A CRD can expose multiple named entry points — aliases — alongside its primary target. Each alias carries its own token restrictions and response shape, and the CR carries the alias name as a permanent annotation. The operatorBox reads that annotation during every reconcile and can create different child resources depending on which surface delivered the intent.
+
+A `preview` alias creates a lightweight ephemeral environment. An `internal` alias returns the full CR with all provenance fields. The primary target creates the full production stack. Same CR, same operator, different consequences.
+
+→ [Aliases and Intent Provenance](04-aliases-and-provenance.md)
+
+---
+
 ## What developers see
 
 A developer opens the Control Center. The `Application` row shows a `[+ Create]` button. They fill the form and click Create.
@@ -150,9 +160,43 @@ ork init --pack use-cases/idp
 
 The pack runs three delivery paths against one `AppRequest` CRD — browser form, CI pipeline, and a Jira + Slack post-deployment hook — then switches to a second CRD, `PlatformResource`, to show two different answers to "one CR, many systems": an entrypoint that infers everything and always creates every tool, and a discriminator that creates exactly one. Each example adds a few lines to the previous one. The runtime is the same throughout.
 
+## Inspect and play without a cluster
+
+`ork serve` reads the Katalog directly — no gateway running, no cluster needed. Everything you declared is inspectable before you deploy:
+
+```bash
+ork serve validate          # validate all serve config
+ork serve targets           # list targets and alias counts
+ork serve tokens --alias preview   # effective token map for an alias
+ork serve response --alias preview # what the alias hands back to callers
+ork serve can-i --token ci-pipeline --target application --operation create
+```
+
+`ork serve play` goes one step further — it runs the full gateway apply chain in-process from a flat intent file. No gateway, no cluster, no CR applied. The same stages the gateway runs on every POST, locally:
+
+```bash
+ork serve play --token control-center
+```
+
+`ork serve apply` is the live flip — the same intent file sent to a real gateway. Use play as a CI gate before apply:
+
+```bash
+ork serve play -f intent.yaml --token ci-pipeline         # offline — no cluster
+ork serve apply -f intent.yaml --api https://gateway.myorg.io --token "$ORK_TOKEN"  # live
+```
+
+→ [Local Intent Testing](06-local-intent-testing.md) — the intent file format, the chain stages, and the intent-play loop
+→ [Live Delivery](07-live-delivery.md) — ork serve apply, dry run, and the GitOps pattern
+→ [CLI reference — ork serve](../../reference/cli/13-serve.md)
+
+---
+
 ## Where to go next
 → [Additional Fields](01-additional-fields.md)
 → [Target Mode](02-target-mode.md)
 → [Token Scoping](03-token-scoping.md)
+→ [Aliases and Intent Provenance](04-aliases-and-provenance.md)
+→ [Local Intent Testing](06-local-intent-testing.md)
+→ [Live Delivery](07-live-delivery.md)
 
 → [Gateway API reference](../../reference/schema/02-katalog/17-gateway-api.md)

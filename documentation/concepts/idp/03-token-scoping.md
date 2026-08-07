@@ -79,3 +79,8 @@ Not a silent drop, not a generic `401`:
 → [Gateway API reference — `serve.tokens`](../../reference/schema/02-katalog/17-gateway-api.md#servetokens--fine-grained-permissions) — fine-grained permissions
 
 → [Namespace protection](../../security/05-namespace-protection.md) — the CRD-level layer every token's `namespaces` list is still bounded by
+
+**Inspect from the CLI:**
+`ork serve tokens --target <t>` — show CRD-level token map · `ork serve tokens --alias <a>` — effective tokens for an alias · `ork serve can-i --token <t> --target <t> --operation <op>` — live permission check
+
+→ [CLI reference — ork serve](../../reference/cli/13-serve.md)
