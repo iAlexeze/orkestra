@@ -1,0 +1,22 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: intent-reject
+  description: >
+    Intentionally failing simulate spec — asserts ops the reconciler does not produce.
+    Demonstrates that play --simulate-config catches runtime-level mismatches before cluster.
+    Run via: ork serve play -f <katalog> --token control-center -i primary.yaml --simulate-config simulate-reject.yaml
+spec:
+  katalog: ../katalog.yaml
+  cr: ""
+  cycles: 5
+  skipExternal: true
+  expect:
+    steady: true
+    ops:
+      - cycle: 1
+        verb: apply
+        resource: deployments
+      - cycle: 1
+        verb: apply
+        resource: services

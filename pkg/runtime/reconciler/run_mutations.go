@@ -99,7 +99,7 @@ func runMutation(
 		var rawVal interface{}
 		var mutationType string
 
-		rawVal, mutationType, err = resolveRuleValue(rule, found, currentVal, resolver)
+		rawVal, mutationType, err = ResolveRuleValue(rule, found, currentVal, resolver)
 		if err != nil {
 			return nil, fmt.Errorf("mutation: field %q: %w", targetField, err)
 		}
@@ -184,7 +184,7 @@ func runMutation(
 //   - err:          non-nil if a template expression failed to resolve
 //
 // Returns (nil, "", nil) when the rule does not apply — caller should skip.
-func resolveRuleValue(
+func ResolveRuleValue(
 	rule orktypes.MutationRule,
 	found bool,
 	currentVal string,
@@ -236,6 +236,8 @@ func resolveTypedValue(val interface{}, valueType string, resolver *orktmpl.Reso
 		switch v := val.(type) {
 		case int64:
 			return v, nil
+		case int:
+			return int64(v), nil
 		case float64:
 			return int64(v), nil
 		case string:
@@ -267,6 +269,8 @@ func resolveTypedValue(val interface{}, valueType string, resolver *orktmpl.Reso
 		case float64:
 			return v, nil
 		case int64:
+			return float64(v), nil
+		case int:
 			return float64(v), nil
 		case string:
 			f, err := strconv.ParseFloat(v, 64)
