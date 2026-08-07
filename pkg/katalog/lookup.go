@@ -23,6 +23,8 @@ import (
 func (k *Katalog) BuildLookupIndexes() {
 	k.apiVersionIndex = make(map[string]string)
 	k.kindIndex = make(map[string]string)
+	k.nameIndex = make(map[string]string)
+	k.pluralIndex = make(map[string]string)
 	k.gvkIndex = make(map[string]string)
 	k.gvrIndex = make(map[string]string)
 	k.targetIndex = make(map[string]string)
@@ -34,6 +36,10 @@ func (k *Katalog) BuildLookupIndexes() {
 		// when multiple Kinds share a group/version.
 		k.apiVersionIndex[strings.ToLower(crd.APIVersion()+crd.Kind())] = name
 		k.kindIndex[strings.ToLower(crd.Kind())] = name
+		k.nameIndex[strings.ToLower(name)] = name
+		if crd.APITypes.Plural != "" {
+			k.pluralIndex[strings.ToLower(crd.APITypes.Plural)] = name
+		}
 		k.gvkIndex[strings.ToLower(crd.GVKString())] = name
 		k.gvrIndex[strings.ToLower(crd.GVRString())] = name
 		if crd.HasServeTarget() {
@@ -64,14 +70,14 @@ func (k *Katalog) BuildServeEnabledCRDs() []*orktypes.CRDEntry {
 
 // LookupByKind finds the CRD entry whose Kind matches the given kind string.
 // O(1) lookup using the kind index. Case-insensitive. Nil-safe.
-func (k *Katalog) LookupByKind(kind string) *orktypes.CRDEntry {
+func (k *Katalog) LookupByKind(kind string) *CRDLookupResult {
 	if k == nil {
 		return nil
 	}
 	key := strings.ToLower(strings.TrimSpace(kind))
 	if name, ok := k.kindIndex[key]; ok {
 		if entry, ok := k.enabledCRDs[name]; ok {
-			return &entry
+			return &CRDLookupResult{CRD: &entry}
 		}
 	}
 	return nil
@@ -79,27 +85,45 @@ func (k *Katalog) LookupByKind(kind string) *orktypes.CRDEntry {
 
 // LookupByName finds the CRD entry whose name (the Katalog map key) matches
 // the given name. O(1) — enabledCRDs is already keyed by name. Case-insensitive. Nil-safe.
-func (k *Katalog) LookupByName(name string) *orktypes.CRDEntry {
+func (k *Katalog) LookupByName(name string) *CRDLookupResult {
 	if k == nil {
 		return nil
 	}
 	key := strings.ToLower(strings.TrimSpace(name))
-	if entry, ok := k.enabledCRDs[key]; ok {
-		return &entry
+	if original, ok := k.nameIndex[key]; ok {
+		if entry, ok := k.enabledCRDs[original]; ok {
+			return &CRDLookupResult{CRD: &entry}
+		}
+	}
+	return nil
+}
+
+// LookupByPlural finds the CRD entry whose plural resource name matches the given string.
+// O(1) lookup using the plural index. Case-insensitive. Nil-safe.
+// Useful for routing requests matched by URL path (e.g. /apis/group/version/pluralresources).
+func (k *Katalog) LookupByPlural(plural string) *CRDLookupResult {
+	if k == nil {
+		return nil
+	}
+	key := strings.ToLower(strings.TrimSpace(plural))
+	if original, ok := k.pluralIndex[key]; ok {
+		if entry, ok := k.enabledCRDs[original]; ok {
+			return &CRDLookupResult{CRD: &entry}
+		}
 	}
 	return nil
 }
 
 // LookupByAPIVersionAndKind finds the CRD whose APIVersion and Kind matches the given strings.
 // O(1) lookup using the apiVersionIndex.
-func (k *Katalog) LookupByAPIVersionAndKind(apiVersion, kind string) *orktypes.CRDEntry {
+func (k *Katalog) LookupByAPIVersionAndKind(apiVersion, kind string) *CRDLookupResult {
 	if k == nil {
 		return nil
 	}
 	key := strings.ToLower(strings.TrimSpace(apiVersion) + strings.TrimSpace(kind))
 	if name, ok := k.apiVersionIndex[key]; ok {
 		if entry, ok := k.enabledCRDs[name]; ok {
-			return &entry
+			return &CRDLookupResult{CRD: &entry}
 		}
 	}
 	return nil
@@ -107,14 +131,14 @@ func (k *Katalog) LookupByAPIVersionAndKind(apiVersion, kind string) *orktypes.C
 
 // LookupByGVKString finds the CRD entry whose GroupVersionKind matches the given GVK string.
 // O(1) lookup using the GVK index. Case-insensitive.
-func (k *Katalog) LookupByGVKString(gvkString string) *orktypes.CRDEntry {
+func (k *Katalog) LookupByGVKString(gvkString string) *CRDLookupResult {
 	if k == nil {
 		return nil
 	}
 	key := strings.ToLower(strings.TrimSpace(gvkString))
 	if name, ok := k.gvkIndex[key]; ok {
 		if entry, ok := k.enabledCRDs[name]; ok {
-			return &entry
+			return &CRDLookupResult{CRD: &entry}
 		}
 	}
 	return nil
@@ -122,14 +146,14 @@ func (k *Katalog) LookupByGVKString(gvkString string) *orktypes.CRDEntry {
 
 // LookupByGVRString finds the CRD entry whose GroupVersionResource matches the given GVR string.
 // O(1) lookup using the GVR index. Case-insensitive.
-func (k *Katalog) LookupByGVRString(gvrString string) *orktypes.CRDEntry {
+func (k *Katalog) LookupByGVRString(gvrString string) *CRDLookupResult {
 	if k == nil {
 		return nil
 	}
 	key := strings.ToLower(strings.TrimSpace(gvrString))
 	if name, ok := k.gvrIndex[key]; ok {
 		if entry, ok := k.enabledCRDs[name]; ok {
-			return &entry
+			return &CRDLookupResult{CRD: &entry}
 		}
 	}
 	return nil
@@ -137,14 +161,14 @@ func (k *Katalog) LookupByGVRString(gvrString string) *orktypes.CRDEntry {
 
 // LookupByTarget finds the CRD entry whose resolved target matches t.
 // O(1) lookup using the target index. Case-insensitive.
-func (k *Katalog) LookupByTarget(target string) *orktypes.CRDEntry {
+func (k *Katalog) LookupByTarget(target string) *CRDLookupResult {
 	if k == nil {
 		return nil
 	}
 	key := strings.ToLower(strings.TrimSpace(target))
 	if name, ok := k.targetIndex[key]; ok {
 		if entry, ok := k.enabledCRDs[name]; ok {
-			return &entry
+			return &CRDLookupResult{CRD: &entry}
 		}
 	}
 	return nil
@@ -152,32 +176,32 @@ func (k *Katalog) LookupByTarget(target string) *orktypes.CRDEntry {
 
 // LookupByTargetOrKind attempts to find a CRD by target first, then by kind.
 // Useful for handlers that accept either a target or a kind. Case-insensitive.
-func (k *Katalog) LookupByTargetOrKind(identifier string) *orktypes.CRDEntry {
+func (k *Katalog) LookupByTargetOrKind(identifier string) *CRDLookupResult {
 	identifier = strings.TrimSpace(identifier)
-	if crd := k.LookupByTarget(identifier); crd != nil {
-		return crd
+	if r := k.LookupByTarget(identifier); r != nil {
+		return r
 	}
 	return k.LookupByKind(identifier)
 }
 
 // MustLookupByTarget finds the CRD entry whose resolved target matches t.
 // Panics if not found. Use when you know the target exists. Case-insensitive.
-func (k *Katalog) MustLookupByTarget(target string) *orktypes.CRDEntry {
-	crd := k.LookupByTarget(target)
-	if crd == nil {
+func (k *Katalog) MustLookupByTarget(target string) *CRDLookupResult {
+	r := k.LookupByTarget(target)
+	if r == nil {
 		panic("CRD not found for target: " + target)
 	}
-	return crd
+	return r
 }
 
 // MustLookupByKind finds the CRD entry whose Kind matches the given kind string.
 // Panics if not found. Use when you know the kind exists. Case-insensitive.
-func (k *Katalog) MustLookupByKind(kind string) *orktypes.CRDEntry {
-	crd := k.LookupByKind(kind)
-	if crd == nil {
+func (k *Katalog) MustLookupByKind(kind string) *CRDLookupResult {
+	r := k.LookupByKind(kind)
+	if r == nil {
 		panic("CRD not found for kind: " + kind)
 	}
-	return crd
+	return r
 }
 
 // -----------------------------------------------------------------------------

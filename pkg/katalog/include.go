@@ -10,6 +10,12 @@ func populateAllServeFieldsFromInclude(entry *orktypes.CRDEntry, katalogDir stri
 	if err := orktypes.ExpandServeInclude(entry.Serve, katalogDir); err != nil {
 		return fmt.Errorf("serve: %w", err)
 	}
+	if err := orktypes.ExpandServeTargetShorthand(entry.Serve); err != nil {
+		return fmt.Errorf("serve.target: %w", err)
+	}
+	if err := orktypes.ExpandServeTargetIncludes(entry.Serve, katalogDir); err != nil {
+		return fmt.Errorf("serve.target: %w", err)
+	}
 	return nil
 }
 

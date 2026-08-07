@@ -50,6 +50,8 @@ type Katalog struct {
 
 	// Indexes for O(1) lookups
 	kindIndex       map[string]string `yaml:"-" json:"-"` // kind -> crd name
+	nameIndex       map[string]string `yaml:"-" json:"-"` // lowercase(map key) -> crd name
+	pluralIndex     map[string]string `yaml:"-" json:"-"` // plural resource name -> crd name
 	apiVersionIndex map[string]string `yaml:"-" json:"-"` // apiVersion -> crd name
 	gvkIndex        map[string]string `yaml:"-" json:"-"` // gvk.String() -> crd name
 	gvrIndex        map[string]string `yaml:"-" json:"-"` // gvr.String() -> crd name

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/orkspace/orkestra/pkg/children"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
@@ -54,7 +55,7 @@ func (k *Katalog) validateCustomResources() error {
 				// Additional katalog-level checks (defensive):
 				// - If the declaration explicitly marks cluster-scoped but provided a namespace, error.
 				if cr.Metadata.Namespaced != nil && !*cr.Metadata.Namespaced && cr.Metadata.Namespace != "" {
-					return fmt.Errorf("%s: metadata.namespaced=false but metadata.namespace is set (cluster-scoped resources must not set namespace)", path)
+					return fmt.Errorf("%s %s: metadata.namespaced=false but metadata.namespace is set (cluster-scoped resources must not set namespace)", failureMark(), path)
 				}
 
 				// Log a debug line for observability
@@ -74,7 +75,7 @@ func (k *Katalog) validateCustomResources() error {
 				}
 
 				if cr.Metadata.Namespaced != nil && !*cr.Metadata.Namespaced && cr.Metadata.Namespace != "" {
-					return fmt.Errorf("%s: metadata.namespaced=false but metadata.namespace is set (cluster-scoped resources must not set namespace)", path)
+					return fmt.Errorf("%s %s: metadata.namespaced=false but metadata.namespace is set (cluster-scoped resources must not set namespace)", failureMark(), path)
 				}
 
 				logger.Debug().
@@ -88,6 +89,7 @@ func (k *Katalog) validateCustomResources() error {
 	return nil
 }
 
+// Notes:
 // ValidateCustomResource validates a single CustomResource declaration. It
 // enforces the structural and semantic rules required by Orkestra while
 // intentionally avoiding CRD schema validation (the API server owns that).
@@ -97,42 +99,48 @@ func (k *Katalog) validateCustomResources() error {
 //   - Ensure metadata.name is present after templating.
 //   - Enforce namespaced vs cluster-scoped semantics using Metadata.Namespaced
 //     with a defensive default of namespaced=true.
-//   - Validate labels and annotations using existing validators.
-//   - Validate template syntax for spec/status/other fields (no structural schema).
+//   - Validate labels and annotations.
+//   - Validate template syntax for spec/status/other fields.
 //   - Validate hasStatus semantics and warn when user-provided status will be ignored.
 //   - Return path-aware errors so callers can point users to the exact declaration.
 //
-// Note: This function assumes the following helpers exist in the package or
-// elsewhere in the codebase and will be used here:
-//   - isValidKind(kind string) bool
-//   - validateLabels(labels map[string]string) error
-//   - validateAnnotations(annotations map[string]string) error
-//   - validateTemplateFields(obj map[string]any, path string) error
-//
-// The `path` parameter should identify the declaration location (e.g.
-// "mycrd.onCreate.custom[0]") and is used to produce clear error messages.
+
 func ValidateCustomResource(cr *orktypes.CustomResourceTemplateSource, path string) error {
 	if cr == nil {
-		return fmt.Errorf("%s: custom resource declaration is nil", path)
+		return fmt.Errorf("%s %s: custom resource declaration is nil", failureMark(), path)
 	}
 
 	// --- apiVersion ---------------------------------------------------------
 	if strings.TrimSpace(cr.APIVersion) == "" {
-		return fmt.Errorf("%s: missing required field 'apiVersion'", path)
+		return fmt.Errorf("%s %s: missing required field 'apiVersion'", failureMark(), path)
 	}
 	if !strings.Contains(cr.APIVersion, "/") {
-		return fmt.Errorf("%s: apiVersion %q is invalid — must be group/version (e.g. foo.io/v1)", path, cr.APIVersion)
+		return fmt.Errorf("%s %s: apiVersion %q is invalid — must be group/version (e.g. foo.io/v1)", failureMark(), path, cr.APIVersion)
+	}
+
+	// --- native type guard --------------------------------------------------
+	// Reject built-in Kubernetes types that Orkestra manages natively via
+	// HookTemplates. Using custom: for these panics during simulate (scheme
+	// double-registration) and bypasses native features like drift correction
+	// and profiles. The builtInRegistry is the single source of truth.
+	parts := strings.SplitN(cr.APIVersion, "/", 2)
+	group, version := parts[0], parts[1]
+	if b, isNative := children.LookupBuiltInByGVK(group, version, cr.Kind); isNative && b.IsChild && b.HookKey != "" {
+		return fmt.Errorf(
+			"%s %s: %s %s is a native Orkestra resource — use %s: instead of custom:",
+			failureMark(), path, cr.APIVersion, cr.Kind, b.HookKey,
+		)
 	}
 
 	// --- kind ---------------------------------------------------------------
 	if strings.TrimSpace(cr.Kind) == "" {
-		return fmt.Errorf("%s: missing required field 'kind'", path)
+		return fmt.Errorf("%s %s: missing required field 'kind'", failureMark(), path)
 	}
 
 	// --- metadata -----------------------------------------------------------
 	// Defensive: metadata must be present and name required after templating.
 	if strings.TrimSpace(cr.Metadata.Name) == "" {
-		return fmt.Errorf("%s: metadata.name is required", path)
+		return fmt.Errorf("%s %s: metadata.name is required", failureMark(), path)
 	}
 
 	// Namespaced defaulting: nil => true (namespaced by default)
@@ -143,7 +151,7 @@ func ValidateCustomResource(cr *orktypes.CustomResourceTemplateSource, path stri
 
 	// If the declaration explicitly marks cluster-scoped but provided a namespace, error.
 	if !namespaced && cr.Metadata.Namespace != "" {
-		return fmt.Errorf("%s: metadata.namespaced=false but metadata.namespace is set (cluster-scoped resources must not set namespace)", path)
+		return fmt.Errorf("%s %s: metadata.namespaced=false but metadata.namespace is set (cluster-scoped resources must not set namespace)", failureMark(), path)
 	}
 
 	// If namespaced (default) then namespace must be present (non-empty).
@@ -152,7 +160,7 @@ func ValidateCustomResource(cr *orktypes.CustomResourceTemplateSource, path stri
 	// accidental cluster-scoped creations. If you prefer to allow templated empty
 	// namespaces, relax this check accordingly.
 	if namespaced && strings.TrimSpace(cr.Metadata.Namespace) == "" {
-		return fmt.Errorf("%s: metadata.namespace is required for namespaced custom resources (metadata.namespaced is true or unspecified)", path)
+		return fmt.Errorf("%s %s: metadata.namespace is required for namespaced custom resources (metadata.namespaced is true or unspecified)", failureMark(), path)
 	}
 
 	// --- hasStatus ----------------------------------------------------------

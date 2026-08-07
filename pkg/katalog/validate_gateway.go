@@ -23,14 +23,14 @@ func (k *Katalog) validateGateway() error {
 	// Conflict: only one of standalone or explicit endpoint can be used
 	if k.IsStandaloneGateway() && k.GatewayEndpoint() != "" {
 		return fmt.Errorf(
-			"orkestra: cannot enable both gateway.standalone and gateway.endpoint\n\n"+
+			"%s orkestra: cannot enable both gateway.standalone and gateway.endpoint\n\n"+
 				"Conflicting configuration:\n"+
 				"  • gateway.standalone = true\n"+
 				"  • gateway.endpoint = %q\n\n"+
 				"Fix - set only one:\n"+
 				"  • Standalone mode: set gateway.standalone = true and unset gateway.endpoint\n"+
 				"  • Runtime Companion mode: set gateway.endpoint and set gateway.standalone = false (or omit it)",
-			k.GatewayEndpoint(),
+			failureMark(), k.GatewayEndpoint(),
 		)
 	}
 
@@ -63,9 +63,9 @@ func (k *Katalog) validateGateway() error {
 	}
 
 	return fmt.Errorf(
-		"orkestra: gateway endpoint required but not configured\n\n"+
+		"%s orkestra: gateway endpoint required but not configured\n\n"+
 			"Enabled features that need a gateway:\n%s\n\n"+
 			"Fix - set gateway.endpoint, enable gateway.standalone, or set ORK_GATEWAY_ENDPOINT.",
-		strings.Join(reasons, "\n"),
+		failureMark(), strings.Join(reasons, "\n"),
 	)
 }
