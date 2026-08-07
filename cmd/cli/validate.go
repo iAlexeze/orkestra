@@ -82,7 +82,8 @@ Examples:
 			}
 
 			if konfig.IsSimulateKind(kind) {
-				return validateSimulateFile(path)
+				playMode, _ := cmd.Flags().GetBool("play")
+				return validateSimulateFilePlay(path, playMode)
 			}
 
 			docKind = kind
@@ -412,14 +413,18 @@ func validateE2EFile(path string) error {
 
 // validateSimulateFile validates a Simulate spec file and prints a summary.
 func validateSimulateFile(path string) error {
-	return validateSimulateFileOpts(path, false)
+	return validateSimulateFileOpts(path, false, false)
+}
+
+func validateSimulateFilePlay(path string, play bool) error {
+	return validateSimulateFileOpts(path, false, play)
 }
 
 func validateSimulateFileQuiet(path string) error {
-	return validateSimulateFileOpts(path, true)
+	return validateSimulateFileOpts(path, true, false)
 }
 
-func validateSimulateFileOpts(path string, quiet bool) error {
+func validateSimulateFileOpts(path string, quiet, playMode bool) error {
 	if !quiet {
 		fmt.Println()
 		fmt.Println(bold("Validating Simulate..."))
@@ -465,7 +470,9 @@ func validateSimulateFileOpts(path string, quiet bool) error {
 			errs = append(errs, "spec.katalog not found: "+doc.Spec.Katalog)
 		}
 		if doc.Spec.CR == "" {
-			errs = append(errs, "spec.cr is required")
+			if !playMode {
+				errs = append(errs, "spec.cr is required (or use --play if ork serve play will supply the CR)")
+			}
 		} else if !fileExists(filepath.Join(baseDir, doc.Spec.CR)) {
 			errs = append(errs, "spec.cr not found: "+doc.Spec.CR)
 		}
@@ -771,6 +778,7 @@ func init() {
 	validateCmd.Flags().Bool("full", false, "Show per-CRD permissions, dependency graph, and system-level RBAC")
 	validateCmd.Flags().Bool("notes", false, "Quiet mode: print only the merged note registry, skip full validate output")
 	validateCmd.Flags().Bool("profiles", false, "Quiet mode: print only the merged profile registry, skip full validate output")
+	validateCmd.Flags().Bool("play", false, "For Simulate specs: skip spec.cr requirement (ork serve play will supply the CR)")
 
 	// Shadow global flags so they don't appear under `ork validate`
 	shadowGlobalCommandFlags(validateCmd)
