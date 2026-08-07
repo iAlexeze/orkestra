@@ -354,6 +354,59 @@ func ExpandGatewayAPIAuth(gw *GatewayConfig, baseDir string) error {
 	return nil
 }
 
+// ExpandServeTargetShorthand converts the scalar shorthand form of serve.target
+// into the canonical map form before include expansion runs.
+// "target: myapp" → "target: {myapp: {primary: true}}"
+// No-op when the target is already in map form or not set.
+func ExpandServeTargetShorthand(serve *ServeConfig) error {
+	if serve == nil || serve.Target.Shorthand == "" {
+		return nil
+	}
+	name := serve.Target.Shorthand
+	serve.Target.Entries = map[string]*ServeTargetConfig{
+		name: {Primary: true},
+	}
+	serve.Target.Shorthand = ""
+	return nil
+}
+
+// ExpandServeTargetIncludes resolves the include field on every entry in serve.target.
+// For each entry with include set, the referenced file is read and unmarshaled
+// into a ServeTargetConfig; inline fields (tokens, config) take precedence.
+// The include field is cleared after expansion.
+// The include path is resolved relative to baseDir.
+func ExpandServeTargetIncludes(serve *ServeConfig, baseDir string) error {
+	if serve == nil || len(serve.Target.Entries) == 0 {
+		return nil
+	}
+	for name, entry := range serve.Target.Entries {
+		if entry == nil || entry.Include == "" {
+			continue
+		}
+		path := entry.Include
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(baseDir, path)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("reading serve.target[%q].include %q: %w", name, entry.Include, err)
+		}
+		var f ServeTargetConfig
+		if err := orkutils.StrictUnmarshal(data, &f); err != nil {
+			return fmt.Errorf("parsing serve.target[%q].include %q: %w", name, entry.Include, err)
+		}
+		if len(f.Tokens) > 0 && len(entry.Tokens) == 0 {
+			entry.Tokens = f.Tokens
+		}
+		if f.Config != nil && entry.Config == nil {
+			entry.Config = f.Config
+		}
+		entry.Include = ""
+		serve.Target.Entries[name] = entry
+	}
+	return nil
+}
+
 // mergeServeFieldConfigs merges included and inline ServeFieldConfig maps, inline
 // taking precedence. Returns nil when both inputs are empty.
 func mergeServeFieldConfigs(included, inline map[string]ServeFieldConfig) map[string]ServeFieldConfig {
