@@ -1,8 +1,216 @@
-## v0.7.13 — Kubernetes-native labels/envFrom, serve labels/annotations, `ork serve` CLI, external calls at admission/reconcile, protocol clients
+## v0.7.14 — Aliases and Intent Provenance [UNRELEASED]
 
-### Blog: There Is No Kubernetes Expression Language
+### Serve aliases
 
-New post — [blog/KEL](documentation/blog/06-there-is-no-kubernetes-expression-language.md). Covers KEL as a composable vocabulary of Go template functions, how notes build on it, and why Helm proved the pattern worked.
+A CRD can now expose multiple named entry points — aliases — alongside its primary target. Each alias shares the same CRD, operator, and Kubernetes resource, but can restrict which tokens are valid for it and shape its response independently.
+
+Aliases are declared in `serve.target`. The entry with `primary: true` is the primary surface; all other entries are aliases:
+
+```yaml
+serve:
+  target:
+    apifixture:
+      primary: true
+    preview:
+      include: ./serve/aliases/preview.yaml
+    internal:
+      tokens:
+        platform-team:
+          permissions:
+            global: ["*"]
+```
+
+Callers use aliases the same way they use the primary target — by name in `POST /api/v1/apply` or via `ork serve`:
+
+```bash
+curl -X POST /api/v1/apply \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"target": "preview", "name": "my-service", ...}'
+```
+
+CRD-level `serve.tokens` and `serve.config` serve as fallback for any alias that does not declare its own. Each entry accepts `enabled: false` to close a surface without removing its config block.
+
+### Intent provenance annotations
+
+Every CR applied through the gateway is stamped with two annotations by the apply handler:
+
+| Annotation | Value |
+|---|---|
+| `orkestra.orkspace.io/serve-target` | The primary target name (e.g. `apifixture`) |
+| `orkestra.orkspace.io/serve-alias` | The alias name, or `""` for the primary target |
+
+Seven built-in notes expose provenance in any template expression:
+
+| Note | Returns |
+|---|---|
+| `getServeTarget .` | Primary target name |
+| `getServeAlias .` | Alias name — `""` for primary target |
+| `getServeSource .` | Delivery source |
+| `hasServeTarget .` | `true` when submitted via the Gateway API |
+| `hasServeAlias .` | `true` when a named alias was used |
+| `hasServeSource .` | `true` when a webhook source integration was used |
+| `isDirectApply .` | `true` when none of the three annotations are present |
+
+`isDirectApply` is true when a CR arrived via `kubectl` or CI direct apply, bypassing all gateway routing.
+
+These notes work in `when:` conditions at both reconcile time (operatorBox resource templates) and admission time (validation and mutation rules).
+
+### Immutable routing surface
+
+A resource's routing surface — the target or alias it was created through — is immutable without explicit intent. Once a CR is applied via `preview`, only `preview` can update it:
+
+```json
+{
+  "accepted": false,
+  "message": "routing surface conflict: resource was created via \"preview\", cannot update via \"apifixture\" without ?override=true"
+}
+```
+
+Pass `?override=true` to intentionally change the surface. The gateway logs a warning with the before/after values. New CRs and CRs created by direct `kubectl apply` are not subject to this check.
+
+### Alias-aware response shaping
+
+Each alias can configure its own response config — what the apply response includes and what `GET /api/v1/resources/...` returns:
+
+```yaml
+serve:
+  target:
+    apifixture:
+      primary: true
+    preview:
+      config:
+        response:
+          default: false
+          payload:
+            phase: '{{ .status.phase }}'
+            alias: '{{ getServeAlias . }}'
+```
+
+On GET, the gateway reads the `serve-alias` annotation stamped on the stored CR and applies the matching alias response config automatically — the caller does not need to pass `?target=`. CRs applied via the primary target use the CRD-level response config.
+
+### Alias token permission model
+
+Token permissions resolve in a three-layer chain, most specific first:
+
+1. Alias tokens — when the alias declares `tokens:`, only listed tokens are checked. A token absent from the alias map is denied, even if valid at the CRD level.
+2. CRD tokens — when no alias tokens are declared, the CRD-level restrictions apply.
+3. Allow all — when neither level declares restrictions.
+
+### `serve.target[*].include`
+
+Each target entry supports `include:` — a path relative to the katalog file pointing to a YAML file with `tokens:` and/or `config:` at the top level. Inline fields take precedence on merge. Convention: `./serve/aliases/<name>.yaml`.
+
+### Admission-time gating by alias or target
+
+Provenance notes are available in `when:` conditions on `validation.rules` and `mutation.rules`. The gateway stamps the annotations before the SSA patch, so the webhook sees them on every create and update:
+
+```yaml
+validation:
+  rules:
+    - field: spec.replicas
+      lessThanOrEqualTo: 10
+      message: "preview environments are capped at 10 replicas"
+      action: deny
+      when:
+        - field: '{{ eq (getServeAlias .) "preview" }}'
+          equals: "true"
+```
+
+### `--alias` flag on `ork serve` subcommands
+
+`ork serve schema`, `ork serve fields`, `ork serve aliases`, and `ork serve can-i` all accept `--alias` as an alternative to `--target`. Passing an alias name resolves the CRD through that surface and shows alias-specific context in the output header.
+
+### Gateway schema API includes aliases
+
+`GET /api/v1/schema` and `GET /api/v1/schema?target=<t>` now include an `aliases` array in each response entry. `GET /api/v1/resources/...` accepts alias names in the `{kind}` path segment — aliases are routable the same way targets are.
+
+### Control Center surface selector
+
+When a CRD has aliases, the create form in the Control Center shows a surface tab strip before the fields. Selecting a tab routes the submission through that alias. Single-surface CRDs stamp the target silently with no UI change.
+
+### `CRDEntry.AliasNames()`
+
+A new `AliasNames() []string` method on `CRDEntry` returns a sorted slice of alias names. Used by the gateway schema response, the kordinator `/katalog` health endpoint, and the CC.
+
+### Gateway token validation at `ork validate`
+
+`gateway.api.auth.tokens` entries are now validated statically at `ork validate` time:
+
+- Each `token:` value must be an `${ENV_VAR}` reference — literals are rejected.
+- Each `secretRef:` entry must supply both `name` and `key`.
+- `token` and `secretRef` are mutually exclusive per entry.
+
+### `ork serve validate --full` — aliases block
+
+`ork serve validate --full` prints the aliases block per CRD, showing token restriction status and response config presence for each alias.
+
+### `ork serve play`
+
+New subcommand that runs the full gateway apply chain locally from a flat intent file — no cluster, no running gateway required.
+
+```bash
+ork serve play --token control-center
+```
+
+Reads `intent.yaml` (or `intent.json`) from the current directory and runs six stages in-process: target resolution, token permission check, CR construction from serve field declarations, provenance annotation stamping, admission rule evaluation, and response payload evaluation. Each stage prints its result; the trace stops at the first failure with a clear error.
+
+The intent file is the same flat key-value document you would POST to `/api/v1/apply`:
+
+```yaml
+target: apifixture
+name: my-payment-service
+workloadType: app
+team: platform
+environment: staging
+repoURL: https://github.com/myorg/payments
+```
+
+Stage 5 (admission validation) evaluates `validation.rules` and `mutation.rules` — including synthesized rules from `serve.fields` marked `required: true` — using the same `EvaluateWhen` + `EvaluateValidationRule` logic as the webhook and reconciler. A deny-action violation stops the chain before simulate handoff. Mutation rules that would fire are previewed inline.
+
+`--simulate` hands the built CR to `ork simulate` after all six stages pass. `--simulate simulate.yaml` uses an existing simulate spec for katalog, cycles, and `expect:` assertions while substituting the play-built CR. This makes a simulate spec a full contract from caller intent to child resource ops — testable locally in one command.
+
+Useful for testing token permissions, verifying `serve.name`/`serve.namespace` expression resolution, confirming field routing, catching admission violations, and previewing the response payload — all before wiring up a real delivery surface or GitOps webhook.
+
+### `ork gate`
+
+New command that evaluates admission rules locally against a CR — no cluster, no webhook server required.
+
+```bash
+ork gate -f katalog.yaml --cr cr.yaml
+```
+
+Runs `EvaluateWhen` + `EvaluateValidationRule` for every `validation.rule` in the Katalog against the provided CR. Deny-action violations exit non-zero; warn-action violations are printed as advisories and exit zero. `mutation.rules` are also evaluated and previewed — showing which fields would be defaulted or overridden and what value they would receive.
+
+When `mutateFirst: true` is set, `ork gate` applies mutation rules to a copy of the CR before running validation — matching the real webhook pipeline order. A CR with absent fields that mutation would fill in passes validation locally just as it would at admission time.
+
+Two operators are skipped in local mode — `unique:` (needs an informer cache) and `external:` (needs a real endpoint) — and are noted in the output.
+
+Multi-document CR files are supported; each document is matched to a CRD by kind.
+
+The gateway is an intent runner. The runtime is a CR runner. `ork gate` is what closes the local loop on the admission side: the same validation and mutation logic the webhook enforces, runnable anywhere without a cluster. Combined with `ork serve play --simulate simulate.yaml`, the full path from intent to child resource ops is testable locally end to end.
+
+### `ork serve apply`
+
+New subcommand that applies an intent or CR to a live gateway via `POST /api/v1/apply`.
+
+```bash
+ork serve apply -f intent.yaml --api https://gateway.myorg.io --token "$ORK_TOKEN"
+```
+
+Accepts a flat intent file (target mode) or a full CR (`apiVersion` + `kind`). Both YAML and JSON are supported. Defaults to `intent.yaml` or `intent.json` in the current directory when `--file` is not set.
+
+The gateway handles everything on the other side — target resolution, token validation, admission, provenance stamping, SSA delivery. The command sends the body, prints the structured response, and exits non-zero on rejection.
+
+`--dry-run` runs the full admission pipeline at the gateway without writing to etcd — useful for validating a token's permissions or an intent's shape before committing.
+
+### Dependency updates
+
+- `golang.org/x/net` v0.55.0 → v0.56.0 (CVE-2026-46600)
+- `golang.org/x/crypto` v0.52.0 → v0.53.0
+
+---
+
+## v0.7.13 — The Serve Layer
 
 ### `validation.external` and `mutation.external`
 
@@ -488,6 +696,11 @@ Converts a comma-separated string to a list. Essential for dynamic exclusion lis
 | `POST /api/v1/apply` | Full CR only | Full CR + target mode |
 | `POST /api/v1/apply` response | `resourceVersion` | `pollUrl` (configurable) |
 ---
+
+### Blog: There Is No Kubernetes Expression Language
+
+New post — [blog/KEL](https://orkestra.sh/blog/there-is-no-kubernetes-expression-language/). Covers KEL as a composable vocabulary of Go template functions, how notes build on it, and why Helm proved the pattern worked.
+
 
 ## v0.7.12 — Gateway API, IDP, and codebase clarity
 
