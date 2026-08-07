@@ -36,6 +36,56 @@ A CRD with no `serve.tokens` block places no restriction here — any token vali
 
 ---
 
+## Per-entry token scoping (aliases)
+
+When a CRD uses the `serve.target` map form, each entry — primary or alias — can declare its own `tokens:` block. Entry-level tokens override the CRD-level `serve.tokens` for callers reaching that surface. The resolution chain for every request is:
+
+```text
+entry tokens  →  serve.tokens (CRD default)  →  allow all
+```
+
+A token absent from the entry's map is denied at that surface, even if it is valid at the CRD level. Aliases can only *narrow* access, never widen it.
+
+```yaml
+serve:
+  enabled: true
+  # CRD-level fallback — applies to any entry that declares no tokens:
+  tokens:
+    control-center:
+      permissions:
+        global: ["*"]
+    ci-pipeline:
+      permissions:
+        resources: [get, list]
+        schema: [get]
+
+  target:
+    app:
+      primary: true
+      # No tokens: declared — inherits CRD-level serve.tokens above.
+      # Both control-center and ci-pipeline can reach the primary surface.
+
+    preview:
+      tokens:
+        # Only control-center — ci-pipeline is denied even though it has CRD access.
+        control-center:
+          permissions:
+            global: [get, list]
+
+    internal:
+      tokens:
+        # Separate token for internal tooling — not listed at the CRD level at all.
+        # The internal entry declares it here; serve.tokens fallback is not used.
+        platform-team:
+          namespaces: ["production"]
+          permissions:
+            global: ["*"]
+```
+
+`ork validate` checks every token name in every entry's `tokens:` block — a name not in `gateway.api.auth.tokens` is a hard error regardless of which entry declares it.
+
+---
+
 ## Permission scopes
 
 | Scope | Endpoints it governs | Valid operations |
@@ -83,3 +133,4 @@ The three denial reasons — unknown token (not in `serve.tokens` at all), names
 - **[Namespace protection](05-namespace-protection.md)** — the CRD-level layer this sits on top of
 - **[Gateway API reference](../reference/schema/02-katalog/17-gateway-api.md#servetokens--fine-grained-permissions)** — full `serve.tokens` field reference
 - **[The Serve Concept](../concepts/idp/)** — what the Gateway API is for, target mode
+- **[Aliases and Intent Provenance](../concepts/idp/04-aliases-and-provenance.md)** — per-alias token scoping, admission gating, reconcile routing
