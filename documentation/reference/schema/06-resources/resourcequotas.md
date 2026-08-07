@@ -4,7 +4,7 @@ This declares one ResourceQuota to be managed by Orkestra.
 
 Usage patterns:
 
-1\. Inline quota:
+1. Inline quota:
 
 ```yaml
 onCreate:
@@ -17,7 +17,7 @@ onCreate:
       reconcile: true
 ```
 
-2\. Environment-sized quota with template expressions:
+2. Environment-sized quota with template expressions:
 
 ```yaml
 onCreate:
@@ -28,7 +28,7 @@ onCreate:
         memory: '{{ if eq .spec.env "production" }}32Gi{{ else }}4Gi{{ end }}'
 ```
 
-3\. Copy from existing ResourceQuota:
+3. Copy from existing ResourceQuota:
 
 ```yaml
 onCreate:
@@ -38,7 +38,7 @@ onCreate:
       fromNamespace: platform
 ```
 
-4\. Copy to multiple namespaces:
+4. Copy to multiple namespaces:
 
 ```yaml
 onCreate:

@@ -4,7 +4,7 @@ This declares one LimitRange to be managed by Orkestra.
 
 Usage patterns:
 
-1\. Container defaults:
+1. Container defaults:
 
 ```yaml
 onCreate:
@@ -21,7 +21,7 @@ onCreate:
       reconcile: true
 ```
 
-2\. Environment-sized limits with template expressions:
+2. Environment-sized limits with template expressions:
 
 ```yaml
 onCreate:
@@ -34,7 +34,7 @@ onCreate:
             memory: '{{ if eq .spec.env "production" }}512Mi{{ else }}256Mi{{ end }}'
 ```
 
-3\. Copy from existing LimitRange:
+3. Copy from existing LimitRange:
 
 ```yaml
 onCreate:
@@ -44,7 +44,7 @@ onCreate:
       fromNamespace: platform
 ```
 
-4\. Copy to multiple namespaces:
+4. Copy to multiple namespaces:
 
 ```yaml
 onCreate:
