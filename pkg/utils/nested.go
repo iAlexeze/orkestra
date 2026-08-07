@@ -150,3 +150,14 @@ func DeleteNestedPath(obj map[string]interface{}, path string) {
 func IsNestedPath(path string) bool {
 	return strings.Contains(path, ".")
 }
+
+// SplitPath splits a dot-notation path into its parts, ignoring empty segments.
+func SplitPath(path string) []string {
+	var parts []string
+	for _, p := range strings.Split(path, ".") {
+		if p != "" {
+			parts = append(parts, p)
+		}
+	}
+	return parts
+}
