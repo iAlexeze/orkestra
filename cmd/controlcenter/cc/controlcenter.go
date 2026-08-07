@@ -978,11 +978,12 @@ func (cc *ControlCenter) handleIDPCreateForm(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	sections, fetchErr := cc.fetchAllServeFields(inst, target)
+	sections, aliases, fetchErr := cc.fetchAllServeFields(inst, target)
 	data := IDPFormData{
 		KatalogName:      katalogName,
 		CRDName:          crdName,
 		Target:           target,
+		Aliases:          aliases,
 		Kind:             kind,
 		APIVersion:       apiVersion,
 		BackURL:          backURL,
@@ -1073,12 +1074,14 @@ func buildServeField(name string, hint serveFieldHint) ServeField {
 }
 
 // fetchAllServeFields fetches the flat field schema for target from the gateway.
-func (cc *ControlCenter) fetchAllServeFields(inst *Instance, target string) ([]IDPSection, error) {
+// It also returns the alias names declared for this CRD so the form can render
+// a surface dropdown when more than one entry point exists.
+func (cc *ControlCenter) fetchAllServeFields(inst *Instance, target string) ([]IDPSection, []string, error) {
 	if inst.GatewayEndpoint == "" {
-		return nil, fmt.Errorf("no gateway endpoint configured")
+		return nil, nil, fmt.Errorf("no gateway endpoint configured")
 	}
 	if cc.gatewayToken == "" {
-		return nil, fmt.Errorf("GATEWAY_TOKEN not set")
+		return nil, nil, fmt.Errorf("GATEWAY_TOKEN not set")
 	}
 
 	req, _ := http.NewRequest(http.MethodGet, inst.GatewayEndpoint+"/api/v1/schema?target="+url.QueryEscape(target), nil) //nolint:noctx
@@ -1086,21 +1089,20 @@ func (cc *ControlCenter) fetchAllServeFields(inst *Instance, target string) ([]I
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("%s", strings.TrimSpace(string(body)))
+		return nil, nil, fmt.Errorf("%s", strings.TrimSpace(string(body)))
 	}
 
-	// schemaResp mirrors pkg/gateway/api.SchemaResponse — a flat field
-	// map, no CRD-schema/bucket distinction.
 	var schemaResp struct {
-		Fields map[string]serveFieldHint `json:"fields"`
+		Aliases []string                  `json:"aliases"`
+		Fields  map[string]serveFieldHint `json:"fields"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&schemaResp); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	type orderedField struct {
@@ -1114,7 +1116,6 @@ func (cc *ControlCenter) fetchAllServeFields(inst *Instance, target string) ([]I
 
 	sort.Slice(ordered, func(i, j int) bool {
 		oi, oj := ordered[i].order, ordered[j].order
-		// order: 0 means unset — sort after all explicitly ordered fields.
 		if oi == 0 && oj != 0 {
 			return false
 		}
@@ -1126,7 +1127,6 @@ func (cc *ControlCenter) fetchAllServeFields(inst *Instance, target string) ([]I
 		}
 		return ordered[i].field.Name < ordered[j].field.Name
 	})
-	// Group sorted fields into sections by Category name.
 	var sections []IDPSection
 	for _, o := range ordered {
 		f := o.field
@@ -1139,7 +1139,7 @@ func (cc *ControlCenter) fetchAllServeFields(inst *Instance, target string) ([]I
 		}
 		sections[len(sections)-1].Fields = append(sections[len(sections)-1].Fields, f)
 	}
-	return sections, nil
+	return sections, schemaResp.Aliases, nil
 }
 
 // handleIDPApplyForm processes the IDP form POST: forwards the flat
@@ -1153,10 +1153,13 @@ func (cc *ControlCenter) handleIDPApplyForm(w http.ResponseWriter, r *http.Reque
 		fmt.Fprintf(w, `{"error":"invalid request body"}`)
 		return
 	}
-	// target is always the server-resolved value for this route, not
-	// whatever the client sent (there's no client-supplied target to trust
-	// here — the route itself determines which CRD this form is for).
-	body["target"] = target
+	// If the form submitted a surface (alias or primary), use it. The gateway
+	// validates the surface and rejects unknown targets, so we don't need to
+	// whitelist here. Fall back to the route-resolved primary target when the
+	// form omits it (shouldn't happen, but safe default).
+	if submitted, ok := body["target"].(string); !ok || submitted == "" {
+		body["target"] = target
+	}
 
 	payload, _ := json.Marshal(body)
 	applyURL := inst.GatewayEndpoint + "/api/v1/apply"

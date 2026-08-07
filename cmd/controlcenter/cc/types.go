@@ -281,6 +281,10 @@ type IDPFormData struct {
 	// Target is the identifier submitted to the gateway's Gateway API
 	// (idp.target, or the lowercased kind when unset).
 	Target string
+	// Aliases are the non-primary surfaces for this CRD. When non-empty the
+	// form renders a surface dropdown as the first UI element. All surfaces
+	// (primary target + aliases) are listed so the user can pick one.
+	Aliases []string
 	// Kind/APIVersion are display-only — shown in the page header, not used
 	// to build the submitted payload (the gateway builds the CR).
 	Kind             string
