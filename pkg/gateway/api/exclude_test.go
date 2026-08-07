@@ -11,7 +11,7 @@ func TestApplyExclusions(t *testing.T) {
 	t.Run("nil crd is a no-op", func(t *testing.T) {
 		response := map[string]interface{}{"a": "b"}
 		assert.NotPanics(t, func() {
-			ApplyExclusions(response, nil, noopNotes())
+			ApplyExclusions(response, nil, "", noopNotes())
 		})
 		assert.Equal(t, "b", response["a"])
 	})
@@ -20,7 +20,7 @@ func TestApplyExclusions(t *testing.T) {
 		crd := appCRD()
 		crd.Serve.Config = nil
 		response := map[string]interface{}{"a": "b"}
-		ApplyExclusions(response, crd, noopNotes())
+		ApplyExclusions(response, crd, "", noopNotes())
 		assert.Equal(t, "b", response["a"])
 	})
 
@@ -30,7 +30,7 @@ func TestApplyExclusions(t *testing.T) {
 			Response: &orktypes.ServeResponseConfig{},
 		}
 		response := map[string]interface{}{"a": "b"}
-		ApplyExclusions(response, crd, noopNotes())
+		ApplyExclusions(response, crd, "", noopNotes())
 		assert.Equal(t, "b", response["a"])
 	})
 
@@ -47,7 +47,7 @@ func TestApplyExclusions(t *testing.T) {
 				"managedFields": []interface{}{"something"},
 			},
 		}
-		ApplyExclusions(response, crd, noopNotes())
+		ApplyExclusions(response, crd, "", noopNotes())
 		meta := response["metadata"].(map[string]interface{})
 		_, hasMF := meta["managedFields"]
 		assert.False(t, hasMF)
@@ -70,7 +70,7 @@ func TestApplyExclusions(t *testing.T) {
 				"observedGeneration": 1,
 			},
 		}
-		ApplyExclusions(response, crd, noopNotes())
+		ApplyExclusions(response, crd, "", noopNotes())
 		meta := response["metadata"].(map[string]interface{})
 		_, hasMF := meta["managedFields"]
 		assert.False(t, hasMF)
@@ -95,7 +95,7 @@ func TestApplyExclusions(t *testing.T) {
 				"observedGeneration": 1,
 			},
 		}
-		ApplyExclusions(response, crd, noopNotes())
+		ApplyExclusions(response, crd, "", noopNotes())
 		meta := response["metadata"].(map[string]interface{})
 		_, hasMF := meta["managedFields"]
 		assert.False(t, hasMF)
@@ -123,7 +123,7 @@ func TestApplyExclusions(t *testing.T) {
 				"phase":              "Ready",
 			},
 		}
-		ApplyExclusions(response, crd, noopNotes())
+		ApplyExclusions(response, crd, "", noopNotes())
 		meta := response["metadata"].(map[string]interface{})
 		_, hasMF := meta["managedFields"]
 		assert.False(t, hasMF)
@@ -142,7 +142,7 @@ func TestApplyExclusions(t *testing.T) {
 		}
 		response := map[string]interface{}{"a": "b"}
 		assert.NotPanics(t, func() {
-			ApplyExclusions(response, crd, noopNotes())
+			ApplyExclusions(response, crd, "", noopNotes())
 		})
 		assert.Equal(t, "b", response["a"])
 	})
@@ -155,7 +155,7 @@ func TestApplyExclusions(t *testing.T) {
 			},
 		}
 		response := map[string]interface{}{"a": "b"}
-		ApplyExclusions(response, crd, noopNotes())
+		ApplyExclusions(response, crd, "", noopNotes())
 		assert.Equal(t, "b", response["a"])
 	})
 }

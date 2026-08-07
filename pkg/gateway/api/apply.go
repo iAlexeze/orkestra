@@ -29,6 +29,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -155,10 +156,12 @@ func applyHandler(
 
 		dryRun := r.URL.Query().Get("dryRun") == "true"
 		overwrite := r.URL.Query().Get("overwrite") == "true"
+		override := r.URL.Query().Get("override") == "true"
 
 		var (
 			obj       *unstructured.Unstructured
 			crd       *orktypes.CRDEntry
+			alias     string // non-empty when caller used an alias
 			gvr       schema.GroupVersionResource
 			patchBody []byte
 		)
@@ -176,8 +179,8 @@ func applyHandler(
 				return
 			}
 
-			crd = kat.LookupByTarget(target)
-			if crd == nil {
+			resolution := kat.LookupByTargetOrAlias(target)
+			if resolution == nil {
 				writeJSON(w, http.StatusBadRequest, ApplyResponse{
 					Message: fmt.Sprintf(
 						"unknown target %q — available: %s",
@@ -187,6 +190,8 @@ func applyHandler(
 				})
 				return
 			}
+			crd = resolution.CRD
+			alias = resolution.Alias
 
 			built, err := BuildCRFromTarget(raw, crd, notes)
 			if err != nil {
@@ -196,6 +201,7 @@ func applyHandler(
 				return
 			}
 			obj = built
+			InjectProvenanceAnnotations(obj, crd.ServeTarget(), alias, "")
 			gvr = crd.GVR()
 
 			// ─── Marshal built CR for the patch body ──────────────────────
@@ -219,7 +225,7 @@ func applyHandler(
 				return
 			}
 
-			crd = kat.LookupByKind(full.GetKind())
+			crd = kat.LookupByKind(full.GetKind()).Entry()
 			if crd == nil {
 				writeJSON(w, http.StatusBadRequest, ApplyResponse{
 					Message: fmt.Sprintf("unknown kind %q", full.GetKind()),
@@ -235,6 +241,7 @@ func applyHandler(
 			}
 
 			obj = &full
+			InjectProvenanceAnnotations(obj, crd.ServeTarget(), "", "")
 			gvr = crd.GVR()
 			patchBody = body // raw body is already a valid CR
 
@@ -248,26 +255,58 @@ func applyHandler(
 		}
 
 		// ── Token permission check ────────────────────────────────────────────────
-		// When the CRD declares serve.tokens, the authenticated token must
-		// have permission to perform the operation it is attempting.
-		//
-		// We determine whether this is a create or update by probing the API server
-		// for the resource before applying. SSA would succeed either way, but the
-		// permission model distinguishes them so platform teams can allow CI to
-		// create staging CRs without allowing it to overwrite production ones.
+		// TokenAllowedFor resolves alias-specific tokens before falling back to
+		// CRD-level tokens, then delegates to ServeConfig.TokenAllowed.
+		// When no restrictions are declared at either level, every valid token passes.
 		tokenName := TokenNameFromContext(r.Context())
-		if crd != nil && crd.Serve != nil && crd.Serve.HasTokenRestrictions() {
+		if crd != nil {
 			// Determine create vs update before the SSA call.
 			op := orktypes.ServeOpCreate
-			_, probeErr := kube.DynamicClient().
+			existing, probeErr := kube.DynamicClient().
 				Resource(gvr).
 				Namespace(obj.GetNamespace()).
 				Get(r.Context(), obj.GetName(), metav1.GetOptions{})
 			if probeErr == nil {
 				op = orktypes.ServeOpUpdate
+
+				// ── Routing surface guard ─────────────────────────────────────
+				// The CR's stamped surface (alias > target annotation) is immutable
+				// without ?override=true.
+				ann := existing.GetAnnotations()
+				storedSurface := ann[labels.AnnotationServeAlias]
+				if storedSurface == "" {
+					storedSurface = ann[labels.AnnotationServeTarget]
+				}
+				incomingSurface := alias
+				if incomingSurface == "" {
+					incomingSurface = crd.ServeTarget()
+				}
+				if storedSurface != "" && storedSurface != incomingSurface {
+					if !override {
+						msg := fmt.Sprintf(
+							"routing surface conflict: resource was created via %q, cannot update via %q without ?override=true",
+							storedSurface, incomingSurface,
+						)
+						writeJSON(w, http.StatusConflict, ApplyResponse{
+							Message: msg,
+							Violations: []ApplyViolation{{
+								Field:    "metadata.annotations",
+								Message:  msg,
+								Severity: "error",
+							}},
+						})
+						return
+					}
+					logger.FromContext(r.Context()).Warn().
+						Str("from", storedSurface).
+						Str("to", incomingSurface).
+						Str("name", obj.GetName()).
+						Str("namespace", obj.GetNamespace()).
+						Msg("routing surface override")
+				}
 			}
 
-			allowed, reason := crd.Serve.TokenAllowed(tokenName, op, obj.GetNamespace(), orktypes.ServeClassResources)
+			allowed, reason := crd.TokenAllowedFor(alias, tokenName, op, obj.GetNamespace(), orktypes.ServeClassResources)
 			if !allowed {
 				msg := reason.Message(tokenName, op, obj.GetKind(), obj.GetNamespace())
 				writeJSON(w, http.StatusForbidden, ApplyResponse{
@@ -335,7 +374,7 @@ func applyHandler(
 		}
 
 		// Evaluate serve.config.response.payload against the submitted CR.
-		payload := EvaluatePayload(obj.Object, crd, notes)
+		payload := EvaluatePayload(obj.Object, crd, alias, notes)
 
 		ns := obj.GetNamespace()
 		capture := &warningCapture{}
@@ -463,6 +502,26 @@ func resolveServeMeta(
 }
 
 func boolPtr(b bool) *bool { return &b }
+
+// InjectProvenanceAnnotations stamps the three serve provenance annotations onto
+// obj before SSA. Empty strings are skipped — callers pass "" for fields that
+// don't apply to the current request path (e.g. alias is "" on primary targets).
+func InjectProvenanceAnnotations(obj *unstructured.Unstructured, target, alias, source string) {
+	ann := obj.GetAnnotations()
+	if ann == nil {
+		ann = make(map[string]string, 3)
+	}
+	if target != "" {
+		ann[labels.AnnotationServeTarget] = target
+	}
+	if alias != "" {
+		ann[labels.AnnotationServeAlias] = alias
+	}
+	if source != "" {
+		ann[labels.AnnotationServeSource] = source
+	}
+	obj.SetAnnotations(ann)
+}
 
 // extractViolations pulls field-level causes out of a Kubernetes Status error.
 func extractViolations(err error) []ApplyViolation {

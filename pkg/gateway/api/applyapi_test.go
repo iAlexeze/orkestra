@@ -37,8 +37,10 @@ func appCRD() *orktypes.CRDEntry {
 			Plural:  "apps",
 		},
 		Serve: &orktypes.ServeConfig{
-			Enabled:     true,
-			Target:      "app",
+			Enabled: true,
+			Target: orktypes.ServeTargetValue{Entries: map[string]*orktypes.ServeTargetConfig{
+				"app": {Primary: true},
+			}},
 			Title:       "Application",
 			Description: "Deploy an application",
 			Name:        `{{ .name }}`,
@@ -392,7 +394,7 @@ func TestCheckServePermission(t *testing.T) {
 		r := httptest.NewRequest(http.MethodGet, "/", nil)
 		r = requestWithToken(r, token)
 		rr := httptest.NewRecorder()
-		ok := checkServePermission(rr, r, crd, class, op, ns)
+		ok := checkServePermission(rr, r, crd, class, op, ns, "")
 		if ok {
 			return http.StatusOK
 		}
@@ -420,7 +422,7 @@ func TestCheckServePermission(t *testing.T) {
 	rOpen = requestWithToken(rOpen, "anyone")
 	rrOpen := httptest.NewRecorder()
 	assert.True(t, checkServePermission(rrOpen, rOpen, openCRD,
-		orktypes.ServeClassResources, "delete", "default"))
+		orktypes.ServeClassResources, "delete", "default", ""))
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
