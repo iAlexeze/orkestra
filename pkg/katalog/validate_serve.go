@@ -58,6 +58,11 @@ func (k *Katalog) ValidateServe() error {
 		return err
 	}
 
+	// 9. Validate serve.aliases — name format, routing uniqueness, token references
+	if err := k.validateServeAliases(); err != nil {
+		return err
+	}
+
 	return nil
 }
 

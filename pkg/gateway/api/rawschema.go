@@ -89,10 +89,10 @@ func rawSchemaHandler(
 
 		var crd *orktypes.CRDEntry
 		if apiVersion != "" && kind != "" {
-			crd = kat.LookupByAPIVersionAndKind(apiVersion, kind)
+			crd = kat.LookupByAPIVersionAndKind(apiVersion, kind).Entry()
 			if crd == nil {
 				// Try kind-only as fallback, but note the mismatch
-				crd = kat.LookupByKind(kind)
+				crd = kat.LookupByKind(kind).Entry()
 				if crd != nil {
 					// ─── Return the warning as the response ──────────────
 					writeJSON(w, http.StatusBadRequest, utils.H{
@@ -105,7 +105,7 @@ func rawSchemaHandler(
 				}
 			}
 		} else {
-			crd = kat.LookupByKind(kind)
+			crd = kat.LookupByKind(kind).Entry()
 		}
 
 		if crd == nil {

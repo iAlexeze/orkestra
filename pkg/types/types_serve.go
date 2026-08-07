@@ -60,10 +60,11 @@ type ServeConfig struct {
 	Description string `yaml:"description,omitempty" json:"description,omitempty"`
 
 	// Target is the caller-facing identifier for this CRD in the Gateway API.
+	// Accepts a plain string shorthand ("myapp") or a named map of target entries.
+	// In the map form exactly one entry must have primary: true — that entry's key
+	// is the primary target name and all other entries are aliases.
 	// Defaults to the lowercased kind when not set.
-	// Must be lowercase alphanumeric with optional hyphens.
-	// Must be unique across all serve-enabled CRDs in this Katalog.
-	Target string `yaml:"target,omitempty" json:"target,omitempty"`
+	Target ServeTargetValue `yaml:"target,omitempty" json:"target,omitempty"`
 
 	// ForceConflict, when true, sets Force: true on every server-side apply
 	// for this CRD — the gateway takes ownership of any conflicting fields
@@ -130,6 +131,14 @@ type ServeConfig struct {
 	// When empty, any valid gateway token may perform any operation on this CRD.
 	// ork validate confirms every token name here matches an entry in gateway.api.auth.tokens.
 	Tokens map[string]ServeTokenPermissions `yaml:"tokens,omitempty" json:"tokens,omitempty"`
+}
+
+// ServeAliasConfigSettings is the config block on a target entry.
+// Mirrors ServeConfigSettings but kept separate so alias-only settings can be
+// added in future without touching the CRD-level type.
+type ServeAliasConfigSettings struct {
+	// Response controls what callers see when the gateway returns CR data via this alias.
+	Response *ServeResponseConfig `yaml:"response,omitempty" json:"response,omitempty"`
 }
 
 // ServeFieldConfig holds display hints for one spec field in the serve form.

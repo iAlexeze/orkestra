@@ -4,8 +4,10 @@ package cli
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -43,17 +45,17 @@ func resolveCRD(kat *katalog.Katalog, target, kind, name string) (*orktypes.CRDE
 
 	switch {
 	case target != "":
-		crd = kat.LookupByTarget(target)
+		crd = kat.LookupByTarget(target).Entry()
 		if crd == nil {
 			return nil, fmt.Errorf("%s target %q not found", failureMark(), target)
 		}
 	case kind != "":
-		crd = kat.LookupByKind(kind)
+		crd = kat.LookupByKind(kind).Entry()
 		if crd == nil {
 			return nil, fmt.Errorf("%s kind %q not found", failureMark(), kind)
 		}
 	case name != "":
-		crd = kat.LookupByName(name)
+		crd = kat.LookupByName(name).Entry()
 		if crd == nil {
 			return nil, fmt.Errorf("%s CRD %q not found", failureMark(), name)
 		}
@@ -64,21 +66,38 @@ func resolveCRD(kat *katalog.Katalog, target, kind, name string) (*orktypes.CRDE
 	return crd, nil
 }
 
+// resolveCRDByAnyTarget resolves a CRD by primary target or alias using
+// LookupByTargetOrAlias. Returns the CRD and the alias name (empty when the
+// primary target matched). Used by can-i so --target accepts alias names too.
+func resolveCRDByAnyTarget(kat *katalog.Katalog, target string) (*orktypes.CRDEntry, string, error) {
+	resolution := kat.LookupByTargetOrAlias(target)
+	if resolution == nil {
+		return nil, "", fmt.Errorf("%s target or alias %q not found", failureMark(), target)
+	}
+	return resolution.CRD, resolution.Alias, nil
+}
+
 // printCanIResult prints the permission check result.
-func printCanIResult(allowed bool, token, op string, crd *orktypes.CRDEntry, namespace, reason string, details []string) {
+// alias is the serve alias used for the check — empty when the primary target was used.
+func printCanIResult(allowed bool, token, op string, crd *orktypes.CRDEntry, namespace, alias, reason string, details []string) {
 	if op == "*" {
 		op = "perform all operations"
 	}
 
+	subject := fmt.Sprintf("%q", crd.ServeTarget())
+	if alias != "" {
+		subject = fmt.Sprintf("%q (alias: %s)", crd.ServeTarget(), alias)
+	}
+
 	fmt.Println()
 	if allowed {
-		fmt.Printf("%s %s can %s on %q", successMark(), token, op, crd.ServeTarget())
+		fmt.Printf("%s %s can %s on %s", successMark(), token, op, subject)
 		if namespace != "" {
 			fmt.Printf(" in namespace %q", namespace)
 		}
 		fmt.Println()
 	} else {
-		fmt.Printf("%s %s cannot %s on %q", failureMark(), token, op, crd.ServeTarget())
+		fmt.Printf("%s %s cannot %s on %s", failureMark(), token, op, subject)
 		if namespace != "" {
 			fmt.Printf(" in namespace %q", namespace)
 		}
@@ -153,6 +172,41 @@ func sortedFieldEntries(crd *orktypes.CRDEntry, sortBy string) []fieldEntry {
 	return entries
 }
 
+// ── printAliasesForCRD ──────────────────────────────────────────────
+
+// printAliasesForCRD prints the alias table for one CRD.
+func printAliasesForCRD(crd *orktypes.CRDEntry) {
+	aliases := crd.ServeAliases()
+	if len(aliases) == 0 {
+		fmt.Printf("\nCRD: %s (target: %s) — no aliases\n", crd.Name, crd.ServeTargetOrEmpty())
+		return
+	}
+
+	fmt.Printf("\nCRD: %s (target: %s)\n", crd.Name, crd.ServeTargetOrEmpty())
+
+	names := make([]string, 0, len(aliases))
+	for name := range aliases {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "  ALIAS\tTOKENS\tRESPONSE")
+	for _, name := range names {
+		cfg := aliases[name]
+		hasTokens := "no"
+		if cfg != nil && cfg.HasTokenRestrictions() {
+			hasTokens = "yes"
+		}
+		hasResponse := "no"
+		if cfg != nil && cfg.ResponseConfig() != nil {
+			hasResponse = "yes"
+		}
+		fmt.Fprintf(w, "  %s\t%s\t%s\n", name, hasTokens, hasResponse)
+	}
+	w.Flush()
+}
+
 // ── printServeValidationSummary ──────────────────────────────────────────────
 
 // printServeValidationSummary prints a detailed breakdown of the Serve configuration.
@@ -218,11 +272,53 @@ func printServeValidationSummary(kat *katalog.Katalog) {
 		}
 
 		// ── Tokens ──────────────────────────────────────────────────────
+		tokenCount := len(crd.Serve.TokensMap())
+		tokenTxt := "tokens"
+		if tokenCount == 1 {
+			tokenTxt = "token"
+		}
 		if crd.HasServeTokenRestrictions() {
-			tokenCount := len(crd.Serve.TokensMap())
-			fmt.Printf("  %s\n", gray(fmt.Sprintf("tokens:    %d token(s) with restrictions", tokenCount)))
+			fmt.Printf("  %s\n", gray(fmt.Sprintf("tokens:    %d %s with restrictions", tokenCount, tokenTxt)))
 		} else {
 			fmt.Printf("  %s\n", gray("tokens:    none (all tokens allowed)"))
+		}
+
+		// ── Aliases ─────────────────────────────────────────────────────
+		if crd.HasServeAliases() {
+			aliases := crd.ServeAliases()
+			aliasNames := make([]string, 0, len(aliases))
+			for name := range aliases {
+				aliasNames = append(aliasNames, name)
+			}
+			sort.Strings(aliasNames)
+
+			aliasTxt := "aliases"
+			aliasNamesCount := len(aliasNames)
+			if aliasNamesCount == 1 {
+				aliasTxt = "alias"
+			}
+
+			fmt.Printf("  %s\n", gray(fmt.Sprintf("%s:   %d", aliasTxt, aliasNamesCount)))
+			for _, aliasName := range aliasNames {
+				alias := aliases[aliasName]
+				var parts []string
+
+				aliasTokenTxt := "tokens"
+				aliasTokenCount := len(alias.Tokens)
+				if aliasTokenCount == 1 {
+					aliasTokenTxt = "token"
+				}
+
+				if alias != nil && alias.HasTokenRestrictions() {
+					parts = append(parts, fmt.Sprintf("%d %s", aliasTokenCount, aliasTokenTxt))
+				} else {
+					parts = append(parts, "inherits CRD tokens")
+				}
+				if alias != nil && alias.ResponseConfig() != nil {
+					parts = append(parts, "custom response")
+				}
+				fmt.Printf("    %s %s  %s\n", gray("·"), gray(aliasName), gray("("+strings.Join(parts, ", ")+")"))
+			}
 		}
 
 		// ── Response Config ─────────────────────────────────────────────

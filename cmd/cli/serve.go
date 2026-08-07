@@ -13,6 +13,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// errRequiresCRDSelector is returned by serve subcommands that require the
+// caller to identify a CRD via at least one of the standard selector flags.
+var errRequiresCRDSelector = fmt.Errorf("%s one of --target, --kind, --name, or --alias is required", failureMark())
+
 // ── serve ─────────────────────────────────────────────────────────────────────
 
 var serveCmd = &cobra.Command{
@@ -30,6 +34,7 @@ Subcommands:
   fields      List all Serve fields with their paths and types
   tokens      Show token permissions for a CRD
   targets     List all Serve targets in a Katalog
+  aliases     List serve aliases in a Katalog
   can-i       Check if a token can perform an operation
   response    Show the Serve response configuration`,
 }
@@ -85,28 +90,49 @@ GET /api/v1/schema?target=<t> endpoint.`,
 		target, _ := cmd.Flags().GetString("target")
 		kind, _ := cmd.Flags().GetString("kind")
 		name, _ := cmd.Flags().GetString("name")
+		alias, _ := cmd.Flags().GetString("alias")
+
+		if target == "" && kind == "" && name == "" && alias == "" {
+			return errRequiresCRDSelector
+		}
 
 		k, err := buildKatalog(cmd)
 		if err != nil {
 			return err
 		}
 
-		crd, err := resolveCRD(k, target, kind, name)
-		if err != nil {
-			return err
+		var crd *orktypes.CRDEntry
+		header := ""
+
+		if alias != "" && target == "" && kind == "" && name == "" {
+			var resolvedAlias string
+			crd, resolvedAlias, err = resolveCRDByAnyTarget(k, alias)
+			if err != nil {
+				return err
+			}
+			if resolvedAlias == "" {
+				return fmt.Errorf("%s %q is a primary target, not an alias — use --target instead", failureMark(), alias)
+			}
+			header = fmt.Sprintf("\nSchema for: %s (alias: %s → target: %s)\n", crd.Name, alias, crd.ServeTarget())
+		} else {
+			crd, err = resolveCRD(k, target, kind, name)
+			if err != nil {
+				return err
+			}
+			header = fmt.Sprintf("\nSchema for: %s (target: %s)\n", crd.Name, crd.ServeTarget())
 		}
 
 		if !crd.ServeEnabled() {
-			return fmt.Errorf("CRD %q is not Serve-enabled", crd.Name)
+			return fmt.Errorf("%s CRD %q is not Serve-enabled", failureMark(), crd.Name)
 		}
 
 		fields := crd.AllServeFields()
 		if len(fields) == 0 {
-			fmt.Printf("\nNo fields defined for target %q\n", target)
+			fmt.Printf("\nNo fields defined for %q\n", crd.Name)
 			return nil
 		}
 
-		fmt.Printf("\nSchema for: %s (target: %s)\n", crd.Name, crd.ServeTarget())
+		fmt.Print(header)
 		fmt.Printf("%s\n", strings.Repeat("─", 70))
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
@@ -147,6 +173,7 @@ With --target, --kind, or --name, shows fields for a specific CRD.`,
 		target, _ := cmd.Flags().GetString("target")
 		kind, _ := cmd.Flags().GetString("kind")
 		name, _ := cmd.Flags().GetString("name")
+		alias, _ := cmd.Flags().GetString("alias")
 		sortBy, _ := cmd.Flags().GetString("sort-by")
 
 		// Validate sortBy
@@ -163,14 +190,30 @@ With --target, --kind, or --name, shows fields for a specific CRD.`,
 		}
 
 		// ── If a specific CRD is requested ──────────────────────────────────
-		if target != "" || kind != "" || name != "" {
-			crd, err := resolveCRD(k, target, kind, name)
-			if err != nil {
-				return err
+		if target != "" || kind != "" || name != "" || alias != "" {
+			var crd *orktypes.CRDEntry
+			header := ""
+
+			if alias != "" && target == "" && kind == "" && name == "" {
+				var resolvedAlias string
+				crd, resolvedAlias, err = resolveCRDByAnyTarget(k, alias)
+				if err != nil {
+					return err
+				}
+				if resolvedAlias == "" {
+					return fmt.Errorf("%s %q is a primary target, not an alias — use --target instead", failureMark(), alias)
+				}
+				header = fmt.Sprintf("\nFields for: %s (alias: %s → target: %s)\n", crd.Name, alias, crd.ServeTarget())
+			} else {
+				crd, err = resolveCRD(k, target, kind, name)
+				if err != nil {
+					return err
+				}
+				header = fmt.Sprintf("\nFields for: %s (target: %s)\n", crd.Name, crd.ServeTarget())
 			}
 
 			if !crd.ServeEnabled() {
-				return fmt.Errorf("CRD %q is not Serve-enabled", crd.Name)
+				return fmt.Errorf("%s CRD %q is not Serve-enabled", failureMark(), crd.Name)
 			}
 
 			entries := sortedFieldEntries(crd, sortBy)
@@ -179,7 +222,7 @@ With --target, --kind, or --name, shows fields for a specific CRD.`,
 				return nil
 			}
 
-			fmt.Printf("\nFields for: %s (target: %s)\n", crd.Name, crd.ServeTarget())
+			fmt.Print(header)
 			fmt.Printf("%s\n", strings.Repeat("─", 70))
 
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
@@ -260,14 +303,19 @@ var serveTokensCmd = &cobra.Command{
 
 This displays the tokens configuration, including which tokens
 have access, their permissions (global/schema/resources), and namespace
-restrictions.`,
+restrictions.
+
+With --alias, shows the effective token config for that alias entry.
+When the alias declares its own tokens, those are shown directly.
+When it inherits from the CRD, the CRD-level tokens are shown with a note.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		target, _ := cmd.Flags().GetString("target")
 		kind, _ := cmd.Flags().GetString("kind")
 		name, _ := cmd.Flags().GetString("name")
+		alias, _ := cmd.Flags().GetString("alias")
 
-		if target == "" && kind == "" && name == "" {
-			return fmt.Errorf("one of --target, --kind, or --name is required")
+		if target == "" && kind == "" && name == "" && alias == "" {
+			return errRequiresCRDSelector
 		}
 
 		k, err := buildKatalog(cmd)
@@ -275,27 +323,59 @@ restrictions.`,
 			return err
 		}
 
-		crd, err := resolveCRD(k, target, kind, name)
-		if err != nil {
-			return err
+		var crd *orktypes.CRDEntry
+		if alias != "" && target == "" && kind == "" && name == "" {
+			// --alias alone: resolve CRD from alias name
+			var resolvedAlias string
+			crd, resolvedAlias, err = resolveCRDByAnyTarget(k, alias)
+			if err != nil {
+				return err
+			}
+			if resolvedAlias == "" {
+				return fmt.Errorf("%s %q is a primary target, not an alias — use --target instead", failureMark(), alias)
+			}
+		} else {
+			crd, err = resolveCRD(k, target, kind, name)
+			if err != nil {
+				return err
+			}
 		}
 
 		if !crd.ServeEnabled() {
-			return fmt.Errorf("CRD %q is not Serve-enabled", crd.Name)
+			return fmt.Errorf("%s CRD %q is not Serve-enabled", failureMark(), crd.Name)
 		}
 
-		if !crd.HasServeTokenRestrictions() {
-			fmt.Printf("\nNo token restrictions for CRD %q\n", crd.Name)
+		tokensMap := crd.ServeTokensFor(alias)
+		source := "CRD-level serve.tokens"
+		if alias != "" {
+			if entry := crd.LookupTarget(alias); entry != nil && entry.HasTokenRestrictions() {
+				source = fmt.Sprintf("alias %q (own tokens)", alias)
+			} else {
+				source = fmt.Sprintf("alias %q (inherits CRD-level tokens)", alias)
+			}
+		}
+
+		if len(tokensMap) == 0 {
+			if alias != "" {
+				fmt.Printf("\nNo token restrictions for alias %q (CRD: %s) — all tokens allowed\n\n", alias, crd.Name)
+			} else {
+				fmt.Printf("\nNo token restrictions for CRD %q — all tokens allowed\n\n", crd.Name)
+			}
 			return nil
 		}
 
-		fmt.Printf("\nToken permissions for CRD: %s (target: %s)\n", crd.Name, crd.ServeTarget())
+		if alias != "" {
+			fmt.Printf("\nToken permissions for alias %q (CRD: %s)\n", alias, crd.Name)
+			fmt.Printf("Source: %s\n", source)
+		} else {
+			fmt.Printf("\nToken permissions for CRD: %s (target: %s)\n", crd.Name, crd.ServeTarget())
+		}
 		fmt.Printf("%s\n", strings.Repeat("─", 70))
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 		fmt.Fprintln(w, "TOKEN\tGLOBAL\tSCHEMA\tRESOURCES\tNAMESPACES")
 
-		for tokenName, perms := range crd.Serve.TokensMap() {
+		for tokenName, perms := range tokensMap {
 			global := strings.Join(perms.Permissions.Global, ",")
 			schema := strings.Join(perms.Permissions.Schema, ",")
 			resources := strings.Join(perms.Permissions.Resources, ",")
@@ -339,6 +419,7 @@ This shows each target, its CRD kind, and whether it has fields defined.`,
 			Kind     string
 			Fields   int
 			HasToken bool
+			Aliases  int
 		}
 
 		for _, crd := range k.ServeEnabledCRDs() {
@@ -350,11 +431,13 @@ This shows each target, its CRD kind, and whether it has fields defined.`,
 				Kind     string
 				Fields   int
 				HasToken bool
+				Aliases  int
 			}{
 				Target:   crd.ServeTarget(),
 				Kind:     crd.Kind(),
 				Fields:   len(crd.AllServeFields()),
 				HasToken: crd.HasServeTokenRestrictions(),
+				Aliases:  len(crd.ServeAliases()),
 			})
 		}
 
@@ -367,18 +450,23 @@ This shows each target, its CRD kind, and whether it has fields defined.`,
 		fmt.Printf("%s\n", strings.Repeat("─", 50))
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "TARGET\tKIND\tFIELDS\tTOKENS")
+		fmt.Fprintln(w, "TARGET\tKIND\tFIELDS\tTOKENS\tALIASES")
 
 		for _, e := range entries {
 			tokens := "no"
 			if e.HasToken {
 				tokens = "yes"
 			}
-			fmt.Fprintf(w, "%s\t%s\t%d\t%s\n",
+			aliases := "—"
+			if e.Aliases > 0 {
+				aliases = fmt.Sprintf("%d", e.Aliases)
+			}
+			fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\n",
 				e.Target,
 				e.Kind,
 				e.Fields,
 				tokens,
+				aliases,
 			)
 		}
 		w.Flush()
@@ -417,24 +505,22 @@ Examples:
 		target, _ := cmd.Flags().GetString("target")
 		kind, _ := cmd.Flags().GetString("kind")
 		name, _ := cmd.Flags().GetString("name")
+		aliasFlag, _ := cmd.Flags().GetString("alias")
 
 		if token == "" {
-			return fmt.Errorf("--token is required")
+			return fmt.Errorf("%s --token is required", failureMark())
 		}
 		if op == "" {
-			return fmt.Errorf("--operation is required (%s)", validServeOperations)
+			return fmt.Errorf("%s --operation is required (%s)", failureMark(), validServeOperations)
 		}
 		if !orktypes.IsValidServeOperation(op) {
 			return fmt.Errorf("%s --operation must be one of %s", failureMark(), validServeOperations)
 		}
-		if classFlag != "" {
-			if !orktypes.IsValidServeEndpointClass(classFlag) {
-				return fmt.Errorf("%s --class must be one of %s", failureMark(), validServeEndpointClasses)
-			}
+		if classFlag != "" && !orktypes.IsValidServeEndpointClass(classFlag) {
+			return fmt.Errorf("%s --class must be one of %s", failureMark(), validServeEndpointClasses)
 		}
-
-		if target == "" && kind == "" && name == "" {
-			return fmt.Errorf("one of --target, --kind, or --name is required")
+		if target == "" && kind == "" && name == "" && aliasFlag == "" {
+			return errRequiresCRDSelector
 		}
 
 		k, err := buildKatalog(cmd)
@@ -442,98 +528,85 @@ Examples:
 			return err
 		}
 
-		crd, err := resolveCRD(k, target, kind, name)
-		if err != nil {
-			return err
+		// When --target is given, use LookupByTargetOrAlias so alias names work
+		// as targets. For --kind / --name, alias is supplied separately via --alias.
+		// When --alias alone is given, resolve via alias directly.
+		var (
+			crd   *orktypes.CRDEntry
+			alias string
+		)
+		if target != "" {
+			crd, alias, err = resolveCRDByAnyTarget(k, target)
+			if err != nil {
+				return err
+			}
+			// --alias overrides the alias resolved from the target lookup
+			// (e.g. user passes --target smartapp --alias public explicitly).
+			if aliasFlag != "" {
+				alias = aliasFlag
+			}
+		} else if aliasFlag != "" && kind == "" && name == "" {
+			var resolvedAlias string
+			crd, resolvedAlias, err = resolveCRDByAnyTarget(k, aliasFlag)
+			if err != nil {
+				return err
+			}
+			if resolvedAlias == "" {
+				return fmt.Errorf("%s %q is a primary target, not an alias — use --target instead", failureMark(), aliasFlag)
+			}
+			alias = resolvedAlias
+		} else {
+			crd, err = resolveCRD(k, target, kind, name)
+			if err != nil {
+				return err
+			}
+			alias = aliasFlag
 		}
 
 		if !crd.ServeEnabled() {
-			return fmt.Errorf("CRD %q is not Serve-enabled", crd.Name)
+			return fmt.Errorf("%s CRD %q is not Serve-enabled", failureMark(), crd.Name)
 		}
 
-		// Check if the token exists in the gateway config
+		// Verify the token exists at the gateway level first.
 		gatewayTokens := k.GatewayTokenNames()
-		tokenExists := false
+		tokenKnown := false
 		for _, t := range gatewayTokens {
 			if t == token {
-				tokenExists = true
+				tokenKnown = true
 				break
 			}
 		}
-		if !tokenExists {
-			printCanIResult(false, token, op, crd, namespace,
+		if !tokenKnown {
+			printCanIResult(false, token, op, crd, namespace, alias,
 				fmt.Sprintf("token %q is not defined in gateway.api.auth.tokens", token),
 				gatewayTokens)
 			return nil
 		}
 
-		// Check if the token has any restrictions
-		if !crd.HasServeTokenRestrictions() {
-			printCanIResult(true, token, op, crd, namespace,
-				"no token restrictions declared — all tokens are allowed",
-				nil)
-			return nil
-		}
-
-		// Get the token's permissions
-		perms, ok := crd.Serve.TokensMap()[token]
-		if !ok {
-			printCanIResult(false, token, op, crd, namespace,
-				fmt.Sprintf("token %q is not listed in tokens for CRD %q", token, crd.Name),
-				nil)
-			return nil
-		}
-
-		// Determine endpoint class
+		// Determine endpoint class.
 		class := orktypes.ServeClassResources
-		if classFlag == strings.ToLower("schema") {
+		if strings.EqualFold(classFlag, "schema") {
 			class = orktypes.ServeClassSchema
 		}
 
-		// Check namespace restrictions
-		// ── 1. Check namespace against CRD allowed namespaces ──────────────────────
-		if namespace != "" && crd.IsNamespaceRestricted() {
-			if !crd.IsNamespaceAuthorized(namespace) {
-				printCanIResult(false, token, op, crd, namespace,
-					fmt.Sprintf("namespace %q is not allowed for CRD %q", namespace, crd.Name),
-					crd.AllowedNamespaces)
-				return nil
-			}
-		}
-
-		// ── 2. Check namespace against token restrictions ──────────────────────────
-		if namespace != "" && perms.IsNamespaceRestricted() {
-			if !perms.HasNamespace(namespace) {
-				printCanIResult(false, token, op, crd, namespace,
-					fmt.Sprintf("token %q is not allowed in namespace %q", token, namespace),
-					perms.Namespaces)
-				return nil
-			}
-		}
-
-		// Check operation permission
-		if perms.HasOperation(class, op) {
-			printCanIResult(true, token, op, crd, namespace,
-				fmt.Sprintf("token %q has %q permission", token, op),
-				nil)
+		// CRD-level namespace guard (independent of token restrictions).
+		if namespace != "" && crd.IsNamespaceRestricted() && !crd.IsNamespaceAuthorized(namespace) {
+			printCanIResult(false, token, op, crd, namespace, alias,
+				fmt.Sprintf("namespace %q is not allowed for CRD %q", namespace, crd.Name),
+				crd.AllowedNamespaces)
 			return nil
 		}
 
-		// Token has permissions but not this specific one
-		var has []string
-		if perms.HasGlobalPermissions() {
-			has = append(has, "global: "+strings.Join(perms.Permissions.Global, ","))
+		// Alias-aware token permission check — delegates to ServeConfig.TokenAllowed
+		// with the resolved token set (alias-specific → CRD-level → allow all).
+		allowed, reason := crd.TokenAllowedFor(alias, token, op, namespace, class)
+		if allowed {
+			printCanIResult(true, token, op, crd, namespace, alias,
+				fmt.Sprintf("token %q has %q permission", token, op), nil)
+		} else {
+			printCanIResult(false, token, op, crd, namespace, alias,
+				reason.Message(token, op, crd.Kind(), namespace), nil)
 		}
-		if perms.HasSchemaPermissions() {
-			has = append(has, "schema: "+strings.Join(perms.Permissions.Schema, ","))
-		}
-		if perms.HasResourcesPermissions() {
-			has = append(has, "resources: "+strings.Join(perms.Permissions.Resources, ","))
-		}
-
-		printCanIResult(false, token, op, crd, namespace,
-			fmt.Sprintf("token %q does not have %q permission for %s class", token, op, class),
-			has)
 		return nil
 	},
 }
@@ -563,9 +636,10 @@ Examples:
 		target, _ := cmd.Flags().GetString("target")
 		kind, _ := cmd.Flags().GetString("kind")
 		name, _ := cmd.Flags().GetString("name")
+		alias, _ := cmd.Flags().GetString("alias")
 
-		if target == "" && kind == "" && name == "" {
-			return fmt.Errorf("one of --target, --kind, or --name is required")
+		if target == "" && kind == "" && name == "" && alias == "" {
+			return errRequiresCRDSelector
 		}
 
 		k, err := buildKatalog(cmd)
@@ -573,27 +647,54 @@ Examples:
 			return err
 		}
 
-		crd, err := resolveCRD(k, target, kind, name)
-		if err != nil {
-			return err
+		var crd *orktypes.CRDEntry
+		if alias != "" && target == "" && kind == "" && name == "" {
+			var resolvedAlias string
+			crd, resolvedAlias, err = resolveCRDByAnyTarget(k, alias)
+			if err != nil {
+				return err
+			}
+			if resolvedAlias == "" {
+				return fmt.Errorf("%s %q is a primary target, not an alias — use --target instead", failureMark(), alias)
+			}
+		} else {
+			crd, err = resolveCRD(k, target, kind, name)
+			if err != nil {
+				return err
+			}
 		}
 
 		if !crd.ServeEnabled() {
-			return fmt.Errorf("CRD %q is not Serve-enabled", crd.Name)
+			return fmt.Errorf("%s CRD %q is not Serve-enabled", failureMark(), crd.Name)
 		}
 
-		cfg := crd.GetServeResponseConfig()
+		cfg := crd.ServeResponseConfigFor(alias)
 		if cfg == nil {
-			fmt.Printf("\nNo response configuration for CRD %q\n", crd.Name)
-			fmt.Println("  Add serve.config.response to customize what callers see.")
-			fmt.Println()
+			if alias != "" {
+				fmt.Printf("\nNo response configuration for alias %q (CRD: %s) — uses default CR response\n\n", alias, crd.Name)
+			} else {
+				fmt.Printf("\nNo response configuration for CRD %q — callers receive the full CR as-is.\n", crd.Name)
+				fmt.Println("  Add serve.config.response to customize what callers see.")
+				fmt.Println()
+			}
 			return nil
 		}
 
-		fmt.Printf("\nResponse configuration for: %s (target: %s)\n", crd.Name, crd.ServeTarget())
+		if alias != "" {
+			fmt.Printf("\nResponse configuration for alias %q (CRD: %s)\n", alias, crd.Name)
+		} else {
+			fmt.Printf("\nResponse configuration for: %s (target: %s)\n", crd.Name, crd.ServeTarget())
+		}
 		fmt.Printf("%s\n", strings.Repeat("─", 70))
 
 		fmt.Printf("\ndefault: %v\n", cfg.UseDefault())
+		if cfg.UseDefault() && !cfg.HasExclude() {
+			if cfg.HasPayload() {
+				fmt.Println("  Callers receive the full CR object plus the payload fields below.")
+			} else {
+				fmt.Println("  Callers receive the full CR object.")
+			}
+		}
 
 		if cfg.HasPayload() {
 			fmt.Println("\nPayload fields:")
@@ -674,6 +775,82 @@ Examples:
 	},
 }
 
+// ── serve aliases ─────────────────────────────────────────────────────────────
+
+var serveAliasesCmd = &cobra.Command{
+	Use:   "aliases",
+	Short: "List serve aliases in a Katalog",
+	Long: `List serve aliases across all serve-enabled CRDs, or for a specific CRD.
+
+Aliases are additional named entry points for a CRD. Each alias can independently
+override token permissions and response configuration, falling back to CRD-level
+defaults when not set.
+
+With --target, --kind, or --name, shows aliases for that specific CRD only.
+
+Examples:
+  ork serve aliases
+  ork serve aliases --target smartapp`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		target, _ := cmd.Flags().GetString("target")
+		kind, _ := cmd.Flags().GetString("kind")
+		name, _ := cmd.Flags().GetString("name")
+		alias, _ := cmd.Flags().GetString("alias")
+
+		k, err := buildKatalog(cmd)
+		if err != nil {
+			return err
+		}
+
+		// ── Specific CRD ────────────────────────────────────────────────────
+		if target != "" || kind != "" || name != "" || alias != "" {
+			var crd *orktypes.CRDEntry
+
+			if alias != "" && target == "" && kind == "" && name == "" {
+				// Resolve by alias — show all aliases for the same CRD.
+				crd, _, err = resolveCRDByAnyTarget(k, alias)
+				if err != nil {
+					return err
+				}
+			} else {
+				crd, err = resolveCRD(k, target, kind, name)
+				if err != nil {
+					return err
+				}
+			}
+			if !crd.ServeEnabled() {
+				return fmt.Errorf("%s CRD %q is not Serve-enabled", failureMark(), crd.Name)
+			}
+			printAliasesForCRD(crd)
+			return nil
+		}
+
+		// ── All CRDs ────────────────────────────────────────────────────────
+		crds := k.ServeEnabledCRDs()
+		sort.Slice(crds, func(i, j int) bool { return crds[i].Name < crds[j].Name })
+
+		var total int
+		fmt.Printf("\nServe Aliases\n")
+		fmt.Printf("%s\n", strings.Repeat("─", 60))
+
+		for _, crd := range crds {
+			if crd == nil || !crd.HasServeAliases() {
+				continue
+			}
+			printAliasesForCRD(crd)
+			total += len(crd.ServeAliases())
+		}
+
+		if total == 0 {
+			fmt.Println("\nNo serve aliases found.")
+		} else {
+			fmt.Printf("\n%d alias(es) across %d CRD(s)\n", total, len(crds))
+		}
+		fmt.Println()
+		return nil
+	},
+}
+
 // ── init ────────────────────────────────────────────────────────────────────
 
 func init() {
@@ -685,12 +862,14 @@ func init() {
 	serveSchemaCmd.Flags().StringP("target", "t", "", "Target to show schema for")
 	serveSchemaCmd.Flags().StringP("kind", "k", "", "Kind to show schema for")
 	serveSchemaCmd.Flags().StringP("name", "n", "", "CRD name to show schema for")
+	serveSchemaCmd.Flags().StringP("alias", "a", "", "Alias to show schema for")
 	serveCmd.AddCommand(serveSchemaCmd)
 
 	// Fields
 	serveFieldsCmd.Flags().StringP("target", "t", "", "Target to show fields for")
 	serveFieldsCmd.Flags().StringP("kind", "k", "", "Kind to show fields for")
 	serveFieldsCmd.Flags().StringP("name", "n", "", "CRD name to show fields for")
+	serveFieldsCmd.Flags().StringP("alias", "a", "", "Alias to show fields for")
 	serveFieldsCmd.Flags().String("sort-by", "name", "Sort fields by 'name' (default) or 'order'")
 	serveCmd.AddCommand(serveFieldsCmd)
 
@@ -698,6 +877,7 @@ func init() {
 	serveTokensCmd.Flags().StringP("target", "t", "", "Target to show tokens for")
 	serveTokensCmd.Flags().StringP("kind", "k", "", "Kind to show tokens for")
 	serveTokensCmd.Flags().StringP("name", "n", "", "CRD name to show tokens for")
+	serveTokensCmd.Flags().StringP("alias", "a", "", "Alias to show effective tokens for (can be used instead of --target)")
 	serveCmd.AddCommand(serveTokensCmd)
 
 	// Targets
@@ -705,18 +885,27 @@ func init() {
 
 	// CanI
 	serveCanICmd.Flags().StringP("token", "T", "", "Token name to check")
-	serveCanICmd.Flags().StringP("target", "t", "", "Target to check")
+	serveCanICmd.Flags().StringP("target", "t", "", "Target or alias to check")
 	serveCanICmd.Flags().StringP("kind", "k", "", "Kind to check")
 	serveCanICmd.Flags().StringP("name", "n", "", "CRD name to check")
 	serveCanICmd.Flags().StringP("operation", "o", "", "Operation to check ("+validServeOperations+")")
 	serveCanICmd.Flags().StringP("namespace", "N", "", "Namespace to check (default: all namespaces)")
 	serveCanICmd.Flags().StringP("class", "c", "resources", "Endpoint class to check (resources, schema)")
+	serveCanICmd.Flags().StringP("alias", "a", "", "Alias to check permissions for (overrides alias resolved from --target)")
 	serveCmd.AddCommand(serveCanICmd)
+
+	// Aliases
+	serveAliasesCmd.Flags().StringP("target", "t", "", "Target to show aliases for")
+	serveAliasesCmd.Flags().StringP("kind", "k", "", "Kind to show aliases for")
+	serveAliasesCmd.Flags().StringP("name", "n", "", "CRD name to show aliases for")
+	serveAliasesCmd.Flags().StringP("alias", "a", "", "Alias name — shows all aliases for the same CRD")
+	serveCmd.AddCommand(serveAliasesCmd)
 
 	// Response
 	serveResponseCmd.Flags().StringP("target", "t", "", "Target to show response for")
 	serveResponseCmd.Flags().StringP("kind", "k", "", "Kind to show response for")
 	serveResponseCmd.Flags().StringP("name", "n", "", "CRD name to show response for")
+	serveResponseCmd.Flags().StringP("alias", "a", "", "Alias to show effective response config for (can be used instead of --target)")
 	serveResponseCmd.Flags().BoolP("preview", "p", false, "Show a sample response preview")
 	serveCmd.AddCommand(serveResponseCmd)
 

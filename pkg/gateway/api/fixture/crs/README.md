@@ -13,6 +13,8 @@ Each file is a minimal `PlatformResource` CR targeting one specific rule or comb
 | `cert-missing-domain.yaml` | `deny when: workloadType=cert` + domain absent | Rejected — `spec.domain is required for cert workloads` |
 | `monitoring-valid.yaml` | `deny anyOf: workloadType=app\|monitoring` + repoURL present | Accepted, deny rule skipped |
 | `monitoring-missing-repo.yaml` | `deny anyOf: workloadType=app\|monitoring` + repoURL absent | Rejected — `spec.repoURL is required for app and monitoring workloads` |
+| `app-direct-apply.yaml` | `warn when: isDirectApply .` — no provenance annotation | Accepted with `ValidationWarning` — direct apply detected |
+| `app-via-gateway.yaml` | `warn when: isDirectApply .` — `serve-target` annotation present | Accepted, warn rule skipped |
 
 ## Rules being tested
 
@@ -24,6 +26,7 @@ deny  — spec.domain exists      WHEN workloadType=cert
 deny  — spec.repoURL exists     ANYOF workloadType=app | workloadType=monitoring
 deny  — spec.domain unique                       (unconditional)
 warn  — spec.productionApproval exists  WHEN environment=production
+warn  — (isDirectApply detection)       WHEN isDirectApply . == true
 ```
 
 ## Key assertions
@@ -33,6 +36,7 @@ warn  — spec.productionApproval exists  WHEN environment=production
 - A staging CR never triggers the `productionApproval` warn — even if the field is absent.
 - A cert CR never triggers the `repoURL` deny — even though repoURL is absent.
 - A monitoring CR with repoURL present passes the `anyOf` deny rule cleanly.
+- A CR without any provenance annotation triggers the `isDirectApply` warn — `serve-target` annotation present skips it.
 
 ## Running manually
 

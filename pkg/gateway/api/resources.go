@@ -26,6 +26,7 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
@@ -58,14 +59,16 @@ func resourcesHandler(
 			Str("availableKinds", strings.Join(kat.ListKinds(), ", ")).
 			Msg("resourcesHandler: lookup")
 
-		// Resolve CRD entry — accept both lowercased kind and target identifier.
-		crd := kat.LookupByKind(kind)
-		if crd == nil {
+		// Resolve CRD entry — accept Kubernetes Kind, serve target, or alias.
+		resolution := kat.LookupByKindOrAlias(kind)
+		if resolution == nil {
 			writeJSONError(w, http.StatusNotFound, "kind not found",
 				fmt.Sprintf("unknown kind %q", kind),
 			)
 			return
 		}
+		crd := resolution.CRD
+		alias := resolution.Alias
 
 		if !crd.ServeEnabled() {
 			writeJSONError(w, http.StatusBadRequest, "serve not enabled",
@@ -77,9 +80,9 @@ func resourcesHandler(
 		switch r.Method {
 		case http.MethodGet:
 			if name == "" {
-				listResources(w, r, kube, ns, crd, notes)
+				listResources(w, r, kube, ns, crd, alias, notes)
 			} else {
-				getResource(w, r, kube, ns, name, crd, notes)
+				getResource(w, r, kube, ns, name, crd, alias, notes)
 			}
 		case http.MethodDelete:
 			if name == "" {
@@ -88,7 +91,7 @@ func resourcesHandler(
 				)
 				return
 			}
-			deleteResource(w, r, kube, ns, name, crd)
+			deleteResource(w, r, kube, ns, name, crd, alias)
 		default:
 			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed",
 				fmt.Sprintf("method %q is not supported for /api/v1/resources", r.Method),
@@ -106,11 +109,12 @@ func getResource(
 	kube kubeclient.KubeClient,
 	ns, name string,
 	crd *orktypes.CRDEntry,
+	alias string,
 	notes orktypes.NoteRegistry,
 ) {
 	// When the CRD declares serve.tokens, the authenticated token must
 	// have permission to perform the operation it is attempting.
-	if !checkServePermission(w, r, crd, orktypes.ServeClassResources, orktypes.ServeOpGet, ns) {
+	if !checkServePermission(w, r, crd, orktypes.ServeClassResources, orktypes.ServeOpGet, ns, alias) {
 		return
 	}
 
@@ -123,6 +127,17 @@ func getResource(
 	}
 
 	response := obj.Object
+
+	// ── Resolve alias from provenance annotation ──────────────────────────
+	// The CR carries the surface it was created through. Use it to drive
+	// alias-specific response config without requiring the caller to pass ?target=.
+	// serve-alias annotation wins; fall back to serve-target, then CRD-level.
+	if alias == "" {
+		ann := obj.GetAnnotations()
+		if a := ann[labels.AnnotationServeAlias]; a != "" {
+			alias = a
+		}
+	}
 
 	// ── Step 1: Check for ?field= query param (lightweight polling) ──────
 	field := r.URL.Query().Get("field")
@@ -143,21 +158,18 @@ func getResource(
 	}
 
 	// ── Step 2: Apply exclusions ──────────────────────────────────────────
-	// ApplyExclusions strips paths listed in serve.config.response.exclude.
-	ApplyExclusions(response, crd, notes)
+	ApplyExclusions(response, crd, alias, notes)
 
 	// ── Step 3: Evaluate payload ──────────────────────────────────────────
-	// EvaluatePayload returns ONLY the fields defined in serve.config.response.payload.
-	payload := EvaluatePayload(response, crd, notes)
+	payload := EvaluatePayload(response, crd, alias, notes)
 
 	// ── Step 4: Return response ──────────────────────────────────────────
 	if payload != nil {
-		// When default: false, return only the payload.
-		if !crd.GetServeResponseConfig().UseDefault() {
+		cfg := crd.ServeResponseConfigFor(alias)
+		if cfg != nil && !cfg.UseDefault() {
 			writeJSON(w, http.StatusOK, payload)
 			return
 		}
-		// When default: true, inject payload alongside the CR.
 		response["payload"] = payload
 	}
 
@@ -173,9 +185,10 @@ func listResources(
 	kube kubeclient.KubeClient,
 	ns string,
 	crd *orktypes.CRDEntry,
+	alias string,
 	notes orktypes.NoteRegistry,
 ) {
-	if !checkServePermission(w, r, crd, orktypes.ServeClassResources, orktypes.ServeOpList, ns) {
+	if !checkServePermission(w, r, crd, orktypes.ServeClassResources, orktypes.ServeOpList, ns, alias) {
 		return
 	}
 
@@ -197,11 +210,11 @@ func listResources(
 	}
 
 	field := r.URL.Query().Get("field")
-	usePayload := crd.HasServeResponseConfig() && crd.GetServeResponseConfig().HasPayload()
+	cfg := crd.ServeResponseConfigFor(alias)
 
 	// ── Build items ──────────────────────────────────────────────────────
 	type responseItem struct {
-		Object  map[string]interface{} `json:"object"`
+		Object  map[string]interface{} `json:"object,omitempty"`
 		Payload map[string]interface{} `json:"payload,omitempty"`
 	}
 
@@ -209,18 +222,15 @@ func listResources(
 	for _, item := range list.Items {
 		obj := item.Object
 
-		// Step 1: Apply exclusions to each item
-		ApplyExclusions(obj, crd, notes)
+		ApplyExclusions(obj, crd, alias, notes)
 
-		// Step 2: Build payload for each item
 		var payload map[string]interface{}
-		if usePayload {
-			payload = EvaluatePayload(obj, crd, notes)
+		if cfg != nil && cfg.HasPayload() {
+			payload = EvaluatePayload(obj, crd, alias, notes)
 		}
 
 		entry := responseItem{Object: obj}
-		// If default: false, use payload as the primary response
-		if !crd.GetServeResponseConfig().UseDefault() {
+		if cfg != nil && !cfg.UseDefault() {
 			entry.Object = nil
 		}
 		if payload != nil {
@@ -267,6 +277,7 @@ func deleteResource(
 	kube kubeclient.KubeClient,
 	ns, name string,
 	crd *orktypes.CRDEntry,
+	alias string,
 ) {
 	if name == "" {
 		writeJSONError(w, http.StatusBadRequest, "name required",
@@ -275,7 +286,7 @@ func deleteResource(
 		return
 	}
 
-	if !checkServePermission(w, r, crd, orktypes.ServeClassResources, orktypes.ServeOpDelete, ns) {
+	if !checkServePermission(w, r, crd, orktypes.ServeClassResources, orktypes.ServeOpDelete, ns, alias) {
 		return
 	}
 
@@ -290,8 +301,10 @@ func deleteResource(
 }
 
 // checkServePermission is a single function used by all resource handlers
-// (get, list, delete). Keeps the permission logic in one place so changes to
-// the model propagate automatically.
+// (get, list, delete, schema). alias is the serve alias from the request
+// path — resource endpoints that carry no alias context pass "".
+// TokenAllowedFor resolves alias-specific tokens before falling back to
+// CRD-level tokens, then delegates to ServeConfig.TokenAllowed.
 //
 // Returns true when the request should proceed. Writes the 403 response and
 // returns false when it should not — callers must return immediately.
@@ -300,15 +313,14 @@ func checkServePermission(
 	r *http.Request,
 	crd *orktypes.CRDEntry,
 	class orktypes.ServeEndpointClass,
-	op, ns string,
+	op, ns, alias string,
 ) bool {
-	if crd == nil || crd.Serve == nil || !crd.Serve.HasTokenRestrictions() {
-		// No restrictions declared — proceed.
+	if crd == nil {
 		return true
 	}
 
 	tokenName := TokenNameFromContext(r.Context())
-	allowed, reason := crd.Serve.TokenAllowed(tokenName, op, ns, class)
+	allowed, reason := crd.TokenAllowedFor(alias, tokenName, op, ns, class)
 	if !allowed {
 		writeJSONError(w, http.StatusForbidden, "permission denied", reason.Message(tokenName, op, crd.APITypes.Kind, ns))
 		return false

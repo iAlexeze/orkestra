@@ -1,0 +1,21 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: gateway-fixture-clusterpolicy
+  description: clusterPolicy (serve disabled, cluster-scoped) — NetworkPolicy created on cycle 1
+
+spec:
+  katalog: ../../katalog.yaml
+  cr: ../../crs/clusterpolicy-basic.yaml
+  cycles: 3
+
+  expect:
+    steady: true
+    noErrors: true
+    crds:
+      clusterPolicy:
+        ops:
+          - cycle: 1
+            verb: apply
+            resource: networkpolicies
+            name: platform-egress

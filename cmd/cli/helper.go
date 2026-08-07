@@ -4,6 +4,7 @@ package cli
 
 import (
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -47,6 +48,18 @@ var (
 	isRunningInCluster = utils.IsRunningInCluster
 	writeFileAndFormat = utils.WriteFileAndFormat
 )
+
+// isAbsPath reports whether p is an absolute filesystem path.
+func isAbsPath(p string) bool { return filepath.IsAbs(p) }
+
+// joinPath resolves p relative to the directory that contains base.
+// If p is already absolute, it is returned unchanged.
+func joinPath(base, p string) string {
+	if isAbsPath(p) {
+		return p
+	}
+	return filepath.Join(filepath.Dir(base), p)
+}
 
 // Shadow global command flags
 func shadowGlobalCommandFlags(cmd *cobra.Command, flags ...string) {

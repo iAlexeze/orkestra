@@ -6,32 +6,87 @@ import "strings"
 // Gateway API and schema API.
 //
 // Resolution order:
-//  1. serve.target if explicitly set — platform team's chosen name.
-//  2. Lowercased kind — "App" → "app", "DatabaseCluster" → "databasecluster".
-//
-// The default keeps things working with no config change. Platform teams set
-// an explicit target when the lowercased kind is too verbose or ambiguous.
+//  1. The primary entry's map key in serve.target (map form).
+//  2. serve.target shorthand string (before load-time expansion).
+//  3. Lowercased kind — "App" → "app", "DatabaseCluster" → "databasecluster".
 func (c *CRDEntry) ServeTarget() string {
-	if c.Serve != nil && c.Serve.Target != "" {
-		return c.Serve.Target
+	if c.Serve == nil {
+		return strings.ToLower(c.APITypes.Kind)
+	}
+	// Shorthand (before scalar expansion at load time).
+	if c.Serve.Target.Shorthand != "" {
+		return c.Serve.Target.Shorthand
+	}
+	// Map form — find the entry marked primary: true.
+	for name, cfg := range c.Serve.Target.Entries {
+		if cfg != nil && cfg.Primary {
+			return name
+		}
 	}
 	return strings.ToLower(c.APITypes.Kind)
 }
 
-// HasServeTarget reports whether this CRD can be addressed by target.
-// Requires serve to be enabled and a kind to be declared.
+// HasServeTarget reports whether this CRD can be addressed by its primary target.
+// Returns false when serve is disabled, kind is absent, or the primary entry's
+// enabled flag is false. A disabled primary means the CRD is only reachable
+// via its alias entries.
 func (c *CRDEntry) HasServeTarget() bool {
-	return c.ServeEnabled() && c.APITypes.Kind != ""
+	if !c.ServeEnabled() || c.APITypes.Kind == "" {
+		return false
+	}
+	if c.Serve.Target.IsZero() {
+		return true // no target config at all → default enabled
+	}
+	if c.Serve.Target.Shorthand != "" {
+		return true // scalar shorthand → always enabled
+	}
+	pt := c.PrimaryTarget()
+	return pt == nil || pt.IsEnabled()
 }
 
 // ServeTargetOrEmpty returns ServeTarget when HasServeTarget is true, "" otherwise.
-// For API responses that expose target as an omitempty field to callers that
-// shouldn't see a target for a CRD they can't actually address by one.
 func (c *CRDEntry) ServeTargetOrEmpty() string {
 	if !c.HasServeTarget() {
 		return ""
 	}
 	return c.ServeTarget()
+}
+
+// PrimaryTarget returns the TargetConfig whose Primary flag is true, or nil when
+// no primary entry is declared (scalar shorthand, or no target configured).
+func (c *CRDEntry) PrimaryTarget() *ServeTargetConfig {
+	if c.Serve == nil {
+		return nil
+	}
+	for _, cfg := range c.Serve.Target.Entries {
+		if cfg != nil && cfg.Primary {
+			return cfg
+		}
+	}
+	return nil
+}
+
+// AllServeTargets returns the full Target.Entries map, including disabled entries.
+// Intended for CLI display only — callers that resolve requests should use
+// LookupTarget, which filters disabled entries.
+func (c *CRDEntry) AllServeTargets() map[string]*ServeTargetConfig {
+	if c.Serve == nil {
+		return nil
+	}
+	return c.Serve.Target.Entries
+}
+
+// LookupTarget returns the TargetConfig for the given entry name if it is enabled.
+// Returns nil for disabled entries, the primary when name matches, and unknown names.
+func (c *CRDEntry) LookupTarget(name string) *ServeTargetConfig {
+	if c.Serve == nil {
+		return nil
+	}
+	cfg, ok := c.Serve.Target.Entries[name]
+	if !ok || !cfg.IsEnabled() {
+		return nil
+	}
+	return cfg
 }
 
 // AllServeFields returns a flat map of every serve-declared field — spec fields from

@@ -27,17 +27,11 @@ import (
 func EvaluatePayload(
 	obj map[string]interface{},
 	crd *orktypes.CRDEntry,
+	alias string,
 	notes orktypes.NoteRegistry,
 ) map[string]interface{} {
-	if crd == nil || crd.Serve == nil || crd.Serve.Config == nil {
-		return nil
-	}
-
-	cfg := crd.Serve.Config.Response
-	if cfg == nil {
-		return nil
-	}
-	if !cfg.HasPayload() {
+	cfg := crd.ServeResponseConfigFor(alias)
+	if cfg == nil || !cfg.HasPayload() {
 		return nil
 	}
 

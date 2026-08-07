@@ -214,7 +214,12 @@ func (k *Katalog) validateServeTokenRestrictions() error {
 	return nil
 }
 
-// validateGatewayTokens ensures no duplicate token names in the gateway config
+// validateGatewayTokens checks gateway.api.auth.tokens for:
+//  1. Duplicate names.
+//  2. Each entry must have exactly one of token or secretRef set.
+//  3. token values must be ${ENV_VAR} references — literals are rejected at
+//     gateway startup, so we catch them here to give faster feedback.
+//  4. secretRef entries must supply both name and key.
 func (k *Katalog) validateGatewayTokens() error {
 	if !k.IsGatewayEnabled() || !k.Gateway.HasAPI() || k.Gateway.API.Auth.IsEmpty() {
 		return nil
@@ -222,20 +227,58 @@ func (k *Katalog) validateGatewayTokens() error {
 
 	seenTokens := make(map[string]bool)
 	var duplicates []string
+	var errs []string
 
 	for _, t := range k.Gateway.API.Auth.Tokens {
 		if seenTokens[t.Name] {
 			duplicates = append(duplicates, t.Name)
 		}
 		seenTokens[t.Name] = true
+
+		hasToken := strings.TrimSpace(t.Token) != ""
+		hasRef := t.SecretRef != nil
+
+		if !hasToken && !hasRef {
+			errs = append(errs, fmt.Sprintf(
+				"  • gateway.api.auth.tokens[%q]: must set either token or secretRef", t.Name))
+			continue
+		}
+		if hasToken && hasRef {
+			errs = append(errs, fmt.Sprintf(
+				"  • gateway.api.auth.tokens[%q]: token and secretRef are mutually exclusive", t.Name))
+			continue
+		}
+
+		if hasToken {
+			v := strings.TrimSpace(t.Token)
+			if !strings.HasPrefix(v, "${") || !strings.HasSuffix(v, "}") {
+				errs = append(errs, fmt.Sprintf(
+					"  • gateway.api.auth.tokens[%q]: token must be an ${ENV_VAR} reference, got literal — "+
+						"set the value via extraEnv in Helm and reference it as ${MY_VAR}",
+					t.Name))
+			}
+		}
+
+		if hasRef {
+			if strings.TrimSpace(t.SecretRef.Name) == "" {
+				errs = append(errs, fmt.Sprintf(
+					"  • gateway.api.auth.tokens[%q]: secretRef.name is required", t.Name))
+			}
+			if strings.TrimSpace(t.SecretRef.Key) == "" {
+				errs = append(errs, fmt.Sprintf(
+					"  • gateway.api.auth.tokens[%q]: secretRef.key is required", t.Name))
+			}
+		}
 	}
 
 	if len(duplicates) > 0 {
-		return fmt.Errorf(
-			"gateway.api.auth.tokens: duplicate token names found: %s\n"+
-				"Each token name must be unique",
-			red(strings.Join(duplicates, ", ")),
-		)
+		errs = append([]string{fmt.Sprintf(
+			"  • gateway.api.auth.tokens: duplicate names: %s — each token name must be unique",
+			red(strings.Join(duplicates, ", ")))}, errs...)
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("gateway.api.auth.tokens validation failed:\n%s", strings.Join(errs, "\n"))
 	}
 
 	return nil
