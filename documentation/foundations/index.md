@@ -61,3 +61,7 @@ They compound. Read them in order if you can.
 **[Production Mode as Default](07-production-mode-as-default.md)** — Orkestra does not have a relaxed local mode and a strict production mode. Every run — local, CI, staging, production — starts the same runtime, applies the same validation, enforces the same rules. The only difference between environments is your configuration. This is what makes behavior consistent and promotions predictable.
 
 → [Read: Production Mode as Default](07-production-mode-as-default.md)
+
+---
+
+**[Deliver, Don't Reconcile](08-deliver-dont-reconcile.md)** — When the Gateway is enabled, every CR that enters the cluster — from `kubectl`, CI, the Gateway API, or any controller — passes through it. The Gateway validates, stamps provenance, and delivers. What happens after belongs to the operator or reconciler that owns the CRD. Neither side reaches across that line. This separation is what makes the gateway composable with any operator stack and what makes the intake guarantee real: a CR that is in your cluster passed the gate.
