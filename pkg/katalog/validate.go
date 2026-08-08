@@ -286,7 +286,7 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	}
 
 	// -------------------------------------------------------------------------
-	// 41. Validate gateway tokens (no duplicates)
+	// 41. Validate gateway tokens (no duplicates, source exclusivity, OIDC rules)
 	// -------------------------------------------------------------------------
 	if err := k.validateGatewayTokens(); err != nil {
 		return nil, err
