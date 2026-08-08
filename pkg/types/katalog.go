@@ -67,7 +67,7 @@ type APIAuth struct {
 }
 
 // APIToken is one bearer token entry.
-// Exactly one of SecretRef or Token must be set.
+// Exactly one of Token, SecretRef, GitHubOIDC, GitLabOIDC, VaultOIDC, or OIDC must be set.
 type APIToken struct {
 	// Name is a human-readable identifier used in logs and audit output.
 	Name string `yaml:"name" json:"name"`
@@ -82,6 +82,25 @@ type APIToken struct {
 	// Set the variable via extraEnv in the gateway and controlCenter Helm values.
 	// Literal values are not accepted.
 	Token string `yaml:"token,omitempty" json:"token,omitempty"`
+
+	// GitHubOIDC authenticates callers via GitHub Actions OIDC tokens.
+	// No secret is required — the gateway verifies the JWT signature against
+	// GitHub's public JWKS and matches the claims in the allow block.
+	GitHubOIDC *GitHubOIDC `yaml:"githubOIDC,omitempty" json:"githubOIDC,omitempty"`
+
+	// GitLabOIDC authenticates callers via GitLab CI OIDC tokens.
+	GitLabOIDC *GitLabOIDC `yaml:"gitlabOIDC,omitempty" json:"gitlabOIDC,omitempty"`
+
+	// VaultOIDC authenticates callers via HashiCorp Vault OIDC tokens.
+	// The caller authenticates to Vault first (via any Vault auth method), then
+	// presents a Vault-issued OIDC token to the gateway. No stored secret needed.
+	// The gateway discovers the JWKS via {url}/v1/identity/oidc/.well-known/openid-configuration.
+	VaultOIDC *VaultOIDC `yaml:"vaultOIDC,omitempty" json:"vaultOIDC,omitempty"`
+
+	// OIDC authenticates callers via any OIDC-compliant identity provider.
+	// Issuer is required; the gateway discovers the JWKS URI via
+	// {issuer}/.well-known/openid-configuration.
+	OIDC *OIDCToken `yaml:"oidc,omitempty" json:"oidc,omitempty"`
 }
 
 // APISecretRef locates a Kubernetes Secret that holds a bearer token.

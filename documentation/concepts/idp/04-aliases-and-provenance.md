@@ -78,14 +78,15 @@ serve:
 
 ## Intent provenance
 
-When a CR is applied through the gateway, two annotations are stamped on the CR by the apply handler:
+When a CR is applied through the gateway, three annotations are stamped on the CR by the apply handler:
 
 | Annotation | Value |
 |---|---|
 | `orkestra.orkspace.io/serve-target` | The primary target name — always set |
 | `orkestra.orkspace.io/serve-alias` | The alias name, or `""` for the primary target |
+| `orkestra.orkspace.io/serve-source` | The verified OIDC `sub` claim of the caller, or `""` for static token auth |
 
-These are permanent. They survive updates and resyncs. They say: *this CR arrived through this surface, and carried that context forward.*
+These are permanent. They survive updates and resyncs. They say: *this CR arrived through this surface, from this caller identity, and carried that context forward.*
 
 Built-in notes expose them in templates:
 

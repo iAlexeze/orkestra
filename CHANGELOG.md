@@ -32,12 +32,13 @@ CRD-level `serve.tokens` and `serve.config` serve as fallback for any alias that
 
 ### Intent provenance annotations
 
-Every CR applied through the gateway is stamped with two annotations by the apply handler:
+Every CR applied through the gateway is stamped with three annotations by the apply handler:
 
 | Annotation | Value |
 |---|---|
 | `orkestra.orkspace.io/serve-target` | The primary target name (e.g. `apifixture`) |
 | `orkestra.orkspace.io/serve-alias` | The alias name, or `""` for the primary target |
+| `orkestra.orkspace.io/serve-source` | Verified OIDC `sub` claim of the caller, or `""` for static token auth |
 
 Seven built-in notes expose provenance in any template expression:
 
@@ -132,6 +133,61 @@ When a CRD has aliases, the create form in the Control Center shows a surface ta
 
 A new `AliasNames() []string` method on `CRDEntry` returns a sorted slice of alias names. Used by the gateway schema response, the kordinator `/katalog` health endpoint, and the CC.
 
+### OIDC token authentication
+
+`gateway.api.auth.tokens` now supports short-lived OIDC tokens as a credential source. Three named presets and a generic `oidc:` type are available:
+
+- `githubOIDC:` — GitHub Actions tokens. Issuer is hardcoded to `token.actions.githubusercontent.com`. The `allow:` block constrains by `repository`, `repositoryOwner`, `ref`, `workflow`, `environment`, and `jobWorkflowRef`.
+  ```yaml
+  - name: gh-ci
+    githubOIDC:
+      allow:
+        repository: myorg/payments
+        ref: refs/heads/main
+  ```
+- `gitlabOIDC:` — GitLab CI tokens. Issuer hardcoded to `gitlab.com`. Allow fields: `namespacePath`, `refProtected`, `environment`.
+  ```yaml
+  - name: gl-ci
+    gitlabOIDC:
+      allow:
+        namespacePath: mygroup/infra
+        refProtected: "true"
+  ```
+- `vaultOIDC:` — HashiCorp Vault identity OIDC tokens. `url:` is the Vault server root; the effective issuer and JWKS discovery base are `{url}/v1/identity/oidc`. Allow fields: `entityName`, `entityID`, `namespace`, plus a free-form `allow:` map for custom claim templates.
+  ```yaml
+  - name: vault-ci
+    vaultOIDC:
+      url: https://vault.myorg.io
+      allow:
+        entityName: ci-agent
+  ```
+- `oidc:` — any OIDC-compliant provider. `issuer:` is required. Discovery follows the standard `{issuer}/.well-known/openid-configuration` path. Free-form `allow:` map.
+  ```yaml
+  - name: internal-ci
+    oidc:
+      issuer: https://auth.myorg.io
+      audience: orkestra
+      allow:
+        sub: "system:serviceaccount:ci:runner"
+  ```
+
+All four types are mutually exclusive with `token:` and `secretRef:`. When an OIDC token authenticates a request, the verified `sub` claim is stamped as `orkestra.orkspace.io/serve-source` and available in templates via `getServeSource .`.
+
+### `ork token` — inspect and verify gateway tokens
+
+New CLI namespace for working with `gateway.api.auth.tokens` entries without a running cluster.
+
+- `ork token list` — tabular list of all configured token entries: name, type (oidc/static), provider, and allow summary.
+- `ork token verify` — verify a JWT against the katalog locally. Fetches JWKS from the real provider, checks signature, expiry, issuer, and claim matching. Reports which entry matched and prints the verified claims.
+- `ork token probe -n <name>` — probe the OIDC discovery endpoint and JWKS for a named entry. Reports reachability, `jwks_uri`, key count, and algorithms. Useful for confirming Vault's non-standard discovery path is reachable before deploying.
+
+```
+ork token list
+ork token verify -t token.jwt
+ork token probe -n vault-ci
+ork token verify --api http://localhost:8443 -t token.jwt   # live mode via ork proxy
+```
+
 ### Gateway token validation at `ork validate`
 
 `gateway.api.auth.tokens` entries are now validated statically at `ork validate` time:
@@ -139,6 +195,9 @@ A new `AliasNames() []string` method on `CRDEntry` returns a sorted slice of ali
 - Each `token:` value must be an `${ENV_VAR}` reference — literals are rejected.
 - Each `secretRef:` entry must supply both `name` and `key`.
 - `token` and `secretRef` are mutually exclusive per entry.
+- `oidc.issuer` is required for the generic `oidc:` type.
+- `githubOIDC.allow`, `gitlabOIDC.allow`, and `vaultOIDC.allow` must not be empty — an empty block accepts any valid token from that issuer.
+- `vaultOIDC.url` is required.
 
 ### `ork serve validate --full` — aliases block
 

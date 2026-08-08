@@ -201,7 +201,7 @@ func applyHandler(
 				return
 			}
 			obj = built
-			InjectProvenanceAnnotations(obj, crd.ServeTarget(), alias, "")
+			InjectProvenanceAnnotations(obj, crd.ServeTarget(), alias, OIDCSubFromContext(r.Context()))
 			gvr = crd.GVR()
 
 			// ─── Marshal built CR for the patch body ──────────────────────
@@ -241,7 +241,7 @@ func applyHandler(
 			}
 
 			obj = &full
-			InjectProvenanceAnnotations(obj, crd.ServeTarget(), "", "")
+			InjectProvenanceAnnotations(obj, crd.ServeTarget(), "", OIDCSubFromContext(r.Context()))
 			gvr = crd.GVR()
 			patchBody = body // raw body is already a valid CR
 
