@@ -2,6 +2,13 @@
 
 `allowedNamespaces`/`restrictedNamespaces` answer one question: which namespaces does this CRD exist in at all. Every caller gets the same answer — it's a property of the CRD, not of who's asking. `serve.tokens` answers a different question: which caller can do what, and where. Two tokens against the same CRD can have different answers — a `ci-pipeline` token allowed to create in `staging` but not touch `production`; a `security-audit` token that's read-only everywhere. This is authorization scoped to the caller's identity, layered on top of namespace protection, not a replacement for it.
 
+Authentication (proving who you are) and authorization (what you're allowed to do) are distinct steps. The gateway supports two authentication modes:
+
+- **Static tokens** — a pre-shared bearer value from a Kubernetes Secret or environment variable.
+- **OIDC tokens** — a short-lived JWT issued by GitHub Actions, GitLab CI, or any OIDC provider. No stored secret; the token is verified against the provider's public JWKS. The verified `sub` claim is stamped on the CR as `orkestra.orkspace.io/serve-source`.
+
+Both authenticate to the same `gateway.api.auth.tokens` list and are subject to the same `serve.tokens` authorization rules below. The authentication mode is invisible to authorization — a token entry named `github-ci` behaves identically to one named `ci-pipeline` from the permission-check perspective.
+
 ---
 
 ## Two independent layers
@@ -125,6 +132,30 @@ The three denial reasons — unknown token (not in `serve.tokens` at all), names
 - Every namespace under a token's `namespaces` is inside the CRD's `allowedNamespaces` (when set) and outside `restrictedNamespaces` — a token can't be granted access to a namespace the CRD itself doesn't allow
 - (Warning) A token entry with no permissions declared grants no access — probably a mistake, not rejected outright
 - (Warning) Namespace restrictions on a cluster-scoped CRD are ignored — there's no namespace to restrict
+
+---
+
+## Testing tokens locally
+
+`ork token` lets you work with `gateway.api.auth.tokens` entries without a running cluster.
+
+```bash
+# see all configured entries
+ork token list
+
+# verify a JWT locally — fetches real JWKS, checks claims
+ork token verify -t token.jwt
+
+# probe the OIDC discovery endpoint for a named entry
+ork token probe -n vault-ci
+
+# test against a live gateway (via ork proxy)
+ork token verify --api http://localhost:8443 -t token.jwt
+```
+
+`ork token verify` local mode calls the same signature verification and claim-matching logic the gateway uses at request time. A token that passes locally will pass at the gateway.
+
+→ [ork token reference](../reference/cli/15-token.md)
 
 ---
 

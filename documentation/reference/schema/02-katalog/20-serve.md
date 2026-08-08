@@ -656,12 +656,13 @@ target:
 
 ### Intent provenance
 
-Every CR applied through the gateway receives two annotations stamped by the apply handler:
+Every CR applied through the gateway receives three annotations stamped by the apply handler:
 
 | Annotation | Value |
 |---|---|
 | `orkestra.orkspace.io/serve-target` | The primary serve target (e.g. `apifixture`) |
 | `orkestra.orkspace.io/serve-alias` | The alias name, or `""` for the primary target |
+| `orkestra.orkspace.io/serve-source` | Verified OIDC `sub` claim of the caller, or `""` for static token auth |
 
 Three notes expose these in operatorBox templates, response payloads, and `when:` conditions:
 
@@ -669,7 +670,7 @@ Three notes expose these in operatorBox templates, response payloads, and `when:
 |------|---------|
 | `getServeTarget .` | Primary target name — always set |
 | `getServeAlias .` | Alias name — `""` when applied via primary target |
-| `getServeSource .` | Reserved for future caller-source tracking |
+| `getServeSource .` | Caller identity — set when auth was via an OIDC token |
 
 `getServeAlias` in a `when:` condition lets the operatorBox route to different child resources depending on which surface delivered the intent:
 
@@ -719,36 +720,92 @@ onReconcile:
 
 ---
 
-## `gateway.api.auth.tokens` validation
+## `gateway.api.auth.tokens`
 
-`ork validate` now enforces token format at static analysis time:
+Each entry must declare exactly one credential source: `token`, `secretRef`, `githubOIDC`, `gitlabOIDC`, `vaultOIDC`, or `oidc`.
 
-| Rule | Error |
-|------|-------|
-| `token:` must be `${ENV_VAR}` | Literal values rejected — use `extraEnv` in Helm |
-| `secretRef:` must supply `name` and `key` | Missing field reported |
-| `token` and `secretRef` are mutually exclusive | Both set on same entry rejected |
-| Duplicate token names | Reported at first duplicate |
+### Static token sources
 
 ```yaml
 gateway:
   api:
     auth:
       tokens:
-        # ✓ env var reference — resolved at gateway startup
+        # env var reference — resolved at gateway startup
         - name: control-center
           token: "${CONTROL_CENTER_TOKEN}"
 
-        # ✓ secretRef — gateway creates the Secret if absent
+        # secretRef — gateway creates the Secret if absent; rotates after 90 days
         - name: ci-pipeline
           secretRef:
             name: ci-pipeline-token
             key: token
-
-        # ✗ rejected by ork validate
-        - name: bad-token
-          token: "my-literal-secret"
+            rotateAfter: 90d
 ```
+
+### OIDC token sources
+
+Short-lived JWTs issued by GitHub Actions, GitLab CI, or any OIDC-compliant provider. No stored secret — the token is verified against the provider's public JWKS on every request.
+
+```yaml
+gateway:
+  api:
+    auth:
+      tokens:
+        # GitHub Actions — issuer hardcoded to token.actions.githubusercontent.com
+        - name: github-payments-ci
+          githubOIDC:
+            allow:
+              repository: myorg/payments      # must match exactly
+              ref: refs/heads/main            # main branch only
+              environment: production         # optional — gates prod-deploy jobs
+
+        # GitLab CI — issuer hardcoded to gitlab.com
+        - name: gitlab-infra-ci
+          gitlabOIDC:
+            allow:
+              namespacePath: mygroup/infra
+              refProtected: "true"
+
+        # HashiCorp Vault — discovery via {url}/v1/identity/oidc
+        - name: vault-platform-ci
+          vaultOIDC:
+            url: https://vault.myorg.io       # required — Vault server URL
+            namespace: platform               # optional — Vault Enterprise namespace
+            audience: orkestra                # optional
+            allow:
+              entityName: ci-agent            # Vault entity name
+              entityID: ""                    # Vault entity UUID (stable)
+              namespace: platform             # Vault namespace of the entity
+
+        # Generic OIDC — any provider following the discovery standard
+        - name: internal-ci
+          oidc:
+            issuer: https://auth.myorg.io     # required for generic oidc
+            audience: orkestra                # optional
+            allow:
+              sub: "system:serviceaccount:ci:runner"
+```
+
+`allow` fields work as an AND filter — all declared fields must match the verified JWT claims. Undeclared fields are not checked. An empty `allow` block accepts any valid token from that issuer.
+
+When an OIDC token matches, the verified `sub` claim is stamped on the CR as `orkestra.orkspace.io/serve-source` — available in templates via `getServeSource .`.
+
+### `gateway.api.auth.tokens` validation
+
+`ork validate` enforces token format at static analysis time:
+
+| Rule | Error |
+|------|-------|
+| Exactly one source field per entry | Must set one of: `token`, `secretRef`, `githubOIDC`, `gitlabOIDC`, `vaultOIDC`, `oidc` |
+| `token:` must be `${ENV_VAR}` | Literal values rejected — use `extraEnv` in Helm |
+| `secretRef:` must supply `name` and `key` | Missing field reported |
+| `oidc.issuer` required for generic `oidc` | Use a named preset for providers with hardcoded issuers |
+| `githubOIDC.allow` must not be empty | Declare at least one field — empty block accepts any GitHub Actions token |
+| `gitlabOIDC.allow` must not be empty | Declare at least one field — empty block accepts any GitLab CI token |
+| `vaultOIDC.url` required | Set to the Vault server URL |
+| `vaultOIDC.allow` must not be empty | Declare at least one field — empty block accepts any Vault entity token |
+| Duplicate token names | Reported at first duplicate |
 
 ## See also
 

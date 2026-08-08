@@ -128,6 +128,8 @@ With `orkestra-action`, when `serve` is added as an input:
 
 ---
 
-→ [Local Intent Testing](06-local-intent-testing.md) — the offline half: play, the intent file format, the chain stages
-→ [CLI reference — ork serve apply](../../reference/cli/13-serve.md#ork-serve-apply)
-→ [The Gateway as a Delivery Layer](05-gateway-as-delivery-layer.md)
+- [Local Intent Testing](06-local-intent-testing.md) — the offline half: play, the intent file format, the chain stages
+
+- [CLI reference — ork serve apply](../../reference/cli/13-serve.md#ork-serve-apply)
+
+- [The Gateway as a Delivery Layer](05-gateway-as-delivery-layer.md)
