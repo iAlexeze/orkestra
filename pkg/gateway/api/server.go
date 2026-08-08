@@ -23,6 +23,7 @@ import (
 	"strings"
 	"sync"
 
+	oidcpkg "github.com/orkspace/orkestra/pkg/gateway/oidc"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -37,11 +38,12 @@ type Registrar interface {
 
 // APIServer holds the resolved token set and wired handlers.
 type APIServer struct {
-	mu     sync.RWMutex
-	tokens *TokenSet
-	kube   kubeclient.KubeClient
-	kat    *katalog.Katalog
-	ownNS  string
+	mu        sync.RWMutex
+	tokens    *TokenSet
+	oidcCache *oidcpkg.Cache
+	kube      kubeclient.KubeClient
+	kat       *katalog.Katalog
+	ownNS     string
 }
 
 // NewAPIServer resolves all tokens (bootstrapping/rotating Secrets as
@@ -51,16 +53,18 @@ func NewAPIServer(ctx context.Context, kat *katalog.Katalog, kube kubeclient.Kub
 		return nil, nil // not enabled — caller skips registration
 	}
 
-	tokens, err := LoadTokens(ctx, kat.Gateway.API.Auth.Tokens, kube, ownNS)
+	cache := oidcpkg.NewCache(oidcpkg.DefaultTTL)
+	tokens, err := LoadTokens(ctx, kat.Gateway.API.Auth.Tokens, kube, ownNS, cache)
 	if err != nil {
 		return nil, fmt.Errorf("loading Gateway API tokens: %w", err)
 	}
 
 	return &APIServer{
-		tokens: tokens,
-		kube:   kube,
-		kat:    kat,
-		ownNS:  ownNS,
+		tokens:    tokens,
+		oidcCache: cache,
+		kube:      kube,
+		kat:       kat,
+		ownNS:     ownNS,
 	}, nil
 }
 
@@ -71,11 +75,22 @@ func (s *APIServer) matches(value string) string {
 	return s.tokens.Matches(value)
 }
 
+// matchesOIDC verifies a JWT bearer against OIDC token entries.
+// Snapshots the token pointer under RLock, then verifies outside the lock
+// so JWKS network calls never block token reloads.
+// Returns the token name and the verified sub claim.
+func (s *APIServer) matchesOIDC(ctx context.Context, bearer string) (name, sub string) {
+	s.mu.RLock()
+	ts := s.tokens
+	s.mu.RUnlock()
+	return ts.MatchesOIDC(ctx, bearer)
+}
+
 // ReloadTokens re-resolves all secretRef tokens (recreating any missing secrets)
-// and atomically replaces the in-memory TokenSet. Called by the housekeeper when
-// a token secret is found to be missing during reconciliation.
+// and atomically replaces the in-memory TokenSet. The OIDC cache is reused —
+// cached JWKS keys persist across reloads.
 func (s *APIServer) ReloadTokens(ctx context.Context) error {
-	ts, err := LoadTokens(ctx, s.kat.Gateway.API.Auth.Tokens, s.kube, s.ownNS)
+	ts, err := LoadTokens(ctx, s.kat.Gateway.API.Auth.Tokens, s.kube, s.ownNS, s.oidcCache)
 	if err != nil {
 		return fmt.Errorf("reload Gateway API tokens: %w", err)
 	}
@@ -97,15 +112,25 @@ func (s *APIServer) Register(reg Registrar) {
 
 	// auth closes over s so that token lookups always read the current TokenSet
 	// even after a ReloadTokens call swaps the pointer.
+	// Static bearer tokens are checked first (O(n), in-process). OIDC JWTs are
+	// checked second — they require JWKS cache lookup and JWT verification.
 	auth := func(h http.Handler) http.HandlerFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			bearer := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-			name := s.matches(strings.TrimSpace(bearer))
+			bearer := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+			name := s.matches(bearer)
+			var sub string
+			if name == "" {
+				name, sub = s.matchesOIDC(r.Context(), bearer)
+			}
 			if name == "" {
 				writeJSONError(w, http.StatusUnauthorized, "Unauthorized", "invalid token")
 				return
 			}
-			h.ServeHTTP(w, r.WithContext(contextWithTokenName(r.Context(), name)))
+			ctx := contextWithTokenName(r.Context(), name)
+			if sub != "" {
+				ctx = contextWithOIDCSub(ctx, sub)
+			}
+			h.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 

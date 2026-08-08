@@ -6,8 +6,10 @@
 //   - secretRef entries: read or self-bootstrap the Kubernetes Secret, then
 //     optionally rotate it if rotateAfter has elapsed.
 //   - token entries: expand ${ENV_VAR} references.
+//   - githubOIDC / gitlabOIDC / oidc entries: stored as-is; verified per request
+//     via the shared JWKS cache in pkg/gateway/oidc.
 //
-// The resolved values are stored in TokenSet, which the auth middleware uses
+// The resolved values are stored in TokenSet, which the auth closure uses
 // to validate incoming Authorization: Bearer <token> headers.
 //
 // Self-bootstrap and rotation reuse pkg/secrets helpers so the
@@ -25,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	oidcpkg "github.com/orkspace/orkestra/pkg/gateway/oidc"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -32,10 +35,12 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// TokenSet holds the resolved bearer token values keyed by token name.
-// Lookups are O(n) over a small list — Gateway API token counts are tiny.
+// TokenSet holds resolved static bearer tokens and OIDC token configurations.
+// Lookups are O(n) — Gateway API token counts are tiny.
 type TokenSet struct {
-	entries []resolvedToken
+	entries     []resolvedToken
+	oidcEntries []orktypes.APIToken
+	oidcCache   *oidcpkg.Cache
 }
 
 type resolvedToken struct {
@@ -43,7 +48,7 @@ type resolvedToken struct {
 	value string
 }
 
-// Matches returns the token name if value is a known token, empty string otherwise.
+// Matches returns the token name if value matches a static bearer token.
 func (ts *TokenSet) Matches(value string) string {
 	for _, e := range ts.entries {
 		if e.value == value {
@@ -53,11 +58,43 @@ func (ts *TokenSet) Matches(value string) string {
 	return ""
 }
 
+// MatchesOIDC returns the token name and verified sub claim if the bearer value
+// is a valid JWT that satisfies one of the configured OIDC token entries.
+// Returns ("", "") on any mismatch or verification failure.
+func (ts *TokenSet) MatchesOIDC(ctx context.Context, bearer string) (name, sub string) {
+	if ts.oidcCache == nil || len(ts.oidcEntries) == 0 {
+		return "", ""
+	}
+	iss, ok := oidcpkg.IssuerFromToken(bearer)
+	if !ok {
+		return "", ""
+	}
+	for _, entry := range ts.oidcEntries {
+		if entry.OIDCIssuer() != iss {
+			continue
+		}
+		claims, err := ts.oidcCache.Verify(iss, entry.OIDCDiscoveryBase(), bearer, entry.OIDCAudience())
+		if err != nil {
+			logger.FromContext(ctx).Debug().
+				Err(err).
+				Str("token", entry.Name).
+				Str("kind", entry.OIDCKind()).
+				Msg("gateway: OIDC verification failed")
+			continue
+		}
+		if entry.MatchesOIDCClaims(claims) {
+			return entry.Name, claims["sub"]
+		}
+	}
+	return "", ""
+}
+
 // LoadTokens resolves all Gateway API token entries from the Katalog config.
 // secretRef entries are bootstrapped/rotated via the Kubernetes client.
 // token entries are expanded from environment variables.
-func LoadTokens(ctx context.Context, tokens []orktypes.APIToken, kube kubeclient.KubeClient, ownNamespace string) (*TokenSet, error) {
-	ts := &TokenSet{}
+// OIDC entries are stored in the TokenSet and verified per request via oidcCache.
+func LoadTokens(ctx context.Context, tokens []orktypes.APIToken, kube kubeclient.KubeClient, ownNamespace string, oidcCache *oidcpkg.Cache) (*TokenSet, error) {
+	ts := &TokenSet{oidcCache: oidcCache}
 	for _, t := range tokens {
 		switch {
 		case t.SecretRef != nil:
@@ -74,8 +111,11 @@ func LoadTokens(ctx context.Context, tokens []orktypes.APIToken, kube kubeclient
 			}
 			ts.entries = append(ts.entries, resolvedToken{name: t.Name, value: val})
 
+		case t.IsOIDC():
+			ts.oidcEntries = append(ts.oidcEntries, t)
+
 		default:
-			return nil, fmt.Errorf("token %q: must set secretRef or token", t.Name)
+			return nil, fmt.Errorf("token %q: must set one of: token, secretRef, githubOIDC, gitlabOIDC, oidc", t.Name)
 		}
 	}
 	return ts, nil
@@ -198,15 +238,29 @@ func AuthMiddleware(ts *TokenSet, next http.Handler) http.Handler {
 
 type contextKey string
 
-const tokenNameKey contextKey = "api-token-name"
+const (
+	tokenNameKey contextKey = "api-token-name"
+	oidcSubKey   contextKey = "api-oidc-sub"
+)
 
 func contextWithTokenName(ctx context.Context, name string) context.Context {
 	return context.WithValue(ctx, tokenNameKey, name)
+}
+
+func contextWithOIDCSub(ctx context.Context, sub string) context.Context {
+	return context.WithValue(ctx, oidcSubKey, sub)
 }
 
 // TokenNameFromContext returns the authenticated token name from the context.
 // Empty string when the request was not authenticated (should not happen past middleware).
 func TokenNameFromContext(ctx context.Context) string {
 	v, _ := ctx.Value(tokenNameKey).(string)
+	return v
+}
+
+// OIDCSubFromContext returns the verified OIDC sub claim from the context.
+// Empty string when authentication was via a static token (no OIDC sub available).
+func OIDCSubFromContext(ctx context.Context) string {
+	v, _ := ctx.Value(oidcSubKey).(string)
 	return v
 }

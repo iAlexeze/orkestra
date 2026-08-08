@@ -45,6 +45,7 @@ require (
 )
 
 require (
+	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/segmentio/kafka-go v0.4.51
 )
@@ -103,7 +104,6 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
