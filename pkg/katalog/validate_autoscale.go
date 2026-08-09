@@ -61,15 +61,15 @@ func (k *Katalog) validateAutoscaleProfile() error {
 		// Rule 1: profile cannot be combined with manual autoscale fields
 		if !autoscaleIsProfileOnly(spec) {
 			return fmt.Errorf(
-				"autoscale.profile %q cannot be combined with manual autoscale fields; "+
+				"%s autoscale.profile %q cannot be combined with manual autoscale fields; "+
 					"remove interval/cooldown/conditions/do when using a profile",
-				profile,
+				failureMark(), profile,
 			)
 		}
 
 		// Rule 2: profile must be recognized
 		if !profiles.IsValidAutoscaleProfile(profile) {
-			return fmt.Errorf("unknown autoscale profile: %q", profile)
+			return fmt.Errorf("%s unknown autoscale profile: %q", failureMark(), profile)
 		}
 
 		// Expand the profile into a fully-formed AutoscaleSpec using the CRD's
@@ -81,7 +81,7 @@ func (k *Katalog) validateAutoscaleProfile() error {
 		}
 		expanded, err := profiles.ApplyAutoscalerProfile(profile, baseline)
 		if err != nil {
-			return fmt.Errorf("autoscale.profile %q expansion failed: %w", profile, err)
+			return fmt.Errorf("%s autoscale.profile %q expansion failed: %w", failureMark(), profile, err)
 		}
 		crd.OperatorBox.Autoscale = expanded
 

@@ -116,6 +116,11 @@ func (k *Katalog) Metadata() orktypes.KatalogMeta {
 	return k.metadata
 }
 
+// Deprecation returns the raw deprecation block, or nil if absent.
+func (k *Katalog) Deprecation() *orktypes.KatalogDeprecation {
+	return k.metadata.Deprecation
+}
+
 // IsDeprecated returns true if the Katalog is deprecated.
 func (k *Katalog) IsDeprecated() bool {
 	if k.metadata.Deprecation == nil {

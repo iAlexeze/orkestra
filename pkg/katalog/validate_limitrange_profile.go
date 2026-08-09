@@ -30,16 +30,16 @@ func (k *Katalog) validateLimitRangeProfiles() error {
 			}
 			if !k.isUserLimitRangeProfile(e.Profile) {
 				return fmt.Errorf(
-					"crd %q: LimitRange %q (phase %s) has unknown profile %q — "+
+					"%s crd %q: LimitRange %q (phase %s) has unknown profile %q — "+
 						"define it in profiles.limitRanges",
-					crdName, e.ResourceName, e.Phase, e.Profile,
+					failureMark(), crdName, e.ResourceName, e.Phase, e.Profile,
 				)
 			}
 			if e.Mixed {
 				return fmt.Errorf(
-					"crd %q: LimitRange %q (phase %s) declares both profile (%q) and "+
+					"%s crd %q: LimitRange %q (phase %s) declares both profile (%q) and "+
 						"explicit limits — use one or the other, not both",
-					crdName, e.ResourceName, e.Phase, e.Profile,
+					failureMark(), crdName, e.ResourceName, e.Phase, e.Profile,
 				)
 			}
 		}

@@ -5,7 +5,6 @@ package cli
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/orkspace/orkestra/pkg/merger"
@@ -76,6 +75,11 @@ var pullCmd = &cobra.Command{
 				return fmt.Errorf("extracting to %s: %w", outDir, err)
 			}
 			fmt.Printf("  %s Extracted to %s\n", successMark(), outDir)
+			if spec, err := registry.SpecFor(kind); err == nil {
+				if meta, err := registry.LoadPatternMeta(cacheDir, spec); err == nil && meta.Deprecated != nil {
+					printPatternDeprecation(meta.Deprecated)
+				}
+			}
 			return nil
 		}
 
@@ -86,6 +90,13 @@ var pullCmd = &cobra.Command{
 			pullMotifDeps(cacheDir)
 			notifyTypedPull(cacheDir)
 		}
+
+		if spec, err := registry.SpecFor(kind); err == nil {
+			if meta, err := registry.LoadPatternMeta(cacheDir, spec); err == nil && meta.Deprecated != nil {
+				printPatternDeprecation(meta.Deprecated)
+			}
+		}
+
 		return nil
 	},
 }
@@ -103,10 +114,10 @@ func init() {
 
 // notifyTypedPull prints a build note when the pulled artifact is a typed operator.
 func notifyTypedPull(cacheDir string) {
-	if _, err := os.Stat(filepath.Join(cacheDir, registry.FileGoMod)); err != nil {
+	if _, err := os.Stat(joinPath(cacheDir, registry.FileGoMod)); err != nil {
 		return
 	}
-	_, hasMakefile := os.Stat(filepath.Join(cacheDir, registry.FileMakefile))
+	_, hasMakefile := os.Stat(joinPath(cacheDir, registry.FileMakefile))
 	fmt.Printf("  ↳ Typed operator — requires a custom runtime\n")
 	printTypedBuildSteps(hasMakefile == nil)
 }
@@ -114,7 +125,7 @@ func notifyTypedPull(cacheDir string) {
 // pullMotifDeps reads the katalog.yaml in cacheDir and pulls any OCI motif
 // imports it declares. Warnings are printed but do not fail the main pull.
 func pullMotifDeps(katalogCacheDir string) {
-	katalogFile := filepath.Join(katalogCacheDir, registry.FileKatalog)
+	katalogFile := joinPath(katalogCacheDir, registry.FileKatalog)
 	if _, err := os.Stat(katalogFile); err != nil {
 		return
 	}

@@ -20,8 +20,8 @@ This document covers the lifecycle of one pattern — from first write to deprec
 | **Distribute** | `ork push` — gates run, proof baked into OCI annotations, artifact ships |
 | **Inspect** | `ork inspect` — proof is visible before pulling, before importing |
 | **Consume** | `ork pull` — artifact arrives with its proof |
-| **Upgrade** | Version bump in the Komposer — same push pipeline, same gates |
-| **Deprecate** | `metadata.deprecation` — warning travels with the artifact to every consumer |
+| **Upgrade** | Version bump in the Komposer — same push pipeline, same gates, proof baked into the new artifact; never automatic |
+| **Deprecate** | `metadata.deprecation` — author sees it at `ork push`; consumers at `ork inspect`, `ork pull`, `ork validate`; `ork run`/`ork gate` enforce `accept` |
 | **Delete** | `security.deletionProtection` — webhook blocks `kubectl delete` on CRs, CRDs, and Orkestra infrastructure |
 
 ---
@@ -79,7 +79,10 @@ ork push database:v1.0.0 ./database/
 | `io.orkestra.e2e.assertions` | Total expectations |
 | `io.orkestra.katalog.typed` | Whether a custom runtime is required |
 | `io.orkestra.deprecated` | Lifecycle status |
-| `io.orkestra.deprecated.migrated_to` | Migration target |
+| `io.orkestra.deprecated.message` | Deprecation message |
+| `io.orkestra.katalog.deprecated.migrated_to` | Migration target |
+| `io.orkestra.katalog.deprecated.timeline_from` | Deprecation window open date |
+| `io.orkestra.katalog.deprecated.timeline_to` | End-of-life date |
 
 The artifact is self-describing. A consumer reads its proof before pulling.
 
@@ -103,9 +106,21 @@ ork pull database:v1.0.0
 
 ## Upgrade
 
-Patterns are versioned with OCI tags. `database:v1.0.0` and `database:v1.1.0` are distinct artifacts with distinct proofs.
+Patterns are versioned with OCI tags. `database:v1.0.0` and `database:v1.1.0` are distinct artifacts with distinct proofs — not binary releases that need a separate controller to manage, but plain OCI artifacts that carry everything they verified at publish time.
 
-To upgrade, the Komposer references the new version:
+### The upgrade flow
+
+```bash
+ork push database:v1.1.0 ./database/
+```
+
+The same push pipeline runs on `v1.1.0` as it did on `v1.0.0`. `ork simulate` runs the new pattern against an in-memory cluster and asserts exactly which resources are created in which reconcile cycle. `ork e2e` verifies it against a real cluster. Both must pass before the artifact is written. If either fails, the push is blocked — there is no "push and hope" path.
+
+The new artifact is self-describing. `ork inspect database:v1.1.0` shows simulation assertion count, e2e status, and any deprecation state before anything is pulled or imported.
+
+### Upgrade is an explicit decision
+
+The Komposer references the new version:
 
 ```yaml
 imports:
@@ -113,7 +128,9 @@ imports:
     - url: database:v1.1.0
 ```
 
-The same push pipeline runs. The new artifact carries its own simulation and e2e proof. Upgrade is not a ceremony — it is the same production model, applied again. See [Foundations: Configuration is Deliberate](../../foundations/03-no-autosync.md) for why upgrade is always an explicit action, never automatic.
+Until you change that reference, nothing upgrades. There is no autosync, no watch loop, no version resolver that silently bumps the version when a newer tag appears. The decision to run `v1.1.0` is a line of YAML in a file that goes through code review. A PR adding that line carries a link to the proof that `v1.1.0` was verified — the OCI annotations are visible in `ork inspect` output and are part of the artifact record.
+
+See [Foundations: Configuration is Deliberate](../../foundations/03-no-autosync.md) for the full argument.
 
 ---
 
@@ -123,11 +140,37 @@ The same push pipeline runs. The new artifact carries its own simulation and e2e
 metadata:
   name: database
   deprecation:
-    migratedTo: database:v2.0.0
     message: "Use v2.0.0 — improved connection pooling and status reporting"
+    migratedTo: database:v2.0.0
+    timeline:
+      from: "2026-09-01"   # deprecation window opens — warning with countdown
+      to:   "2027-03-01"   # end of life
 ```
 
-The deprecation is part of the artifact. Every consumer who runs `ork inspect`, `ork validate`, or `ork patterns` sees the warning and the migration target. The pattern remains in the registry for compatibility — it is not deleted — but it is clearly marked at every touchpoint.
+The deprecation is part of the artifact. It is surfaced at every touchpoint — and the author sees it first: `ork push` shows the exact warning consumers will see, immediately after the katalog is validated and before the artifact is uploaded. After that, `ork validate`, `ork inspect`, and `ork pull` all surface the same state-aware warning. The state is computed from today vs the timeline:
+
+| Condition | Shown as |
+|-----------|----------|
+| No `timeline`, or `today < from` | ⚠ Deprecated |
+| `from ≤ today < to` | ⚠ Deprecated · N days until EOL |
+| `today ≥ to` | ✗ END OF LIFE |
+
+The pattern remains in the registry for compatibility — it is not deleted — but it is clearly marked at every touchpoint. `ork validate` enforces that `message` is present and that `from` is strictly before `to`.
+
+**Runtime enforcement** — `ork run` and `ork gate` refuse to start a deprecated or EOL Katalog unless the operator has explicitly acknowledged it in the file:
+
+```yaml
+deprecation:
+  accept:
+    beforeEol: true   # allows startup during the deprecation warning window
+    eol: true         # additionally required after the end-of-life date
+```
+
+This makes the decision to run a deprecated pattern a visible, reviewable record in the Katalog itself — not a flag in a deploy script. `eol: true` without `beforeEol: true` is not accepted; both must be set to run past the EOL date.
+
+The separation is deliberate: `ork validate` is a pre-flight tool and shows warnings without blocking. The enforcement gate lives at runtime startup — after validation passes, before the operator begins reconciling. A PR adding `eol: true` is a traceable, reviewable decision rather than a buried CLI flag.
+
+See the [deprecation schema reference](../../reference/schema/02-katalog/00-metadata/deprecation.md) for the full field list, enforcement table, and OCI annotation mapping.
 
 ---
 

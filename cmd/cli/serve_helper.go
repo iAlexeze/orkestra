@@ -11,7 +11,6 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/katalog"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -20,24 +19,6 @@ var (
 )
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
-
-// ── buildKatalog ────────────────────────────────────────────────────────────
-
-// buildKatalog builds the expanded Katalog using the same logic as ork validate.
-// It respects the --file global flag and reuses the merger.
-func buildKatalog(cmd *cobra.Command) (*katalog.Katalog, error) {
-	m, err := generateKatalog(cmd)
-	if err != nil {
-		return nil, fmt.Errorf("generating Katalog: %w", err)
-	}
-
-	k, err := katalog.BuildExpanded(kfg, m.m)
-	if err != nil {
-		return nil, fmt.Errorf("building expanded Katalog: %w", err)
-	}
-
-	return k, nil
-}
 
 // resolveCRD resolves a CRD by target, kind, or name.
 func resolveCRD(kat *katalog.Katalog, target, kind, name string) (*orktypes.CRDEntry, error) {

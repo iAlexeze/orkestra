@@ -34,16 +34,16 @@ func (k *Katalog) validateNetworkPolicyProfiles() error {
 			}
 			if !k.isUserNetworkPolicyProfile(e.Profile) && !profiles.IsValidNetworkPolicyProfile(e.Profile) {
 				return fmt.Errorf(
-					"crd %q: networkPolicy %q (phase %s) has unknown profile %q — "+
+					"%s crd %q: networkPolicy %q (phase %s) has unknown profile %q — "+
 						"allowed: deny-all, deny-all-ingress, deny-all-egress, allow-same-namespace, allow-dns-egress",
-					crdName, e.ResourceName, e.Phase, e.Profile,
+					failureMark(), crdName, e.ResourceName, e.Phase, e.Profile,
 				)
 			}
 			if e.Mixed {
 				return fmt.Errorf(
-					"crd %q: networkPolicy %q (phase %s) declares both profile (%q) and "+
+					"%s crd %q: networkPolicy %q (phase %s) declares both profile (%q) and "+
 						"explicit ingress/egress/policyTypes — use one or the other, not both",
-					crdName, e.ResourceName, e.Phase, e.Profile,
+					failureMark(), crdName, e.ResourceName, e.Phase, e.Profile,
 				)
 			}
 		}

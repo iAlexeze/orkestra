@@ -264,6 +264,20 @@
         toggle.setAttribute('aria-expanded', String(willOpen));
       });
     });
+
+    var l4Toggles = document.querySelectorAll('.sidebar-l4section-toggle');
+    l4Toggles.forEach(function(toggle) {
+      var l4section = toggle.closest('.sidebar-l4section');
+
+      toggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!l4section) return;
+        var willOpen = !l4section.classList.contains('open');
+        l4section.classList.toggle('open', willOpen);
+        toggle.setAttribute('aria-expanded', String(willOpen));
+      });
+    });
   }
 
   /* ── 5. Active TOC on Scroll ────────────────────────────── */

@@ -356,6 +356,59 @@ func runSimulateWithCR(ctx context.Context, specPath, crFile string) error {
 	return nil
 }
 
+// runIntentPlay builds a Katalog from katalogPath, runs the serve play chain
+// against intentFile without printing stage output, and returns the resolved
+// target name on success.
+func runIntentPlay(katalogPath, intentFile string) (string, error) {
+	m := merger.New(katalogPath)
+	if err := m.Merge(); err != nil {
+		return "", fmt.Errorf("merging katalog: %w", err)
+	}
+	k, err := katalog.BuildExpanded(kfg, m)
+	if err != nil {
+		return "", fmt.Errorf("building katalog: %w", err)
+	}
+
+	raw, err := readIntentFile(intentFile)
+	if err != nil {
+		return "", fmt.Errorf("reading intent file: %w", err)
+	}
+
+	target, _ := raw["target"].(string)
+	if strings.TrimSpace(target) == "" {
+		return "", fmt.Errorf(`intent file must declare a "target"`)
+	}
+
+	resolution := k.LookupByTargetOrAlias(target)
+	if resolution == nil {
+		return target, fmt.Errorf("unknown target %q — available: %s", target, strings.Join(k.AvailableTargets(), ", "))
+	}
+	crd, alias := resolution.CRD, resolution.Alias
+
+	if tokenName, _ := raw["token"].(string); tokenName != "" {
+		allowed, denyReason := crd.TokenAllowedFor(alias, tokenName, string(orktypes.ServeOpCreate), "", orktypes.ServeClassResources)
+		if !allowed {
+			return target, fmt.Errorf("token %q denied: %s", tokenName, denyReason.Message(tokenName, string(orktypes.ServeOpCreate), crd.Kind(), ""))
+		}
+	} else {
+		return target, fmt.Errorf("intent file must declare a 'token' — token: <name>")
+	}
+
+	obj, err := api.BuildCRFromTarget(raw, crd, k.Notes)
+	if err != nil {
+		return target, fmt.Errorf("CR construction: %w", err)
+	}
+
+	resolver := orktmpl.NewResolverFromMap(obj.Object).WithUserNotes(k.Notes)
+	eval := resolver.TemplateEvaluator()
+	r := evalAdmissionValidation(obj.Object, crd, resolver, eval)
+	if r.denied() > 0 {
+		return target, fmt.Errorf("admission denied: %d rule violation(s)", r.denied())
+	}
+
+	return target, nil
+}
+
 // ── get / list / delete path ─────────────────────────────────────────────────
 
 func playRead(k *katalog.Katalog, target, tokenName string, op orktypes.ServeOperation, namespace, name string) error {

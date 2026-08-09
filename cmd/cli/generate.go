@@ -182,6 +182,25 @@ func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
 	}, nil
 }
 
+// buildKatalog builds the expanded Katalog using the --file flag from cmd.
+func buildKatalog(cmd *cobra.Command) (*katalog.Katalog, error) {
+	m, err := generateKatalog(cmd)
+	if err != nil {
+		return nil, fmt.Errorf("generating Katalog: %w", err)
+	}
+	return katalog.BuildExpanded(kfg, m.m)
+}
+
+// buildKatalogFromPath builds an expanded Katalog from a file path without
+// requiring a cobra command context. Useful when the path is already known.
+func buildKatalogFromPath(path string) (*katalog.Katalog, error) {
+	m := merger.New(path)
+	if err := m.Merge(); err != nil {
+		return nil, fmt.Errorf("merging katalog: %w", err)
+	}
+	return katalog.BuildExpanded(kfg, m)
+}
+
 var generateDashboardsCmd = &cobra.Command{
 	Use:   "dashboards",
 	Short: "Generate Grafana dashboards for all CRDs",

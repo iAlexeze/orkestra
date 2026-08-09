@@ -9,7 +9,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/merger"
 	ork_runtime "github.com/orkspace/orkestra/pkg/typeregistry"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	"github.com/orkspace/orkestra/pkg/utils"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,17 +34,17 @@ func NewKatalog(kfg *konfig.Konfig, m *merger.Merger) *Katalog {
 	// Build CRDs
 	entries, err := katalog.KomposeRuntimeKatalog(kfg, m, paths...)
 	if err != nil {
-		utils.Exit(err)
+		exit(err)
 	}
 
 	if len(entries) == 0 && !katalog.IsStandaloneGateway() {
-		utils.Exit(fmt.Errorf("validation error: katalog empty"))
+		exit(fmt.Errorf("validation error: katalog empty"))
 	}
 
 	// Guard: if ObjectRegistry is empty, user forgot to run ork generate
 	for _, crd := range entries {
 		if len(orktypes.ObjectRegistry) == 0 && !crd.IsDynamic() {
-			utils.Exit(fmt.Errorf(
+			exit(fmt.Errorf(
 				"ObjectRegistry is empty — run 'ork generate registry --file <my-katalog.yaml>' first",
 			))
 		}
@@ -52,12 +52,16 @@ func NewKatalog(kfg *konfig.Konfig, m *merger.Merger) *Katalog {
 
 	kat, err := katalog.ValidateConfig(kfg)
 	if err != nil {
-		utils.Exit(err)
+		exit(err)
+	}
+
+	if err := kat.CheckDeprecationPolicy(); err != nil {
+		exit(err)
 	}
 
 	kat, err = kat.updateResourceMapAndReturn()
 	if err != nil {
-		utils.Exit(err)
+		exit(err)
 	}
 
 	return kat

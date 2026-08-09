@@ -40,16 +40,16 @@ func (k *Katalog) validateResourceProfile() error {
 			_, userDefined := k.Profiles.LookupResource(e.Profile)
 			if !userDefined && !profiles.IsValidResourceProfile(e.Profile) {
 				return fmt.Errorf(
-					"crd %q: %s %q (phase %s) has unknown resources.profile %q — "+
+					"%s crd %q: %s %q (phase %s) has unknown resources.profile %q — "+
 						"allowed: tiny, small, medium, large, burst, steady, compute-heavy, memory-heavy, or a user-defined profile declared in profiles.resources",
-					crdName, e.Resource, e.ResourceName, e.Phase, e.Profile,
+					failureMark(), crdName, e.Resource, e.ResourceName, e.Phase, e.Profile,
 				)
 			}
 			if e.Mixed {
 				return fmt.Errorf(
-					"crd %q: %s %q (phase %s) declares both resources.profile (%q) and "+
+					"%s crd %q: %s %q (phase %s) declares both resources.profile (%q) and "+
 						"explicit requests/limits — use one or the other, not both",
-					crdName, e.Resource, e.ResourceName, e.Phase, e.Profile,
+					failureMark(), crdName, e.Resource, e.ResourceName, e.Phase, e.Profile,
 				)
 			}
 		}
@@ -66,16 +66,16 @@ func (k *Katalog) validateProbeProfiles() error {
 			_, userDefined := k.Profiles.LookupProbe(e.Profile)
 			if !userDefined && !profiles.IsValidProbeProfile(e.Profile) {
 				return fmt.Errorf(
-					"crd %q: %s probe in %s %q (phase %s) has unknown probe profile %q — "+
+					"%s crd %q: %s probe in %s %q (phase %s) has unknown probe profile %q — "+
 						"allowed: fast, standard, patient, slow-start, or a user-defined profile declared in profiles.probes",
-					crdName, e.ProbeType, e.Resource, e.ResourceName, e.Phase, e.Profile,
+					failureMark(), crdName, e.ProbeType, e.Resource, e.ResourceName, e.Phase, e.Profile,
 				)
 			}
 			if e.Mixed {
 				return fmt.Errorf(
-					"crd %q: %s probe in %s %q (phase %s) declares both a profile (%q) and "+
+					"%s crd %q: %s probe in %s %q (phase %s) declares both a profile (%q) and "+
 						"explicit timing fields — use one or the other, not both",
-					crdName, e.ProbeType, e.Resource, e.ResourceName, e.Phase, e.Profile,
+					failureMark(), crdName, e.ProbeType, e.Resource, e.ResourceName, e.Phase, e.Profile,
 				)
 			}
 		}

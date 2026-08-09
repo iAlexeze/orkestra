@@ -33,16 +33,16 @@ func (k *Katalog) validateResourceQuotaProfiles() error {
 			}
 			if !k.isUserResourceQuotaProfile(e.Profile) && !profiles.IsValidResourceQuotaProfile(e.Profile) {
 				return fmt.Errorf(
-					"crd %q: resourceQuota %q (phase %s) has unknown profile %q — "+
+					"%s crd %q: resourceQuota %q (phase %s) has unknown profile %q — "+
 						"allowed: small, medium, large, xlarge",
-					crdName, e.ResourceName, e.Phase, e.Profile,
+					failureMark(), crdName, e.ResourceName, e.Phase, e.Profile,
 				)
 			}
 			if e.Mixed {
 				return fmt.Errorf(
-					"crd %q: resourceQuota %q (phase %s) declares both profile (%q) and "+
+					"%s crd %q: resourceQuota %q (phase %s) declares both profile (%q) and "+
 						"explicit hard limits — use one or the other, not both",
-					crdName, e.ResourceName, e.Phase, e.Profile,
+					failureMark(), crdName, e.ResourceName, e.Phase, e.Profile,
 				)
 			}
 		}

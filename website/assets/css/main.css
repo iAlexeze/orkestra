@@ -1470,6 +1470,77 @@ html.no-transition .sidebar-subsubsection-pages {
   transition: none !important;
 }
 
+/* Depth-5: l4 sections (e.g. schema → katalog → metadata → deprecation) */
+.sidebar-l4section {
+  list-style: none;
+}
+
+.sidebar-l4section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-l4section-header .sidebar-link {
+  flex: 1;
+}
+
+.sidebar-l4section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  border-radius: 3px;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.sidebar-l4section-toggle:hover {
+  color: var(--color-text);
+  background: var(--color-hover);
+}
+
+.sidebar-l4section-toggle .chevron {
+  transition: transform 0.2s ease;
+}
+
+.sidebar-l4section.open .sidebar-l4section-toggle .chevron {
+  transform: rotate(180deg);
+}
+
+.sidebar-l4section-pages {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0.25rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 180ms ease, opacity 150ms ease;
+}
+
+.sidebar-l4section.open .sidebar-l4section-pages {
+  max-height: 800px;
+  opacity: 1;
+}
+
+.sidebar-link--deeper {
+  padding-left: 3rem;
+  font-size: 0.75rem;
+}
+
+html.no-transition .sidebar-l4section-pages {
+  transition: none !important;
+}
+
 /* Overlay for mobile */
 .sidebar-overlay {
   display: none;

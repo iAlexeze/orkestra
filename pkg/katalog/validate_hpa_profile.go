@@ -34,16 +34,16 @@ func (k *Katalog) validateHPABehaviorProfiles() error {
 			}
 			if !k.isUserHPAProfile(e.Profile) && !profiles.IsValidHPAProfile(e.Profile) {
 				return fmt.Errorf(
-					"crd %q: HPA %q (phase %s) has unknown behavior.profile %q — "+
+					"%s crd %q: HPA %q (phase %s) has unknown behavior.profile %q — "+
 						"allowed: web, api, latency-sensitive, batch, cost-optimized",
-					crdName, e.ResourceName, e.Phase, e.Profile,
+					failureMark(), crdName, e.ResourceName, e.Phase, e.Profile,
 				)
 			}
 			if e.Mixed {
 				return fmt.Errorf(
-					"crd %q: HPA %q (phase %s) declares both behavior.profile (%q) and "+
+					"%s crd %q: HPA %q (phase %s) declares both behavior.profile (%q) and "+
 						"explicit scaleUp/scaleDown — use one or the other, not both",
-					crdName, e.ResourceName, e.Phase, e.Profile,
+					failureMark(), crdName, e.ResourceName, e.Phase, e.Profile,
 				)
 			}
 		}
