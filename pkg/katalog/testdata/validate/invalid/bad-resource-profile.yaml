@@ -4,17 +4,12 @@ kind: Katalog
 metadata:
   name: bad-resource-profile
   version: 0.1.0
+  description: Tests that an unknown resources.profile name is rejected.
 spec:
   crds:
     widget:
-      apiTypes:
-        group: example.io
-        version: v1alpha1
-        kind: Widget
-        plural: widgets
+      crdFile: ../crd.yaml
       operatorBox:
-        reconciler:
-          workers: 2
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}-controller"

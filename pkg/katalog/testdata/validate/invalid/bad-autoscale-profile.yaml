@@ -4,17 +4,12 @@ kind: Katalog
 metadata:
   name: bad-autoscale-profile
   version: 0.1.0
+  description: Tests that autoscale.profile cannot be combined with manual autoscale fields.
 spec:
   crds:
     widget:
-      apiTypes:
-        group: example.io
-        version: v1alpha1
-        kind: Widget
-        plural: widgets
+      crdFile: ../crd.yaml
       operatorBox:
-        reconciler:
-          workers: 2
         autoscale:
           profile: steady
           interval: 30s

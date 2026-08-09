@@ -39,8 +39,10 @@ type PatternTyped struct {
 
 // PatternDeprecated carries the deprecation metadata declared in the source YAML.
 type PatternDeprecated struct {
-	MigratedTo string // full OCI ref of the replacement version
-	Message    string // human-readable migration guidance
+	MigratedTo   string // full OCI ref of the replacement version
+	Message      string // human-readable migration guidance
+	TimelineFrom string // YYYY-MM-DD — warn from this date
+	TimelineTo   string // YYYY-MM-DD — EOL on this date
 }
 
 // PatternE2E holds E2E verification metadata embedded in OCI annotations at push time.

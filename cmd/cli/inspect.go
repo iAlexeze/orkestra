@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/orkspace/orkestra/pkg/registry"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/spf13/cobra"
 )
 
@@ -73,7 +74,24 @@ var inspectCmd = &cobra.Command{
 					latest = "  ← latest"
 				}
 				if v.Meta.Deprecated != nil {
-					deprecated = yellow(" ⚠ ") + v.Meta.Deprecated.Message
+					dep := v.Meta.Deprecated
+					d := &orktypes.KatalogDeprecation{
+						MigratedTo: dep.MigratedTo,
+						Message:    dep.Message,
+					}
+					if dep.TimelineFrom != "" || dep.TimelineTo != "" {
+						d.Timeline = &orktypes.DeprecationTimeline{
+							From: dep.TimelineFrom,
+							To:   dep.TimelineTo,
+						}
+					}
+					state := d.DeprecationState(time.Now())
+					switch state {
+					case "eol":
+						deprecated = red(" ✗ EOL")
+					case "warning":
+						deprecated = yellow(" ⚠ deprecated")
+					}
 				}
 				if inspectMotif {
 					fmt.Printf("  %-*s%s\n", tagW, v.Tag, latest)
@@ -159,14 +177,24 @@ var inspectCmd = &cobra.Command{
 
 		deprecated := ""
 		if m.Deprecated != nil {
-			fmt.Printf("\n%s  This pattern is deprecated.\n", yellow("⚠"))
-			if m.Deprecated.MigratedTo != "" {
-				fmt.Printf("  Migrate to:  %s\n", bold(m.Deprecated.MigratedTo))
+			printPatternDeprecation(m.Deprecated)
+			dep := m.Deprecated
+			d := &orktypes.KatalogDeprecation{
+				MigratedTo: dep.MigratedTo,
+				Message:    dep.Message,
 			}
-			if m.Deprecated.Message != "" {
-				fmt.Printf("  Note:        %s\n", m.Deprecated.Message)
+			if dep.TimelineFrom != "" || dep.TimelineTo != "" {
+				d.Timeline = &orktypes.DeprecationTimeline{
+					From: dep.TimelineFrom,
+					To:   dep.TimelineTo,
+				}
 			}
-			deprecated = " ← " + yellow("⚠") + " deprecated"
+			switch d.DeprecationState(time.Now()) {
+			case "eol":
+				deprecated = " ← " + red("✗") + " EOL"
+			default:
+				deprecated = " ← " + yellow("⚠") + " deprecated"
+			}
 		}
 		fmt.Printf("\n%s:%s\n", m.Name, m.Version)
 		fmt.Printf("  Registry:    %s\n", ref.Registry)

@@ -3,22 +3,8 @@ kind: Katalog
 metadata:
   name: validate-test
   version: 0.1.0
+  description: Minimal valid katalog for validator test coverage.
 spec:
   crds:
     widget:
-      apiTypes:
-        group: example.io
-        version: v1alpha1
-        kind: Widget
-        plural: widgets
-      operatorBox:
-        reconciler:
-          workers: 2
-        onCreate:
-          deployments:
-            - name: "{{ .metadata.name }}-controller"
-              image: example.io/widget-controller:latest
-              resources:
-                requests:
-                  cpu: 100m
-                  memory: 128Mi
+      crdFile: ../crd.yaml

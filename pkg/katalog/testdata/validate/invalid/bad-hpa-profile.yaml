@@ -4,17 +4,12 @@ kind: Katalog
 metadata:
   name: bad-hpa-profile
   version: 0.1.0
+  description: Tests that an unknown HPA behavior.profile is rejected.
 spec:
   crds:
     widget:
-      apiTypes:
-        group: example.io
-        version: v1alpha1
-        kind: Widget
-        plural: widgets
+      crdFile: ../crd.yaml
       operatorBox:
-        reconciler:
-          workers: 2
         onCreate:
           hpa:
             - name: widget-hpa

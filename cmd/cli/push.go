@@ -139,10 +139,14 @@ var pushCmd = &cobra.Command{
 			if err := m.Merge(); err != nil {
 				return fmt.Errorf("  ✗ %s: %w", registry.FileKatalog, err)
 			}
-			if _, err := katalog.BuildExpanded(kfg, m); err != nil {
+			k, err := katalog.BuildExpanded(kfg, m)
+			if err != nil {
 				return fmt.Errorf("  ✗ %s: %w", registry.FileKatalog, err)
 			}
 			fmt.Printf("  %s %-20s valid\n", successMark(), registry.FileKatalog)
+			if d := k.Deprecation(); d != nil {
+				printKatalogDeprecation(d)
+			}
 
 			if slices.Contains(files, registry.FileCRD) {
 				if err := validateCRDFile(filepath.Join(dir, registry.FileCRD)); err != nil {

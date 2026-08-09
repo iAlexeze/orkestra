@@ -14,7 +14,14 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	}
 
 	// -------------------------------------------------------------------------
-	// 2. Uniqueness validation
+	// 2. Deprecation timeline validation
+	// -------------------------------------------------------------------------
+	if err := k.validateDeprecation(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 3. Uniqueness validation
 	// -------------------------------------------------------------------------
 	if err := k.validateUniqueness(); err != nil {
 		return nil, err

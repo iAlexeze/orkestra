@@ -1,0 +1,13 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: legacy-worker
+  version: 1.0.0
+  description: Tests that metadata.deprecation requires a message field.
+  deprecation:
+    migratedTo: task-runner:v1.0.0
+    # message is required — this should fail validation
+spec:
+  crds:
+    widget:
+      crdFile: ../crd.yaml

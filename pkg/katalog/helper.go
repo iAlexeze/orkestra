@@ -15,11 +15,13 @@ var (
 
 	// marks and icons
 	failureMark = utils.FailureMark
+	warningMark = utils.WarningMark
 
 	// duration parsing
 	parseTimeDuration = utils.ParseTimeDuration
 
 	// helpers
+	exit         = utils.Exit
 	toStringSet  = utils.ToStringSet
 	isNestedPath = utils.IsNestedPath
 )

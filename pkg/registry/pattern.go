@@ -134,8 +134,10 @@ func LoadPatternMeta(dir string, spec *PatternSpec) (*PatternMeta, error) {
 	}
 	if d := raw.Metadata.Deprecation; d != nil {
 		meta.Deprecated = &PatternDeprecated{
-			MigratedTo: d.MigratedTo,
-			Message:    d.Message,
+			MigratedTo:   d.MigratedTo,
+			Message:      d.Message,
+			TimelineFrom: d.TimelineFrom(),
+			TimelineTo:   d.TimelineTo(),
 		}
 	}
 	if meta.Version == "" {

@@ -50,6 +50,12 @@ mutations belong in `setDefaults` or the enrichment layer.
 skipped at load time (`orktypes.IsTemplate`). They are evaluated at reconcile time
 by the resolver.
 
+## Runtime policy checks
+
+Some checks belong after validation but are not part of the `ValidateConfig` pipeline — because `ork validate` is a pre-flight tool and must not block, while the check is only meaningful at runtime startup.
+
+These live in their own files (e.g. [`deprecation_policy.go`](./deprecation_policy.go)) and are called in `NewKatalog` after `ValidateConfig` succeeds. They use `exit(err)` on failure. The distinction: validators enforce correctness of the spec; policy checks enforce operational intent.
+
 ## Adding a validator
 
 1. Create `validate_<topic>.go` in `pkg/katalog`.
@@ -57,3 +63,7 @@ by the resolver.
    error return.
 3. Add a call in `ValidateConfig` at the appropriate step number.
 4. Write a `validate_<topic>_test.go` with at least one valid and one invalid fixture.
+5. Add a minimal katalog YAML to [`testdata/validate/valid/`](./testdata/validate/valid/) and [`testdata/validate/invalid/`](./testdata/validate/invalid/)
+   for end-to-end coverage with `ork validate`. Use `crdFile: ../crd.yaml` (the shared
+   CRD in [`testdata/validate/`](./testdata/validate/)) and only include the fields relevant to what you are
+   testing.

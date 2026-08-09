@@ -153,15 +153,7 @@ Examples:
 		builtIn := 0
 		custom := 0
 
-		if k.IsDeprecated() {
-			fmt.Printf("%s  This pattern is deprecated.\n", yellow("⚠"))
-			if target := k.MigrationTarget(); target != "" {
-				fmt.Printf("  Migrate to:  %s\n", bold(target))
-			}
-			if msg := k.MigrationMessage(); msg != "" {
-				fmt.Printf("  Message:     %s\n", msg)
-			}
-		}
+		printKatalogDeprecation(k.Deprecation())
 
 		// Print each CRD entry with enrichment info
 		for _, entry := range sortedEntries {

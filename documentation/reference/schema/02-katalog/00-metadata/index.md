@@ -19,9 +19,15 @@ metadata:
     - stateful
     - aws
   createdBy: operator              # optional — affects Control Center UI
-  deprecation:                     # optional
-    migratedTo: postgres-operator:2.0.0
+  deprecation:                     # optional — see deprecation.md
     message: Use postgres-operator instead.
+    migratedTo: postgres-operator:2.0.0
+    timeline:
+      from: "2026-09-01"
+      to:   "2027-03-01"
+    accept:
+      beforeEol: true
+      eol: true
 ```
 
 ---
@@ -64,18 +70,9 @@ Keywords for categorising the Katalog in the Orkestra Registry. Aid discovery vi
 
 ### `deprecation`
 
-Marks this Katalog as deprecated. When set, `ork validate`, `ork inspect`, and `ork patterns` display a warning.
+Marks this Katalog as deprecated. Surfaced at `ork push`, `ork validate`, `ork inspect`, and `ork pull`. The `accept` sub-block controls runtime startup enforcement.
 
-```yaml
-deprecation:
-  migratedTo: postgres-operator:2.0.0   # optional — replacement pattern and version
-  message: Use postgres-operator instead.  # human-readable reason
-```
-
-| Field | Description |
-|-------|-------------|
-| `migratedTo` | Replacement pattern in `<name>:<version>` format |
-| `message` | Shown in warnings and `ork inspect` output |
+See [deprecation.md](./deprecation.md) for the full field list, display states, enforcement rules, and examples.
 
 ## projects
 
@@ -85,6 +82,7 @@ Internal field injected by `ork-doctor` at generation time. Holds developer-side
 
 ## See also
 
-- [01-top-level.md](01-top-level.md) — full Katalog wire format
-- [ork inspect](../../cli/11-inspect.md) — displays metadata fields
-- [ork push](../../cli/09-push.md) — uses `name` and `version` as the artifact tag
+- [01-top-level.md](../01-top-level.md) — full Katalog wire format
+- [deprecation.md](./deprecation.md) — deprecation timeline, accept gates, OCI annotations
+- [ork inspect](../../../cli/11-inspect.md) — displays metadata fields
+- [ork push](../../../cli/09-push.md) — uses `name` and `version` as the artifact tag

@@ -21,7 +21,7 @@ This document covers the lifecycle of one pattern — from first write to deprec
 | **Inspect** | `ork inspect` — proof is visible before pulling, before importing |
 | **Consume** | `ork pull` — artifact arrives with its proof |
 | **Upgrade** | Version bump in the Komposer — same push pipeline, same gates |
-| **Deprecate** | `metadata.deprecation` — warning travels with the artifact to every consumer |
+| **Deprecate** | `metadata.deprecation` — author sees it at `ork push`; consumers at `ork inspect`, `ork pull`, `ork validate`; `ork run`/`ork gate` enforce `accept` |
 | **Delete** | `security.deletionProtection` — webhook blocks `kubectl delete` on CRs, CRDs, and Orkestra infrastructure |
 
 ---
@@ -79,7 +79,10 @@ ork push database:v1.0.0 ./database/
 | `io.orkestra.e2e.assertions` | Total expectations |
 | `io.orkestra.katalog.typed` | Whether a custom runtime is required |
 | `io.orkestra.deprecated` | Lifecycle status |
-| `io.orkestra.deprecated.migrated_to` | Migration target |
+| `io.orkestra.deprecated.message` | Deprecation message |
+| `io.orkestra.katalog.deprecated.migrated_to` | Migration target |
+| `io.orkestra.katalog.deprecated.timeline_from` | Deprecation window open date |
+| `io.orkestra.katalog.deprecated.timeline_to` | End-of-life date |
 
 The artifact is self-describing. A consumer reads its proof before pulling.
 
@@ -123,11 +126,37 @@ The same push pipeline runs. The new artifact carries its own simulation and e2e
 metadata:
   name: database
   deprecation:
-    migratedTo: database:v2.0.0
     message: "Use v2.0.0 — improved connection pooling and status reporting"
+    migratedTo: database:v2.0.0
+    timeline:
+      from: "2026-09-01"   # deprecation window opens — warning with countdown
+      to:   "2027-03-01"   # end of life
 ```
 
-The deprecation is part of the artifact. Every consumer who runs `ork inspect`, `ork validate`, or `ork patterns` sees the warning and the migration target. The pattern remains in the registry for compatibility — it is not deleted — but it is clearly marked at every touchpoint.
+The deprecation is part of the artifact. It is surfaced at every touchpoint — and the author sees it first: `ork push` shows the exact warning consumers will see, immediately after the katalog is validated and before the artifact is uploaded. After that, `ork validate`, `ork inspect`, and `ork pull` all surface the same state-aware warning. The state is computed from today vs the timeline:
+
+| Condition | Shown as |
+|-----------|----------|
+| No `timeline`, or `today < from` | ⚠ Deprecated |
+| `from ≤ today < to` | ⚠ Deprecated · N days until EOL |
+| `today ≥ to` | ✗ END OF LIFE |
+
+The pattern remains in the registry for compatibility — it is not deleted — but it is clearly marked at every touchpoint. `ork validate` enforces that `message` is present and that `from` is strictly before `to`.
+
+**Runtime enforcement** — `ork run` and `ork gate` refuse to start a deprecated or EOL Katalog unless the operator has explicitly acknowledged it in the file:
+
+```yaml
+deprecation:
+  accept:
+    beforeEol: true   # allows startup during the deprecation warning window
+    eol: true         # additionally required after the end-of-life date
+```
+
+This makes the decision to run a deprecated pattern a visible, reviewable record in the Katalog itself — not a flag in a deploy script. `eol: true` without `beforeEol: true` is not accepted; both must be set to run past the EOL date.
+
+The separation is deliberate: `ork validate` is a pre-flight tool and shows warnings without blocking. The enforcement gate lives at runtime startup — after validation passes, before the operator begins reconciling. A PR adding `eol: true` is a traceable, reviewable decision rather than a buried CLI flag.
+
+See the [deprecation schema reference](../../reference/schema/02-katalog/00-metadata/deprecation.md) for the full field list, enforcement table, and OCI annotation mapping.
 
 ---
 

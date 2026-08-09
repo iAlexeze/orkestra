@@ -555,6 +555,12 @@ func artifactMetaToAnnotations(meta *PatternMeta, ref *Ref) map[string]string {
 		if meta.Deprecated.Message != "" {
 			ann["io.orkestra.katalog.deprecated.message"] = meta.Deprecated.Message
 		}
+		if meta.Deprecated.TimelineFrom != "" {
+			ann["io.orkestra.katalog.deprecated.timeline_from"] = meta.Deprecated.TimelineFrom
+		}
+		if meta.Deprecated.TimelineTo != "" {
+			ann["io.orkestra.katalog.deprecated.timeline_to"] = meta.Deprecated.TimelineTo
+		}
 	}
 	if meta.RuntimeVersion != "" {
 		ann["io.orkestra.katalog.runtime_version"] = meta.RuntimeVersion
@@ -623,8 +629,10 @@ func annotationsToMeta(ann map[string]string) *PatternMeta {
 	}
 	if ann["io.orkestra.katalog.deprecated"] == "true" {
 		meta.Deprecated = &PatternDeprecated{
-			MigratedTo: ann["io.orkestra.katalog.deprecated.migrated_to"],
-			Message:    ann["io.orkestra.katalog.deprecated.message"],
+			MigratedTo:   ann["io.orkestra.katalog.deprecated.migrated_to"],
+			Message:      ann["io.orkestra.katalog.deprecated.message"],
+			TimelineFrom: ann["io.orkestra.katalog.deprecated.timeline_from"],
+			TimelineTo:   ann["io.orkestra.katalog.deprecated.timeline_to"],
 		}
 	}
 	meta.RuntimeVersion = ann["io.orkestra.katalog.runtime_version"]

@@ -76,6 +76,11 @@ var pullCmd = &cobra.Command{
 				return fmt.Errorf("extracting to %s: %w", outDir, err)
 			}
 			fmt.Printf("  %s Extracted to %s\n", successMark(), outDir)
+			if spec, err := registry.SpecFor(kind); err == nil {
+				if meta, err := registry.LoadPatternMeta(cacheDir, spec); err == nil && meta.Deprecated != nil {
+					printPatternDeprecation(meta.Deprecated)
+				}
+			}
 			return nil
 		}
 
@@ -86,6 +91,13 @@ var pullCmd = &cobra.Command{
 			pullMotifDeps(cacheDir)
 			notifyTypedPull(cacheDir)
 		}
+
+		if spec, err := registry.SpecFor(kind); err == nil {
+			if meta, err := registry.LoadPatternMeta(cacheDir, spec); err == nil && meta.Deprecated != nil {
+				printPatternDeprecation(meta.Deprecated)
+			}
+		}
+
 		return nil
 	},
 }

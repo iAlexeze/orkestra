@@ -4,17 +4,11 @@ kind: Katalog
 metadata:
   name: bad-enrich-exclusive
   version: 0.1.0
+  description: Tests that enrichAll and enrich are mutually exclusive.
 spec:
   crds:
     widget:
-      apiTypes:
-        group: example.io
-        version: v1alpha1
-        kind: Widget
-        plural: widgets
+      crdFile: ../crd.yaml
       enrichAll: true
       enrich:
         - pods
-      operatorBox:
-        reconciler:
-          workers: 2
