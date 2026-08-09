@@ -35,6 +35,10 @@ const (
 	// FileSimulate is the simulate spec file for a Katalog pattern.
 	FileSimulate = "simulate.yaml"
 
+	// FileIntentYAML and FileIntentJSON are the serve play intent files for a Katalog pattern.
+	FileIntentYAML = "intent.yaml"
+	FileIntentJSON = "intent.json"
+
 	// FileGoMod, FileGoSum, and FileMakefile are the typed operator build files.
 	// Present only in typed (hooks/constructor) patterns.
 	FileGoMod    = "go.mod"

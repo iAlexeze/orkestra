@@ -2,6 +2,13 @@
 
 `allowedNamespaces`/`restrictedNamespaces` answer one question: which namespaces does this CRD exist in at all. Every caller gets the same answer — it's a property of the CRD, not of who's asking. `serve.tokens` answers a different question: which caller can do what, and where. Two tokens against the same CRD can have different answers — a `ci-pipeline` token allowed to create in `staging` but not touch `production`; a `security-audit` token that's read-only everywhere. This is authorization scoped to the caller's identity, layered on top of namespace protection, not a replacement for it.
 
+Authentication (proving who you are) and authorization (what you're allowed to do) are distinct steps. The gateway supports two authentication modes:
+
+- **Static tokens** — a pre-shared bearer value from a Kubernetes Secret or environment variable.
+- **OIDC tokens** — a short-lived JWT issued by GitHub Actions, GitLab CI, or any OIDC provider. No stored secret; the token is verified against the provider's public JWKS. The verified `sub` claim is stamped on the CR as `orkestra.orkspace.io/serve-source`.
+
+Both authenticate to the same `gateway.api.auth.tokens` list and are subject to the same `serve.tokens` authorization rules below. The authentication mode is invisible to authorization — a token entry named `github-ci` behaves identically to one named `ci-pipeline` from the permission-check perspective.
+
 ---
 
 ## Two independent layers
@@ -33,6 +40,56 @@ serve:
 `ci-pipeline` can create and update `App` CRs in `staging` — and nowhere else, not even if it later gets used against a different CRD that also lists it, since permissions are declared per CRD, not globally. `security-audit` can read (not write) in both namespaces. Neither is a namespace-watch rule — the runtime still watches whatever `allowedNamespaces` says regardless of which tokens exist.
 
 A CRD with no `serve.tokens` block places no restriction here — any token valid at the gateway level (`gateway.api.auth.tokens`) can call any endpoint the Gateway API exposes for that CRD, subject only to namespace protection.
+
+---
+
+## Per-entry token scoping (aliases)
+
+When a CRD uses the `serve.target` map form, each entry — primary or alias — can declare its own `tokens:` block. Entry-level tokens override the CRD-level `serve.tokens` for callers reaching that surface. The resolution chain for every request is:
+
+```text
+entry tokens  →  serve.tokens (CRD default)  →  allow all
+```
+
+A token absent from the entry's map is denied at that surface, even if it is valid at the CRD level. Aliases can only *narrow* access, never widen it.
+
+```yaml
+serve:
+  enabled: true
+  # CRD-level fallback — applies to any entry that declares no tokens:
+  tokens:
+    control-center:
+      permissions:
+        global: ["*"]
+    ci-pipeline:
+      permissions:
+        resources: [get, list]
+        schema: [get]
+
+  target:
+    app:
+      primary: true
+      # No tokens: declared — inherits CRD-level serve.tokens above.
+      # Both control-center and ci-pipeline can reach the primary surface.
+
+    preview:
+      tokens:
+        # Only control-center — ci-pipeline is denied even though it has CRD access.
+        control-center:
+          permissions:
+            global: [get, list]
+
+    internal:
+      tokens:
+        # Separate token for internal tooling — not listed at the CRD level at all.
+        # The internal entry declares it here; serve.tokens fallback is not used.
+        platform-team:
+          namespaces: ["production"]
+          permissions:
+            global: ["*"]
+```
+
+`ork validate` checks every token name in every entry's `tokens:` block — a name not in `gateway.api.auth.tokens` is a hard error regardless of which entry declares it.
 
 ---
 
@@ -78,8 +135,33 @@ The three denial reasons — unknown token (not in `serve.tokens` at all), names
 
 ---
 
+## Testing tokens locally
+
+`ork token` lets you work with `gateway.api.auth.tokens` entries without a running cluster.
+
+```bash
+# see all configured entries
+ork token list
+
+# verify a JWT locally — fetches real JWKS, checks claims
+ork token verify -t token.jwt
+
+# probe the OIDC discovery endpoint for a named entry
+ork token probe -n vault-ci
+
+# test against a live gateway (via ork proxy)
+ork token verify --api http://localhost:8443 -t token.jwt
+```
+
+`ork token verify` local mode calls the same signature verification and claim-matching logic the gateway uses at request time. A token that passes locally will pass at the gateway.
+
+→ [ork token reference](../reference/cli/15-token.md)
+
+---
+
 ## Where to go next
 
 - **[Namespace protection](05-namespace-protection.md)** — the CRD-level layer this sits on top of
 - **[Gateway API reference](../reference/schema/02-katalog/17-gateway-api.md#servetokens--fine-grained-permissions)** — full `serve.tokens` field reference
 - **[The Serve Concept](../concepts/idp/)** — what the Gateway API is for, target mode
+- **[Aliases and Intent Provenance](../concepts/idp/04-aliases-and-provenance.md)** — per-alias token scoping, admission gating, reconcile routing

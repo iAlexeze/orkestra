@@ -37,7 +37,9 @@ func TestBuildCRFromTarget(t *testing.T) {
 			Group: "platform.myorg.io", Version: "v1", Kind: "App",
 		},
 		Serve: &orktypes.ServeConfig{
-			Target:    "app",
+			Target: orktypes.ServeTargetValue{Entries: map[string]*orktypes.ServeTargetConfig{
+				"app": {Primary: true},
+			}},
 			Name:      `{{ .repository | repoSlug }}`,
 			Namespace: `{{ .team }}-{{ .environment }}`,
 			Fields: map[string]orktypes.ServeFieldConfig{

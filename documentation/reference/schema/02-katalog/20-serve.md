@@ -215,7 +215,9 @@ Without any `serve:` block on the CRD entry, the CRD is not exposed via the Gate
 
 ## `serve.target`
 
-A caller-facing identifier for the CRD, decoupled from the Kubernetes kind. Callers use this in target mode instead of constructing a full CR.
+`serve.target` is the caller-facing identifier for the CRD, decoupled from the Kubernetes kind. It accepts a scalar string or a named map.
+
+**Scalar shorthand** — single primary target, no aliases:
 
 ```yaml
 serve:
@@ -223,16 +225,78 @@ serve:
   target: smartapp   # callers use this, not "AppRequest"
 ```
 
-When omitted, defaults to the lowercased kind (e.g., `AppRequest` → `apprequest`). Validated for uniqueness at `ork validate` time.
+When omitted, defaults to the lowercased kind (`AppRequest` → `apprequest`).
 
-**Caller usage:**
+**Map form** — primary entry plus optional aliases. Exactly one entry must have `primary: true`:
+
+```yaml
+serve:
+  enabled: true
+  target:
+    smartapp:
+      primary: true
+    preview:
+      enabled: true           # default; omit to keep it simple
+      include: ./serve/aliases/preview.yaml
+    legacy:
+      enabled: false          # surface closed; config still present
+      tokens:
+        platform-team:
+          permissions:
+            global: [get, list]
+```
+
+### `serve.target.<name>` field reference
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `primary` | bool | `false` | Marks this as the primary entry. Exactly one entry must be `true`. `ork validate` enforces this. |
+| `enabled` | bool | `true` | When `false`, this surface is invisible to callers and the schema catalog. Returns the same error as an unknown target — no signal leaks. The primary's config authority remains active even when disabled. |
+| `include` | string | — | Path **relative to the katalog file** to a YAML file with `tokens:` and/or `config:` keys. Resolved at load time; inline fields take precedence on merge. |
+| `tokens` | map | — | Per-entry token restrictions. Same shape as `serve.tokens`. When set, only tokens listed here may access this surface. A token absent from this map is denied even if allowed at the CRD level. |
+| `config.response` | object | — | Same `default`, `payload`, `exclude`, and `poll` sub-fields as `serve.config.response`. Overrides the CRD-level response for callers on this surface. |
+
+### `include:` file location
+
+`include:` paths are resolved relative to the **katalog file**, not the calling template. A common convention:
+
+```text
+katalog.yaml
+serve/
+  aliases/
+    preview.yaml      ← include: ./serve/aliases/preview.yaml
+    internal.yaml     ← include: ./serve/aliases/internal.yaml
+```
+
+An include file may contain `tokens:` and `config:` at the top level:
+
+```yaml
+# ./serve/aliases/preview.yaml
+tokens:
+  control-center:
+    permissions:
+      global: [get, list]
+
+config:
+  response:
+    default: false
+    payload:
+      phase: '{{ .status.phase }}'
+      alias: '{{ getServeAlias . }}'
+```
+
+### Caller usage
 
 ```bash
-# Target mode — use the target
+# Target mode — primary target
 curl -X POST /api/v1/apply \
   -d '{"target": "smartapp", "repository": "...", "image": "..."}'
 
-# Full CR mode — still works
+# Target mode — alias
+curl -X POST /api/v1/apply \
+  -d '{"target": "preview", "repository": "...", "image": "..."}'
+
+# Full CR mode — still works regardless
 curl -X POST /api/v1/apply \
   -d '{"apiVersion": "platform.myorg.io/v1", "kind": "AppRequest", ...}'
 ```
@@ -481,7 +545,273 @@ ci-pipeline:
     key: token
 ```
 
+## `serve.target` — target map
+
+`serve.target` accepts either a scalar shorthand or a named map. In the map form, every entry is either the primary (exactly one with `primary: true`) or an alias. Both share the same field shape and merge rules.
+
+### Scalar shorthand
+
+```yaml
+serve:
+  enabled: true
+  target: apifixture
+```
+
+Equivalent to the map form with one primary entry and no aliases. `serve.tokens` and `serve.config` at the CRD level apply to all callers.
+
+### Map form — primary and aliases
+
+```yaml
+serve:
+  enabled: true
+  target:
+    apifixture:
+      primary: true
+    preview:
+      include: ./serve/aliases/preview.yaml
+    internal:
+      tokens:
+        platform-team:
+          permissions:
+            global: ["*"]
+      config:
+        response:
+          default: false
+          payload:
+            alias: '{{ getServeAlias . }}'
+            target: '{{ getServeTarget . }}'
+  # CRD-level fallback — used by any entry that does not declare its own
+  tokens:
+    control-center:
+      permissions:
+        global: ["*"]
+  config:
+    response:
+      default: true
+      payload:
+        phase: '{{ .status.phase }}'
+```
+
+### `serve.target.<name>` fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `primary` | bool | Marks this as the primary entry. Exactly one entry must set this to `true`. Validated by `ork validate`. |
+| `enabled` | bool (default: true) | When `false`, this surface is closed to callers and hidden from the schema catalog. The primary's config authority (namespace resolution, fallback tokens) remains active regardless. |
+| `include` | string | Path **relative to the katalog file** to a YAML file with `tokens:` and/or `config:` keys. Resolved at load time. Inline fields take precedence on merge. |
+| `tokens` | map | Per-entry token restrictions — same shape as `serve.tokens`. When set, only tokens listed here are checked for access to this surface. |
+| `config.response` | object | Same `default`, `payload`, `exclude`, and `poll` fields as `serve.config.response`. |
+
+### `include:` files for target entries
+
+An entry's `include:` path is resolved relative to the katalog file, not the calling file. The referenced file may contain `tokens:` and `config:` at the top level:
+
+```yaml
+# ./serve/aliases/preview.yaml
+#
+# Path: relative to katalog.yaml, so katalog.yaml alongside serve/aliases/ resolves correctly.
+tokens:
+  control-center:
+    permissions:
+      global: [get, list]
+
+config:
+  response:
+    default: false
+    payload:
+      phase: '{{ .status.phase }}'
+      alias: '{{ getServeAlias . }}'
+      workloadType: '{{ .spec.workloadType }}'
+```
+
+Inline fields in the katalog always take precedence over included fields.
+
+### Token resolution
+
+Permissions resolve through a three-layer chain, most specific first:
+
+1. **Entry tokens** — when `target.<name>.tokens` is declared, only those entries are checked.
+2. **CRD tokens** — when no entry tokens are declared, `serve.tokens` (CRD-level) applies.
+3. **Allow all** — when neither level restricts, all valid gateway tokens are allowed.
+
+A token absent from an entry's `tokens` map is denied for that surface even if it is declared in `gateway.api.auth.tokens` and allowed at the CRD level.
+
+### `enabled: false` — closing a surface
+
+Setting `enabled: false` on any entry makes it invisible to callers and the schema catalog. It returns the same response as an unknown target — no signal leaks. The primary entry may be disabled; its config authority (namespace template, CRD-level token fallback) still applies to enabled aliases.
+
+```yaml
+target:
+  apifixture:
+    primary: true
+    enabled: false   # primary surface closed — callers must use a named alias
+  internal:
+    tokens:
+      platform-team:
+        permissions:
+          global: ["*"]
+```
+
+`ork validate` warns when all surfaces are disabled — the CRD is unreachable.
+
+### Intent provenance
+
+Every CR applied through the gateway receives three annotations stamped by the apply handler:
+
+| Annotation | Value |
+|---|---|
+| `orkestra.orkspace.io/serve-target` | The primary serve target (e.g. `apifixture`) |
+| `orkestra.orkspace.io/serve-alias` | The alias name, or `""` for the primary target |
+| `orkestra.orkspace.io/serve-source` | Verified OIDC `sub` claim of the caller, or `""` for static token auth |
+
+Three notes expose these in operatorBox templates, response payloads, and `when:` conditions:
+
+| Note | Returns |
+|------|---------|
+| `getServeTarget .` | Primary target name — always set |
+| `getServeAlias .` | Alias name — `""` when applied via primary target |
+| `getServeSource .` | Caller identity — set when auth was via an OIDC token |
+
+`getServeAlias` in a `when:` condition lets the operatorBox route to different child resources depending on which surface delivered the intent:
+
+```yaml
+onReconcile:
+  custom:
+    # Full production Application — primary target and internal alias only
+    - apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: "{{ .metadata.name }}"
+        namespace: argocd
+      when:
+        - field: '{{ ne (getServeAlias .) "preview" }}'
+          equals: "true"
+
+    # Lightweight preview Application — preview alias only
+    - apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: "{{ .metadata.name }}-preview"
+        namespace: argocd
+      when:
+        - field: '{{ eq (getServeAlias .) "preview" }}'
+          equals: "true"
+```
+
+### Validation
+
+`ork validate` checks:
+- Exactly one entry has `primary: true` in the map form
+- Every entry name is a valid DNS label (`[a-z0-9-]+`)
+- No entry name collides with a primary or alias on another CRD in the katalog
+- Every token in an entry `tokens:` block exists in `gateway.api.auth.tokens`
+- When `serve.tokens` is declared, entry tokens must be a subset of it
+- Warning when primary surface is disabled and no enabled aliases are declared
+
+### `ork serve validate --full`
+
+```text
+● platRsc
+  target: apifixture  /  kind: PlatformResource
+  aliases:   2
+    · internal  (1 token, custom response)
+    · preview   (1 token, custom response)
+```
+
+---
+
+## `gateway.api.auth.tokens`
+
+Each entry must declare exactly one credential source: `token`, `secretRef`, `githubOIDC`, `gitlabOIDC`, `vaultOIDC`, or `oidc`.
+
+### Static token sources
+
+```yaml
+gateway:
+  api:
+    auth:
+      tokens:
+        # env var reference — resolved at gateway startup
+        - name: control-center
+          token: "${CONTROL_CENTER_TOKEN}"
+
+        # secretRef — gateway creates the Secret if absent; rotates after 90 days
+        - name: ci-pipeline
+          secretRef:
+            name: ci-pipeline-token
+            key: token
+            rotateAfter: 90d
+```
+
+### OIDC token sources
+
+Short-lived JWTs issued by GitHub Actions, GitLab CI, or any OIDC-compliant provider. No stored secret — the token is verified against the provider's public JWKS on every request.
+
+```yaml
+gateway:
+  api:
+    auth:
+      tokens:
+        # GitHub Actions — issuer hardcoded to token.actions.githubusercontent.com
+        - name: github-payments-ci
+          githubOIDC:
+            allow:
+              repository: myorg/payments      # must match exactly
+              ref: refs/heads/main            # main branch only
+              environment: production         # optional — gates prod-deploy jobs
+
+        # GitLab CI — issuer hardcoded to gitlab.com
+        - name: gitlab-infra-ci
+          gitlabOIDC:
+            allow:
+              namespacePath: mygroup/infra
+              refProtected: "true"
+
+        # HashiCorp Vault — discovery via {url}/v1/identity/oidc
+        - name: vault-platform-ci
+          vaultOIDC:
+            url: https://vault.myorg.io       # required — Vault server URL
+            namespace: platform               # optional — Vault Enterprise namespace
+            audience: orkestra                # optional
+            allow:
+              entityName: ci-agent            # Vault entity name
+              entityID: ""                    # Vault entity UUID (stable)
+              namespace: platform             # Vault namespace of the entity
+
+        # Generic OIDC — any provider following the discovery standard
+        - name: internal-ci
+          oidc:
+            issuer: https://auth.myorg.io     # required for generic oidc
+            audience: orkestra                # optional
+            allow:
+              sub: "system:serviceaccount:ci:runner"
+```
+
+`allow` fields work as an AND filter — all declared fields must match the verified JWT claims. Undeclared fields are not checked. An empty `allow` block accepts any valid token from that issuer.
+
+When an OIDC token matches, the verified `sub` claim is stamped on the CR as `orkestra.orkspace.io/serve-source` — available in templates via `getServeSource .`.
+
+### `gateway.api.auth.tokens` validation
+
+`ork validate` enforces token format at static analysis time:
+
+| Rule | Error |
+|------|-------|
+| Exactly one source field per entry | Must set one of: `token`, `secretRef`, `githubOIDC`, `gitlabOIDC`, `vaultOIDC`, `oidc` |
+| `token:` must be `${ENV_VAR}` | Literal values rejected — use `extraEnv` in Helm |
+| `secretRef:` must supply `name` and `key` | Missing field reported |
+| `oidc.issuer` required for generic `oidc` | Use a named preset for providers with hardcoded issuers |
+| `githubOIDC.allow` must not be empty | Declare at least one field — empty block accepts any GitHub Actions token |
+| `gitlabOIDC.allow` must not be empty | Declare at least one field — empty block accepts any GitLab CI token |
+| `vaultOIDC.url` required | Set to the Vault server URL |
+| `vaultOIDC.allow` must not be empty | Declare at least one field — empty block accepts any Vault entity token |
+| Duplicate token names | Reported at first duplicate |
+
 ## See also
-**Conceptual overview:** → [idp](../../../concepts/idp/)
+
+- **Conceptual overview:** → [idp](../../../concepts/idp/)
+- **Aliases and intent provenance:** → [concepts/idp/04-aliases-and-provenance.md](../../../concepts/idp/04-aliases-and-provenance.md)
+- **Token scoping:** → [concepts/idp/03-token-scoping.md](../../../concepts/idp/03-token-scoping.md)
+- **CLI reference:** → [ork serve](../../cli/13-serve.md) — validate, inspect targets, tokens, response config, and aliases without a cluster
 
 **Gateway API:** → [gateway-api](17-gateway-api.md)

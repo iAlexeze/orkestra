@@ -1,6 +1,8 @@
 // pkg/types/katalog.go
 package types
 
+import "time"
+
 // GatewayConfig declares how the Orkestra gateway is deployed for this Katalog.
 //
 // YAML shape:
@@ -67,7 +69,7 @@ type APIAuth struct {
 }
 
 // APIToken is one bearer token entry.
-// Exactly one of SecretRef or Token must be set.
+// Exactly one of Token, SecretRef, GitHubOIDC, GitLabOIDC, VaultOIDC, or OIDC must be set.
 type APIToken struct {
 	// Name is a human-readable identifier used in logs and audit output.
 	Name string `yaml:"name" json:"name"`
@@ -82,6 +84,25 @@ type APIToken struct {
 	// Set the variable via extraEnv in the gateway and controlCenter Helm values.
 	// Literal values are not accepted.
 	Token string `yaml:"token,omitempty" json:"token,omitempty"`
+
+	// GitHubOIDC authenticates callers via GitHub Actions OIDC tokens.
+	// No secret is required — the gateway verifies the JWT signature against
+	// GitHub's public JWKS and matches the claims in the allow block.
+	GitHubOIDC *GitHubOIDC `yaml:"githubOIDC,omitempty" json:"githubOIDC,omitempty"`
+
+	// GitLabOIDC authenticates callers via GitLab CI OIDC tokens.
+	GitLabOIDC *GitLabOIDC `yaml:"gitlabOIDC,omitempty" json:"gitlabOIDC,omitempty"`
+
+	// VaultOIDC authenticates callers via HashiCorp Vault OIDC tokens.
+	// The caller authenticates to Vault first (via any Vault auth method), then
+	// presents a Vault-issued OIDC token to the gateway. No stored secret needed.
+	// The gateway discovers the JWKS via {url}/v1/identity/oidc/.well-known/openid-configuration.
+	VaultOIDC *VaultOIDC `yaml:"vaultOIDC,omitempty" json:"vaultOIDC,omitempty"`
+
+	// OIDC authenticates callers via any OIDC-compliant identity provider.
+	// Issuer is required; the gateway discovers the JWKS URI via
+	// {issuer}/.well-known/openid-configuration.
+	OIDC *OIDCToken `yaml:"oidc,omitempty" json:"oidc,omitempty"`
 }
 
 // APISecretRef locates a Kubernetes Secret that holds a bearer token.
@@ -251,10 +272,30 @@ type KatalogMeta struct {
 	Deprecation *KatalogDeprecation `yaml:"deprecation,omitempty" json:"deprecation,omitempty"`
 }
 
+// DeprecationTimeline sets the date window for deprecation display.
+// Both fields are YYYY-MM-DD strings.
+type DeprecationTimeline struct {
+	From string `yaml:"from,omitempty" json:"from,omitempty"` // warn from this date
+	To   string `yaml:"to,omitempty"   json:"to,omitempty"`   // EOL on this date
+}
+
+// DeprecationAccept records explicit operator acknowledgement that a deprecated
+// or EOL katalog is intentionally kept running.
+type DeprecationAccept struct {
+	// BeforeEol allows ork run / ork gate to start while the pattern is in the
+	// deprecation warning window (from ≤ today < to, or no timeline).
+	BeforeEol bool `yaml:"beforeEol,omitempty" json:"beforeEol,omitempty"`
+	// Eol allows ork run / ork gate to start after the pattern has passed its
+	// end-of-life date (today ≥ to). Requires BeforeEol to also be true.
+	Eol bool `yaml:"eol,omitempty" json:"eol,omitempty"`
+}
+
 // KatalogDeprecation carries deprecation guidance for registry consumers.
 type KatalogDeprecation struct {
-	MigratedTo string `yaml:"migratedTo,omitempty" json:"migratedTo,omitempty"`
-	Message    string `yaml:"message,omitempty"    json:"message,omitempty"`
+	Timeline   *DeprecationTimeline `yaml:"timeline,omitempty"   json:"timeline,omitempty"`
+	Accept     *DeprecationAccept   `yaml:"accept,omitempty"     json:"accept,omitempty"`
+	MigratedTo string               `yaml:"migratedTo,omitempty" json:"migratedTo,omitempty"`
+	Message    string               `yaml:"message,omitempty"    json:"message,omitempty"`
 }
 
 // IsDeprecated indicates that this katalog is deprecated and should surface
@@ -263,7 +304,7 @@ func (d *KatalogDeprecation) IsDeprecated() bool {
 	if d == nil {
 		return false
 	}
-	return d.MigratedTo != "" || d.Message != ""
+	return d.MigratedTo != "" || d.Message != "" || d.Timeline != nil
 }
 
 // MigrationTarget returns the value of the MigratedTo field.
@@ -275,13 +316,103 @@ func (d *KatalogDeprecation) MigrationTarget() string {
 	return d.MigratedTo
 }
 
-// Message returns the deprecation message.
+// MigrationMessage returns the deprecation message.
 // If the deprecation block is nil or empty, it returns an empty string.
 func (d *KatalogDeprecation) MigrationMessage() string {
 	if d == nil {
 		return ""
 	}
 	return d.Message
+}
+
+// DeprecationState returns "none", "warning", or "eol" based on today vs the
+// timeline. Returns "warning" when no timeline is set and the block is present
+// (legacy behaviour — always show warning if deprecated is declared).
+func (d *KatalogDeprecation) DeprecationState(today time.Time) string {
+	if d == nil {
+		return "none"
+	}
+	t := d.Timeline
+	if t == nil {
+		if d.IsDeprecated() {
+			return "warning"
+		}
+		return "none"
+	}
+	const layout = "2006-01-02"
+	todayDate := today.Truncate(24 * time.Hour)
+	if t.From != "" {
+		from, err := time.Parse(layout, t.From)
+		if err == nil && todayDate.Before(from) {
+			return "none"
+		}
+	}
+	if t.To != "" {
+		to, err := time.Parse(layout, t.To)
+		if err == nil && !todayDate.Before(to) {
+			return "eol"
+		}
+	}
+	return "warning"
+}
+
+// TimelineFrom returns the timeline.from date string, or empty if not set.
+func (d *KatalogDeprecation) TimelineFrom() string {
+	if d == nil || d.Timeline == nil {
+		return ""
+	}
+	return d.Timeline.From
+}
+
+// TimelineTo returns the timeline.to date string, or empty if not set.
+func (d *KatalogDeprecation) TimelineTo() string {
+	if d == nil || d.Timeline == nil {
+		return ""
+	}
+	return d.Timeline.To
+}
+
+// HasTimeline reports whether a timeline block is present with at least one date.
+func (d *KatalogDeprecation) HasTimeline() bool {
+	if d == nil || d.Timeline == nil {
+		return false
+	}
+	return d.Timeline.From != "" || d.Timeline.To != ""
+}
+
+// DaysUntilEOL returns how many days remain until timeline.to, or -1 if not set.
+func (d *KatalogDeprecation) DaysUntilEOL(today time.Time) int {
+	if d == nil || d.Timeline == nil || d.Timeline.To == "" {
+		return -1
+	}
+	to, err := time.Parse("2006-01-02", d.Timeline.To)
+	if err != nil {
+		return -1
+	}
+	days := int(to.Truncate(24*time.Hour).Sub(today.Truncate(24*time.Hour)).Hours() / 24)
+	if days < 0 {
+		return 0
+	}
+	return days
+}
+
+// AcceptsBeforeEol reports whether the operator has acknowledged running this
+// pattern during the deprecation warning window.
+func (d *KatalogDeprecation) AcceptsBeforeEol() bool {
+	if d == nil || d.Accept == nil {
+		return false
+	}
+	return d.Accept.BeforeEol
+}
+
+// AcceptsEol reports whether the operator has acknowledged running this pattern
+// after it has passed its end-of-life date. Both accept.beforeEol and accept.eol
+// must be true.
+func (d *KatalogDeprecation) AcceptsEol() bool {
+	if d == nil || d.Accept == nil {
+		return false
+	}
+	return d.Accept.BeforeEol && d.Accept.Eol
 }
 
 // KatalogSources declares where to load CRD definitions from.

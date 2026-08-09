@@ -153,7 +153,12 @@ Two auth modes are documented as follow-on contributions. See [contributing-cont
 
 ### OIDC
 
-The gateway validates the `Authorization: Bearer` token against an OIDC issuer. The CC can use the user's existing OIDC session as the Gateway API credential — no separate token needed. The caller identity becomes the OIDC subject claim.
+The gateway validates the `Authorization: Bearer` token against an OIDC issuer — GitHub Actions, GitLab CI, or any OIDC-compliant provider. No static secret is required; the token is verified against the provider's public JWKS. The caller identity is the verified `sub` claim.
+
+Implemented in `pkg/gateway/oidc`. Wired into the auth middleware as a second lookup path: if the bearer value is a JWT, it goes through OIDC verification; if it is a static string, it goes through the existing bearer map lookup.
+
+→ [OIDC package](../../oidc/README.md) — cache, verification, and claim matching  
+→ [OIDC token types](../../../../pkg/types/types_oidc_token.go) — `GitHubOIDC`, `GitLabOIDC`, `OIDCToken` and `APIToken` methods
 
 ### Service account token review
 

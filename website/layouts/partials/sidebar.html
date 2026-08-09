@@ -71,9 +71,34 @@
                             {{ if $subSubChildren }}
                             <ul class="sidebar-subsubsection-pages" role="list">
                               {{ range sort $subSubChildren "Weight" "asc" }}
+                              {{ if .IsSection }}
+                                {{ $l4Active := or (eq $currentPage .) ($currentPage.IsDescendant .) }}
+                                {{ $l4Children := .RegularPages }}
+                                {{ range .Sections }}{{ $l4Children = $l4Children | append . }}{{ end }}
+                                <li class="sidebar-l4section{{ if $l4Active }} open{{ end }}">
+                                  <div class="sidebar-l4section-header">
+                                    <a href="{{ .RelPermalink }}" class="sidebar-link sidebar-link--deep{{ if $l4Active }} active{{ end }}">{{ .LinkTitle }}</a>
+                                    {{ if $l4Children }}
+                                    <button class="sidebar-l4section-toggle" aria-expanded="{{ if $l4Active }}true{{ else }}false{{ end }}" aria-label="Toggle {{ .Title }}">
+                                      <svg class="chevron" viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 9l-7 7-7-7"/></svg>
+                                    </button>
+                                    {{ end }}
+                                  </div>
+                                  {{ if $l4Children }}
+                                  <ul class="sidebar-l4section-pages" role="list">
+                                    {{ range sort $l4Children "Weight" "asc" }}
+                                    <li>
+                                      <a href="{{ .RelPermalink }}" class="sidebar-link sidebar-link--deeper{{ if eq $currentPage . }} active{{ end }}">{{ .LinkTitle }}</a>
+                                    </li>
+                                    {{ end }}
+                                  </ul>
+                                  {{ end }}
+                                </li>
+                              {{ else }}
                               <li>
                                 <a href="{{ .RelPermalink }}" class="sidebar-link sidebar-link--deep{{ if eq $currentPage . }} active{{ end }}">{{ .LinkTitle }}</a>
                               </li>
+                              {{ end }}
                               {{ end }}
                             </ul>
                             {{ end }}

@@ -64,10 +64,8 @@ func NewClient() (*Client, error) {
 
 // Push validates the directory, auto-detects the pattern kind, and pushes all
 // files to the registry. Returns the manifest digest on success.
-// e2eMeta and simulateMeta are optional; when non-nil their fields are embedded
-// as OCI annotations on the published artifact.
-// typedMeta is optional; when non-nil it is written as typed-operator annotations.
-func (c *Client) Push(ctx context.Context, ref *Ref, dir string, e2eMeta *PatternE2E, simulateMeta *PatternSimulate, typedMeta *PatternTyped, runtimeVersion string, progress func(file string, size int64)) (string, error) {
+// opts carries optional gate metadata embedded as OCI annotations on the published artifact.
+func (c *Client) Push(ctx context.Context, ref *Ref, dir string, opts PushOptions, progress func(file string, size int64)) (string, error) {
 	patternKind, spec, files, err := ValidatePatternDirectory(dir)
 	if err != nil {
 		return "", fmt.Errorf("validation failed: %w", err)
@@ -78,17 +76,20 @@ func (c *Client) Push(ctx context.Context, ref *Ref, dir string, e2eMeta *Patter
 		return "", fmt.Errorf("reading metadata: %w", err)
 	}
 
-	if e2eMeta != nil {
-		meta.E2E = e2eMeta
+	if opts.E2E != nil {
+		meta.E2E = opts.E2E
 	}
-	if simulateMeta != nil {
-		meta.Simulate = simulateMeta
+	if opts.Simulate != nil {
+		meta.Simulate = opts.Simulate
 	}
-	if typedMeta != nil {
-		meta.Typed = typedMeta
+	if opts.Intent != nil {
+		meta.Intent = opts.Intent
 	}
-	if runtimeVersion != "" {
-		meta.RuntimeVersion = runtimeVersion
+	if opts.Typed != nil {
+		meta.Typed = opts.Typed
+	}
+	if opts.RuntimeVersion != "" {
+		meta.RuntimeVersion = opts.RuntimeVersion
 	}
 
 	store := memory.New()
@@ -536,6 +537,15 @@ func artifactMetaToAnnotations(meta *PatternMeta, ref *Ref) map[string]string {
 			ann["io.orkestra.simulate.assertions"] = strconv.Itoa(meta.Simulate.Assertions)
 		}
 	}
+	if meta.Intent != nil {
+		ann["io.orkestra.intent.status"] = meta.Intent.Status
+		if meta.Intent.Target != "" {
+			ann["io.orkestra.intent.target"] = meta.Intent.Target
+		}
+		if meta.Intent.TestedAt != "" {
+			ann["io.orkestra.intent.tested_at"] = meta.Intent.TestedAt
+		}
+	}
 	if meta.Typed != nil {
 		if meta.Typed.HasHooks {
 			ann["io.orkestra.katalog.has_hooks"] = "true"
@@ -554,6 +564,12 @@ func artifactMetaToAnnotations(meta *PatternMeta, ref *Ref) map[string]string {
 		}
 		if meta.Deprecated.Message != "" {
 			ann["io.orkestra.katalog.deprecated.message"] = meta.Deprecated.Message
+		}
+		if meta.Deprecated.TimelineFrom != "" {
+			ann["io.orkestra.katalog.deprecated.timeline_from"] = meta.Deprecated.TimelineFrom
+		}
+		if meta.Deprecated.TimelineTo != "" {
+			ann["io.orkestra.katalog.deprecated.timeline_to"] = meta.Deprecated.TimelineTo
 		}
 	}
 	if meta.RuntimeVersion != "" {
@@ -615,6 +631,13 @@ func annotationsToMeta(ann map[string]string) *PatternMeta {
 			Assertions: n,
 		}
 	}
+	if status := ann["io.orkestra.intent.status"]; status != "" {
+		meta.Intent = &PatternIntent{
+			Status:   status,
+			Target:   ann["io.orkestra.intent.target"],
+			TestedAt: ann["io.orkestra.intent.tested_at"],
+		}
+	}
 	if ann["io.orkestra.katalog.typed"] == "true" {
 		meta.Typed = &PatternTyped{
 			HasHooks:       ann["io.orkestra.katalog.has_hooks"] == "true",
@@ -623,8 +646,10 @@ func annotationsToMeta(ann map[string]string) *PatternMeta {
 	}
 	if ann["io.orkestra.katalog.deprecated"] == "true" {
 		meta.Deprecated = &PatternDeprecated{
-			MigratedTo: ann["io.orkestra.katalog.deprecated.migrated_to"],
-			Message:    ann["io.orkestra.katalog.deprecated.message"],
+			MigratedTo:   ann["io.orkestra.katalog.deprecated.migrated_to"],
+			Message:      ann["io.orkestra.katalog.deprecated.message"],
+			TimelineFrom: ann["io.orkestra.katalog.deprecated.timeline_from"],
+			TimelineTo:   ann["io.orkestra.katalog.deprecated.timeline_to"],
 		}
 	}
 	meta.RuntimeVersion = ann["io.orkestra.katalog.runtime_version"]

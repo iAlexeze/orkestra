@@ -4,6 +4,42 @@ Every example so far has assumed one caller. Real platforms have several: a Cont
 
 ---
 
+## Token sources — static and OIDC
+
+Before getting to what a token can do, it must authenticate. Two mechanisms share the same `gateway.api.auth.tokens` list:
+
+**Static tokens** — a pre-shared bearer value in a Kubernetes Secret or environment variable. Simple, works everywhere.
+
+```yaml
+gateway:
+  api:
+    auth:
+      tokens:
+        - name: ci-pipeline
+          secretRef:
+            name: ork-ci-token
+            key: token
+```
+
+**OIDC tokens** — a short-lived JWT issued by GitHub Actions, GitLab CI, or any OIDC provider. No stored secret needed — the gateway verifies the JWT signature against the provider's public keys on every request. The `allow:` block narrows which JWTs are accepted.
+
+```yaml
+gateway:
+  api:
+    auth:
+      tokens:
+        - name: github-payments-ci
+          githubOIDC:
+            allow:
+              repository: myorg/payments
+              ref: refs/heads/main
+              environment: production   # gates prod-deploy jobs only
+```
+
+Both types appear as named entries in `serve.tokens`. Authorization — what each token may do — is identical regardless of how the caller proved identity. An OIDC token named `github-payments-ci` and a static token named `ci-pipeline` are subject to exactly the same permission checks.
+
+---
+
 ## Without it, every token is equal
 
 `gateway.api.auth.tokens` declares which bearer tokens the gateway accepts at all — but by itself, a valid token can call any endpoint the Gateway API exposes for a CRD. That's fine for a single-caller setup. It stops being fine the moment a CI token and a human-facing Control Center token exist side by side: a leaked CI token, without `serve.tokens`, is exactly as powerful as the token behind your production create button.
@@ -79,3 +115,13 @@ Not a silent drop, not a generic `401`:
 → [Gateway API reference — `serve.tokens`](../../reference/schema/02-katalog/17-gateway-api.md#servetokens--fine-grained-permissions) — fine-grained permissions
 
 → [Namespace protection](../../security/05-namespace-protection.md) — the CRD-level layer every token's `namespaces` list is still bounded by
+
+**Inspect from the CLI:**
+`ork serve tokens --target <t>` — show CRD-level token map · `ork serve tokens --alias <a>` — effective tokens for an alias · `ork serve can-i --token <t> --target <t> --operation <op>` — live permission check
+
+→ [CLI reference — ork serve](../../reference/cli/13-serve.md)
+
+**Test OIDC tokens locally:**
+`ork token verify -t token.jwt` — verify a JWT against the katalog without a cluster, using the same JWKS fetch and claim-matching the gateway uses at request time · `ork token probe -n <name>` — confirm a provider's discovery endpoint is reachable · `ork token list` — see all configured entries at a glance
+
+→ [CLI reference — ork token](../../reference/cli/15-token.md)

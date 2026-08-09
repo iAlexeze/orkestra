@@ -154,4 +154,28 @@ const (
 
 	// CleanupFinalizer ensures cluster-scoped GC runs before a CR is removed.
 	CleanupFinalizer = "orkestra.orkspace.io/cleanup"
+
+	//
+	// ────────────────────────────────────────────────────────────────────────────────
+	//   Serve Provenance Annotations
+	// ────────────────────────────────────────────────────────────────────────────────
+	//
+	// Written by the gateway on every CR it produces. Callers never set these —
+	// the gateway owns them. All three are read by the provenance notes
+	// (getServeTarget, getServeAlias, getServeSource) exposed via the FuncMap.
+
+	// AnnotationServeTarget records the serve target used by the caller.
+	// Example: "smartapp"
+	AnnotationServeTarget = "orkestra.orkspace.io/serve-target"
+
+	// AnnotationServeAlias records the alias used by the caller, when the
+	// request arrived through a named alias rather than the primary target.
+	// Empty when the primary target was used directly.
+	// Example: "public", "internal", "v2"
+	AnnotationServeAlias = "orkestra.orkspace.io/serve-alias"
+
+	// AnnotationServeSource identifies the delivery mechanism.
+	// Empty for direct Gateway API calls. Set by webhook handlers.
+	// Values: "github", "gitlab", "slack", "pagerduty", "generic"
+	AnnotationServeSource = "orkestra.orkspace.io/serve-source"
 )

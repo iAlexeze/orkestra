@@ -46,6 +46,23 @@ func LookupBuiltIn(kind string) EnrichmentResult {
 	}
 }
 
+// LookupBuiltInByGVK looks up a native resource by group, version, and kind.
+// Returns the BuiltInKind and true when found. Used to detect custom: declarations
+// that reference a type Orkestra manages natively (IsChild: true, HookKey set).
+// The version check is lenient — it matches on group+kind and requires that the
+// canonical version matches, preventing false positives on non-Kubernetes GVKs.
+func LookupBuiltInByGVK(group, version, kind string) (BuiltInKind, bool) {
+	res := LookupBuiltIn(kind)
+	if !res.Found {
+		return BuiltInKind{}, false
+	}
+	b := res.BuiltIn
+	if !strings.EqualFold(b.Group, group) {
+		return BuiltInKind{}, false
+	}
+	return b, true
+}
+
 // GVRForBuiltIn returns the GroupVersionResource for a built-in kind.
 func GVRForBuiltIn(kind string) (schema.GroupVersionResource, bool) {
 	res := LookupBuiltIn(kind)

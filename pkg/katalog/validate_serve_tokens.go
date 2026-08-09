@@ -57,10 +57,10 @@ func (k *Katalog) validateServeTokenRestrictions() error {
 			// 1. Token must exist at the gateway level.
 			if _, ok := knownTokens[tokenName]; !ok {
 				return fmt.Errorf(
-					"crd %q: serve.tokens[%q] — token %q is not declared in gateway.api.auth.tokens\n"+
+					"%s crd %q: serve.tokens[%q] — token %q is not declared in gateway.api.auth.tokens\n"+
 						"  Add the token there or remove it from tokens.\n"+
 						"  Available tokens: %s",
-					crdName, tokenName, tokenName, yellow(gatewayTokensStr),
+					failureMark(), crdName, tokenName, tokenName, yellow(gatewayTokensStr),
 				)
 			}
 
@@ -78,9 +78,9 @@ func (k *Katalog) validateServeTokenRestrictions() error {
 				for _, op := range list.ops {
 					if !orktypes.IsValidServeOperation(op) {
 						return fmt.Errorf(
-							"crd %q: serve.tokens[%q].permissions.%s: %q is not a valid operation\n"+
+							"%s crd %q: serve.tokens[%q].permissions.%s: %q is not a valid operation\n"+
 								"  Valid values: get, list, create, update, delete, *",
-							crdName, tokenName, list.name, op,
+							failureMark(), crdName, tokenName, list.name, op,
 						)
 					}
 				}
@@ -92,8 +92,8 @@ func (k *Katalog) validateServeTokenRestrictions() error {
 				for _, op := range list.ops {
 					if seen[op] {
 						return fmt.Errorf(
-							"crd %q: serve.tokens[%q].permissions.%s: %q is listed more than once",
-							crdName, tokenName, list.name, op,
+							"%s crd %q: serve.tokens[%q].permissions.%s: %q is listed more than once",
+							failureMark(), crdName, tokenName, list.name, op,
 						)
 					}
 					seen[op] = true
@@ -106,9 +106,9 @@ func (k *Katalog) validateServeTokenRestrictions() error {
 				for _, op := range perms.Permissions.Schema {
 					if !validSchemaOps[op] {
 						return fmt.Errorf(
-							"crd %q: serve.tokens[%q].permissions.schema: %q is not allowed for schema endpoints\n"+
+							"%s crd %q: serve.tokens[%q].permissions.schema: %q is not allowed for schema endpoints\n"+
 								"  Schema endpoints only support: get, list",
-							crdName, tokenName, op,
+							failureMark(), crdName, tokenName, op,
 						)
 					}
 				}
@@ -143,20 +143,20 @@ func (k *Katalog) validateServeTokenRestrictions() error {
 					for _, op := range classEntry.ops {
 						if op == orktypes.ServeOpAll {
 							return fmt.Errorf(
-								"crd %q: serve.tokens[%q].permissions.%s: %q "+
+								"%s crd %q: serve.tokens[%q].permissions.%s: %q "+
 									"is broader than global permissions %v\n"+
 									"  Set global: [\"*\"] to allow wildcard, or remove \"*\" from %s.",
-								crdName, tokenName, classEntry.name, op,
+								failureMark(), crdName, tokenName, classEntry.name, op,
 								perms.Permissions.Global, classEntry.name,
 							)
 						}
 						if !globalSet[op] {
 							return fmt.Errorf(
-								"crd %q: serve.tokens[%q].permissions.%s: %q "+
+								"%s crd %q: serve.tokens[%q].permissions.%s: %q "+
 									"is not in global permissions %v\n"+
 									"  Class permissions must be a subset of global, "+
 									"or set global to empty for fine-grained mode.",
-								crdName, tokenName, classEntry.name, op,
+								failureMark(), crdName, tokenName, classEntry.name, op,
 								perms.Permissions.Global,
 							)
 						}
@@ -167,9 +167,9 @@ func (k *Katalog) validateServeTokenRestrictions() error {
 			// 6. (Warning) All permissions are empty — token grants nothing.
 			if perms.Permissions.IsEmpty() {
 				crd.Warnings.AddWarning(fmt.Sprintf(
-					"crd %q: serve.tokens[%q] has no permissions declared — "+
+					"%s crd %q: serve.tokens[%q] has no permissions declared — "+
 						"the token can authenticate but cannot perform any operation on this CRD",
-					crdName, tokenName,
+					failureMark(), crdName, tokenName,
 				))
 				k.enabledCRDs[crdName] = crd
 			}
@@ -177,9 +177,9 @@ func (k *Katalog) validateServeTokenRestrictions() error {
 			// 7. (Warning) Namespace restrictions on a cluster-scoped CRD.
 			if !crd.IsNamespaced() && perms.IsNamespaceRestricted() {
 				crd.Warnings.AddWarning(fmt.Sprintf(
-					"crd %q: serve.tokens[%q].namespaces is set but %q is cluster-scoped — "+
+					"%s crd %q: serve.tokens[%q].namespaces is set but %q is cluster-scoped — "+
 						"namespace restrictions are ignored for cluster-scoped resources",
-					crdName, tokenName, crdName,
+					failureMark(), crdName, tokenName, crdName,
 				))
 				k.enabledCRDs[crdName] = crd
 			}
@@ -190,9 +190,9 @@ func (k *Katalog) validateServeTokenRestrictions() error {
 					if !allowedNamespaces[crdName][ns] {
 						allowedList := strings.Join(crd.AllowedNamespaces, ", ")
 						return fmt.Errorf(
-							"crd %q: serve.tokens[%q].namespaces: %q is not in allowedNamespaces\n"+
+							"%s crd %q: serve.tokens[%q].namespaces: %q is not in allowedNamespaces\n"+
 								"  Allowed namespaces: %s",
-							crdName, tokenName, ns, allowedList,
+							failureMark(), crdName, tokenName, ns, allowedList,
 						)
 					}
 				}
@@ -201,9 +201,9 @@ func (k *Katalog) validateServeTokenRestrictions() error {
 					if restrictedNamespaces[crdName][ns] {
 						restrictedList := strings.Join(crd.RestrictedNamespaces, ", ")
 						return fmt.Errorf(
-							"crd %q: serve.tokens[%q].namespaces: %q is in restrictedNamespaces\n"+
+							"%s crd %q: serve.tokens[%q].namespaces: %q is in restrictedNamespaces\n"+
 								"  Restricted namespaces: %s",
-							crdName, tokenName, ns, restrictedList,
+							failureMark(), crdName, tokenName, ns, restrictedList,
 						)
 					}
 				}
@@ -212,50 +212,4 @@ func (k *Katalog) validateServeTokenRestrictions() error {
 	}
 
 	return nil
-}
-
-// validateGatewayTokens ensures no duplicate token names in the gateway config
-func (k *Katalog) validateGatewayTokens() error {
-	if !k.IsGatewayEnabled() || !k.Gateway.HasAPI() || k.Gateway.API.Auth.IsEmpty() {
-		return nil
-	}
-
-	seenTokens := make(map[string]bool)
-	var duplicates []string
-
-	for _, t := range k.Gateway.API.Auth.Tokens {
-		if seenTokens[t.Name] {
-			duplicates = append(duplicates, t.Name)
-		}
-		seenTokens[t.Name] = true
-	}
-
-	if len(duplicates) > 0 {
-		return fmt.Errorf(
-			"gateway.api.auth.tokens: duplicate token names found: %s\n"+
-				"Each token name must be unique",
-			red(strings.Join(duplicates, ", ")),
-		)
-	}
-
-	return nil
-}
-
-// GatewayTokenNames returns the names of all tokens declared in
-// gateway.api.auth.tokens. Returns nil when the gateway is not enabled.
-func (k *Katalog) GatewayTokenNames() []string {
-	if !k.IsGatewayEnabled() {
-		return nil
-	}
-
-	// Gateway is enabled, so API should exist
-	if !k.Gateway.HasAPI() || k.Gateway.API.Auth.IsEmpty() {
-		return nil
-	}
-
-	names := make([]string, 0, len(k.Gateway.API.Auth.Tokens))
-	for _, t := range k.Gateway.API.Auth.Tokens {
-		names = append(names, t.Name)
-	}
-	return names
 }

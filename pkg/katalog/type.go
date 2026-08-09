@@ -50,6 +50,8 @@ type Katalog struct {
 
 	// Indexes for O(1) lookups
 	kindIndex       map[string]string `yaml:"-" json:"-"` // kind -> crd name
+	nameIndex       map[string]string `yaml:"-" json:"-"` // lowercase(map key) -> crd name
+	pluralIndex     map[string]string `yaml:"-" json:"-"` // plural resource name -> crd name
 	apiVersionIndex map[string]string `yaml:"-" json:"-"` // apiVersion -> crd name
 	gvkIndex        map[string]string `yaml:"-" json:"-"` // gvk.String() -> crd name
 	gvrIndex        map[string]string `yaml:"-" json:"-"` // gvr.String() -> crd name
@@ -112,6 +114,11 @@ func (k *Katalog) WithCRDFiles() []string {
 // Metadata returns the Katalog metadata.
 func (k *Katalog) Metadata() orktypes.KatalogMeta {
 	return k.metadata
+}
+
+// Deprecation returns the raw deprecation block, or nil if absent.
+func (k *Katalog) Deprecation() *orktypes.KatalogDeprecation {
+	return k.metadata.Deprecation
 }
 
 // IsDeprecated returns true if the Katalog is deprecated.

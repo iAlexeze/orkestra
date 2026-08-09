@@ -1,0 +1,21 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: gateway-fixture-appgroup
+  description: appGroup (minimal serve) — ApplicationSet created on cycle 1
+
+spec:
+  katalog: ../../katalog.yaml
+  cr: ../../crs/appgroup-basic.yaml
+  cycles: 3
+
+  expect:
+    steady: true
+    noErrors: true
+    crds:
+      appGroup:
+        ops:
+          - cycle: 1
+            verb: create
+            resource: applicationsets
+            name: infra-group

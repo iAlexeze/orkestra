@@ -118,6 +118,7 @@ type CRDInfoResponse struct {
 	// API (serve.target, or the lowercased kind when unset). Empty when serve is
 	// not enabled for this CRD.
 	Target            string                     `json:"target,omitempty"`
+	Aliases           []string                   `json:"aliases,omitempty"`
 	Namespaced        bool                       `json:"namespaced"`
 	Namespace         string                     `json:"namespace"`
 	DependsOn         []string                   `json:"dependsOn,omitempty"`
@@ -269,6 +270,7 @@ func BuildCRDInfoHandler(
 			GVK:               crd.GVKString(),
 			GVR:               crd.GroupVersionResource.String(),
 			Target:            crd.ServeTargetOrEmpty(),
+			Aliases:           crd.AliasNames(),
 			Namespaced:        crd.IsNamespaced(),
 			Namespace:         crd.Namespace,
 			DependsOn:         crd.DependsOn.Names(),
@@ -422,7 +424,8 @@ type CRDSummaryResponse struct {
 	// Target is the identifier callers use against the Gateway API and schema
 	// API (serve.target, or the lowercased kind when unset). Empty when serve is
 	// not enabled for this CRD.
-	Target string `json:"target,omitempty"`
+	Target  string   `json:"target,omitempty"`
+	Aliases []string `json:"aliases,omitempty"`
 }
 
 type OperatorBoxSummary struct {
@@ -546,6 +549,7 @@ func BuildKatalogHandler(
 				ServeEnabled:     crd.ServeEnabled(),
 				RequireServeName: crd.RequireServeName(),
 				Target:           crd.ServeTargetOrEmpty(),
+				Aliases:          crd.AliasNames(),
 				Endpoints: EndpointInfo{
 					Health:        "/katalog/" + strings.ToLower(crd.Name) + "/health",
 					Info:          "/katalog/" + strings.ToLower(crd.Name),

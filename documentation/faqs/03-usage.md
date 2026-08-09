@@ -303,6 +303,79 @@ cd 11-mixed-operator-pattern
 
 ---
 
+## Will my CR be accepted by the webhook?
+
+```bash
+ork gate -f katalog.yaml --cr cr.yaml
+```
+
+Exit code 0 means all deny rules pass. Exit code 1 means at least one deny rule fired — the output names exactly which field and why. No cluster, no deployment, no TLS required.
+
+---
+
+## Why was my CR rejected?
+
+Run `ork gate` against the CR. The output prints every fired rule, the field path, and the message declared in the Katalog:
+
+```text
+  ✗ spec.image  images must come from the internal registry (registry.internal/)
+```
+
+No logs to dig through, no cluster events to inspect.
+
+---
+
+## What defaults will be applied to my CR before it is stored?
+
+`ork gate` previews every mutation that would fire:
+
+```text
+  ↳ spec.replicas     (absent) → 2    default
+  ↳ spec.environment  (absent) → development  default
+  ↳ spec.rateLimit    (absent) → 100  default
+  ✓ 3 mutations would be applied
+```
+
+This is the state the validation webhook sees — and the state the object is stored with — after the mutation webhook runs.
+
+---
+
+## Does `mutateFirst: true` affect which validation rules fire?
+
+Yes, and `ork gate` simulates it. When `mutateFirst: true` is set, `ork gate` applies mutations to a copy of the CR first, then runs validation on the mutated copy — exactly as the real webhook pipeline does. A CR missing a required field can pass validation if a mutation rule fills it in before validation runs.
+
+---
+
+## My CR passes `ork gate` but the webhook still rejects it. Why?
+
+Two rule types are skipped locally:
+
+- `operator: unique` — requires a live informer cache to check whether another CR already holds the value
+- `external: <endpoint>` — requires the external endpoint to be reachable
+
+`ork gate` prints a note for each skipped rule. If your Katalog declares either of these, verify those specific rules against a cluster.
+
+---
+
+## Can I test against multiple CRs in one file?
+
+Yes. `ork gate` accepts a multi-document YAML file (documents separated by `---`). Each document is matched to its CRD by `kind` and evaluated independently.
+
+---
+
+## I changed a validation rule. How do I quickly check all my test CRs?
+
+```bash
+for cr in cr-*.yaml; do
+  echo "── $cr"
+  ork gate -f katalog.yaml --cr "$cr"
+done
+```
+
+Each run exits non-zero on denial, so you can wrap this in `set -e` or pipe into a CI step.
+
+---
+
 ## Further reading
 
 - **[Running](./02-running.md)** — setup, configuration, and operations

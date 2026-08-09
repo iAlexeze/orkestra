@@ -18,6 +18,7 @@ type SchemaResponse struct {
 	Target      string                               `json:"target"`
 	Title       string                               `json:"title,omitempty"`
 	Description string                               `json:"description,omitempty"`
+	Aliases     []string                             `json:"aliases,omitempty"`
 	Fields      map[string]orktypes.ServeFieldConfig `json:"fields"`
 	Required    []string                             `json:"required,omitempty"`
 }
@@ -28,6 +29,7 @@ type CatalogEntry struct {
 	Title       string   `json:"title,omitempty"`
 	Description string   `json:"description,omitempty"`
 	Category    string   `json:"category,omitempty"`
+	Aliases     []string `json:"aliases,omitempty"`
 	Required    []string `json:"required,omitempty"`
 }
 
@@ -62,16 +64,18 @@ func schemaHandler(kat *katalog.Katalog) http.HandlerFunc {
 		}
 
 		// ─── Per-target mode ──────────────────────────────────────────────────
-		crd := kat.LookupByTarget(target)
-		if crd == nil || !crd.ServeEnabled() {
+		resolution := kat.LookupByTargetOrAlias(target)
+		if resolution == nil || !resolution.CRD.ServeEnabled() {
 			writeJSONError(w, http.StatusNotFound, "target not found",
 				fmt.Sprintf("target %q not found", target),
 			)
 			return
 		}
+		crd := resolution.CRD
+		alias := resolution.Alias
 
-		// Check get permission on this specific target
-		if !checkServePermission(w, r, crd, orktypes.ServeClassSchema, orktypes.ServeOpGet, "") {
+		// Check get permission on this specific target (alias-aware)
+		if !checkServePermission(w, r, crd, orktypes.ServeClassSchema, orktypes.ServeOpGet, "", alias) {
 			return
 		}
 
@@ -84,6 +88,7 @@ func schemaHandler(kat *katalog.Katalog) http.HandlerFunc {
 			Target:      crd.ServeTarget(),
 			Title:       title,
 			Description: crd.Serve.Description,
+			Aliases:     crd.AliasNames(),
 			Fields:      crd.AllServeFields(),
 			Required:    getRequiredFields(crd),
 		})
@@ -111,6 +116,7 @@ func handleSchemaCatalog(
 			Title:       title,
 			Description: crd.Serve.Description,
 			Category:    crd.Serve.Category,
+			Aliases:     crd.AliasNames(),
 			Required:    getRequiredFields(crd),
 		})
 	}
@@ -146,15 +152,8 @@ func hasAnySchemaPermission(r *http.Request, catalog func() []*orktypes.CRDEntry
 	}
 
 	for _, crd := range catalog() {
-		if crd.Serve != nil && crd.Serve.HasTokenRestrictions() {
-			allowed, _ := crd.Serve.TokenAllowed(
-				tokenName, orktypes.ServeOpList, "", orktypes.ServeClassSchema,
-			)
-			if allowed {
-				return true
-			}
-		} else {
-			// No restrictions — any authenticated token can list
+		allowed, _ := crd.TokenAllowedFor("", tokenName, orktypes.ServeOpList, "", orktypes.ServeClassSchema)
+		if allowed {
 			return true
 		}
 	}

@@ -19,9 +19,15 @@ func testCRDEntry(kind, target string, serveEnabled bool) orktypes.CRDEntry {
 		},
 	}
 	if serveEnabled || target != "" {
+		tv := orktypes.ServeTargetValue{}
+		if target != "" {
+			tv.Entries = map[string]*orktypes.ServeTargetConfig{
+				target: {Primary: true},
+			}
+		}
 		entry.Serve = &orktypes.ServeConfig{
 			Enabled: true,
-			Target:  target,
+			Target:  tv,
 		}
 	}
 	return entry
@@ -53,6 +59,22 @@ func TestBuildIndexes(t *testing.T) {
 	}
 	if name, ok := k.targetIndex["db"]; !ok || name != "database" {
 		t.Errorf("targetIndex: expected 'database', got '%s'", name)
+	}
+
+	// Test name index — must handle camelCase keys (the "platRsc" bug)
+	if name, ok := k.nameIndex["app"]; !ok || name != "app" {
+		t.Errorf("nameIndex: expected 'app', got '%s'", name)
+	}
+	if name, ok := k.nameIndex["database"]; !ok || name != "database" {
+		t.Errorf("nameIndex: expected 'database', got '%s'", name)
+	}
+
+	// Test plural index
+	if name, ok := k.pluralIndex["apps"]; !ok || name != "app" {
+		t.Errorf("pluralIndex: expected 'app' for 'apps', got '%s'", name)
+	}
+	if name, ok := k.pluralIndex["databases"]; !ok || name != "database" {
+		t.Errorf("pluralIndex: expected 'database' for 'databases', got '%s'", name)
 	}
 
 	// Test GVK index
@@ -97,8 +119,8 @@ func TestBuildAllIDEnabledCRDs(t *testing.T) {
 	if serveEnabledCrds[0].APITypes.Kind != "App" {
 		t.Errorf("expected App, got %s", serveEnabledCrds[0].APITypes.Kind)
 	}
-	if serveEnabledCrds[0].Serve.Target != "smartapp" {
-		t.Errorf("expected target smartapp, got %s", serveEnabledCrds[0].Serve.Target)
+	if serveEnabledCrds[0].ServeTarget() != "smartapp" {
+		t.Errorf("expected target smartapp, got %s", serveEnabledCrds[0].ServeTarget())
 	}
 }
 
@@ -124,7 +146,7 @@ func TestLookupByKind(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			crd := k.LookupByKind(tt.kind)
+			crd := k.LookupByKind(tt.kind).Entry()
 			if tt.expected == "" {
 				if crd != nil {
 					t.Errorf("expected nil, got %+v", crd)
@@ -163,7 +185,7 @@ func TestLookupByTarget(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			crd := k.LookupByTarget(tt.target)
+			crd := k.LookupByTarget(tt.target).Entry()
 			if tt.expected == "" {
 				if crd != nil {
 					t.Errorf("expected nil, got %+v", crd)
@@ -185,6 +207,10 @@ func TestLookupByName(t *testing.T) {
 		enabledCRDs: map[string]orktypes.CRDEntry{
 			"app":      testCRDEntry("App", "smartapp", true),
 			"database": testCRDEntry("Database", "db", true),
+			// camelCase key — this was the production bug: LookupByName lowercased
+			// the input but looked up directly in enabledCRDs (also camelCase keyed),
+			// so "platRsc" → lowercase "platrsc" → miss. nameIndex fixes it.
+			"platRsc": testCRDEntry("PlatformResource", "apifixture", true),
 		},
 	}
 	if err := k.setGroupVersionKind(); err != nil {
@@ -196,16 +222,19 @@ func TestLookupByName(t *testing.T) {
 		query    string
 		expected string
 	}{
-		{"exact match", "app", "App"},
+		{"exact lowercase match", "app", "App"},
 		{"case-insensitive", "Database", "Database"},
 		{"whitespace trimmed", "  app  ", "App"},
+		{"camelCase key exact", "platRsc", "PlatformResource"},
+		{"camelCase key lowercased", "platrsc", "PlatformResource"},
+		{"camelCase key uppercased", "PLATRSC", "PlatformResource"},
 		{"not found", "unknown", ""},
 		{"empty", "", ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			crd := k.LookupByName(tt.query)
+			crd := k.LookupByName(tt.query).Entry()
 			if tt.expected == "" {
 				if crd != nil {
 					t.Errorf("expected nil, got %+v", crd)
@@ -214,6 +243,66 @@ func TestLookupByName(t *testing.T) {
 			}
 			if crd == nil {
 				t.Fatalf("expected CRD, got nil")
+			}
+			if crd.APITypes.Kind != tt.expected {
+				t.Errorf("expected kind %s, got %s", tt.expected, crd.APITypes.Kind)
+			}
+		})
+	}
+}
+
+func TestLookupByPlural(t *testing.T) {
+	k := &Katalog{
+		enabledCRDs: map[string]orktypes.CRDEntry{
+			"app": testCRDEntry("App", "smartapp", true),
+			// testCRDEntry sets Plural = Kind + "s", so "Apps"
+			"platRsc": {
+				APITypes: orktypes.APITypes{
+					Group:   "gateway.fixture.orkestra.io",
+					Version: "v1alpha1",
+					Kind:    "PlatformResource",
+					Plural:  "platformresources",
+				},
+				Serve: &orktypes.ServeConfig{
+					Enabled: true,
+					Target: orktypes.ServeTargetValue{
+						Entries: map[string]*orktypes.ServeTargetConfig{
+							"apifixture": {Primary: true},
+						},
+					},
+				},
+			},
+		},
+	}
+	if err := k.setGroupVersionKind(); err != nil {
+		t.Fatalf("setGroupVersionKind: %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		query    string
+		expected string
+	}{
+		{"exact lowercase", "platformresources", "PlatformResource"},
+		{"case-insensitive", "PlatformResources", "PlatformResource"},
+		{"testCRDEntry plural (Kind+s)", "Apps", "App"},
+		{"testCRDEntry plural lowercase", "apps", "App"},
+		{"whitespace trimmed", "  platformresources  ", "PlatformResource"},
+		{"not found", "widgets", ""},
+		{"empty", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			crd := k.LookupByPlural(tt.query).Entry()
+			if tt.expected == "" {
+				if crd != nil {
+					t.Errorf("expected nil, got %+v", crd)
+				}
+				return
+			}
+			if crd == nil {
+				t.Fatalf("LookupByPlural(%q): expected CRD, got nil", tt.query)
 			}
 			if crd.APITypes.Kind != tt.expected {
 				t.Errorf("expected kind %s, got %s", tt.expected, crd.APITypes.Kind)
@@ -247,7 +336,7 @@ func TestLookupByTargetOrKind(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			crd := k.LookupByTargetOrKind(tt.identifier)
+			crd := k.LookupByTargetOrKind(tt.identifier).Entry()
 			if tt.expected == "" {
 				if crd != nil {
 					t.Errorf("expected nil, got %+v", crd)
@@ -294,7 +383,7 @@ func TestLookupByGVKString(t *testing.T) {
 	t.Logf("Index keys: %v", k.gvkIndex)
 	t.Logf("GVK.String(): %q", gvk.String())
 
-	crd := k.LookupByGVKString(gvk.String())
+	crd := k.LookupByGVKString(gvk.String()).Entry()
 	if crd == nil {
 		t.Fatal("expected CRD, got nil")
 	}
@@ -308,7 +397,7 @@ func TestLookupByGVKString(t *testing.T) {
 		Version: "v1",
 		Kind:    "Unknown",
 	}
-	crd = k.LookupByGVKString(unknownGVK.String())
+	crd = k.LookupByGVKString(unknownGVK.String()).Entry()
 	if crd != nil {
 		t.Errorf("expected nil, got %+v", crd)
 	}
@@ -343,7 +432,7 @@ func TestLookupByGVRString(t *testing.T) {
 	t.Logf("Index keys: %v", k.gvrIndex)
 	t.Logf("GVR.String(): %q", gvr.String())
 
-	crd := k.LookupByGVRString(gvr.String())
+	crd := k.LookupByGVRString(gvr.String()).Entry()
 	if crd == nil {
 		t.Fatal("expected CRD, got nil")
 	}
@@ -357,7 +446,7 @@ func TestLookupByGVRString(t *testing.T) {
 		Version:  "v1",
 		Resource: "unknowns",
 	}
-	crd = k.LookupByGVRString(unknownGVR.String())
+	crd = k.LookupByGVRString(unknownGVR.String()).Entry()
 	if crd != nil {
 		t.Errorf("expected nil, got %+v", crd)
 	}
@@ -372,7 +461,7 @@ func TestMustLookupByTarget(t *testing.T) {
 	k.setGroupVersionKind()
 
 	// Should not panic
-	crd := k.MustLookupByTarget("smartapp")
+	crd := k.MustLookupByTarget("smartapp").Entry()
 	if crd == nil {
 		t.Fatal("expected CRD, got nil")
 	}
@@ -407,7 +496,7 @@ func TestMustLookupByKind(t *testing.T) {
 	}
 
 	// Should not panic
-	crd := k.MustLookupByKind("App")
+	crd := k.MustLookupByKind("App").Entry()
 	if crd == nil {
 		t.Fatal("expected CRD, got nil")
 	}
@@ -519,13 +608,13 @@ func TestLookup_EmptyKatalog(t *testing.T) {
 	}
 	k.setGroupVersionKind()
 
-	if crd := k.LookupByKind("App"); crd != nil {
+	if crd := k.LookupByKind("App").Entry(); crd != nil {
 		t.Errorf("expected nil, got %+v", crd)
 	}
-	if crd := k.LookupByTarget("smartapp"); crd != nil {
+	if crd := k.LookupByTarget("smartapp").Entry(); crd != nil {
 		t.Errorf("expected nil, got %+v", crd)
 	}
-	if crd := k.LookupByTargetOrKind("App"); crd != nil {
+	if crd := k.LookupByTargetOrKind("App").Entry(); crd != nil {
 		t.Errorf("expected nil, got %+v", crd)
 	}
 }
@@ -541,12 +630,12 @@ func TestLookup_CRDWithoutServe(t *testing.T) {
 	}
 
 	// Should still find by kind
-	if crd := k.LookupByKind("Cache"); crd == nil {
+	if crd := k.LookupByKind("Cache").Entry(); crd == nil {
 		t.Error("expected to find Cache by kind")
 	}
 
 	// Should not find by target (no serve target)
-	if crd := k.LookupByTarget("cache"); crd != nil {
+	if crd := k.LookupByTarget("cache").Entry(); crd != nil {
 		t.Errorf("expected nil for target, got %+v", crd)
 	}
 }
@@ -562,15 +651,15 @@ func TestLookupByKind_CaseInsensitive(t *testing.T) {
 	}
 
 	// Exact match should work
-	if crd := k.LookupByKind("App"); crd == nil {
+	if crd := k.LookupByKind("App").Entry(); crd == nil {
 		t.Error("expected to find App by exact match")
 	}
 
 	// Case-insensitive match should work
-	if crd := k.LookupByKind("app"); crd == nil {
+	if crd := k.LookupByKind("app").Entry(); crd == nil {
 		t.Error("expected to find App by case-insensitive match")
 	}
-	if crd := k.LookupByKind("APP"); crd == nil {
+	if crd := k.LookupByKind("APP").Entry(); crd == nil {
 		t.Error("expected to find App by case-insensitive match")
 	}
 }
@@ -699,7 +788,7 @@ func TestLookupByAPIVersionAndKind(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			crd := k.LookupByAPIVersionAndKind(tt.apiVersion, tt.kind)
+			crd := k.LookupByAPIVersionAndKind(tt.apiVersion, tt.kind).Entry()
 			if tt.wantNil {
 				if crd != nil {
 					t.Errorf("expected nil, got %+v", crd)
@@ -746,7 +835,7 @@ func TestLookupByAPIVersionAndKind_EmptyInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			crd := k.LookupByAPIVersionAndKind(tt.apiVersion, tt.kind)
+			crd := k.LookupByAPIVersionAndKind(tt.apiVersion, tt.kind).Entry()
 			if crd != nil {
 				t.Errorf("expected nil for empty input, got %+v", crd)
 			}
@@ -780,7 +869,7 @@ func TestLookupByAPIVersionAndKind_IndexExists(t *testing.T) {
 	}
 
 	// Verify the lookup works with the exact key
-	crd := k.LookupByAPIVersionAndKind("platform.myorg.io/v1", "App")
+	crd := k.LookupByAPIVersionAndKind("platform.myorg.io/v1", "App").Entry()
 	if crd == nil {
 		t.Fatal("expected CRD, got nil")
 	}
@@ -825,7 +914,7 @@ func TestLookupByAPIVersionAndKind_MultipleEntries(t *testing.T) {
 	k.setGroupVersionKind()
 
 	// Should find the v1 App
-	crd := k.LookupByAPIVersionAndKind("platform.myorg.io/v1", "App")
+	crd := k.LookupByAPIVersionAndKind("platform.myorg.io/v1", "App").Entry()
 	if crd == nil {
 		t.Fatal("expected App v1, got nil")
 	}
@@ -834,7 +923,7 @@ func TestLookupByAPIVersionAndKind_MultipleEntries(t *testing.T) {
 	}
 
 	// Should find the v2 App
-	crd = k.LookupByAPIVersionAndKind("platform.myorg.io/v2", "App")
+	crd = k.LookupByAPIVersionAndKind("platform.myorg.io/v2", "App").Entry()
 	if crd == nil {
 		t.Fatal("expected App v2, got nil")
 	}
@@ -843,7 +932,7 @@ func TestLookupByAPIVersionAndKind_MultipleEntries(t *testing.T) {
 	}
 
 	// Should find the Database
-	crd = k.LookupByAPIVersionAndKind("platform.myorg.io/v1", "Database")
+	crd = k.LookupByAPIVersionAndKind("platform.myorg.io/v1", "Database").Entry()
 	if crd == nil {
 		t.Fatal("expected Database, got nil")
 	}
@@ -884,7 +973,7 @@ func TestLookupByAPIVersionAndKind_InvalidAPIVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			crd := k.LookupByAPIVersionAndKind(tt.apiVersion, tt.kind)
+			crd := k.LookupByAPIVersionAndKind(tt.apiVersion, tt.kind).Entry()
 			if crd != nil {
 				t.Errorf("expected nil for malformed apiVersion %q, got %+v", tt.apiVersion, crd)
 			}

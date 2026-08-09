@@ -24,13 +24,13 @@ import (
 func ApplyExclusions(
 	response map[string]interface{},
 	crd *orktypes.CRDEntry,
+	alias string,
 	notes orktypes.NoteRegistry,
 ) {
-	if crd == nil || !crd.HasServeResponseConfig() {
+	if crd == nil {
 		return
 	}
-
-	cfg := crd.Serve.Config.Response
+	cfg := crd.ServeResponseConfigFor(alias)
 	if cfg == nil || !cfg.HasExclude() {
 		return
 	}

@@ -1,10 +1,21 @@
 package api
 
 import (
+	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"testing"
+	"time"
+
+	"github.com/go-jose/go-jose/v4"
+	josejwt "github.com/go-jose/go-jose/v4/jwt"
+
+	oidcpkg "github.com/orkspace/orkestra/pkg/gateway/oidc"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 func TestTokenSet_Matches(t *testing.T) {
@@ -116,5 +127,160 @@ func TestTokenNameFromContext_Empty(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	if name := TokenNameFromContext(req.Context()); name != "" {
 		t.Errorf("got %q, want empty", name)
+	}
+}
+
+// ── OIDC helpers ──────────────────────────────────────────────────────────────
+
+func oidcTestKey(t *testing.T, kid string) (*rsa.PrivateKey, jose.JSONWebKeySet) {
+	t.Helper()
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwk := jose.JSONWebKey{Key: priv.Public(), KeyID: kid, Algorithm: string(jose.RS256), Use: "sig"}
+	return priv, jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk}}
+}
+
+func oidcSignToken(t *testing.T, priv *rsa.PrivateKey, kid string, claims map[string]interface{}) string {
+	t.Helper()
+	sig, err := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.RS256, Key: priv},
+		(&jose.SignerOptions{}).WithType("JWT").WithHeader("kid", kid),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := josejwt.Signed(sig).Claims(claims).Serialize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}
+
+func oidcTestServer(t *testing.T, ks jose.JSONWebKeySet) *httptest.Server {
+	t.Helper()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/jwks", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(ks)
+	})
+	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"jwks_uri": "http://" + r.Host + "/jwks",
+		})
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+// ── OIDC TokenSet tests ───────────────────────────────────────────────────────
+
+func TestTokenSet_MatchesOIDC_ValidToken(t *testing.T) {
+	priv, ks := oidcTestKey(t, "k1")
+	srv := oidcTestServer(t, ks)
+	issuer := srv.URL
+
+	token := oidcSignToken(t, priv, "k1", map[string]interface{}{
+		"iss":        issuer,
+		"sub":        "repo:myorg/payments:ref:refs/heads/main",
+		"aud":        "orkestra",
+		"exp":        time.Now().Add(5 * time.Minute).Unix(),
+		"repository": "myorg/payments",
+		"ref":        "refs/heads/main",
+	})
+
+	ts := &TokenSet{
+		oidcCache: oidcpkg.NewCache(time.Minute),
+		oidcEntries: []orktypes.APIToken{{
+			Name: "ci-oidc",
+			OIDC: &orktypes.OIDCToken{
+				Issuer:   issuer,
+				Audience: "orkestra",
+				Allow:    map[string]string{"repository": "myorg/payments", "ref": "refs/heads/main"},
+			},
+		}},
+	}
+
+	name, sub := ts.MatchesOIDC(context.Background(), token)
+	if name != "ci-oidc" {
+		t.Errorf("MatchesOIDC name = %q, want %q", name, "ci-oidc")
+	}
+	if sub != "repo:myorg/payments:ref:refs/heads/main" {
+		t.Errorf("MatchesOIDC sub = %q, want %q", sub, "repo:myorg/payments:ref:refs/heads/main")
+	}
+}
+
+func TestTokenSet_MatchesOIDC_ClaimMismatch(t *testing.T) {
+	priv, ks := oidcTestKey(t, "k1")
+	srv := oidcTestServer(t, ks)
+	issuer := srv.URL
+
+	// Token is from myorg/payments but token entry requires myorg/billing.
+	token := oidcSignToken(t, priv, "k1", map[string]interface{}{
+		"iss":        issuer,
+		"exp":        time.Now().Add(5 * time.Minute).Unix(),
+		"repository": "myorg/payments",
+	})
+
+	ts := &TokenSet{
+		oidcCache: oidcpkg.NewCache(time.Minute),
+		oidcEntries: []orktypes.APIToken{{
+			Name: "billing-ci",
+			OIDC: &orktypes.OIDCToken{
+				Issuer: issuer,
+				Allow:  map[string]string{"repository": "myorg/billing"},
+			},
+		}},
+	}
+
+	if name, _ := ts.MatchesOIDC(context.Background(), token); name != "" {
+		t.Errorf("MatchesOIDC = %q, want empty (claim mismatch)", name)
+	}
+}
+
+func TestTokenSet_MatchesOIDC_ExpiredToken(t *testing.T) {
+	priv, ks := oidcTestKey(t, "k1")
+	srv := oidcTestServer(t, ks)
+	issuer := srv.URL
+
+	token := oidcSignToken(t, priv, "k1", map[string]interface{}{
+		"iss": issuer,
+		"exp": time.Now().Add(-1 * time.Minute).Unix(),
+	})
+
+	ts := &TokenSet{
+		oidcCache: oidcpkg.NewCache(time.Minute),
+		oidcEntries: []orktypes.APIToken{{
+			Name: "ci-oidc",
+			OIDC: &orktypes.OIDCToken{Issuer: issuer},
+		}},
+	}
+
+	if name, _ := ts.MatchesOIDC(context.Background(), token); name != "" {
+		t.Errorf("MatchesOIDC = %q, want empty (expired)", name)
+	}
+}
+
+func TestTokenSet_MatchesOIDC_NotAJWT(t *testing.T) {
+	ts := &TokenSet{
+		oidcCache: oidcpkg.NewCache(time.Minute),
+		oidcEntries: []orktypes.APIToken{{
+			Name: "ci-oidc",
+			OIDC: &orktypes.OIDCToken{Issuer: "https://example.com"},
+		}},
+	}
+
+	if name, _ := ts.MatchesOIDC(context.Background(), "not-a-jwt"); name != "" {
+		t.Errorf("MatchesOIDC = %q, want empty (not a JWT)", name)
+	}
+}
+
+func TestTokenSet_MatchesOIDC_NoEntries(t *testing.T) {
+	ts := &TokenSet{oidcCache: oidcpkg.NewCache(time.Minute)}
+	if name, _ := ts.MatchesOIDC(context.Background(), "any.token.value"); name != "" {
+		t.Errorf("MatchesOIDC = %q, want empty (no entries)", name)
 	}
 }

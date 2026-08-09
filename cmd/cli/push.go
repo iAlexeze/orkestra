@@ -31,6 +31,7 @@ var (
 	pushE2ECluster    string
 	pushE2EUseCurrent bool
 	pushE2EWorkers    int
+	pushAddIntent     string
 )
 
 var pushCmd = &cobra.Command{
@@ -139,10 +140,14 @@ var pushCmd = &cobra.Command{
 			if err := m.Merge(); err != nil {
 				return fmt.Errorf("  ✗ %s: %w", registry.FileKatalog, err)
 			}
-			if _, err := katalog.BuildExpanded(kfg, m); err != nil {
+			k, err := katalog.BuildExpanded(kfg, m)
+			if err != nil {
 				return fmt.Errorf("  ✗ %s: %w", registry.FileKatalog, err)
 			}
 			fmt.Printf("  %s %-20s valid\n", successMark(), registry.FileKatalog)
+			if d := k.Deprecation(); d != nil {
+				printKatalogDeprecation(d)
+			}
 
 			if slices.Contains(files, registry.FileCRD) {
 				if err := validateCRDFile(filepath.Join(dir, registry.FileCRD)); err != nil {
@@ -245,6 +250,28 @@ var pushCmd = &cobra.Command{
 			}
 		}
 
+		var intentMeta *registry.PatternIntent
+		if patternKind == registry.KatalogKind && pushAddIntent != "" {
+			intentFile := pushAddIntent
+			if !filepath.IsAbs(intentFile) {
+				intentFile = filepath.Join(dir, intentFile)
+			}
+			fmt.Printf("\nRunning intent play (%s)...\n", pushAddIntent)
+			target, perr := runIntentPlay(filepath.Join(dir, registry.FileKatalog), intentFile)
+			status := "passed"
+			if perr != nil {
+				status = "failed"
+				fmt.Printf("  %s Intent play failed: %s\n", warningMark(), perr)
+			} else {
+				fmt.Printf("  %s Intent play passed (target: %s)\n", successMark(), target)
+			}
+			intentMeta = &registry.PatternIntent{
+				Status:   status,
+				Target:   target,
+				TestedAt: time.Now().UTC().Format(time.RFC3339),
+			}
+		}
+
 		var typedMeta *registry.PatternTyped
 		if patternKind == registry.KatalogKind {
 			typedMeta = detectTypedKatalog(filepath.Join(dir, registry.FileKatalog))
@@ -267,7 +294,14 @@ var pushCmd = &cobra.Command{
 			spin.Update(fmt.Sprintf("Uploading %s (%s)", file, formatSize(size)))
 		}
 
-		digest, err := client.Push(cmd.Context(), ref, dir, e2eMeta, simulateMeta, typedMeta, runtimeVersion, progress)
+		opts := registry.PushOptions{
+			E2E:            e2eMeta,
+			Simulate:       simulateMeta,
+			Intent:         intentMeta,
+			Typed:          typedMeta,
+			RuntimeVersion: runtimeVersion,
+		}
+		digest, err := client.Push(cmd.Context(), ref, dir, opts, progress)
 		if err != nil {
 			spin.Failure()
 			return fmt.Errorf("push failed: %w", err)
@@ -284,7 +318,7 @@ var pushCmd = &cobra.Command{
 				if err == nil {
 					fmt.Printf("\nAlso pushing %s to %s...\n", registry.FileMotif, motifRef.Registry)
 					spinMotif := StartSpinner(fmt.Sprintf("Pushing %s...", registry.FileMotif))
-					if mDigest, err := client.Push(cmd.Context(), motifRef, dir, nil, nil, nil, version.Short(), nil); err != nil {
+					if mDigest, err := client.Push(cmd.Context(), motifRef, dir, registry.PushOptions{RuntimeVersion: version.Short()}, nil); err != nil {
 						spinMotif.Failure()
 						fmt.Fprintf(os.Stderr, "warning: motif push failed: %v\n", err)
 					} else {
@@ -320,6 +354,7 @@ func init() {
 	pushCmd.Flags().StringVar(&pushE2ECluster, "cluster", "", "Reuse an existing kind cluster context for the e2e gate (skips cluster creation)")
 	pushCmd.Flags().BoolVar(&pushE2EUseCurrent, "use-current", false, "Use the current kubeconfig context for the e2e gate (skips cluster creation)")
 	pushCmd.Flags().IntVar(&pushE2EWorkers, "workers", 0, "Number of kind worker nodes for the e2e gate cluster (0 = control-plane only)")
+	pushCmd.Flags().StringVar(&pushAddIntent, "add-intent", "", "Run ork serve play against this intent file (YAML or JSON) and bake the result into the artifact")
 	rootCmd.AddCommand(pushCmd)
 
 	// Shadow global flags so they don't appear under `ork push`
@@ -354,6 +389,9 @@ func extractRuntimeVersionFromGoMod(dir string) string {
 				return parts[1]
 			}
 		}
+	}
+	if err := scanner.Err(); err != nil {
+		return ""
 	}
 	return ""
 }

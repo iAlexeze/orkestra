@@ -16,7 +16,7 @@ func TestEvaluatePayload(t *testing.T) {
 	t.Run("nil config returns nil", func(t *testing.T) {
 		crd := appCRD()
 		crd.Serve.Config = nil
-		result := EvaluatePayload(map[string]interface{}{}, crd, noopNotes())
+		result := EvaluatePayload(map[string]interface{}{}, crd, "", noopNotes())
 		assert.Nil(t, result)
 	})
 
@@ -25,7 +25,7 @@ func TestEvaluatePayload(t *testing.T) {
 		crd.Serve.Config = &orktypes.ServeConfigSettings{
 			Response: &orktypes.ServeResponseConfig{},
 		}
-		result := EvaluatePayload(map[string]interface{}{}, crd, noopNotes())
+		result := EvaluatePayload(map[string]interface{}{}, crd, "", noopNotes())
 		assert.Nil(t, result)
 	})
 
@@ -38,7 +38,7 @@ func TestEvaluatePayload(t *testing.T) {
 				},
 			},
 		}
-		result := EvaluatePayload(map[string]interface{}{}, crd, noopNotes())
+		result := EvaluatePayload(map[string]interface{}{}, crd, "", noopNotes())
 		require.NotNil(t, result)
 		assert.Equal(t, "#platform", result["supportChannel"])
 	})
@@ -55,7 +55,7 @@ func TestEvaluatePayload(t *testing.T) {
 		obj := map[string]interface{}{
 			"status": map[string]interface{}{"phase": "Ready"},
 		}
-		result := EvaluatePayload(obj, crd, noopNotes())
+		result := EvaluatePayload(obj, crd, "", noopNotes())
 		require.NotNil(t, result)
 		assert.Equal(t, "Ready", result["phase"])
 	})
@@ -70,7 +70,7 @@ func TestEvaluatePayload(t *testing.T) {
 			},
 		}
 		// status not yet present — at apply time
-		result := EvaluatePayload(map[string]interface{}{}, crd, noopNotes())
+		result := EvaluatePayload(map[string]interface{}{}, crd, "", noopNotes())
 		require.NotNil(t, result)
 		assert.Equal(t, "", result["phase"])
 	})
@@ -90,7 +90,7 @@ func TestEvaluatePayload(t *testing.T) {
 		obj := map[string]interface{}{
 			"spec": map[string]interface{}{"image": "myimage"},
 		}
-		result := EvaluatePayload(obj, crd, noopNotes())
+		result := EvaluatePayload(obj, crd, "", noopNotes())
 		require.NotNil(t, result)
 		assert.Equal(t, "value", result["extra"])
 		_, hasSpec := result["spec"]
@@ -113,7 +113,7 @@ func TestEvaluatePayload(t *testing.T) {
 				"managedFields": []interface{}{"something"},
 			},
 		}
-		result := EvaluatePayload(obj, crd, noopNotes())
+		result := EvaluatePayload(obj, crd, "", noopNotes())
 		require.NotNil(t, result)
 		assert.Equal(t, "my-app", result["name"])
 		_, hasManagedFields := result["managedFields"]

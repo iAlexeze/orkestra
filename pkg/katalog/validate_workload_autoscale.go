@@ -89,8 +89,8 @@ func validateAutoscaleHPAConflict(crdName, depName string, hpas []orktypes.HPATe
 			continue
 		}
 		return fmt.Errorf(
-			"crds.%s workload %q autoscale: conflicts with sibling HPA %q — remove autoscale: or remove the HPA; both control spec.replicas",
-			crdName, depName, hpa.Name,
+			"%s crds.%s workload %q autoscale: conflicts with sibling HPA %q — remove autoscale: or remove the HPA; both control spec.replicas",
+			failureMark(), crdName, depName, hpa.Name,
 		)
 	}
 	return nil
@@ -101,11 +101,11 @@ func validateWorkloadAutoscaleSpec(crdName, depName string, cfg *orktypes.Worklo
 	loc := fmt.Sprintf("crds.%s workload %q autoscale", crdName, depName)
 
 	if cfg.Max == 0 {
-		return fmt.Errorf("%s: max is required and must be > 0", loc)
+		return fmt.Errorf("%s %s: max is required and must be > 0", failureMark(), loc)
 	}
 
 	if cfg.Min != nil && *cfg.Min >= cfg.Max {
-		return fmt.Errorf("%s: min (%d) must be less than max (%d)", loc, *cfg.Min, cfg.Max)
+		return fmt.Errorf("%s %s: min (%d) must be less than max (%d)", failureMark(), loc, *cfg.Min, cfg.Max)
 	}
 
 	if err := validateScaleDirection(loc+".scaleUp", cfg.ScaleUp, cfg.Max); err != nil {
@@ -127,15 +127,15 @@ func validateScaleDirection(loc string, dir *orktypes.WorkloadScaleDirection, ma
 	hasTarget := dir.Target != nil
 	hasStep := dir.Increment != nil || dir.Decrement != nil
 	if hasTarget && hasStep {
-		return fmt.Errorf("%s: target and increment/decrement are mutually exclusive", loc)
+		return fmt.Errorf("%s %s: target and increment/decrement are mutually exclusive", failureMark(), loc)
 	}
 	if hasTarget && len(max) > 0 {
 		t := *dir.Target
 		if t > max[0] {
-			return fmt.Errorf("%s: target (%d) exceeds max (%d)", loc, t, max[0])
+			return fmt.Errorf("%s %s: target (%d) exceeds max (%d)", failureMark(), loc, t, max[0])
 		}
 		if t < 0 {
-			return fmt.Errorf("%s: target (%d) must be >= 0", loc, t)
+			return fmt.Errorf("%s %s: target (%d) must be >= 0", failureMark(), loc, t)
 		}
 	}
 	return nil

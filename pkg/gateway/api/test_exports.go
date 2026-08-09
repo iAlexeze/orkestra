@@ -33,8 +33,8 @@ func ExportedApplyHandler(kube kubeclient.KubeClient, kat *katalog.Katalog, note
 	return applyHandler(kube, kat, notes)
 }
 
-func ExportedCheckServePermission(w http.ResponseWriter, r *http.Request, crd *orktypes.CRDEntry, class orktypes.ServeEndpointClass, op, ns string) bool {
-	return checkServePermission(w, r, crd, class, op, ns)
+func ExportedCheckServePermission(w http.ResponseWriter, r *http.Request, crd *orktypes.CRDEntry, class orktypes.ServeEndpointClass, op, ns, alias string) bool {
+	return checkServePermission(w, r, crd, class, op, ns, alias)
 }
 
 func ExportedWriteKubeError(w http.ResponseWriter, err error) {

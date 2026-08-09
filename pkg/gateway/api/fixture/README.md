@@ -23,6 +23,7 @@ conditional admission rules, type-specific child resources, and status projectio
 | Admission webhook — `deny when:` | `admission/platformresource.yaml` rule 4 (domain for cert) |
 | Admission webhook — `deny anyOf:` | `admission/platformresource.yaml` rule 5 (repoURL for app/monitoring) |
 | Admission webhook — `warn when:` | `admission/platformresource.yaml` rule 7 (productionApproval) |
+| Admission webhook — `warn when: isDirectApply .` | `admission/platformresource.yaml` last rule — fires for kubectl/CI direct applies |
 | Serve field categories (`serve.fields.category`) | `serve/platformresource.yaml` |
 | Conditional field visibility (`serve.fields.when`) | `serve/platformresource.yaml` |
 | Conditional field visibility (`serve.fields.anyOf`) | `serve/platformresource.yaml` |
@@ -146,6 +147,12 @@ verify conditional `when:`/`anyOf:` behaviour against a running cluster:
 ```bash
 # No violations — happy path
 kubectl apply -f pkg/gateway/fixture/crs/app-staging.yaml
+
+# Accepted with ValidationWarning (direct apply — no serve-target annotation)
+kubectl apply -f pkg/gateway/fixture/crs/app-direct-apply.yaml
+
+# Accepted, isDirectApply warn skipped (serve-target annotation present)
+kubectl apply -f pkg/gateway/fixture/crs/app-via-gateway.yaml
 
 # Accepted with ValidationWarning (production, no approval ticket)
 kubectl apply -f pkg/gateway/fixture/crs/app-production-warn.yaml

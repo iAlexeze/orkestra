@@ -63,11 +63,11 @@ func checkCrossNamespaceItems[T orktypes.CrossNamespaceChecker](crdName, phase s
 			continue
 		}
 		if hasFrom {
-			return fmt.Errorf("crd %q: %s/%s (phase %s) sets fromNamespace but not toNamespaces — both must be set together",
-				crdName, item.GetKind(), item.GetName(), phase)
+			return fmt.Errorf("%s crd %q: %s/%s (phase %s) sets fromNamespace but not toNamespaces — both must be set together",
+				failureMark(), crdName, item.GetKind(), item.GetName(), phase)
 		}
-		return fmt.Errorf("crd %q: %s/%s (phase %s) sets toNamespaces but not fromNamespace — both must be set together",
-			crdName, item.GetKind(), item.GetName(), phase)
+		return fmt.Errorf("%s crd %q: %s/%s (phase %s) sets toNamespaces but not fromNamespace — both must be set together",
+			failureMark(), crdName, item.GetKind(), item.GetName(), phase)
 	}
 	return nil
 }

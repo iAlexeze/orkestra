@@ -4,10 +4,13 @@ package cli
 
 import (
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/registry"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
@@ -47,6 +50,25 @@ var (
 	isRunningInCluster = utils.IsRunningInCluster
 	writeFileAndFormat = utils.WriteFileAndFormat
 )
+
+// toAbsPath converts p to an absolute path.
+// If p is already absolute, it is returned unchanged.
+// If p is relative, it is resolved relative to the current working directory.
+func toAbsPath(p string) (string, error) {
+	return filepath.Abs(p)
+}
+
+// isAbsPath reports whether p is an absolute filesystem path.
+func isAbsPath(p string) bool { return filepath.IsAbs(p) }
+
+// joinPath resolves p relative to the directory that contains base.
+// If p is already absolute, it is returned unchanged.
+func joinPath(base, p string) string {
+	if isAbsPath(p) {
+		return p
+	}
+	return filepath.Join(filepath.Dir(base), p)
+}
 
 // Shadow global command flags
 func shadowGlobalCommandFlags(cmd *cobra.Command, flags ...string) {
@@ -693,6 +715,75 @@ func printTypedOperatorHint(err *katalog.TypedOperatorError, command string) {
 }
 
 // ── crdModeLabel ──────────────────────────────────────────────────────────────
+
+// printKatalogDeprecation prints the deprecation notice for a locally validated
+// katalog. Reads timeline state from the KatalogDeprecation methods.
+// Prints nothing if the block is nil or today is before timeline.from.
+func printKatalogDeprecation(d *orktypes.KatalogDeprecation) {
+	if d == nil {
+		return
+	}
+	today := time.Now()
+	state := d.DeprecationState(today)
+	if state == "none" {
+		return
+	}
+	printDeprecationBlock(state, d.Message, d.MigratedTo, d.TimelineTo(), d.DaysUntilEOL(today))
+
+	// Stale accept flag warnings — shown after the block so they are not missed.
+	if d.Accept != nil {
+		if d.Accept.Eol && !d.Accept.BeforeEol {
+			fmt.Printf("  %s accept.eol is set without accept.beforeEol — eol: true alone is not sufficient\n", yellow("⚠"))
+		}
+		if d.Accept.BeforeEol && !d.Accept.Eol && state == "eol" {
+			fmt.Printf("  %s accept.beforeEol is set but the EOL date has passed — add accept.eol: true or ork run will refuse to start\n", yellow("⚠"))
+		}
+	}
+}
+
+// printPatternDeprecation prints the deprecation notice for a registry pattern
+// (inspect / pull). Reads timeline from PatternDeprecated fields.
+func printPatternDeprecation(dep *registry.PatternDeprecated) {
+	if dep == nil {
+		return
+	}
+	d := &orktypes.KatalogDeprecation{
+		MigratedTo: dep.MigratedTo,
+		Message:    dep.Message,
+	}
+	if dep.TimelineFrom != "" || dep.TimelineTo != "" {
+		d.Timeline = &orktypes.DeprecationTimeline{
+			From: dep.TimelineFrom,
+			To:   dep.TimelineTo,
+		}
+	}
+	printKatalogDeprecation(d)
+}
+
+// printDeprecationBlock renders the deprecation block for a given state.
+func printDeprecationBlock(state, message, migrateTo, eolDate string, daysLeft int) {
+	switch state {
+	case "eol":
+		fmt.Printf("\n%s  END OF LIFE\n", red("✗"))
+		if eolDate != "" {
+			fmt.Printf("  This pattern reached end of life on %s.\n", bold(eolDate))
+		}
+	default:
+		fmt.Printf("\n%s  DEPRECATION WARNING\n", yellow("⚠"))
+		if daysLeft > 0 {
+			fmt.Printf("  End of life in %s (%s).\n", bold(fmt.Sprintf("%d days", daysLeft)), eolDate)
+		} else if eolDate != "" {
+			fmt.Printf("  End of life: %s.\n", bold(eolDate))
+		}
+	}
+	if message != "" {
+		fmt.Printf("  %s\n", message)
+	}
+	if migrateTo != "" {
+		fmt.Printf("  Migrate to:  %s\n", bold(migrateTo))
+	}
+	fmt.Println()
+}
 
 func crdModeLabel(crd orktypes.CRDEntry) string {
 	if crd.DefaultReconcile() {

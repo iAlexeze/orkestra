@@ -10,3 +10,5 @@ imports:
   - ./simulate/app.yaml
   - ./simulate/cert.yaml
   - ./simulate/monitoring.yaml
+  - ./serve/simulate/appgroup.yaml
+  - ./serve/simulate/clusterpolicy.yaml

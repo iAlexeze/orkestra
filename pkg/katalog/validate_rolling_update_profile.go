@@ -31,16 +31,16 @@ func (k *Katalog) validateRollingUpdateProfiles() error {
 			}
 			if !k.isUserRollingUpdateProfile(e.Profile) && !profiles.IsValidRollingUpdateProfile(e.Profile) {
 				return fmt.Errorf(
-					"crd %q: Deployment %q (phase %s) has unknown rollingUpdate.profile %q — "+
+					"%s crd %q: Deployment %q (phase %s) has unknown rollingUpdate.profile %q — "+
 						"allowed: safe, fast, blue-green",
-					crdName, e.ResourceName, e.Phase, e.Profile,
+					failureMark(), crdName, e.ResourceName, e.Phase, e.Profile,
 				)
 			}
 			if e.Mixed {
 				return fmt.Errorf(
-					"crd %q: Deployment %q (phase %s) declares both rollingUpdate.profile (%q) and "+
+					"%s crd %q: Deployment %q (phase %s) declares both rollingUpdate.profile (%q) and "+
 						"explicit maxSurge/maxUnavailable — use one or the other, not both",
-					crdName, e.ResourceName, e.Phase, e.Profile,
+					failureMark(), crdName, e.ResourceName, e.Phase, e.Profile,
 				)
 			}
 		}

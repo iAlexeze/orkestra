@@ -4,7 +4,7 @@ This declares one NetworkPolicy to be managed by Orkestra.
 
 Usage patterns:
 
-1\. Inline spec — deny-all ingress:
+1. Inline spec — deny-all ingress:
 
 ```yaml
 onCreate:
@@ -15,7 +15,7 @@ onCreate:
       reconcile: true
 ```
 
-2\. Allow same-namespace ingress:
+2. Allow same-namespace ingress:
 
 ```yaml
 onCreate:
@@ -27,7 +27,7 @@ onCreate:
             - podSelector: {}
 ```
 
-3\. Copy from existing NetworkPolicy:
+3. Copy from existing NetworkPolicy:
 
 ```yaml
 onCreate:
@@ -37,7 +37,7 @@ onCreate:
       fromNamespace: platform
 ```
 
-4\. Copy to multiple namespaces:
+4. Copy to multiple namespaces:
 
 ```yaml
 onCreate:

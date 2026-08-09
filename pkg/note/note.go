@@ -88,6 +88,7 @@ func buildNotes() template.FuncMap {
 	register(m, netNotes())
 	register(m, domainNotes())
 	register(m, prometheusNotes())
+	register(m, serveNotes())
 
 	// In development
 	// Initial scaffolding and documentation

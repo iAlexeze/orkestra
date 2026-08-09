@@ -31,16 +31,16 @@ func (k *Katalog) validatePDBBehaviorProfiles() error {
 			}
 			if !k.isUserPDBProfile(e.Profile) && !profiles.IsValidPDBProfile(e.Profile) {
 				return fmt.Errorf(
-					"crd %q: PDB %q (phase %s) has unknown behavior.profile %q — "+
+					"%s crd %q: PDB %q (phase %s) has unknown behavior.profile %q — "+
 						"allowed: zero-downtime, rolling, relaxed",
-					crdName, e.ResourceName, e.Phase, e.Profile,
+					failureMark(), crdName, e.ResourceName, e.Phase, e.Profile,
 				)
 			}
 			if e.Mixed {
 				return fmt.Errorf(
-					"crd %q: PDB %q (phase %s) declares both behavior.profile (%q) and "+
+					"%s crd %q: PDB %q (phase %s) declares both behavior.profile (%q) and "+
 						"explicit minAvailable/maxUnavailable — use one or the other, not both",
-					crdName, e.ResourceName, e.Phase, e.Profile,
+					failureMark(), crdName, e.ResourceName, e.Phase, e.Profile,
 				)
 			}
 		}
