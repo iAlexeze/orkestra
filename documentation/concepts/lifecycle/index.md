@@ -20,7 +20,7 @@ This document covers the lifecycle of one pattern — from first write to deprec
 | **Distribute** | `ork push` — gates run, proof baked into OCI annotations, artifact ships |
 | **Inspect** | `ork inspect` — proof is visible before pulling, before importing |
 | **Consume** | `ork pull` — artifact arrives with its proof |
-| **Upgrade** | Version bump in the Komposer — same push pipeline, same gates |
+| **Upgrade** | Version bump in the Komposer — same push pipeline, same gates, proof baked into the new artifact; never automatic |
 | **Deprecate** | `metadata.deprecation` — author sees it at `ork push`; consumers at `ork inspect`, `ork pull`, `ork validate`; `ork run`/`ork gate` enforce `accept` |
 | **Delete** | `security.deletionProtection` — webhook blocks `kubectl delete` on CRs, CRDs, and Orkestra infrastructure |
 
@@ -106,9 +106,21 @@ ork pull database:v1.0.0
 
 ## Upgrade
 
-Patterns are versioned with OCI tags. `database:v1.0.0` and `database:v1.1.0` are distinct artifacts with distinct proofs.
+Patterns are versioned with OCI tags. `database:v1.0.0` and `database:v1.1.0` are distinct artifacts with distinct proofs — not binary releases that need a separate controller to manage, but plain OCI artifacts that carry everything they verified at publish time.
 
-To upgrade, the Komposer references the new version:
+### The upgrade flow
+
+```bash
+ork push database:v1.1.0 ./database/
+```
+
+The same push pipeline runs on `v1.1.0` as it did on `v1.0.0`. `ork simulate` runs the new pattern against an in-memory cluster and asserts exactly which resources are created in which reconcile cycle. `ork e2e` verifies it against a real cluster. Both must pass before the artifact is written. If either fails, the push is blocked — there is no "push and hope" path.
+
+The new artifact is self-describing. `ork inspect database:v1.1.0` shows simulation assertion count, e2e status, and any deprecation state before anything is pulled or imported.
+
+### Upgrade is an explicit decision
+
+The Komposer references the new version:
 
 ```yaml
 imports:
@@ -116,7 +128,9 @@ imports:
     - url: database:v1.1.0
 ```
 
-The same push pipeline runs. The new artifact carries its own simulation and e2e proof. Upgrade is not a ceremony — it is the same production model, applied again. See [Foundations: Configuration is Deliberate](../../foundations/03-no-autosync.md) for why upgrade is always an explicit action, never automatic.
+Until you change that reference, nothing upgrades. There is no autosync, no watch loop, no version resolver that silently bumps the version when a newer tag appears. The decision to run `v1.1.0` is a line of YAML in a file that goes through code review. A PR adding that line carries a link to the proof that `v1.1.0` was verified — the OCI annotations are visible in `ork inspect` output and are part of the artifact record.
+
+See [Foundations: Configuration is Deliberate](../../foundations/03-no-autosync.md) for the full argument.
 
 ---
 

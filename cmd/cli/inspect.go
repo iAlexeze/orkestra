@@ -278,6 +278,31 @@ var inspectCmd = &cobra.Command{
 				fmt.Printf("  E2E:         %s\n", e2eNotVerified())
 			}
 		}
+		if m.Intent != nil {
+			switch m.Intent.Status {
+			case "passed":
+				var suffix string
+				if m.Intent.Target != "" {
+					suffix = "target: " + m.Intent.Target
+				}
+				if m.Intent.TestedAt != "" {
+					if t, err := time.Parse(time.RFC3339, m.Intent.TestedAt); err == nil {
+						if suffix != "" {
+							suffix += " · "
+						}
+						suffix += "tested " + humanDuration(time.Since(t)) + " ago"
+					}
+				}
+				fmt.Printf("  Intent:      %s\n", green("✓ passed"+(func() string {
+					if suffix != "" {
+						return " · " + suffix
+					}
+					return ""
+				})()))
+			case "failed":
+				fmt.Printf("  Intent:      %s\n", red("✗ failed"))
+			}
+		}
 		if m.Typed != nil {
 			parts := []string{}
 			if m.Typed.HasHooks {

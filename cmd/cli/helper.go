@@ -51,6 +51,13 @@ var (
 	writeFileAndFormat = utils.WriteFileAndFormat
 )
 
+// toAbsPath converts p to an absolute path.
+// If p is already absolute, it is returned unchanged.
+// If p is relative, it is resolved relative to the current working directory.
+func toAbsPath(p string) (string, error) {
+	return filepath.Abs(p)
+}
+
 // isAbsPath reports whether p is an absolute filesystem path.
 func isAbsPath(p string) bool { return filepath.IsAbs(p) }
 

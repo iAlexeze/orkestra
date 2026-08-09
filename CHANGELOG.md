@@ -267,6 +267,39 @@ The gateway handles everything on the other side — target resolution, token va
 - `golang.org/x/net` v0.55.0 → v0.56.0 (CVE-2026-46600)
 - `golang.org/x/crypto` v0.52.0 → v0.53.0
 
+### `ork push --add-intent`
+
+`ork push` now accepts `--add-intent <file>` (YAML or JSON). Before pushing, it runs the full `ork serve play` chain — target resolution, token check (if `token:` is set in the intent file), CR construction, and admission validation — and bakes the result into the artifact as OCI annotations:
+
+| Annotation | Value |
+|---|---|
+| `io.orkestra.intent.status` | `passed` / `failed` |
+| `io.orkestra.intent.target` | Target name played |
+| `io.orkestra.intent.tested_at` | RFC3339 timestamp |
+
+Both `intent.yaml` and `intent.json` are recognised as optional files in the artifact bundle. `ork inspect` shows the intent play result alongside Simulate and E2E.
+
+### Deprecation timeline and runtime enforcement
+
+`metadata.deprecation` now supports a scheduled deprecation window and two-gate runtime enforcement.
+
+**Timeline** — `timeline.from` opens the deprecation warning window with a days-until-EOL countdown; `timeline.to` marks the end-of-life date. Both are `YYYY-MM-DD` strings. `ork validate` rejects missing `message`, invalid dates, and `from ≥ to`.
+
+**Accept gates** — `ork run` and `ork gate` refuse to start a deprecated or EOL Katalog unless the operator has explicitly acknowledged it in the file:
+
+```yaml
+deprecation:
+  accept:
+    beforeEol: true   # required during the deprecation warning window
+    eol: true         # additionally required after the end-of-life date
+```
+
+`eol: true` alone is not accepted — `beforeEol` must also be set.
+
+**Touchpoints** — the deprecation state is surfaced at `ork push` (author sees the exact consumer message before upload), `ork validate`, `ork inspect`, and `ork pull`. Display state is computed from today vs the timeline at each call site.
+
+**Validator** — `ork validate` warns without blocking; enforcement is at runtime startup only, after validation passes and before the operator begins reconciling.
+
 ---
 
 ## v0.7.13 — The Serve Layer

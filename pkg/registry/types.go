@@ -27,6 +27,7 @@ type PatternMeta struct {
 	RuntimeVersion string             // ork version (declarative) or go.mod orkestra version (typed)
 	E2E            *PatternE2E        // populated at push time from running ork e2e; nil when absent
 	Simulate       *PatternSimulate   // populated at push time from running simulate gate; nil when absent
+	Intent         *PatternIntent     // populated at push time from running ork serve play; nil when absent
 	Typed          *PatternTyped      // populated at push time from inspecting katalog CRDs; nil for motifs or non-typed katalogs
 	Deprecated     *PatternDeprecated // populated from metadata.deprecation in the source YAML; nil when absent
 }
@@ -54,6 +55,13 @@ type PatternE2E struct {
 	Assertions int    // total number of expectations run; 0 when skipped
 }
 
+// PatternIntent holds serve play verification metadata embedded in OCI annotations at push time.
+type PatternIntent struct {
+	Status   string // "passed" / "failed"
+	Target   string // target name played
+	TestedAt string // RFC3339
+}
+
 // PatternSimulate holds simulate gate metadata embedded in OCI annotations at push time.
 // Status values:
 //   - "passed"       — simulate.yaml had expect: blocks and all assertions passed
@@ -77,6 +85,15 @@ type PatternEntry struct {
 	E2EStatus      string   `json:"e2eStatus,omitempty"`      // "passed", "skipped", or ""
 	SimulateStatus string   `json:"simulateStatus,omitempty"` // "passed", "skipped", "no-assertion", or ""
 	Deprecated     bool     `json:"deprecated,omitempty"`
+}
+
+// PushOptions carries optional metadata baked into OCI annotations at push time.
+type PushOptions struct {
+	E2E            *PatternE2E
+	Simulate       *PatternSimulate
+	Intent         *PatternIntent
+	Typed          *PatternTyped
+	RuntimeVersion string
 }
 
 // PatternIndex is the top-level index stored at registry/index:latest.

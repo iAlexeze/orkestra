@@ -26,7 +26,7 @@ var patternSpecs = map[PatternKind]*PatternSpec{
 		MediaType:     "application/vnd.orkestra.pattern.v1+tar+gzip",
 		PrimaryFile:   FileKatalog,
 		RequiredFiles: []string{FileKatalog},
-		OptionalFiles: []string{FileKomposer, FileCRD, FileReadme, FileCR, FileE2E, FileSimulate, FileGoMod, FileGoSum, FileMakefile},
+		OptionalFiles: []string{FileKomposer, FileCRD, FileReadme, FileCR, FileE2E, FileSimulate, FileIntentYAML, FileIntentJSON, FileGoMod, FileGoSum, FileMakefile},
 	},
 	MotifKind: {
 		Kind:          MotifKind,
