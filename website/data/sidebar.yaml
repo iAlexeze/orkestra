@@ -5,6 +5,9 @@ nav:
   - title: Orkestra Foundations
     section: foundations
     url: /docs/foundations/
+  - title: Architecture
+    page: true
+    url: /architecture/
   - title: Orkestra Core
     section: orkestra-core
     url: /docs/orkestra-core/

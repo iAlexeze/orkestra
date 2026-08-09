@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orkestra · Architecture</title>
+    <link rel="icon" type="image/png" href="/img/logo.png" />
+    <style>
+        /* ─── tokens ─── */
+        :root {
+            --bg: #06090F;
+            --surface: #0C1220;
+            --raised: #111A2B;
+            --border: #1C2D44;
+            --text: #C8D8E8;
+            --text-secondary: #8AAABE;
+            --muted: #587898;
+            --dim: #2A3F58;
+
+            --kat: #F0A82A;
+            --kat-dim: #1A1000;
+            --dev: #32C96A;
+            --dev-dim: #071410;
+            --gw: #34BCFA;
+            --gw-dim: #051626;
+            --rt: #A87CF8;
+            --rt-dim: #0D0820;
+            --ctrl: #F472B6;
+            --ctrl-dim: #1A0814;
+            --cli: #F59E0B;
+            --cli-dim: #1A1400;
+            --sec: #F87171;
+            --lc: #22D3EE;
+            --infra: #607D94;
+            --caller: #8AAABE;
+
+            --radius: 8px;
+            --radius-sm: 4px;
+            --font: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+            --shadow: 0 8px 32px rgba(0,0,0,0.6);
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root:not([data-theme="dark"]) {
+                --bg: #EEF2F7; --surface: #FFFFFF; --raised: #F6F8FB; --border: #C8D5E3;
+                --text: #192538; --text-secondary: #506878; --muted: #506880; --dim: #B8C8D8;
+                --kat: #C27A00; --kat-dim: #FFF8E8;
+                --dev: #167A3A; --dev-dim: #EAF8EE;
+                --gw: #0B78BE; --gw-dim: #E8F4FD;
+                --rt: #6930CE; --rt-dim: #F3EEFE;
+                --ctrl: #BE185D; --ctrl-dim: #FDE8F0;
+                --cli: #B45309; --cli-dim: #FFF8E8;
+                --sec: #DC2626; --lc: #0891B2;
+                --infra: #4A6070; --caller: #506878;
+                --shadow: 0 8px 32px rgba(0,0,0,0.10);
+            }
+        }
+        :root[data-theme="dark"] {
+            --bg: #06090F; --surface: #0C1220; --raised: #111A2B; --border: #1C2D44;
+            --text: #C8D8E8; --text-secondary: #8AAABE; --muted: #587898; --dim: #2A3F58;
+            --kat: #F0A82A; --kat-dim: #1A1000;
+            --dev: #32C96A; --dev-dim: #071410;
+            --gw: #34BCFA; --gw-dim: #051626;
+            --rt: #A87CF8; --rt-dim: #0D0820;
+            --ctrl: #F472B6; --ctrl-dim: #1A0814;
+            --cli: #F59E0B; --cli-dim: #1A1400;
+            --sec: #F87171; --lc: #22D3EE;
+            --infra: #607D94; --caller: #8AAABE;
+            --shadow: 0 8px 32px rgba(0,0,0,0.6);
+        }
+        :root[data-theme="light"] {
+            --bg: #EEF2F7; --surface: #FFFFFF; --raised: #F6F8FB; --border: #C8D5E3;
+            --text: #192538; --text-secondary: #506878; --muted: #506880; --dim: #B8C8D8;
+            --kat: #C27A00; --kat-dim: #FFF8E8;
+            --dev: #167A3A; --dev-dim: #EAF8EE;
+            --gw: #0B78BE; --gw-dim: #E8F4FD;
+            --rt: #6930CE; --rt-dim: #F3EEFE;
+            --ctrl: #BE185D; --ctrl-dim: #FDE8F0;
+            --cli: #B45309; --cli-dim: #FFF8E8;
+            --sec: #DC2626; --lc: #0891B2;
+            --infra: #4A6070; --caller: #506878;
+            --shadow: 0 8px 32px rgba(0,0,0,0.10);
+        }
+
+        /* ─── base ─── */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--bg); color: var(--text); font-family: var(--font);
+            font-size: 13px; line-height: 1.6; min-height: 100vh;
+            padding: 2rem 1.5rem 4rem; transition: background 0.2s, color 0.2s;
+        }
+
+        /* ─── header ─── */
+        .page-header {
+            max-width: 1300px; margin: 0 auto 2rem;
+            display: flex; flex-wrap: wrap; justify-content: space-between;
+            align-items: flex-end; gap: 1rem 2rem;
+        }
+        .header-left .eyebrow { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--kat); margin-bottom: 0.3rem; }
+        .header-left .page-title { font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+        .header-left .page-desc { font-size: 12px; color: var(--muted); max-width: 560px; margin-top: 0.2rem; }
+
+        .header-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
+        .header-btn {
+            background: var(--raised); border: 1px solid var(--border); border-radius: 6px;
+            padding: 0.3rem 0.8rem; color: var(--text-secondary); font-size: 11px;
+            font-family: var(--font); cursor: pointer; transition: 0.15s; text-decoration: none; display: inline-block;
+        }
+        .header-btn:hover { border-color: var(--text-secondary); color: var(--text); }
+
+        /* ─── diagram ─── */
+        .diagram-outer {
+            max-width: 1300px; margin: 0 auto;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); overflow: hidden;
+            box-shadow: var(--shadow); padding: 1.25rem;
+            transition: background 0.2s, border 0.2s;
+        }
+
+        /* ─── patterns layer ─── */
+        .patterns-row {
+            background: var(--kat-dim); border: 1px solid var(--kat);
+            border-radius: var(--radius); padding: 0.6rem 1.25rem;
+            margin-bottom: 0.9rem; text-align: center;
+        }
+        .patterns-row .label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--kat); margin-bottom: 0.3rem; }
+        .patterns-row .items { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.3rem 0.5rem; }
+        .pat-chip {
+            font-size: 11px; color: var(--kat); background: var(--surface);
+            padding: 0.2rem 0.75rem; border-radius: 12px; border: 1px solid var(--kat);
+            font-weight: 600; cursor: pointer; transition: background 0.12s, color 0.12s;
+            user-select: none;
+        }
+        .pat-chip:hover { background: var(--kat); color: var(--bg); }
+        .pat-arrow { font-size: 14px; color: var(--muted); }
+
+        /* ─── registry row ─── */
+        .registry-row {
+            background: var(--raised); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 0.6rem 1.25rem;
+            margin-bottom: 0.9rem; text-align: center;
+        }
+        .registry-row .label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+        .registry-row .items { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.35rem 1rem; margin-top: 0.25rem; }
+        .registry-row .items span { font-size: 11px; color: var(--text-secondary); background: var(--surface); padding: 0.1rem 0.6rem; border-radius: 12px; border: 1px solid var(--dim); }
+        .registry-row .items code { font-size: 10px; color: var(--text); }
+
+        /* ─── source of truth ─── */
+        .source-truth {
+            text-align: center; padding: 1rem;
+            background: var(--kat-dim); border: 2px solid var(--kat);
+            border-radius: var(--radius); margin: 0 auto 0.9rem; max-width: 400px;
+        }
+        .source-truth .label { font-size: 15px; font-weight: 700; color: var(--kat); }
+        .source-truth .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+        /* ─── arrow row ─── */
+        .arrow-row {
+            display: flex; justify-content: space-around; align-items: center;
+            padding: 0.3rem 0; color: var(--muted); font-size: 10px; gap: 0.5rem; flex-wrap: wrap;
+        }
+        .arrow-row .arrow-item { display: flex; align-items: center; gap: 0.35rem; }
+        .arrow-row .arrow-symbol { font-size: 16px; }
+        .arrow-row .arrow-label { color: var(--muted); font-size: 10px; }
+
+        /* ─── columns (5 system components) ─── */
+        .columns {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.75rem; margin-top: 0.4rem;
+        }
+        @media (max-width: 1100px) { .columns { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 680px)  { .columns { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 420px)  { .columns { grid-template-columns: 1fr; } }
+
+        .column {
+            background: var(--raised); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 0.75rem; min-height: 240px;
+            cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .column:hover { border-color: var(--text-secondary); }
+        .column.dev.active  { box-shadow: 0 0 0 2px var(--dev);  border-color: var(--dev);  }
+        .column.gw.active   { box-shadow: 0 0 0 2px var(--gw);   border-color: var(--gw);   }
+        .column.rt.active   { box-shadow: 0 0 0 2px var(--rt);   border-color: var(--rt);   }
+        .column.ctrl.active { box-shadow: 0 0 0 2px var(--ctrl); border-color: var(--ctrl); }
+        .column.cli.active  { box-shadow: 0 0 0 2px var(--cli);  border-color: var(--cli);  }
+
+        .column-header {
+            font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+            padding-bottom: 0.45rem; border-bottom: 2px solid var(--border); margin-bottom: 0.5rem;
+        }
+        .column.dev  .column-header { color: var(--dev);  border-bottom-color: var(--dev);  }
+        .column.gw   .column-header { color: var(--gw);   border-bottom-color: var(--gw);   }
+        .column.rt   .column-header { color: var(--rt);   border-bottom-color: var(--rt);   }
+        .column.ctrl .column-header { color: var(--ctrl); border-bottom-color: var(--ctrl); }
+        .column.cli  .column-header { color: var(--cli);  border-bottom-color: var(--cli);  }
+
+        .column .subtitle { font-size: 9px; color: var(--muted); margin-bottom: 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
+
+        .node {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); padding: 0.4rem 0.55rem;
+            margin-bottom: 0.3rem; font-size: 9.5px; line-height: 1.5; cursor: default; transition: 0.1s;
+        }
+        .node:hover { border-color: var(--text-secondary); }
+        .node .cmd { font-weight: 700; color: var(--text); }
+        .node .desc { color: var(--muted); font-size: 8.5px; margin-top: 1px; }
+        .node .port { color: var(--text-secondary); font-size: 8px; background: var(--raised); padding: 0 4px; border-radius: 3px; border: 1px solid var(--dim); margin-left: 3px; }
+
+        .node.dev-node  { border-left: 3px solid var(--dev);  }
+        .node.gw-node   { border-left: 3px solid var(--gw);   }
+        .node.rt-node   { border-left: 3px solid var(--rt);   }
+        .node.ctrl-node { border-left: 3px solid var(--ctrl); }
+        .node.cli-node  { border-left: 3px solid var(--cli);  }
+        .node.kat-node  { border-left: 3px solid var(--kat);  }
+
+        /* ─── infra row ─── */
+        .infra-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin: 0.9rem 0 0.5rem; }
+        @media (max-width: 700px) { .infra-row { grid-template-columns: 1fr; } }
+        .infra-box { background: var(--raised); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.7rem; text-align: center; }
+        .infra-box .label { font-weight: 700; color: var(--infra); font-size: 11px; }
+        .infra-box .desc { font-size: 9px; color: var(--muted); margin-top: 3px; }
+
+        /* ─── callers ─── */
+        .callers-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0.7rem; margin-top: 0.7rem; }
+        @media (max-width: 800px) { .callers-row { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 450px) { .callers-row { grid-template-columns: 1fr; } }
+        .caller-box { background: var(--raised); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.5rem 0.65rem; text-align: center; border-left: 3px solid var(--caller); }
+        .caller-box .label { font-weight: 700; font-size: 10px; color: var(--text-secondary); }
+        .caller-box .desc { font-size: 8px; color: var(--muted); margin-top: 2px; }
+
+        /* ─── flow notes ─── */
+        .flow-notes { max-width: 1300px; margin: 1.25rem auto 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.5rem; }
+        .flow-note { display: flex; align-items: flex-start; gap: 0.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.55rem 0.75rem; font-size: 10px; color: var(--muted); line-height: 1.6; }
+        .flow-note .flow-icon { font-size: 12px; flex-shrink: 0; margin-top: 1px; }
+        .flow-note strong { color: var(--text); font-weight: 600; }
+        .flow-note code { font-size: 9px; background: var(--raised); padding: 1px 5px; border-radius: 3px; color: var(--text-secondary); border: 1px solid var(--dim); }
+
+        /* expandable notes (security + lifecycle) */
+        .flow-note.expandable { cursor: pointer; flex-wrap: wrap; transition: border-color 0.15s; }
+        .flow-note.expandable:hover { border-color: var(--text-secondary); }
+        .flow-note.expandable .note-summary { display: flex; align-items: flex-start; gap: 0.5rem; width: 100%; }
+        .flow-note.expandable .expand-hint { margin-left: auto; flex-shrink: 0; font-size: 10px; color: var(--dim); transition: transform 0.2s; }
+        .flow-note.expandable.open .expand-hint { transform: rotate(180deg); }
+        .flow-note.expandable.open { grid-column: 1 / -1; }
+        .expand-body { display: none; width: 100%; margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--border); font-size: 10.5px; color: var(--text-secondary); line-height: 1.75; }
+        .expand-body p { margin-bottom: 0.4rem; }
+        .expand-body p:last-child { margin-bottom: 0; }
+        .expand-body code { font-size: 9px; background: var(--raised); padding: 1px 5px; border-radius: 3px; border: 1px solid var(--dim); color: var(--text); }
+        .flow-note.expandable.open .expand-body { display: block; }
+
+        /* ─── footer ─── */
+        .page-footer { max-width: 1300px; margin: 2rem auto 0; padding-top: 1.2rem; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.5rem 2rem; font-size: 10px; color: var(--muted); }
+        .page-footer a { color: var(--text-secondary); text-decoration: none; border-bottom: 1px solid transparent; transition: 0.15s; }
+        .page-footer a:hover { color: var(--text); border-bottom-color: var(--text-secondary); }
+
+        /* ─── modal ─── */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.65); z-index: 200;
+            align-items: center; justify-content: center; padding: 1rem;
+        }
+        .modal-overlay.open { display: flex; }
+
+        .modal-box {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); max-width: 660px; width: 100%;
+            max-height: 84vh; overflow-y: auto; padding: 1.5rem;
+            box-shadow: var(--shadow); position: relative;
+        }
+        .modal-box.dev-modal  { border-top: 3px solid var(--dev);  }
+        .modal-box.gw-modal   { border-top: 3px solid var(--gw);   }
+        .modal-box.rt-modal   { border-top: 3px solid var(--rt);   }
+        .modal-box.ctrl-modal { border-top: 3px solid var(--ctrl); }
+        .modal-box.cli-modal  { border-top: 3px solid var(--cli);  }
+        .modal-box.kat-modal  { border-top: 3px solid var(--kat);  }
+
+        .modal-close {
+            position: absolute; top: 0.9rem; right: 0.9rem;
+            background: var(--raised); border: 1px solid var(--border);
+            border-radius: 4px; width: 24px; height: 24px; cursor: pointer;
+            color: var(--muted); font-size: 14px; display: flex;
+            align-items: center; justify-content: center; transition: 0.15s;
+        }
+        .modal-close:hover { color: var(--text); border-color: var(--text-secondary); }
+
+        .modal-title { font-size: 15px; font-weight: 700; margin-bottom: 0.75rem; padding-right: 2rem; }
+        .modal-box.dev-modal  .modal-title { color: var(--dev);  }
+        .modal-box.gw-modal   .modal-title { color: var(--gw);   }
+        .modal-box.rt-modal   .modal-title { color: var(--rt);   }
+        .modal-box.ctrl-modal .modal-title { color: var(--ctrl); }
+        .modal-box.cli-modal  .modal-title { color: var(--cli);  }
+        .modal-box.kat-modal  .modal-title { color: var(--kat);  }
+
+        .modal-body { font-size: 11.5px; color: var(--text-secondary); line-height: 1.75; }
+        .modal-body p { margin-bottom: 0.65rem; }
+        .modal-body code { font-size: 10px; background: var(--raised); padding: 1px 5px; border-radius: 3px; border: 1px solid var(--dim); color: var(--text); }
+
+        /* code blocks */
+        .code-label { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0.5rem 0 0.15rem; }
+        .code-block {
+            background: var(--raised); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 0.5rem;
+            font-size: 10px; line-height: 1.7; overflow-x: auto; white-space: pre;
+            color: var(--text); font-family: var(--font);
+        }
+        .code-block .k { color: var(--kat); }
+        .code-block .s { color: var(--gw); }
+        .code-block .c { color: var(--muted); }
+
+        .code-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+        @media (max-width: 520px) { .code-pair { grid-template-columns: 1fr; } }
+        .code-pair > div { display: flex; flex-direction: column; }
+        .code-pair .code-block { flex: 1; margin-bottom: 0; }
+
+        .connects { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+        .connects-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-right: 0.3rem; }
+        .connect-chip { font-size: 10px; padding: 0.1rem 0.6rem; border-radius: 12px; border: 1px solid var(--dim); color: var(--text-secondary); background: var(--surface); }
+        .connect-chip.dev  { border-color: var(--dev);  color: var(--dev);  }
+        .connect-chip.gw   { border-color: var(--gw);   color: var(--gw);   }
+        .connect-chip.rt   { border-color: var(--rt);   color: var(--rt);   }
+        .connect-chip.ctrl { border-color: var(--ctrl); color: var(--ctrl); }
+        .connect-chip.cli  { border-color: var(--cli);  color: var(--cli);  }
+        .connect-chip.reg  { border-color: var(--kat);  color: var(--kat);  }
+
+        @media (max-width: 600px) {
+            body { padding: 1rem 0.5rem 2rem; }
+            .page-header { flex-direction: column; align-items: flex-start; }
+            .page-header .header-left .page-title { font-size: 20px; }
+            .diagram-outer { padding: 0.7rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="page-header">
+        <div class="header-left">
+            <div class="eyebrow">Orkestra · Architecture</div>
+            <h1 class="page-title">How It All Composes</h1>
+            <p class="page-desc">
+                One YAML file — the Katalog — is the source of truth for every surface.
+                Click any pattern or component to learn more.
+            </p>
+        </div>
+        <div class="header-actions">
+            <a class="header-btn" href="/docs/">← Docs</a>
+            <button class="header-btn" id="themeToggle">🌓 <span id="themeLabel">Dark</span></button>
+        </div>
+    </header>
+
+    <div class="diagram-outer">
+
+        <!-- Patterns layer -->
+        <div class="patterns-row">
+            <div class="label">Pattern kinds · OCI artifacts · click to explore</div>
+            <div class="items">
+                <span class="pat-chip" data-pat="motif">Motif</span>
+                <span class="pat-arrow">→</span>
+                <span class="pat-chip" data-pat="katalog">Katalog</span>
+                <span class="pat-arrow">→</span>
+                <span class="pat-chip" data-pat="komposer">Komposer</span>
+                <span class="pat-arrow">+</span>
+                <span class="pat-chip" data-pat="simulate">Simulate</span>
+                <span class="pat-arrow">+</span>
+                <span class="pat-chip" data-pat="e2e">E2E</span>
+                <span class="pat-arrow">+</span>
+                <span class="pat-chip" data-pat="intent">Intent</span>
+            </div>
+        </div>
+
+        <!-- Registry row -->
+        <div class="registry-row">
+            <div class="label">Registry · OCI</div>
+            <div class="items">
+                <span><code>ork push</code></span>
+                <span><code>ork pull</code></span>
+                <span><code>ork inspect</code></span>
+                <span><code>ork patterns</code></span>
+                <span style="border-color:var(--dev);">simulate gate</span>
+                <span style="border-color:var(--dev);">e2e gate</span>
+                <span style="border-color:var(--dev);">intent play</span>
+                <span style="border-color:var(--kat);">proof in annotations</span>
+            </div>
+        </div>
+
+        <!-- Source of truth -->
+        <div class="source-truth">
+            <div class="label">📄 katalog.yaml</div>
+            <div class="sub">single source of truth · one YAML file · no build step</div>
+        </div>
+
+        <!-- Arrows -->
+        <div class="arrow-row">
+            <span class="arrow-item"><span class="arrow-symbol" style="color:var(--dev)">↓</span><span class="arrow-label">dev toolchain</span></span>
+            <span class="arrow-item"><span class="arrow-symbol" style="color:var(--gw)">↓</span><span class="arrow-label">gateway</span></span>
+            <span class="arrow-item"><span class="arrow-symbol" style="color:var(--rt)">↓</span><span class="arrow-label">runtime</span></span>
+            <span class="arrow-item"><span class="arrow-symbol" style="color:var(--ctrl)">↓</span><span class="arrow-label">control center</span></span>
+            <span class="arrow-item"><span class="arrow-symbol" style="color:var(--cli)">↓</span><span class="arrow-label">CLI</span></span>
+        </div>
+
+        <!-- Five columns -->
+        <div class="columns">
+
+            <!-- Dev toolchain -->
+            <div class="column dev" data-key="dev">
+                <div class="column-header">🛠 Dev toolchain</div>
+                <div class="subtitle">zero cluster verification</div>
+                <div class="node dev-node"><div class="cmd">ork validate</div><div class="desc">schema + semantic · offline</div></div>
+                <div class="node dev-node"><div class="cmd">ork simulate</div><div class="desc">in-memory reconcile · sub-second</div></div>
+                <div class="node dev-node"><div class="cmd">ork e2e</div><div class="desc">real cluster via kind</div></div>
+                <div class="node dev-node"><div class="cmd">ork serve play</div><div class="desc">6-stage gateway pipeline · offline</div></div>
+                <div class="node dev-node"><div class="cmd">serve play --simulate</div><div class="desc">intent → CR → reconcile · full chain</div></div>
+                <div class="node dev-node"><div class="cmd">ork gate / ork run</div><div class="desc">admission + reconcile against CR file</div></div>
+            </div>
+
+            <!-- Gateway -->
+            <div class="column gw" data-key="gw">
+                <div class="column-header">🚪 Gateway</div>
+                <div class="subtitle">delivery</div>
+                <div class="node gw-node"><div class="cmd">Webhook <span class="port">:8443</span></div><div class="desc">/validate · /mutate · /convert · TLS</div></div>
+                <div class="node gw-node"><div class="cmd">Auth middleware</div><div class="desc">static bearer · OIDC · GitHub · GitLab · Vault</div></div>
+                <div class="node gw-node"><div class="cmd">Provenance stamper</div><div class="desc">serve-target · alias · source</div></div>
+                <div class="node gw-node"><div class="cmd">Gateway API <span class="port">:8080</span></div><div class="desc">POST /api/v1/apply · GET /resources</div></div>
+                <div class="node gw-node"><div class="cmd">ork serve apply</div><div class="desc">live intent delivery</div></div>
+                <div class="node gw-node"><div class="cmd">/katalog · /notify</div><div class="desc">serves Control Center</div></div>
+            </div>
+
+            <!-- Runtime -->
+            <div class="column rt" data-key="rt">
+                <div class="column-header">⚡ Runtime</div>
+                <div class="subtitle">execution</div>
+                <div class="node kat-node"><div class="cmd">OperatorBox</div><div class="desc">pure declarative operator · zero code · runs every CRD in the Katalog</div></div>
+                <div class="node rt-node"><div class="cmd">SharedInformerFactory</div><div class="desc">one informer per CRD</div></div>
+                <div class="node rt-node"><div class="cmd">DependencyKordinator</div><div class="desc">topological start · dependsOn gates</div></div>
+                <div class="node rt-node"><div class="cmd">GenericReconciler</div><div class="desc">mutation → validation → templates → status</div></div>
+                <div class="node rt-node"><div class="cmd">Operator Autoscaler</div><div class="desc">workers · queue depth · resync</div></div>
+                <div class="node rt-node"><div class="cmd">Workload Autoscaler</div><div class="desc">scales Deployments · ONCOP signals</div></div>
+                <div class="node rt-node"><div class="cmd">/katalog <span class="port">:8080</span></div><div class="desc">health + CRD state</div></div>
+            </div>
+
+            <!-- Control Center -->
+            <div class="column ctrl" data-key="ctrl">
+                <div class="column-header">👁 Control Center</div>
+                <div class="subtitle">visibility</div>
+                <div class="node ctrl-node"><div class="cmd">Control UI <span class="port">:8081</span></div><div class="desc">real-time dashboard · CRD + CR view</div></div>
+                <div class="node ctrl-node"><div class="cmd">Dev mode</div><div class="desc">reads local /katalog</div></div>
+                <div class="node ctrl-node"><div class="cmd">Production mode</div><div class="desc">reads gateway + runtime</div></div>
+                <div class="node ctrl-node"><div class="cmd">Multi-instance</div><div class="desc">multiple runtimes in one UI</div></div>
+                <div class="node ctrl-node"><div class="cmd">SSE updates</div><div class="desc">live reloads · /notify</div></div>
+                <div class="node ctrl-node"><div class="cmd">Serve form</div><div class="desc">alias tab strip · inline apply</div></div>
+            </div>
+
+            <!-- CLI -->
+            <div class="column cli" data-key="cli">
+                <div class="column-header">⌨ CLI</div>
+                <div class="subtitle">everything</div>
+                <div class="node cli-node"><div class="cmd">ork run / ork gate</div><div class="desc">start runtime · start gateway</div></div>
+                <div class="node cli-node"><div class="cmd">ork push / pull / inspect</div><div class="desc">OCI distribution · proof in annotations</div></div>
+                <div class="node cli-node"><div class="cmd">ork serve *</div><div class="desc">schema · fields · aliases · can-i · play</div></div>
+                <div class="node cli-node"><div class="cmd">ork token *</div><div class="desc">list · verify · probe</div></div>
+                <div class="node cli-node"><div class="cmd">ork proxy</div><div class="desc">expose runtime + gateway + CC locally</div></div>
+                <div class="node cli-node"><div class="cmd">ork init / generate</div><div class="desc">scaffold · bundle · dashboards</div></div>
+            </div>
+
+        </div>
+
+        <!-- Infra row -->
+        <div class="infra-row">
+            <div class="infra-box"><div class="label">↑ Gateway writes</div><div class="desc">SSA PATCH + provenance annotations</div></div>
+            <div class="infra-box"><div class="label">🗄 API Server · etcd</div><div class="desc">The only shared state between gateway and runtime</div></div>
+            <div class="infra-box"><div class="label">↓ Runtime watches</div><div class="desc">SharedInformerFactory reads change events</div></div>
+        </div>
+
+        <!-- Callers -->
+        <div style="margin-top:0.9rem;text-align:center;font-size:10px;color:var(--muted);margin-bottom:0.35rem;">Callers</div>
+        <div class="callers-row">
+            <div class="caller-box"><div class="label">📤 Flat intent</div><div class="desc">target + fields · no apiVersion · no kind</div></div>
+            <div class="caller-box"><div class="label">⎈ kubectl · GitOps</div><div class="desc">Flux · ArgoCD · Crossplane</div></div>
+            <div class="caller-box"><div class="label">🔄 CI pipeline</div><div class="desc">OIDC token · polls pollUrl</div></div>
+            <div class="caller-box"><div class="label">🎛 Control Center</div><div class="desc">reads gateway + runtime /katalog</div></div>
+        </div>
+
+        <!-- Legend -->
+        <div style="margin-top:1rem;padding-top:0.9rem;border-top:1px solid var(--border);">
+            <div class="arrow-row" style="justify-content:flex-start;gap:1.5rem;">
+                <span class="arrow-item"><span class="arrow-symbol" style="color:var(--text-secondary)">→</span><span class="arrow-label">primary flows</span></span>
+                <span class="arrow-item"><span class="arrow-symbol" style="color:var(--text-secondary)">⊕</span><span class="arrow-label">same binary, different build tags</span></span>
+                <span class="arrow-item"><span class="arrow-symbol" style="color:var(--text-secondary)">≡</span><span class="arrow-label">serve play and simulate use production code</span></span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Flow notes -->
+    <div class="flow-notes">
+
+        <div class="flow-note expandable" data-expand="sec">
+            <div class="note-summary">
+                <span class="flow-icon" style="color:var(--sec)">🔒</span>
+                <span><strong style="color:var(--sec)">Security</strong> — declared in the Katalog · deletion protection · admission rules · token model · OIDC</span>
+                <span class="expand-hint">↓</span>
+            </div>
+            <div class="expand-body">
+                <p>Security is expressed in the same <code>katalog.yaml</code> as the operator itself. No separate security stack to install or maintain.</p>
+                <p><strong>Deletion protection</strong> labels managed CRs and CRDs, then a validating webhook blocks any <code>kubectl delete</code>. When enabled it also protects the Orkestra Deployment, Service, and webhook configuration itself.</p>
+                <p><strong>Admission rules</strong> — declared in <code>validation.rules</code> and <code>mutation.rules</code>. Enforced at SSA time by the webhook. <code>ork serve play</code> runs the same rules offline — no mock.</p>
+                <p><strong>Token model</strong> — per-CRD, per-alias, per-operation. Supports static bearer, GitHub Actions OIDC, GitLab CI OIDC, HashiCorp Vault, and generic OIDC. No static secrets in pipelines.</p>
+            </div>
+        </div>
+
+        <div class="flow-note expandable" data-expand="lc">
+            <div class="note-summary">
+                <span class="flow-icon" style="color:var(--lc)">♻</span>
+                <span><strong style="color:var(--lc)">Lifecycle</strong> — create → validate → test → push → upgrade → deprecate · all in the artifact</span>
+                <span class="expand-hint">↓</span>
+            </div>
+            <div class="expand-body">
+                <p>The lifecycle of a pattern — from first write to deletion — is expressed in the same artifact language as the operator itself. No external lifecycle system, no separate controllers.</p>
+                <p><strong>No build step.</strong> The operator is a YAML file. <code>ork validate</code> checks it offline. <code>ork simulate</code> reconciles it in-memory. <code>ork e2e</code> tests it in a real cluster.</p>
+                <p><strong>Upgrade is a line in a file.</strong> A version bump in the Komposer goes through code review. Never automatic, never silent.</p>
+                <p><strong>Deprecate</strong> — <code>metadata.deprecation</code> with a timeline. <code>ork run</code> and <code>ork gate</code> refuse to start without explicit <code>accept</code> flags. The decision to run a deprecated pattern is a reviewable record.</p>
+            </div>
+        </div>
+
+        <div class="flow-note"><span class="flow-icon" style="color:var(--text-secondary)">→</span><span><strong>Push pipeline</strong> — <code>ork push</code> gates on simulate + e2e + intent play; proof baked into OCI annotations</span></div>
+        <div class="flow-note"><span class="flow-icon" style="color:var(--text-secondary)">⊕</span><span><strong>Build tags</strong> — <code>ork gate</code> / <code>ork run</code>: same binary, <code>!runtime</code> vs <code>!gateway</code> constraints</span></div>
+        <div class="flow-note"><span class="flow-icon" style="color:var(--text-secondary)">≡</span><span><strong>serve play</strong> — uses production code from <code>pkg/gateway/api</code>; no mock</span></div>
+        <div class="flow-note"><span class="flow-icon" style="color:var(--text-secondary)">📡</span><span><strong>Ports</strong> — Webhook: <code>:8443</code> · Gateway API: <code>:8080</code> · Runtime: <code>:8080</code> · Control: <code>:8081</code></span></div>
+        <div class="flow-note"><span class="flow-icon" style="color:var(--text-secondary)">🗄</span><span><strong>Shared state</strong> — API Server / etcd is the only coupling between gateway and runtime</span></div>
+        <div class="flow-note"><span class="flow-icon" style="color:var(--text-secondary)">📦</span><span><strong>No binary</strong> — the operator is a Katalog; lifecycle and security are built into the artifact</span></div>
+    </div>
+
+    <footer class="page-footer">
+        <span>Orkestra</span>
+        <span>
+            <a href="https://orkestra.sh/docs/" target="_blank">Docs</a> &middot;
+            <a href="https://github.com/orkspace/orkestra" target="_blank">GitHub</a> &middot;
+            <a href="https://join.slack.com/t/orkspace-group/shared_invite/zt-42i4idb0h-WYUF6JryDFMkky95ZJWHBg" target="_blank">Slack</a>
+        </span>
+        <span>One YAML to rule them all.</span>
+    </footer>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-box" id="modalBox">
+            <button class="modal-close" id="modalClose">✕</button>
+            <div class="modal-title" id="modalTitle"></div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        /* ── theme ── */
+        var toggle  = document.getElementById('themeToggle');
+        var label   = document.getElementById('themeLabel');
+        var html    = document.documentElement;
+        var stored  = localStorage.getItem('ork-theme');
+        var sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var current = stored || (sysDark ? 'dark' : 'light');
+        html.setAttribute('data-theme', current);
+        label.textContent = current.charAt(0).toUpperCase() + current.slice(1);
+        toggle.addEventListener('click', function() {
+            var next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('ork-theme', next);
+            label.textContent = next.charAt(0).toUpperCase() + next.slice(1);
+        });
+
+        /* ── pattern snippets ── */
+        var patterns = {
+            motif: {
+                title: 'Motif — reusable resource primitive',
+                body: '<p>A Motif declares resources — Deployments, Services, HPA, PDB, Ingress, RBAC — that any Katalog can import via OCI reference. It carries no CRD of its own. It contributes its resource definitions into the importing Katalog at startup, bound to the inputs the Katalog passes in.</p>' +
+                      '<div class="code-label">motif.yaml · deployment-stack</div>' +
+                      '<pre class="code-block"><span class="k">kind</span>: Motif\n<span class="k">metadata</span>:\n  <span class="k">name</span>: deployment-stack\n  <span class="k">version</span>: v0.1.0\n\n<span class="k">inputs</span>:\n  - <span class="k">name</span>: name\n    <span class="k">required</span>: true\n  - <span class="k">name</span>: image\n    <span class="k">required</span>: true\n  - <span class="k">name</span>: port\n    <span class="k">required</span>: true\n  - <span class="k">name</span>: replicas\n    <span class="k">default</span>: <span class="s">"2"</span>\n\n<span class="k">resources</span>:\n  <span class="k">deployments</span>:\n    - <span class="k">name</span>: <span class="s">\'{{ .inputs.name }}\'</span>\n      <span class="k">image</span>: <span class="s">\'{{ .inputs.image }}\'</span>\n      <span class="k">replicas</span>: <span class="s">\'{{ .inputs.replicas }}\'</span>\n      <span class="k">port</span>: <span class="s">\'{{ .inputs.port }}\'</span>\n  <span class="k">services</span>:\n    - <span class="k">name</span>: <span class="s">\'{{ .inputs.name }}-svc\'</span>\n      <span class="k">port</span>: <span class="s">\'{{ .inputs.port }}\'</span>\n  <span class="k">hpa</span>:\n    - <span class="k">name</span>: <span class="s">\'{{ .inputs.name }}-hpa\'</span>\n      <span class="k">maxReplicas</span>: <span class="s">\'{{ .inputs.maxReplicas }}\'</span>\n  <span class="k">pdb</span>:\n    - <span class="k">name</span>: <span class="s">\'{{ .inputs.name }}-pdb\'</span>\n      <span class="k">minAvailable</span>: <span class="s">"1"</span>\n  <span class="k">ingresses</span>:\n    - <span class="k">name</span>: <span class="s">\'{{ .inputs.name }}-ingress\'</span>\n      <span class="k">host</span>: <span class="s">\'{{ .inputs.host }}\'</span>\n      <span class="k">when</span>:\n        - <span class="k">field</span>: <span class="s">\'{{ .inputs.host }}\'</span>\n          <span class="k">exists</span>: true</pre>',
+                connects: [{cls:'reg', label:'Registry — ork push/pull'}]
+            },
+            katalog: {
+                title: 'Katalog — operator declaration',
+                body: '<p>A Katalog is a complete operator declaration in one YAML file. It defines the CRD, the OperatorBox reconciler, serve targets, and token model. It imports a Motif via OCI ref and passes CR fields into the Motif\'s inputs — the Motif\'s resources are created on each reconcile.</p>' +
+                      '<div class="code-label">katalog.yaml · deployment-stack</div>' +
+                      '<pre class="code-block"><span class="k">kind</span>: Katalog\n<span class="k">metadata</span>:\n  <span class="k">name</span>: deployment-stack\n  <span class="k">version</span>: v1.0.0\n\n<span class="k">spec</span>:\n  <span class="k">crds</span>:\n    <span class="k">application</span>:\n      <span class="k">apiTypes</span>:\n        <span class="k">group</span>: apps.orkestra.io\n        <span class="k">kind</span>: Application\n      <span class="k">operatorBox</span>:\n        <span class="k">reconciler</span>:\n          <span class="k">workers</span>: 2\n          <span class="k">resync</span>: 1m\n      <span class="k">imports</span>:\n        - <span class="k">motif</span>: <span class="s">oci://ghcr.io/orkspace/orkestra-registry/\n            patterns/motifs/deployment-stack:v0.1.0</span>\n          <span class="k">with</span>:\n            <span class="k">name</span>: <span class="s">\'{{ .metadata.name }}\'</span>\n            <span class="k">image</span>: <span class="s">\'{{ .spec.image }}\'</span>\n            <span class="k">port</span>: <span class="s">\'{{ .spec.port }}\'</span>\n            <span class="k">replicas</span>: <span class="s">\'{{ .spec.replicas }}\'</span>\n            <span class="k">host</span>: <span class="s">\'{{ .spec.host }}\'</span></pre>',
+                connects: [{cls:'reg', label:'Registry'}, {cls:'dev', label:'Dev toolchain'}]
+            },
+            komposer: {
+                title: 'Komposer — multi-operator composition',
+                body: '<p>A Komposer imports multiple Katalogs — from local files or directly from the OCI registry — and composes them into a single runtime. It declares inter-operator dependency ordering. The runtime loads all imported Katalogs and starts them in dependency order.</p>' +
+                      '<div class="code-label">komposer.yaml · platform-stack</div>' +
+                      '<pre class="code-block"><span class="k">kind</span>: Komposer\n<span class="k">metadata</span>:\n  <span class="k">name</span>: platform-stack\n  <span class="k">version</span>: 0.1.0\n\n<span class="k">imports</span>:\n  <span class="k">registry</span>:\n    - <span class="s">oci://ghcr.io/myorg/katalogs/app-operator:0.1.0</span>\n    - <span class="s">oci://ghcr.io/myorg/katalogs/security-operator:0.1.0</span>\n    - <span class="s">oci://ghcr.io/myorg/katalogs/monitoring-operator:0.1.0</span>\n    - <span class="s">oci://ghcr.io/myorg/katalogs/infra-operator:0.1.0</span>\n\n<span class="k">spec</span>:\n  <span class="k">crds</span>:\n    <span class="k">app</span>:\n      <span class="k">operatorBox</span>:\n        <span class="k">reconciler</span>:\n          <span class="k">workers</span>: 3\n          <span class="k">resync</span>: 30s\n    <span class="k">infra</span>:\n      <span class="k">operatorBox</span>:\n        <span class="k">reconciler</span>:\n          <span class="k">workers</span>: 2\n          <span class="k">resync</span>: 60s</pre>',
+                connects: [{cls:'rt', label:'Runtime — dependency order'}, {cls:'reg', label:'Registry'}]
+            },
+            simulate: {
+                title: 'Simulate — in-memory reconcile test',
+                body: '<p>A Simulate spec runs the real reconciler against an in-memory cluster. No cluster required, sub-second. Asserts which resources are created in which reconcile cycle, and that the operator reaches a steady state with no errors.</p>' +
+                      '<div class="code-label">simulate.yaml · deployment-stack</div>' +
+                      '<pre class="code-block"><span class="k">kind</span>: Simulate\n<span class="k">metadata</span>:\n  <span class="k">name</span>: deployment-stack-sim\n<span class="k">spec</span>:\n  <span class="k">katalog</span>: ./katalog.yaml\n  <span class="k">cr</span>: ./cr.yaml\n  <span class="k">cycles</span>: 5\n\n  <span class="k">expect</span>:\n    <span class="k">steady</span>: true\n    <span class="k">noErrors</span>: true\n    <span class="k">ops</span>:\n      - <span class="k">cycle</span>: 1\n        <span class="k">verb</span>: create\n        <span class="k">resource</span>: serviceaccounts\n        <span class="k">name</span>: my-app-sa\n      - <span class="k">cycle</span>: 1\n        <span class="k">verb</span>: apply\n        <span class="k">resource</span>: deployments\n        <span class="k">name</span>: my-app\n      - <span class="k">cycle</span>: 1\n        <span class="k">verb</span>: apply\n        <span class="k">resource</span>: services\n        <span class="k">name</span>: my-app-svc\n      - <span class="k">cycle</span>: 1\n        <span class="k">verb</span>: apply\n        <span class="k">resource</span>: horizontalpodautoscalers\n        <span class="k">name</span>: my-app-hpa\n      - <span class="k">cycle</span>: 1\n        <span class="k">verb</span>: apply\n        <span class="k">resource</span>: poddisruptionbudgets\n        <span class="k">name</span>: my-app-pdb</pre>',
+                connects: [{cls:'dev', label:'Dev toolchain'}, {cls:'reg', label:'Registry — push gate'}]
+            },
+            e2e: {
+                title: 'E2E — real cluster test',
+                body: '<p>An E2E spec tests the operator against a real cluster (kind). It asserts resource presence, status conditions, and field values — and can test delete flows by asserting resources are removed after CR deletion.</p>' +
+                      '<div class="code-label">e2e.yaml · deployment-stack</div>' +
+                      '<pre class="code-block"><span class="k">kind</span>: E2E\n<span class="k">metadata</span>:\n  <span class="k">name</span>: deployment-stack-e2e\n<span class="k">spec</span>:\n  <span class="k">cluster</span>:\n    <span class="k">name</span>: ork-e2e-deployment-stack\n    <span class="k">provider</span>: kind\n  <span class="k">katalog</span>: ./katalog.yaml\n  <span class="k">cr</span>: ./cr.yaml\n\n  <span class="k">expect</span>:\n    - <span class="k">name</span>: Deployment running\n      <span class="k">after</span>: cr-applied\n      <span class="k">timeout</span>: 120s\n      <span class="k">resources</span>:\n        - <span class="k">kind</span>: Deployment\n          <span class="k">name</span>: my-app\n          <span class="k">ready</span>: true\n      <span class="k">kubectl</span>:\n        <span class="k">get</span>:\n          - <span class="k">kind</span>: Deployment\n            <span class="k">name</span>: my-app\n            <span class="k">field</span>: .spec.replicas\n            <span class="k">equals</span>: <span class="s">"2"</span>\n    - <span class="k">name</span>: Deployment removed\n      <span class="k">after</span>: cr-deleted\n      <span class="k">timeout</span>: 90s\n      <span class="k">resources</span>:\n        - <span class="k">kind</span>: Deployment\n          <span class="k">name</span>: my-app\n          <span class="k">count</span>: 0</pre>',
+                connects: [{cls:'dev', label:'Dev toolchain'}, {cls:'reg', label:'Registry — push gate'}]
+            },
+            intent: {
+                title: 'Intent — flat delivery payload',
+                body: '<p>An intent is a flat key-value payload — no <code>apiVersion</code>, no <code>kind</code>. The gateway reads <code>target</code> to look up the CRD and alias, constructs the full CR, stamps provenance, runs admission, then writes via SSA. YAML and JSON are equivalent.</p>' +
+                      '<p>Pushed with <code>ork push --add-intent intent.yaml</code>, the gateway pipeline runs offline against this file and the pass/fail result is baked into the OCI artifact as <code>io.orkestra.intent.status</code>.</p>' +
+                      '<div class="code-pair">' +
+                        '<div>' +
+                          '<div class="code-label">intent.yaml</div>' +
+                          '<pre class="code-block"><span class="k">target</span>: apifixture\n<span class="k">name</span>: test-resource\n<span class="k">workloadType</span>: app\n<span class="k">team</span>: platform\n<span class="k">environment</span>: staging\n<span class="k">repoURL</span>: <span class="s">https://github.com/\n  myorg/payments</span>\n<span class="k">productionApproval</span>: JIRA-1234</pre>' +
+                        '</div>' +
+                        '<div>' +
+                          '<div class="code-label">intent.json</div>' +
+                          '<pre class="code-block">{\n  <span class="k">"target"</span>: <span class="s">"preview"</span>,\n  <span class="k">"name"</span>: <span class="s">"my-preview"</span>,\n  <span class="k">"workloadType"</span>: <span class="s">"app"</span>,\n  <span class="k">"team"</span>: <span class="s">"platform"</span>,\n  <span class="k">"environment"</span>: <span class="s">"staging"</span>,\n  <span class="k">"repoURL"</span>: <span class="s">"https://github.com/\n    myorg/payments"</span>,\n  <span class="k">"productionApproval"</span>:\n    <span class="s">"JIRA-1234"</span>\n}</pre>' +
+                        '</div>' +
+                      '</div>',
+                connects: [{cls:'gw', label:'Gateway — delivery'}, {cls:'dev', label:'Dev toolchain — serve play'}, {cls:'reg', label:'Registry — push gate'}]
+            }
+        };
+
+        /* ── column detail ── */
+        var columns = {
+            dev: {
+                cls: 'dev-modal',
+                title: '🛠 Dev Toolchain — zero cluster verification',
+                body: '<p>The dev toolchain runs entirely offline. No cluster, no Docker daemon, no network. It is the first gate before anything reaches a registry.</p>' +
+                      '<p><code>ork validate</code> checks schema, security posture, and structural correctness offline. <code>ork simulate</code> runs the real reconciler against an in-memory cluster and asserts which resources are created in which reconcile cycle — sub-second. <code>ork e2e</code> spins up a kind cluster and verifies behavior against real scheduling and webhooks.</p>' +
+                      '<p><code>ork serve play</code> runs the full six-stage gateway pipeline offline using production code from <code>pkg/gateway/api</code> — not a mock. Adding <code>--simulate</code> chains the result directly into the reconciler.</p>' +
+                      '<p><code>ork push</code> gates on simulate + e2e + intent play before uploading. Results are baked into OCI annotations on the artifact — proof that travels with the pattern.</p>',
+                connects: [{cls:'reg', label:'Registry — gates before push'}, {cls:'rt', label:'Runtime — same reconciler'}, {cls:'gw', label:'Gateway — serve play uses prod code'}]
+            },
+            gw: {
+                cls: 'gw-modal',
+                title: '🚪 Gateway — intent delivery and admission',
+                body: '<p>The gateway is the delivery layer. Callers submit flat intents — a target name and field values, no <code>apiVersion</code>, no <code>kind</code>. The gateway runs target resolution, token auth, CR construction, provenance stamping, and admission rules before writing the CR to the API server via SSA.</p>' +
+                      '<p>Auth supports static bearer tokens, GitHub Actions OIDC, GitLab CI OIDC, HashiCorp Vault OIDC, and a generic OIDC type. Aliases let one CRD expose multiple named delivery surfaces with independent token sets.</p>' +
+                      '<p>The webhook server (<code>:8443</code>) handles Kubernetes admission — validate, mutate, convert — using the same rules declared in the Katalog. <code>/katalog</code> and <code>/notify</code> serve the Control Center via SSE.</p>',
+                connects: [{cls:'dev', label:'Dev toolchain — serve play offline'}, {cls:'rt', label:'Runtime — shared API server / etcd'}, {cls:'ctrl', label:'Control Center — /katalog + /notify'}]
+            },
+            rt: {
+                cls: 'rt-modal',
+                title: '⚡ Runtime — reconciliation and dependency management',
+                body: '<p><strong>OperatorBox</strong> is the declarative operator engine — the core of what the runtime runs. Each CRD in the Katalog gets an OperatorBox instance. No generated controller code, no client-go boilerplate. The entire operator behaviour is driven from <code>katalog.yaml</code>.</p>' +
+                      '<p>The runtime watches CRs via <code>SharedInformerFactory</code> — one informer per CRD. When a CR changes, the <code>GenericReconciler</code> inside the OperatorBox runs: mutation defaults, admission validation, template evaluation, status writes.</p>' +
+                      '<p>The <code>DependencyKordinator</code> manages startup order. When a CRD declares <code>dependsOn: database: healthy</code>, the kordinator holds dependent operators pending until the dependency reaches healthy — a state machine, not a sleep loop.</p>' +
+                      '<p><code>/katalog</code> on <code>:8080</code> exposes CRD state and per-CR health to the Control Center and <code>ork proxy</code>.</p>',
+                connects: [{cls:'gw', label:'Gateway — shared API server / etcd'}, {cls:'ctrl', label:'Control Center — /katalog health'}, {cls:'dev', label:'Dev toolchain — same reconciler in simulate'}]
+            },
+            ctrl: {
+                cls: 'ctrl-modal',
+                title: '👁 Control Center — real-time visibility',
+                body: '<p>The Control Center is a web UI that reads <code>/katalog</code> from the runtime and gateway. It shows CRD state, per-CR health, and the dependency graph in real time via SSE — no polling, no manual refresh.</p>' +
+                      '<p>In dev mode it reads a single local <code>/katalog</code> endpoint. In production mode it connects to both the gateway and runtime, merging their state views. Multiple runtime instances can be connected to a single Control Center.</p>' +
+                      '<p>The create form renders fields directly from the Katalog serve configuration. When a CRD has aliases, a tab strip appears for the operator to choose the delivery surface inline.</p>',
+                connects: [{cls:'rt', label:'Runtime — /katalog health'}, {cls:'gw', label:'Gateway — /katalog + /notify SSE'}, {cls:'cli', label:'CLI — ork proxy'}]
+            },
+            cli: {
+                cls: 'cli-modal',
+                title: '⌨ CLI — unified surface for everything',
+                body: '<p>The CLI is the single entry point for every Orkestra operation. One binary, two build tags (<code>!runtime</code>, <code>!gateway</code>). <code>ork run</code> starts the runtime. <code>ork gate</code> starts the gateway. Both refuse to start a deprecated or EOL Katalog without explicit <code>accept</code> flags in the file.</p>' +
+                      '<p>Distribution: <code>ork push</code> runs all gates and bakes proof into OCI annotations. <code>ork pull</code> downloads artifacts and recursively pulls referenced Motifs. <code>ork inspect</code> shows simulation status, e2e status, intent play status, deprecation state, and file list — before pulling, before importing.</p>' +
+                      '<p>Serve tooling: <code>ork serve schema</code>, <code>ork serve fields</code>, <code>ork serve aliases</code>, <code>ork serve can-i</code>, <code>ork serve play</code>. Token tooling: <code>ork token list</code>, <code>ork token verify</code>, <code>ork token probe</code>.</p>' +
+                      '<p><code>ork proxy</code> exposes the runtime, gateway, and Control Center locally — the only way to access Orkestra services from outside the cluster.</p>',
+                connects: [{cls:'dev', label:'Dev toolchain'}, {cls:'gw', label:'Gateway — ork gate'}, {cls:'rt', label:'Runtime — ork run'}, {cls:'ctrl', label:'Control Center — ork proxy'}]
+            }
+        };
+
+        /* ── modal core ── */
+        var overlay  = document.getElementById('modalOverlay');
+        var box      = document.getElementById('modalBox');
+        var titleEl  = document.getElementById('modalTitle');
+        var bodyEl   = document.getElementById('modalBody');
+        var closeBtn = document.getElementById('modalClose');
+
+        function openModal(modalCls, title, body, connects) {
+            box.className = 'modal-box ' + modalCls;
+            titleEl.textContent = title;
+            var chips = (connects || []).map(function(c) {
+                return '<span class="connect-chip ' + c.cls + '">' + c.label + '</span>';
+            }).join('');
+            bodyEl.innerHTML = body +
+                (chips ? '<div class="connects"><span class="connects-label">Connects to</span>' + chips + '</div>' : '');
+            overlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            overlay.classList.remove('open');
+            document.body.style.overflow = '';
+            document.querySelectorAll('.column').forEach(function(c) { c.classList.remove('active'); });
+        }
+
+        /* pattern chips */
+        document.querySelectorAll('.pat-chip').forEach(function(chip) {
+            chip.addEventListener('click', function() {
+                var key = chip.getAttribute('data-pat');
+                var d = patterns[key];
+                if (!d) return;
+                openModal('kat-modal', d.title, d.body, d.connects);
+            });
+        });
+
+        /* columns */
+        document.querySelectorAll('.column').forEach(function(col) {
+            col.addEventListener('click', function() {
+                var key = col.getAttribute('data-key');
+                var d = columns[key];
+                if (!d) return;
+                document.querySelectorAll('.column').forEach(function(c) { c.classList.remove('active'); });
+                col.classList.add('active');
+                openModal(d.cls, d.title, d.body, d.connects);
+            });
+        });
+
+        closeBtn.addEventListener('click', closeModal);
+        overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(); });
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
+
+        /* expandable flow notes */
+        document.querySelectorAll('.flow-note.expandable').forEach(function(note) {
+            note.addEventListener('click', function() {
+                note.classList.toggle('open');
+            });
+        });
+    })();
+    </script>
+
+</body>
+</html>
