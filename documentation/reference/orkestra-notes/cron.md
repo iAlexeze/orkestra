@@ -11,7 +11,7 @@ Cron notes work with cron schedule expressions. They cover three problems: extra
 | `cronToMap` | Convert a cron string to the structured map shape. |
 | `cronNormalize` | Normalize a cron string: expand `@`-macros, trim whitespace, ensure exactly five fields. |
 | `cronDescribe` | Return a human-readable description of a cron expression. |
-| `cronValid` | Return `true` when the expression is structurally valid (five fields present after macro expansion). |
+| `cronValid` |  |
 | `cronExpr` | Build a five-field cron expression from five explicit string parts. |
 | `cronMinute` | Extract a single field by position from a cron string. |
 | `cronHour` | Extract a single field by position from a cron string. |
@@ -84,15 +84,6 @@ schedule: "{{ cronFromAny .spec.schedule }}"
 # cronDescribe
 - path: scheduleDescription
   value: "{{ cronDescribe .spec.schedule }}"
-
-# cronValid
-validation:
-  rules:
-    - field: spec.schedule
-      operator: custom
-      value: "{{ cronValid .spec.schedule }}"
-      message: "spec.schedule must be a valid cron expression"
-      action: deny
 
 # cronExpr
 # value: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"

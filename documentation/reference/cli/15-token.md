@@ -151,5 +151,5 @@ Useful for confirming that a provider endpoint is reachable before deploying —
 
 - [`ork serve tokens`](13-serve.md) — show CRD-level token map and effective alias permissions
 - [`ork serve can-i`](13-serve.md) — live permission check for a token against a target
-- [Token scoping concept](../../concepts/idp/03-token-scoping.md)
+- [Token scoping concept](../../concepts/self-service/03-token-scoping.md)
 - [Serve token permissions](../../security/08-serve-permissions.md)

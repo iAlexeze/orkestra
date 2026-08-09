@@ -111,4 +111,4 @@ spec:
 
 Submitting the form posts to the gateway Gateway API. Every enforcement rule — admission, namespace protection, deletion protection — applies the same way as `kubectl apply`. The Control Center is one delivery path; CI pipelines, Terraform, and curl are others. The runtime does not distinguish between them.
 
-→ [Internal Developer Platform concept](../../concepts/idp/index.md)
+→ [Internal Developer Platform concept](../../concepts/self-service/index.md)

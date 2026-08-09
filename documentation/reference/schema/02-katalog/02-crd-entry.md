@@ -238,7 +238,7 @@ spec:
 **Full reference:** → [serve](20-serve.md) — `serve.fields`, `serve labels/annotations`, `serve.name`, `serve.namespace`, `serve.config.response`, `serve.tokens`.
 
 ## See also
-**Conceptual overview:** → [concepts/idp](../../../concepts/idp/)
+**Conceptual overview:** → [concepts/self-service](../../../concepts/self-service/)
 **Gateway API:** → [gateway-api](17-gateway-api.md)
 
 ---
