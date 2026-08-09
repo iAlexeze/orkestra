@@ -14,8 +14,8 @@ func (k *Katalog) validateEnrich() error {
 	for name, crd := range k.Enabled() {
 		if crd.EnrichAll && len(crd.Enrich) > 0 {
 			return fmt.Errorf(
-				"crd %q: enrichAll and enrich are mutually exclusive — use enrichAll: true OR enrich: [...]",
-				name,
+				"%s crd %q: enrichAll and enrich are mutually exclusive — use enrichAll: true OR enrich: [...]",
+				failureMark(), name,
 			)
 		}
 
@@ -24,8 +24,8 @@ func (k *Katalog) validateEnrich() error {
 		for _, target := range crd.Enrich {
 			if !children.IsValidEnrichmentTarget(target.Key) {
 				return fmt.Errorf(
-					"crd %q: unknown enrich target %q — supported targets:%s",
-					name,
+					"%s crd %q: unknown enrich target %q — supported targets:%s",
+					failureMark(), name,
 					target.Key,
 					formatEnrichmentGroups(supportedGroups),
 				)

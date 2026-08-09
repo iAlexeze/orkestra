@@ -38,18 +38,18 @@ func (k *Katalog) validateUserNotes() error {
 
 	for i, n := range reg.Functions {
 		if n.Name == "" {
-			return fmt.Errorf("notes[%d]: name must not be empty", i)
+			return fmt.Errorf("%s notes[%d]: name must not be empty", failureMark(), i)
 		}
 		if n.Expression == "" {
-			return fmt.Errorf("notes[%d] %q: expression must not be empty", i, n.Name)
+			return fmt.Errorf("%s notes[%d] %q: expression must not be empty", failureMark(), i, n.Name)
 		}
 		if seen[n.Name] {
-			return fmt.Errorf("notes: duplicate note name %q — names must be unique", n.Name)
+			return fmt.Errorf("%s notes: duplicate note name %q — names must be unique", failureMark(), n.Name)
 		}
 		seen[n.Name] = true
 
 		if _, err := template.New("").Funcs(funcMap).Parse(n.Expression); err != nil {
-			return fmt.Errorf("notes %q: invalid expression: %w", n.Name, err)
+			return fmt.Errorf("%s notes %q: invalid expression: %w", failureMark(), n.Name, err)
 		}
 
 		if _, isBuiltin := builtins[n.Name]; isBuiltin && !n.Shadow {

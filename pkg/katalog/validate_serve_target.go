@@ -27,19 +27,19 @@ func (k *Katalog) validateServeTarget() error {
 		// 1. Format — lowercase alphanumeric + hyphens only.
 		if !isValidServeTarget(target) {
 			return fmt.Errorf(
-				"crd %q: target %q is invalid — must be lowercase alphanumeric with "+
+				"%s crd %q: target %q is invalid — must be lowercase alphanumeric with "+
 					"optional hyphens (a-z, 0-9, -)\n"+
 					"  Set serve.target explicitly to a valid value.",
-				crdName, target,
+				failureMark(), crdName, target,
 			)
 		}
 
 		// 2. Uniqueness — two CRDs cannot share a target.
 		if first, clash := seen[target]; clash {
 			return fmt.Errorf(
-				"crd %q and %q both resolve to target %q\n"+
+				"%s crd %q and %q both resolve to target %q\n"+
 					"  Set serve.target explicitly on one or both to make them unique.",
-				first, crdName, target,
+				failureMark(), first, crdName, target,
 			)
 		}
 		seen[target] = crdName

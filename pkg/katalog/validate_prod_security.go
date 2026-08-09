@@ -39,16 +39,16 @@ func (k *Katalog) validateSecurityProfiles() error {
 			_, psUser := k.Profiles.LookupPodSecurity(e.Profile)
 			if !csUser && !psUser && !profiles.IsValidSecurityProfile(e.Profile) {
 				return fmt.Errorf(
-					"crd %q: %s %q (phase %s) has unknown %s security profile %q — "+
+					"%s crd %q: %s %q (phase %s) has unknown %s security profile %q — "+
 						"allowed: baseline, restricted, hardened, or a user-defined profile declared in profiles.containerSecurity / profiles.podSecurity",
-					crdName, e.Resource, e.ResourceName, e.Phase, e.Kind, e.Profile,
+					failureMark(), crdName, e.Resource, e.ResourceName, e.Phase, e.Kind, e.Profile,
 				)
 			}
 			if e.Mixed {
 				return fmt.Errorf(
-					"crd %q: %s %q (phase %s) declares both a %s security profile (%q) and "+
+					"%s crd %q: %s %q (phase %s) declares both a %s security profile (%q) and "+
 						"explicit security fields — use one or the other, not both",
-					crdName, e.Resource, e.ResourceName, e.Phase, e.Kind, e.Profile,
+					failureMark(), crdName, e.Resource, e.ResourceName, e.Phase, e.Kind, e.Profile,
 				)
 			}
 		}
@@ -72,9 +72,9 @@ func (k *Katalog) validateSecurityCapabilities() error {
 			}
 			if !isKnownLinuxCapability(upper) {
 				return fmt.Errorf(
-					"crd %q: %s %q (phase %s) capabilities.%s contains unknown capability %q — "+
+					"%s crd %q: %s %q (phase %s) capabilities.%s contains unknown capability %q — "+
 						"must be a standard Linux capability name (e.g. NET_BIND_SERVICE, SYS_ADMIN) or ALL",
-					crdName, e.Resource, e.ResourceName, e.Phase, e.Side, e.Value,
+					failureMark(), crdName, e.Resource, e.ResourceName, e.Phase, e.Side, e.Value,
 				)
 			}
 		}

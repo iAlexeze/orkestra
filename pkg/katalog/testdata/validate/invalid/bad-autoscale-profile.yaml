@@ -1,0 +1,20 @@
+# Triggers: autoscale.profile combined with manual fields
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: bad-autoscale-profile
+  version: 0.1.0
+spec:
+  crds:
+    widget:
+      apiTypes:
+        group: example.io
+        version: v1alpha1
+        kind: Widget
+        plural: widgets
+      operatorBox:
+        reconciler:
+          workers: 2
+        autoscale:
+          profile: steady
+          interval: 30s

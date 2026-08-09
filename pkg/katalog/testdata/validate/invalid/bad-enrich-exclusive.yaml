@@ -1,0 +1,20 @@
+# Triggers: enrichAll and enrich are mutually exclusive
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: bad-enrich-exclusive
+  version: 0.1.0
+spec:
+  crds:
+    widget:
+      apiTypes:
+        group: example.io
+        version: v1alpha1
+        kind: Widget
+        plural: widgets
+      enrichAll: true
+      enrich:
+        - pods
+      operatorBox:
+        reconciler:
+          workers: 2

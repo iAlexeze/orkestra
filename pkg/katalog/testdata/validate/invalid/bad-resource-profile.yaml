@@ -1,0 +1,23 @@
+# Triggers: unknown resources.profile name
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: bad-resource-profile
+  version: 0.1.0
+spec:
+  crds:
+    widget:
+      apiTypes:
+        group: example.io
+        version: v1alpha1
+        kind: Widget
+        plural: widgets
+      operatorBox:
+        reconciler:
+          workers: 2
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}-controller"
+              image: example.io/widget-controller:latest
+              resources:
+                profile: mega

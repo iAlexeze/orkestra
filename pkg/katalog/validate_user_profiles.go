@@ -88,10 +88,10 @@ func (k *Katalog) validateUserProfiles() error {
 		seen := make(map[string]bool, len(c.names))
 		for _, name := range c.names {
 			if name == "" {
-				return fmt.Errorf("profiles.%s: profile entry is missing a name", c.class)
+				return fmt.Errorf("%s profiles.%s: profile entry is missing a name", failureMark(), c.class)
 			}
 			if seen[name] {
-				return fmt.Errorf("profiles.%s: duplicate profile name %q — names must be unique within a class", c.class, name)
+				return fmt.Errorf("%s profiles.%s: duplicate profile name %q — names must be unique within a class", failureMark(), c.class, name)
 			}
 			seen[name] = true
 			if c.isBuiltin != nil && c.isBuiltin(name) {

@@ -34,8 +34,8 @@ func (k *Katalog) validateServeFieldPaths() error {
 			// 2. Validate the path format (no empty segments)
 			if err := validatePathFormat(specPath); err != nil {
 				return fmt.Errorf(
-					"CRD %q: serve.fields %q has invalid path %q: %w",
-					crdName, name, specPath, err,
+					"%s CRD %q: serve.fields %q has invalid path %q: %w",
+					failureMark(), crdName, name, specPath, err,
 				)
 			}
 
