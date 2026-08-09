@@ -226,10 +226,10 @@ At apply time, `.status` is not yet available. Callers should poll `pollUrl` to 
 
 → [`serve.fields` schema reference](../../reference/schema/02-katalog/20-serve.md#servefieldsname)
 
-→ [`serve.namespace` reference](../../reference/schema/02-katalog/20-serve.md#servenamespace)
+- [`serve.namespace` reference](../../reference/schema/02-katalog/20-serve.md#servenamespace)
 
-→ [Gateway API reference](../../reference/schema/02-katalog/17-gateway-api.md)
+- [Gateway API reference](../../reference/schema/02-katalog/17-gateway-api.md)
 
-→ [Additional Fields](01-additional-fields.md)
+- [Additional Fields](01-labels-and-annotations.md)
 
-→ [Token Scoping](03-token-scoping.md)
+- [Token Scoping](03-token-scoping.md)
