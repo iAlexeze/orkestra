@@ -56,8 +56,8 @@ type FiresConfig struct {
 	Reconcile *bool `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`
 }
 
-// firesAtReconcile reports whether this FiresConfig allows reconcile-time firing.
-func (f *FiresConfig) firesAtReconcile() bool {
+// FiresAtReconcile reports whether this FiresConfig allows reconcile-time firing.
+func (f *FiresConfig) FiresAtReconcile() bool {
 	if f == nil || f.Reconcile == nil {
 		return true
 	}

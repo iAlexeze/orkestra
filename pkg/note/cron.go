@@ -99,33 +99,16 @@ func cronExpr(minute, hour, dom, month, dow string) string {
 	)
 }
 
-// cronValid reports whether expr is a structurally valid cron expression.
-// Does not validate field ranges — only that five fields are present.
+// cronValid reports whether expr is a valid cron expression.
+//
+// Validates that the expression has 5 fields and that each field's values
+// are within the correct range. Supports standard cron syntax including
+// "*" (all), "*/5" (steps), "1-5" (ranges), "1,2,3" (lists), and macros
+// (@hourly, @daily, @weekly, @monthly, @yearly).
 //
 //	{{ cronValid .spec.schedule }}
 func cronValid(expr string) bool {
-	if strings.TrimSpace(expr) == "" {
-		return false
-	}
-	return len(strings.Fields(expandCronMacro(expr))) == 5
-}
-
-// expandCronMacro converts @-style macros to five-field expressions.
-func expandCronMacro(expr string) string {
-	switch strings.TrimSpace(strings.ToLower(expr)) {
-	case "@yearly", "@annually":
-		return "0 0 1 1 *"
-	case "@monthly":
-		return "0 0 1 * *"
-	case "@weekly":
-		return "0 0 * * 0"
-	case "@daily", "@midnight":
-		return "0 0 * * *"
-	case "@hourly":
-		return "0 * * * *"
-	default:
-		return expr
-	}
+	return isValidCronExpr(expr)
 }
 
 func starIfEmpty(s string) string {

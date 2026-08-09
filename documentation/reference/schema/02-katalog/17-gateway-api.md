@@ -227,7 +227,7 @@ Which CRDs appear with a **[+ Create]** button in the Control Center and have th
 
 ## See also
 
-→ [concepts/idp](../../../concepts/idp/) — conceptual overview
+→ [concepts/self-service](../../../concepts/self-service/) — conceptual overview
 
 → [security/serve-permissions](../../../security/08-serve-permissions.md) — `serve.tokens` as a security layer, not just a config block
 

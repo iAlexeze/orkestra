@@ -128,4 +128,4 @@ spec:
 
 → [`serve labels/annotations`](20-serve.md#serve-labelsannotations) — labels and annotations as fields
 
-→ [Target Mode API](../../../concepts/idp/02-target-mode.md) — submitting fields instead of CRs
+→ [Target Mode API](../../../concepts/self-service/02-target-mode.md) — submitting fields instead of CRs

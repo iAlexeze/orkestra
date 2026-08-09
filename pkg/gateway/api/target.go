@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/orkspace/orkestra/pkg/logger"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
@@ -53,7 +52,9 @@ func BuildCRFromTarget(
 	obj := newCRSkeleton(crd)
 
 	// 2. Route fields to their destinations
-	routeFields(raw, crd, obj)
+	if err := routeFields(raw, crd, notes, obj); err != nil {
+		return nil, err
+	}
 
 	// 3. Resolve serve.name and serve.namespace
 	if err := resolveServeIdentity(raw, crd, notes, obj); err != nil {
@@ -80,69 +81,110 @@ func newCRSkeleton(crd *orktypes.CRDEntry) *unstructured.Unstructured {
 }
 
 // routeFields routes each submitted field to its declared destination:
-//   - serve.fields → spec (supports nested dot-paths via 'path' field)
+//   - serve.fields → spec (supports nested dot-paths via 'path' field;
+//     value/values expressions transform the submitted value before writing)
 //   - serve.labels → metadata.labels
 //   - serve.annotations → metadata.annotations
-//   - unknown fields are silently ignored
+//   - unknown fields → silently ignored
+//
+// Fields declared in serve.fields with no path/value/values use the field name
+// as the spec key (flat assignment). The full intent payload is available as
+// .request in value/values expressions for cross-field reads.
 func routeFields(
 	raw map[string]interface{},
 	crd *orktypes.CRDEntry,
+	notes orktypes.NoteRegistry,
 	obj *unstructured.Unstructured,
-) {
+) error {
 	meta := obj.Object["metadata"].(map[string]interface{})
 	labels := meta["labels"].(map[string]interface{})
 	annotations := meta["annotations"].(map[string]interface{})
 	spec := obj.Object["spec"].(map[string]interface{})
 
-	// Build lookup maps
-	//   - specPathLookup: field name → spec path (flat or nested)
-	//   - labelFields: field name → config (for labels)
-	//   - annotationFields: field name → config (for annotations)
-	specPathLookup := make(map[string]string, len(crd.Serve.Fields))
-	for name, config := range crd.Serve.Fields {
-		specPathLookup[name] = config.SpecPath(name)
-	}
 	labelFields := crd.ServeLabels()
 	annotationFields := crd.ServeAnnotations()
 
+	// Base resolver for value/values expression evaluation.
+	// WithRequest injects the full intent as .request.<field> for cross-field reads.
+	// WithFieldValue is called per-field to inject .value for the current field.
+	baseResolver := orktmpl.NewResolverFromMap(raw).WithUserNotes(notes).WithRequest(raw)
+
+	var errs []string
+
 	// Route each submitted value to its declared destination.
-	for key, value := range raw {
+	for key, submitted := range raw {
 		if key == "target" {
 			continue
 		}
 
-		// ─── Spec fields (supports nested via path) ──────────────────────
-		if specPath, ok := specPathLookup[key]; ok {
-			if utils.IsNestedPath(specPath) {
-				// Nested path — set at the dot-notation path
-				if err := utils.SetNestedPath(spec, specPath, value); err != nil {
-					// Log error but continue — don't fail the request
-					logger.Error().Err(err).
-						Str("path", specPath).
-						Msg("gateway api: failed to set spec path")
+		// ─── Spec fields ─────────────────────────────────────────────────
+		if config, ok := crd.Serve.Fields[key]; ok {
+			// Fanout: one submitted field → multiple CR spec paths.
+			if config.HasValues() {
+				r := baseResolver.WithFieldValue(submitted)
+				for specPath, expr := range config.Values {
+					result, err := r.Resolve(expr)
+					if err != nil {
+						errs = append(errs, fmt.Sprintf("field %q: values[%q]: %s", key, specPath, err.Error()))
+						continue
+					}
+					if err := setSpecValue(spec, specPath, result); err != nil {
+						errs = append(errs, fmt.Sprintf("field %q: values[%q]: %s", key, specPath, err.Error()))
+					}
+				}
+				continue
+			}
+
+			// Single transform: evaluate expression, write result to spec path.
+			if config.HasValue() {
+				r := baseResolver.WithFieldValue(submitted)
+				result, err := r.Resolve(config.Value)
+				if err != nil {
+					errs = append(errs, fmt.Sprintf("field %q: value: %s", key, err.Error()))
 					continue
 				}
-			} else {
-				// Flat path — direct assignment
-				spec[specPath] = value
+				if err := setSpecValue(spec, config.SpecPath(key), result); err != nil {
+					errs = append(errs, fmt.Sprintf("field %q: value: %s", key, err.Error()))
+				}
+				continue
+			}
+
+			// Plain field: write submitted value as-is to spec path.
+			if err := setSpecValue(spec, config.SpecPath(key), submitted); err != nil {
+				errs = append(errs, fmt.Sprintf("field %q: %s", key, err.Error()))
 			}
 			continue
 		}
 
 		// ─── Labels ──────────────────────────────────────────────────────
 		if utils.MapContains(labelFields, key) {
-			labels[key] = fmt.Sprintf("%v", value)
+			labels[key] = fmt.Sprintf("%v", submitted)
 			continue
 		}
 
-		// ─── Annotations ──────────────────────────────────────────────────
+		// ─── Annotations ─────────────────────────────────────────────────
 		if utils.MapContains(annotationFields, key) {
-			annotations[key] = fmt.Sprintf("%v", value)
+			annotations[key] = fmt.Sprintf("%v", submitted)
 			continue
 		}
 
 		// Unknown field — silently ignored.
 	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("field translation failed: %s", strings.Join(errs, "; "))
+	}
+	return nil
+}
+
+// setSpecValue writes a value to a dot-notation spec path, creating intermediate
+// maps as needed. Flat paths (no dot) are assigned directly.
+func setSpecValue(spec map[string]interface{}, path string, value interface{}) error {
+	if utils.IsNestedPath(path) {
+		return utils.SetNestedPath(spec, path, value)
+	}
+	spec[path] = value
+	return nil
 }
 
 // resolveServeIdentity resolves serve.name and serve.namespace using the flat field map.

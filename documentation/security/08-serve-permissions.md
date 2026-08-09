@@ -163,5 +163,5 @@ ork token verify --api http://localhost:8443 -t token.jwt
 
 - **[Namespace protection](05-namespace-protection.md)** — the CRD-level layer this sits on top of
 - **[Gateway API reference](../reference/schema/02-katalog/17-gateway-api.md#servetokens--fine-grained-permissions)** — full `serve.tokens` field reference
-- **[The Serve Concept](../concepts/idp/)** — what the Gateway API is for, target mode
-- **[Aliases and Intent Provenance](../concepts/idp/04-aliases-and-provenance.md)** — per-alias token scoping, admission gating, reconcile routing
+- **[The Serve Concept](../concepts/self-service/)** — what the Gateway API is for, target mode
+- **[Aliases and Intent Provenance](../concepts/self-service/04-aliases-and-provenance.md)** — per-alias token scoping, admission gating, reconcile routing

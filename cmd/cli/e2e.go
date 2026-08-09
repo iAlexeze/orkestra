@@ -57,6 +57,7 @@ Discovery mode — runs all *e2e.yaml files found recursively (skips pure aggreg
 			helmArgs = append(helmArgs, "--set", arg)
 		}
 		devServer, _ := cmd.Flags().GetBool("dev-server")
+		noRuntime, _ := cmd.Flags().GetBool("no-runtime")
 		wait, _ := cmd.Flags().GetString("wait")
 		skipRaw, _ := cmd.Flags().GetStringSlice("skip")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
@@ -78,7 +79,13 @@ Discovery mode — runs all *e2e.yaml files found recursively (skips pure aggreg
 			return validateE2EFile(file)
 		}
 
-		runner, err := e2e.New(file, e2e.Options{ClusterCtx: clusterCtx, UseCurrentCtx: useCurrentCtx, KeepCluster: keepCluster, Workers: workers, DevServer: devServer, OrkVersion: version, ValueFiles: valuesFiles, HelmArgs: helmArgs, ReportFile: reportFile})
+		runner, err := e2e.New(file, e2e.Options{
+			ClusterCtx: clusterCtx, UseCurrentCtx: useCurrentCtx,
+			KeepCluster: keepCluster, Workers: workers,
+			DevServer: devServer, OrkVersion: version,
+			ValueFiles: valuesFiles, HelmArgs: helmArgs,
+			ReportFile: reportFile, NoRuntime: noRuntime,
+		})
 		if err != nil {
 			return err
 		}
@@ -474,6 +481,7 @@ func init() {
 	e2eCmd.Flags().StringSlice("values", []string{}, "Helm values files to pass to Orkestra installation")
 	e2eCmd.Flags().StringSlice("set", []string{}, "Additional Helm --set arguments (e.g., key=value)")
 	e2eCmd.Flags().Bool("dev-server", false, "Deploy the mock dev server into the cluster for external: examples")
+	e2eCmd.Flags().Bool("no-runtime", false, "Skip the Orkestra runtime; start the gateway only. CR is optional.")
 	e2eCmd.Flags().String("wait", "", "Duration to wait between discovered tests (e.g. 2s). Only applies in ./... discovery mode.")
 	e2eCmd.Flags().StringSlice("skip", []string{}, "Comma-separated path patterns to skip during ./... discovery (e.g. vendor,testdata)")
 	e2eCmd.Flags().Bool("dry-run", false, "Print what would run without executing. Single file: runs validate. ./...: lists discovered files.")

@@ -98,9 +98,15 @@ Example intent.json:
 		if op == orktypes.ServeOpCreate || op == orktypes.ServeOpUpdate {
 			// Resolve first katalog path for simulate handoff (--file is a StringSlice on serve commands)
 			katalogFile := ""
-			if paths, _ := cmd.Flags().GetStringSlice("file"); len(paths) > 0 {
-				katalogFile = paths[0]
+			paths, _ := cmd.Flags().GetStringSlice("file")
+			if len(paths) == 0 {
+				paths = defaultFilePaths()
 			}
+			if len(paths) == 0 {
+				return fmt.Errorf(errNoKatalog)
+			}
+			katalogFile = paths[0]
+
 			return playWrite(cmd.Context(), k, katalogFile, intentFile, targetOverride, tokenName, op, simulateFlag, simulateConfig)
 		}
 		return playRead(k, targetOverride, tokenName, op, namespace, name)
@@ -165,6 +171,7 @@ func playWrite(ctx context.Context, k *katalog.Katalog, katalogFile, intentFile,
 	// Stage 4: Provenance — stamp first, then print the CR so annotations are visible
 	printStage(4, "Provenance annotations")
 	api.InjectProvenanceAnnotations(obj, crd.ServeTarget(), alias, "")
+	api.InjectIntentAnnotation(obj, raw)
 	ann := obj.GetAnnotations()
 	keys := make([]string, 0, len(ann))
 	for k := range ann {
@@ -183,7 +190,7 @@ func playWrite(ctx context.Context, k *katalog.Katalog, katalogFile, intentFile,
 	// unique: operator is skipped (no live cluster); external: calls are skipped.
 	printStage(5, "Admission validation")
 	{
-		resolver := orktmpl.NewResolverFromMap(obj.Object).WithUserNotes(k.Notes)
+		resolver := orktmpl.NewResolverFromMap(obj.Object).WithUserNotes(k.Notes).WithRequest(raw)
 		eval := resolver.TemplateEvaluator()
 		r := evalAdmissionValidation(obj.Object, crd, resolver, eval)
 		for _, v := range r.violations {
@@ -196,11 +203,14 @@ func playWrite(ctx context.Context, k *katalog.Katalog, katalogFile, intentFile,
 		denied := r.denied()
 		if denied > 0 {
 			denialTxt := "denials"
+			violationTxt := "violations"
 			if denied == 1 {
 				denialTxt = "denial"
+				violationTxt = "violation"
 			}
+
 			printStageError(fmt.Sprintf("%d %s — this CR would be rejected at admission", denied, denialTxt))
-			return fmt.Errorf("admission denied: %d rule violation(s)", denied)
+			return fmt.Errorf("admission denied: %d rule %s", denied, violationTxt)
 		}
 		warned := r.warned()
 		if warned > 0 {
@@ -399,11 +409,16 @@ func runIntentPlay(katalogPath, intentFile string) (string, error) {
 		return target, fmt.Errorf("CR construction: %w", err)
 	}
 
-	resolver := orktmpl.NewResolverFromMap(obj.Object).WithUserNotes(k.Notes)
+	resolver := orktmpl.NewResolverFromMap(obj.Object).WithUserNotes(k.Notes).WithRequest(raw)
 	eval := resolver.TemplateEvaluator()
 	r := evalAdmissionValidation(obj.Object, crd, resolver, eval)
-	if r.denied() > 0 {
-		return target, fmt.Errorf("admission denied: %d rule violation(s)", r.denied())
+	denied := r.denied()
+	violationTxt := "violations"
+	if denied > 0 {
+		if denied == 1 {
+			violationTxt = "violation"
+		}
+		return target, fmt.Errorf("admission denied: %d rule %s", denied, violationTxt)
 	}
 
 	return target, nil

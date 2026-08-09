@@ -76,6 +76,9 @@ func runMutation(
 	hasPatch := false
 
 	for _, rule := range cfg.Rules {
+		if !rule.Fires.FiresAtReconcile() {
+			continue
+		}
 		if !orktypes.EvaluateWhen(data, rule.When, rule.AnyOf, resolver.TemplateEvaluator()) {
 			continue
 		}

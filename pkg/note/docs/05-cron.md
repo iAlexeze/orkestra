@@ -178,7 +178,17 @@ Keywords: cron, schedule, describe, human-readable, display, status
 
 ### `cronValid`
 
-Return `true` when the expression is structurally valid (five fields present after macro expansion). Does not validate field ranges.
+## cronValid
+
+Returns `true` when the expression is a syntactically valid cron expression with all fields within their correct ranges.
+
+```text
+# value: "{{ cronValid .spec.schedule }}"
+# "0 2 * * 1-5"  → true
+# "25 * * * *"   → true  (minute 25 is valid)
+# "0 25 * * *"   → false (hour 25 invalid)
+# "0 2 32 * *"   → false (day 32 invalid)
+```
 
 Keywords: cron, schedule, validate, valid, check, boolean
 

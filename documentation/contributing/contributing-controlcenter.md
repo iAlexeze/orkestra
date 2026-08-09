@@ -58,9 +58,9 @@ When a Katalog has a `gatewayEndpoint`, the control center knows the gateway URL
 
 ### IDP mode — follow-on improvements
 
-When `gateway.api.enabled: true`, the control center renders a **[+ Create]** button per CRD and a form generated from the gateway's flat field schema (`GET {gatewayEndpoint}/api/v1/schema?target=<target>`) — one input per declared `serve.fields`/`serve labels/annotations` entry, no CRD or Kubernetes shape involved. The control center never sees `spec`, `metadata`, or an OpenAPI schema; the gateway resolves all of that server-side from `target`. See [Target Mode](../concepts/idp/02-target-mode.md).
+When `gateway.api.enabled: true`, the control center renders a **[+ Create]** button per CRD and a form generated from the gateway's flat field schema (`GET {gatewayEndpoint}/api/v1/schema?target=<target>`) — one input per declared `serve.fields`/`serve labels/annotations` entry, no CRD or Kubernetes shape involved. The control center never sees `spec`, `metadata`, or an OpenAPI schema; the gateway resolves all of that server-side from `target`. See [Target Mode](../concepts/self-service/02-target-mode.md).
 
-Per-CRD, per-token authorization already exists (`serve.tokens` — which operations, in which namespaces, for a given token) and needs no contribution here. See [Token Scoping](../concepts/idp/03-token-scoping.md). What's still open:
+Per-CRD, per-token authorization already exists (`serve.tokens` — which operations, in which namespaces, for a given token) and needs no contribution here. See [Token Scoping](../concepts/self-service/03-token-scoping.md). What's still open:
 
 **OIDC authentication**
 

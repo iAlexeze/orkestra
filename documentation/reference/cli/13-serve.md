@@ -816,7 +816,7 @@ Rollback: revert the intent file in Git and re-run `ork serve apply` against the
 ## Related
 
 - [`ork validate`](03-validate.md) — full Katalog validation
-- [`idp` concept](../../concepts/idp/) — conceptual overview
+- [`idp` concept](../../concepts/self-service/) — conceptual overview
 - [`serve.fields` schema reference](../../reference/schema/02-katalog/20-serve.md#servefieldsname)
 - [`serve.config.response` schema reference](../../reference/schema/02-katalog/20-serve.md#serveconfigresponse)
 - [`serve.tokens` schema reference](../../reference/schema/02-katalog/20-serve.md#servetokens)

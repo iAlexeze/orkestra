@@ -300,6 +300,107 @@ deprecation:
 
 **Validator** — `ork validate` warns without blocking; enforcement is at runtime startup only, after validation passes and before the operator begins reconciling.
 
+### Serve field translation — `value`, `values`, `.request`
+
+The serve layer can now transform what a caller submits before it reaches the CRD. Two new fields on `serve.fields.<name>` control this:
+
+**`value`** — single transform. One intent field → one spec field, expression-evaluated:
+
+```yaml
+serve:
+  fields:
+    image:
+      value: '{{ trimPrefix "docker.io/" .value }}'
+```
+
+`.value` is the raw submitted value. The result replaces it at the declared spec path (or `spec.<fieldName>` when no `path:` is set).
+
+**`values`** — fanout. One intent field → multiple spec fields:
+
+```yaml
+serve:
+  fields:
+    schedule:
+      label: "Schedule (cron)"
+      required: true
+      values:
+        schedule.minute:     '{{ cronMinute .value }}'
+        schedule.hour:       '{{ cronHour   .value }}'
+        schedule.dayOfMonth: '{{ cronDom    .value }}'
+        schedule.month:      '{{ cronMonth  .value }}'
+        schedule.dayOfWeek:  '{{ cronDow    .value }}'
+```
+
+The caller submits `"0 2 * * 1-5"`. The CR receives five structured fields. Neither side sees the other's format. The Katalog is the contract between them.
+
+Both `value` and `values` expressions have access to `.value` (the submitted field value) and `.request` (the full raw intent payload), so cross-field references work naturally:
+
+```yaml
+values:
+  image.tag: '{{ .request.version }}'
+```
+
+**Expression failures are hard errors.** If a `value` or `values` expression fails at serve time (template error, missing function, unresolvable reference), the apply is rejected immediately — the CR is never built with a partial spec.
+
+**Flat keys in `values`** are supported. A values key does not need to be dotted — `imageTag: '{{ .value }}'` writes to `spec.imageTag`.
+
+### `.request` available throughout the reconciler
+
+The raw serve intent (from the `orkestra.orkspace.io/serve-intent` annotation) is now available as `.request.<field>` in all template contexts during reconcile — `operatorBox` templates, `mutation.rules`, `validation.rules`, and `status.fields`. Previously it was only injected for validation at the webhook boundary.
+
+### Intent gating in validation rules — `fires.reconcile: false`
+
+`validation.rules` and `mutation.rules` now support `fires.reconcile: false`, limiting a rule to the admission path only:
+
+```yaml
+validation:
+  rules:
+    - field: "{{ cronValid .request.schedule }}"
+      equals: true
+      link: schedule
+      fires:
+        reconcile: false
+      message: 'schedule must be a valid cron expression'
+      action: deny
+```
+
+Use this for rules that read `.request.*` — the raw intent annotation is present at admission but not guaranteed at every reconcile. Rules without `fires:` continue to fire at both admission and reconcile (existing behavior unchanged).
+
+`fires.reconcile` on `ExternalCall` (under `validation.external` and `mutation.external`) predates this; the same field is now available on individual inline rules as well.
+
+### Example pack — `use-cases/crd-api-evolution`
+
+New example pack showing how to evolve a CRD's API surface without breaking existing consumers:
+
+- Demonstrates adding fields, changing field shapes, and renaming spec paths across operator versions using the serve layer as the translation boundary
+- Each step is runnable with `ork serve play` locally before deploying
+
+```bash
+ork init --pack use-cases/crd-api-evolution
+```
+
+### Example pack — `use-cases/crd-conversion`
+
+New example pack demonstrating CRD conversion patterns without a conversion webhook:
+
+- `basic/` — single-version CronJob operator; no conversion, no serve layer
+- `with-serve-translation/` — same operator with `serve.fields.values` fanout: callers submit a flat cron string, the serve layer fans it out to five structured schedule fields before the CR reaches the API server
+
+```bash
+ork init --pack use-cases/crd-conversion
+```
+
+The `with-serve-translation` variant includes `ork serve play` and `ork simulate` as local test steps — runnable before any cluster is involved.
+
+### `ork validate` — field translation checks
+
+New static checks for `serve.fields` at `ork validate` time:
+
+- `value` and `values` are mutually exclusive per field
+- `path` and `values` are mutually exclusive per field — write full paths in `values` directly
+- Field names must not contain hyphens — they cannot be used as Go template identifiers in `.request.<name>` expressions; use camelCase or underscores
+- `values` expressions must compile against the full FuncMap (including user-defined notes)
+
 ---
 
 ## v0.7.13 — The Serve Layer

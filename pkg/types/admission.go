@@ -1,6 +1,12 @@
 // pkg/types/admission.go
 package types
 
+import (
+	"encoding/json"
+
+	"github.com/orkspace/orkestra/pkg/labels"
+)
+
 // ── Validation and Mutation ────────────────────────────────────────────────
 //
 // These declarations control policy enforcement at two points:
@@ -183,6 +189,13 @@ type ValidationRule struct {
 	// When both When and AnyOf are declared, both blocks must pass.
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 
+	// Fires controls at which lifecycle points this rule is evaluated.
+	// Absent: fires at both admission and reconcile time.
+	// fires.reconcile: false — admission only; reconciler skips this rule.
+	// Use for rules that read .request.* (raw intent), which is only present
+	// at the admission boundary, not during reconcile.
+	Fires *FiresConfig `yaml:"fires,omitempty" json:"fires,omitempty"`
+
 	// Link names the serve.fields or serve.additionalFields (labels/annotations)
 	// key this rule concerns, for UI highlighting. Only needed when Field
 	// isn't already a plain, self-describing path — additionalFields
@@ -256,7 +269,7 @@ func (c *ValidationConfig) ReconcileExternal() []ExternalCallSpec {
 	}
 	var out []ExternalCallSpec
 	for _, e := range c.External {
-		if e.Fires.firesAtReconcile() {
+		if e.Fires.FiresAtReconcile() {
 			out = append(out, e)
 		}
 	}
@@ -337,6 +350,11 @@ type MutationRule struct {
 
 	// AnyOf — at least one condition must pass for this rule to be applied (OR).
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Fires controls at which lifecycle points this rule is applied.
+	// Absent: fires at both admission and reconcile time.
+	// fires.reconcile: false — admission only; reconciler skips this rule.
+	Fires *FiresConfig `yaml:"fires,omitempty" json:"fires,omitempty"`
 }
 
 // MutationConfig holds all mutation rules for a CRD.
@@ -380,7 +398,7 @@ func (c *MutationConfig) ReconcileExternal() []ExternalCallSpec {
 	}
 	var out []ExternalCallSpec
 	for _, e := range c.External {
-		if e.Fires.firesAtReconcile() {
+		if e.Fires.FiresAtReconcile() {
 			out = append(out, e)
 		}
 	}
@@ -441,4 +459,29 @@ func (w *AdmissionWebhookConfig) EffectiveOperations() []string {
 		return []string{"CREATE", "UPDATE"}
 	}
 	return w.Operations
+}
+
+// ServeIntentFromObject extracts the raw intent payload from the
+// orkestra.orkspace.io/serve-intent annotation on a CR object map.
+// Returns nil when the annotation is absent or unparseable.
+// Used by both the webhook and the reconciler to inject .request into
+// the resolver so validation rules can reference intent-vocabulary fields.
+func ServeIntentFromObject(obj map[string]interface{}) map[string]interface{} {
+	meta, ok := obj["metadata"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	annotations, ok := meta["annotations"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	intentJSON, ok := annotations[labels.AnnotationServeIntent].(string)
+	if !ok || intentJSON == "" {
+		return nil
+	}
+	var intent map[string]interface{}
+	if err := json.Unmarshal([]byte(intentJSON), &intent); err != nil {
+		return nil
+	}
+	return intent
 }
