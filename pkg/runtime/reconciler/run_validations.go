@@ -96,6 +96,9 @@ func runValidation(data map[string]interface{}, resolver *orktmpl.Resolver, cfg 
 	}
 
 	for _, rule := range cfg.Rules {
+		if !rule.Fires.FiresAtReconcile() {
+			continue
+		}
 		var eval orktypes.TemplateEvaluator
 		// resolver is a *orktmpl.Resolver — nil-check before converting to
 		// the orktypes.TemplateResolver interface, since a typed nil

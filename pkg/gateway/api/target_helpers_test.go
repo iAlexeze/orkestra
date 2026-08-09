@@ -71,7 +71,7 @@ func TestRouteFields(t *testing.T) {
 	}
 
 	obj := newCRSkeleton(crd)
-	routeFields(raw, crd, obj)
+	routeFields(raw, crd, orktypes.NoteRegistry{}, obj)
 
 	// Check spec fields
 	spec := obj.Object["spec"].(map[string]interface{})
@@ -117,7 +117,7 @@ func TestRouteFields_MissingFields(t *testing.T) {
 	}
 
 	obj := newCRSkeleton(crd)
-	routeFields(raw, crd, obj)
+	routeFields(raw, crd, orktypes.NoteRegistry{}, obj)
 
 	spec := obj.Object["spec"].(map[string]interface{})
 	assert.NotContains(t, spec, "repository") // Should be absent
@@ -142,7 +142,7 @@ func TestRouteFields_NonStringLabels(t *testing.T) {
 	}
 
 	obj := newCRSkeleton(crd)
-	routeFields(raw, crd, obj)
+	routeFields(raw, crd, orktypes.NoteRegistry{}, obj)
 
 	labels := obj.Object["metadata"].(map[string]interface{})["labels"].(map[string]interface{})
 	assert.Equal(t, "42", labels["count"]) // Should be converted to string

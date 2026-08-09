@@ -33,6 +33,12 @@ func (ws *WebhookServer) evaluateValidationRules(
 	if ws.katalog != nil {
 		resolver = resolver.WithUserNotes(ws.katalog.Notes)
 	}
+	// Inject the raw intent payload as .request so validation rules can gate on
+	// intent-vocabulary fields (e.g. request.schedule) before field translation.
+	// Only present when the CR was submitted through the Gateway API in target mode.
+	if intent := orktypes.ServeIntentFromObject(obj); intent != nil {
+		resolver = resolver.WithRequest(intent)
+	}
 	if calls := cfg.AdmissionExternal(); len(calls) > 0 {
 		var err error
 		resolver, err = orkexternal.Run(ctx, kindName, resolver, calls, ws.kubeClient)

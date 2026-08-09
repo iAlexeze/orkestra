@@ -202,6 +202,7 @@ func applyHandler(
 			}
 			obj = built
 			InjectProvenanceAnnotations(obj, crd.ServeTarget(), alias, OIDCSubFromContext(r.Context()))
+			InjectIntentAnnotation(obj, raw)
 			gvr = crd.GVR()
 
 			// ─── Marshal built CR for the patch body ──────────────────────
@@ -520,6 +521,22 @@ func InjectProvenanceAnnotations(obj *unstructured.Unstructured, target, alias, 
 	if source != "" {
 		ann[labels.AnnotationServeSource] = source
 	}
+	obj.SetAnnotations(ann)
+}
+
+// InjectIntentAnnotation stores the raw intent payload as a JSON-encoded
+// annotation so the admission webhook can bind it as .request in validation
+// rules, enabling intent-level gates before field translation.
+func InjectIntentAnnotation(obj *unstructured.Unstructured, raw map[string]interface{}) {
+	b, err := json.Marshal(raw)
+	if err != nil {
+		return
+	}
+	ann := obj.GetAnnotations()
+	if ann == nil {
+		ann = make(map[string]string, 1)
+	}
+	ann[labels.AnnotationServeIntent] = string(b)
 	obj.SetAnnotations(ann)
 }
 

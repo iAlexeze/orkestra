@@ -84,6 +84,11 @@ type Runner struct {
 	// install and uninstall messages are visible.
 	sharedOrkestra bool
 
+	// noRuntime skips starting the Orkestra runtime. Only the gateway is started
+	// when the katalog enables it. The CR lifecycle steps (AfterCRApplied, AfterCRDeleted)
+	// become no-ops — the CR is optional and gateway intents drive the expectations instead.
+	noRuntime bool
+
 	// cs and cfg are the Go Kubernetes client and REST config, built once after the
 	// cluster context is ready. Used for operations that don't need kubectl:
 	// Lease reads, port-forward+HTTP, SubjectAccessReview.
@@ -104,6 +109,7 @@ type Options struct {
 	ValueFiles    []string // additional Helm values files
 	HelmArgs      []string // additional helm --set arguments
 	ReportFile    string   // write results as markdown to this path (in addition to stdout)
+	NoRuntime     bool     // skip the Orkestra runtime; gateway only; CR is optional
 }
 
 // New loads an E2E spec from a YAML file and constructs a Runner.
@@ -148,6 +154,7 @@ func New(e2eFile string, opts Options) (*Runner, error) {
 		valueFiles:       allValueFiles,
 		helmArgs:         opts.HelmArgs,
 		kubernetesTarget: e2e.Spec.Custom != nil && e2e.Spec.Custom.Target == orktypes.CustomTargetKubernetes,
+		noRuntime:        opts.NoRuntime,
 	}
 
 	if e2e.Spec.Custom != nil && e2e.Spec.Custom.Target == orktypes.CustomTargetContainer {
@@ -184,6 +191,10 @@ func (r *Runner) resolveSource() error {
 	case spec.Katalog != "" && spec.CR != "":
 		r.katalogFile = r.abs(spec.Katalog)
 		r.crFile = r.abs(spec.CR)
+
+	case spec.Katalog != "" && r.noRuntime:
+		// --no-runtime: katalog without a CR is valid — the gateway drives expectations.
+		r.katalogFile = r.abs(spec.Katalog)
 
 	case spec.Custom != nil && spec.Custom.Target != "":
 		// custom.target: both katalog and cr are optional.
@@ -347,6 +358,10 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 				r.helmArgs = append(r.helmArgs, "--set", "gateway.enabled=true")
 				text = " with gateway..."
 			}
+			if r.noRuntime {
+				r.helmArgs = append(r.helmArgs, "--set", "runtime.enabled=false")
+				text = " gateway only..."
+			}
 
 			if !cluster.RuntimeInstalled() {
 				sp := orkutils.StartSpinner("Installing Orkestra" + text)
@@ -369,8 +384,10 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 					return nil, fmt.Errorf("helm upgrade: %w", err)
 				}
 				sp.Success()
-				if err := cluster.SyncRuntime(); err != nil {
-					return nil, fmt.Errorf("syncing Orkestra runtime: %w", err)
+				if !r.noRuntime {
+					if err := cluster.SyncRuntime(); err != nil {
+						return nil, fmt.Errorf("syncing Orkestra runtime: %w", err)
+					}
 				}
 				if gatewayEnabled {
 					if cluster.GatewayInstalled() {
@@ -390,9 +407,11 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 			}
 
 			if installedOrkestra {
-				status := cluster.CheckRuntimeHealth()
-				if !status.Running {
-					return nil, fmt.Errorf("Orkestra runtime not ready: %s", status.Reason)
+				if !r.noRuntime {
+					status := cluster.CheckRuntimeHealth()
+					if !status.Running {
+						return nil, fmt.Errorf("Orkestra runtime not ready: %s", status.Reason)
+					}
 				}
 				if gatewayEnabled {
 					status := cluster.CheckGatewayHealth()
@@ -432,7 +451,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 				// Infrastructure assertions — no CR lifecycle action needed.
 
 			case orktypes.AfterCRApplied:
-				if !crApplied {
+				if !crApplied && !r.noRuntime {
 					fmt.Printf("→ Applying CR...\n")
 					if out, err := kubectl(ctx, "apply", "-f", r.crFile); err != nil {
 						return nil, fmt.Errorf("apply CR: %w\n%s", err, out)
@@ -442,7 +461,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 				}
 
 			case orktypes.AfterCRDeleted:
-				if !crDeleted {
+				if !crDeleted && !r.noRuntime {
 					fmt.Printf("→ Deleting CR...\n")
 					if out, err := kubectl(ctx, "delete", "-f", r.crFile, "--ignore-not-found"); err != nil {
 						return nil, fmt.Errorf("delete CR: %w\n%s", err, out)

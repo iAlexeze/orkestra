@@ -178,4 +178,11 @@ const (
 	// Empty for direct Gateway API calls. Set by webhook handlers.
 	// Values: "github", "gitlab", "slack", "pagerduty", "generic"
 	AnnotationServeSource = "orkestra.orkspace.io/serve-source"
+
+	// AnnotationServeIntent stores the raw intent payload submitted by the caller
+	// as a JSON-encoded string. Injected by the Gateway API in target mode so the
+	// admission webhook can make it available as .request in validation.rules —
+	// enabling intent-level gates that fire on the caller's vocabulary before any
+	// field translation has occurred.
+	AnnotationServeIntent = "orkestra.orkspace.io/serve-intent"
 )
