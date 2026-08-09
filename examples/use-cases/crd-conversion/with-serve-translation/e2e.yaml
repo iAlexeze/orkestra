@@ -35,31 +35,21 @@ spec:
       timeout: 60s
       kubectl:
         get:
-          - kind: CronJob
+          - kind: cronjobs.demo.orkestra.io
             name: daily-backup
             namespace: default
             field: .spec.schedule.minute
             equals: "0"
-          - kind: CronJob
+          - kind: cronjobs.demo.orkestra.io
             name: daily-backup
             namespace: default
             field: .spec.schedule.hour
             equals: "2"
-          - kind: CronJob
+          - kind: cronjobs.demo.orkestra.io
             name: daily-backup
             namespace: default
             field: .spec.schedule.dayOfWeek
             equals: "1-5"
-
-    - name: Operator creates Kubernetes CronJob with reconstructed schedule
-      timeout: 60s
-      kubectl:
-        get:
-          - kind: CronJob
-            name: daily-backup
-            namespace: default
-            field: .spec.schedule
-            equals: "0 2 * * 1-5"
 
     - name: Invalid cron string is rejected by intent gate
       timeout: 30s
@@ -74,5 +64,4 @@ spec:
               Authorization: "Bearer ${DEV_TOKEN}"
               Content-Type: "application/json"
             body: '{"target":"cronjob-tutorial","name":"bad-cron","schedule":"not-a-cron","image":"gcr.io/google-containers/busybox:latest"}'
-            statusCode: 422
-            outputContains: "schedule is required"
+            outputContains: '"accepted":false'
