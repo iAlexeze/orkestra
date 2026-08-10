@@ -2,12 +2,13 @@
 
 `allowedNamespaces`/`restrictedNamespaces` answer one question: which namespaces does this CRD exist in at all. Every caller gets the same answer — it's a property of the CRD, not of who's asking. `serve.tokens` answers a different question: which caller can do what, and where. Two tokens against the same CRD can have different answers — a `ci-pipeline` token allowed to create in `staging` but not touch `production`; a `security-audit` token that's read-only everywhere. This is authorization scoped to the caller's identity, layered on top of namespace protection, not a replacement for it.
 
-Authentication (proving who you are) and authorization (what you're allowed to do) are distinct steps. The gateway supports two authentication modes:
+Authentication (proving who you are) and authorization (what you're allowed to do) are distinct steps. The gateway supports three authentication modes:
 
 - **Static tokens** — a pre-shared bearer value from a Kubernetes Secret or environment variable.
 - **OIDC tokens** — a short-lived JWT issued by GitHub Actions, GitLab CI, or any OIDC provider. No stored secret; the token is verified against the provider's public JWKS. The verified `sub` claim is stamped on the CR as `orkestra.orkspace.io/serve-source`.
+- **Webhook entries** (`gateway.webhooks`) — GitHub/GitLab push, Slack, or a generic JSON caller. Not a bearer token at all: each entry verifies the request itself (an HMAC signature or a static shared secret, matching how that source actually signs its own deliveries), and the entry's own `name` — not a claim, not a header — becomes the identity `serve.tokens` checks and the value stamped as `serve-source`.
 
-Both authenticate to the same `gateway.api.auth.tokens` list and are subject to the same `serve.tokens` authorization rules below. The authentication mode is invisible to authorization — a token entry named `github-ci` behaves identically to one named `ci-pipeline` from the permission-check perspective.
+The first two authenticate to `gateway.api.auth.tokens`; the third authenticates to `gateway.webhooks`. All three are subject to the same `serve.tokens` authorization rules below — authorization doesn't care which of the three proved the caller's identity. See [Webhook credential verification](09-webhook-verification.md) for how each webhook source verifies itself.
 
 ---
 
@@ -39,7 +40,7 @@ serve:
 
 `ci-pipeline` can create and update `App` CRs in `staging` — and nowhere else, not even if it later gets used against a different CRD that also lists it, since permissions are declared per CRD, not globally. `security-audit` can read (not write) in both namespaces. Neither is a namespace-watch rule — the runtime still watches whatever `allowedNamespaces` says regardless of which tokens exist.
 
-A CRD with no `serve.tokens` block places no restriction here — any token valid at the gateway level (`gateway.api.auth.tokens`) can call any endpoint the Gateway API exposes for that CRD, subject only to namespace protection.
+A CRD with no `serve.tokens` block places no restriction here — any caller valid at the gateway level (`gateway.api.auth.tokens`, or a `gateway.webhooks` entry authenticating with its own credential) can call any endpoint the Gateway API exposes for that CRD, subject only to namespace protection.
 
 ---
 
@@ -124,7 +125,7 @@ The three denial reasons — unknown token (not in `serve.tokens` at all), names
 
 `ork validate` checks, at load time, before anything touches a cluster:
 
-- Every token name in `serve.tokens` exists in `gateway.api.auth.tokens` — a typo'd token name is a hard error, not a silently-never-matching rule
+- Every token name in `serve.tokens` exists in `gateway.api.auth.tokens` **or** as a `gateway.webhooks` entry's own `name` — a typo'd token name is a hard error, not a silently-never-matching rule
 - Every operation string is a valid `ServeOperation` (`get`, `list`, `create`, `update`, `delete`, `*`)
 - No permission list repeats the same operation
 - `schema` permissions contain only `get`/`list`
@@ -162,6 +163,8 @@ ork token verify --api http://localhost:8443 -t token.jwt
 ## Where to go next
 
 - **[Namespace protection](05-namespace-protection.md)** — the CRD-level layer this sits on top of
+- **[Webhook credential verification](09-webhook-verification.md)** — how GitHub/GitLab/Slack/generic entries prove they're genuine
 - **[Gateway API reference](../reference/schema/02-katalog/17-gateway-api.md#servetokens--fine-grained-permissions)** — full `serve.tokens` field reference
 - **[The Serve Concept](../concepts/self-service/)** — what the Gateway API is for, target mode
 - **[Aliases and Intent Provenance](../concepts/self-service/04-aliases-and-provenance.md)** — per-alias token scoping, admission gating, reconcile routing
+- **[Webhook Intake](../concepts/self-service/09-webhook-intake.md)** — GitOps push delivery through the same serve.tokens model

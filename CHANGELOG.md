@@ -1,4 +1,60 @@
-## v0.7.14 — Aliases and Intent Provenance [UNRELEASED]
+## v0.7.15 — Gateway Webhook Intake [UNRELEASED]
+
+### Gateway webhook intake — GitHub, GitLab, Slack, generic
+
+`gateway.webhooks` adds four inbound, push-based delivery sources that resolve through the exact same target-mode pipeline `POST /api/v1/apply` does — the GitOps counterpart to `ork serve apply`'s CLI/CI-driven pull model.
+
+```yaml
+gateway:
+  webhooks:
+    github:
+      - name: payments-repo
+        enabled: true
+        path: /webhooks/github/payments
+        branch: main
+        watch:
+          - "services/*/intent.yaml"
+        secretRef: { name: ork-payments-github-secret, key: secret }
+        contentTokenRef: { name: ork-payments-github-app-token, key: token }
+    gitlab: [ ... same shape ... ]
+    slack:
+      - name: platform-workspace
+        enabled: true
+        path: /webhooks/slack
+        signingSecretRef: { name: ork-slack-signing-secret, key: secret }
+        commands: ["/deploy"]
+    generic:
+      - name: pagerduty
+        enabled: true
+        path: /webhooks/generic/pagerduty
+        secretRef: { name: ork-pagerduty-webhook-secret, key: secret }
+```
+
+**GitHub / GitLab** — a push to `branch` touching a file matching `watch` (glob patterns, same shape as GitHub Actions' own `on.push.paths`) fetches that file's content via the Contents API / Repository Files API and applies it as a target-mode intent. A push can match several files; each is applied independently. `contentTokenRef` — a separate credential from `secretRef` — reads the file content, since push payloads carry only changed paths, never content. `reportStatus: true` optionally posts the apply outcome back as a commit/pipeline status.
+
+**Slack** — a slash command's text (`"<target> key=value ..."`) becomes the intent. Acks within Slack's 3-second window, then applies on a bounded background worker pool and posts the outcome to `response_url`.
+
+**Generic** — any caller that can POST JSON and sign it with HMAC-SHA256 (PagerDuty, Datadog, an internal system). The body is the intent directly.
+
+Every entry's own `name` authorizes under `serve.tokens` — the same identity model a `gateway.api.auth.tokens` bearer token uses — and is stamped as the `serve-source` provenance annotation on every CR it applies. `secretRef`/`contentTokenRef`/`signingSecretRef` all reuse the `APISecretRef` shape `gateway.api.auth.tokens[].secretRef` already uses, so every webhook credential gets the same self-bootstrap-if-missing and `rotateAfter` rotation behavior for free. `ork validate` enforces entry names unique across all four sources (not just within one — this is also what lets `ork webhook play` resolve `--source` from `--webhook` alone), unique paths across every source, required credentials per source, and that every `serve.tokens` key resolves to either a `gateway.api.auth.tokens` entry or a `gateway.webhooks` entry's name.
+
+### `ork webhook` — list and locally play webhook entries
+
+New CLI namespace mirroring `ork token`/`ork serve play` for the webhook intake surface.
+
+```bash
+ork webhook list
+ork webhook play -f katalog.yaml --webhook payments-repo \
+  --event push-event.json \
+  --fetch services/payments/intent.yaml=local-intent.yaml \
+  --simulate
+```
+
+`ork webhook play` runs the real entry's declared `branch`/`watch`/`commands` through the exact chain `ork serve play` uses — target resolution, token check, CR construction, provenance stamping, admission validation — with no cluster, no HTTP server, and no real GitHub/GitLab/Slack account. Signature/token verification is skipped; `--fetch <path>=<local-file>` supplies what the Contents/Repository Files API would have returned for a matched path. `--simulate` extends the chain into `ork simulate`, same as `ork serve play --simulate`. `--source` is optional — webhook entry names are unique across all four sources, so it's resolved from `--webhook` automatically when omitted.
+
+---
+
+## v0.7.14 — Aliases and Intent Provenance
 
 ### Serve aliases
 

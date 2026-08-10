@@ -1,0 +1,11 @@
+# This file lives in the *watched repo*, not this Katalog — it's what
+# GitHub/GitLab's Contents/Repository Files API returns when the gateway
+# fetches "services/payments/intent.yaml" after a matching push.
+#
+# Same flat shape POST /api/v1/apply accepts. serve.name isn't declared on
+# ServiceRequest, so "name" here is used as-is.
+target: servicerequest
+name: payments-api
+team: platform
+image: myorg/payments:1.4.2
+replicas: 3

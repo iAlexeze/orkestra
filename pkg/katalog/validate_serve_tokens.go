@@ -20,9 +20,17 @@ import (
 //  8. Every serve permitted namespace must be allowed at crd level.
 //  9. (Warning) A token entry with an empty permissions list grants no access.
 func (k *Katalog) validateServeTokenRestrictions() error {
+	// A serve.tokens key can be authorized two ways: a gateway.api.auth.tokens
+	// entry (a Bearer/OIDC caller), or a gateway.webhooks entry's own Name (a
+	// push/command/JSON delivery) — TokenAllowedFor treats both identically at
+	// runtime, so both count as "known" here.
 	gatewayTokens := k.GatewayTokenNames()
-	knownTokens := make(map[string]struct{}, len(gatewayTokens))
+	webhookNames := k.GatewayWebhookEntryNames()
+	knownTokens := make(map[string]struct{}, len(gatewayTokens)+len(webhookNames))
 	for _, name := range gatewayTokens {
+		knownTokens[name] = struct{}{}
+	}
+	for _, name := range webhookNames {
 		knownTokens[name] = struct{}{}
 	}
 
@@ -52,15 +60,17 @@ func (k *Katalog) validateServeTokenRestrictions() error {
 		}
 
 		for tokenName, perms := range crd.Serve.TokensMap() {
-			gatewayTokensStr := strings.Join(gatewayTokens, ", ")
+			knownTokensStr := strings.Join(append(append([]string{}, gatewayTokens...), webhookNames...), ", ")
 
-			// 1. Token must exist at the gateway level.
+			// 1. Token must exist at the gateway level, either as a
+			// gateway.api.auth.tokens entry or a gateway.webhooks entry's Name.
 			if _, ok := knownTokens[tokenName]; !ok {
 				return fmt.Errorf(
-					"%s crd %q: serve.tokens[%q] — token %q is not declared in gateway.api.auth.tokens\n"+
-						"  Add the token there or remove it from tokens.\n"+
-						"  Available tokens: %s",
-					failureMark(), crdName, tokenName, tokenName, yellow(gatewayTokensStr),
+					"%s crd %q: serve.tokens[%q] — token %q is not declared in gateway.api.auth.tokens "+
+						"or gateway.webhooks\n"+
+						"  Add it there or remove it from tokens.\n"+
+						"  Available: %s",
+					failureMark(), crdName, tokenName, tokenName, yellow(knownTokensStr),
 				)
 			}
 

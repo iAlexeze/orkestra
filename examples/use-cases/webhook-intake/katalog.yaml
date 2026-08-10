@@ -1,0 +1,132 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: webhook-intake-demo
+  description: >
+    One ServiceRequest CRD, reachable through four inbound delivery
+    surfaces — GitHub push, GitLab push, Slack slash command, and a
+    generic JSON webhook (PagerDuty-shaped) — plus the standard
+    POST /api/v1/apply surface every Gateway API deployment already has.
+    Every source ends at the exact same ApplyTargetFields pipeline.
+
+gateway:
+  endpoint: http://orkestra-gateway:8080
+  api:
+    enabled: true
+    auth:
+      tokens:
+        - name: dev
+          token: "${DEV_TOKEN}"
+
+  webhooks:
+    # ── GitHub — push-event intake ─────────────────────────────────────────
+    # Fires on every push to `branch`. Only paths matching `watch` are
+    # fetched and applied — everything else in the push is ignored.
+    github:
+      - name: payments-repo
+        enabled: true
+        path: /webhooks/github/payments
+        branch: main
+        watch:
+          - "services/*/intent.yaml"
+        secretRef:
+          name: ork-payments-github-secret
+          key: secret
+        contentTokenRef:
+          name: ork-payments-github-app-token
+          key: token
+        # reportStatus: true  # opt-in — posts a commit status back to GitHub
+
+    # ── GitLab — same shape, GitLab's own verification/content APIs ────────
+    gitlab:
+      - name: payments-repo-gitlab
+        enabled: true
+        path: /webhooks/gitlab/payments
+        branch: main
+        watch:
+          - "services/*/intent.yaml"
+        secretRef:
+          name: ork-payments-gitlab-secret
+          key: secret
+        contentTokenRef:
+          name: ork-payments-gitlab-api-token
+          key: token
+
+    # ── Slack — slash command, e.g. "/deploy servicerequest name=... " ─────
+    slack:
+      - name: platform-workspace
+        enabled: true
+        path: /webhooks/slack
+        signingSecretRef:
+          name: ork-slack-signing-secret
+          key: secret
+        commands: ["/deploy"]
+
+    # ── Generic — any JSON-POSTing caller (PagerDuty, Datadog, internal) ───
+    generic:
+      - name: pagerduty
+        enabled: true
+        path: /webhooks/generic/pagerduty
+        secretRef:
+          name: ork-pagerduty-webhook-secret
+          key: secret
+
+spec:
+  crds:
+    servicerequest:
+      apiTypes:
+        group: demo.orkestra.io
+        version: v1
+        kind: ServiceRequest
+        plural: servicerequests
+
+      serve:
+        enabled: true
+        target: servicerequest
+        namespace: default
+        include: ./serve/servicerequest.yaml
+        tokens:
+          dev:
+            permissions:
+              global: ["*"]
+          # Each webhook entry's own Name is what serve.tokens checks against —
+          # no separate gateway.api.auth.tokens entry needed. Once ANY token is
+          # declared here, every caller needs its own entry (or is denied) —
+          # there's no implicit fallback to a broader grant like "dev" above,
+          # so every configured webhook entry needs its own line.
+          payments-repo:
+            permissions:
+              global: ["create", "update"]
+          payments-repo-gitlab:
+            permissions:
+              global: ["create", "update"]
+          platform-workspace:
+            permissions:
+              global: ["create", "update"]
+          pagerduty:
+            permissions:
+              global: ["create", "update"]
+
+      validation:
+        rules:
+          - field: spec.image
+            operator: exists
+            message: "image is required"
+            action: deny
+          - field: spec.team
+            operator: exists
+            message: "team is required"
+            action: deny
+
+      operatorBox:
+        reconciler:
+          workers: 5
+          resync: 45s
+        status:
+          fields:
+            - path: phase
+              value: "Active"
+            - path: image
+              value: "{{ .spec.image }}"
+            - path: team
+              value: "{{ .spec.team }}"

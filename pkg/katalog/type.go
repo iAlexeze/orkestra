@@ -56,6 +56,8 @@ type Katalog struct {
 	gvkIndex        map[string]string `yaml:"-" json:"-"` // gvk.String() -> crd name
 	gvrIndex        map[string]string `yaml:"-" json:"-"` // gvr.String() -> crd name
 	targetIndex     map[string]string `yaml:"-" json:"-"` // target -> crd name
+
+	webhookNameIndex map[string]string `yaml:"-" json:"-"` // lowercase(webhook entry name) -> source ("github"/"gitlab"/"slack"/"generic")
 }
 
 // EnabledCRDs returns a map of enabled CRDs keyed by their name.

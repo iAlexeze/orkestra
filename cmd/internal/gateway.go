@@ -14,6 +14,7 @@ import (
 
 	"github.com/orkspace/orkestra/domain"
 	apigateway "github.com/orkspace/orkestra/pkg/gateway/api"
+	"github.com/orkspace/orkestra/pkg/gateway/api/intake"
 	"github.com/orkspace/orkestra/pkg/gateway/certmanager"
 	gwhandlers "github.com/orkspace/orkestra/pkg/gateway/handlers"
 	"github.com/orkspace/orkestra/pkg/gateway/webhook"
@@ -127,9 +128,29 @@ func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	if apiErr != nil {
 		logger.Fatal().Err(apiErr).Msg("gateway API setup failed")
 	}
+
+	// gateway.webhooks — inbound intent delivery (GitHub/GitLab push,
+	// Slack, generic HTTP). Only meaningful alongside the Gateway API
+	// (ork validate enforces this), but resolved and registered separately
+	intakeSrv, intakeErr := intake.NewIntakeServer(ctx, kat, kube, kfg.Cluster().Namespace())
+	if intakeErr != nil {
+		logger.Fatal().Err(intakeErr).Msg("gateway webhooks setup failed")
+	}
+
 	if api != nil {
 		api.Register(hs)
-		ws.SetTokenReloader(api.ReloadTokens)
+		if intakeSrv != nil {
+			intakeSrv.Register(hs, kat.Notes)
+		}
+		ws.SetTokenReloader(func(ctx context.Context) error {
+			if err := api.ReloadTokens(ctx); err != nil {
+				return err
+			}
+			if intakeSrv != nil {
+				return intakeSrv.Reload(ctx)
+			}
+			return nil
+		})
 	}
 
 	// ── 8. Komponent list ─────────────────────────────────────────────────────

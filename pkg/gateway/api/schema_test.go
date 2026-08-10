@@ -1,253 +1,154 @@
 package api
 
-// import (
-// 	"encoding/json"
-// 	"net/http"
-// 	"net/http/httptest"
-// 	"strings"
-// 	"testing"
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 
-// 	orktypes "github.com/orkspace/orkestra/pkg/types"
-// )
+	"github.com/orkspace/orkestra/pkg/katalog"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
+)
 
-// func idpEntry(kind string) *orktypes.CRDEntry {
-// 	return &orktypes.CRDEntry{
-// 		Name: strings.ToLower(kind),
-// 		APITypes: orktypes.APITypes{
-// 			Group:   "platform.orkestra.io",
-// 			Version: "v1alpha1",
-// 			Kind:    kind,
-// 			Plural:  strings.ToLower(kind) + "s",
-// 		},
-// 		Serve: &orktypes.ServeConfig{
-// 			Enabled: true,
-// 			Fields: map[string]orktypes.ServeFieldConfig{
-// 				"team": {Label: "Team", Order: 1},
-// 			},
-// 		},
-// 	}
-// }
+// serveEntryKatalog builds a single-CRD katalog for kind "Platform" — its
+// ServeTarget() defaults to the lowercased kind, "platform", which every
+// test below uses directly. The outer map key is unrelated to target
+// resolution (LookupByTargetOrAlias matches on ServeTarget(), not the key).
+func serveEntryKatalog(serve *orktypes.ServeConfig) *katalog.Katalog {
+	return katalog.NewFromEntryPointers(map[string]*orktypes.CRDEntry{
+		"platform": {
+			APITypes: orktypes.APITypes{
+				Group:   "platform.orkestra.io",
+				Version: "v1alpha1",
+				Kind:    "Platform",
+				Plural:  "platforms",
+			},
+			Serve: serve,
+		},
+	})
+}
 
-// func noopLister() []*orktypes.CRDEntry { return nil }
+func TestSchemaHandler_MethodNotAllowed(t *testing.T) {
+	h := schemaHandler(serveEntryKatalog(&orktypes.ServeConfig{Enabled: true}))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/schema", nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusMethodNotAllowed {
+		t.Errorf("status = %d, want 405", rr.Code)
+	}
+}
 
-// func TestSchemaHandler_MethodNotAllowed(t *testing.T) {
-// 	h := schemaHandler(nil, func(kind string) *orktypes.CRDEntry { return nil }, noopLister)
-// 	req := httptest.NewRequest(http.MethodPost, "/api/v1/schema/Platform", nil)
-// 	rr := httptest.NewRecorder()
-// 	h.ServeHTTP(rr, req)
-// 	if rr.Code != http.StatusMethodNotAllowed {
-// 		t.Errorf("status = %d, want 405", rr.Code)
-// 	}
-// }
+func TestSchemaHandler_UnknownTarget(t *testing.T) {
+	h := schemaHandler(serveEntryKatalog(&orktypes.ServeConfig{Enabled: true}))
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema?target=unknown", nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", rr.Code)
+	}
+}
 
-// func TestSchemaHandler_IDPNotEnabled(t *testing.T) {
-// 	lookup := func(kind string) *orktypes.CRDEntry {
-// 		return &orktypes.CRDEntry{Serve: &orktypes.ServeConfig{Enabled: false}}
-// 	}
-// 	h := schemaHandler(nil, lookup, noopLister)
-// 	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema/Platform", nil)
-// 	rr := httptest.NewRecorder()
-// 	h.ServeHTTP(rr, req)
-// 	if rr.Code != http.StatusNotFound {
-// 		t.Errorf("status = %d, want 404", rr.Code)
-// 	}
-// }
+func TestSchemaHandler_NotEnabled_UnreachableByTarget(t *testing.T) {
+	// A disabled serve config means the CRD has no target at all —
+	// LookupByTargetOrAlias can never resolve it, so this looks identical
+	// to an unknown target from the caller's side.
+	h := schemaHandler(serveEntryKatalog(&orktypes.ServeConfig{Enabled: false}))
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema?target=platform", nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", rr.Code)
+	}
+}
 
-// func TestSchemaHandler_UnknownKind(t *testing.T) {
-// 	h := schemaHandler(nil, func(kind string) *orktypes.CRDEntry { return nil }, noopLister)
-// 	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema/Unknown", nil)
-// 	rr := httptest.NewRecorder()
-// 	h.ServeHTTP(rr, req)
-// 	if rr.Code != http.StatusNotFound {
-// 		t.Errorf("status = %d, want 404", rr.Code)
-// 	}
-// }
+func TestSchemaHandler_PerTarget_ReturnsFields(t *testing.T) {
+	h := schemaHandler(serveEntryKatalog(&orktypes.ServeConfig{
+		Enabled:     true,
+		Title:       "Platform Service",
+		Description: "A platform-managed service",
+		Fields: map[string]orktypes.ServeFieldConfig{
+			"team":  {Label: "Team", Order: 1, Required: true},
+			"image": {Label: "Image", Order: 2},
+		},
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema?target=platform", nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
 
-// func TestSchemaHandler_Catalog_Empty(t *testing.T) {
-// 	h := schemaHandler(nil, func(kind string) *orktypes.CRDEntry { return nil }, noopLister)
-// 	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema/", nil)
-// 	rr := httptest.NewRecorder()
-// 	h.ServeHTTP(rr, req)
-// 	if rr.Code != http.StatusOK {
-// 		t.Fatalf("status = %d, want 200", rr.Code)
-// 	}
-// 	var cat CatalogResponse
-// 	if err := json.NewDecoder(rr.Body).Decode(&cat); err != nil {
-// 		t.Fatalf("decode catalog: %v", err)
-// 	}
-// 	if cat.Schemas == nil {
-// 		t.Error("Schemas should not be nil")
-// 	}
-// 	if len(cat.Schemas) != 0 {
-// 		t.Errorf("Schemas len = %d, want 0", len(cat.Schemas))
-// 	}
-// }
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rr.Code)
+	}
+	var resp SchemaResponse
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.Target != "platform" {
+		t.Errorf("Target = %q, want %q", resp.Target, "platform")
+	}
+	if resp.Title != "Platform Service" {
+		t.Errorf("Title = %q, want %q", resp.Title, "Platform Service")
+	}
+	if len(resp.Fields) != 2 {
+		t.Errorf("Fields = %+v, want 2 entries", resp.Fields)
+	}
+	if len(resp.Required) != 1 || resp.Required[0] != "team" {
+		t.Errorf("Required = %v, want [team]", resp.Required)
+	}
+}
 
-// func TestSchemaHandler_Catalog_WithEntries(t *testing.T) {
-// 	appEntry := &orktypes.CRDEntry{
-// 		Name: "apprequests",
-// 		APITypes: orktypes.APITypes{
-// 			Group:   "platform.orkestra.io",
-// 			Version: "v1alpha1",
-// 			Kind:    "AppRequest",
-// 			Plural:  "apprequests",
-// 		},
-// 		Serve: &orktypes.ServeConfig{
-// 			Enabled:     true,
-// 			Category:    "Compute",
-// 			Description: "Self-service app deployment",
-// 		},
-// 	}
-// 	dbEntry := &orktypes.CRDEntry{
-// 		Name: "databases",
-// 		APITypes: orktypes.APITypes{
-// 			Group:   "platform.orkestra.io",
-// 			Version: "v1alpha1",
-// 			Kind:    "Database",
-// 			Plural:  "databases",
-// 		},
-// 		Description: "Managed database",
-// 		Serve: &orktypes.ServeConfig{
-// 			Enabled:  true,
-// 			Category: "Data",
-// 			// no IDP.Description — falls back to CRDEntry.Description
-// 		},
-// 	}
-// 	lister := func() []*orktypes.CRDEntry { return []*orktypes.CRDEntry{appEntry, dbEntry} }
-// 	h := schemaHandler(nil, func(kind string) *orktypes.CRDEntry { return nil }, lister)
+func TestSchemaHandler_PerTarget_TitleFallsBackToKind(t *testing.T) {
+	h := schemaHandler(serveEntryKatalog(&orktypes.ServeConfig{Enabled: true}))
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema?target=platform", nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
 
-// 	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema/", nil)
-// 	rr := httptest.NewRecorder()
-// 	h.ServeHTTP(rr, req)
+	var resp SchemaResponse
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.Title != "Platform" {
+		t.Errorf("Title = %q, want the kind %q as fallback", resp.Title, "Platform")
+	}
+}
 
-// 	if rr.Code != http.StatusOK {
-// 		t.Fatalf("status = %d, want 200", rr.Code)
-// 	}
-// 	var cat CatalogResponse
-// 	if err := json.NewDecoder(rr.Body).Decode(&cat); err != nil {
-// 		t.Fatalf("decode catalog: %v", err)
-// 	}
-// 	if len(cat.Schemas) != 2 {
-// 		t.Fatalf("Schemas len = %d, want 2", len(cat.Schemas))
-// 	}
+func TestSchemaHandler_Catalog_NoAuthorizedEntries_Forbidden(t *testing.T) {
+	// hasAnySchemaPermission grants access by finding at least one CRD the
+	// token can list — with zero CRDs, that loop can never grant, so even a
+	// present, non-empty token name gets 403 rather than an empty catalog.
+	h := schemaHandler(katalog.NewFromEntryPointers(map[string]*orktypes.CRDEntry{}))
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema", nil)
+	req = req.WithContext(contextWithTokenName(req.Context(), "test-token"))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
 
-// 	byKind := make(map[string]CatalogEntry)
-// 	for _, s := range cat.Schemas {
-// 		byKind[s.Kind] = s
-// 	}
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", rr.Code)
+	}
+}
 
-// 	app := byKind["AppRequest"]
-// 	if app.Category != "Compute" {
-// 		t.Errorf("AppRequest.Category = %q", app.Category)
-// 	}
-// 	if app.Description != "Self-service app deployment" {
-// 		t.Errorf("AppRequest.Description = %q", app.Description)
-// 	}
+func TestSchemaHandler_Catalog_ListsServeEnabledEntries(t *testing.T) {
+	h := schemaHandler(serveEntryKatalog(&orktypes.ServeConfig{
+		Enabled:  true,
+		Title:    "Platform Service",
+		Category: "Infra",
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/schema", nil)
+	req = req.WithContext(contextWithTokenName(req.Context(), "test-token"))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
 
-// 	db := byKind["Database"]
-// 	if db.Category != "Data" {
-// 		t.Errorf("Database.Category = %q", db.Category)
-// 	}
-// 	if db.Description != "Managed database" {
-// 		t.Errorf("Database.Description = %q (want fallback from CRDEntry)", db.Description)
-// 	}
-// }
-
-// func TestSchemaResponse_JSON(t *testing.T) {
-// 	resp := SchemaResponse{
-// 		Kind:         "Platform",
-// 		APIVersion:   "platform.orkestra.io/v1alpha1",
-// 		Required:     []string{"team"},
-// 		Ignore: []string{"internalId"},
-// 		Properties: map[string]interface{}{
-// 			"team": map[string]interface{}{"type": "string"},
-// 		},
-// 		AllServeFields: map[string]orktypes.ServeFieldConfig{
-// 			"team": {Label: "Team", Order: 1},
-// 		},
-// 	}
-// 	b, err := json.Marshal(resp)
-// 	if err != nil {
-// 		t.Fatalf("marshal: %v", err)
-// 	}
-// 	var got SchemaResponse
-// 	if err := json.Unmarshal(b, &got); err != nil {
-// 		t.Fatalf("unmarshal: %v", err)
-// 	}
-// 	if got.Kind != "Platform" {
-// 		t.Errorf("Kind = %q", got.Kind)
-// 	}
-// 	if got.AllServeFields["team"].Label != "Team" {
-// 		t.Errorf("AllServeFields[team].Label = %q", got.AllServeFields["team"].Label)
-// 	}
-// 	if len(got.Required) != 1 || got.Required[0] != "team" {
-// 		t.Errorf("Required = %v", got.Required)
-// 	}
-// 	if len(got.Ignore) != 1 || got.Ignore[0] != "internalId" {
-// 		t.Errorf("Ignore = %v", got.Ignore)
-// 	}
-// }
-
-// func TestSchemaResponse_AdditionalFields_JSON(t *testing.T) {
-// 	resp := SchemaResponse{
-// 		Kind:       "Platform",
-// 		APIVersion: "platform.orkestra.io/v1alpha1",
-// 		AdditionalLabels: map[string]orktypes.ServeFieldConfig{
-// 			"tier": {Label: "Tier", Type: "enum", Enum: []string{"free", "pro"}},
-// 		},
-// 		AdditionalAnnotations: map[string]orktypes.ServeFieldConfig{
-// 			"platform.example.io/monitoring": {Label: "Monitoring", Type: "boolean"},
-// 		},
-// 	}
-// 	b, err := json.Marshal(resp)
-// 	if err != nil {
-// 		t.Fatalf("marshal: %v", err)
-// 	}
-// 	var got SchemaResponse
-// 	if err := json.Unmarshal(b, &got); err != nil {
-// 		t.Fatalf("unmarshal: %v", err)
-// 	}
-// 	tier := got.AdditionalLabels["tier"]
-// 	if tier.Label != "Tier" || tier.Type != "enum" || len(tier.Enum) != 2 {
-// 		t.Errorf("AdditionalLabels[tier] = %+v", tier)
-// 	}
-// 	mon := got.AdditionalAnnotations["platform.example.io/monitoring"]
-// 	if mon.Label != "Monitoring" || mon.Type != "boolean" {
-// 		t.Errorf("AdditionalAnnotations[platform.example.io/monitoring] = %+v", mon)
-// 	}
-// }
-
-// func TestSchemaResponse_AdditionalFields_OmittedWhenNil(t *testing.T) {
-// 	resp := SchemaResponse{Kind: "Platform"}
-// 	b, err := json.Marshal(resp)
-// 	if err != nil {
-// 		t.Fatalf("marshal: %v", err)
-// 	}
-// 	s := string(b)
-// 	if strings.Contains(s, "additionalLabels") || strings.Contains(s, "additionalAnnotations") {
-// 		t.Errorf("expected additionalLabels/additionalAnnotations to be omitted when nil, got: %s", s)
-// 	}
-// }
-
-// func TestSchemaHandler_PopulatesAdditionalFields(t *testing.T) {
-// 	entry := idpEntry("Platform")
-// 	entry.Serve.AdditionalFields = &orktypes.ServeAdditionalFields{
-// 		Labels: map[string]orktypes.ServeFieldConfig{
-// 			"tier": {Label: "Tier"},
-// 		},
-// 	}
-// 	// Mirrors schemaHandler's own population step directly — fetchSpecProperties
-// 	// requires a live kube client the other handler tests don't set up either,
-// 	// so this isolates the additionalFields mapping from the CRD-schema fetch.
-// 	resp := SchemaResponse{}
-// 	if entry.Serve.AdditionalFields != nil {
-// 		resp.AdditionalLabels = entry.Serve.Labels
-// 		resp.AdditionalAnnotations = entry.Serve.Annotations
-// 	}
-// 	if resp.AdditionalLabels["tier"].Label != "Tier" {
-// 		t.Errorf("AdditionalLabels[tier].Label = %q, want %q", resp.AdditionalLabels["tier"].Label, "Tier")
-// 	}
-// 	if resp.AdditionalAnnotations != nil {
-// 		t.Errorf("AdditionalAnnotations should be nil when not declared, got: %v", resp.AdditionalAnnotations)
-// 	}
-// }
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rr.Code)
+	}
+	var page utils.PaginatedResponse[CatalogEntry]
+	if err := json.NewDecoder(rr.Body).Decode(&page); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if page.Total != 1 {
+		t.Fatalf("Total = %d, want 1", page.Total)
+	}
+	if page.Items[0].Target != "platform" || page.Items[0].Category != "Infra" {
+		t.Errorf("entry = %+v, want target=platform category=Infra", page.Items[0])
+	}
+}
