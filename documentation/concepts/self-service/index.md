@@ -104,15 +104,35 @@ A CRD can expose multiple named targets — aliases — alongside the primary. A
 
 ---
 
+## Webhook intake
+
+`ork serve apply` is pull-based — someone runs a command. `gateway.webhooks` is push-based — GitHub, GitLab, Slack, or a generic JSON caller triggers the apply on its own, with no CLI invocation in the loop. Every source ends at the same target-mode chain everything else in this document describes; the source's only job is turning its own payload into a flat field map.
+
+```yaml
+gateway:
+  webhooks:
+    slack:
+      - name: platform-workspace
+        path: /webhooks/slack
+        signingSecretRef: { name: ork-slack-signing-secret, key: secret }
+        commands: ["/deploy"]
+```
+
+→ [Webhook Intake](09-webhook-intake.md)
+
+---
+
 ## Testing without a cluster
 
 ```bash
 ork serve validate          # check serve config
 ork serve validate --full   # show target, fields, token map
 ork serve play -f katalog.yaml --token dev -i intent.yaml   # run the full chain locally
+ork webhook play -f katalog.yaml --source slack --webhook platform-workspace \
+  --command /deploy --text "app name=foo team=bar"          # same chain, from a webhook payload
 ```
 
-→ [Local Intent Testing](06-local-intent-testing.md)
+→ [Local Intent Testing](06-local-intent-testing.md) · [Webhook Intake](09-webhook-intake.md)
 
 ---
 
@@ -136,6 +156,8 @@ The serve layer is general-purpose. The same mechanism works for:
 - [Aliases and Intent Provenance](04-aliases-and-provenance.md)
 - [Local Intent Testing](06-local-intent-testing.md)
 - [Live Delivery](07-live-delivery.md)
+- [Webhook Intake](09-webhook-intake.md)
 - [Internal Developer Platform](idp.md)
 
 - [Gateway API reference](../../reference/schema/02-katalog/17-gateway-api.md)
+- [Webhook credential verification](../../security/09-webhook-verification.md)

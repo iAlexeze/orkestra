@@ -1,0 +1,11 @@
+{
+  "ref": "refs/heads/main",
+  "checkout_sha": "abc123def456",
+  "project": { "id": 123 },
+  "commits": [
+    {
+      "added": ["services/payments/intent.yaml"],
+      "modified": []
+    }
+  ]
+}

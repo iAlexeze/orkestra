@@ -1,0 +1,56 @@
+---
+# Single-version ServiceRequest CRD. Deliberately simple — the point of
+# this example is the four intake sources, not field translation (see
+# use-cases/crd-conversion/with-serve-translation for that).
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: servicerequests.demo.orkestra.io
+spec:
+  group: demo.orkestra.io
+  scope: Namespaced
+  names:
+    plural: servicerequests
+    singular: servicerequest
+    kind: ServiceRequest
+    shortNames: [svcreq]
+    categories: [orkestra]
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Team
+          type: string
+          jsonPath: .spec.team
+        - name: Image
+          type: string
+          jsonPath: .spec.image
+        - name: Source
+          type: string
+          jsonPath: .metadata.annotations.orkestra\.orkspace\.io/serve-source
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [image, team]
+              properties:
+                image:
+                  type: string
+                  description: Container image to run
+                team:
+                  type: string
+                  description: Owning team
+                replicas:
+                  type: integer
+                  default: 1
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
