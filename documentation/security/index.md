@@ -24,6 +24,7 @@ Orkestra's security model has five interlocking layers, each described in its ow
 | **Pod security** | Workload containers run with hardened security contexts | [Pod security](07-pod-security.md) |
 | **Serve token permissions** | Per-caller operation and namespace scoping on the Gateway API | [Serve token permissions](08-serve-permissions.md) |
 | **Webhook verification** | GitHub/GitLab/Slack/generic intake sources prove they're genuine | [Webhook verification](09-webhook-verification.md) |
+| **Artifact signing** | Patterns carry cryptographic proof of origin via Cosign keyless signing | [Artifact signing](10-artifact-signing.md) |
 
 These layers are independent and can be enabled in any combination. You do not need all five to get value from any one of them.
 
@@ -176,3 +177,4 @@ Report security issues privately with reproduction steps, relevant logs, and an 
 - **[Pod Security](./07-pod-security.md)** — container and pod security context profiles
 - **[Serve Token Permissions](./08-serve-permissions.md)** — per-caller operation and namespace scoping on the Gateway API
 - **[Webhook Verification](./09-webhook-verification.md)** — how GitHub/GitLab/Slack/generic intake sources prove they're genuine
+- **[Artifact Signing](./10-artifact-signing.md)** — Cosign keyless signing for patterns, `publish:` policy, local testing

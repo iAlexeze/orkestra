@@ -180,12 +180,66 @@ webapp-operator:v1.0.0
   Kind:        Katalog
   Simulate:    ✓ Verified · 2 assertions · 14ms
   E2E:         ✓ Verified · 48s
+  Signed:      ✗ not signed
 
 To import:
   imports:
     registry:
       - oci://ghcr.io/myorg/katalogs/webapp-operator:v1.0.0
 ```
+
+---
+
+## Sign the artifact
+
+Signing is separate from pushing — it can happen in a different CI job under a
+different OIDC identity. Sign with the workflow that should be trusted:
+
+```bash
+ork pattern sign webapp-operator:v1.0.0
+```
+
+After signing, `ork inspect` shows the subject on the `Signed:` row:
+
+```text
+  Signed:      ✓ verified (keyless) · github.com/myorg/webapp/.github/workflows/release.yaml@refs/heads/main
+```
+
+To push and sign in one step:
+
+```bash
+ork push webapp-operator:v1.0.0 ./ --sign
+```
+
+### Declare a signing policy in the katalog
+
+Add a `publish:` block to require signature verification at pull time:
+
+```yaml
+publish:
+  signing:
+    verify: true
+    expectedIdentities:
+      - github.com/myorg/webapp/.github/workflows/release.yaml@refs/heads/main
+```
+
+With `verify: true`, consumers who run `ork pull --verify` will be blocked if the
+artifact is unsigned or signed by an unexpected identity.
+
+### Test signing locally
+
+No CI credentials needed. Use `--sign-local` to push to ttl.sh and test the
+full sign → verify loop before wiring it into CI:
+
+```bash
+ork push webapp-operator:v1.0.0 ./ --sign-local --ttl 24h
+# or
+ork pattern sign webapp-operator:v1.0.0 --local --dir ./ --ttl 24h
+```
+
+The output prints the exact verify and inspect commands with the ttl.sh ref.
+
+→ See [Artifact Signing](../../security/10-artifact-signing.md) for the full story.
 
 ---
 

@@ -18,6 +18,7 @@ ork inspect <name>:<version> --view <file>[,<file>]
 | `--motif` | `-m` | `false` | Resolve as a motif (uses `ORK_MOTIFS_REGISTRY`). |
 | `--versions` | | `false` | List up to 10 tracked versions sorted by push date, newest first. |
 | `--view` | | | Comma-separated list of files to print without pulling the full artifact. |
+| `--verbose` | | `false` | Expand the `Signed:` row to show the OIDC issuer and Rekor log entry. |
 
 ---
 
@@ -65,6 +66,7 @@ postgres:v1.0.0
   License:     Apache-2.0
   Simulate:    ✓ Verified · 3 assertions · 3ms · tested 2 days ago
   E2E:         ✓ Verified · 48s · tested 2 days ago
+  Signed:      ✓ verified (keyless) · github.com/myorg/postgres/.github/workflows/release.yaml@refs/heads/main
 
   Files:
     katalog.yaml    5.1 KB
@@ -134,6 +136,17 @@ Versions are sorted by push date, newest first — matching the order shown in `
 | `⊘ Skipped (pushed with --force or --no-e2e)` | E2E bypassed at push time |
 | `- Not verified` | No `e2e.yaml` in artifact |
 
+## Signed status values
+
+`ork inspect` always attempts signature verification. No flag required.
+
+| Display | Meaning |
+|---------|---------|
+| `✓ verified (keyless) · <subject>` | Valid Cosign keyless signature found |
+| `✗ not signed` | No signature referrer found in the registry |
+
+Add `--verbose` to expand the issuer and Rekor log entry beneath the `Signed:` row.
+
 ---
 
 ## --view: read files without a full pull
@@ -163,5 +176,7 @@ Useful for reading the simulate assertions (the behavioral contract), the sample
 ## Related
 
 - [`ork pull`](./10-pull.md) — download the full artifact
+- [`ork pattern verify`](./12-pattern.md) — canonical signing audit surface with full output
 - [`ork patterns`](./12-patterns.md) — browse what's in the registry
 - [Consuming Patterns](../../guides/registry/02-consuming.md)
+- [Artifact Signing](../../security/10-artifact-signing.md)
