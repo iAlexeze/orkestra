@@ -299,5 +299,12 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 42. Validate gateway webhooks (intake sources)
+	// -------------------------------------------------------------------------
+	if err := k.validateGatewayWebhooks(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }

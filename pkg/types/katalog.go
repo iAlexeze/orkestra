@@ -41,6 +41,11 @@ type GatewayConfig struct {
 
 	// API enables the CRUD REST surface for CRs on this gateway.
 	API *GatewayAPIConfig `yaml:"api,omitempty" json:"api,omitempty"`
+
+	// Webhooks declares inbound intent-delivery sources (GitHub, GitLab,
+	// Slack, generic HTTP) that resolve through the same target-mode path
+	// as a direct POST /api/v1/apply call. Requires API to be enabled.
+	Webhooks *GatewayWebhookConfig `yaml:"webhooks,omitempty" json:"webhooks,omitempty"`
 }
 
 // APIConfig enables and configures the Gateway Gateway API.
@@ -135,6 +140,17 @@ func (g *GatewayConfig) HasAPI() bool {
 		return false
 	}
 	return g.API.Enabled
+}
+
+// HasWebhooks reports whether any intake webhook source is declared.
+func (g *GatewayConfig) HasWebhooks() bool {
+	if g == nil {
+		return false
+	}
+	if g.Webhooks == nil {
+		return false
+	}
+	return !g.Webhooks.IsEmpty()
 }
 
 // ── APIConfig methods ─────────────────────────────────────────
