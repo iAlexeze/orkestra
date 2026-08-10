@@ -99,7 +99,7 @@ A checkbox field in the Control Center form always submits an explicit value —
 
 ---
 
-## Try It
+<!-- ## Try It
 
 First example — `01-form` drives its whole flow from `serve.labels`/`serve.annotations` and minimal `spec`
 ```bash
@@ -107,7 +107,7 @@ ork init --pack use-cases/idp
 
 # Follow steps in the README
 ```
-
+ -->
 ---
 
 ## See also

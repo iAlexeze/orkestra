@@ -55,6 +55,7 @@ Each rule sets one field. Rules are applied in order.
 | `valueType` | no | `string` (default), `int`, `float`, `bool` |
 | `when` | no | All conditions must pass for this rule to be applied (AND). Empty means unconditional. Conditions support Go template expressions via `EvaluateWhen`. |
 | `anyOf` | no | At least one condition must pass for this rule to be applied (OR). When both `when` and `anyOf` are declared, both blocks must pass. |
+| `fires.reconcile` | no | `true` (default). Set `false` to make this rule admission-only — the reconciler skips it. |
 
 Declare either `default` or `override` on each rule, not both.
 

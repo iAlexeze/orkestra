@@ -308,6 +308,12 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	if r.kat != nil && !r.kat.Notes.IsEmpty() {
 		resolver = resolver.WithUserNotes(r.kat.Notes)
 	}
+	// Inject raw serve intent as .request.<field> so operatorBox templates,
+	// mutation rules, and validation rules can all read the caller's vocabulary.
+	// Only present when the CR was submitted through the Gateway API in target mode.
+	if intent := orktypes.ServeIntentFromObject(resolver.Data()); intent != nil {
+		resolver = resolver.WithRequest(intent)
+	}
 	// Gives operator: unique live CRD access for the rest of this reconcile
 	// pass — validation.rules and any when:/anyOf: block evaluated against
 	// this resolver (mutation rules, template sources) all share it.

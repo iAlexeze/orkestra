@@ -122,7 +122,7 @@ Use `--dry-run` to validate against the live gateway without applying — token 
 ork serve apply -f intent.yaml --api https://gateway.myorg.io --token "$ORK_TOKEN" --dry-run
 ```
 
-→ [Live Delivery concept](../../concepts/idp/07-live-delivery.md) — intent file format, full CR mode, GitOps pattern, rollback
+→ [Live Delivery concept](../../concepts/self-service/07-live-delivery.md) — intent file format, full CR mode, GitOps pattern, rollback
 
 ---
 

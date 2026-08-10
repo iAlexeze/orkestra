@@ -293,6 +293,15 @@ func EvaluateValidationRule(data map[string]interface{}, resolver TemplateResolv
 		found = fieldVal != ""
 	} else {
 		fieldVal, found = ResolveScalarField(data, rule.Field)
+		// Plain path not found in the CR object — try the resolver data.
+		// This lets rules use bare paths like "request.schedule" for resolver-injected
+		// fields (e.g. WithRequest) without needing {{ }} template syntax.
+		if !found && resolver != nil {
+			if resolved, err := resolver.Resolve("{{ ." + rule.Field + " }}"); err == nil && resolved != "" {
+				fieldVal = resolved
+				found = true
+			}
+		}
 	}
 
 	fail := func() *RuleViolation {

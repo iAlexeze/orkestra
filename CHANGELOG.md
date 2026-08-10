@@ -1,4 +1,60 @@
-## v0.7.14 — Aliases and Intent Provenance [UNRELEASED]
+## v0.7.15 — Gateway Webhook Intake [UNRELEASED]
+
+### Gateway webhook intake — GitHub, GitLab, Slack, generic
+
+`gateway.webhooks` adds four inbound, push-based delivery sources that resolve through the exact same target-mode pipeline `POST /api/v1/apply` does — the GitOps counterpart to `ork serve apply`'s CLI/CI-driven pull model.
+
+```yaml
+gateway:
+  webhooks:
+    github:
+      - name: payments-repo
+        enabled: true
+        path: /webhooks/github/payments
+        branch: main
+        watch:
+          - "services/*/intent.yaml"
+        secretRef: { name: ork-payments-github-secret, key: secret }
+        contentTokenRef: { name: ork-payments-github-app-token, key: token }
+    gitlab: [ ... same shape ... ]
+    slack:
+      - name: platform-workspace
+        enabled: true
+        path: /webhooks/slack
+        signingSecretRef: { name: ork-slack-signing-secret, key: secret }
+        commands: ["/deploy"]
+    generic:
+      - name: pagerduty
+        enabled: true
+        path: /webhooks/generic/pagerduty
+        secretRef: { name: ork-pagerduty-webhook-secret, key: secret }
+```
+
+**GitHub / GitLab** — a push to `branch` touching a file matching `watch` (glob patterns, same shape as GitHub Actions' own `on.push.paths`) fetches that file's content via the Contents API / Repository Files API and applies it as a target-mode intent. A push can match several files; each is applied independently. `contentTokenRef` — a separate credential from `secretRef` — reads the file content, since push payloads carry only changed paths, never content. `reportStatus: true` optionally posts the apply outcome back as a commit/pipeline status.
+
+**Slack** — a slash command's text (`"<target> key=value ..."`) becomes the intent. Acks within Slack's 3-second window, then applies on a bounded background worker pool and posts the outcome to `response_url`.
+
+**Generic** — any caller that can POST JSON and sign it with HMAC-SHA256 (PagerDuty, Datadog, an internal system). The body is the intent directly.
+
+Every entry's own `name` authorizes under `serve.tokens` — the same identity model a `gateway.api.auth.tokens` bearer token uses — and is stamped as the `serve-source` provenance annotation on every CR it applies. `secretRef`/`contentTokenRef`/`signingSecretRef` all reuse the `APISecretRef` shape `gateway.api.auth.tokens[].secretRef` already uses, so every webhook credential gets the same self-bootstrap-if-missing and `rotateAfter` rotation behavior for free. `ork validate` enforces entry names unique across all four sources (not just within one — this is also what lets `ork webhook play` resolve `--source` from `--webhook` alone), unique paths across every source, required credentials per source, and that every `serve.tokens` key resolves to either a `gateway.api.auth.tokens` entry or a `gateway.webhooks` entry's name.
+
+### `ork webhook` — list and locally play webhook entries
+
+New CLI namespace mirroring `ork token`/`ork serve play` for the webhook intake surface.
+
+```bash
+ork webhook list
+ork webhook play -f katalog.yaml --webhook payments-repo \
+  --event push-event.json \
+  --fetch services/payments/intent.yaml=local-intent.yaml \
+  --simulate
+```
+
+`ork webhook play` runs the real entry's declared `branch`/`watch`/`commands` through the exact chain `ork serve play` uses — target resolution, token check, CR construction, provenance stamping, admission validation — with no cluster, no HTTP server, and no real GitHub/GitLab/Slack account. Signature/token verification is skipped; `--fetch <path>=<local-file>` supplies what the Contents/Repository Files API would have returned for a matched path. `--simulate` extends the chain into `ork simulate`, same as `ork serve play --simulate`. `--source` is optional — webhook entry names are unique across all four sources, so it's resolved from `--webhook` automatically when omitted.
+
+---
+
+## v0.7.14 — Aliases and Intent Provenance
 
 ### Serve aliases
 
@@ -299,6 +355,107 @@ deprecation:
 **Touchpoints** — the deprecation state is surfaced at `ork push` (author sees the exact consumer message before upload), `ork validate`, `ork inspect`, and `ork pull`. Display state is computed from today vs the timeline at each call site.
 
 **Validator** — `ork validate` warns without blocking; enforcement is at runtime startup only, after validation passes and before the operator begins reconciling.
+
+### Serve field translation — `value`, `values`, `.request`
+
+The serve layer can now transform what a caller submits before it reaches the CRD. Two new fields on `serve.fields.<name>` control this:
+
+**`value`** — single transform. One intent field → one spec field, expression-evaluated:
+
+```yaml
+serve:
+  fields:
+    image:
+      value: '{{ trimPrefix "docker.io/" .value }}'
+```
+
+`.value` is the raw submitted value. The result replaces it at the declared spec path (or `spec.<fieldName>` when no `path:` is set).
+
+**`values`** — fanout. One intent field → multiple spec fields:
+
+```yaml
+serve:
+  fields:
+    schedule:
+      label: "Schedule (cron)"
+      required: true
+      values:
+        schedule.minute:     '{{ cronMinute .value }}'
+        schedule.hour:       '{{ cronHour   .value }}'
+        schedule.dayOfMonth: '{{ cronDom    .value }}'
+        schedule.month:      '{{ cronMonth  .value }}'
+        schedule.dayOfWeek:  '{{ cronDow    .value }}'
+```
+
+The caller submits `"0 2 * * 1-5"`. The CR receives five structured fields. Neither side sees the other's format. The Katalog is the contract between them.
+
+Both `value` and `values` expressions have access to `.value` (the submitted field value) and `.request` (the full raw intent payload), so cross-field references work naturally:
+
+```yaml
+values:
+  image.tag: '{{ .request.version }}'
+```
+
+**Expression failures are hard errors.** If a `value` or `values` expression fails at serve time (template error, missing function, unresolvable reference), the apply is rejected immediately — the CR is never built with a partial spec.
+
+**Flat keys in `values`** are supported. A values key does not need to be dotted — `imageTag: '{{ .value }}'` writes to `spec.imageTag`.
+
+### `.request` available throughout the reconciler
+
+The raw serve intent (from the `orkestra.orkspace.io/serve-intent` annotation) is now available as `.request.<field>` in all template contexts during reconcile — `operatorBox` templates, `mutation.rules`, `validation.rules`, and `status.fields`. Previously it was only injected for validation at the webhook boundary.
+
+### Intent gating in validation rules — `fires.reconcile: false`
+
+`validation.rules` and `mutation.rules` now support `fires.reconcile: false`, limiting a rule to the admission path only:
+
+```yaml
+validation:
+  rules:
+    - field: "{{ cronValid .request.schedule }}"
+      equals: true
+      link: schedule
+      fires:
+        reconcile: false
+      message: 'schedule must be a valid cron expression'
+      action: deny
+```
+
+Use this for rules that read `.request.*` — the raw intent annotation is present at admission but not guaranteed at every reconcile. Rules without `fires:` continue to fire at both admission and reconcile (existing behavior unchanged).
+
+`fires.reconcile` on `ExternalCall` (under `validation.external` and `mutation.external`) predates this; the same field is now available on individual inline rules as well.
+
+### Example pack — `use-cases/crd-api-evolution`
+
+New example pack showing how to evolve a CRD's API surface without breaking existing consumers:
+
+- Demonstrates adding fields, changing field shapes, and renaming spec paths across operator versions using the serve layer as the translation boundary
+- Each step is runnable with `ork serve play` locally before deploying
+
+```bash
+ork init --pack use-cases/crd-api-evolution
+```
+
+### Example pack — `use-cases/crd-conversion`
+
+New example pack demonstrating CRD conversion patterns without a conversion webhook:
+
+- `basic/` — single-version CronJob operator; no conversion, no serve layer
+- `with-serve-translation/` — same operator with `serve.fields.values` fanout: callers submit a flat cron string, the serve layer fans it out to five structured schedule fields before the CR reaches the API server
+
+```bash
+ork init --pack use-cases/crd-conversion
+```
+
+The `with-serve-translation` variant includes `ork serve play` and `ork simulate` as local test steps — runnable before any cluster is involved.
+
+### `ork validate` — field translation checks
+
+New static checks for `serve.fields` at `ork validate` time:
+
+- `value` and `values` are mutually exclusive per field
+- `path` and `values` are mutually exclusive per field — write full paths in `values` directly
+- Field names must not contain hyphens — they cannot be used as Go template identifiers in `.request.<name>` expressions; use camelCase or underscores
+- `values` expressions must compile against the full FuncMap (including user-defined notes)
 
 ---
 

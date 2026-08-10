@@ -1,6 +1,8 @@
 # Internal Developer Platform
 
-An IDP is not an application. It is a contract.
+Self-service infrastructure — the serve layer used to give developers a product interface to platform CRDs. An IDP is one of the most common uses of the self-service layer, but the mechanism is general: anything that accepts an HTTP API can be a caller.
+
+An IDP built on Orkestra is not an application. It is a contract.
 
 A platform engineering team defines what developers can create, what rules apply, and what the system produces. Developers use that contract to ship — without knowing what runs underneath. That is the whole thing.
 
@@ -81,7 +83,7 @@ That is the IDP. Two config blocks on the Katalog the platform team already had.
 
 There's one more thing a self-service caller shouldn't have to decide: **which namespace**. A CRD is namespaced by default, and someone has to place a new CR *somewhere* — but a developer filling in a form, or a CI job doing a `curl`, has no business making that call. `serve.namespace` is a template expression (`'{{ teamName }}'`, or a plain literal) the gateway resolves server-side against whatever the caller submitted, and it always wins over whatever they sent — so `namespace` never appears on the form and no caller ever needs to supply one. It routes into a namespace the platform team already provisioned; it doesn't create one. A cluster-scoped CRD sidesteps the question entirely a different way — no namespace on the CR at all, with `onCreate` provisioning one as a child resource instead — two answers to the same problem, matched to two different scope choices.
 
-→ [Additional Fields in depth](01-additional-fields.md)
+→ [Additional Fields in depth](01-labels-and-annotations.md)
 → [`serve.namespace` reference](../../reference/schema/02-katalog/20-serve.md#servenamespace)
 
 ---
@@ -152,13 +154,13 @@ All of those are either unnecessary or reduced to configuration.
 
 ---
 
-## Try it
+<!-- ## Try it
 
 ```bash
 ork init --pack use-cases/idp
 ```
 
-The pack runs three delivery paths against one `AppRequest` CRD — browser form, CI pipeline, and a Jira + Slack post-deployment hook — then switches to a second CRD, `PlatformResource`, to show two different answers to "one CR, many systems": an entrypoint that infers everything and always creates every tool, and a discriminator that creates exactly one. Each example adds a few lines to the previous one. The runtime is the same throughout.
+The pack runs three delivery paths against one `AppRequest` CRD — browser form, CI pipeline, and a Jira + Slack post-deployment hook — then switches to a second CRD, `PlatformResource`, to show two different answers to "one CR, many systems": an entrypoint that infers everything and always creates every tool, and a discriminator that creates exactly one. Each example adds a few lines to the previous one. The runtime is the same throughout. -->
 
 ## Inspect and play without a cluster
 
@@ -192,10 +194,11 @@ ork serve apply -f intent.yaml --api https://gateway.myorg.io --token "$ORK_TOKE
 ---
 
 ## Where to go next
-→ [Additional Fields](01-additional-fields.md)
+→ [Additional Fields](01-labels-and-annotations.md)
 → [Target Mode](02-target-mode.md)
 → [Token Scoping](03-token-scoping.md)
 → [Aliases and Intent Provenance](04-aliases-and-provenance.md)
+→ [Field Translation](08-field-translation.md)
 → [Local Intent Testing](06-local-intent-testing.md)
 → [Live Delivery](07-live-delivery.md)
 

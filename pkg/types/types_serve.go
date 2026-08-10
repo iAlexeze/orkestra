@@ -210,6 +210,33 @@ type ServeFieldConfig struct {
 	// When set, the field is mapped to this nested path.
 	// When empty, the field name is used as the path (flat).
 	Path string `yaml:"path,omitempty" json:"path,omitempty"`
+
+	// Value is a template expression that transforms the submitted field value
+	// before writing it to the spec path. The expression has access to:
+	//   .value   — the raw submitted value for this field
+	//   .request — the full raw intent payload (cross-field reads)
+	//
+	// When Value is present, its result is written to Path (or the field name
+	// if Path is absent). When absent, the raw submitted value is written as-is.
+	//
+	// Value and Values are mutually exclusive.
+	Value string `yaml:"value,omitempty" json:"value,omitempty"`
+
+	// Values is a fanout map from dot-notation spec paths to template expressions.
+	// Use when one submitted field must be split into multiple CR spec fields.
+	//
+	// Example — caller submits "image: ghcr.io/myorg/app:v1.2.3"; katalog fans
+	// it out to image.registry, image.repository, image.tag:
+	//
+	//   values:
+	//     image.registry:   '{{ imageRegistry   .value }}'
+	//     image.repository: '{{ imageRepository .value }}'
+	//     image.tag:        '{{ imageTag        .value }}'
+	//
+	// All map keys must be dot-notation (contain at least one dot).
+	// Path is ignored when Values is present.
+	// Value and Values are mutually exclusive.
+	Values map[string]string `yaml:"values,omitempty" json:"values,omitempty"`
 }
 
 // ServeConfigSettings is the container for gateway-level CRD configuration.
@@ -252,6 +279,30 @@ func (f ServeFieldConfig) SpecPath(name string) string {
 // IsNested returns true if the spec path contains a dot.
 func (f ServeFieldConfig) IsNested(name string) bool {
 	return strings.Contains(f.SpecPath(name), ".")
+}
+
+// HasValue reports whether a single-destination transform expression is declared.
+func (f ServeFieldConfig) HasValue() bool {
+	return f.Value != ""
+}
+
+// HasValues reports whether a multi-destination fanout map is declared.
+func (f ServeFieldConfig) HasValues() bool {
+	return len(f.Values) > 0
+}
+
+// IsTranslated reports whether this field has any translation expression
+// (either value or values). Plain fields with neither are written as-is.
+func (f ServeFieldConfig) IsTranslated() bool {
+	return f.HasValue() || f.HasValues()
+}
+
+// IsGateOnly reports whether this field is declared purely for intent gating —
+// it has no path, no value, and no values, so it is never written to the CR.
+// The field is still exposed in the serve form and accessible via .request in
+// validation rules.
+func (f ServeFieldConfig) IsGateOnly() bool {
+	return f.Path == "" && f.Value == "" && len(f.Values) == 0
 }
 
 // HasSpecPath returns true if the spec path is set.

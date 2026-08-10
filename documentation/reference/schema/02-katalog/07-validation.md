@@ -89,6 +89,7 @@ Each rule describes one check. Rules are evaluated in order.
 | `when` | no | All conditions must pass for this rule to be evaluated (AND). Empty means unconditional. Conditions support Go template expressions via `EvaluateWhen`. |
 | `anyOf` | no | At least one condition must pass for this rule to be evaluated (OR). When both `when` and `anyOf` are declared, both blocks must pass. |
 | `link` | no | The `serve.fields`/`serve labels/annotations` key this rule concerns, when `field:` isn't already a plain, self-describing path — see [Linking a rule to its form field](#linking-a-rule-to-its-form-field-link) below. |
+| `fires.reconcile` | no | `true` (default). Set `false` to make this rule admission-only — the reconciler skips it. Use for rules that read `.request.*` (raw intent) which is only present at the serve-layer admission boundary, not during reconcile. |
 
 *Use either an operator+value pair or a shorthand field.
 

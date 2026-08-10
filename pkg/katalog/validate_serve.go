@@ -63,6 +63,12 @@ func (k *Katalog) ValidateServe() error {
 		return err
 	}
 
+	// 10. Validate serve.fields value/values — mutual exclusion, dot-notation keys,
+	//     template compilation
+	if err := k.validateServeFieldTranslation(); err != nil {
+		return err
+	}
+
 	return nil
 }
 

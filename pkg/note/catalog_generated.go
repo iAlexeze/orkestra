@@ -226,9 +226,7 @@ var BuiltinNotes = []NoteInfo{
 	{
 		Name:        "cronValid",
 		Domain:      "cron",
-		Description: "Return `true` when the expression is structurally valid (five fields present after macro expansion). Does not validate field ranges.",
-		Example:     "validation:\n  rules:\n    - field: spec.schedule\n      operator: custom\n      value: \"{{ cronValid .spec.schedule }}\"\n      message: \"spec.schedule must be a valid cron expression\"\n      action: deny",
-		Keywords:    []string{"cron", "schedule", "validate", "valid", "check", "boolean"},
+		Description: "",
 	},
 	{
 		Name:        "fromBase64",

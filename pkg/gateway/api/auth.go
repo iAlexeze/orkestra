@@ -98,7 +98,7 @@ func LoadTokens(ctx context.Context, tokens []orktypes.APIToken, kube kubeclient
 	for _, t := range tokens {
 		switch {
 		case t.SecretRef != nil:
-			val, err := resolveSecretRef(ctx, t.SecretRef, kube, ownNamespace)
+			val, err := ResolveSecretRef(ctx, t.SecretRef, kube, ownNamespace)
 			if err != nil {
 				return nil, fmt.Errorf("token %q: %w", t.Name, err)
 			}
@@ -121,9 +121,9 @@ func LoadTokens(ctx context.Context, tokens []orktypes.APIToken, kube kubeclient
 	return ts, nil
 }
 
-// resolveSecretRef reads the token from a Kubernetes Secret, creating or
+// ResolveSecretRef reads the token from a Kubernetes Secret, creating or
 // rotating it as needed using the same annotation-based rotation as pkg/secrets.
-func resolveSecretRef(ctx context.Context, ref *orktypes.APISecretRef, kube kubeclient.KubeClient, ownNamespace string) (string, error) {
+func ResolveSecretRef(ctx context.Context, ref *orktypes.APISecretRef, kube kubeclient.KubeClient, ownNamespace string) (string, error) {
 	ns := ref.Namespace
 	if ns == "" {
 		ns = ownNamespace

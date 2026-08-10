@@ -90,6 +90,8 @@ fields:
 | `required` | When `true`, marks the field as mandatory — enforced both client-side (the browser shows an asterisk and blocks submission while empty) and server-side: an implicit `exists` rule with `action: deny` is synthesized automatically at load time, so every caller of the Gateway API is covered, not just the Control Center form. No matching `validation.rules` entry needs to be hand-written. Has no effect on fields currently hidden by a `when:` or `anyOf:` condition. |
 | `disabled` | Non-empty string — field is rendered greyed-out with this message. Useful for platform-managed fields that should be visible but not editable. |
 | `path` | — | Dot-notation path mapping the field to a nested location in the CRD `spec`. When set, the field value is written to `spec.<path>` instead of `spec.<name>`. See [`path` — nested spec paths](#servefieldspath) below. |
+| `value` | — | Template expression that transforms the submitted value before writing to `spec.<path>` (or `spec.<name>`). Use `.value` for the raw submitted value. Mutually exclusive with `values`. → [Field translation](22-serve-field-translation.md) |
+| `values` | — | Fanout map — one intent field → multiple CRD spec paths. Keys are dot-notation spec paths; values are template expressions. Mutually exclusive with `value`. → [Field translation](22-serve-field-translation.md) |
 
 ---
 `order` isn't just cosmetic form layout. When multiple `required`/`type: enum` fields fail validation at once, only the first violation is reported as the headline denial reason — and synthesized rules are evaluated in the same order `order` puts the fields in, so the field a developer sees *first* on the form is also the one whose error they see first if several are wrong simultaneously. Two fields on the same CRD sharing a non-zero `order` value is a load-time error (`ork validate`) for exactly this reason — `0`/unset is the only value any number of fields may share, since it means "no preference," not a real position.
@@ -207,7 +209,7 @@ Each entry is a `ServeFieldConfig` — the same shape as `serve.fields.<name>` a
 
 Validated at `ork validate` time: every key must be a syntactically valid Kubernetes label/annotation key (`[prefix/]name`), and no key may collide with `serve.fields` or the other bucket.
 
-→ [concepts/idp — Additional Fields](../../../concepts/idp/01-additional-fields.md) — why this exists, and the boolean-checkbox gotcha with `hasAnnotation`
+→ [concepts/self-service — Additional Fields](../../../concepts/self-service/01-labels-and-annotations.md) — why this exists, and the boolean-checkbox gotcha with `hasAnnotation`
 
 Without any `serve:` block on the CRD entry, the CRD is not exposed via the Gateway API regardless of what the Katalog-level `gateway.api` config says.
 
@@ -809,9 +811,9 @@ When an OIDC token matches, the verified `sub` claim is stamped on the CR as `or
 
 ## See also
 
-- **Conceptual overview:** → [idp](../../../concepts/idp/)
-- **Aliases and intent provenance:** → [concepts/idp/04-aliases-and-provenance.md](../../../concepts/idp/04-aliases-and-provenance.md)
-- **Token scoping:** → [concepts/idp/03-token-scoping.md](../../../concepts/idp/03-token-scoping.md)
+- **Conceptual overview:** → [idp](../../../concepts/self-service/)
+- **Aliases and intent provenance:** → [concepts/self-service/04-aliases-and-provenance.md](../../../concepts/self-service/04-aliases-and-provenance.md)
+- **Token scoping:** → [concepts/self-service/03-token-scoping.md](../../../concepts/self-service/03-token-scoping.md)
 - **CLI reference:** → [ork serve](../../cli/13-serve.md) — validate, inspect targets, tokens, response config, and aliases without a cluster
 
 **Gateway API:** → [gateway-api](17-gateway-api.md)

@@ -1,0 +1,14 @@
+{
+  "ref": "refs/heads/main",
+  "after": "abc123def456",
+  "repository": {
+    "name": "payments",
+    "owner": { "login": "myorg" }
+  },
+  "commits": [
+    {
+      "added": ["services/payments/intent.yaml"],
+      "modified": []
+    }
+  ]
+}
