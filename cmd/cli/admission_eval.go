@@ -79,7 +79,7 @@ func evalAdmissionValidation(obj map[string]interface{}, crd *orktypes.CRDEntry,
 	}
 	result := admissionValidationResult{total: len(crd.Validation.Rules)}
 	for _, rule := range crd.Validation.Rules {
-		if !orktypes.EvaluateWhen(obj, rule.When, rule.AnyOf, eval) {
+		if !orktypes.EvaluateConditions(obj, rule.When, rule.AnyOf, eval) {
 			result.passed++
 			continue
 		}
@@ -105,7 +105,7 @@ func evalAdmissionMutation(obj map[string]interface{}, crd *orktypes.CRDEntry, r
 		return result
 	}
 	for _, rule := range crd.Mutation.Rules {
-		if !orktypes.EvaluateWhen(obj, rule.When, rule.AnyOf, eval) {
+		if !orktypes.EvaluateConditions(obj, rule.When, rule.AnyOf, eval) {
 			continue
 		}
 		field := rule.Field

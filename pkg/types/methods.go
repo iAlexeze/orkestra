@@ -75,7 +75,7 @@ func (c *CRDEntry) ActiveEnrichTargets(data map[string]interface{}, eval Templat
 			result = append(result, t)
 			continue
 		}
-		if EvaluateWhen(data, t.When, t.AnyOf, eval) {
+		if EvaluateConditions(data, t.When, t.AnyOf, eval) {
 			result = append(result, t)
 		}
 	}
@@ -105,7 +105,7 @@ func (c *CRDEntry) ConditionalActiveEnrichTargets(data map[string]interface{}, e
 		if len(t.When) == 0 && len(t.AnyOf) == 0 {
 			continue // already ran in phase 1
 		}
-		if EvaluateWhen(data, t.When, t.AnyOf, eval) {
+		if EvaluateConditions(data, t.When, t.AnyOf, eval) {
 			result = append(result, t)
 		}
 	}

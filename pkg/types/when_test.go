@@ -1,4 +1,4 @@
-// Tests for EvaluateWhen, EvaluateOneCond, NavigateDotPath, NavigateRawPath,
+// Tests for EvaluateConditions, EvaluateOneCond, NavigateDotPath, NavigateRawPath,
 // ResolveConditionOp (when.go).
 package types_test
 
@@ -475,66 +475,66 @@ func TestEvaluateOneCond_Unique_AlwaysTrue(t *testing.T) {
 	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
-// ── EvaluateWhen — allOf / anyOf ──────────────────────────────────────────────
+// ── EvaluateConditions — allOf / anyOf ──────────────────────────────────────────────
 
-func TestEvaluateWhen_EmptyBothPasses(t *testing.T) {
-	assert.True(t, orktypes.EvaluateWhen(nil, nil, nil, nil))
+func TestEvaluateConditions_EmptyBothPasses(t *testing.T) {
+	assert.True(t, orktypes.EvaluateConditions(nil, nil, nil, nil))
 }
 
-func TestEvaluateWhen_AllOfAllPass(t *testing.T) {
+func TestEvaluateConditions_AllOfAllPass(t *testing.T) {
 	d := data("phase", "Running", "env", "prod")
 	allOf := []orktypes.Condition{
 		{Field: "phase", Equals: "Running"},
 		{Field: "env", Equals: "prod"},
 	}
-	assert.True(t, orktypes.EvaluateWhen(d, allOf, nil, nil))
+	assert.True(t, orktypes.EvaluateConditions(d, allOf, nil, nil))
 }
 
-func TestEvaluateWhen_AllOfOneFails(t *testing.T) {
+func TestEvaluateConditions_AllOfOneFails(t *testing.T) {
 	d := data("phase", "Pending", "env", "prod")
 	allOf := []orktypes.Condition{
 		{Field: "phase", Equals: "Running"},
 		{Field: "env", Equals: "prod"},
 	}
-	assert.False(t, orktypes.EvaluateWhen(d, allOf, nil, nil))
+	assert.False(t, orktypes.EvaluateConditions(d, allOf, nil, nil))
 }
 
-func TestEvaluateWhen_AnyOfOneMatches(t *testing.T) {
+func TestEvaluateConditions_AnyOfOneMatches(t *testing.T) {
 	d := data("phase", "Failed")
 	anyOf := []orktypes.Condition{
 		{Field: "phase", Equals: "Failed"},
 		{Field: "phase", Equals: "Succeeded"},
 	}
-	assert.True(t, orktypes.EvaluateWhen(d, nil, anyOf, nil))
+	assert.True(t, orktypes.EvaluateConditions(d, nil, anyOf, nil))
 }
 
-func TestEvaluateWhen_AnyOfNoneMatch(t *testing.T) {
+func TestEvaluateConditions_AnyOfNoneMatch(t *testing.T) {
 	d := data("phase", "Running")
 	anyOf := []orktypes.Condition{
 		{Field: "phase", Equals: "Failed"},
 		{Field: "phase", Equals: "Succeeded"},
 	}
-	assert.False(t, orktypes.EvaluateWhen(d, nil, anyOf, nil))
+	assert.False(t, orktypes.EvaluateConditions(d, nil, anyOf, nil))
 }
 
-func TestEvaluateWhen_BothMustPass(t *testing.T) {
+func TestEvaluateConditions_BothMustPass(t *testing.T) {
 	d := data("env", "prod", "phase", "Failed")
 	allOf := []orktypes.Condition{{Field: "env", Equals: "prod"}}
 	anyOf := []orktypes.Condition{
 		{Field: "phase", Equals: "Failed"},
 		{Field: "phase", Equals: "Succeeded"},
 	}
-	assert.True(t, orktypes.EvaluateWhen(d, allOf, anyOf, nil))
+	assert.True(t, orktypes.EvaluateConditions(d, allOf, anyOf, nil))
 }
 
-func TestEvaluateWhen_AllOfPassAnyOfFails(t *testing.T) {
+func TestEvaluateConditions_AllOfPassAnyOfFails(t *testing.T) {
 	d := data("env", "prod", "phase", "Running")
 	allOf := []orktypes.Condition{{Field: "env", Equals: "prod"}}
 	anyOf := []orktypes.Condition{
 		{Field: "phase", Equals: "Failed"},
 		{Field: "phase", Equals: "Succeeded"},
 	}
-	assert.False(t, orktypes.EvaluateWhen(d, allOf, anyOf, nil))
+	assert.False(t, orktypes.EvaluateConditions(d, allOf, anyOf, nil))
 }
 
 // ── EvaluateOneCond — cron window injection via _cronWindows ─────────────────

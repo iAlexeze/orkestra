@@ -430,7 +430,7 @@ environment: staging
 repoURL: https://github.com/myorg/payments
 ```
 
-Stage 5 (admission validation) evaluates `validation.rules` and `mutation.rules` — including synthesized rules from `serve.fields` marked `required: true` — using the same `EvaluateWhen` + `EvaluateValidationRule` logic as the webhook and reconciler. A deny-action violation stops the chain before simulate handoff. Mutation rules that would fire are previewed inline.
+Stage 5 (admission validation) evaluates `validation.rules` and `mutation.rules` — including synthesized rules from `serve.fields` marked `required: true` — using the same `EvaluateConditions` + `EvaluateValidationRule` logic as the webhook and reconciler. A deny-action violation stops the chain before simulate handoff. Mutation rules that would fire are previewed inline.
 
 `--simulate` hands the built CR to `ork simulate` after all six stages pass. `--simulate simulate.yaml` uses an existing simulate spec for katalog, cycles, and `expect:` assertions while substituting the play-built CR. This makes a simulate spec a full contract from caller intent to child resource ops — testable locally in one command.
 
@@ -444,7 +444,7 @@ New command that evaluates admission rules locally against a CR — no cluster, 
 ork gate -f katalog.yaml --cr cr.yaml
 ```
 
-Runs `EvaluateWhen` + `EvaluateValidationRule` for every `validation.rule` in the Katalog against the provided CR. Deny-action violations exit non-zero; warn-action violations are printed as advisories and exit zero. `mutation.rules` are also evaluated and previewed — showing which fields would be defaulted or overridden and what value they would receive.
+Runs `EvaluateConditions` + `EvaluateValidationRule` for every `validation.rule` in the Katalog against the provided CR. Deny-action violations exit non-zero; warn-action violations are printed as advisories and exit zero. `mutation.rules` are also evaluated and previewed — showing which fields would be defaulted or overridden and what value they would receive.
 
 When `mutateFirst: true` is set, `ork gate` applies mutation rules to a copy of the CR before running validation — matching the real webhook pipeline order. A CR with absent fields that mutation would fill in passes validation locally just as it would at admission time.
 
@@ -1220,7 +1220,7 @@ validation:
           equals: monitoring
 ```
 
-Conditions are evaluated using the same `EvaluateWhen` engine as template `when:` blocks. Works for both typed and unstructured CRDs — the typed CRD limitation (previously documented as "use Go hooks") is removed. Both `applyReconcileTimeValidation` and `applyReconcileTimeMutation` now use `resolver.Data()` which handles typed CRDs via JSON round-trip.
+Conditions are evaluated using the same `EvaluateConditions` engine as template `when:` blocks. Works for both typed and unstructured CRDs — the typed CRD limitation (previously documented as "use Go hooks") is removed. Both `applyReconcileTimeValidation` and `applyReconcileTimeMutation` now use `resolver.Data()` which handles typed CRDs via JSON round-trip.
 
 Admission webhook rules honour `when:` and `anyOf:` in the same way as reconcile-time rules.
 

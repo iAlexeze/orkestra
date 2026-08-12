@@ -53,7 +53,7 @@ Each rule sets one field. Rules are applied in order.
 | `default` | one of | Set only if the field is **absent or empty**. Supports Go templates resolved against the CR and notes FuncMap. |
 | `override` | one of | **Always** set, regardless of current value. Supports Go templates. |
 | `valueType` | no | `string` (default), `int`, `float`, `bool` |
-| `when` | no | All conditions must pass for this rule to be applied (AND). Empty means unconditional. Conditions support Go template expressions via `EvaluateWhen`. |
+| `when` | no | All conditions must pass for this rule to be applied (AND). Empty means unconditional. Conditions support Go template expressions via `EvaluateConditions`. |
 | `anyOf` | no | At least one condition must pass for this rule to be applied (OR). When both `when` and `anyOf` are declared, both blocks must pass. |
 | `fires.reconcile` | no | `true` (default). Set `false` to make this rule admission-only — the reconciler skips it. |
 

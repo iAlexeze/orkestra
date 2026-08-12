@@ -44,7 +44,7 @@ func (k *Katalog) EvaluatePreReconcile(ctx context.Context, crdName string, obj 
 	}
 
 	eval := resolver.TemplateEvaluator()
-	if !orktypes.EvaluateWhen(resolver.Data(), rc.WhenConditions(), rc.AnyOfConditions(), eval) {
+	if !orktypes.EvaluateConditions(resolver.Data(), rc.WhenConditions(), rc.AnyOfConditions(), eval) {
 		return false, preReconcileGateReason(rc, resolver)
 	}
 	return true, ""
@@ -82,14 +82,14 @@ func (k *Katalog) EvaluateEnqueueFilter(ctx context.Context, crdName string, obj
 	}
 
 	eval := resolver.TemplateEvaluator()
-	return orktypes.EvaluateWhen(resolver.Data(), g.WhenConditions(), g.AnyOfConditions(), eval)
+	return orktypes.EvaluateConditions(resolver.Data(), g.WhenConditions(), g.AnyOfConditions(), eval)
 }
 
 // preReconcileGateReason returns a human-readable description of why the gate fired.
 func preReconcileGateReason(rc *orktypes.PreReconcileConfig, resolver *orktmpl.Resolver) string {
 	eval := resolver.TemplateEvaluator()
 	for _, cond := range rc.WhenConditions() {
-		if !orktypes.EvaluateWhen(resolver.Data(), []orktypes.Condition{cond}, nil, eval) {
+		if !orktypes.EvaluateConditions(resolver.Data(), []orktypes.Condition{cond}, nil, eval) {
 			val, _ := resolver.Resolve(cond.Field)
 			return fmt.Sprintf("when: %q = %q, want %q", cond.Field, val, cond.Equals)
 		}

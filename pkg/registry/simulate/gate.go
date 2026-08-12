@@ -34,14 +34,14 @@ func (g *gatedReconciler) Reconcile(ctx context.Context, key string) error {
 
 	// Evaluate preReconcile.enqueueGate first — mirrors informer-level drop in live path.
 	if g.gate.EnqueueGate.HasConditions() {
-		if !orktypes.EvaluateWhen(resolver.Data(), g.gate.EnqueueGate.WhenConditions(), g.gate.EnqueueGate.AnyOfConditions(), eval) {
+		if !orktypes.EvaluateConditions(resolver.Data(), g.gate.EnqueueGate.WhenConditions(), g.gate.EnqueueGate.AnyOfConditions(), eval) {
 			return nil // filtered — skip, no error
 		}
 	}
 
 	// Evaluate preReconcile.when/anyOf — mirrors kordinator gate in live path.
 	if g.gate.HasConditions() {
-		if !orktypes.EvaluateWhen(resolver.Data(), g.gate.WhenConditions(), g.gate.AnyOfConditions(), eval) {
+		if !orktypes.EvaluateConditions(resolver.Data(), g.gate.WhenConditions(), g.gate.AnyOfConditions(), eval) {
 			return nil // gated — skip, no error
 		}
 	}
