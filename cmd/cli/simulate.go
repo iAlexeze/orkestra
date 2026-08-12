@@ -46,6 +46,8 @@ should produce so the run is repeatable and verifiable:
 		skipExternal, _ := cmd.Flags().GetBool("skip-external")
 		debugOps, _ := cmd.Flags().GetBool("debug-ops")
 		devServer, _ := cmd.Flags().GetBool("dev-server")
+		useEnvtest, _ := cmd.Flags().GetBool("envtest")
+		k8sVersion, _ := cmd.Flags().GetString("k8s-version")
 		opts := simulate.RunOptions{SkipExternal: skipExternal}
 
 		if devServer {
@@ -59,7 +61,7 @@ should produce so the run is repeatable and verifiable:
 		if len(args) > 0 && args[0] == "./..." {
 			skipRaw, _ := cmd.Flags().GetStringSlice("skip")
 			root := "."
-			return runSimulateDiscovery(cmd.Context(), root, crdName, maxCycles, skipRaw, debugOps)
+			return runSimulateDiscovery(cmd.Context(), root, crdName, maxCycles, skipRaw, debugOps, useEnvtest, k8sVersion)
 		}
 
 		katalogFile, _ := cmd.Flags().GetString("file")
@@ -80,7 +82,7 @@ should produce so the run is repeatable and verifiable:
 
 		// Simulate kind: assert mode
 		if isSimulateDoc(katalogFile) {
-			return runSimulateFromSpec(cmd.Context(), katalogFile, crdName, maxCycles, debugOps)
+			return runSimulateFromSpec(cmd.Context(), katalogFile, crdName, maxCycles, debugOps, useEnvtest, k8sVersion)
 		}
 
 		// Reject E2E files with a clear message
@@ -96,11 +98,11 @@ should produce so the run is repeatable and verifiable:
 			return fmt.Errorf("--cr is required")
 		}
 
-		return runSimulate(cmd.Context(), katalogFile, crFile, crdName, maxCycles, opts, debugOps)
+		return runSimulate(cmd.Context(), katalogFile, crFile, crdName, maxCycles, opts, debugOps, useEnvtest, k8sVersion)
 	},
 }
 
-func runSimulate(ctx context.Context, katalogFile, crFile, crdName string, maxCycles int, opts simulate.RunOptions, debugOps bool) error {
+func runSimulate(ctx context.Context, katalogFile, crFile, crdName string, maxCycles int, opts simulate.RunOptions, debugOps, useEnvtest bool, k8sVersion string) error {
 	if maxCycles <= 0 {
 		maxCycles = 10
 	}
@@ -153,14 +155,14 @@ func runSimulate(ctx context.Context, katalogFile, crFile, crdName string, maxCy
 		crdOpts := opts
 		crdOpts.Peers = in.peers
 		crdOpts.ExistingInstances = in.existing
-		if err := simulateOne(ctx, kat, name, in.cr, maxCycles, crdOpts, debugOps, nil); err != nil {
+		if err := simulateOne(ctx, kat, name, in.cr, maxCycles, crdOpts, debugOps, useEnvtest, nil, k8sVersion, nil); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstructured.Unstructured, maxCycles int, opts simulate.RunOptions, debugOps bool, expect *orktypes.SimulateExpect) error {
+func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstructured.Unstructured, maxCycles int, opts simulate.RunOptions, debugOps, useEnvtest bool, crdPaths []string, k8sVersion string, expect *orktypes.SimulateExpect) error {
 	fmt.Printf("Simulating %s/%s\n", crdName, cr.GetName())
 
 	// Emit notes for operatorBox blocks that cannot execute in the fake cluster.
@@ -180,9 +182,19 @@ func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *
 
 	spin := StartSpinner(fmt.Sprintf("Running %d cycles...", maxCycles))
 	start := time.Now()
-	result, err := simulate.Run(ctx, kat, crdName, cr, maxCycles, opts)
+	var result *simulate.Result
+	var err error
+	if useEnvtest {
+		if len(crdPaths) == 0 {
+			return fmt.Errorf("%s --envtest requires spec.crd or spec.crdFiles to be set", failureMark())
+		}
+		result, err = simulate.RunWithEnvtest(ctx, kat, crdName, cr, maxCycles, opts, crdPaths, k8sVersion)
+	} else {
+		result, err = simulate.Run(ctx, kat, crdName, cr, maxCycles, opts)
+	}
 	if err != nil {
 		spin.Failure()
+		fmt.Printf("\n  %s %v\n", red("error:"), err)
 		return err
 	}
 	spin.Stop()
@@ -538,7 +550,7 @@ func isSimulateDoc(path string) bool {
 
 // runSimulateFromSpec loads a simulate.yaml and runs it in assert mode.
 // Aggregator form (imports, no spec) expands each imported file in order.
-func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCycles int, debugOps bool) error {
+func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCycles int, debugOps, useEnvtest bool, k8sVersion string) error {
 	if abs, err := filepath.Abs(path); err == nil {
 		path = abs
 	}
@@ -561,7 +573,7 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 			if !filepath.IsAbs(impPath) {
 				impPath = filepath.Join(dir, impPath)
 			}
-			if err := runSimulateFromSpec(ctx, impPath, crdName, maxCycles, debugOps); err != nil {
+			if err := runSimulateFromSpec(ctx, impPath, crdName, maxCycles, debugOps, useEnvtest, k8sVersion); err != nil {
 				return err
 			}
 		}
@@ -588,7 +600,16 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 	opts := simulate.RunOptions{SkipExternal: doc.Spec.SkipExternal}
 
 	katalogPath := filepath.Join(dir, doc.Spec.Katalog)
-	crPath := filepath.Join(dir, doc.Spec.CR)
+
+	// Resolve CRD paths (for --envtest) relative to the simulate.yaml directory.
+	crdPaths := make([]string, 0, len(doc.Spec.AllCRDPaths()))
+	for _, p := range doc.Spec.AllCRDPaths() {
+		abs := p
+		if !filepath.IsAbs(abs) {
+			abs = filepath.Join(dir, abs)
+		}
+		crdPaths = append(crdPaths, abs)
+	}
 
 	m := merger.New(katalogPath)
 	if err := m.Merge(); err != nil {
@@ -603,13 +624,29 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 		}
 		return fmt.Errorf("parsing Katalog: %w", err)
 	}
-	crData, err := os.ReadFile(crPath)
-	if err != nil {
-		return fmt.Errorf("reading CR: %w", err)
+
+	// Read all CR files (cr: + crFiles:) and concatenate for multi-doc parsing.
+	var crBuf []byte
+	for _, p := range doc.Spec.AllCRPaths() {
+		abs := p
+		if !filepath.IsAbs(abs) {
+			abs = filepath.Join(dir, abs)
+		}
+		data, err := os.ReadFile(abs)
+		if err != nil {
+			return fmt.Errorf("reading CR %s: %w", abs, err)
+		}
+		if len(crBuf) > 0 {
+			crBuf = append(crBuf, '\n')
+		}
+		crBuf = append(crBuf, data...)
 	}
-	crs := parseMultiDocCRs(crData)
+	if len(crBuf) == 0 {
+		return fmt.Errorf("%s: spec.cr or spec.crFiles is required", path)
+	}
+	crs := parseMultiDocCRs(crBuf)
 	if len(crs) == 0 {
-		return fmt.Errorf("no valid CR documents in %s", crPath)
+		return fmt.Errorf("no valid CR documents in CR file(s)")
 	}
 
 	var targets []string
@@ -630,13 +667,13 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 			if len(targets) > 1 {
 				continue
 			}
-			return fmt.Errorf("no CR found for CRD %q (kind: %s) in %s", name, crdEntry.APITypes.Kind, crPath)
+			return fmt.Errorf("no CR found for CRD %q (kind: %s)", name, crdEntry.APITypes.Kind)
 		}
 		crdOpts := opts
 		crdOpts.Peers = in.peers
 		crdOpts.ExistingInstances = in.existing
 		expect := simulate.ExpectForCRD(doc.Spec.Expect, name)
-		if err := simulateOne(ctx, kat, name, in.cr, cycles, crdOpts, debugOps, expect); err != nil {
+		if err := simulateOne(ctx, kat, name, in.cr, cycles, crdOpts, debugOps, useEnvtest, crdPaths, k8sVersion, expect); err != nil {
 			failed = append(failed, name)
 		}
 	}
@@ -673,7 +710,7 @@ type simulateFileResult struct {
 
 // runSimulateDiscovery finds all e2e.yaml files under root, simulates each,
 // and prints an aggregate summary.
-func runSimulateDiscovery(ctx context.Context, root, crdName string, maxCycles int, skip []string, debugOps bool) error {
+func runSimulateDiscovery(ctx context.Context, root, crdName string, maxCycles int, skip []string, debugOps, useEnvtest bool, k8sVersion string) error {
 	var patterns []string
 	for _, s := range skip {
 		patterns = append(patterns, s)
@@ -696,7 +733,7 @@ func runSimulateDiscovery(ctx context.Context, root, crdName string, maxCycles i
 		rel, _ := filepath.Rel(absRoot, p)
 
 		start := time.Now()
-		err := runSimulateFromSpec(ctx, p, crdName, maxCycles, debugOps)
+		err := runSimulateFromSpec(ctx, p, crdName, maxCycles, debugOps, useEnvtest, k8sVersion)
 		elapsed := time.Since(start)
 
 		var res simulateFileResult
@@ -1114,6 +1151,8 @@ func init() {
 	simulateCmd.Flags().Bool("debug-ops", false, "Print every recorded op with its cycle number (diagnostic)")
 	simulateCmd.Flags().Bool("dev-server", false, "Start the mock dev server for external: examples")
 	simulateCmd.Flags().Int("dev-server-port", devserver.Port, "Port for the mock dev server")
+	simulateCmd.Flags().Bool("envtest", false, "Run against a local kube-apiserver + etcd instead of fake clients (binaries auto-downloaded to ~/.ork/envtest-bins on first use)")
+	simulateCmd.Flags().String("k8s-version", simulate.DefaultEnvtestK8sVersion, "Kubernetes version for envtest binaries (e.g. 1.31, 1.32); only used with --envtest")
 
 	// Shadow global flags so they don't appear under `ork simulate`
 	shadowGlobalCommandFlags(simulateCmd)

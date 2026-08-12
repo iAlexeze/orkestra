@@ -34,8 +34,10 @@ require (
 	k8s.io/apimachinery v0.36.1
 	k8s.io/client-go v0.36.1
 	oras.land/oras-go/v2 v2.6.2
-	// controller-runtime is used in two places:
+	// controller-runtime is used in three places:
 	//   - tests/integration/ (envtest)
+	//   - pkg/registry/simulate/harness_envtest.go (ork simulate --envtest: real
+	//     kube-apiserver + etcd via envtest.Environment, auto-download support)
 	//   - pkg/kubeclient (Patch type alias) so that developers can migrate their
 	//     controller-runtime reconcilers into the Orkestra constructor path with
 	//     minimal changes — existing MergeFrom, StrategicMergeFrom, and Apply

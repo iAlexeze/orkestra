@@ -123,6 +123,37 @@ This is backed by a build-tag split in `cmd/internal/`:
 
 ---
 
+### `kubeclient.Interface` — renamed from `KubeClient`
+
+`kubeclient.KubeClient` is now `kubeclient.Interface`, matching the Go convention used by `kubernetes.Interface` and `dynamic.Interface`. All signatures, struct fields, type assertions, and return types updated across the codebase. No behaviour change.
+
+---
+
+### `ork simulate --envtest` — declarative integration testing
+
+`ork simulate -f simulate.yaml --envtest` runs the same simulate.yaml against a real `kube-apiserver` + `etcd` spun up locally — no cluster, no deployed operator. The reconciler, CR, and `expect:` assertions are unchanged; only the backend switches from fake in-memory clients to a real API server. Envtest binaries auto-download to `~/.ork/envtest-bins` on first use; `KUBEBUILDER_ASSETS` overrides this.
+
+New simulate.yaml fields declare the CRD schema to install:
+
+```yaml
+spec:
+  crd: ./crds/my-operator.yaml     # single CRD file
+  crdFiles:                         # or multiple
+    - ./crds/website.yaml
+    - ./crds/database.yaml
+  crFiles:                          # multiple CR files (supplement cr:)
+    - ./crs/a.yaml
+    - ./crs/b.yaml
+```
+
+`--envtest` requires at least one `crd` or `crdFiles` entry.
+
+Op recording uses an HTTP transport interceptor (not reactor chains) so all kubeclient paths — typed clientset SSA patches, dynamic client, controller-runtime client — are captured with the correct verb (`apply`, `patch`, `create`, `delete`).
+
+`tests/simulate-envtest/` ships the first suite: basic reconcile, status subresource patch, and namespace filter — the same scenarios covered by `tests/integration/kubeclient/` and `tests/integration/informer/`, expressed as YAML.
+
+---
+
 ### `ork webhook` — list and locally play webhook entries
 
 New CLI namespace mirroring `ork token`/`ork serve play` for the webhook intake surface.
