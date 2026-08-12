@@ -67,6 +67,11 @@ func runCreateUpdateChain(k *katalog.Katalog, raw map[string]interface{}, tokenN
 		printStageError(err.Error())
 		return nil, nil, "", err
 	}
+	if obj.GetName() == "" {
+		msg := "name is required — declare serve.name on the CRD or include \"name\" in the intent"
+		printStageError(msg)
+		return nil, nil, "", fmt.Errorf("%s", msg)
+	}
 	printStageOK(fmt.Sprintf("name=%s  namespace=%s", bold(obj.GetName()), bold(obj.GetNamespace())))
 
 	// Stage 4: Provenance — stamp first, then print the CR so annotations are visible

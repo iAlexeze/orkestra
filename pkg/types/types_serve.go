@@ -131,6 +131,29 @@ type ServeConfig struct {
 	// When empty, any valid gateway token may perform any operation on this CRD.
 	// ork validate confirms every token name here matches an entry in gateway.api.auth.tokens.
 	Tokens map[string]ServeTokenPermissions `yaml:"tokens,omitempty" json:"tokens,omitempty"`
+
+	// Clusters is the list of cluster names this CRD is allowed to route to.
+	// Each entry is either a static name from gateway.clusters or a template
+	// expression evaluated against the intent at apply time.
+	// When absent, intents apply to the local cluster only.
+	// Every apply fans out to all declared clusters unless a target entry narrows it.
+	Clusters []string `yaml:"clusters,omitempty" json:"clusters,omitempty"`
+}
+
+// HasClusters reports whether any cluster routing is declared.
+func (s *ServeConfig) HasClusters() bool {
+	return s != nil && len(s.Clusters) > 0
+}
+
+// ClusterAllowed reports whether name is in the declared clusters list.
+// Static comparison only — template entries are not evaluated here.
+func (s *ServeConfig) ClusterAllowed(name string) bool {
+	for _, c := range s.Clusters {
+		if c == name {
+			return true
+		}
+	}
+	return false
 }
 
 // ServeAliasConfigSettings is the config block on a target entry.

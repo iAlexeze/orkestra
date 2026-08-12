@@ -145,6 +145,44 @@ func renderRBAC(runtimeRules, gatewayRules []rbacv1.PolicyRule, namespace string
 	return []byte(out), nil
 }
 
+// RBACForCluster generates a self-contained RBAC file to apply to a remote cluster.
+// It produces a ServiceAccount, ClusterRole, and ClusterRoleBinding in saNamespace
+// (typically "kube-system"), matching what ork clusters bootstrap creates live.
+// Apply this file to the remote cluster, not to the gateway cluster.
+// saNamespace must already exist on the target cluster — "kube-system" always does.
+func RBACForCluster(clusterName string, rules []rbacv1.PolicyRule, saNamespace string) ([]byte, error) {
+	objs := []interface{}{
+		corev1.ServiceAccount{
+			TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "ServiceAccount"},
+			ObjectMeta: metav1.ObjectMeta{Name: orkGateway, Namespace: saNamespace, Labels: labels.OrkestraResourceLabels()},
+		},
+		rbacv1.ClusterRole{
+			TypeMeta:   metav1.TypeMeta{APIVersion: "rbac.authorization.k8s.io/v1", Kind: "ClusterRole"},
+			ObjectMeta: metav1.ObjectMeta{Name: orkGateway, Labels: labels.OrkestraResourceLabels()},
+			Rules:      rules,
+		},
+		rbacv1.ClusterRoleBinding{
+			TypeMeta:   metav1.TypeMeta{APIVersion: "rbac.authorization.k8s.io/v1", Kind: "ClusterRoleBinding"},
+			ObjectMeta: metav1.ObjectMeta{Name: orkGateway, Labels: labels.OrkestraResourceLabels()},
+			RoleRef:    rbacv1.RoleRef{APIGroup: "rbac.authorization.k8s.io", Kind: "ClusterRole", Name: orkGateway},
+			Subjects:   []rbacv1.Subject{{Kind: "ServiceAccount", Name: orkGateway, Namespace: saNamespace}},
+		},
+	}
+
+	out := ""
+	for i, obj := range objs {
+		b, err := yaml.Marshal(obj)
+		if err != nil {
+			return nil, fmt.Errorf("marshal cluster rbac [%s]: %w", clusterName, err)
+		}
+		out += "---\n" + string(b)
+		if i < len(objs)-1 {
+			out += "\n"
+		}
+	}
+	return []byte(out), nil
+}
+
 // prependNamespaceDoc places the Namespace as the first document in a multi-doc
 // YAML stream, separated from the remaining docs by a blank line.
 func prependNamespaceDoc(nsBytes, rest []byte) []byte {

@@ -283,8 +283,6 @@ for the full argument.
 
 ## What we are not building
 
-**Multi-cluster federation.** Orkestra manages CRDs within one cluster. Cross-cluster *composition* already works today: `cross:` reads sibling operator state over HTTP, and `external:` can gate a reconcile on a remote operator's health endpoint. Per-cluster Orkestra instances compose at runtime. What we are not building is a control plane deployed in one cluster that federates multiple clusters.
-
 **Replacing controller-runtime.** Orkestra is a higher-level abstraction. Custom constructors bridge to controller-runtime for use cases that need it. They are complementary, not competitive.
 
 **A general-purpose policy engine.** Orkestra's validation and mutation are scoped to the CRDs it manages. Global cluster-wide policy belongs in OPA, Kyverno, or VAP.

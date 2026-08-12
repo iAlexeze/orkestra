@@ -70,6 +70,59 @@ gateway:
 
 Every entry's own `name` authorizes under `serve.tokens` — the same identity model a `gateway.api.auth.tokens` bearer token uses — and is stamped as the `serve-source` provenance annotation on every CR it applies. `secretRef`/`contentTokenRef`/`signingSecretRef` all reuse the `APISecretRef` shape `gateway.api.auth.tokens[].secretRef` already uses, so every webhook credential gets the same self-bootstrap-if-missing and `rotateAfter` rotation behavior for free. `ork validate` enforces entry names unique across all four sources (not just within one — this is also what lets `ork webhook play` resolve `--source` from `--webhook` alone), unique paths across every source, required credentials per source, and that every `serve.tokens` key resolves to either a `gateway.api.auth.tokens` entry or a `gateway.webhooks` entry's name.
 
+### Multi-cluster routing and bootstrap
+
+One gateway instance can now route intents to multiple Kubernetes clusters. The cluster that receives each CR is determined per-CRD, per-target, or dynamically at apply time from the intent payload.
+
+**`gateway.clusters`** — new block registering remote clusters with their endpoint and credentials:
+
+```yaml
+gateway:
+  clusters:
+    prod:
+      endpoint: https://prod.internal:6443
+      tokenRef: { name: orkestra-prod, namespace: default, key: token }
+      caRef:    { name: orkestra-prod, namespace: default, key: ca.crt }
+```
+
+**`serve.cluster`** — routes all applies for a CRD to a named cluster by default. Per-target overrides (`serve.target.<name>.cluster`) route specific targets to different clusters. Template expressions (`{{ if eq .request.env "prod" }}prod{{ else }}staging{{ end }}`) resolve at apply time from the intent payload.
+
+**`ork clusters validate`** — validates `gateway.clusters` offline: endpoint, credentials, static cluster references, and template expressions against the full funcMap.
+
+**`ork clusters check`** — goes online: connects to each cluster, reads credentials from the gateway cluster, and verifies the katalog's CRDs are installed.
+
+**`ork clusters bootstrap`** — provisions least-privilege access on a target cluster and stores the credentials in the gateway cluster. Refactored as a generic tool: works for Orkestra and for any other system (ArgoCD, Flux) that needs a scoped ServiceAccount + token on a remote cluster.
+
+- Single cluster: `ork clusters bootstrap --context kind-prod --name prod`
+- Multiple clusters: `ork clusters bootstrap --config cluster-config.yaml`
+- Validate a config file without touching any cluster: `ork clusters bootstrap --validate cluster-config.yaml`
+- `--no-hint` suppresses the Orkestra snippet for non-Orkestra consumers
+- `--dry-run` previews every resource without applying
+- Config file `rules:` field for explicit ClusterRole rules (generic path)
+- SA name override (`sa-name`) for non-Orkestra SA naming
+- Verb validation in `--validate`: unknown verbs are caught before any cluster is touched
+
+**`ork generate rbac` / `ork generate bundle`** — generate per-cluster RBAC files alongside the local one. Template-routed CRDs appear in all cluster files with a warning to remove inapplicable rules.
+
+- `gateway-<name>-rbac.yaml` generated per registered cluster
+- Without `-o`, files are written to the current directory (no stdout pipe required)
+- `-o -` for explicit stdout
+
+---
+
+### `ork gate run` — local gateway for Serve layer development
+
+`ork gate run -f katalog.yaml` starts the gateway in HTTP-only mode without a cluster deployment. The Gateway API (`POST /api/v1/apply`, `GET /api/v1/resources/`, intake webhooks) runs on the health port (default `:8080`). Admission and conversion webhooks are skipped — they require TLS and a live cluster.
+
+Use this to test serve routing, apply flows, and intake payloads before pushing a Helm deployment. Admission rules are still covered by `ork gate -f katalog.yaml --cr cr.yaml`.
+
+This is backed by a build-tag split in `cmd/internal/`:
+
+- `gateway.go` (`//go:build gateway`) — production; hard exit outside a pod
+- `gateway_dev.go` (`//go:build !runtime && !gateway`) — dev; HTTP-only Serve layer
+
+---
+
 ### `ork webhook` — list and locally play webhook entries
 
 New CLI namespace mirroring `ork token`/`ork serve play` for the webhook intake surface.

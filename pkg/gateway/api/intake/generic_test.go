@@ -38,7 +38,7 @@ func testGenericSource(secret string) ResolvedGenericSource {
 }
 
 func TestGenericHandler_MethodNotAllowed(t *testing.T) {
-	h := NewGenericHandler(testGenericSource("s3cr3t"), nil, nil, orktypes.NoteRegistry{})
+	h := NewGenericHandler(testGenericSource("s3cr3t"), nil, nil, nil, orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodGet, "/webhooks/generic/pagerduty", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -48,7 +48,7 @@ func TestGenericHandler_MethodNotAllowed(t *testing.T) {
 }
 
 func TestGenericHandler_MissingSignature(t *testing.T) {
-	h := NewGenericHandler(testGenericSource("s3cr3t"), nil, nil, orktypes.NoteRegistry{})
+	h := NewGenericHandler(testGenericSource("s3cr3t"), nil, nil, nil, orktypes.NoteRegistry{})
 	body, _ := json.Marshal(map[string]interface{}{"target": "apprequest", "name": "my-app"})
 	req := httptest.NewRequest(http.MethodPost, "/webhooks/generic/pagerduty", bytes.NewReader(body))
 	rr := httptest.NewRecorder()
@@ -59,7 +59,7 @@ func TestGenericHandler_MissingSignature(t *testing.T) {
 }
 
 func TestGenericHandler_WrongSignature(t *testing.T) {
-	h := NewGenericHandler(testGenericSource("s3cr3t"), nil, nil, orktypes.NoteRegistry{})
+	h := NewGenericHandler(testGenericSource("s3cr3t"), nil, nil, nil, orktypes.NoteRegistry{})
 	body, _ := json.Marshal(map[string]interface{}{"target": "apprequest", "name": "my-app"})
 	req := httptest.NewRequest(http.MethodPost, "/webhooks/generic/pagerduty", bytes.NewReader(body))
 	req.Header.Set("X-Signature-256", signBody("wrong-secret", body))
@@ -71,7 +71,7 @@ func TestGenericHandler_WrongSignature(t *testing.T) {
 }
 
 func TestGenericHandler_InvalidJSON(t *testing.T) {
-	h := NewGenericHandler(testGenericSource("s3cr3t"), nil, nil, orktypes.NoteRegistry{})
+	h := NewGenericHandler(testGenericSource("s3cr3t"), nil, nil, nil, orktypes.NoteRegistry{})
 	body := []byte("not-json")
 	req := httptest.NewRequest(http.MethodPost, "/webhooks/generic/pagerduty", bytes.NewReader(body))
 	req.Header.Set("X-Signature-256", signBody("s3cr3t", body))
@@ -85,7 +85,7 @@ func TestGenericHandler_InvalidJSON(t *testing.T) {
 func TestGenericHandler_ValidSignature_ReachesApplyPipeline(t *testing.T) {
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
 	kat := intakeTestKatalog("")
-	h := NewGenericHandler(testGenericSource("s3cr3t"), kube, kat, orktypes.NoteRegistry{})
+	h := NewGenericHandler(testGenericSource("s3cr3t"), kube, nil, kat, orktypes.NoteRegistry{})
 
 	// No "name" and serve.name isn't declared — this should reach the apply
 	// pipeline's own "name is required" rejection (422), not get stuck at
@@ -112,7 +112,7 @@ func TestGenericHandler_ValidSignature_ReachesApplyPipeline(t *testing.T) {
 func TestGenericHandler_DryRunPropagates(t *testing.T) {
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
 	kat := intakeTestKatalog("resolved-name")
-	h := NewGenericHandler(testGenericSource("s3cr3t"), kube, kat, orktypes.NoteRegistry{})
+	h := NewGenericHandler(testGenericSource("s3cr3t"), kube, nil, kat, orktypes.NoteRegistry{})
 
 	body, _ := json.Marshal(map[string]interface{}{"target": "apprequest"})
 	req := httptest.NewRequest(http.MethodPost, "/webhooks/generic/pagerduty?dryRun=true", bytes.NewReader(body))

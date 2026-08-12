@@ -25,6 +25,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/orkspace/orkestra/cmd/internal"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/merger"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
@@ -233,9 +234,45 @@ func hasUniqueRule(crd *orktypes.CRDEntry) bool {
 	return false
 }
 
+var gateRunCmd = &cobra.Command{
+	Use:   "run",
+	Short: "Start the gateway locally (HTTP only, no TLS, no admission webhooks)",
+	Long: `Start the Orkestra Gateway in local HTTP mode.
+
+The Gateway API (POST /api/v1/apply, GET /api/v1/resources/, intake webhooks)
+runs on the health port (default :8080). Admission and conversion webhooks are
+disabled — TLS and a live cluster are required for those.
+
+Use this to test serve routing, apply flows, and intake payloads without a
+Helm deployment.
+
+Example:
+  ork gate run -f katalog.yaml`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		paths, _ := cmd.Flags().GetStringSlice("file")
+		if len(paths) == 0 {
+			paths = defaultFilePaths()
+		}
+		if len(paths) == 0 {
+			return fmt.Errorf(errNoKatalog)
+		}
+
+		m := merger.New(paths...)
+		if err := m.Merge(); err != nil {
+			return fmt.Errorf("merging katalogs: %w", err)
+		}
+
+		internal.KonductGatewayDev(kfg, m, ctx)
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(gatewayCmd)
+	gatewayCmd.AddCommand(gateRunCmd)
 	gatewayCmd.Flags().StringSliceP("file", "f", nil, "Path(s) to katalog.yaml (repeatable)")
 	gatewayCmd.Flags().String("cr", "", "CR file to evaluate (default: cr.yaml)")
+	gateRunCmd.Flags().StringSliceP("file", "f", nil, "Path(s) to katalog.yaml (repeatable)")
 	shadowGlobalCommandFlags(gatewayCmd)
+	shadowGlobalCommandFlags(gateRunCmd)
 }

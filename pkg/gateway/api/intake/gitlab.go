@@ -37,6 +37,7 @@ type GitLabPushEvent struct {
 func NewGitLabHandler(
 	src ResolvedGitSource,
 	kube kubeclient.KubeClient,
+	clusters *api.ClusterRegistry,
 	kat *katalog.Katalog,
 	notes orktypes.NoteRegistry,
 ) http.HandlerFunc {
@@ -86,7 +87,7 @@ func NewGitLabHandler(
 
 		results := make([]PushApplyResult, 0, len(matched))
 		for _, path := range matched {
-			results = append(results, applyGitLabIntentFile(r.Context(), src, kube, kat, notes, projectID, path, event.CheckoutSHA))
+			results = append(results, applyGitLabIntentFile(r.Context(), src, kube, clusters, kat, notes, projectID, path, event.CheckoutSHA))
 		}
 
 		writeJSON(w, http.StatusOK, PushResponse{Applied: results})
@@ -97,6 +98,7 @@ func applyGitLabIntentFile(
 	ctx context.Context,
 	src ResolvedGitSource,
 	kube kubeclient.KubeClient,
+	clusters *api.ClusterRegistry,
 	kat *katalog.Katalog,
 	notes orktypes.NoteRegistry,
 	projectID, path, sha string,
@@ -114,7 +116,7 @@ func applyGitLabIntentFile(
 		return PushApplyResult{Path: path, Message: err.Error()}
 	}
 
-	resp, status := api.ApplyTargetFields(ctx, kube, kat, notes, src.Config.Name, fields, false)
+	resp, status := api.ApplyTargetFields(ctx, kube, clusters, kat, notes, src.Config.Name, fields, false)
 	result := PushApplyResult{
 		Path:     path,
 		Target:   fieldsTarget(fields),

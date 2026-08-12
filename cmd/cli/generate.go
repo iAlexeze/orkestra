@@ -298,7 +298,11 @@ Examples:
 			return fmt.Errorf("generate rbac: %w", err)
 		}
 
-		return writeOutput(outputFile, "rbac.yaml", []byte(output))
+		if err := writeOutput(outputFile, "rbac.yaml", []byte(output)); err != nil {
+			return err
+		}
+
+		return writeClusterRBACFiles(k, outputFile)
 	},
 }
 
@@ -403,9 +407,68 @@ Examples:
 			return fmt.Errorf("generate bundle: %w", err)
 		}
 
-		return writeOutput(outputFile, "bundle.yaml", []byte(bundle))
+		if err := writeOutput(outputFile, "bundle.yaml", []byte(bundle)); err != nil {
+			return err
+		}
 
+		return writeClusterRBACFiles(k, outputFile)
 	},
+}
+
+// writeClusterRBACFiles generates a gateway-<name>-rbac.yaml for each remote cluster
+// that has serve-enabled CRDs routed to it. Files land in the same directory as
+// outputFile (or the current directory when outputFile is empty or "-").
+// Template-routed CRDs appear in every cluster file; a warning is printed for those.
+func writeClusterRBACFiles(k *katalog.Katalog, outputFile string) error {
+	clusterRules, templateKinds := k.GenerateGatewayClusterRBACRules()
+	if len(clusterRules) == 0 {
+		return nil
+	}
+	if outputFile == "-" {
+		return nil // stdout mode — no path to place cluster files alongside
+	}
+
+	dir := clusterOutputDir(outputFile)
+	clusters := k.GatewayClusters()
+
+	if len(templateKinds) > 0 {
+		fmt.Fprintf(os.Stderr,
+			"\nwarning: template-routed CRD(s) added to all cluster RBAC files: %s\n"+
+				"  Remove rules for clusters that should not have access.\n",
+			strings.Join(templateKinds, ", "),
+		)
+	}
+
+	fmt.Println()
+	for _, name := range sortedKeys(clusterRules) {
+		b, err := generate.RBACForCluster(name, clusterRules[name], "kube-system")
+		if err != nil {
+			return fmt.Errorf("generate cluster rbac [%s]: %w", name, err)
+		}
+		filename := "gateway-" + name + "-rbac.yaml"
+		path := filepath.Join(dir, filename)
+		if err := os.WriteFile(path, b, 0644); err != nil {
+			return fmt.Errorf("write %s: %w", path, err)
+		}
+		log.Printf("%s generated successfully\n", filename)
+		if cfg, ok := clusters[name]; ok {
+			fmt.Printf("  Apply to cluster %q (%s):\n    kubectl apply -f %s\n\n", name, cfg.EndpointURL(), path)
+		}
+	}
+	return nil
+}
+
+// clusterOutputDir returns the directory in which per-cluster RBAC files should
+// be written, mirroring the logic in writeOutput.
+func clusterOutputDir(outputFile string) string {
+	if outputFile == "" || outputFile == "-" {
+		return "."
+	}
+	info, err := os.Stat(outputFile)
+	if err == nil && info.IsDir() {
+		return outputFile
+	}
+	return filepath.Dir(outputFile)
 }
 
 func init() {

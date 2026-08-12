@@ -36,7 +36,7 @@ func gitlabPushRequest(t *testing.T, token string, body []byte) *http.Request {
 }
 
 func TestGitLabHandler_MethodNotAllowed(t *testing.T) {
-	h := NewGitLabHandler(testGitSource("s3cr3t", "gl-token", "main"), nil, nil, orktypes.NoteRegistry{})
+	h := NewGitLabHandler(testGitSource("s3cr3t", "gl-token", "main"), nil, nil, nil, orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodGet, "/webhooks/gitlab/payments", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -46,7 +46,7 @@ func TestGitLabHandler_MethodNotAllowed(t *testing.T) {
 }
 
 func TestGitLabHandler_InvalidToken(t *testing.T) {
-	h := NewGitLabHandler(testGitSource("s3cr3t", "gl-token", "main"), nil, nil, orktypes.NoteRegistry{})
+	h := NewGitLabHandler(testGitSource("s3cr3t", "gl-token", "main"), nil, nil, nil, orktypes.NoteRegistry{})
 	body := gitlabPushBody(t, "refs/heads/main", []string{"intent.yaml"}, nil)
 	req := gitlabPushRequest(t, "wrong-token", body)
 	rr := httptest.NewRecorder()
@@ -57,7 +57,7 @@ func TestGitLabHandler_InvalidToken(t *testing.T) {
 }
 
 func TestGitLabHandler_BranchNotWatched(t *testing.T) {
-	h := NewGitLabHandler(testGitSource("s3cr3t", "gl-token", "main"), nil, nil, orktypes.NoteRegistry{})
+	h := NewGitLabHandler(testGitSource("s3cr3t", "gl-token", "main"), nil, nil, nil, orktypes.NoteRegistry{})
 	body := gitlabPushBody(t, "refs/heads/feature-x", []string{"intent.yaml"}, nil)
 	req := gitlabPushRequest(t, "s3cr3t", body)
 	rr := httptest.NewRecorder()
@@ -76,7 +76,7 @@ func TestGitLabHandler_BranchNotWatched(t *testing.T) {
 }
 
 func TestGitLabHandler_NoWatchedFilesChanged(t *testing.T) {
-	h := NewGitLabHandler(testGitSource("s3cr3t", "gl-token", "main", "services/*/intent.yaml"), nil, nil, orktypes.NoteRegistry{})
+	h := NewGitLabHandler(testGitSource("s3cr3t", "gl-token", "main", "services/*/intent.yaml"), nil, nil, nil, orktypes.NoteRegistry{})
 	body := gitlabPushBody(t, "refs/heads/main", []string{"README.md"}, nil)
 	req := gitlabPushRequest(t, "s3cr3t", body)
 	rr := httptest.NewRecorder()
@@ -105,7 +105,7 @@ func TestGitLabHandler_MatchedFile_FetchesAndReachesApplyPipeline(t *testing.T) 
 
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
 	kat := intakeTestKatalog("")
-	h := NewGitLabHandler(testGitSource("s3cr3t", "gl-token", "main", "services/*/intent.yaml"), kube, kat, orktypes.NoteRegistry{})
+	h := NewGitLabHandler(testGitSource("s3cr3t", "gl-token", "main", "services/*/intent.yaml"), kube, nil, kat, orktypes.NoteRegistry{})
 
 	body := gitlabPushBody(t, "refs/heads/main", []string{"services/payments/intent.yaml"}, nil)
 	req := gitlabPushRequest(t, "s3cr3t", body)
@@ -134,7 +134,7 @@ func TestGitLabHandler_ContentFetchFailure_ReportedPerFile(t *testing.T) {
 
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
 	kat := intakeTestKatalog("")
-	h := NewGitLabHandler(testGitSource("s3cr3t", "gl-token", "main", "services/*/intent.yaml"), kube, kat, orktypes.NoteRegistry{})
+	h := NewGitLabHandler(testGitSource("s3cr3t", "gl-token", "main", "services/*/intent.yaml"), kube, nil, kat, orktypes.NoteRegistry{})
 
 	body := gitlabPushBody(t, "refs/heads/main", []string{"services/payments/intent.yaml"}, nil)
 	req := gitlabPushRequest(t, "s3cr3t", body)

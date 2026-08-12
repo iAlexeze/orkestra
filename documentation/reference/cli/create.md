@@ -23,6 +23,7 @@ ork create cluster [flags]
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--name <name>` | `ork-playground` | Name of the kind cluster to create |
+| `--count <n>` | `1` | Number of clusters to create. When greater than 1, clusters are named `<name>-1`, `<name>-2`, … `<name>-N`. |
 | `--provider <provider>` | `kind` | Cluster provider — only `kind` is supported |
 | `--workers <n>` | `0` | Number of worker nodes to add (0 = control-plane only) |
 | `--version <version>` | `v0.27.0` | kind binary version to use (downloaded automatically if not in PATH) |
@@ -39,6 +40,12 @@ Create a named cluster:
 
 ```bash
 ork create cluster --name ork-e2e
+```
+
+Create three clusters for multi-cluster testing (`ork-multi-1`, `ork-multi-2`, `ork-multi-3`):
+
+```bash
+ork create cluster --name ork-multi --count 3
 ```
 
 Create a multi-node cluster (1 control-plane + 3 workers):

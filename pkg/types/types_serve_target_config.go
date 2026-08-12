@@ -129,6 +129,12 @@ type ServeTargetConfig struct {
 	// Config controls the shape of apply and GET responses for this surface.
 	// When absent, falls back to serve.config (CRD default).
 	Config *ServeAliasConfigSettings `yaml:"config,omitempty" json:"config,omitempty"`
+
+	// Clusters scopes the fan-out for this target to a subset of serve.clusters.
+	// Each entry is either a static name or a template expression resolved at apply time.
+	// When absent, fan-out goes to all of serve.clusters.
+	// Each name must appear in serve.clusters (validated by ork validate).
+	Clusters []string `yaml:"clusters,omitempty" json:"clusters,omitempty"`
 }
 
 // IsEnabled reports whether this surface is reachable by callers.
@@ -156,11 +162,24 @@ func (t *ServeTargetConfig) ResponseConfig() *ServeResponseConfig {
 	return t.Config.Response
 }
 
+// HasClusters reports whether this target entry declares its own cluster routing.
+func (t *ServeTargetConfig) HasClusters() bool {
+	return t != nil && len(t.Clusters) > 0
+}
+
+// TargetClusters returns the cluster list for this target entry, or nil.
+func (t *ServeTargetConfig) TargetClusters() []string {
+	if t == nil {
+		return nil
+	}
+	return t.Clusters
+}
+
 // isDefaultPrimary reports whether this entry has no config beyond Primary: true
 // — used to decide whether the YAML shorthand round-trip is safe.
 func (t *ServeTargetConfig) isDefaultPrimary() bool {
 	if t == nil {
 		return true
 	}
-	return t.IsEnabled() && len(t.Tokens) == 0 && t.Config == nil && t.Include == ""
+	return t.IsEnabled() && len(t.Tokens) == 0 && t.Config == nil && t.Include == "" && !t.HasClusters()
 }

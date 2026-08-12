@@ -12,7 +12,7 @@ import (
 func TestApplyTargetFields_UnknownTarget(t *testing.T) {
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
 	kat := appRequestKatalog("")
-	resp, status := ApplyTargetFields(context.Background(), kube, kat, orktypes.NoteRegistry{}, "payments-repo",
+	resp, status := ApplyTargetFields(context.Background(), kube, &ClusterRegistry{}, kat, orktypes.NoteRegistry{}, "payments-repo",
 		map[string]interface{}{"target": "does-not-exist"}, false,
 	)
 	if status != 400 {
@@ -26,7 +26,7 @@ func TestApplyTargetFields_UnknownTarget(t *testing.T) {
 func TestApplyTargetFields_MissingTarget(t *testing.T) {
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
 	kat := appRequestKatalog("")
-	resp, status := ApplyTargetFields(context.Background(), kube, kat, orktypes.NoteRegistry{}, "payments-repo",
+	resp, status := ApplyTargetFields(context.Background(), kube, &ClusterRegistry{}, kat, orktypes.NoteRegistry{}, "payments-repo",
 		map[string]interface{}{"name": "my-app"}, false,
 	)
 	if status != 400 {
@@ -40,7 +40,7 @@ func TestApplyTargetFields_MissingTarget(t *testing.T) {
 func TestApplyTargetFields_MissingName_Rejected(t *testing.T) {
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
 	kat := appRequestKatalog("") // serve.name not declared
-	resp, status := ApplyTargetFields(context.Background(), kube, kat, orktypes.NoteRegistry{}, "payments-repo",
+	resp, status := ApplyTargetFields(context.Background(), kube, &ClusterRegistry{}, kat, orktypes.NoteRegistry{}, "payments-repo",
 		map[string]interface{}{"target": "apprequest"}, false,
 	)
 	if status != 422 {
@@ -54,7 +54,7 @@ func TestApplyTargetFields_MissingName_Rejected(t *testing.T) {
 func TestApplyTargetFields_RawNameFallback_NotRejectedForName(t *testing.T) {
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
 	kat := appRequestKatalog("") // serve.name not declared — falls back to raw "name"
-	resp, _ := ApplyTargetFields(context.Background(), kube, kat, orktypes.NoteRegistry{}, "payments-repo",
+	resp, _ := ApplyTargetFields(context.Background(), kube, &ClusterRegistry{}, kat, orktypes.NoteRegistry{}, "payments-repo",
 		map[string]interface{}{"target": "apprequest", "name": "payments-api"}, false,
 	)
 	if resp.Message == "name is required" {
@@ -65,7 +65,7 @@ func TestApplyTargetFields_RawNameFallback_NotRejectedForName(t *testing.T) {
 func TestApplyTargetFields_ServeName_ResolvesWithoutRawName(t *testing.T) {
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
 	kat := appRequestKatalog("resolved-name")
-	resp, _ := ApplyTargetFields(context.Background(), kube, kat, orktypes.NoteRegistry{}, "payments-repo",
+	resp, _ := ApplyTargetFields(context.Background(), kube, &ClusterRegistry{}, kat, orktypes.NoteRegistry{}, "payments-repo",
 		map[string]interface{}{"target": "apprequest"}, false,
 	)
 	if resp.Message == "name is required" {
@@ -76,7 +76,7 @@ func TestApplyTargetFields_ServeName_ResolvesWithoutRawName(t *testing.T) {
 func TestApplyTargetFields_DryRunPropagates(t *testing.T) {
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
 	kat := appRequestKatalog("resolved-name")
-	resp, _ := ApplyTargetFields(context.Background(), kube, kat, orktypes.NoteRegistry{}, "payments-repo",
+	resp, _ := ApplyTargetFields(context.Background(), kube, &ClusterRegistry{}, kat, orktypes.NoteRegistry{}, "payments-repo",
 		map[string]interface{}{"target": "apprequest"}, true,
 	)
 	if !resp.DryRun {

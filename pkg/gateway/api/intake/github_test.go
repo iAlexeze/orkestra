@@ -54,7 +54,7 @@ func githubPushRequest(t *testing.T, secret string, body []byte) *http.Request {
 }
 
 func TestGitHubHandler_MethodNotAllowed(t *testing.T) {
-	h := NewGitHubHandler(testGitSource("s3cr3t", "gh-token", "main"), nil, nil, orktypes.NoteRegistry{})
+	h := NewGitHubHandler(testGitSource("s3cr3t", "gh-token", "main"), nil, nil, nil, orktypes.NoteRegistry{})
 	req := httptest.NewRequest(http.MethodGet, "/webhooks/github/payments", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -64,7 +64,7 @@ func TestGitHubHandler_MethodNotAllowed(t *testing.T) {
 }
 
 func TestGitHubHandler_InvalidSignature(t *testing.T) {
-	h := NewGitHubHandler(testGitSource("s3cr3t", "gh-token", "main"), nil, nil, orktypes.NoteRegistry{})
+	h := NewGitHubHandler(testGitSource("s3cr3t", "gh-token", "main"), nil, nil, nil, orktypes.NoteRegistry{})
 	body := githubPushBody(t, "refs/heads/main", []string{"intent.yaml"}, nil)
 	req := githubPushRequest(t, "wrong-secret", body)
 	rr := httptest.NewRecorder()
@@ -75,7 +75,7 @@ func TestGitHubHandler_InvalidSignature(t *testing.T) {
 }
 
 func TestGitHubHandler_BranchNotWatched(t *testing.T) {
-	h := NewGitHubHandler(testGitSource("s3cr3t", "gh-token", "main"), nil, nil, orktypes.NoteRegistry{})
+	h := NewGitHubHandler(testGitSource("s3cr3t", "gh-token", "main"), nil, nil, nil, orktypes.NoteRegistry{})
 	body := githubPushBody(t, "refs/heads/feature-x", []string{"intent.yaml"}, nil)
 	req := githubPushRequest(t, "s3cr3t", body)
 	rr := httptest.NewRecorder()
@@ -94,7 +94,7 @@ func TestGitHubHandler_BranchNotWatched(t *testing.T) {
 }
 
 func TestGitHubHandler_NoWatchedFilesChanged(t *testing.T) {
-	h := NewGitHubHandler(testGitSource("s3cr3t", "gh-token", "main", "services/*/intent.yaml"), nil, nil, orktypes.NoteRegistry{})
+	h := NewGitHubHandler(testGitSource("s3cr3t", "gh-token", "main", "services/*/intent.yaml"), nil, nil, nil, orktypes.NoteRegistry{})
 	body := githubPushBody(t, "refs/heads/main", []string{"README.md"}, nil)
 	req := githubPushRequest(t, "s3cr3t", body)
 	rr := httptest.NewRecorder()
@@ -124,7 +124,7 @@ func TestGitHubHandler_MatchedFile_FetchesAndReachesApplyPipeline(t *testing.T) 
 
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
 	kat := intakeTestKatalog("")
-	h := NewGitHubHandler(testGitSource("s3cr3t", "gh-token", "main", "services/*/intent.yaml"), kube, kat, orktypes.NoteRegistry{})
+	h := NewGitHubHandler(testGitSource("s3cr3t", "gh-token", "main", "services/*/intent.yaml"), kube, nil, kat, orktypes.NoteRegistry{})
 
 	body := githubPushBody(t, "refs/heads/main", []string{"services/payments/intent.yaml"}, nil)
 	req := githubPushRequest(t, "s3cr3t", body)
@@ -157,7 +157,7 @@ func TestGitHubHandler_ContentFetchFailure_ReportedPerFile(t *testing.T) {
 
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
 	kat := intakeTestKatalog("")
-	h := NewGitHubHandler(testGitSource("s3cr3t", "gh-token", "main", "services/*/intent.yaml"), kube, kat, orktypes.NoteRegistry{})
+	h := NewGitHubHandler(testGitSource("s3cr3t", "gh-token", "main", "services/*/intent.yaml"), kube, nil, kat, orktypes.NoteRegistry{})
 
 	body := githubPushBody(t, "refs/heads/main", []string{"services/payments/intent.yaml"}, nil)
 	req := githubPushRequest(t, "s3cr3t", body)

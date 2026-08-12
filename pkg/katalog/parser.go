@@ -116,6 +116,9 @@ func (k *Katalog) KomposeRuntimeKatalog(
 	if err := orktypes.ExpandGatewayWebhookIncludes(k.Gateway, k.katalogDir); err != nil {
 		return nil, fmt.Errorf("gateway.webhooks: %w", err)
 	}
+	if err := orktypes.ExpandGatewayClustersInclude(k.Gateway, k.katalogDir); err != nil {
+		return nil, fmt.Errorf("gateway.clusters: %w", err)
+	}
 
 	for name, entry := range k.enabledCRDs {
 		// Populate APITypes from crdFile before enrichment so isFullySpecified sees

@@ -20,6 +20,9 @@ func (k *Katalog) wireForTest() *Katalog {
 	if err := k.setDefaults(konfig.NewDefaultKonfig()); err != nil {
 		panic("katalog test fixture: " + err.Error())
 	}
+	// Pre-build the serve-enabled cache so ServeEnabledCRDs() returns the
+	// correct slice without requiring a full BuildExpanded/ParseFile call.
+	k.serveEnabledCRDs = k.BuildServeEnabledCRDs()
 	return k
 }
 

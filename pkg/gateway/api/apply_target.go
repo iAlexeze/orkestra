@@ -37,6 +37,7 @@ import (
 func ApplyTargetFields(
 	ctx context.Context,
 	kube kubeclient.KubeClient,
+	clusters *ClusterRegistry,
 	kat *katalog.Katalog,
 	notes orktypes.NoteRegistry,
 	tokenName string,
@@ -60,6 +61,11 @@ func ApplyTargetFields(
 	crd := resolution.CRD
 	alias := resolution.Alias
 
+	targets, clusterErr := resolveClusterTargets(crd, alias, fields, notes, clusters, kube)
+	if clusterErr != nil {
+		return &ApplyResponse{Message: clusterErr.Error()}, http.StatusBadRequest
+	}
+
 	obj, err := BuildCRFromTarget(fields, crd, notes)
 	if err != nil {
 		return &ApplyResponse{Message: err.Error()}, http.StatusBadRequest
@@ -72,57 +78,6 @@ func ApplyTargetFields(
 	if err != nil {
 		return &ApplyResponse{Message: "failed to marshal built CR"}, http.StatusInternalServerError
 	}
-
-	// ── Token permission check ──────────────────────────────────────────
-	op := orktypes.ServeOpCreate
-	existing, probeErr := kube.DynamicClient().
-		Resource(gvr).
-		Namespace(obj.GetNamespace()).
-		Get(ctx, obj.GetName(), metav1.GetOptions{})
-	if probeErr == nil {
-		op = orktypes.ServeOpUpdate
-
-		// Routing surface guard — a resource created via one target/alias
-		// cannot be updated via another.
-		ann := existing.GetAnnotations()
-		storedSurface := ann[labels.AnnotationServeAlias]
-		if storedSurface == "" {
-			storedSurface = ann[labels.AnnotationServeTarget]
-		}
-		incomingSurface := alias
-		if incomingSurface == "" {
-			incomingSurface = crd.ServeTarget()
-		}
-		if storedSurface != "" && storedSurface != incomingSurface {
-			msg := fmt.Sprintf(
-				"routing surface conflict: resource was created via %q, cannot update via %q",
-				storedSurface, incomingSurface,
-			)
-			return &ApplyResponse{
-				Message: msg,
-				Violations: []ApplyViolation{{
-					Field:    "metadata.annotations",
-					Message:  msg,
-					Severity: "error",
-				}},
-			}, http.StatusConflict
-		}
-	}
-
-	allowed, reason := crd.TokenAllowedFor(alias, tokenName, op, obj.GetNamespace(), orktypes.ServeClassResources)
-	if !allowed {
-		msg := reason.Message(tokenName, op, obj.GetKind(), obj.GetNamespace())
-		return &ApplyResponse{
-			Message: msg,
-			Violations: []ApplyViolation{{
-				Field:    "metadata",
-				Message:  msg,
-				Severity: "error",
-			}},
-		}, http.StatusForbidden
-	}
-
-	overwrite := crd.Serve != nil && crd.Serve.ForceConflict
 
 	if obj.GetName() == "" {
 		return &ApplyResponse{
@@ -147,6 +102,7 @@ func ApplyTargetFields(
 		}, http.StatusUnprocessableEntity
 	}
 
+	overwrite := crd.Serve != nil && crd.Serve.ForceConflict
 	patchOpts := metav1.PatchOptions{
 		FieldManager: konfig.FieldManagerGateway,
 		Force:        boolPtr(overwrite),
@@ -156,56 +112,161 @@ func ApplyTargetFields(
 	}
 
 	payload := EvaluatePayload(obj.Object, crd, alias, notes)
+	resolver := orktmpl.NewResolverFromMap(fields).WithUserNotes(notes)
 
-	ns := obj.GetNamespace()
-	capture := &warningCapture{}
-	result, err := scopedDynamic(kube, capture).
-		Resource(gvr).
-		Namespace(ns).
-		Patch(ctx, obj.GetName(), k8stypes.ApplyPatchType, patchBody, patchOpts)
-	if err != nil {
-		logger.FromContext(ctx).Warn().
-			Str("kind", obj.GetKind()).
-			Str("name", obj.GetName()).
-			Bool("dryRun", dryRun).
-			Str("gvr", gvr.String()).
-			Str("namespace", obj.GetNamespace()).
-			Str("tokenName", tokenName).
-			Err(err).
-			Msg("gateway API: SSA rejected (intake)")
-
-		violations := extractViolations(err)
-		message := err.Error()
-		if len(violations) > 0 && violations[0].Message != "" {
-			message = violations[0].Message
-		}
-
-		return &ApplyResponse{
-			DryRun:     dryRun,
-			Message:    message,
-			Warnings:   capture.collect(),
-			Violations: violations,
-		}, http.StatusUnprocessableEntity
+	incomingSurface := alias
+	if incomingSurface == "" {
+		incomingSurface = crd.ServeTarget()
 	}
 
-	resolver := orktmpl.NewResolverFromMap(fields).WithUserNotes(notes)
-	pollURL := resolvePollURL(
-		result.GetKind(),
-		result.GetNamespace(),
-		result.GetName(),
-		crd.GetServePollingConfig(),
-		resolver,
-	)
+	// ── Single local cluster — original response shape ──────────────────
+	if len(targets) == 1 && targets[0].name == "" {
+		effectiveKube := targets[0].kube
+
+		op := orktypes.ServeOpCreate
+		existing, probeErr := effectiveKube.DynamicClient().
+			Resource(gvr).Namespace(obj.GetNamespace()).
+			Get(ctx, obj.GetName(), metav1.GetOptions{})
+		if probeErr == nil {
+			op = orktypes.ServeOpUpdate
+			ann := existing.GetAnnotations()
+			storedSurface := ann[labels.AnnotationServeAlias]
+			if storedSurface == "" {
+				storedSurface = ann[labels.AnnotationServeTarget]
+			}
+			if storedSurface != "" && storedSurface != incomingSurface {
+				msg := fmt.Sprintf(
+					"routing surface conflict: resource was created via %q, cannot update via %q",
+					storedSurface, incomingSurface,
+				)
+				return &ApplyResponse{
+					Message: msg,
+					Violations: []ApplyViolation{{
+						Field:    "metadata.annotations",
+						Message:  msg,
+						Severity: "error",
+					}},
+				}, http.StatusConflict
+			}
+		}
+
+		allowed, reason := crd.TokenAllowedFor(alias, tokenName, op, obj.GetNamespace(), orktypes.ServeClassResources)
+		if !allowed {
+			msg := reason.Message(tokenName, op, obj.GetKind(), obj.GetNamespace())
+			return &ApplyResponse{
+				Message:    msg,
+				Violations: []ApplyViolation{{Field: "metadata", Message: msg, Severity: "error"}},
+			}, http.StatusForbidden
+		}
+
+		capture := &warningCapture{}
+		result, err := scopedDynamic(effectiveKube, capture).
+			Resource(gvr).Namespace(obj.GetNamespace()).
+			Patch(ctx, obj.GetName(), k8stypes.ApplyPatchType, patchBody, patchOpts)
+		if err != nil {
+			logger.FromContext(ctx).Warn().
+				Str("kind", obj.GetKind()).Str("name", obj.GetName()).
+				Str("tokenName", tokenName).Err(err).
+				Msg("gateway API: SSA rejected (intake)")
+			violations := extractViolations(err)
+			message := err.Error()
+			if len(violations) > 0 && violations[0].Message != "" {
+				message = violations[0].Message
+			}
+			return &ApplyResponse{
+				DryRun: dryRun, Message: message,
+				Warnings: capture.collect(), Violations: violations,
+			}, http.StatusUnprocessableEntity
+		}
+
+		pollURL := resolvePollURL(result.GetKind(), result.GetNamespace(), result.GetName(), crd.GetServePollingConfig(), resolver)
+		return &ApplyResponse{
+			Accepted: true, DryRun: dryRun,
+			Name: result.GetName(), Namespace: result.GetNamespace(),
+			Kind: result.GetKind(), APIVersion: result.GetAPIVersion(),
+			PollURL: pollURL, Warnings: capture.collect(), Payload: payload,
+		}, http.StatusOK
+	}
+
+	// ── Fan-out — apply to each resolved cluster target ─────────────────
+	var clusterResults []ClusterApplyResult
+	for _, t := range targets {
+		cr := ClusterApplyResult{Cluster: t.name}
+
+		op := orktypes.ServeOpCreate
+		existing, probeErr := t.kube.DynamicClient().
+			Resource(gvr).Namespace(obj.GetNamespace()).
+			Get(ctx, obj.GetName(), metav1.GetOptions{})
+		if probeErr == nil {
+			op = orktypes.ServeOpUpdate
+			ann := existing.GetAnnotations()
+			storedSurface := ann[labels.AnnotationServeAlias]
+			if storedSurface == "" {
+				storedSurface = ann[labels.AnnotationServeTarget]
+			}
+			if storedSurface != "" && storedSurface != incomingSurface {
+				cr.Message = fmt.Sprintf(
+					"routing surface conflict: resource was created via %q, cannot update via %q",
+					storedSurface, incomingSurface,
+				)
+				clusterResults = append(clusterResults, cr)
+				continue
+			}
+		}
+
+		allowed, reason := crd.TokenAllowedFor(alias, tokenName, op, obj.GetNamespace(), orktypes.ServeClassResources)
+		if !allowed {
+			cr.Message = reason.Message(tokenName, op, obj.GetKind(), obj.GetNamespace())
+			clusterResults = append(clusterResults, cr)
+			continue
+		}
+
+		capture := &warningCapture{}
+		result, err := scopedDynamic(t.kube, capture).
+			Resource(gvr).Namespace(obj.GetNamespace()).
+			Patch(ctx, obj.GetName(), k8stypes.ApplyPatchType, patchBody, patchOpts)
+		if err != nil {
+			logger.FromContext(ctx).Warn().
+				Str("cluster", t.name).Str("kind", obj.GetKind()).
+				Str("name", obj.GetName()).Err(err).
+				Msg("gateway API: SSA rejected (intake fan-out)")
+			violations := extractViolations(err)
+			message := err.Error()
+			if len(violations) > 0 && violations[0].Message != "" {
+				message = violations[0].Message
+			}
+			cr.Message = message
+			cr.Warnings = capture.collect()
+			cr.Violations = violations
+			clusterResults = append(clusterResults, cr)
+			continue
+		}
+
+		cr.Accepted = true
+		cr.Name = result.GetName()
+		cr.Namespace = result.GetNamespace()
+		cr.Warnings = capture.collect()
+		cr.PollURL = resolvePollURL(result.GetKind(), result.GetNamespace(), result.GetName(), crd.GetServePollingConfig(), resolver)
+		clusterResults = append(clusterResults, cr)
+	}
+
+	var anyAccepted, allAccepted bool
+	allAccepted = true
+	for _, cr := range clusterResults {
+		if cr.Accepted {
+			anyAccepted = true
+		} else {
+			allAccepted = false
+		}
+	}
 
 	return &ApplyResponse{
-		Accepted:   true,
-		DryRun:     dryRun,
-		Name:       result.GetName(),
-		Namespace:  result.GetNamespace(),
-		Kind:       result.GetKind(),
-		APIVersion: result.GetAPIVersion(),
-		PollURL:    pollURL,
-		Warnings:   capture.collect(),
-		Payload:    payload,
+		Accepted:       anyAccepted,
+		DryRun:         dryRun,
+		Kind:           obj.GetKind(),
+		APIVersion:     obj.GetAPIVersion(),
+		PartialSuccess: anyAccepted && !allAccepted,
+		Clusters:       clusterResults,
+		Payload:        payload,
 	}, http.StatusOK
 }

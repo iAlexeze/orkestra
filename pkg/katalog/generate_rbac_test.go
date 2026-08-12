@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+	rbacv1 "k8s.io/api/rbac/v1"
 )
 
 func contains(slice []string, s string) bool {
@@ -102,5 +104,267 @@ func TestGenerateRBACRules_CustomResources_Dedup(t *testing.T) {
 	}
 	if count != 1 {
 		t.Errorf("expected exactly 1 RBAC rule for cert-manager.io/certificates, got %d", count)
+	}
+}
+
+// ── helpers for cluster RBAC tests ───────────────────────────────────────────
+
+func newWidgetCRD(cluster string) orktypes.CRDEntry {
+	var clusters []string
+	if cluster != "" {
+		clusters = []string{cluster}
+	}
+	return orktypes.CRDEntry{
+		APITypes: orktypes.APITypes{
+			Group:   "example.io",
+			Version: "v1alpha1",
+			Kind:    "Widget",
+			Plural:  "widgets",
+		},
+		Serve: &orktypes.ServeConfig{
+			Enabled:  true,
+			Clusters: clusters,
+		},
+	}
+}
+
+func gatewayWithClusters(names ...string) *orktypes.GatewayConfig {
+	entries := make(map[string]orktypes.GatewayClusterConfig, len(names))
+	for _, n := range names {
+		entries[n] = orktypes.GatewayClusterConfig{Endpoint: "https://" + n + ".internal:6443"}
+	}
+	return &orktypes.GatewayConfig{
+		Enabled: true,
+		API:     &orktypes.GatewayAPIConfig{Enabled: true},
+		Clusters: &orktypes.GatewayClustersConfig{
+			Entries: entries,
+		},
+	}
+}
+
+func hasRuleForGroup(rules []rbacv1.PolicyRule, group string) bool {
+	for _, r := range rules {
+		for _, g := range r.APIGroups {
+			if g == group {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// ── GenerateGatewayRBACRules — cluster routing filter ────────────────────────
+
+func TestGenerateGatewayRBACRules_LocalCRDIncluded(t *testing.T) {
+	k := katalog.NewKatalogForTest(map[string]orktypes.CRDEntry{
+		"widget": newWidgetCRD(""), // no cluster = local
+	})
+	k.Gateway = gatewayWithClusters("prod")
+
+	rules := k.GenerateGatewayRBACRules()
+	found := false
+	for _, r := range rules {
+		if contains(r.APIGroups, "example.io") && contains(r.Resources, "widgets") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected local-routed CRD to appear in GenerateGatewayRBACRules, but it didn't")
+	}
+}
+
+func TestGenerateGatewayRBACRules_RemoteCRDExcluded(t *testing.T) {
+	k := katalog.NewKatalogForTest(map[string]orktypes.CRDEntry{
+		"widget": newWidgetCRD("prod"), // static remote cluster
+	})
+	k.Gateway = gatewayWithClusters("prod")
+
+	rules := k.GenerateGatewayRBACRules()
+	for _, r := range rules {
+		if contains(r.APIGroups, "example.io") && contains(r.Resources, "widgets") {
+			t.Error("remote-routed CRD should NOT appear in GenerateGatewayRBACRules, but it did")
+		}
+	}
+}
+
+// ── GenerateGatewayClusterRBACRules ──────────────────────────────────────────
+
+func TestGenerateGatewayClusterRBACRules_NoClusters(t *testing.T) {
+	k := katalog.NewKatalogForTest(map[string]orktypes.CRDEntry{
+		"widget": newWidgetCRD("prod"),
+	})
+	// No Gateway configured.
+	rules, warns := k.GenerateGatewayClusterRBACRules()
+	if rules != nil || warns != nil {
+		t.Errorf("expected nil, nil when no clusters registered; got rules=%v warns=%v", rules, warns)
+	}
+}
+
+func TestGenerateGatewayClusterRBACRules_StaticCluster(t *testing.T) {
+	k := katalog.NewKatalogForTest(map[string]orktypes.CRDEntry{
+		"widget": newWidgetCRD("prod"),
+	})
+	k.Gateway = gatewayWithClusters("prod", "staging")
+
+	clusterRules, warns := k.GenerateGatewayClusterRBACRules()
+
+	if len(warns) != 0 {
+		t.Errorf("expected no template warnings, got %v", warns)
+	}
+
+	prodRules, ok := clusterRules["prod"]
+	if !ok || len(prodRules) == 0 {
+		t.Error("expected rules for cluster 'prod', got none")
+	}
+
+	found := false
+	for _, r := range prodRules {
+		if contains(r.APIGroups, "example.io") && contains(r.Resources, "widgets") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("widget rule missing from prod cluster rules")
+	}
+
+	// staging has no CRDs routed to it — should be absent from the map.
+	if _, ok := clusterRules["staging"]; ok {
+		t.Error("staging should not appear in cluster rules (no CRDs route there)")
+	}
+}
+
+func TestGenerateGatewayClusterRBACRules_LocalCRDNotInClusterMap(t *testing.T) {
+	k := katalog.NewKatalogForTest(map[string]orktypes.CRDEntry{
+		"widget": newWidgetCRD(""), // local
+	})
+	k.Gateway = gatewayWithClusters("prod")
+
+	clusterRules, _ := k.GenerateGatewayClusterRBACRules()
+	if len(clusterRules) != 0 {
+		t.Errorf("local-routed CRD should produce no cluster RBAC entries, got %v", clusterRules)
+	}
+}
+
+func TestGenerateGatewayClusterRBACRules_TargetOverride(t *testing.T) {
+	// serve.clusters: [staging], target.prod-only.clusters: [prod]
+	widget := orktypes.CRDEntry{
+		APITypes: orktypes.APITypes{Group: "example.io", Version: "v1alpha1", Kind: "Widget", Plural: "widgets"},
+		Serve: &orktypes.ServeConfig{
+			Enabled:  true,
+			Clusters: []string{"staging", "prod"},
+			Target: orktypes.ServeTargetValue{
+				Entries: map[string]*orktypes.ServeTargetConfig{
+					"prod-only": {Primary: true, Clusters: []string{"prod"}},
+				},
+			},
+		},
+	}
+	k := katalog.NewKatalogForTest(map[string]orktypes.CRDEntry{"widget": widget})
+	k.Gateway = gatewayWithClusters("prod", "staging")
+
+	clusterRules, warns := k.GenerateGatewayClusterRBACRules()
+
+	if len(warns) != 0 {
+		t.Errorf("expected no template warnings, got %v", warns)
+	}
+	for _, cluster := range []string{"prod", "staging"} {
+		rules, ok := clusterRules[cluster]
+		if !ok || len(rules) == 0 {
+			t.Errorf("expected rules for cluster %q, got none", cluster)
+			continue
+		}
+		found := false
+		for _, r := range rules {
+			if contains(r.APIGroups, "example.io") {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("widget rule missing from cluster %q", cluster)
+		}
+	}
+}
+
+func TestGenerateGatewayClusterRBACRules_TemplateCluster(t *testing.T) {
+	widget := orktypes.CRDEntry{
+		APITypes: orktypes.APITypes{Group: "example.io", Version: "v1alpha1", Kind: "Widget", Plural: "widgets"},
+		Serve: &orktypes.ServeConfig{
+			Enabled:  true,
+			Clusters: []string{`{{ if eq .request.env "prod" }}prod{{ else }}staging{{ end }}`},
+		},
+	}
+	k := katalog.NewKatalogForTest(map[string]orktypes.CRDEntry{"widget": widget})
+	k.Gateway = gatewayWithClusters("prod", "staging")
+
+	clusterRules, warns := k.GenerateGatewayClusterRBACRules()
+
+	if len(warns) == 0 {
+		t.Error("expected a template warning for Widget, got none")
+	}
+	if !contains(warns, "Widget") {
+		t.Errorf("expected 'Widget' in template warnings, got %v", warns)
+	}
+
+	// Template-routed CRD must appear in ALL clusters.
+	for _, cluster := range []string{"prod", "staging"} {
+		rules, ok := clusterRules[cluster]
+		if !ok || len(rules) == 0 {
+			t.Errorf("template-routed CRD should appear in cluster %q, but it didn't", cluster)
+		}
+	}
+}
+
+func TestGenerateGatewayClusterRBACRules_MultiCRD(t *testing.T) {
+	crds := map[string]orktypes.CRDEntry{
+		"widget": newWidgetCRD("prod"),
+		"gadget": {
+			APITypes: orktypes.APITypes{Group: "example.io", Version: "v1alpha1", Kind: "Gadget", Plural: "gadgets"},
+			Serve:    &orktypes.ServeConfig{Enabled: true, Clusters: []string{"staging"}},
+		},
+		"gizmo": {
+			APITypes: orktypes.APITypes{Group: "example.io", Version: "v1alpha1", Kind: "Gizmo", Plural: "gizmos"},
+			Serve:    &orktypes.ServeConfig{Enabled: true}, // local
+		},
+	}
+	k := katalog.NewKatalogForTest(crds)
+	k.Gateway = gatewayWithClusters("prod", "staging")
+
+	clusterRules, warns := k.GenerateGatewayClusterRBACRules()
+
+	if len(warns) != 0 {
+		t.Errorf("expected no template warnings, got %v", warns)
+	}
+
+	hasResource := func(rules []rbacv1.PolicyRule, res string) bool {
+		for _, r := range rules {
+			if contains(r.Resources, res) {
+				return true
+			}
+		}
+		return false
+	}
+
+	if !hasResource(clusterRules["prod"], "widgets") {
+		t.Error("expected 'widgets' in prod cluster rules")
+	}
+	if hasResource(clusterRules["prod"], "gadgets") {
+		t.Error("'gadgets' should not appear in prod cluster rules")
+	}
+
+	if !hasResource(clusterRules["staging"], "gadgets") {
+		t.Error("expected 'gadgets' in staging cluster rules")
+	}
+	if hasResource(clusterRules["staging"], "widgets") {
+		t.Error("'widgets' should not appear in staging cluster rules")
+	}
+
+	// gizmo is local — not in any cluster map.
+	for cluster, rules := range clusterRules {
+		if hasResource(rules, "gizmos") {
+			t.Errorf("local-routed 'gizmos' should not appear in cluster %q rules", cluster)
+		}
 	}
 }

@@ -42,13 +42,14 @@ type APIServer struct {
 	tokens    *TokenSet
 	oidcCache *oidcpkg.Cache
 	kube      kubeclient.KubeClient
+	clusters  *ClusterRegistry
 	kat       *katalog.Katalog
 	ownNS     string
 }
 
 // NewAPIServer resolves all tokens (bootstrapping/rotating Secrets as
 // needed) and returns a ready-to-register server.
-func NewAPIServer(ctx context.Context, kat *katalog.Katalog, kube kubeclient.KubeClient, ownNS string) (*APIServer, error) {
+func NewAPIServer(ctx context.Context, kat *katalog.Katalog, kube kubeclient.KubeClient, clusters *ClusterRegistry, ownNS string) (*APIServer, error) {
 	if !kat.HasServeEnabled() {
 		return nil, nil // not enabled — caller skips registration
 	}
@@ -63,6 +64,7 @@ func NewAPIServer(ctx context.Context, kat *katalog.Katalog, kube kubeclient.Kub
 		tokens:    tokens,
 		oidcCache: cache,
 		kube:      kube,
+		clusters:  clusters,
 		kat:       kat,
 		ownNS:     ownNS,
 	}, nil
@@ -135,10 +137,10 @@ func (s *APIServer) Register(reg Registrar) {
 	}
 
 	// POST /api/v1/apply
-	reg.Register("/api/v1/apply", auth(applyHandler(s.kube, s.kat, notes)))
+	reg.Register("/api/v1/apply", auth(applyHandler(s.kube, s.clusters, s.kat, notes)))
 
 	// GET/DELETE /api/v1/resources/...
-	reg.Register("/api/v1/resources/", auth(resourcesHandler(s.kube, s.kat, notes)))
+	reg.Register("/api/v1/resources/", auth(resourcesHandler(s.kube, s.clusters, s.kat, notes)))
 
 	// GET /api/v1/schema/...
 	reg.Register("/api/v1/schema", auth(schemaHandler(s.kat)))
