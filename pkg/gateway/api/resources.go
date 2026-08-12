@@ -40,7 +40,7 @@ import (
 //   - Kind lookup: resolves the raw kind string to a CRD entry
 //   - Target lookup: resolves the target identifier to a CRD entry (when serve.target is set)
 func resourcesHandler(
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	clusters *ClusterRegistry,
 	kat *katalog.Katalog,
 	notes orktypes.NoteRegistry,
@@ -130,7 +130,7 @@ func resourcesHandler(
 func getResource(
 	w http.ResponseWriter,
 	r *http.Request,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	ns, name string,
 	crd *orktypes.CRDEntry,
 	alias string,
@@ -206,7 +206,7 @@ func getResource(
 func listResources(
 	w http.ResponseWriter,
 	r *http.Request,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	ns string,
 	crd *orktypes.CRDEntry,
 	alias string,
@@ -298,7 +298,7 @@ func listResources(
 func deleteResource(
 	w http.ResponseWriter,
 	r *http.Request,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	ns, name string,
 	crd *orktypes.CRDEntry,
 	alias string,

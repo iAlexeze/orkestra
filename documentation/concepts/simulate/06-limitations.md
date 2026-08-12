@@ -31,16 +31,20 @@ ork simulate --cr cr.yaml
 
 ## What simulate cannot cover
 
-| Feature | Use instead |
-|---------|-------------|
-| Admission webhook validation/mutation | `ork e2e` |
-| Real pod scheduling and readiness | `ork e2e` |
-| Watch events triggering reconciles | `ork e2e` |
-| Actual merge-patch / SSA semantics | `ork e2e` |
-| Cross-namespace secret reads | `ork e2e` |
-| Provider blocks (AWS, MongoDB) | `ork e2e` |
+| Feature | `--envtest` | `ork e2e` |
+|---------|-------------|-----------|
+| Real CRD schema enforcement | Yes | Yes |
+| Status subresource (`.status` not patchable via normal patch) | Yes | Yes |
+| Irregular plural resource names | Yes | Yes |
+| Real watch stream delivery | Yes | Yes |
+| Admission webhook validation/mutation | No | Yes |
+| Real pod scheduling and readiness | No | Yes |
+| Cross-namespace secret reads | No | Yes |
+| Provider blocks (AWS, MongoDB) | No | Yes |
 
-For anything in the right column, provision a kind cluster and run [ork e2e](../e2e/index.md).
+`--envtest` covers most API-server correctness concerns without a running cluster. Use `ork e2e` for admission webhooks, real pod lifecycle, and provider integrations.
+
+→ See [Running with envtest](07-envtest.md) for setup and usage.
 
 ---
 

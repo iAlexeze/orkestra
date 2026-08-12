@@ -45,7 +45,7 @@ type ResolvedNamespaceSpec struct {
 // Namespaces have no meaningful spec fields that can drift after creation.
 // There is no Update function — Create is called from both onCreate and
 // onReconcile paths. If it exists, it stays. If it was deleted, it is recreated.
-func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedNamespaceSpec) error {
+func Create(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedNamespaceSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("namespace.Create: invalid spec: %w", err)
 	}
@@ -82,7 +82,7 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 
 // Apply creates or updates a Namespace using Server-Side Apply.
 // Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
-func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedNamespaceSpec) error {
+func Apply(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedNamespaceSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("namespace.Apply: invalid spec: %w", err)
 	}
@@ -115,14 +115,14 @@ func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object,
 }
 
 // Update applies the Namespace via SSA. Delegates to Apply.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedNamespaceSpec) error {
+func Update(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedNamespaceSpec) error {
 	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the Namespace if it exists.
 // For most cases owner references handle cleanup automatically —
 // only use this when explicit cleanup control is needed.
-func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedNamespaceSpec) error {
+func Delete(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedNamespaceSpec) error {
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
 	}
@@ -147,7 +147,7 @@ func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 }
 
 // DeleteIfOwned deletes the Namespace if it exists and is owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 	owner domain.Object, name string) error {
 
 	existing, err := kube.Clientset().CoreV1().Namespaces().

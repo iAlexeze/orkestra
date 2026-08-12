@@ -79,7 +79,7 @@ This scaffolds the simplest Katalog — a single CRD that creates a Deployment a
 | [01-top-level.md](01-top-level.md) | Top-level Katalog structure — `metadata`, `spec.finalizers`, `spec.crds` |
 | [02-crd-entry.md](02-crd-entry.md) | Fields inside `spec.crds.<name>` — enabled, workers, resync, imports |
 | [03-apitypes.md](03-apitypes.md) | `apiTypes` — group, kind, version, plural, typed mode |
-| [04-operatorbox.md](04-operatorbox.md) | `operatorBox` — resource templates, reconciliation strategy |
+| [04-operatorbox.md](04-operatorbox.md) | `operatorBox` — resource templates, reconciliation strategy, pre-reconcile gates |
 | [05-status.md](05-status.md) | `status` — fields written to CR status after reconcile |
 | [06-when-conditions.md](06-when-conditions.md) | `when` / `anyOf` — conditional resource creation |
 | [07-validation.md](07-validation.md) | `validation` — admission rules |

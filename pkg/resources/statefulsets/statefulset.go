@@ -26,7 +26,7 @@ import (
 )
 
 // Create creates a StatefulSet owned by the CR if it does not already exist.
-func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedStatefulSetSpec) error {
+func Create(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedStatefulSetSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -60,7 +60,7 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 
 // Apply creates or updates a StatefulSet using Server-Side Apply.
 // Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
-func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedStatefulSetSpec) error {
+func Apply(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedStatefulSetSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -91,12 +91,12 @@ func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object,
 }
 
 // Update applies the StatefulSet via SSA. Delegates to Apply.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedStatefulSetSpec) error {
+func Update(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedStatefulSetSpec) error {
 	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the StatefulSet if it exists.
-func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedStatefulSetSpec) error {
+func Delete(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedStatefulSetSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -114,7 +114,7 @@ func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 }
 
 // DeleteIfOwned deletes the StatefulSet only if it is owned by the given CR.
-func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, name, namespace string) error {
+func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface, owner domain.Object, name, namespace string) error {
 	existing, err := kube.Clientset().AppsV1().StatefulSets(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {

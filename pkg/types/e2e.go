@@ -269,8 +269,14 @@ type E2ESpec struct {
 	// CRD is the path to the CRD YAML file for this operator.
 	// Applied before the bundle and before Orkestra starts.
 	CRD string `yaml:"crd,omitempty"`
+	// CRDFiles is a list of additional CRD YAML files. Applied in declaration order
+	// after CRD. Use when the operator manages multiple custom resource types.
+	CRDFiles []string `yaml:"crdFiles,omitempty"`
 	// CR is the path to the CR YAML file to apply during the test.
 	CR string `yaml:"cr,omitempty"`
+	// CRFiles is a list of additional CR YAML files. Applied in declaration order
+	// after CR. Use when the test needs multiple CR instances or kinds.
+	CRFiles []string `yaml:"crFiles,omitempty"`
 
 	// Custom declares the target runtime for this e2e test when it is not an
 	// Orkestra-managed operator. Orkestra still owns the cluster lifecycle, setup,
@@ -311,6 +317,26 @@ type E2ESpec struct {
 	// terminal when any expectation fails. Uses the same kubectl: DSL as expect
 	// entries — assertions are never evaluated; output is always printed.
 	OnFailure *E2EOnFailure `yaml:"onFailure,omitempty"`
+}
+
+// AllCRPaths returns all CR file paths in declaration order (cr then crFiles).
+func (s *E2ESpec) AllCRPaths() []string {
+	var paths []string
+	if s.CR != "" {
+		paths = append(paths, s.CR)
+	}
+	paths = append(paths, s.CRFiles...)
+	return paths
+}
+
+// AllCRDPaths returns all CRD file paths in declaration order (crd then crdFiles).
+func (s *E2ESpec) AllCRDPaths() []string {
+	var paths []string
+	if s.CRD != "" {
+		paths = append(paths, s.CRD)
+	}
+	paths = append(paths, s.CRDFiles...)
+	return paths
 }
 
 // E2EOnFailure declares diagnostic operations to run when any expectation fails.

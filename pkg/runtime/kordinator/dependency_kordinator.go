@@ -229,6 +229,7 @@ func NewDependencyKordinator(
 	kube *kubeclient.Kubeclient,
 	factory *informer.Factory,
 	katalog *ResourceKatalog,
+	kat *katalog.Katalog,
 	events *event.Event,
 	hs domain.Health,
 	queueRegistry *queue.QueueRegistry,
@@ -242,7 +243,7 @@ func NewDependencyKordinator(
 
 	kord := &DependencyKordinator{
 		Kontroller: NewKontroller(
-			kube, factory, katalog,
+			kube, factory, katalog, kat,
 			events, hs, crdHealthMap, orkHealth,
 			queueRegistry, defaultWorkqueue, defaultWorkers,
 		),

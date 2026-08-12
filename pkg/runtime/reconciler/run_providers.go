@@ -240,7 +240,7 @@ func resolveProviderBlock(
 }
 
 // filterProviderDeclarations removes declarations whose conditions fail.
-// Uses EvaluateWhen — handles when: (AND), anyOf: (OR), and all operators
+// Uses EvaluateConditions — handles when: (AND), anyOf: (OR), and all operators
 // including typeOf. Takes resolver data (not domain.Object) so that
 // template-resolved .spec.*, .status.*, .cross.* fields are visible.
 func filterProviderDeclarations(
@@ -250,7 +250,7 @@ func filterProviderDeclarations(
 ) []orktypes.ProviderDeclaration {
 	result := make([]orktypes.ProviderDeclaration, 0, len(declarations))
 	for _, decl := range declarations {
-		if !orktypes.EvaluateWhen(data, decl.Conditions, decl.AnyOf, eval) {
+		if !orktypes.EvaluateConditions(data, decl.Conditions, decl.AnyOf, eval) {
 			continue
 		}
 		result = append(result, orktypes.ProviderDeclaration{

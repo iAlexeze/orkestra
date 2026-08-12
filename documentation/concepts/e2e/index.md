@@ -109,6 +109,7 @@ ork e2e -f e2e.yaml
 ## See also
 
 - [ork simulate](../simulate/index.md) — the fast inner loop; use before E2E
+- [Declarative Integration Testing](../envtest/index.md) — the middle tier: real API server, no cluster
 - [E2E schema reference](../../reference/schema/04-e2e/index.md) — every field, every option
 - [Writing Your First E2E](../../getting-started/06-writing-your-first-e2e.md) — step-by-step walkthrough
 - [ork e2e CLI reference](../../reference/cli/08-e2e.md)

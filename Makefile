@@ -339,9 +339,11 @@ test-race:
 ENVTEST_K8S_VERSION ?= 1.32.x
 ENVTEST_BIN_DIR     ?= $(HOME)/.envtest-bins
 
-KUBEBUILDER_ASSETS ?= $(shell setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(ENVTEST_BIN_DIR) -p path 2>/dev/null)
-
 test-integration:
+	@command -v setup-envtest >/dev/null 2>&1 || \
+	  (echo "setup-envtest not found — installing..." && \
+	   go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
+	$(eval KUBEBUILDER_ASSETS := $(shell setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(ENVTEST_BIN_DIR) -p path))
 	@echo "Running integration tests (KUBEBUILDER_ASSETS=$(KUBEBUILDER_ASSETS))..."
 	KUBEBUILDER_ASSETS=$(KUBEBUILDER_ASSETS) \
 	go test ./tests/integration/... -v -tags=integration -count=1 -timeout=120s

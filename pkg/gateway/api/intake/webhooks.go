@@ -54,7 +54,7 @@ type Set struct {
 func Load(
 	ctx context.Context,
 	cfg *orktypes.GatewayWebhookConfig,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	ownNamespace string,
 ) (*Set, error) {
 	if cfg.IsEmpty() {
@@ -86,7 +86,7 @@ func loadGitSources(
 	ctx context.Context,
 	source string,
 	entries []orktypes.GitWebhookConfig,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	ownNamespace string,
 ) ([]ResolvedGitSource, error) {
 	resolved := make([]ResolvedGitSource, 0, len(entries))
@@ -110,7 +110,7 @@ func loadGitSources(
 func loadSlackSources(
 	ctx context.Context,
 	entries []orktypes.SlackWebhookConfig,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	ownNamespace string,
 ) ([]ResolvedSlackSource, error) {
 	resolved := make([]ResolvedSlackSource, 0, len(entries))
@@ -130,7 +130,7 @@ func loadSlackSources(
 func loadGenericSources(
 	ctx context.Context,
 	entries []orktypes.GenericWebhookConfig,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	ownNamespace string,
 ) ([]ResolvedGenericSource, error) {
 	resolved := make([]ResolvedGenericSource, 0, len(entries))

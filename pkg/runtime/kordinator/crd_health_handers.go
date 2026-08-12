@@ -40,6 +40,8 @@ type CRDHealthResponse struct {
 	HasUnhealthyDependencies bool                        `json:"hasUnhealthyDependencies"`
 	Dependencies             map[string]DependencyStatus `json:"dependencies,omitempty"`
 	Missing                  bool                        `json:"missing,omitempty"`
+	Gated                    bool                        `json:"gated,omitempty"`
+	GatedReason              string                      `json:"gatedReason,omitempty"`
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -91,6 +93,8 @@ func BuildCRDHealthHandler(
 			Dependencies:             h.GetDependencyStatuses(),
 			HasUnhealthyDependencies: h.HasUnhealthyDependencies(),
 			Missing:                  h.IsMissing(),
+			Gated:                    h.IsGated(),
+			GatedReason:              h.GatedReason(),
 		}
 
 		utils.WriteJSON(w, status, response)
@@ -150,7 +154,9 @@ type CRDInfoResponse struct {
 	// Populated only when autoscale: is declared. Used by cross-binary autoscale
 	// conditions via the source.endpoint HTTP fallback — the remote autoscaler
 	// calls this endpoint and reads "metrics.*" fields from the response.
-	Metrics map[string]interface{} `json:"metrics,omitempty"`
+	Metrics     map[string]interface{} `json:"metrics,omitempty"`
+	Gated       bool                   `json:"gated,omitempty"`
+	GatedReason string                 `json:"gatedReason,omitempty"`
 }
 
 type OperatorBoxInfo struct {
@@ -297,6 +303,8 @@ func BuildCRDInfoHandler(
 			AutoscalerEnabled: crd.AutoscaleEnabled(),
 			AutoscalerWorkers: wi,
 			Metrics:           autoMetrics,
+			Gated:             h.IsGated(),
+			GatedReason:       h.GatedReason(),
 		}
 
 		if crd.HasRollbackRules() {
@@ -424,8 +432,10 @@ type CRDSummaryResponse struct {
 	// Target is the identifier callers use against the Gateway API and schema
 	// API (serve.target, or the lowercased kind when unset). Empty when serve is
 	// not enabled for this CRD.
-	Target  string   `json:"target,omitempty"`
-	Aliases []string `json:"aliases,omitempty"`
+	Target      string   `json:"target,omitempty"`
+	Aliases     []string `json:"aliases,omitempty"`
+	Gated       bool     `json:"gated,omitempty"`
+	GatedReason string   `json:"gatedReason,omitempty"`
 }
 
 type OperatorBoxSummary struct {
@@ -501,6 +511,9 @@ func BuildKatalogHandler(
 			case isStarted && !isHealthy:
 				state = "degraded"
 				statusCounts.Degraded++
+			case isHealthy && h.IsGated():
+				state = "gated"
+				statusCounts.Healthy++
 			case isHealthy:
 				state = "healthy"
 				statusCounts.Healthy++
@@ -544,6 +557,8 @@ func BuildKatalogHandler(
 				StartedAt:        h.StartedAt(),
 				Uptime:           h.Uptime(),
 				ErrorRate:        h.ErrorRatePercent(),
+				Gated:            h.IsGated(),
+				GatedReason:      h.GatedReason(),
 				CrossAccess:      crd.CrossAccessEnabled(),
 				KatalogNamespace: crd.KatalogNamespace,
 				ServeEnabled:     crd.ServeEnabled(),

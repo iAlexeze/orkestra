@@ -12,7 +12,7 @@ import (
 )
 
 // dynamicClientProvider is the minimal capability liveUniquenessChecker
-// needs — narrower than kubeclient.KubeClient (which GenericReconciler's
+// needs — narrower than kubeclient.Interface (which GenericReconciler's
 // r.kube satisfies structurally) so tests can supply a fake dynamic client
 // without implementing the full interface (Clientset, Mapper, RestConfig, …).
 type dynamicClientProvider interface {

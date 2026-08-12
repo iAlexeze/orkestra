@@ -31,7 +31,7 @@ import (
 // being deleted — the Job must complete independently after the CR is gone.
 func RunJobs(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.JobTemplateSource,
@@ -39,7 +39,7 @@ func RunJobs(
 ) error {
 	for i, src := range srcs {
 		// 1. Evaluate conditions BEFORE resolving templates
-		conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf, resolver.TemplateEvaluator())
+		conditionPassed := orktypes.EvaluateConditions(resolver.Data(), src.Conditions, src.AnyOf, resolver.TemplateEvaluator())
 
 		// Early name/ns resolution — needed for guard check.
 		// Jobs are terminal (no DeleteIfOwned on condition fail), but guard

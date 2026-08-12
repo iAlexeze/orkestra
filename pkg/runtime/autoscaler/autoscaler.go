@@ -136,17 +136,17 @@ func (a *Autoscaler) evaluate(ctx context.Context) {
 	}
 }
 
-// conditionsMet builds a data map from live metrics and delegates to EvaluateWhen —
+// conditionsMet builds a data map from live metrics and delegates to EvaluateConditions —
 // the same general condition evaluator used by the reconciler for template
 // when:/anyOf: conditions. Time-based conditions (time:, dayOfWeek:, cron:) are
 // handled inside EvaluateOneCond. Metric conditions are pre-populated into the
 // data map so NavigateDotPath resolves them as normal dot-paths.
 func (a *Autoscaler) conditionsMet(_ context.Context) bool {
 	data := a.buildConditionData()
-	return orktypes.EvaluateWhen(data, a.spec.Conditions.When, a.spec.Conditions.AnyOf, nil)
+	return orktypes.EvaluateConditions(data, a.spec.Conditions.When, a.spec.Conditions.AnyOf, nil)
 }
 
-// buildConditionData returns the data map passed to EvaluateWhen.
+// buildConditionData returns the data map passed to EvaluateConditions.
 // Own metrics live under "metrics.*". Cross-CRD metrics are resolved (registry
 // first, HTTP fallback second) and injected under "cross.<crd>.metrics.<field>".
 // Cron windows are ticked and injected under "cron.<expr>.open" so that

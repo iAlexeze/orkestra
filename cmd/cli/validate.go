@@ -461,12 +461,21 @@ func validateSimulateFileOpts(path string, quiet, playMode bool) error {
 		} else if !fileExists(filepath.Join(baseDir, doc.Spec.Katalog)) {
 			errs = append(errs, "spec.katalog not found: "+doc.Spec.Katalog)
 		}
-		if doc.Spec.CR == "" {
+		if len(doc.Spec.AllCRPaths()) == 0 {
 			if !playMode {
-				errs = append(errs, "spec.cr is required (or use --play if ork serve play will supply the CR)")
+				errs = append(errs, "spec.cr or spec.crFiles is required (or use --play if ork serve play will supply the CR)")
 			}
-		} else if !fileExists(filepath.Join(baseDir, doc.Spec.CR)) {
-			errs = append(errs, "spec.cr not found: "+doc.Spec.CR)
+		} else {
+			for _, p := range doc.Spec.AllCRPaths() {
+				if !fileExists(filepath.Join(baseDir, p)) {
+					errs = append(errs, "cr file not found: "+p)
+				}
+			}
+		}
+		for _, p := range doc.Spec.AllCRDPaths() {
+			if !fileExists(filepath.Join(baseDir, p)) {
+				errs = append(errs, "crd file not found: "+p)
+			}
 		}
 		if doc.Spec.Expect != nil {
 			if expandErr := orktypes.ExpandSimulateOpsIncludes(doc.Spec.Expect, baseDir); expandErr != nil {

@@ -315,6 +315,21 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 				Msg("informer: namespace filter registered (Tier 2)")
 		}
 
+		// ── Enqueue filter — Tier 2b (pre-enqueue condition gate) ─────────────
+		// Register when the CRD declares operatorBox.preReconcile.enqueueGate or
+		// preReconcile.external conditions.
+		if rc := crd.PreReconcileCheck(); rc.HasEnqueueGate() {
+			crdNameForFilter := crd.Name
+			katForFilter := kat
+			cs := kube.Clientset()
+			infFactory.RegisterEnqueueFilter(gvk, func(obj domain.Object) bool {
+				return katForFilter.EvaluateEnqueueFilter(ctx, crdNameForFilter, obj, cs)
+			})
+			logger.Debug().
+				Str("crd", crd.APITypes.Kind).
+				Msg("informer: enqueue filter registered (Tier 2b)")
+		}
+
 		// Choose typed or dynamic informer.
 		// Dynamic CRDs use *unstructured.Unstructured — no Go type needed.
 		// Typed CRDs use the registered concrete Go type for type-safe access.
@@ -373,7 +388,7 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 			logger.Debug().Str("gvk", gvk).Msg("wiring GenericReconciler factory")
 
 			// Attach hooks.args to a copy of the kube client; hooks read them via kube.Args().
-			var hookKube kubeclient.KubeClient = kube
+			var hookKube kubeclient.Interface = kube
 			if args := crd.HooksArgs(); len(args) > 0 {
 				hookKube = kube.WithArgs(kubeclient.Args(args))
 			}
@@ -406,7 +421,7 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 			logger.Debug().Str("gvk", gvk).Msg("wiring custom reconciler factory")
 
 			// Attach constructor.args to a copy of the kube client; the constructor reads them via kube.Args().
-			var ctorKube kubeclient.KubeClient = kube
+			var ctorKube kubeclient.Interface = kube
 			if args := crd.ConstructorArgs(); len(args) > 0 {
 				ctorKube = kube.WithArgs(kubeclient.Args(args))
 			}
@@ -512,6 +527,7 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 		kube,
 		infFactory,
 		ktrlRegistry,
+		kat,
 		ev,
 		hs,
 		queueRegistry,

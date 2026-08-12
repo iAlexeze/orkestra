@@ -341,8 +341,8 @@ grep -rn "TODO(ork migrate)" .
 Work through each marker in order:
 
 - [ ] Set ` + "`" + `group` + "`" + `, ` + "`" + `kind` + "`" + `, ` + "`" + `plural` + "`" + `, ` + "`" + `location` + "`" + ` in ` + "`" + `katalog.yaml` + "`" + `
-- [ ] Replace the embedded ` + "`" + `client.Client` + "`" + ` struct field with ` + "`" + `kube kubeclient.KubeClient` + "`" + `
-- [ ] Update your constructor to accept ` + "`" + `(kube kubeclient.KubeClient, informer cache.SharedIndexInformer, ev event.Recorder)` + "`" + `
+- [ ] Replace the embedded ` + "`" + `client.Client` + "`" + ` struct field with ` + "`" + `kube kubeclient.Interface` + "`" + `
+- [ ] Update your constructor to accept ` + "`" + `(kube kubeclient.Interface, informer cache.SharedIndexInformer, ev event.Recorder)` + "`" + `
 - [ ] Rename ` + "`" + `r.client` + "`" + ` → ` + "`" + `r.kube` + "`" + ` at all call sites (` + "`" + `Patch` + "`" + ` lines compile unchanged — only the receiver name changes)
 - [ ] Replace ` + "`" + `r.Status().Update()` + "`" + ` with ` + "`" + `r.kube.PatchStatus(ctx, obj, map[string]interface{}{...})` + "`" + `
 - [ ] Add ` + "`" + `github.com/orkspace/orkestra/domain` + "`" + ` and ` + "`" + `pkg/kubeclient` + "`" + ` imports

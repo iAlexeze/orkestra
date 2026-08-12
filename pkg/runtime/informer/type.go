@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/runtime/queue"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -78,6 +79,12 @@ type Factory struct {
 	// Populated by RegisterNamespaceFilter during CRD registration.
 	// Checked in handleEvent before enqueue — read lock only on the hot path.
 	namespaceFilters map[string]*NamespaceFilter
+
+	// enqueueFilters maps GVK string to a pre-enqueue condition gate function.
+	// Populated by RegisterEnqueueFilter during CRD registration.
+	// enqueueAllowed unwraps tombstones and asserts to domain.Object before
+	// calling the function — works for both dynamic and typed CRDs.
+	enqueueFilters map[string]func(domain.Object) bool
 }
 
 func SharedInformerFactory(
@@ -100,5 +107,6 @@ func SharedInformerFactory(
 		missing:          make(map[string]*InformerEntry),
 		ready:            make(chan struct{}),
 		namespaceFilters: make(map[string]*NamespaceFilter),
+		enqueueFilters:   make(map[string]func(domain.Object) bool),
 	}
 }

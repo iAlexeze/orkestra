@@ -23,7 +23,7 @@ import (
 
 // Create creates a PersistentVolume if it does not already exist.
 // PVs are cluster-scoped — owner references are set as labels only.
-func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPVSpec) error {
+func Create(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedPVSpec) error {
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 
 // Apply creates or updates a PersistentVolume using Server-Side Apply.
 // PVs are cluster-scoped — no namespace arg. Sends only fields Orkestra owns.
-func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPVSpec) error {
+func Apply(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedPVSpec) error {
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
 	}
@@ -77,12 +77,12 @@ func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object,
 }
 
 // Update applies the PV via SSA. Delegates to Apply.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPVSpec) error {
+func Update(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedPVSpec) error {
 	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the PV if it exists.
-func Delete(ctx context.Context, kube kubeclient.KubeClient, name string) error {
+func Delete(ctx context.Context, kube kubeclient.Interface, name string) error {
 	err := kube.Clientset().CoreV1().PersistentVolumes().Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -95,7 +95,7 @@ func Delete(ctx context.Context, kube kubeclient.KubeClient, name string) error 
 }
 
 // DeleteIfOwned deletes the PV only if the owner label matches.
-func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, name string) error {
+func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface, owner domain.Object, name string) error {
 	existing, err := kube.Clientset().CoreV1().PersistentVolumes().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {

@@ -386,7 +386,7 @@ func rewriteStruct(src []byte, receiverType string) ([]byte, bool) {
 					start: off(fset, st.Fields.Opening),
 					end:   off(fset, st.Fields.Closing) + 1,
 					text: "{\n\tinformer cache.SharedIndexInformer\n" +
-						"\tkube     kubeclient.KubeClient\n" +
+						"\tkube     kubeclient.Interface\n" +
 						"\tev       event.Recorder\n}",
 				})
 			}
@@ -407,7 +407,7 @@ func rewriteStruct(src []byte, receiverType string) ([]byte, bool) {
 		constructor := fmt.Sprintf(`
 // %s is the constructor function registered in the Katalog.
 func %s(
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	informer cache.SharedIndexInformer,
 	ev event.Recorder,
 ) domain.Reconciler {

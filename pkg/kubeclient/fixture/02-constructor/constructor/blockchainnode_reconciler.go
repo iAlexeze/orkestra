@@ -20,13 +20,13 @@ import (
 // BlockchainNodeReconciler implements domain.Reconciler for the BlockchainNode CRD.
 type BlockchainNodeReconciler struct {
 	informer cache.SharedIndexInformer
-	kube     kubeclient.KubeClient
+	kube     kubeclient.Interface
 	ev       event.Recorder
 }
 
 // NewBlockchainNodeReconciler is the constructor function registered in the Katalog.
 func NewBlockchainNodeReconciler(
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	informer cache.SharedIndexInformer,
 	ev event.Recorder,
 ) domain.Reconciler {

@@ -16,7 +16,7 @@ import (
 //	{type, name, current, target}.
 //
 // _scaleTarget: from spec.scaleTargetRef — {name, kind, apiVersion}.
-func enrichGroupWithHPAData(_ context.Context, _ kubeclient.KubeClient, m map[string]interface{}, crd orktypes.CRDEntry) {
+func enrichGroupWithHPAData(_ context.Context, _ kubeclient.Interface, m map[string]interface{}, crd orktypes.CRDEntry) {
 	if !enrichmentEnabled("hpa", crd) {
 		return
 	}

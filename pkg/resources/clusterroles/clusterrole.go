@@ -31,7 +31,7 @@ type ResolvedClusterRoleSpec struct {
 // Create creates a ClusterRole if it does not already exist.
 // Idempotent — skips if the ClusterRole already exists.
 // ClusterRoles are cluster-scoped; ownership is tracked via the orkestra.io/owner label.
-func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedClusterRoleSpec) error {
+func Create(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedClusterRoleSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("clusterrole.Create: invalid spec: %w", err)
 	}
@@ -67,7 +67,7 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 
 // Apply creates or updates a ClusterRole using Server-Side Apply.
 // Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
-func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedClusterRoleSpec) error {
+func Apply(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedClusterRoleSpec) error {
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
 	}
@@ -96,12 +96,12 @@ func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object,
 }
 
 // Update applies the ClusterRole via SSA. Delegates to Apply.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedClusterRoleSpec) error {
+func Update(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedClusterRoleSpec) error {
 	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the ClusterRole if it exists.
-func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedClusterRoleSpec) error {
+func Delete(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedClusterRoleSpec) error {
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 }
 
 // DeleteIfOwned deletes the ClusterRole only if it is owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 	owner domain.Object, name string) error {
 
 	existing, err := kube.Clientset().RbacV1().ClusterRoles().Get(ctx, name, metav1.GetOptions{})

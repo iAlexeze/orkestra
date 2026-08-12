@@ -23,10 +23,33 @@ type SimulateMeta struct {
 
 type SimulateSpec struct {
 	Katalog      string          `yaml:"katalog"`
-	CR           string          `yaml:"cr"`
+	CR           string          `yaml:"cr,omitempty"`
+	CRFiles      []string        `yaml:"crFiles,omitempty"`
+	CRD          string          `yaml:"crd,omitempty"`
+	CRDFiles     []string        `yaml:"crdFiles,omitempty"`
 	Cycles       int             `yaml:"cycles,omitempty"` // default 10 when unset
 	SkipExternal bool            `yaml:"skipExternal,omitempty"`
 	Expect       *SimulateExpect `yaml:"expect,omitempty"` // nil = op-print only
+}
+
+// AllCRPaths returns all CR file paths in declaration order (cr then crFiles).
+func (s *SimulateSpec) AllCRPaths() []string {
+	var paths []string
+	if s.CR != "" {
+		paths = append(paths, s.CR)
+	}
+	paths = append(paths, s.CRFiles...)
+	return paths
+}
+
+// AllCRDPaths returns all CRD file paths in declaration order (crd then crdFiles).
+func (s *SimulateSpec) AllCRDPaths() []string {
+	var paths []string
+	if s.CRD != "" {
+		paths = append(paths, s.CRD)
+	}
+	paths = append(paths, s.CRDFiles...)
+	return paths
 }
 
 // SimulateExpect declares what the reconciler must produce.

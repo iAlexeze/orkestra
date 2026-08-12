@@ -129,7 +129,7 @@ func (r *GenericReconciler[PTR]) runTemplateReconcile(ctx context.Context, resol
 // forEach expansion happens here — run_*.go receives already-expanded slices.
 func (r *GenericReconciler[PTR]) runResourceGroup(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	obj domain.Object,
 	t *orktypes.HookTemplates,

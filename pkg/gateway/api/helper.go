@@ -110,7 +110,7 @@ func writeKubeError(w http.ResponseWriter, err error) {
 
 // debugResourceExistenceOnSSAError checks resource existence and returns structured logs and response
 // if the resource does not exist. Used by SSA.
-func debugResourceExistenceOnSSAError(obj *unstructured.Unstructured, gvr schema.GroupVersionResource, w http.ResponseWriter, r *http.Request, kube kubeclient.KubeClient) bool {
+func debugResourceExistenceOnSSAError(obj *unstructured.Unstructured, gvr schema.GroupVersionResource, w http.ResponseWriter, r *http.Request, kube kubeclient.Interface) bool {
 	// ─── Debug: Log the GVR and check if the resource exists ──────────────────
 	logger.FromContext(r.Context()).Debug().
 		Str("gvr", gvr.String()).

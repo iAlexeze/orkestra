@@ -1,141 +1,53 @@
-# 05 — When Conditions
+# When Conditions
 
-One CRD. One Katalog. Three tiers. Different resources at each tier — without
-a single line of conditional logic in Go.
-
-This is the declarative topology pattern: the operator's behavior changes
-continuously with the state of the CR.
-
-**What you learn:** `when:` conditions, multi-condition gates, topology that
-changes with CR state, the difference between conditions and admission rules.
-
-**Builds on:** [04 — Multi-Resource with Status](../04-multi-resource/README.md)
-
----
-
-## The pattern
-
-`when:` conditions are evaluated per-resource, per-reconcile-cycle. When
-conditions evaluate to false, the resource is simply not created — no error,
-no warning, no event. The CR is healthy. The reconcile succeeds.
-
-When the CR changes (e.g. `spec.tier` changes from `free` to `enterprise`),
-the next reconcile creates all resources whose conditions now pass. Resources
-whose conditions no longer pass are not re-created. Because `reconcile: true`
-is set on all resources, this is handled automatically.
-
----
-
-## Step 1 — Start with the free tier
+Orkestra has two levels of conditional evaluation — one inside the reconciler,
+one before it. This pack covers both.
 
 ```bash
-kubectl apply -f crd.yaml
-ork run --file katalog.yaml
-kubectl apply -f cr-free.yaml
-```
-
-Check what was created:
-
-```bash
-kubectl get deployments,services,configmaps | grep my-platform
-```
-
-Expected — only the core resources, no LoadBalancer, no monitoring, no enterprise config:
-
-```
-deployment.apps/my-platform          1/1
-service/my-platform-internal         ClusterIP
-```
-
-Check status:
-
-```bash
-kubectl get platform my-platform -o jsonpath='{.status.tier}'
-# free
-```
-
-## Step 2 — Upgrade to enterprise
-
-No need to delete the CR. Just patch it:
-
-```bash
-kubectl patch platform my-platform --type=merge \
-  -p '{"spec":{"tier":"enterprise","replicas":4,"monitoring":true}}'
-```
-
-Wait one reconcile cycle, then check:
-
-```bash
-kubectl get deployments,services,configmaps | grep my-platform
-```
-
-Expected — all resources now exist:
-
-```
-deployment.apps/my-platform                   4/4
-service/my-platform-internal                  ClusterIP
-service/my-platform-lb                        LoadBalancer   ← appeared
-configmap/my-platform-monitoring              2              ← appeared
-configmap/my-platform-enterprise-config       3              ← appeared
-```
-
-The topology changed with the data. No operator code changed. No redeployment.
-
-## Step 3 — Downgrade back to free
-
-```bash
-kubectl patch platform my-platform --type=merge \
-  -p '{"spec":{"tier":"free","replicas":1,"monitoring":false}}'
-```
-
-Wait one reconcile cycle:
-
-```bash
-kubectl get services | grep my-platform
-# my-platform-lb is gone — conditions no longer pass, not re-created
-```
-
-> [!NOTE]
-> It may take a few seconds for the cluster to completely clear the load balancer.
-
-```bash
-kubectl get configmaps | grep my-platform
-# monitoring and enterprise configmaps gone
-```
-
-## Step 4 — Understand the status
-
-The status shows the current tier and replica state at all times:
-
-```bash
-kubectl get platform my-platform -o yaml | grep -A15 "status:"
-```
-
-```yaml
-status:
-  conditions:
-    - type: Ready
-      status: "True"
-  tier: free          ← updates with the CR spec
-  phase: Running
-  readyReplicas: "1"  ← from the live Deployment
+ork init --pack intermediate/05-when-conditions
 ```
 
 ---
 
-## The key insight
+## Examples
 
-`when:` conditions answer: *given that this CR is valid, should this resource
-exist right now?*
-
-They are not admission rules — the CR is valid at every tier value. They are
-not business logic — there is no Go code. They are declarations of when a
-resource belongs in the world.
+| Example | What it teaches |
+|---------|-----------------|
+| [Conditional Resources](conditional-resources/README.md) | `when:` on individual resources inside the reconciler. Same CRD, different topology per tier — LoadBalancer only for pro and enterprise, monitoring ConfigMap only when enabled. |
+| [Conditional Reconciliation](conditional-reconciliation/README.md) | `operatorBox.reconcile:` evaluated by the kordinator before the reconciler is ever called. When conditions fail, the item is discarded — no resources touched, no error recorded, operator stays healthy. |
 
 ---
 
-## Cleanup
+## Running an example
 
 ```bash
-chmod +x cleanup.sh && ./cleanup.sh
+cd conditional-resources
+ork run
+```
+
+```bash
+cd conditional-reconciliation
+ork run
+```
+
+---
+
+## Simulate
+
+Conditional reconciliation ships with envtest simulate scenarios — presence
+(gate passes) and absence (gate discards). Run them against a real API server:
+
+```bash
+ork simulate -f conditional-reconciliation/simulate.yaml --envtest
+```
+
+---
+
+## E2E
+
+Each example ships with an `e2e.yaml`. Run one:
+
+```bash
+ork e2e -f conditional-resources/e2e.yaml
+ork e2e -f conditional-reconciliation/e2e.yaml
 ```

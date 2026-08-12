@@ -34,7 +34,7 @@ func cooldownKey(ns, crName, name string) string {
 // Called on every reconcile — the resync period is the evaluation tick.
 func EvaluateWorkloadAutoscaleDeployment(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	crName, ns, resourceName string,
 	cfg *orktypes.WorkloadAutoscale,
@@ -45,7 +45,7 @@ func EvaluateWorkloadAutoscaleDeployment(
 // EvaluateWorkloadAutoscaleStatefulSet is EvaluateWorkloadAutoscale for StatefulSets.
 func EvaluateWorkloadAutoscaleStatefulSet(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	crName, ns, resourceName string,
 	cfg *orktypes.WorkloadAutoscale,
@@ -56,7 +56,7 @@ func EvaluateWorkloadAutoscaleStatefulSet(
 // EvaluateWorkloadAutoscaleReplicaSet is EvaluateWorkloadAutoscale for ReplicaSets.
 func EvaluateWorkloadAutoscaleReplicaSet(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	crName, ns, resourceName string,
 	cfg *orktypes.WorkloadAutoscale,
@@ -66,7 +66,7 @@ func EvaluateWorkloadAutoscaleReplicaSet(
 
 func evaluateWorkloadAutoscaleForKind(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	crName, ns, resourceName string,
 	cfg *orktypes.WorkloadAutoscale,
@@ -123,7 +123,7 @@ func evaluateWorkloadAutoscaleForKind(
 	// ── Evaluate scale-up ────────────────────────────────────────────────────
 	if cfg.ScaleUp != nil && current < max {
 		c := cfg.ScaleUp
-		if orktypes.EvaluateWhen(data, c.Conditions.When, c.Conditions.AnyOf, eval) {
+		if orktypes.EvaluateConditions(data, c.Conditions.When, c.Conditions.AnyOf, eval) {
 			target := resolveTarget(current, max, c, true)
 			if target != current {
 				log.Info().Int32("from", current).Int32("to", target).Msg("autoscale: scaling up")
@@ -141,7 +141,7 @@ func evaluateWorkloadAutoscaleForKind(
 	// ── Evaluate scale-down ──────────────────────────────────────────────────
 	if cfg.ScaleDown != nil && current > min {
 		c := cfg.ScaleDown
-		if orktypes.EvaluateWhen(data, c.Conditions.When, c.Conditions.AnyOf, eval) {
+		if orktypes.EvaluateConditions(data, c.Conditions.When, c.Conditions.AnyOf, eval) {
 			target := resolveTarget(current, min, c, false)
 			if target != current {
 				log.Info().Int32("from", current).Int32("to", target).Msg("autoscale: scaling down")
@@ -192,7 +192,7 @@ const cooldownAnnotation = "orkestra.orkspace.io/last-scale-event"
 
 // readCooldownAnnotation reads the last scale event time from the workload annotation.
 // Returns zero time if the annotation is absent or unparseable.
-func readCooldownAnnotation(ctx context.Context, kube kubeclient.KubeClient, ns, name string, kind WorkloadKind) (time.Time, error) {
+func readCooldownAnnotation(ctx context.Context, kube kubeclient.Interface, ns, name string, kind WorkloadKind) (time.Time, error) {
 	var annotations map[string]string
 	switch kind {
 	case WorkloadKindStatefulSet:
@@ -223,7 +223,7 @@ func readCooldownAnnotation(ctx context.Context, kube kubeclient.KubeClient, ns,
 
 // writeCooldownAnnotation stamps the last scale event time onto the workload annotation.
 // Errors are non-fatal — the sync.Map remains the authoritative in-process state.
-func writeCooldownAnnotation(ctx context.Context, kube kubeclient.KubeClient, ns, name string, kind WorkloadKind, t time.Time) error {
+func writeCooldownAnnotation(ctx context.Context, kube kubeclient.Interface, ns, name string, kind WorkloadKind, t time.Time) error {
 	v := t.UTC().Format(time.RFC3339)
 	switch kind {
 	case WorkloadKindStatefulSet:
@@ -262,7 +262,7 @@ func writeCooldownAnnotation(ctx context.Context, kube kubeclient.KubeClient, ns
 	}
 }
 
-func getCurrentReplicas(ctx context.Context, kube kubeclient.KubeClient, ns, name string, kind WorkloadKind) (int32, error) {
+func getCurrentReplicas(ctx context.Context, kube kubeclient.Interface, ns, name string, kind WorkloadKind) (int32, error) {
 	switch kind {
 	case WorkloadKindStatefulSet:
 		sts, err := kube.Clientset().AppsV1().StatefulSets(ns).Get(ctx, name, metav1.GetOptions{})
@@ -294,7 +294,7 @@ func getCurrentReplicas(ctx context.Context, kube kubeclient.KubeClient, ns, nam
 	}
 }
 
-func patchReplicas(ctx context.Context, kube kubeclient.KubeClient, ns, name string, replicas int32, kind WorkloadKind) error {
+func patchReplicas(ctx context.Context, kube kubeclient.Interface, ns, name string, replicas int32, kind WorkloadKind) error {
 	switch kind {
 	case WorkloadKindStatefulSet:
 		sts, err := kube.Clientset().AppsV1().StatefulSets(ns).Get(ctx, name, metav1.GetOptions{})

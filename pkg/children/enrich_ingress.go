@@ -14,7 +14,7 @@ import (
 //
 // _loadBalancerIPs: flat list of IP/hostname strings from status.loadBalancer.ingress.
 // _tlsSecrets: list of full Secret objects named in spec.tls[*].secretName.
-func enrichGroupWithIngressData(ctx context.Context, kube kubeclient.KubeClient, m map[string]interface{}, crd orktypes.CRDEntry) {
+func enrichGroupWithIngressData(ctx context.Context, kube kubeclient.Interface, m map[string]interface{}, crd orktypes.CRDEntry) {
 	if !enrichmentEnabled("ingress", crd) {
 		return
 	}

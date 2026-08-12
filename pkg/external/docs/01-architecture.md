@@ -40,7 +40,7 @@ Same package. Same `Run()` function. Same result structure. The reconciler enric
 ```text
 for each call:
    │
-   ├── EvaluateWhen()           — skip if conditions not met
+   ├── EvaluateConditions()           — skip if conditions not met
    │     result: skippedResult() injected; continue
    │
    ├── resolver.Resolve(url)    — template expressions in url: are evaluated

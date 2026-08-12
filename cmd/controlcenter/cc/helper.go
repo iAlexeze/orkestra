@@ -32,14 +32,16 @@ func synthHealthFromSummary(name string, s *CRDSummary) *CRDHealth {
 		return &CRDHealth{Name: name, State: "started", Started: true}
 	}
 	return &CRDHealth{
-		Name:       name,
-		State:      s.State,
-		Healthy:    s.Healthy,
-		Started:    s.Started,
-		Pending:    s.Pending,
-		Uptime:     s.Uptime,
-		ErrorRate:  s.ErrorRate,
-		QueueDepth: s.QueueDepth,
+		Name:        name,
+		State:       s.State,
+		Healthy:     s.Healthy,
+		Started:     s.Started,
+		Pending:     s.Pending,
+		Uptime:      s.Uptime,
+		ErrorRate:   s.ErrorRate,
+		QueueDepth:  s.QueueDepth,
+		Gated:       s.Gated,
+		GatedReason: s.GatedReason,
 	}
 }
 

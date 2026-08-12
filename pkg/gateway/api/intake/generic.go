@@ -22,7 +22,7 @@ const maxIntakeBodyBytes = 1 << 20
 // ApplyTargetFields pipeline a direct POST /api/v1/apply call does.
 func NewGenericHandler(
 	src ResolvedGenericSource,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	clusters *api.ClusterRegistry,
 	kat *katalog.Katalog,
 	notes orktypes.NoteRegistry,

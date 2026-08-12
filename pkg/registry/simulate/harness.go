@@ -239,35 +239,21 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 	if err != nil {
 		return nil, fmt.Errorf("computing CR key: %w", err)
 	}
-	var prevCycleOps []Op
 
-	for cycle := 1; cycle <= maxCycles; cycle++ {
-		fakeKube.AdvanceCycle()
-
-		cycleResult := CycleResult{Cycle: cycle}
-		cycleResult.Error = r.Reconcile(ctx, key)
-		cycleResult.Ops = fakeKube.OpsForCycle(cycle)
-		result.Cycles = append(result.Cycles, cycleResult)
-
-		// Mark Deployments created this cycle as ready so the reconciler
-		// can progress through state transitions on the next cycle.
-		for _, op := range cycleResult.Ops {
-			if op.Verb == "create" && op.Resource == "deployments" {
-				fakeKube.MarkDeploymentReady(op.Namespace, op.Name)
-			}
+	r = wrapWithGate(r, crdEntry.OperatorBox.PreReconcile, func() *unstructured.Unstructured {
+		item, exists, _ := indexer.GetByKey(key)
+		if !exists || item == nil {
+			return nil
 		}
-
-		// Record the first cycle where ops stabilise. Do not break — run all
-		// requested cycles so --cycles N is honoured exactly.
-		if !result.Steady && cycle > 1 && opsMatch(cycleResult.Ops, prevCycleOps) {
-			result.Steady = true
-			result.SteadyAt = cycle
+		if u, ok := item.(*unstructured.Unstructured); ok {
+			return u
 		}
-		prevCycleOps = cycleResult.Ops
-	}
+		return cr
+	})
 
-	result.AllOps = fakeKube.Ops()
-	return result, nil
+	loopResult := runLoop(ctx, r, fakeKube, key, maxCycles)
+	loopResult.Notes = result.Notes
+	return loopResult, nil
 }
 
 // seedManagedMeta pre-populates managed labels and annotations on the CR so the

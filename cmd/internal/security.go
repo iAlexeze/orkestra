@@ -15,6 +15,9 @@
 //
 // All operations fatal-log on failure — if security cannot be applied, the
 // operator cannot function correctly.
+
+//go:build gateway
+
 package internal
 
 import (

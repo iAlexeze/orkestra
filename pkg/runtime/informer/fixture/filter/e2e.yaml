@@ -1,0 +1,109 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: E2E
+metadata:
+  name: filter-probe-e2e
+  description: >
+    Living fixture for preReconcile.enqueueGate. Verifies that the enqueue gate
+    drops objects before they enter the queue. An active CR is reconciled and
+    its ConfigMap is created. An inactive CR is accepted by the API server but
+    the informer drops the event — reconciler never runs, no ConfigMap, and
+    health stays healthy (not gated — the kordinator never sees the object).
+
+spec:
+  katalog: ./katalog.yaml
+  crd: ./crd.yaml
+  cr: ./cr-active.yaml
+
+  cluster:
+    provider: kind
+    name: ork-filter-probe
+    reuse: false
+
+  expect:
+    # Active CR — filter passes, reconciler runs, ConfigMap created.
+    - name: Active CR reconciled — ConfigMap created, health healthy
+      after: cr-applied
+      timeout: 60s
+      kubectl:
+        get:
+          - kind: FilterProbe
+            name: probe-active
+            namespace: default
+            field: .status.phase
+            equals: Running
+      resources:
+        - kind: ConfigMap
+          name: probe-active-config
+          namespace: default
+      http:
+        - path: /katalog/filter-probe/health
+          jq: .state
+          equals: healthy
+
+    # Inactive CR — filter fires, reconciler never runs.
+    # Health stays healthy — no gated state, kordinator never involved.
+    - name: Inactive CR accepted but not reconciled — no ConfigMap, health healthy
+      after: cr-applied
+      timeout: 30s
+      wait: 5s
+      kubectl:
+        apply:
+          - file: ./cr-inactive.yaml
+        get:
+          - kind: FilterProbe
+            name: probe-inactive
+            namespace: default
+            field: .status.phase
+            notEquals: Running
+      resources:
+        - kind: ConfigMap
+          name: probe-inactive-config
+          namespace: default
+          count: 0
+      http:
+        - path: /katalog/filter-probe/health
+          jq: .gated
+          equals: "false"
+
+    # Cleanup
+    - name: Cleanup verified
+      after: cr-deleted
+      timeout: 30s
+      kubectl:
+        delete:
+          - kind: FilterProbe
+            name: probe-inactive
+            namespace: default
+            ignoreNotFound: true
+      resources:
+        - kind: FilterProbe
+          name: probe-active
+          namespace: default
+          count: 0
+        - kind: FilterProbe
+          name: probe-inactive
+          namespace: default
+          count: 0
+        - kind: ConfigMap
+          name: probe-active-config
+          namespace: default
+          count: 0
+
+  onFailure:
+    kubectl:
+      get:
+        - kind: FilterProbe
+          name: probe-active
+          namespace: default
+        - kind: FilterProbe
+          name: probe-inactive
+          namespace: default
+      logs:
+        - leaderElection:
+            lease: orkestra-konductor
+            namespace: orkestra-system
+          since: 2m
+    commands:
+      - kubectl get filterprobes -A -o wide
+      - kubectl get configmaps -n default
+      - kubectl get pods -n orkestra-system -o wide

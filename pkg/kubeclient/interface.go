@@ -12,10 +12,10 @@ import (
 	sigs "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// KubeClient is the interface every registry function depends on.
+// Interface is the interface every registry function depends on.
 // *Kubeclient satisfies this with real clients.
 // *simulate.FakeKubeclient satisfies this with k8s.io/client-go/kubernetes/fake.
-type KubeClient interface {
+type Interface interface {
 	Clientset() kubernetes.Interface
 	DynamicClient() dynamic.Interface
 	Mapper() meta.RESTMapper
@@ -26,16 +26,16 @@ type KubeClient interface {
 	// Returns an empty Args map when no args were declared.
 	Args() Args
 
-	// WithArgs returns a copy of this KubeClient with the given args attached.
+	// WithArgs returns a copy of this Interface with the given args attached.
 	// Used by the runtime to inject per-CRD args before calling a hook or constructor.
-	WithArgs(args Args) KubeClient
+	WithArgs(args Args) Interface
 
 	// ScopedFor evaluates any template expressions in the rawArgs using eval and
-	// returns a copy of this KubeClient with the resolved args attached.
+	// returns a copy of this Interface with the resolved args attached.
 	// Called by GenericReconciler after building the resolver so hook authors see
 	// fully-evaluated args without any extra wiring. Constructor authors call it
 	// themselves using their own resolver.
-	ScopedFor(eval func(string) (string, bool)) KubeClient
+	ScopedFor(eval func(string) (string, bool)) Interface
 
 	// CRUD — typed object operations for constructor reconcilers.
 	// Accepts sigs.k8s.io/controller-runtime/pkg/client.Object so reconcilers
@@ -55,4 +55,4 @@ type KubeClient interface {
 }
 
 // Compile check — *Kubeclient must satisfy this.
-var _ KubeClient = (*Kubeclient)(nil)
+var _ Interface = (*Kubeclient)(nil)

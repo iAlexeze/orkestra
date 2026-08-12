@@ -17,6 +17,12 @@ func (e CRDEntry) Config() OperatorBoxConfig {
 	return e.OperatorBox
 }
 
+// PreReconcileCheck returns the gate config for this CRD.
+// nil means no gate — the reconciler is always called.
+func (e CRDEntry) PreReconcileCheck() *PreReconcileConfig {
+	return e.OperatorBox.PreReconcile
+}
+
 // IsBuiltInType reports whether this CRD represents a built‑in Kubernetes resource.
 // Built‑ins rely on enrichment to populate group, version, plural, and scope.
 func (c *CRDEntry) IsBuiltInType() bool {
@@ -69,7 +75,7 @@ func (c *CRDEntry) ActiveEnrichTargets(data map[string]interface{}, eval Templat
 			result = append(result, t)
 			continue
 		}
-		if EvaluateWhen(data, t.When, t.AnyOf, eval) {
+		if EvaluateConditions(data, t.When, t.AnyOf, eval) {
 			result = append(result, t)
 		}
 	}
@@ -99,7 +105,7 @@ func (c *CRDEntry) ConditionalActiveEnrichTargets(data map[string]interface{}, e
 		if len(t.When) == 0 && len(t.AnyOf) == 0 {
 			continue // already ran in phase 1
 		}
-		if EvaluateWhen(data, t.When, t.AnyOf, eval) {
+		if EvaluateConditions(data, t.When, t.AnyOf, eval) {
 			result = append(result, t)
 		}
 	}
