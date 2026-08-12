@@ -195,6 +195,7 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 	m.notification = doc.Notification
 	m.providers = doc.Providers
 	m.gateway = doc.Gateway
+	m.publish = doc.Publish
 	m.profiles = doc.Profiles
 	m.notes = doc.Notes
 	// Resolve spec.imports motif file paths to absolute, same as CRD-level imports above.
@@ -458,6 +459,9 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 	}
 	if doc.Gateway != nil {
 		m.gateway = doc.Gateway
+	}
+	if doc.Publish != nil {
+		m.publish = doc.Publish
 	}
 
 	mergedProfiles, err := accProfiles.Merge(doc.Profiles, path)

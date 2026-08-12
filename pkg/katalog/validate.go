@@ -306,5 +306,12 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 34. Validate Publish config
+	// -------------------------------------------------------------------------
+	if err := k.validatePublish(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }

@@ -22,6 +22,10 @@ ork push [<name>:<version>] [<dir>]
 | `--use-current` | `false` | Use the current kubeconfig context for the E2E gate. Skips cluster creation — significantly faster for local iteration. |
 | `--cluster <ctx>` | _(none)_ | Reuse an existing cluster context for the E2E gate. Skips cluster creation. |
 | `--workers <n>` | `0` | Number of kind worker nodes to provision for the E2E gate cluster (0 = control-plane only). |
+| `--add-intent <file>` | _(none)_ | Run `ork serve play` against this intent file and bake the result as an attestation in the artifact. |
+| `--sign` | `false` | Sign the artifact with Cosign keyless after push. Same as running `ork pattern sign` immediately after push. |
+| `--sign-local` | `false` | Push to ttl.sh and sign — for local signing tests. Skips the normal registry. |
+| `--ttl <duration>` | `1h` | TTL for the ttl.sh artifact when using `--sign-local` (e.g. `1h`, `24h`). |
 
 > **Note:** `--use-current` and `--cluster` skip cluster provisioning and accept whatever state the cluster is in. Use them only for local iteration — `ork push` is intended for production publishing against a clean cluster.
 
@@ -30,13 +34,15 @@ ork push [<name>:<version>] [<dir>]
 ## Gate sequence
 
 ```text
-Validate → Simulate → E2E → Push
+Validate → Simulate → E2E → Intent play → Push → Sign
 ```
 
 1. **Validate** — schema, types, required fields, no local file imports. Always runs.
 2. **Simulate** — runs if `simulate.yaml` is present (unless `--no-simulate` or `--force`).
 3. **E2E** — runs if `e2e.yaml` is present (unless `--no-e2e` or `--force`).
-4. **Push** — OCI artifact published with quality annotations baked in.
+4. **Intent play** — runs if `--add-intent` is passed. Bakes the result as an attestation.
+5. **Push** — OCI artifact published with quality annotations baked in.
+6. **Sign** — if `--sign` is passed, calls `ork pattern sign` on the pushed digest.
 
 ---
 
@@ -139,8 +145,37 @@ To import:
 
 ---
 
+## Examples (signing)
+
+```bash
+# Push and sign in one step (CI — push and sign credentials in same job)
+ork push postgres:v14 ./ --sign
+
+# Push then sign separately (different OIDC context for signing)
+ork push postgres:v14 ./
+ork pattern sign postgres:v14
+
+# Local test: push to ttl.sh and sign
+ork push postgres:v14 ./ --sign-local --ttl 24h
+```
+
+Output with `--sign-local`:
+
+```text
+✓ Pushed  oci://ttl.sh/ork-a3f9c2/postgres:24h  (expires in 24h)
+✓ Signed
+
+  Expires in   24h
+  Verify:      ork pattern verify oci://ttl.sh/ork-a3f9c2/postgres:24h --no-tlog
+  Inspect:     ork inspect oci://ttl.sh/ork-a3f9c2/postgres:24h
+```
+
+---
+
 ## Related
 
-- [`ork inspect`](./11-inspect.md) — read quality annotations after push
+- [`ork pattern sign`](./12-pattern.md) — sign a pushed artifact
+- [`ork inspect`](./11-inspect.md) — read quality annotations and signature status after push
 - [`ork patterns`](./12-patterns.md) — browse the registry
 - [Gate Mechanics](../../guides/registry/05-gate-mechanics.md) — full gate story
+- [Artifact Signing](../../security/10-artifact-signing.md) — how keyless signing works

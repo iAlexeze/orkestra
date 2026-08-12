@@ -197,6 +197,11 @@ type KatalogFile struct {
 	// and spec: may be empty.
 	Gateway *GatewayConfig `yaml:"gateway,omitempty" json:"gateway,omitempty"`
 
+	// Publish declares the publishing and consumer policy for this pattern.
+	// Controls signing requirements and which quality gates run at push time.
+	// Distinct from security: — publish: is about supply chain, not runtime admission.
+	Publish *PublishConfig `yaml:"publish,omitempty" json:"publish,omitempty"`
+
 	// Notification holds the top-level alerting configuration for this Katalog.
 	// Defines channels (email, Slack) and per-team routing rules that fire when
 	// a managed CRD's conditions transition. When a Komposer references multiple

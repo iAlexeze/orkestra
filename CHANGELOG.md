@@ -1,4 +1,36 @@
-## v0.7.15 — Gateway Webhook Intake [UNRELEASED]
+## v0.7.15 — Gateway Webhook Intake + Artifact Signing [UNRELEASED]
+
+### Artifact signing — Cosign keyless, `publish:` block, local testing
+
+Patterns now carry cryptographic proof of origin via Cosign keyless signing. No key management — the OIDC token CI already issues is the credential.
+
+**`ork pattern sign` / `ork pattern verify`** — new `ork pattern` subcommand group, mirroring `docker image`. Sign a pushed artifact; verify its signature and print the signer subject.
+
+**`ork push --sign`** — convenience flag that signs immediately after push, equivalent to `ork push` followed by `ork pattern sign`.
+
+**`ork push --sign-local` / `ork pattern sign --local`** — push to [ttl.sh](https://ttl.sh) and sign for local testing. No real registry or CI credentials required. Prints the verify and inspect commands with the TTL on the artifact. Use `--ttl` to control how long the artifact lives (default: `1h`).
+
+**`ork inspect` — always shows `Signed:` row.** No flag required. Add `--verbose` to expand the issuer and Rekor log entry beneath the row.
+
+**`publish:` block** — new top-level katalog field. Declares the signing policy for a pattern and controls which quality gates are required.
+
+```yaml
+publish:
+  signing:
+    verify: true                # ork pull --verify enforces this
+    expectedIdentities:
+      - github.com/myorg/postgres/.github/workflows/release.yaml@refs/heads/main
+  tests:
+    e2e: true       # default
+    simulate: true  # default
+    intent: false   # opt-in; requires gateway.api.enabled: true and intent.yaml
+```
+
+`verify: true` — `ork pull --verify` refuses unsigned artifacts or artifacts signed by an unexpected identity. `expectedIdentities` uses OIDC subject claims; the issuer is inferred from the subject prefix (GitHub Actions, GitLab CI supported).
+
+Cosign binary is resolved from `$PATH`, then `~/.orkestra/tools/cosign`, then downloaded automatically from GitHub releases on first use — no manual install step.
+
+---
 
 ### Gateway webhook intake — GitHub, GitLab, Slack, generic
 
