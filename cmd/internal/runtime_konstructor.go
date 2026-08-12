@@ -373,7 +373,7 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 			logger.Debug().Str("gvk", gvk).Msg("wiring GenericReconciler factory")
 
 			// Attach hooks.args to a copy of the kube client; hooks read them via kube.Args().
-			var hookKube kubeclient.KubeClient = kube
+			var hookKube kubeclient.Interface = kube
 			if args := crd.HooksArgs(); len(args) > 0 {
 				hookKube = kube.WithArgs(kubeclient.Args(args))
 			}
@@ -406,7 +406,7 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 			logger.Debug().Str("gvk", gvk).Msg("wiring custom reconciler factory")
 
 			// Attach constructor.args to a copy of the kube client; the constructor reads them via kube.Args().
-			var ctorKube kubeclient.KubeClient = kube
+			var ctorKube kubeclient.Interface = kube
 			if args := crd.ConstructorArgs(); len(args) > 0 {
 				ctorKube = kube.WithArgs(kubeclient.Args(args))
 			}

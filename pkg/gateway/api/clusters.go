@@ -16,14 +16,14 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// ClusterRegistry maps gateway.clusters names to their ready KubeClient.
+// ClusterRegistry maps gateway.clusters names to their ready kubeclient.Interface.
 // Built at gateway startup from the katalog config; never mutated after construction.
 type ClusterRegistry struct {
-	clients map[string]kubeclient.KubeClient
+	clients map[string]kubeclient.Interface
 }
 
-// ClientFor returns the KubeClient for the named cluster and whether it was found.
-func (r *ClusterRegistry) ClientFor(name string) (kubeclient.KubeClient, bool) {
+// ClientFor returns the client for the named cluster and whether it was found.
+func (r *ClusterRegistry) ClientFor(name string) (kubeclient.Interface, bool) {
 	if r == nil {
 		return nil, false
 	}
@@ -41,15 +41,15 @@ func (r *ClusterRegistry) Len() int {
 
 // BuildClusterRegistry constructs a ClusterRegistry from gateway.clusters config.
 // For each entry it reads the credential secret(s) from the local cluster using
-// kube, then builds a KubeClient targeting that remote cluster.
+// kube, then builds a kubeclient.Interface targeting that remote cluster.
 // Returns an empty (non-nil) registry when no clusters are declared.
 func BuildClusterRegistry(
 	ctx context.Context,
 	kat *katalog.Katalog,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	ownNS string,
 ) (*ClusterRegistry, error) {
-	reg := &ClusterRegistry{clients: make(map[string]kubeclient.KubeClient)}
+	reg := &ClusterRegistry{clients: make(map[string]kubeclient.Interface)}
 	if kat == nil || kat.Gateway == nil || !kat.Gateway.HasClusters() {
 		return reg, nil
 	}
@@ -79,7 +79,7 @@ func BuildClusterRegistry(
 func BuildClusterRestConfig(
 	ctx context.Context,
 	cfg orktypes.GatewayClusterConfig,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	ownNS string,
 ) (*rest.Config, error) {
 	switch cfg.CredentialForm() {
@@ -97,7 +97,7 @@ func BuildClusterRestConfig(
 func buildKubeconfigRestConfig(
 	ctx context.Context,
 	cfg orktypes.GatewayClusterConfig,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	ownNS string,
 ) (*rest.Config, error) {
 	ref := cfg.SecretRef
@@ -120,7 +120,7 @@ func buildKubeconfigRestConfig(
 func buildTokenRestConfig(
 	ctx context.Context,
 	cfg orktypes.GatewayClusterConfig,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	ownNS string,
 ) (*rest.Config, error) {
 	tokenRef := cfg.TokenRef
@@ -156,11 +156,11 @@ func buildTokenRestConfig(
 	return restCfg, nil
 }
 
-// clusterTarget pairs a cluster name with its KubeClient.
+// clusterTarget pairs a cluster name with its client.
 // name is "" for the local cluster.
 type clusterTarget struct {
 	name string
-	kube kubeclient.KubeClient
+	kube kubeclient.Interface
 }
 
 // resolveClusterTargets returns the apply targets for a CRD+alias combination.
@@ -179,7 +179,7 @@ func resolveClusterTargets(
 	fields map[string]interface{},
 	notes orktypes.NoteRegistry,
 	registry *ClusterRegistry,
-	localKube kubeclient.KubeClient,
+	localKube kubeclient.Interface,
 ) ([]clusterTarget, error) {
 	var names []string
 
@@ -225,7 +225,7 @@ func resolveClusterTargets(
 	return targets, nil
 }
 
-// resolveReadCluster returns the single effective KubeClient for read operations
+// resolveReadCluster returns the single effective kubeclient.Interface for read operations
 // (GET, LIST, DELETE). When serve.clusters has static names, the first is used.
 // Templates and the local fallback return localKube.
 func resolveReadCluster(
@@ -233,8 +233,8 @@ func resolveReadCluster(
 	alias string,
 	notes orktypes.NoteRegistry,
 	registry *ClusterRegistry,
-	localKube kubeclient.KubeClient,
-) (kubeclient.KubeClient, error) {
+	localKube kubeclient.Interface,
+) (kubeclient.Interface, error) {
 	targets, err := resolveClusterTargets(crd, alias, nil, notes, registry, localKube)
 	if err != nil {
 		return nil, err

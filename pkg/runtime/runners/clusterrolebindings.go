@@ -20,7 +20,7 @@ import (
 // OwnerReferences is not possible for cluster-scoped resources.
 func RunClusterRoleBindings(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.ClusterRoleBindingTemplateSource,

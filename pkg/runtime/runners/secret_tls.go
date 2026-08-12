@@ -39,12 +39,12 @@ import (
 )
 
 // SecretNeedsRotation delegates to pkg/secrets.
-func SecretNeedsRotation(ctx context.Context, kube kubeclient.KubeClient, namespace, name, rotateAfter string) (bool, error) {
+func SecretNeedsRotation(ctx context.Context, kube kubeclient.Interface, namespace, name, rotateAfter string) (bool, error) {
 	return secrets.SecretNeedsRotation(ctx, kube, namespace, name, rotateAfter)
 }
 
 // DeleteSecretForRotation delegates to pkg/secrets.
-func DeleteSecretForRotation(ctx context.Context, kube kubeclient.KubeClient, namespace, name string) error {
+func DeleteSecretForRotation(ctx context.Context, kube kubeclient.Interface, namespace, name string) error {
 	return secrets.DeleteSecretForRotation(ctx, kube, namespace, name)
 }
 
@@ -57,7 +57,7 @@ func GenerationAnnotations(rotateAfter string) map[string]string {
 // The Secret name defaults to "owner.GetName()-orkestra-tls" when src.Name resolves to "".
 func createTLSSecret(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	owner domain.Object,
 	name, namespace, rotateAfter string,
 	bundle *certmanager.TLSBundle,

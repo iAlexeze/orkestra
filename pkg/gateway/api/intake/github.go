@@ -42,7 +42,7 @@ type GitHubPushEvent struct {
 // delivery failure. Per-file outcomes are reported in the response body.
 func NewGitHubHandler(
 	src ResolvedGitSource,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	clusters *api.ClusterRegistry,
 	kat *katalog.Katalog,
 	notes orktypes.NoteRegistry,
@@ -104,7 +104,7 @@ func NewGitHubHandler(
 func applyGitHubIntentFile(
 	ctx context.Context,
 	src ResolvedGitSource,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	clusters *api.ClusterRegistry,
 	kat *katalog.Katalog,
 	notes orktypes.NoteRegistry,

@@ -42,7 +42,7 @@ import (
 )
 
 // SecretExists delegates to pkg/secrets.
-func SecretExists(ctx context.Context, kube kubeclient.KubeClient, namespace, name string) (bool, error) {
+func SecretExists(ctx context.Context, kube kubeclient.Interface, namespace, name string) (bool, error) {
 	return secrets.SecretExists(ctx, kube, namespace, name)
 }
 

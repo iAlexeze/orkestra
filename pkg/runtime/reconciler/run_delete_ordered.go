@@ -40,7 +40,7 @@ type orderedDeleteEntry struct {
 // For each group: submit all deletes, then poll until every resource is gone.
 func (r *GenericReconciler[PTR]) runOrderedDelete(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	obj domain.Object,
 	t *orktypes.HookTemplates,
@@ -90,7 +90,7 @@ func (r *GenericReconciler[PTR]) runOrderedDelete(
 // block and returns the list of resources to poll for.
 func (r *GenericReconciler[PTR]) submitGroupDeletion(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	obj domain.Object,
 	t *orktypes.HookTemplates,
@@ -209,7 +209,7 @@ func resolveNames[S any](
 
 // waitForDeletion polls the API server until all resources in pending are gone
 // or the timeout elapses. Uses Get (not informer) so the answer is authoritative.
-func waitForDeletion(ctx context.Context, kube kubeclient.KubeClient, pending []orderedDeleteEntry, timeout time.Duration) error {
+func waitForDeletion(ctx context.Context, kube kubeclient.Interface, pending []orderedDeleteEntry, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	dc := kube.DynamicClient()
 

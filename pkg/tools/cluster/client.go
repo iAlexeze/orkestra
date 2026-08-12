@@ -10,7 +10,7 @@ import (
 
 // LocalClient builds a kubeclient from the local kubeconfig.
 // When kubectx is empty the current context is used.
-func LocalClient(ctx context.Context, kubectx string) (kubeclient.KubeClient, error) {
+func LocalClient(ctx context.Context, kubectx string) (kubeclient.Interface, error) {
 	overrides := &clientcmd.ConfigOverrides{}
 	if kubectx != "" {
 		overrides.CurrentContext = kubectx

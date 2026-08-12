@@ -16,7 +16,7 @@ import (
 // runCustomResources resolves and applies CustomResource template declarations.
 func runCustomResources(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.CustomResourceTemplateSource,

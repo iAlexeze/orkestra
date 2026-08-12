@@ -155,8 +155,8 @@ func TestRewrite_StructRewritten(t *testing.T) {
 	if strings.Contains(src, "client.Client") {
 		t.Error("embedded client.Client should be removed from struct")
 	}
-	if !strings.Contains(src, "kube     kubeclient.KubeClient") {
-		t.Error("expected kube kubeclient.KubeClient field in struct")
+	if !strings.Contains(src, "kube     kubeclient.Interface") {
+		t.Error("expected kube kubeclient.Interface field in struct")
 	}
 	if !strings.Contains(src, "informer cache.SharedIndexInformer") {
 		t.Error("expected informer cache.SharedIndexInformer field in struct")

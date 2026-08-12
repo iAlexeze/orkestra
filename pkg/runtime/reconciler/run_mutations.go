@@ -53,7 +53,7 @@ type MutationChange struct {
 // retries. The object is not patched if no rules produce a change.
 func runMutation(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	obj domain.Object,
 	resolver *orktmpl.Resolver,
 	cfg *orktypes.MutationConfig,

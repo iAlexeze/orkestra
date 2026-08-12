@@ -28,7 +28,7 @@ import (
 // ConfigMap in every namespace updates automatically.
 func RunConfigMaps(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.ConfigMapTemplateSource,

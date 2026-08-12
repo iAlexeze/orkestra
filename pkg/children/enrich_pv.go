@@ -11,7 +11,7 @@ import (
 // enrichGroupWithPVC embeds the bound PVC object under "_pvc" for each PV in
 // the group. A no-op when pv enrichment is not enabled on the CRD.
 // The PVC reference comes from spec.claimRef on the PV, set by Kubernetes once bound.
-func enrichGroupWithPVC(ctx context.Context, kube kubeclient.KubeClient, m map[string]interface{}, crd orktypes.CRDEntry) {
+func enrichGroupWithPVC(ctx context.Context, kube kubeclient.Interface, m map[string]interface{}, crd orktypes.CRDEntry) {
 	if !enrichmentEnabled("pv", crd) {
 		return
 	}

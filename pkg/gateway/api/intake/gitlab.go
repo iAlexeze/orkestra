@@ -36,7 +36,7 @@ type GitLabPushEvent struct {
 // and Repository Files API instead of GitHub's Contents API.
 func NewGitLabHandler(
 	src ResolvedGitSource,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	clusters *api.ClusterRegistry,
 	kat *katalog.Katalog,
 	notes orktypes.NoteRegistry,
@@ -97,7 +97,7 @@ func NewGitLabHandler(
 func applyGitLabIntentFile(
 	ctx context.Context,
 	src ResolvedGitSource,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	clusters *api.ClusterRegistry,
 	kat *katalog.Katalog,
 	notes orktypes.NoteRegistry,

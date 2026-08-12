@@ -13,7 +13,7 @@ import (
 //
 // Summary: {name, zone, region, instanceType}
 // Zone and region come from well-known topology labels.
-func enrichGroupWithNode(ctx context.Context, kube kubeclient.KubeClient, m map[string]interface{}, crd orktypes.CRDEntry) {
+func enrichGroupWithNode(ctx context.Context, kube kubeclient.Interface, m map[string]interface{}, crd orktypes.CRDEntry) {
 	if !enrichmentEnabled("node", crd) {
 		return
 	}

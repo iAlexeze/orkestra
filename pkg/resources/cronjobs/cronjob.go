@@ -91,7 +91,7 @@ type ResolvedCronJobSpec struct {
 // Create creates a CronJob if it does not already exist.
 // Idempotent — skips creation if the CronJob already exists.
 // Sets owner reference so the CronJob is garbage collected when the CR is deleted.
-func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedCronJobSpec) error {
+func Create(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedCronJobSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("cronjob.Create: %w", err)
 	}
@@ -131,7 +131,7 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 
 // Apply creates or updates a CronJob using Server-Side Apply.
 // Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
-func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedCronJobSpec) error {
+func Apply(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedCronJobSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("cronjob.Apply: %w", err)
 	}
@@ -166,12 +166,12 @@ func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object,
 }
 
 // Update applies the CronJob via SSA. Delegates to Apply.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedCronJobSpec) error {
+func Update(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedCronJobSpec) error {
 	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the CronJob if it exists.
-func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedCronJobSpec) error {
+func Delete(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedCronJobSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -199,7 +199,7 @@ func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 }
 
 // DeleteIfOwned deletes the CronJob only if it is labelled as owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 	owner domain.Object, name, namespace string) error {
 
 	existing, err := kube.Clientset().BatchV1().CronJobs(namespace).

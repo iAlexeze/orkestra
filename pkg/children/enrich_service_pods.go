@@ -17,7 +17,7 @@ import (
 // Unlike Deployment/StatefulSet, Service uses spec.selector (a flat label map),
 // not spec.selector.matchLabels. Headless and ExternalName services with no
 // selector are skipped.
-func enrichGroupWithBackingPods(ctx context.Context, kube kubeclient.KubeClient, m map[string]interface{}, crd orktypes.CRDEntry) {
+func enrichGroupWithBackingPods(ctx context.Context, kube kubeclient.Interface, m map[string]interface{}, crd orktypes.CRDEntry) {
 	if !enrichmentEnabled("backingpods", crd) {
 		return
 	}

@@ -18,7 +18,7 @@ import (
 // the expected controller kind — e.g. "ReplicaSet" for Deployments, "StatefulSet"
 // for StatefulSets. This prevents job pods from appearing in a Deployment's
 // pod list when both share the same orkestra-owner label selector.
-func enrichGroupWithPods(ctx context.Context, kube kubeclient.KubeClient, m map[string]interface{}, crd orktypes.CRDEntry, ownerKind string) {
+func enrichGroupWithPods(ctx context.Context, kube kubeclient.Interface, m map[string]interface{}, crd orktypes.CRDEntry, ownerKind string) {
 	if !enrichmentEnabled("pods", crd) {
 		return
 	}
@@ -40,7 +40,7 @@ func enrichGroupWithPods(ctx context.Context, kube kubeclient.KubeClient, m map[
 // enrichWithPods lists pods matching the resource's spec.selector.matchLabels,
 // filters to those owned by a controller of ownerKind, and embeds summaries
 // as _pods in the resource map.
-func enrichWithPods(ctx context.Context, kube kubeclient.KubeClient, ns string, obj map[string]interface{}, ownerKind string) {
+func enrichWithPods(ctx context.Context, kube kubeclient.Interface, ns string, obj map[string]interface{}, ownerKind string) {
 	selector := podLabelSelector(obj)
 	if selector == "" {
 		return

@@ -129,7 +129,7 @@ func (c *warningCapture) collect() []string {
 
 // scopedDynamic returns a dynamic client that routes warnings to capture
 // while reusing the existing HTTP transport from kube.
-func scopedDynamic(kube kubeclient.KubeClient, capture *warningCapture) dynamic.Interface {
+func scopedDynamic(kube kubeclient.Interface, capture *warningCapture) dynamic.Interface {
 	cfg := kube.RestConfig()
 	if cfg == nil {
 		return kube.DynamicClient()
@@ -146,7 +146,7 @@ func scopedDynamic(kube kubeclient.KubeClient, capture *warningCapture) dynamic.
 // applyHandler returns the http.HandlerFunc for POST /api/v1/apply.
 // The auth middleware must wrap this handler before registration.
 func applyHandler(
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	clusters *ClusterRegistry,
 	kat *katalog.Katalog,
 	notes orktypes.NoteRegistry,

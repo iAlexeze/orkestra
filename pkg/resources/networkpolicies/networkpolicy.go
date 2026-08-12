@@ -41,7 +41,7 @@ type ResolvedNetworkPolicySpec struct {
 // Create creates a NetworkPolicy if it does not already exist.
 // Idempotent — skips if it already exists.
 // Owner reference set for cascade deletion.
-func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedNetworkPolicySpec) error {
+func Create(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedNetworkPolicySpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -80,7 +80,7 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 
 // Apply creates or updates a NetworkPolicy using Server-Side Apply.
 // Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
-func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedNetworkPolicySpec) error {
+func Apply(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedNetworkPolicySpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -115,12 +115,12 @@ func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object,
 }
 
 // Update applies the NetworkPolicy via SSA. Delegates to Apply.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedNetworkPolicySpec) error {
+func Update(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedNetworkPolicySpec) error {
 	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the NetworkPolicy if it exists.
-func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedNetworkPolicySpec) error {
+func Delete(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedNetworkPolicySpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -144,7 +144,7 @@ func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 }
 
 // DeleteIfOwned deletes the NetworkPolicy only if it is owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 	owner domain.Object, name, namespace string) error {
 
 	existing, err := kube.Clientset().NetworkingV1().NetworkPolicies(namespace).
@@ -167,7 +167,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 // Idempotent — skips namespaces where the policy already exists.
 func CopyToNamespaces(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	owner domain.Object,
 	spec ResolvedNetworkPolicySpec,
 	toNamespaces []string,
@@ -256,7 +256,7 @@ func Resolve(src orktypes.NetworkPolicyTemplateSource, ownerName string, reg ork
 // Otherwise builds spec from the declared fields.
 func resolveSpec(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	spec ResolvedNetworkPolicySpec,
 	owner domain.Object,
 ) (networkingv1.NetworkPolicySpec, error) {
@@ -283,7 +283,7 @@ func resolveSpec(
 
 func buildNetworkPolicy(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	owner domain.Object,
 	spec ResolvedNetworkPolicySpec,
 	namespace string,

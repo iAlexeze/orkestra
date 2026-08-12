@@ -74,7 +74,7 @@ type ResolvedJobSpec struct {
 //	onCreate Jobs — owner reference set, garbage collected with CR
 //	onDelete Jobs — NO owner reference — the CR is being deleted,
 //	                the Job must survive to complete cleanup
-func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedJobSpec) error {
+func Create(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedJobSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("job.Create: invalid spec: %w", err)
 	}
@@ -113,7 +113,7 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 }
 
 // Delete deletes the Job if it exists.
-func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedJobSpec) error {
+func Delete(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedJobSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err

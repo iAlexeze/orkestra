@@ -70,7 +70,7 @@ type RawSchemaSection struct {
 //   - Works even when serve.fields is not declared on the CRD entry.
 //   - Is intended for callers who will use full CR mode in POST /api/v1/apply.
 func rawSchemaHandler(
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	kat *katalog.Katalog,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

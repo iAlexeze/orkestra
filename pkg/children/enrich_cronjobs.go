@@ -12,7 +12,7 @@ import (
 // enrichGroupWithCronJobChildren embeds job references under "_activeJobs",
 // "_lastJob", and "_lastSuccessfulJob" for each CronJob in the group.
 // A no-op when cronjob enrichment is not enabled on the CRD.
-func enrichGroupWithCronJobChildren(ctx context.Context, kube kubeclient.KubeClient, m map[string]interface{}, crd orktypes.CRDEntry) {
+func enrichGroupWithCronJobChildren(ctx context.Context, kube kubeclient.Interface, m map[string]interface{}, crd orktypes.CRDEntry) {
 	if !enrichmentEnabled("cronjob", crd) {
 		return
 	}

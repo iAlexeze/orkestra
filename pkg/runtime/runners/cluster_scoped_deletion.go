@@ -27,7 +27,7 @@ import (
 // This should be called during the deletion path of the reconciler.
 func DeleteOwnedClusterScopedResources(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	obj domain.Object,
 	box orktypes.OperatorBoxConfig,
@@ -63,7 +63,7 @@ func DeleteOwnedClusterScopedResources(
 // deleteOwnedNamespaces explicitly deletes all Namespaces owned by this CR.
 func deleteOwnedNamespaces(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	obj domain.Object,
 	box orktypes.OperatorBoxConfig,
@@ -94,7 +94,7 @@ func deleteOwnedNamespaces(
 // deleteOwnedClusterRoles explicitly deletes all ClusterRoles owned by this CR.
 func deleteOwnedClusterRoles(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	obj domain.Object,
 	box orktypes.OperatorBoxConfig,
@@ -125,7 +125,7 @@ func deleteOwnedClusterRoles(
 // deleteOwnedClusterRoleBindings explicitly deletes all ClusterRoleBindings owned by this CR.
 func deleteOwnedClusterRoleBindings(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	obj domain.Object,
 	box orktypes.OperatorBoxConfig,
@@ -156,7 +156,7 @@ func deleteOwnedClusterRoleBindings(
 // deleteOwnedPersistentVolumes explicitly deletes all PersistentVolumes owned by this CR.
 func deleteOwnedPersistentVolumes(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	obj domain.Object,
 	box orktypes.OperatorBoxConfig,
@@ -187,7 +187,7 @@ func deleteOwnedPersistentVolumes(
 // deleteOwnedCustomResources explicitly deletes all Cluster-scoped custom resources owned by this CR.
 func deleteOwnedCustomResources(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	obj domain.Object,
 	box orktypes.OperatorBoxConfig,

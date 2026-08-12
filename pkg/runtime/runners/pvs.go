@@ -17,7 +17,7 @@ import (
 // PVs are cluster-scoped; the namespace guard is intentionally not applied.
 func RunPVs(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.PVTemplateSource,
