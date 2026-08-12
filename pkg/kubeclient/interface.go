@@ -20,6 +20,7 @@ type KubeClient interface {
 	DynamicClient() dynamic.Interface
 	Mapper() meta.RESTMapper
 	RestConfig() *rest.Config
+	Scheme() *runtime.Scheme
 
 	// Args returns the args declared under hooks.args or constructor.args in katalog.yaml.
 	// Returns an empty Args map when no args were declared.

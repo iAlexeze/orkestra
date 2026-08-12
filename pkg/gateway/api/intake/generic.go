@@ -23,6 +23,7 @@ const maxIntakeBodyBytes = 1 << 20
 func NewGenericHandler(
 	src ResolvedGenericSource,
 	kube kubeclient.KubeClient,
+	clusters *api.ClusterRegistry,
 	kat *katalog.Katalog,
 	notes orktypes.NoteRegistry,
 ) http.HandlerFunc {
@@ -54,7 +55,7 @@ func NewGenericHandler(
 
 		dryRun := r.URL.Query().Get("dryRun") == "true"
 		resp, status := api.ApplyTargetFields(
-			r.Context(), kube, kat, notes, src.Config.Name, fields, dryRun,
+			r.Context(), kube, clusters, kat, notes, src.Config.Name, fields, dryRun,
 		)
 		writeJSON(w, status, resp)
 	}

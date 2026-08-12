@@ -63,6 +63,14 @@ type Katalog struct {
 	webhookNameIndex map[string]string `yaml:"-" json:"-"` // lowercase(webhook entry name) -> source ("github"/"gitlab"/"slack"/"generic")
 }
 
+// GatewayClusters returns the gateway.clusters entries map, or nil when none are declared.
+func (k *Katalog) GatewayClusters() map[string]orktypes.GatewayClusterConfig {
+	if k == nil || k.Gateway == nil || k.Gateway.Clusters == nil {
+		return nil
+	}
+	return k.Gateway.Clusters.Entries
+}
+
 // EnabledCRDs returns a map of enabled CRDs keyed by their name.
 func (k *Katalog) EnabledCRDs() map[string]orktypes.CRDEntry {
 	return k.enabledCRDs
@@ -181,6 +189,9 @@ func (k *Katalog) CRDEntry(name string) (orktypes.CRDEntry, bool) {
 
 // Scheme builds and returns a runtime.Scheme with all Katalog types registered.
 func (k *Katalog) Scheme() (*runtime.Scheme, error) {
+	if k == nil {
+		return nil, nil
+	}
 	return NewSchemeRegistry(k)
 }
 

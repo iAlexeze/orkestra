@@ -20,17 +20,18 @@ import (
 // possible. The caller composes the two servers instead — see
 // cmd/internal/gateway.go.
 type Server struct {
-	mu    sync.RWMutex
-	set   *Set
-	kube  kubeclient.KubeClient
-	kat   *katalog.Katalog
-	ownNS string
+	mu       sync.RWMutex
+	set      *Set
+	kube     kubeclient.KubeClient
+	clusters *api.ClusterRegistry
+	kat      *katalog.Katalog
+	ownNS    string
 }
 
 // NewIntakeServer resolves every enabled webhook entry's credentials and
 // returns a ready-to-register server. Returns (nil, nil) when
 // gateway.webhooks declares no sources — the caller skips registration.
-func NewIntakeServer(ctx context.Context, kat *katalog.Katalog, kube kubeclient.KubeClient, ownNS string) (*Server, error) {
+func NewIntakeServer(ctx context.Context, kat *katalog.Katalog, kube kubeclient.KubeClient, clusters *api.ClusterRegistry, ownNS string) (*Server, error) {
 	if kat == nil || kat.Gateway == nil || kat.Gateway.Webhooks.IsEmpty() {
 		return nil, nil
 	}
@@ -40,7 +41,7 @@ func NewIntakeServer(ctx context.Context, kat *katalog.Katalog, kube kubeclient.
 		return nil, fmt.Errorf("loading gateway webhooks: %w", err)
 	}
 
-	return &Server{set: set, kube: kube, kat: kat, ownNS: ownNS}, nil
+	return &Server{set: set, kube: kube, clusters: clusters, kat: kat, ownNS: ownNS}, nil
 }
 
 // Reload re-resolves every entry's credentials (recreating any missing
@@ -74,16 +75,16 @@ func (s *Server) Register(reg api.Registrar, notes orktypes.NoteRegistry) {
 	set := s.current()
 
 	for _, src := range set.GitHub {
-		reg.Register(src.Config.Path, NewGitHubHandler(src, s.kube, s.kat, notes))
+		reg.Register(src.Config.Path, NewGitHubHandler(src, s.kube, s.clusters, s.kat, notes))
 	}
 	for _, src := range set.GitLab {
-		reg.Register(src.Config.Path, NewGitLabHandler(src, s.kube, s.kat, notes))
+		reg.Register(src.Config.Path, NewGitLabHandler(src, s.kube, s.clusters, s.kat, notes))
 	}
 	for _, src := range set.Slack {
-		reg.Register(src.Config.Path, NewSlackHandler(src, s.kube, s.kat, notes, NewHTTPSlackClient()))
+		reg.Register(src.Config.Path, NewSlackHandler(src, s.kube, s.clusters, s.kat, notes, NewHTTPSlackClient()))
 	}
 	for _, src := range set.Generic {
-		reg.Register(src.Config.Path, NewGenericHandler(src, s.kube, s.kat, notes))
+		reg.Register(src.Config.Path, NewGenericHandler(src, s.kube, s.clusters, s.kat, notes))
 	}
 
 	total := len(set.GitHub) + len(set.GitLab) + len(set.Slack) + len(set.Generic)

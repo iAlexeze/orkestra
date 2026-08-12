@@ -37,6 +37,7 @@ const slackApplyTimeout = 30 * time.Second
 func NewSlackHandler(
 	src ResolvedSlackSource,
 	kube kubeclient.KubeClient,
+	clusters *api.ClusterRegistry,
 	kat *katalog.Katalog,
 	notes orktypes.NoteRegistry,
 	slack SlackClient,
@@ -105,7 +106,7 @@ func NewSlackHandler(
 			ctx, cancel := context.WithTimeout(context.Background(), slackApplyTimeout)
 			defer cancel()
 
-			resp, status := api.ApplyTargetFields(ctx, kube, kat, notes, src.Config.Name, fields, false)
+			resp, status := api.ApplyTargetFields(ctx, kube, clusters, kat, notes, src.Config.Name, fields, false)
 			if status != http.StatusOK {
 				if err := slack.PostMessage(responseURL, fmt.Sprintf(":x: %s", resp.Message)); err != nil {
 					logger.FromContext(ctx).Warn().

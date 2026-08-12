@@ -1,7 +1,13 @@
 // pkg/types/katalog.go
 package types
 
-import "time"
+import (
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"gopkg.in/yaml.v3"
+)
 
 // GatewayConfig declares how the Orkestra gateway is deployed for this Katalog.
 //
@@ -46,6 +52,117 @@ type GatewayConfig struct {
 	// Slack, generic HTTP) that resolve through the same target-mode path
 	// as a direct POST /api/v1/apply call. Requires API to be enabled.
 	Webhooks *GatewayWebhookConfig `yaml:"webhooks,omitempty" json:"webhooks,omitempty"`
+
+	// Clusters registers named remote clusters the gateway may route intents to.
+	// When absent, all intents apply to the local cluster (default behaviour).
+	// Keys are cluster names referenced by serve.cluster and target.cluster.
+	// Supports an optional "include:" key at the clusters level — same pattern
+	// as gateway.webhooks.include and gateway.api.auth.include.
+	Clusters *GatewayClustersConfig `yaml:"clusters,omitempty" json:"clusters,omitempty"`
+}
+
+// GatewayClustersConfig holds the named remote cluster map and an optional
+// include path. The YAML form is a mapping whose keys are either "include"
+// (the path to a clusters: file) or cluster names with GatewayClusterConfig values.
+//
+//	gateway:
+//	  clusters:
+//	    include: ./clusters.yaml
+//	    prod:
+//	      endpoint: https://prod.internal:6443
+//	      secretRef:
+//	        name: prod-creds
+//	        key: kubeconfig
+type GatewayClustersConfig struct {
+	// Include is a path (relative to the katalog file) to a YAML file whose
+	// top-level "clusters:" key holds additional GatewayClusterConfig entries.
+	// Included entries load first; inline entries override by name.
+	// Cleared after expansion.
+	Include string
+
+	// Entries maps cluster names to their connection config.
+	// Populated from the inline keys and/or the include file.
+	Entries map[string]GatewayClusterConfig
+}
+
+// UnmarshalYAML handles the mixed "include" + cluster-name keys at the clusters level.
+func (c *GatewayClustersConfig) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind != yaml.MappingNode {
+		return fmt.Errorf("gateway.clusters must be a mapping")
+	}
+	if c.Entries == nil {
+		c.Entries = make(map[string]GatewayClusterConfig)
+	}
+	for i := 0; i+1 < len(value.Content); i += 2 {
+		key := value.Content[i].Value
+		val := value.Content[i+1]
+		switch key {
+		case "include":
+			c.Include = val.Value
+		default:
+			var cfg GatewayClusterConfig
+			if err := val.Decode(&cfg); err != nil {
+				return fmt.Errorf("clusters[%q]: %w", key, err)
+			}
+			c.Entries[key] = cfg
+		}
+	}
+	return nil
+}
+
+// MarshalYAML serialises as a plain map (include is cleared after expansion).
+func (c GatewayClustersConfig) MarshalYAML() (interface{}, error) {
+	m := make(map[string]interface{}, len(c.Entries)+1)
+	if c.Include != "" {
+		m["include"] = c.Include
+	}
+	for name, cfg := range c.Entries {
+		m[name] = cfg
+	}
+	return m, nil
+}
+
+// MarshalJSON serialises as the flat entries map (include cleared by expansion).
+func (c GatewayClustersConfig) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.Entries)
+}
+
+// UnmarshalJSON deserialises from the flat entries map.
+func (c *GatewayClustersConfig) UnmarshalJSON(data []byte) error {
+	return json.Unmarshal(data, &c.Entries)
+}
+
+// GatewayClusterConfig holds the connection details for one registered remote cluster.
+// Exactly one credential form must be declared: secretRef (kubeconfig) or
+// tokenRef + caRef (bearer token + CA cert, the ArgoCD pattern).
+type GatewayClusterConfig struct {
+	// Endpoint is the Kubernetes API server URL for this cluster.
+	// Example: https://prod.internal:6443
+	Endpoint string `yaml:"endpoint" json:"endpoint"`
+
+	// SecretRef locates a Kubernetes Secret whose data key holds a kubeconfig.
+	// Mutually exclusive with TokenRef + CARef.
+	// The kubeconfig may use any auth method internally (token, client cert,
+	// exec plugin, OIDC). Use this when you already manage kubeconfigs.
+	SecretRef *APISecretRef `yaml:"secretRef,omitempty" json:"secretRef,omitempty"`
+
+	// TokenRef locates a Kubernetes Secret whose data key holds a bearer token
+	// (typically a service account token) for this cluster.
+	// Must be paired with CARef. Mutually exclusive with SecretRef.
+	// This is the ArgoCD credential pattern — prefer it when you want explicit
+	// least-privilege service account scoping rather than a full kubeconfig.
+	TokenRef *APISecretRef `yaml:"tokenRef,omitempty" json:"tokenRef,omitempty"`
+
+	// CARef locates a Kubernetes Secret whose data key holds the cluster's CA
+	// certificate (PEM, base64-encoded). Used together with TokenRef to verify
+	// the API server's TLS certificate.
+	// Must be paired with TokenRef. Mutually exclusive with SecretRef.
+	CARef *APISecretRef `yaml:"caRef,omitempty" json:"caRef,omitempty"`
+
+	// Insecure skips TLS verification when connecting to this cluster.
+	// Only valid with TokenRef (kubeconfig manages TLS settings internally).
+	// Use only in local development — never in production.
+	Insecure bool `yaml:"insecure,omitempty" json:"insecure,omitempty"`
 }
 
 // APIConfig enables and configures the Gateway Gateway API.
@@ -151,6 +268,98 @@ func (g *GatewayConfig) HasWebhooks() bool {
 		return false
 	}
 	return !g.Webhooks.IsEmpty()
+}
+
+// HasClusters reports whether any remote clusters are registered.
+func (g *GatewayConfig) HasClusters() bool {
+	return g != nil && g.Clusters != nil && len(g.Clusters.Entries) > 0
+}
+
+// ClusterNames returns the list of registered cluster names.
+func (g *GatewayConfig) ClusterNames() []string {
+	if !g.HasClusters() {
+		return nil
+	}
+	names := make([]string, 0, len(g.Clusters.Entries))
+	for name := range g.Clusters.Entries {
+		names = append(names, name)
+	}
+	return names
+}
+
+// Cluster returns the config for a named cluster and whether it exists.
+func (g *GatewayConfig) Cluster(name string) (GatewayClusterConfig, bool) {
+	if !g.HasClusters() {
+		return GatewayClusterConfig{}, false
+	}
+	cfg, ok := g.Clusters.Entries[name]
+	return cfg, ok
+}
+
+// ── GatewayClusterConfig methods ──────────────────────────────
+
+// HasSecretRef reports whether the kubeconfig credential form is declared.
+func (c GatewayClusterConfig) HasSecretRef() bool {
+	return c.SecretRef != nil
+}
+
+// HasTokenRef reports whether the bearer-token credential form is declared.
+func (c GatewayClusterConfig) HasTokenRef() bool {
+	return c.TokenRef != nil
+}
+
+// HasCARef reports whether a CA cert ref is declared.
+func (c GatewayClusterConfig) HasCARef() bool {
+	return c.CARef != nil
+}
+
+// CredentialForm returns a string identifying which credential form is set:
+// "kubeconfig", "token", or "" (none declared).
+func (c GatewayClusterConfig) CredentialForm() string {
+	if c.HasSecretRef() {
+		return "kubeconfig"
+	}
+	if c.HasTokenRef() || c.HasCARef() {
+		return "token"
+	}
+	return ""
+}
+
+// HasCredentials reports whether any credential form is declared.
+func (c GatewayClusterConfig) HasCredentials() bool {
+	return c.CredentialForm() != ""
+}
+
+// EndpointURL returns the API server URL for this cluster.
+func (c GatewayClusterConfig) EndpointURL() string { return c.Endpoint }
+
+// IsInsecure reports whether TLS verification is skipped for this cluster.
+func (c GatewayClusterConfig) IsInsecure() bool { return c.Insecure }
+
+// ── APISecretRef methods ──────────────────────────────────────
+
+// SecretName returns the Kubernetes Secret name.
+func (r *APISecretRef) SecretName() string {
+	if r == nil {
+		return ""
+	}
+	return r.Name
+}
+
+// SecretKey returns the data key within the Secret.
+func (r *APISecretRef) SecretKey() string {
+	if r == nil {
+		return ""
+	}
+	return r.Key
+}
+
+// SecretNamespace returns the Secret namespace, or empty string to use the default.
+func (r *APISecretRef) SecretNamespace() string {
+	if r == nil {
+		return ""
+	}
+	return r.Namespace
 }
 
 // ── APIConfig methods ─────────────────────────────────────────
