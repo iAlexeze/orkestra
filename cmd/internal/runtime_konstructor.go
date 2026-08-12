@@ -316,12 +316,14 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 		}
 
 		// ── Enqueue filter — Tier 2b (pre-enqueue condition gate) ─────────────
-		// Register when the CRD declares operatorBox.preReconcile.filter conditions.
-		if rc := crd.PreReconcileCheck(); rc != nil && rc.EnqueueGate.HasConditions() {
+		// Register when the CRD declares operatorBox.preReconcile.enqueueGate or
+		// preReconcile.external conditions.
+		if rc := crd.PreReconcileCheck(); rc.HasEnqueueGate() {
 			crdNameForFilter := crd.Name
 			katForFilter := kat
+			cs := kube.Clientset()
 			infFactory.RegisterEnqueueFilter(gvk, func(obj domain.Object) bool {
-				return katForFilter.EvaluateEnqueueFilter(ctx, crdNameForFilter, obj)
+				return katForFilter.EvaluateEnqueueFilter(ctx, crdNameForFilter, obj, cs)
 			})
 			logger.Debug().
 				Str("crd", crd.APITypes.Kind).

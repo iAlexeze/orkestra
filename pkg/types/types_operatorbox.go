@@ -7,8 +7,14 @@ import (
 
 // ── PreReconcileConfig ────────────────────────────────────────────────────────────
 
-// GateConditions declares when/anyOf conditions shared by both preReconcile gates.
+// GateConditions declares when/anyOf conditions and optional external calls
+// shared by both preReconcile gates.
 type GateConditions struct {
+	// External declares HTTP or gRPC calls made before conditions are evaluated.
+	// Results are injected into the resolver under .external.<name>.* and are
+	// available in when:/anyOf: field expressions.
+	External []ExternalCallSpec `yaml:"external,omitempty" json:"external,omitempty"`
+
 	// When declares AND conditions. All must be true for the gate to pass.
 	When []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
@@ -17,9 +23,14 @@ type GateConditions struct {
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 }
 
-// HasConditions reports whether any conditions are declared.
+// HasConditions reports whether any when/anyOf conditions are declared.
 func (g *GateConditions) HasConditions() bool {
 	return g != nil && (len(g.When) > 0 || len(g.AnyOf) > 0)
+}
+
+// HasGate reports whether the gate has anything to evaluate — conditions or external calls.
+func (g *GateConditions) HasGate() bool {
+	return g != nil && (len(g.When) > 0 || len(g.AnyOf) > 0 || len(g.External) > 0)
 }
 
 // WhenConditions returns the AND conditions, safe on nil receiver.
@@ -53,9 +64,14 @@ func (g *GateConditions) AnyOfConditions() []Condition {
 //	        - field: "{{ .spec.enabled }}"
 //	          equals: "true"
 //	      anyOf:
-//	        - field: "{{ .cross.database.status.phase }}"
+//	        - field: "{{ .status.phase }}"
 //	          equals: "Ready"
 type PreReconcileConfig struct {
+	// External declares HTTP or gRPC calls made once before either gate is evaluated.
+	// Results are injected into the resolver under .external.<name>.* and are
+	// available in both enqueueGate and reconcileGate field expressions.
+	External []ExternalCallSpec `yaml:"external,omitempty" json:"external,omitempty"`
+
 	// EnqueueGate declares informer-level gate conditions evaluated in handleEvent
 	// before the object enters the work queue. When the gate fires the object is
 	// silently dropped — it never reaches the kordinator or reconciler.
@@ -68,9 +84,34 @@ type PreReconcileConfig struct {
 	ReconcileGate *GateConditions `yaml:"reconcileGate,omitempty" json:"reconcileGate,omitempty"`
 }
 
-// HasConditions reports whether reconcileGate has any conditions declared.
+// HasConditions reports whether reconcileGate has any when/anyOf conditions declared.
 func (r *PreReconcileConfig) HasConditions() bool {
 	return r != nil && r.ReconcileGate.HasConditions()
+}
+
+// HasEnqueueGate reports whether the enqueue gate has anything to evaluate.
+func (r *PreReconcileConfig) HasEnqueueGate() bool {
+	return r != nil && (r.EnqueueGate.HasGate() || len(r.External) > 0)
+}
+
+// HasReconcileGate reports whether the reconcile gate has anything to evaluate.
+func (r *PreReconcileConfig) HasReconcileGate() bool {
+	return r != nil && (r.ReconcileGate.HasGate() || len(r.External) > 0)
+}
+
+// HasPreReconcileExternal reports whether preReconcile-level external calls are declared.
+func (r *PreReconcileConfig) HasPreReconcileExternal() bool {
+	return r != nil && len(r.External) > 0
+}
+
+// HasEnqueueGateExternal reports whether the enqueueGate declares external calls.
+func (r *PreReconcileConfig) HasEnqueueGateExternal() bool {
+	return r != nil && r.EnqueueGate != nil && len(r.EnqueueGate.External) > 0
+}
+
+// HasReconcileGateExternal reports whether the reconcileGate declares external calls.
+func (r *PreReconcileConfig) HasReconcileGateExternal() bool {
+	return r != nil && r.ReconcileGate != nil && len(r.ReconcileGate.External) > 0
 }
 
 // WhenConditions returns the reconcileGate AND conditions, safe on nil receiver.
