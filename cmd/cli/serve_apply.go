@@ -87,6 +87,16 @@ Example (dry run — no CR applied):
 			return fmt.Errorf("%s unexpected response (HTTP %d): %s", failureMark(), resp.StatusCode, string(respBody))
 		}
 
+		verbose, _ := rootCmd.PersistentFlags().GetBool("verbose")
+		if verbose {
+			var pretty bytes.Buffer
+			if err := json.Indent(&pretty, respBody, "  ", "  "); err == nil {
+				fmt.Printf("\n%s\n", pretty.String())
+			} else {
+				fmt.Printf("\n%s\n", string(respBody))
+			}
+		}
+
 		return printApplyResult(file, result, dryRun)
 	},
 }
@@ -141,8 +151,8 @@ func printApplyResult(file string, r api.ApplyResponse, dryRun bool) error {
 
 func init() {
 	serveApplyCmd.Flags().StringP("file", "f", "", "Intent or CR file to apply (YAML or JSON; default: intent.yaml or intent.json in cwd)")
-	serveApplyCmd.Flags().String("api", "http://localhost:8080", "Gateway base URL")
-	serveApplyCmd.Flags().String("token", "", "Bearer token for the gateway")
+	serveApplyCmd.Flags().StringP("api", "a", "http://localhost:8080", "Gateway base URL")
+	serveApplyCmd.Flags().StringP("token", "t", "", "Bearer token for the gateway")
 	serveApplyCmd.Flags().Bool("dry-run", false, "Preview without applying — the CR is not written to the cluster")
 
 	_ = serveApplyCmd.MarkFlagRequired("token")
