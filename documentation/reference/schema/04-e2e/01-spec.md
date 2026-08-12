@@ -28,6 +28,21 @@ spec:
 
 ---
 
+## `spec.crdFiles`
+
+Additional CRD paths applied alongside `spec.crd`. Use when the Katalog covers multiple CRDs stored in separate files.
+
+```yaml
+spec:
+  crdFiles:
+    - ./crd-app.yaml
+    - ./crd-route.yaml
+```
+
+All paths in `crd` and `crdFiles` are applied. The effective set is `[crd] + crdFiles`. Either field may be omitted; at least one CRD path is required unless the CRD is already installed.
+
+---
+
 ## `spec.cr`
 
 Path to the Custom Resource YAML to apply at the start of the `cr-applied` phase.
@@ -36,6 +51,21 @@ Path to the Custom Resource YAML to apply at the start of the `cr-applied` phase
 spec:
   cr: ./cr.yaml
 ```
+
+---
+
+## `spec.crFiles`
+
+Additional CR paths applied at the start of the `cr-applied` phase alongside `spec.cr`. Use when the test exercises multiple CRDs from the same Katalog.
+
+```yaml
+spec:
+  crFiles:
+    - ./cr-app.yaml
+    - ./cr-route.yaml
+```
+
+All paths in `cr` and `crFiles` are applied together. Deletion at `cr-deleted` covers all applied CRs. The effective set is `[cr] + crFiles`.
 
 ---
 

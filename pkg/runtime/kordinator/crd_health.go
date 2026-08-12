@@ -97,6 +97,11 @@ type CRDHealth struct {
 	rollbackLastAt     atomic.Value // stores time.Time or zero
 	rollbackMu         sync.RWMutex
 	rollbackLastReason string // protected by rollbackMu
+
+	// Gate state — set when a reconcile item is discarded by pre-reconcile conditions.
+	// Cleared on the next successful reconcile.
+	gated       atomic.Bool
+	gatedReason atomic.Value // stores string
 }
 
 // SetWorkerInfoFn stores the function that returns live WorkerInfo for this CRD.
@@ -217,6 +222,7 @@ func (h *CRDHealth) RecordSuccess() {
 	h.healthy.Store(true)
 	h.pending.Store(false)
 	h.degraded.Store(false)
+	h.gated.Store(false)
 
 	// If all online for this katalog
 	if h.orkHealth.allOnline.Load() {
@@ -254,6 +260,27 @@ func (h *CRDHealth) RecordFailure(err error, degradeThreshold int) {
 func (h *CRDHealth) RecordStartupFailure(err error, degradeThreshold int) {
 	h.consecutiveFails.Add(1)
 	h.lastError.Store(err.Error())
+}
+
+// RecordGated records that a reconcile item was discarded because pre-reconcile
+// gate conditions were not met. The reconciler was not called — this is not a
+// failure and does not affect error rate or degradation thresholds.
+func (h *CRDHealth) RecordGated(reason string) {
+	h.gated.Store(true)
+	h.gatedReason.Store(reason)
+}
+
+// IsGated reports whether the most recent reconcile item was discarded by the
+// pre-reconcile gate. Cleared on the next successful reconcile.
+func (h *CRDHealth) IsGated() bool {
+	return h.gated.Load()
+}
+
+// GatedReason returns the human-readable reason the last item was gated.
+// Empty when IsGated is false.
+func (h *CRDHealth) GatedReason() string {
+	v, _ := h.gatedReason.Load().(string)
+	return v
 }
 
 // ErrorRate returns the ratio of failed reconciles to total reconciles.

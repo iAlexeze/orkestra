@@ -50,6 +50,12 @@ operatorBox:
   when:
     ...               # → when-conditions.md
 
+  preReconcile:
+    when:             # → preReconcile section below
+      - ...
+    anyOf:
+      - ...
+
   rollBackOnError: false
   autoscale:
     ...
@@ -287,6 +293,48 @@ onDelete:
 Available resource types: `deployments`, `services`, `configmaps`, `secrets`, `jobs`, `cronjobs`, `statefulsets`, `ingresses`, `serviceaccounts`, `roles`, `rolebindings`, `pvcs`, `pdbs`, `hpas`, `namespaces`.
 
 Templates are Go templates evaluated against the CR object. Use `{{ .Name }}`, `{{ .Namespace }}`, `{{ .Spec.* }}`, `{{ .Status.* }}`.
+
+## `preReconcile`
+
+Pre-reconcile gate conditions. Evaluated by the kordinator **before** the reconciler is invoked. When conditions fail, the reconcile cycle is dropped entirely — the reconciler is not called, no resources are created or deleted, and the CRD reports health state `gated`.
+
+```yaml
+operatorBox:
+  preReconcile:
+    when:
+      - field: "{{ .spec.enabled }}"
+        equals: "true"
+    anyOf:
+      - field: "{{ .spec.environment }}"
+        equals: "production"
+      - field: "{{ .spec.environment }}"
+        equals: "staging"
+```
+
+### Gate semantics
+
+| Property | Behavior |
+|---|---|
+| **Scope** | Per-CR — each CR's gate is evaluated independently |
+| **Phase** | After dequeue, before the reconciler runs |
+| **On gate** | Item dropped from queue without re-queuing. No error. No status write. |
+| **Health state** | `gated` — idle, not degraded. Clears on next successful reconcile. |
+| **On CR update** | Object re-enqueued; gate re-evaluated with new field values |
+
+### Difference from resource-level `when:`
+
+| | `operatorBox.reconcile.when` | Resource `when:` in `onCreate` / `onReconcile` |
+|---|---|---|
+| Evaluated by | Kordinator (before reconciler) | Reconciler (inside reconcile loop) |
+| Effect | Entire cycle skipped | Individual resource skipped |
+| Health on gate | `gated` (idle) | No effect on health |
+| Re-queue on gate | No | Normal re-queue |
+
+All [condition operators](06-when-conditions.md#operators) are supported. `when:` requires ALL conditions to pass (AND). `anyOf:` requires at least one to pass (OR). Both may be specified simultaneously — both must pass.
+
+See [Conditional Reconciliation](../../../concepts/conditional/04-conditional-reconciliation.md) for the full concept guide.
+
+---
 
 ## `rollBackOnError`
 

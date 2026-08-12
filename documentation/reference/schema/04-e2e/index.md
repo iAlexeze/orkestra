@@ -31,8 +31,14 @@ metadata:
 
 spec:
   katalog: ./katalog.yaml
-  crd: ./crd.yaml
-  cr: ./cr.yaml
+  crd: ./crd.yaml          # single CRD — or use crdFiles for multiple
+  crdFiles:                # additional CRDs (combined with crd)
+    - ./crd-app.yaml
+    - ./crd-route.yaml
+  cr: ./cr.yaml            # single CR — or use crFiles for multiple
+  crFiles:                 # additional CRs (combined with cr)
+    - ./cr-app.yaml
+    - ./cr-route.yaml
 
   cluster:
     provider: kind
@@ -105,7 +111,7 @@ Cluster torn down (if reuse: false)
 ork validate -f e2e.yaml
 ```
 
-Catches: missing required fields, unknown `after` values, unknown `provider` values, unreachable file paths for `katalog`, `crd`, `cr`, and `setup.apply` entries.
+Catches: missing required fields, unknown `after` values, unknown `provider` values, unreachable file paths for `katalog`, `crd`, `crdFiles`, `cr`, `crFiles`, and `setup.apply` entries.
 
 ---
 

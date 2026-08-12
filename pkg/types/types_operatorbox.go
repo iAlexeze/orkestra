@@ -5,6 +5,52 @@ import (
 	"github.com/orkspace/orkestra/domain"
 )
 
+// ── PreReconcileConfig ────────────────────────────────────────────────────────────
+
+// PreReconcileConfig declares the conditions that gate entry into the reconcile
+// loop for a given CR. Evaluated in the kordinator before safeReconcile —
+// when conditions are not met the reconciler is never called.
+//
+// YAML:
+//
+//	operatorBox:
+//	  reconcile:
+//	    when:
+//	      - field: "{{ inBusinessHours }}"
+//	        equals: "true"
+//	    anyOf:
+//	      - field: "{{ .cross.database.status.phase }}"
+//	        equals: "Ready"
+type PreReconcileConfig struct {
+	// When declares AND conditions. All must be true for the reconciler to be called.
+	When []Condition `yaml:"when,omitempty" json:"when,omitempty"`
+
+	// AnyOf declares OR conditions. At least one must be true.
+	// When both When and AnyOf are declared, both must pass.
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+}
+
+// HasConditions reports whether any gate conditions are declared.
+func (r *PreReconcileConfig) HasConditions() bool {
+	return r != nil && (len(r.When) > 0 || len(r.AnyOf) > 0)
+}
+
+// WhenConditions returns the AND conditions, safe on nil receiver.
+func (r *PreReconcileConfig) WhenConditions() []Condition {
+	if r == nil {
+		return nil
+	}
+	return r.When
+}
+
+// AnyOfConditions returns the OR conditions, safe on nil receiver.
+func (r *PreReconcileConfig) AnyOfConditions() []Condition {
+	if r == nil {
+		return nil
+	}
+	return r.AnyOf
+}
+
 // ── OperatorBoxConfig ──────────────────────────────────────────────────────────
 
 // ReconcilerConfig groups the reconciler identity fields that are declared
@@ -68,6 +114,13 @@ type OperatorBoxConfig struct {
 	// Reconciler groups the reconciler identity fields. Omit for declarative-only CRDs.
 	// nil → GenericReconciler with default: true.
 	Reconciler *ReconcilerConfig `yaml:"reconciler,omitempty" json:"reconciler,omitempty"`
+
+	// PreReconcile declares pre-reconcile gate conditions. When declared, the kordinator
+	// evaluates when/anyOf before calling the reconciler. If conditions are not met
+	// the reconciler is never called — the item is discarded and re-evaluated on the
+	// next informer tick.
+	// nil → no gate; reconciler is always called (default behavior).
+	PreReconcile *PreReconcileConfig `yaml:"preReconcile,omitempty" json:"preReconcile,omitempty"`
 
 	// Finalizers — per-CRD finalizer list. Overrides the Katalog-level finalizer.
 	// Applied by GenericReconciler when a CR is first created.

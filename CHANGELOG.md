@@ -170,6 +170,39 @@ ork webhook play -f katalog.yaml --webhook payments-repo \
 
 ---
 
+### Conditional reconciliation — `operatorBox.preReconcile`
+
+Pre-reconcile gates let the kordinator evaluate conditions **before** calling the reconciler. When a CR does not satisfy the gate, the reconcile cycle is dropped entirely — the reconciler is never called, no resources are created or deleted, and the CRD reports health state `gated`.
+
+```yaml
+operatorBox:
+  preReconcile:
+    when:
+      - field: "{{ .spec.enabled }}"
+        equals: "true"
+    anyOf:
+      - field: "{{ .spec.environment }}"
+        equals: "production"
+      - field: "{{ .spec.environment }}"
+        equals: "staging"
+```
+
+Gates are evaluated per-CR using the same resolver chain available inside the reconciler (`.spec`, `.metadata`, serve intent, profiles, notes). When conditions fail the item is dropped without re-queuing — it waits for the next CR change event. No error is recorded. CRD health stays `gated` (idle, not degraded).
+
+**`gated` state in Control Center** — new state separate from healthy/degraded. Purple badge, shows the gate reason. `StatusCounts.Gated` propagates through the full CC chain (`/katalog` endpoint, health and info handlers, summary view, CRD detail).
+
+`crdFiles` / `crFiles` added to `E2ESpec` alongside the existing `SimulateSpec` fields. Both support multiple CRDs and CRs in a single test file:
+
+```yaml
+spec:
+  crdFiles: [crd-app.yaml, crd-route.yaml]
+  crFiles:  [cr-app.yaml, cr-route.yaml]
+```
+
+`tests/simulate-envtest/04-conditional-reconciliation/` — envtest simulate suite covering gate-pass (Deployment created) and gate-discard (`absent: [{resource: deployments}]`). `examples/intermediate/05-when-conditions/conditional-reconciliation/` — App (gated) + Route (unconditional) pack with simulate and e2e.
+
+---
+
 ## v0.7.14 — Aliases and Intent Provenance
 
 ### Serve aliases

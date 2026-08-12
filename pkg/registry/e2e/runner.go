@@ -59,7 +59,7 @@ type Runner struct {
 	kindVersion   string // kind binary version to use ("" = DefaultKindVersion)
 
 	katalogFile string
-	crFile      string
+	crFiles     []string
 
 	// Orkestra installation options
 	orkestraVersion string
@@ -186,11 +186,13 @@ func (r *Runner) resolveSource() error {
 			candidate = filepath.Join(cwd, "examples", spec.Init.Pack, spec.Init.Example)
 		}
 		r.katalogFile = filepath.Join(candidate, "katalog.yaml")
-		r.crFile = filepath.Join(candidate, "cr.yaml")
+		r.crFiles = []string{filepath.Join(candidate, "cr.yaml")}
 
-	case spec.Katalog != "" && spec.CR != "":
+	case spec.Katalog != "" && len(spec.AllCRPaths()) > 0:
 		r.katalogFile = r.abs(spec.Katalog)
-		r.crFile = r.abs(spec.CR)
+		for _, p := range spec.AllCRPaths() {
+			r.crFiles = append(r.crFiles, r.abs(p))
+		}
 
 	case spec.Katalog != "" && r.noRuntime:
 		// --no-runtime: katalog without a CR is valid — the gateway drives expectations.
@@ -198,8 +200,8 @@ func (r *Runner) resolveSource() error {
 
 	case spec.Custom != nil && spec.Custom.Target != "":
 		// custom.target: both katalog and cr are optional.
-		if spec.CR != "" {
-			r.crFile = r.abs(spec.CR)
+		for _, p := range spec.AllCRPaths() {
+			r.crFiles = append(r.crFiles, r.abs(p))
 		}
 
 	case len(r.e2e.Imports) > 0:
@@ -215,9 +217,9 @@ func (r *Runner) resolveSource() error {
 			return fmt.Errorf("katalog file not found: %s", r.katalogFile)
 		}
 	}
-	if r.crFile != "" {
-		if _, err := os.Stat(r.crFile); err != nil {
-			return fmt.Errorf("CR file not found: %s", r.crFile)
+	for _, p := range r.crFiles {
+		if _, err := os.Stat(p); err != nil {
+			return fmt.Errorf("CR file not found: %s", p)
 		}
 	}
 	return nil
@@ -452,21 +454,25 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 
 			case orktypes.AfterCRApplied:
 				if !crApplied && !r.noRuntime {
-					fmt.Printf("→ Applying CR...\n")
-					if out, err := kubectl(ctx, "apply", "-f", r.crFile); err != nil {
-						return nil, fmt.Errorf("apply CR: %w\n%s", err, out)
+					fmt.Printf("→ Applying CR(s)...\n")
+					for _, p := range r.crFiles {
+						if out, err := kubectl(ctx, "apply", "-f", p); err != nil {
+							return nil, fmt.Errorf("apply CR %s: %w\n%s", p, err, out)
+						}
 					}
-					fmt.Printf("  %s CR applied\n\n", orkutils.SuccessMark())
+					fmt.Printf("  %s CR(s) applied\n\n", orkutils.SuccessMark())
 					crApplied = true
 				}
 
 			case orktypes.AfterCRDeleted:
 				if !crDeleted && !r.noRuntime {
-					fmt.Printf("→ Deleting CR...\n")
-					if out, err := kubectl(ctx, "delete", "-f", r.crFile, "--ignore-not-found"); err != nil {
-						return nil, fmt.Errorf("delete CR: %w\n%s", err, out)
+					fmt.Printf("→ Deleting CR(s)...\n")
+					for _, p := range r.crFiles {
+						if out, err := kubectl(ctx, "delete", "-f", p, "--ignore-not-found"); err != nil {
+							return nil, fmt.Errorf("delete CR %s: %w\n%s", p, err, out)
+						}
 					}
-					fmt.Printf("  %s CR deleted\n\n", orkutils.SuccessMark())
+					fmt.Printf("  %s CR(s) deleted\n\n", orkutils.SuccessMark())
 					crDeleted = true
 				}
 
@@ -697,16 +703,20 @@ func (r *Runner) ensureCluster(ctx context.Context) error {
 }
 
 // applyCRD applies the operator's CRD to the cluster and returns the paths applied.
-// Uses spec.crd if declared; falls back to crdFile entries in the katalog.
+// Uses spec.AllCRDPaths() if declared; falls back to crdFile entries in the katalog.
 func (r *Runner) applyCRD(ctx context.Context) ([]string, error) {
-	if crd := r.e2e.Spec.CRD; crd != "" {
-		path := r.abs(crd)
-		fmt.Printf("→ Applying CRD from %s...\n", crd)
-		if out, err := kubectl(ctx, "apply", "-f", path); err != nil {
-			return nil, fmt.Errorf("applying CRD %s: %w\n%s", crd, err, out)
+	if crdPaths := r.e2e.Spec.AllCRDPaths(); len(crdPaths) > 0 {
+		var applied []string
+		for _, crd := range crdPaths {
+			path := r.abs(crd)
+			fmt.Printf("→ Applying CRD from %s...\n", crd)
+			if out, err := kubectl(ctx, "apply", "-f", path); err != nil {
+				return nil, fmt.Errorf("applying CRD %s: %w\n%s", crd, err, out)
+			}
+			applied = append(applied, path)
 		}
-		fmt.Printf("  %s CRD applied\n", orkutils.SuccessMark())
-		return []string{path}, nil
+		fmt.Printf("  %s CRD(s) applied\n", orkutils.SuccessMark())
+		return applied, nil
 	}
 
 	// Fallback: read crdFile references from the katalog.
@@ -933,7 +943,7 @@ func (r *Runner) provider() string {
 // it exists only to run imported E2E files.
 // A kubernetesTarget spec is never a pure aggregator even when cr and katalog are omitted.
 func (r *Runner) isPureAggregator() bool {
-	return r.katalogFile == "" && r.crFile == "" && !r.kubernetesTarget
+	return r.katalogFile == "" && len(r.crFiles) == 0 && !r.kubernetesTarget
 }
 
 func (r *Runner) abs(path string) string {

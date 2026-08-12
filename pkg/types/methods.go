@@ -17,6 +17,12 @@ func (e CRDEntry) Config() OperatorBoxConfig {
 	return e.OperatorBox
 }
 
+// PreReconcileCheck returns the gate config for this CRD.
+// nil means no gate — the reconciler is always called.
+func (e CRDEntry) PreReconcileCheck() *PreReconcileConfig {
+	return e.OperatorBox.PreReconcile
+}
+
 // IsBuiltInType reports whether this CRD represents a built‑in Kubernetes resource.
 // Built‑ins rely on enrichment to populate group, version, plural, and scope.
 func (c *CRDEntry) IsBuiltInType() bool {

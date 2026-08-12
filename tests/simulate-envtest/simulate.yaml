@@ -11,3 +11,4 @@ imports:
   - 01-probe-reconcile/simulate.yaml
   - 02-status-patch/simulate.yaml
   - 03-namespace-filter/simulate.yaml
+  - 04-conditional-reconciliation/simulate.yaml

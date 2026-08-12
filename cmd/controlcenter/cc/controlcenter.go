@@ -1402,6 +1402,8 @@ func computeStatusCounts(crds []CRDSummary) StatusCounts {
 			sc.Degraded++
 		case "started":
 			sc.Started++
+		case "gated":
+			sc.Gated++
 		default:
 			sc.Pending++
 		}

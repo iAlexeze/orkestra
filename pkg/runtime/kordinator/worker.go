@@ -132,6 +132,20 @@ func (k *Kontroller) processItemForGVK(ctx context.Context, gvk string, item que
 		return
 	}
 
+	// Pre-reconcile gate: evaluate operatorBox.reconcile.when/anyOf conditions.
+	// The reconciler is never called when conditions are not met — gated state
+	// is idle, not failure; error rate and health state are unaffected.
+	if entry, ok := k.katalog.Get(gvk); ok {
+		if rc := entry.CRD.PreReconcileCheck(); rc.HasConditions() {
+			obj := k.objectFromCache(entry, item.Key)
+			if gated, reason := k.evaluatePreReconcileCheck(ctx, obj, entry, rc); gated {
+				k.crdHealthMap[gvk].RecordGated(reason)
+				wq.Queue.Forget(item)
+				return
+			}
+		}
+	}
+
 	// safeReconcile catches panics
 	if err := k.safeReconcile(rec, k.crdHealthMap[gvk], ctx, item.Key, gvk); err != nil {
 		logger.Error().Err(err).Str("gvk", gvk).Str("key", item.Key).Msg("reconcile failed")

@@ -512,6 +512,7 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 		kube,
 		infFactory,
 		ktrlRegistry,
+		kat,
 		ev,
 		hs,
 		queueRegistry,

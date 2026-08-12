@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/katalog"
@@ -29,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	"k8s.io/client-go/tools/cache"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
@@ -53,6 +55,11 @@ func RunWithEnvtest(ctx context.Context, kat *katalog.Katalog, crdName string,
 	prev := log.Logger
 	log.Logger = log.Output(io.Discard)
 	defer func() { log.Logger = prev }()
+
+	// Suppress controller-runtime's own logger — it prints a noisy stack trace
+	// if SetLogger is never called. Discarding is correct here: envtest runs
+	// are short-lived and their internal logs are not part of simulate output.
+	ctrl.SetLogger(logr.Discard())
 
 	binDir := os.Getenv("HOME") + "/" + envtestBinDir
 
@@ -242,6 +249,17 @@ func RunWithEnvtest(ctx context.Context, kat *katalog.Katalog, crdName string,
 	if err != nil {
 		return nil, fmt.Errorf("computing CR key: %w", err)
 	}
+
+	r = wrapWithGate(r, crdEntry.OperatorBox.PreReconcile, func() *unstructured.Unstructured {
+		item, exists, _ := inf.GetStore().GetByKey(key)
+		if !exists || item == nil {
+			return nil
+		}
+		if u, ok := item.(*unstructured.Unstructured); ok {
+			return u
+		}
+		return cr
+	})
 
 	loopResult := runLoop(ctx, r, recKube, key, maxCycles)
 	loopResult.Notes = result.Notes
