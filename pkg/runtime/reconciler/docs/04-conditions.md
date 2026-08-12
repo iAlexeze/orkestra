@@ -25,10 +25,10 @@ onCreate:
 
 `when:` conditions are AND'd. `anyOf:` conditions are OR'd. When both are declared, both must pass.
 
-## EvaluateWhen
+## EvaluateConditions
 
 ```go
-orktypes.EvaluateWhen(data map[string]interface{}, allOf []Condition, anyOf []Condition) bool
+orktypes.EvaluateConditions(data map[string]interface{}, allOf []Condition, anyOf []Condition) bool
 ```
 
 `data` is `resolver.Data()` — the full CR data map including injected fields:
@@ -117,7 +117,7 @@ Before the main loop, build a set of every `(ns/name)` that has **at least one p
 ```go
 activeNames := make(map[string]bool, len(srcs))
 for _, s := range srcs {
-    if !orktypes.EvaluateWhen(resolver.Data(), s.Conditions, s.AnyOf) {
+    if !orktypes.EvaluateConditions(resolver.Data(), s.Conditions, s.AnyOf) {
         continue
     }
     n, _   := resolver.Resolve(s.Name)

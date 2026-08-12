@@ -12,7 +12,7 @@ package cli
 //	ork gate -f katalog.yaml --cr cr.yaml
 //
 // It evaluates validation.rules and previews mutation.rules in-process, using
-// the same EvaluateWhen + EvaluateValidationRule logic as the webhook and
+// the same EvaluateConditions + EvaluateValidationRule logic as the webhook and
 // reconciler. No cluster connection, no TLS, no webhook server.
 //
 // Limitations vs. the real webhook:

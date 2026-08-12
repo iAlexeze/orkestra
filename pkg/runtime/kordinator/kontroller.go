@@ -10,6 +10,7 @@ import (
 	"github.com/orkspace/orkestra/domain"
 
 	"github.com/orkspace/orkestra/pkg/event"
+	"github.com/orkspace/orkestra/pkg/katalog"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 
 	"github.com/orkspace/orkestra/pkg/kubeclient"
@@ -26,6 +27,7 @@ type Kontroller struct {
 	informerFactory  *informer.Factory
 	event            *event.Event
 	katalog          *ResourceKatalog
+	kat              *katalog.Katalog
 	queueRegistry    *queue.QueueRegistry
 	defaultWorkqueue *queue.Workqueue
 	failureThreshold map[string]int
@@ -53,6 +55,7 @@ func NewKontroller(
 	kube *kubeclient.Kubeclient,
 	informerFactory *informer.Factory,
 	katalog *ResourceKatalog,
+	kat *katalog.Katalog,
 	event *event.Event,
 	hs domain.Health,
 	crdHealthMap map[string]*CRDHealth,
@@ -65,6 +68,7 @@ func NewKontroller(
 		kube:             kube,
 		informerFactory:  informerFactory,
 		katalog:          katalog,
+		kat:              kat,
 		event:            event,
 		hs:               hs,
 		defaultWorkqueue: defaultWorkqueue,

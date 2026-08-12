@@ -6,16 +6,6 @@ A conditional is a `when:` or `anyOf:` block attached to a resource, a status fi
 
 ---
 
-## Where conditionals work
-
-| Location | Effect |
-|---|---|
-| `onCreate`, `onReconcile`, `onDelete` resources | Resource is created/updated/deleted only when conditions pass |
-| `status.fields` entries | Status field is written only when conditions pass |
-| Motifs | Conditions apply inside motif templates the same way |
-
----
-
 ## `when:` — AND semantics
 
 All conditions must pass. If any one fails, the block is skipped.
@@ -59,11 +49,21 @@ String matching (`equals`, `contains`, `prefix`, `suffix`, `regex`), existence (
 
 ---
 
+## Where conditionals work
+
+| Location | Effect |
+|---|---|
+| `operatorBox.reconcile.when` | Entire reconcile cycle is skipped when conditions fail — CRD reports `gated` |
+| `onCreate`, `onReconcile`, `onDelete` resources | Resource is created/updated/deleted only when conditions pass |
+| `status.fields` entries | Status field is written only when conditions pass |
+| Motifs | Conditions apply inside motif templates the same way |
+
 ## Where to go next
 
-- [Resource Conditions](resource-conditions/) — conditional creation for `onCreate`, `onReconcile`, `onDelete`
-- [Async Reconciliation](async-reconciliation/) — multi-phase workflows using `when:` gates
-- [Status Conditions](status-conditions/) — state machines via `when:` on `status.fields`
+- [Resource Conditions](01-resource-conditions.md) — conditional creation for `onCreate`, `onReconcile`, `onDelete`
+- [Async Reconciliation](02-async-reconciliation.md) — multi-phase workflows using `when:` gates
+- [Status Conditions](03-status-conditions.md) — state machines via `when:` on `status.fields`
+- [Conditional Reconciliation](04-conditional-reconciliation.md) — pre-reconcile gates via `operatorBox.reconcile.when`
 
 ---
 

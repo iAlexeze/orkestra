@@ -26,16 +26,19 @@
   --color-pending:  #fbbf24;
   --color-degraded: #f87171;
   --color-started:  #60a5fa;
+  --color-gated:    #a78bfa;
 
   --color-healthy-bg:  rgba(52, 211, 153, 0.1);
   --color-pending-bg:  rgba(251, 191, 36, 0.1);
   --color-degraded-bg: rgba(248, 113, 113, 0.1);
   --color-started-bg:  rgba(96, 165, 250, 0.1);
+  --color-gated-bg:    rgba(167, 139, 250, 0.1);
 
   --color-healthy-border:  rgba(52, 211, 153, 0.25);
   --color-pending-border:  rgba(251, 191, 36, 0.25);
   --color-degraded-border: rgba(248, 113, 113, 0.25);
   --color-started-border:  rgba(96, 165, 250, 0.25);
+  --color-gated-border:    rgba(167, 139, 250, 0.25);
 
   /* Sidebar */
   --sidebar-width: 250px;
@@ -752,6 +755,12 @@ code, .mono {
   border-color: var(--color-started-border);
 }
 
+.cc-badge-gated {
+  background: var(--color-gated-bg);
+  color: var(--color-gated);
+  border-color: var(--color-gated-border);
+}
+
 /* ── Status Dot ────────────────────────────────────────────── */
 .cc-status-dot {
   width: 8px;
@@ -765,6 +774,7 @@ code, .mono {
 .cc-status-dot.pending  { background: var(--color-pending); }
 .cc-status-dot.degraded { background: var(--color-degraded); }
 .cc-status-dot.started  { background: var(--color-started); }
+.cc-status-dot.gated    { background: var(--color-gated); }
 
 /* ── Refresh Dot (SSE indicator) ───────────────────────────── */
 .cc-refresh-dot {

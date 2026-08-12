@@ -1,0 +1,11 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: filter-probe-simulate
+  description: >
+    Runs both filter scenarios: spec.active true produces a ConfigMap;
+    spec.active false is dropped by the enqueue filter — nothing created.
+
+imports:
+  - simulate/active.yaml
+  - simulate/inactive.yaml

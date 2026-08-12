@@ -46,6 +46,13 @@ func (f *Factory) handleEvent(obj interface{}) {
 		return
 	}
 
+	// ── Tier 2b: Pre-enqueue condition filter ────────────────────────────
+	// Evaluate operatorBox.preReconcile.filter conditions before enqueue.
+	// Objects that fail the filter are dropped — they never enter the queue.
+	if !f.enqueueAllowed(gvkStr, obj) {
+		return
+	}
+
 	// Route to per-CRD queue if registered, otherwise fall back to default
 	wq, ok := f.queueRegistry.For(gvkStr)
 	if !ok {

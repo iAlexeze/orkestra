@@ -189,6 +189,8 @@ func (c *Client) FetchCRDDetail(name string, endpoints EndpointInfo, summary *CR
 		Rollback:                 info.Rollback,
 		HealthEndpointDisabled:   !endpoints.HealthEnabled,
 		InfoEndpointDisabled:     !endpoints.InfoEnabled,
+		Gated:                    health.Gated,
+		GatedReason:              health.GatedReason,
 	}
 
 	detail.StartedAgo = humanDuration(health.StartedAt)

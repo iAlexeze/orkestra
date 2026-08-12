@@ -17,8 +17,9 @@ These tests replace Go integration tests in `tests/integration/` for scenarios t
 | `01-probe-reconcile` | Deployment applied via SSA on cycle 1; loop reaches steady state | `tests/integration/kubeclient` create path |
 | `02-status-patch` | Status patch reaches the real `/status` subresource endpoint | `tests/integration/kubeclient` status patch |
 | `03-namespace-filter` | CR in `default`, operator allows only `staging` — no Deployment created | `tests/integration/informer` namespace filter |
+| `04-conditional-reconciliation` | Gate pass: Deployment created when `spec.enabled: true`. Gate discard: no Deployment when `spec.enabled: false` — kordinator never calls the reconciler | kordinator pre-reconcile gate |
 
-Shared fixtures at the root (`katalog.yaml`, `crd.yaml`, `cr.yaml`) are used by all three tests.
+Tests 01–03 share root fixtures (`katalog.yaml`, `crd.yaml`, `cr.yaml`). Test 04 has its own fixtures in its directory.
 
 ## Shared fixtures
 

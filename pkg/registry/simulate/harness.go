@@ -240,6 +240,17 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 		return nil, fmt.Errorf("computing CR key: %w", err)
 	}
 
+	r = wrapWithGate(r, crdEntry.OperatorBox.PreReconcile, func() *unstructured.Unstructured {
+		item, exists, _ := indexer.GetByKey(key)
+		if !exists || item == nil {
+			return nil
+		}
+		if u, ok := item.(*unstructured.Unstructured); ok {
+			return u
+		}
+		return cr
+	})
+
 	loopResult := runLoop(ctx, r, fakeKube, key, maxCycles)
 	loopResult.Notes = result.Notes
 	return loopResult, nil

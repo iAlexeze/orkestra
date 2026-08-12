@@ -40,7 +40,7 @@ func Run(
 	results := make(map[string]interface{}, len(calls))
 
 	for i, call := range calls {
-		if !orktypes.EvaluateWhen(resolver.Data(), call.Conditions, call.AnyOf, resolver.TemplateEvaluator()) {
+		if !orktypes.EvaluateConditions(resolver.Data(), call.Conditions, call.AnyOf, resolver.TemplateEvaluator()) {
 			results[call.Name] = skippedResult(call.Protocol)
 			log.Debug().
 				Str("call", call.Name).

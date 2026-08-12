@@ -35,7 +35,7 @@ const portForwardTimeout = 15 * time.Second
 var errSkipped = fmt.Errorf("skipped")
 
 func verifyExpectation(ctx context.Context, exp orktypes.E2EExpectation, workDir string, cs kubernetes.Interface, cfg *rest.Config, noteEval orktypes.TemplateEvaluator) error {
-	if !orktypes.EvaluateWhen(nil, exp.When, exp.AnyOf, noteEval) {
+	if !orktypes.EvaluateConditions(nil, exp.When, exp.AnyOf, noteEval) {
 		return errSkipped
 	}
 	if exp.Wait != "" {

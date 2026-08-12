@@ -14,7 +14,7 @@ The reconciler package is the execution engine of every Orkestra operator. It ta
 | `normalize.go` | `applyNormalize` — in-memory spec normalization before mutation/validation |
 | `run_delete_ordered.go` | Sequential staged deletion with completion gates (`onDelete.ordered: true`) |
 | `run_customresource.go` | Resolves, conditions-checks, and applies Custom Resource declarations; skips gracefully when target CRD is missing |
-| `conditions.go` | `EvaluateWhen` wrappers and helpers |
+| `conditions.go` | `EvaluateConditions` wrappers and helpers |
 | `run_namespace_guard.go` | `CheckNamespace` — allowed/restricted namespace enforcement |
 | `gvr.go` | GVR aliases used by `run_delete_ordered.go`; authoritative GVR definitions live in `pkg/children` |
 

@@ -33,7 +33,7 @@ func RunWidgets(
     // ── Section A: activeNames pre-pass ──────────────────────────────────────
     activeNames := make(map[string]bool, len(srcs))
     for _, s := range srcs {
-        if !orktypes.EvaluateWhen(resolver.Data(), s.Conditions, s.AnyOf, resolver.TemplateEvaluator()) {
+        if !orktypes.EvaluateConditions(resolver.Data(), s.Conditions, s.AnyOf, resolver.TemplateEvaluator()) {
             continue
         }
         n, _   := resolver.Resolve(s.Name)
@@ -48,7 +48,7 @@ func RunWidgets(
     for i, src := range srcs {
 
         // B1. Evaluate conditions
-        conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf, resolver.TemplateEvaluator())
+        conditionPassed := orktypes.EvaluateConditions(resolver.Data(), src.Conditions, src.AnyOf, resolver.TemplateEvaluator())
 
         // B2. Early name/namespace resolution
         name, _ := resolver.Resolve(src.Name)
@@ -118,7 +118,7 @@ func RunWidgets(
 
 ## Section B1 — Condition evaluation
 
-Always call `orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf, resolver.TemplateEvaluator())`.
+Always call `orktypes.EvaluateConditions(resolver.Data(), src.Conditions, src.AnyOf, resolver.TemplateEvaluator())`.
 
 - `resolver.Data()` — the full CR data map including `.children.*`, `.external.*`, `.cross.*`. Do NOT pass the `owner` object directly — it does not have these injected fields.
 - `src.Conditions` — the `when:` block (AND semantics).
@@ -218,7 +218,7 @@ The `[%d]` index tells operators exactly which declaration in the YAML failed.
 
 **Forgetting the activeNames pre-pass.** Causes create/delete loops when two declarations target the same resource with mutually exclusive conditions.
 
-**Passing `owner` to EvaluateWhen instead of `resolver.Data()`.** The `owner` object does not have `.children.*`, `.external.*`, or `.cross.*` — conditions referencing those fields silently fail.
+**Passing `owner` to EvaluateConditions instead of `resolver.Data()`.** The `owner` object does not have `.children.*`, `.external.*`, or `.cross.*` — conditions referencing those fields silently fail.
 
 **Not nil-checking the guard.** `guard` is nil when the CRD has no namespace restrictions. A nil dereference panics.
 

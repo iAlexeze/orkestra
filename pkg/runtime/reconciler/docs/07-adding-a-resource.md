@@ -371,7 +371,7 @@ func RunIngresses(
 ) error {
     activeNames := make(map[string]bool, len(srcs))
     for _, s := range srcs {
-        if !orktypes.EvaluateWhen(resolver.Data(), s.Conditions, s.AnyOf, resolver.TemplateEvaluator()) {
+        if !orktypes.EvaluateConditions(resolver.Data(), s.Conditions, s.AnyOf, resolver.TemplateEvaluator()) {
             continue
         }
         n, _   := resolver.Resolve(s.Name)
@@ -383,7 +383,7 @@ func RunIngresses(
     }
 
     for i, src := range srcs {
-        conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf, resolver.TemplateEvaluator())
+        conditionPassed := orktypes.EvaluateConditions(resolver.Data(), src.Conditions, src.AnyOf, resolver.TemplateEvaluator())
 
         name, _ := resolver.Resolve(src.Name)
         ns, _   := resolver.Resolve(src.Namespace)
@@ -517,7 +517,7 @@ A clean build is the acceptance criterion. No new tests are required for the run
 
 **Forgetting the activeNames pre-pass.** Omitting it causes create/delete loops when two declarations target the same resource with mutually exclusive conditions. All runners that call `DeleteIfOwned` must have the pre-pass.
 
-**Passing `owner` to EvaluateWhen instead of `resolver.Data()`.** The `owner` object does not have `.children.*`, `.external.*`, or `.cross.*` — conditions referencing those fields will silently fail.
+**Passing `owner` to EvaluateConditions instead of `resolver.Data()`.** The `owner` object does not have `.children.*`, `.external.*`, or `.cross.*` — conditions referencing those fields will silently fail.
 
 **Resolving name/namespace only once.** `ResolveXxxTemplate` re-resolves internally. The early resolution in B2 is separate and intentional — it is used for the guard and `DeleteIfOwned` before the full resolution in B5.
 

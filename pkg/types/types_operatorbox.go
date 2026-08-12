@@ -5,6 +5,90 @@ import (
 	"github.com/orkspace/orkestra/domain"
 )
 
+// ── PreReconcileConfig ────────────────────────────────────────────────────────────
+
+// GateConditions declares when/anyOf conditions shared by both preReconcile gates.
+type GateConditions struct {
+	// When declares AND conditions. All must be true for the gate to pass.
+	When []Condition `yaml:"when,omitempty" json:"when,omitempty"`
+
+	// AnyOf declares OR conditions. At least one must be true.
+	// When both When and AnyOf are declared, both must pass.
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+}
+
+// HasConditions reports whether any conditions are declared.
+func (g *GateConditions) HasConditions() bool {
+	return g != nil && (len(g.When) > 0 || len(g.AnyOf) > 0)
+}
+
+// WhenConditions returns the AND conditions, safe on nil receiver.
+func (g *GateConditions) WhenConditions() []Condition {
+	if g == nil {
+		return nil
+	}
+	return g.When
+}
+
+// AnyOfConditions returns the OR conditions, safe on nil receiver.
+func (g *GateConditions) AnyOfConditions() []Condition {
+	if g == nil {
+		return nil
+	}
+	return g.AnyOf
+}
+
+// PreReconcileConfig groups the two pre-reconcile gates under operatorBox.preReconcile.
+//
+// YAML:
+//
+//	operatorBox:
+//	  preReconcile:
+//	    enqueueGate:
+//	      when:
+//	        - field: "{{ .spec.active }}"
+//	          equals: "true"
+//	    reconcileGate:
+//	      when:
+//	        - field: "{{ .spec.enabled }}"
+//	          equals: "true"
+//	      anyOf:
+//	        - field: "{{ .cross.database.status.phase }}"
+//	          equals: "Ready"
+type PreReconcileConfig struct {
+	// EnqueueGate declares informer-level gate conditions evaluated in handleEvent
+	// before the object enters the work queue. When the gate fires the object is
+	// silently dropped — it never reaches the kordinator or reconciler.
+	// No health state change; kordinator is never involved.
+	EnqueueGate *GateConditions `yaml:"enqueueGate,omitempty" json:"enqueueGate,omitempty"`
+
+	// ReconcileGate declares kordinator-level gate conditions evaluated after
+	// dequeue, before the reconciler is called. When conditions are not met
+	// the item is discarded and CRD health is set to gated.
+	ReconcileGate *GateConditions `yaml:"reconcileGate,omitempty" json:"reconcileGate,omitempty"`
+}
+
+// HasConditions reports whether reconcileGate has any conditions declared.
+func (r *PreReconcileConfig) HasConditions() bool {
+	return r != nil && r.ReconcileGate.HasConditions()
+}
+
+// WhenConditions returns the reconcileGate AND conditions, safe on nil receiver.
+func (r *PreReconcileConfig) WhenConditions() []Condition {
+	if r == nil {
+		return nil
+	}
+	return r.ReconcileGate.WhenConditions()
+}
+
+// AnyOfConditions returns the reconcileGate OR conditions, safe on nil receiver.
+func (r *PreReconcileConfig) AnyOfConditions() []Condition {
+	if r == nil {
+		return nil
+	}
+	return r.ReconcileGate.AnyOfConditions()
+}
+
 // ── OperatorBoxConfig ──────────────────────────────────────────────────────────
 
 // ReconcilerConfig groups the reconciler identity fields that are declared
@@ -68,6 +152,13 @@ type OperatorBoxConfig struct {
 	// Reconciler groups the reconciler identity fields. Omit for declarative-only CRDs.
 	// nil → GenericReconciler with default: true.
 	Reconciler *ReconcilerConfig `yaml:"reconciler,omitempty" json:"reconciler,omitempty"`
+
+	// PreReconcile declares pre-reconcile gate conditions. When declared, the kordinator
+	// evaluates when/anyOf before calling the reconciler. If conditions are not met
+	// the reconciler is never called — the item is discarded and re-evaluated on the
+	// next informer tick.
+	// nil → no gate; reconciler is always called (default behavior).
+	PreReconcile *PreReconcileConfig `yaml:"preReconcile,omitempty" json:"preReconcile,omitempty"`
 
 	// Finalizers — per-CRD finalizer list. Overrides the Katalog-level finalizer.
 	// Applied by GenericReconciler when a CR is first created.

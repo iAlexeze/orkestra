@@ -15,7 +15,7 @@ func (r *Resolver) RenderString(tmpl string) (string, bool) {
 }
 
 // TemplateEvaluator returns a TemplateEvaluator bound to this resolver.
-// Pass the returned func to types.EvaluateWhen at call sites where template
+// Pass the returned func to types.EvaluateConditions at call sites where template
 // expressions in when: fields should be evaluated against live CR data.
 func (r *Resolver) TemplateEvaluator() orktypes.TemplateEvaluator {
 	return func(tmpl string) (string, bool) {

@@ -3,6 +3,7 @@
 package simulate
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/katalog"
@@ -29,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	"k8s.io/client-go/tools/cache"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
@@ -53,6 +56,11 @@ func RunWithEnvtest(ctx context.Context, kat *katalog.Katalog, crdName string,
 	prev := log.Logger
 	log.Logger = log.Output(io.Discard)
 	defer func() { log.Logger = prev }()
+
+	// Suppress controller-runtime's own logger — it prints a noisy stack trace
+	// if SetLogger is never called. Discarding is correct here: envtest runs
+	// are short-lived and their internal logs are not part of simulate output.
+	ctrl.SetLogger(logr.Discard())
 
 	binDir := os.Getenv("HOME") + "/" + envtestBinDir
 
@@ -226,7 +234,7 @@ func RunWithEnvtest(ctx context.Context, kat *katalog.Katalog, crdName string,
 	if factoryFn, ok := orktypes.ReconcilerRegistry[gvk]; ok {
 		r = factoryFn(recKube, inf, event.Discard())
 	} else {
-		r = reconciler.NewGenericReconciler[domain.Object](
+		r = reconciler.NewGenericReconciler(
 			crdEntry,
 			inf,
 			nil,
@@ -242,6 +250,17 @@ func RunWithEnvtest(ctx context.Context, kat *katalog.Katalog, crdName string,
 	if err != nil {
 		return nil, fmt.Errorf("computing CR key: %w", err)
 	}
+
+	r = wrapWithGate(r, crdEntry.OperatorBox.PreReconcile, func() *unstructured.Unstructured {
+		item, exists, _ := inf.GetStore().GetByKey(key)
+		if !exists || item == nil {
+			return nil
+		}
+		if u, ok := item.(*unstructured.Unstructured); ok {
+			return u
+		}
+		return cr
+	})
 
 	loopResult := runLoop(ctx, r, recKube, key, maxCycles)
 	loopResult.Notes = result.Notes
@@ -262,19 +281,38 @@ type recordingTransport struct {
 
 func (rt *recordingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	resp, err := rt.inner.RoundTrip(req)
-	if err == nil && resp != nil && isWriteMethod(req.Method) && resp.StatusCode < 300 {
-		if verb, resource, namespace, name := parseAPIRequest(req); resource != "" && name != "" {
-			rt.shared.mu.Lock()
-			rt.shared.ops = append(rt.shared.ops, Op{
-				Cycle:     rt.shared.cycle,
-				Verb:      verb,
-				Resource:  resource,
-				Namespace: namespace,
-				Name:      name,
-				At:        time.Now(),
-			})
-			rt.shared.mu.Unlock()
+	if err != nil || resp == nil || !isWriteMethod(req.Method) || resp.StatusCode >= 300 {
+		return resp, err
+	}
+
+	verb, resource, namespace, name := parseAPIRequest(req)
+
+	// POST creates: name is absent from the collection URL — read it from the
+	// response body, then restore the body for the caller.
+	if req.Method == http.MethodPost && name == "" {
+		resource, namespace = parseCollectionURL(req)
+		if resource != "" {
+			body, readErr := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			resp.Body = io.NopCloser(bytes.NewReader(body))
+			if readErr == nil {
+				name = extractMetaName(body)
+				verb = "create"
+			}
 		}
+	}
+
+	if resource != "" && name != "" {
+		rt.shared.mu.Lock()
+		rt.shared.ops = append(rt.shared.ops, Op{
+			Cycle:     rt.shared.cycle,
+			Verb:      verb,
+			Resource:  resource,
+			Namespace: namespace,
+			Name:      name,
+			At:        time.Now(),
+		})
+		rt.shared.mu.Unlock()
 	}
 	return resp, err
 }
@@ -349,6 +387,42 @@ func parseAPIRequest(req *http.Request) (verb, resource, namespace, name string)
 
 	resource, namespace, name = res, ns, n
 	return
+}
+
+// parseCollectionURL returns (resource, namespace) from a collection-level URL
+// (the target of a POST create where no name appears in the path).
+//
+//	/api/v1/namespaces/{ns}/{resource}
+//	/api/v1/{resource}
+//	/apis/{group}/{version}/namespaces/{ns}/{resource}
+//	/apis/{group}/{version}/{resource}
+func parseCollectionURL(req *http.Request) (resource, namespace string) {
+	p := strings.TrimPrefix(req.URL.Path, "/")
+	parts := strings.Split(p, "/")
+	switch {
+	case len(parts) == 5 && parts[0] == "api" && parts[2] == "namespaces":
+		return parts[4], parts[3]
+	case len(parts) == 3 && parts[0] == "api":
+		return parts[2], ""
+	case len(parts) == 6 && parts[0] == "apis" && parts[3] == "namespaces":
+		return parts[5], parts[4]
+	case len(parts) == 4 && parts[0] == "apis":
+		return parts[3], ""
+	}
+	return
+}
+
+// extractMetaName reads metadata.name from a raw Kubernetes API response body.
+func extractMetaName(body []byte) string {
+	var obj struct {
+		Metadata struct {
+			Name string `json:"name"`
+		} `json:"metadata"`
+	}
+	if err := json.Unmarshal(body, &obj); err == nil {
+		return obj.Metadata.Name
+	}
+	return ""
 }
 
 // ── loopKube adapter ─────────────────────────────────────────────────────────

@@ -21,7 +21,7 @@ func buildData(spec map[string]interface{}) map[string]interface{} {
 }
 
 func eval(data map[string]interface{}, conds []orktypes.Condition) bool {
-	return orktypes.EvaluateWhen(data, conds, nil, nil)
+	return orktypes.EvaluateConditions(data, conds, nil, nil)
 }
 
 func TestEvaluateConditions_Empty(t *testing.T) {
@@ -146,7 +146,7 @@ func TestEvaluateConditions_AnyOf(t *testing.T) {
 		{Field: "spec.phase", Equals: "Failed"},
 		{Field: "spec.phase", Equals: "Succeeded"},
 	}
-	if !orktypes.EvaluateWhen(data, nil, anyOf, nil) {
+	if !orktypes.EvaluateConditions(data, nil, anyOf, nil) {
 		t.Error("anyOf should pass when at least one condition matches")
 	}
 
@@ -154,7 +154,7 @@ func TestEvaluateConditions_AnyOf(t *testing.T) {
 		{Field: "spec.phase", Equals: "Pending"},
 		{Field: "spec.phase", Equals: "Running"},
 	}
-	if orktypes.EvaluateWhen(data, nil, anyOf, nil) {
+	if orktypes.EvaluateConditions(data, nil, anyOf, nil) {
 		t.Error("anyOf should fail when no conditions match")
 	}
 }

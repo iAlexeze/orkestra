@@ -315,6 +315,19 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 				Msg("informer: namespace filter registered (Tier 2)")
 		}
 
+		// ── Enqueue filter — Tier 2b (pre-enqueue condition gate) ─────────────
+		// Register when the CRD declares operatorBox.preReconcile.filter conditions.
+		if rc := crd.PreReconcileCheck(); rc != nil && rc.EnqueueGate.HasConditions() {
+			crdNameForFilter := crd.Name
+			katForFilter := kat
+			infFactory.RegisterEnqueueFilter(gvk, func(obj domain.Object) bool {
+				return katForFilter.EvaluateEnqueueFilter(ctx, crdNameForFilter, obj)
+			})
+			logger.Debug().
+				Str("crd", crd.APITypes.Kind).
+				Msg("informer: enqueue filter registered (Tier 2b)")
+		}
+
 		// Choose typed or dynamic informer.
 		// Dynamic CRDs use *unstructured.Unstructured — no Go type needed.
 		// Typed CRDs use the registered concrete Go type for type-safe access.
@@ -512,6 +525,7 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 		kube,
 		infFactory,
 		ktrlRegistry,
+		kat,
 		ev,
 		hs,
 		queueRegistry,

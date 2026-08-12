@@ -1,6 +1,6 @@
 // pkg/types/when.go
 //
-// EvaluateWhen — extended condition evaluation with OR logic.
+// EvaluateConditions — extended condition evaluation with OR logic.
 //
 // The when: field ([]Condition) uses AND semantics.
 // anyOf: is a new parallel field on template sources with OR semantics.
@@ -48,13 +48,13 @@ type TemplateEvaluator func(tmpl string) (string, bool)
 // IsTemplate reports whether s contains a Go template expression.
 func IsTemplate(s string) bool { return strings.Contains(s, "{{") }
 
-// EvaluateWhen evaluates when: (allOf, AND) and anyOf: (OR) conditions.
+// EvaluateConditions evaluates when: (allOf, AND) and anyOf: (OR) conditions.
 // data is resolver.Data() — full CR map including children, external, cross.
 // eval is optional — pass nil to disable template evaluation (backward compatible).
 //
 // Both blocks must pass when both are declared.
 // Empty blocks always pass.
-func EvaluateWhen(data map[string]interface{}, allOf []Condition, anyOf []Condition, eval TemplateEvaluator) bool {
+func EvaluateConditions(data map[string]interface{}, allOf []Condition, anyOf []Condition, eval TemplateEvaluator) bool {
 	for _, cond := range allOf {
 		if !EvaluateOneCond(data, cond, eval) {
 			return false
@@ -105,7 +105,7 @@ func evaluateOneCond(data map[string]interface{}, cond Condition, eval TemplateE
 	if cond.Cron != "" {
 		// Prefer caller-injected window state (from TickCronWindow) when available.
 		// Callers that manage cron state (autoscaler, job runner) inject it under
-		// data["_cronWindows"][cronExpr] = "true"/"false" before calling EvaluateWhen.
+		// data["_cronWindows"][cronExpr] = "true"/"false" before calling EvaluateConditions.
 		if windows, ok := data["_cronWindows"].(map[string]interface{}); ok {
 			if v, ok := windows[cond.Cron]; ok {
 				return v == "true"

@@ -74,6 +74,7 @@ type StatusCounts struct {
 	Degraded int `json:"degraded"`
 	Started  int `json:"started"`
 	Pending  int `json:"pending"`
+	Gated    int `json:"gated"`
 }
 
 // RBACInfo is the data for the main page
@@ -251,6 +252,8 @@ type CRDSummary struct {
 	Endpoints                EndpointInfo `json:"endpoints,omitempty"`
 	IdpEnabled               bool         `json:"idpEnabled,omitempty"`
 	RequireServeName         bool         `json:"requireServeName,omitempty"`
+	Gated                    bool         `json:"gated,omitempty"`
+	GatedReason              string       `json:"gatedReason,omitempty"`
 }
 
 // ServeField is one rendered field in the IDP create form.
@@ -315,6 +318,8 @@ type CRDHealth struct {
 	LastReconcile            string                      `json:"lastReconcile"`
 	HasUnhealthyDependencies bool                        `json:"hasUnhealthyDependencies"`
 	Dependencies             map[string]DependencyStatus `json:"dependencies,omitempty"`
+	Gated                    bool                        `json:"gated,omitempty"`
+	GatedReason              string                      `json:"gatedReason,omitempty"`
 }
 
 type DependencyStatus struct {
@@ -390,6 +395,8 @@ type CRDInfo struct {
 	AutoscalerEnabled        bool                      `json:"autoscalerEnabled"`
 	AutoscalerWorkers        *AutoscalerWorkersInfo    `json:"autoscalerWorkers,omitempty"`
 	Rollback                 *RollbackStatsInfo        `json:"rollback,omitempty"`
+	Gated                    bool                      `json:"gated,omitempty"`
+	GatedReason              string                    `json:"gatedReason,omitempty"`
 }
 
 // ConversionStats contains version conversion metrics
@@ -500,6 +507,8 @@ type CRDDetail struct {
 	Rollback                 *RollbackStatsInfo          `json:"rollback,omitempty"`
 	HealthEndpointDisabled   bool                        `json:"healthEndpointDisabled,omitempty"`
 	InfoEndpointDisabled     bool                        `json:"infoEndpointDisabled,omitempty"`
+	Gated                    bool                        `json:"gated,omitempty"`
+	GatedReason              string                      `json:"gatedReason,omitempty"`
 }
 
 // TODO: Future

@@ -260,6 +260,11 @@
                 Dependency Issue
               </span>
 
+              {{- else if eq .State "gated" }}
+              <span class="cc-badge cc-badge-gated" data-tooltip="{{ if .GatedReason }}{{ .GatedReason }}{{ else }}Pre-reconcile conditions not met{{ end }}">
+                <span class="cc-status-dot gated"></span>Gated
+              </span>
+
               {{- else if eq .State "healthy" }}
               <span class="cc-badge cc-badge-healthy" data-tooltip="CRD Healthy">
                 <span class="cc-status-dot healthy"></span>Healthy
