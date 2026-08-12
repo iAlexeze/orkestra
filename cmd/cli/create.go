@@ -22,23 +22,38 @@ Downloads kind automatically if not found in PATH.
 
   ork create cluster
   ork create cluster --name ork-e2e
+  ork create cluster --name ork --count 3     # creates ork-1, ork-2, ork-3
   ork create cluster --provider kind --name my-cluster`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
 		provider, _ := cmd.Flags().GetString("provider")
 		workers, _ := cmd.Flags().GetInt("workers")
 		version, _ := cmd.Flags().GetString("version")
+		count, _ := cmd.Flags().GetInt("count")
 
 		if provider != "kind" {
 			return fmt.Errorf("provider %q not supported — only 'kind' is available", provider)
 		}
 
-		fmt.Printf("→ Creating cluster '%s'...\n", name)
-		if err := cluster.EnsureKindCluster(name, workers, version); err != nil {
-			return err
+		names := []string{name}
+		if count > 1 {
+			names = make([]string, count)
+			for i := range names {
+				names[i] = fmt.Sprintf("%s-%d", name, i+1)
+			}
 		}
-		fmt.Printf("\nCluster '%s' is ready.\n", name)
-		fmt.Printf("kubectl is now pointing to kind-%s.\n", name)
+
+		for _, n := range names {
+			fmt.Printf("→ Creating cluster '%s'...\n", n)
+			if err := cluster.EnsureKindCluster(n, workers, version); err != nil {
+				return err
+			}
+			fmt.Printf("\nCluster '%s' is ready.\n", n)
+		}
+		if count > 1 {
+			fmt.Printf("%d clusters created.\n", count)
+		}
+		fmt.Printf("kubectl is now pointing to kind-%s.\n", names[len(names)-1])
 		return nil
 	},
 }
@@ -51,6 +66,7 @@ func init() {
 	createClusterCmd.Flags().String("provider", "kind", "Cluster provider (only 'kind' is supported)")
 	createClusterCmd.Flags().Int("workers", 0, "Number of kind worker nodes (default: 0, control-plane only)")
 	createClusterCmd.Flags().String("version", "", "kind version to use (default: "+cluster.DefaultKindVersion+")")
+	createClusterCmd.Flags().Int("count", 1, "Number of clusters to create; names get a -1/-2/-3 suffix")
 
 	// Shadow global flags
 	shadowGlobalCommandFlags(createCmd, "file")
