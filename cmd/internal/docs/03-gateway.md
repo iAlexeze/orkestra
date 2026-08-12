@@ -1,8 +1,18 @@
 # 03 — Gateway
 
-The gateway is a minimal Orkestra process that handles TLS certificate management
-and serves admission and conversion webhooks. It does not run reconcilers, hold
-informer caches, or compete for the konductor lease.
+The gateway is a minimal Orkestra process that handles TLS certificate management,
+admission and conversion webhooks, and the Serve layer (Gateway API + intake webhooks).
+It does not run reconcilers, hold informer caches, or compete for the konductor lease.
+
+Two build variants ship the gateway surface:
+
+| Variant | Build tag | Entrypoint | Command |
+|---------|-----------|------------|---------|
+| Production | `gateway` | `KonductGateway` | `ork gate` |
+| Local dev | `!runtime && !gateway` | `KonductGatewayDev` | `ork gate run` |
+
+The production variant requires a live cluster (hard exit otherwise). The local
+variant skips TLS and the webhook server — only the HTTP-based Serve layer runs.
 
 ## What the gateway is
 
@@ -25,15 +35,27 @@ distributes webhook requests across replicas through the standard `Service`
 load-balancing mechanism. If a replica dies, another handles the next request
 without any coordination step.
 
-## Cluster-only
+## Cluster-only (production)
 
-The gateway exits immediately if it is not running inside a Kubernetes pod.
+`KonductGateway` exits immediately if it is not running inside a Kubernetes pod.
 `utils.IsRunningInCluster()` checks for the service account token that Kubernetes
 injects into every pod. Outside a cluster there is no meaningful webhook endpoint
 to serve (no Kubernetes API server to register with), and `ensureSecurity` would
 fail without cluster credentials.
 
-For local development, use `ork run` instead.
+## Local development — `ork gate run`
+
+`KonductGatewayDev` (`gateway_dev.go`, `//go:build !runtime && !gateway`) provides
+the Serve layer locally without a cluster deployment:
+
+- No TLS setup — runs on plain HTTP (health port, default `:8080`)
+- No `WebhookServer` — `/validate`, `/mutate`, `/convert` are not served
+- No `/katalog` webhook-stats routes — those depend on the webhook server
+- Gateway API (`POST /api/v1/apply`, `GET /api/v1/resources/`, intake webhooks) fully functional
+
+Use `ork gate run -f katalog.yaml` to test serve routing and apply flows before
+pushing a helm deployment. Admission and conversion webhook behaviour must still
+be verified with `ork gate -f katalog.yaml --cr cr.yaml`.
 
 ## Komponent start order
 

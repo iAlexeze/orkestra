@@ -2,10 +2,11 @@
 
 Wiring layer for Orkestra. Assembles every komponent, threads dependencies, and hands the result to `pkg/orkestra` — the supervisor that calls `Start()` and `Stop()` in order.
 
-Two public entrypoints:
+Three public entrypoints:
 
 - **`KonductRuntime`** — runtime. Reconcile loop, informers, leader election. Called by `ork run`.
-- **`KonductGateway`** — gateway. TLS + admission webhooks, no reconcilers, no leader election. Called by `ork gate`. Cluster-only.
+- **`KonductGateway`** — production gateway. TLS, admission/conversion webhooks, and the Serve layer (Gateway API + intake). Called by `ork gate`. Cluster-only (`//go:build gateway`).
+- **`KonductGatewayDev`** — local gateway. Serve layer on plain HTTP; no TLS, no webhook server. Called by `ork gate run`. Dev builds only (`//go:build !runtime && !gateway`).
 
 ## Docs
 

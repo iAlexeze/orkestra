@@ -60,6 +60,7 @@ spec:
 | `forceConflict` | `false` | When `true`, every Gateway API request for this CRD uses `Force: true` on server-side apply — the gateway takes ownership of any conflicting fields rather than surfacing a conflict error. Equivalent to `helm --force-conflict`. Callers can still override per-request with `?overwrite=true`. |
 | `name` | — | Template expression resolving the CR's `metadata.name`. Optional, unlike `namespace` — when unset (the common case), the caller must supply a name. See [`serve.name`](#servename) below. |
 | `namespace` | — | Template expression resolving the namespace a new CR is created in. Required on a namespaced CRD with `serve.enabled: true`; rejected on a cluster-scoped one. See [`serve.namespace`](#servenamespace) below. |
+| `clusters` | — | List of registered cluster names (static or template expressions). Declares which clusters this CRD's intents may be applied to, and is the default fan-out when no target override is set. Absent means local cluster only. See [`serve.clusters`](#serveclusters) below. |
 
 `serve/platformresource.yaml` (the include file):
 
@@ -177,6 +178,79 @@ Three things `ork validate` enforces about it:
 This only affects the Gateway API. A raw `kubectl apply` is unaffected either way — `kubectl` always resolves *some* namespace client-side before a request ever reaches the API server (typically `default`), so there's never a genuinely empty namespace for anything server-side to notice and fill in the way an omitted JSON field lets the Gateway API detect intent. `serve.namespace` is deliberately not a mutating-webhook default for that reason — it would only ever see the wrong namespace to silently override, never a blank one to fill in.
 
 **The cluster-scoped alternative.** A CRD can sidestep this entirely by being cluster-scoped (`namespaced: false`) and having `onCreate` provision a namespace as a *child resource* of the CR instead — the CR itself has no namespace, so there's nothing for `serve.namespace` to resolve. Two different answers to the same "a developer shouldn't have to pick a namespace" problem, matched to two different scope choices: cluster-scoped + `onCreate`-provisions-a-child-namespace, or namespaced + `serve.namespace`-routes-into-a-platform-provisioned-one.
+
+## `serve.clusters`
+
+Declares which registered clusters this CRD's intents are allowed to be applied to,
+and is the default fan-out target set when no target-level override is declared.
+Requires `gateway.clusters` to be configured.
+
+```yaml
+serve:
+  enabled: true
+  namespace: default
+  clusters:
+    - prod
+    - staging     # all applies fan-out to both prod and staging
+```
+
+Each entry is either a static cluster name or a template expression:
+
+```yaml
+serve:
+  clusters:
+    - prod
+    - '{{ if eq .request.region "eu" }}eu-west{{ else }}us-east{{ end }}'
+```
+
+**Static name** — validated at `ork validate` time against `gateway.clusters`. A
+name not present in the registry is a validation error.
+
+**Template expression** — validated at `ork validate` time for parse correctness
+and function existence. Name resolution is deferred to apply time. If the resolved
+name is not registered at apply time, the intent is rejected for that cluster.
+`toList` works here the same way it does in `exclude:` — useful for resolving a
+note function that returns a list of cluster names for the current context (weekday
+vs weekend routing, region-based sets, etc.).
+
+**Absent** — the CR is applied to the local cluster only (the one the gateway runs
+on). This is the default for katalogs with no cluster routing configured.
+
+**Fan-out behaviour** — when `serve.clusters` lists more than one entry, a single
+apply request is sent to each resolved cluster. The response carries a `clusters`
+array with per-cluster results. Use `target.clusters` on a named target to restrict
+the fan-out to a subset.
+
+```yaml
+# Per-cluster token differentiation via separate targets.
+# admin-token can apply to prod; dev-token can apply to staging only.
+serve:
+  clusters:
+    - prod
+    - staging
+  target:
+    prod-deploy:
+      primary: true
+      clusters:
+        - prod
+      tokens:
+        admin-token:
+          permissions: [create, update, delete]
+    staging-deploy:
+      clusters:
+        - staging
+      tokens:
+        dev-token:
+          permissions: [create]
+        admin-token:
+          permissions: [create, update, delete]
+```
+
+→ [`gateway.clusters`](24-gateway-clusters.md) — configuring registered clusters  
+→ [`serve.target` / `target.clusters`](#servetarget) — per-target fan-out scoping  
+→ [Multi-cluster routing](../../../concepts/self-service/10-multi-cluster-routing.md) — concept overview
+
+---
 
 ## `serve labels/annotations`
 
