@@ -14,6 +14,7 @@
 | [Hooks and constructors](04-hooks-and-constructors.md) | Custom binary, registry wiring, what the standard binary shows |
 | [Aggregator mode](05-aggregator.md) | `./...` discovery and aggregator simulate files |
 | [Limitations](06-limitations.md) | What simulate cannot cover and what to use instead |
+| [Running with envtest](07-envtest.md) | Real kube-apiserver behind `--envtest` — schema enforcement, watch streams, no cluster |
 
 ---
 
@@ -23,14 +24,16 @@
 
 Use simulate as the fast inner loop while writing an operator. Use `ork e2e` as the outer gate before pushing.
 
-| | `ork simulate` | `ork e2e` |
-|---|---|---|
-| Requires cluster | No | Yes |
-| Runs real reconciler | Yes | Yes |
-| Tests webhooks | No | Yes |
-| Tests external calls | Yes | Yes |
-| Speed | Milliseconds | Minutes |
-| Best for | Template correctness | System correctness |
+| | `ork simulate` | `ork simulate --envtest` | `ork e2e` |
+|---|---|---|---|
+| Requires cluster | No | No | Yes |
+| Runs real reconciler | Yes | Yes | Yes |
+| Real CRD schema enforcement | No | Yes | Yes |
+| Real watch streams | No | Yes | Yes |
+| Tests webhooks | No | No | Yes |
+| Tests external calls | Yes | Yes | Yes |
+| Speed | Milliseconds | ~3–5s | Minutes |
+| Best for | Template correctness | API-server correctness | System correctness |
 
 ---
 
@@ -40,4 +43,4 @@ Use simulate as the fast inner loop while writing an operator. Use `ork e2e` as 
 - **[simulate.yaml](02-simulate-kind.md)** — schema, `expect:`, assert mode, op-print mode, validation
 - **[Running simulate](03-running.md)** — all invocation forms, `--dev-server`, `./...` discovery, flag reference
 
-→ See also: [`ork simulate` CLI reference](../../reference/cli/05-simulate.md)
+→ See also: [`ork simulate` CLI reference](../../reference/cli/05-simulate.md) | [Declarative Integration Testing](../envtest/index.md)

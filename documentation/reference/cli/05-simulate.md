@@ -21,6 +21,8 @@ ork simulate
 | `--debug-ops` | | `false` | Print every recorded op with its cycle number |
 | `--dev-server` | | `false` | Start the mock dev server for `external:` examples |
 | `--dev-server-port` | | `9999` | Port for the mock dev server |
+| `--envtest` | | `false` | Run against a local kube-apiserver + etcd instead of fake clients. Binaries are downloaded automatically to `~/.ork/envtest-bins` on first use. Requires `spec.crd` or `spec.crdFiles` in simulate.yaml. |
+| `--k8s-version` | | `1.32` | Kubernetes version for envtest binaries (e.g. `1.31`, `1.32`). Two-component form only — `1.32.x` is not accepted. Only used with `--envtest`. |
 
 ## Examples
 
@@ -42,6 +44,12 @@ ork simulate ./...
 
 # Start the mock dev server for external: examples
 ork simulate --dev-server
+
+# Run against a local kube-apiserver (real CRD enforcement, real watch streams)
+ork simulate -f simulate.yaml --envtest
+
+# Pin a specific Kubernetes version for envtest binaries
+ork simulate -f simulate.yaml --envtest --k8s-version 1.31
 ```
 
 ## Output

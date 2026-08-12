@@ -201,7 +201,7 @@ var pushCmd = &cobra.Command{
 					} else {
 						fmt.Printf("\nRunning simulate gate (%s)...\n", registry.FileSimulate)
 						start := time.Now()
-						if err := runSimulateFromSpec(cmd.Context(), simFile, "", 10, false); err != nil {
+						if err := runSimulateFromSpec(cmd.Context(), simFile, "", 10, false, false, ""); err != nil {
 							return fmt.Errorf("✗ Simulate gate failed — push blocked\n  Run 'ork simulate' to see the failures\n  Use --force to override (recorded in the artifact)\n\n%w", err)
 						}
 						dur := time.Since(start).Round(time.Millisecond).String()
