@@ -433,11 +433,16 @@ func (k *Katalog) GenerateGatewayRBACRules() []rbacv1.PolicyRule {
 
 	// ───────────────────────────────────────────────
 	// Gateway API — CR create/update/delete/get/list
+	// Only CRDs whose default routing is local (serve.cluster absent).
+	// CRDs with a remote serve.cluster are handled in GenerateGatewayClusterRBACRules.
 	// ───────────────────────────────────────────────
 	if k.HasServeEnabled() {
 		for _, crd := range k.Enabled() {
 			if !crd.ServeEnabled() {
 				continue
+			}
+			if crd.Serve.HasClusters() {
+				continue // routed to remote clusters
 			}
 			rules = append(rules, rbacv1.PolicyRule{
 				APIGroups: []string{crd.APITypes.Group},
@@ -470,6 +475,89 @@ func (k *Katalog) GenerateGatewayRBACRules() []rbacv1.PolicyRule {
 	}
 
 	return rules
+}
+
+// GenerateGatewayClusterRBACRules returns the RBAC rules the gateway needs on each
+// registered remote cluster. The map key is the cluster name; the value is the
+// minimal set of PolicyRules for CRDs statically routed to that cluster.
+//
+// The second return value lists the kinds of CRDs whose cluster routing uses a
+// template expression — those rules are added to every cluster's entry. Callers
+// should warn the user and ask them to remove entries for clusters that should not
+// have access to template-routed CRDs.
+//
+// CRDs with no serve.cluster (local fallback) do not appear in the returned map.
+// They are handled by GenerateGatewayRBACRules instead.
+func (k *Katalog) GenerateGatewayClusterRBACRules() (map[string][]rbacv1.PolicyRule, []string) {
+	clusters := k.GatewayClusters()
+	if len(clusters) == 0 {
+		return nil, nil
+	}
+
+	// Initialise a slot for every registered cluster so callers can always
+	// iterate the registered set, even if some end up with no rules.
+	clusterRules := make(map[string][]rbacv1.PolicyRule, len(clusters))
+	for name := range clusters {
+		clusterRules[name] = nil
+	}
+
+	var templateKinds []string
+
+	for _, crd := range k.ServeEnabledCRDs() {
+		rule := rbacv1.PolicyRule{
+			APIGroups: []string{crd.APITypes.Group},
+			Resources: []string{crd.APITypes.Plural, crd.APITypes.Plural + "/status"},
+			Verbs:     []string{"get", "list", "create", "update", "patch", "delete"},
+		}
+
+		staticTargets := map[string]bool{}
+		hasTemplate := false
+
+		for _, sc := range crd.Serve.Clusters {
+			if clusterIsTemplate(sc) {
+				hasTemplate = true
+			} else {
+				staticTargets[sc] = true
+			}
+		}
+
+		for _, entry := range crd.Serve.Target.Entries {
+			for _, tc := range entry.TargetClusters() {
+				if clusterIsTemplate(tc) {
+					hasTemplate = true
+				} else {
+					staticTargets[tc] = true
+				}
+			}
+		}
+
+		if hasTemplate {
+			templateKinds = append(templateKinds, crd.APITypes.Kind)
+			for name := range clusters {
+				clusterRules[name] = append(clusterRules[name], rule)
+			}
+		} else {
+			for clusterName := range staticTargets {
+				if _, ok := clusterRules[clusterName]; ok {
+					clusterRules[clusterName] = append(clusterRules[clusterName], rule)
+				}
+			}
+		}
+	}
+
+	// Drop clusters that received no rules — nothing to apply there.
+	for name, rules := range clusterRules {
+		if len(rules) == 0 {
+			delete(clusterRules, name)
+		}
+	}
+
+	return clusterRules, templateKinds
+}
+
+// clusterIsTemplate reports whether a cluster routing value is a Go template expression.
+func clusterIsTemplate(s string) bool {
+	return strings.Contains(s, "{{")
 }
 
 // ResolveGVR resolves a ManagedResource into a concrete GroupVersionResource.
