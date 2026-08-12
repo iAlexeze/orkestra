@@ -196,7 +196,32 @@ operatorBox:
 
 **`reconcileGate`** — evaluated by the kordinator after dequeue. When conditions fail the reconcile cycle is skipped and CRD health is set to `gated` (idle, not degraded). Clears on the next successful reconcile.
 
+Both gates support `external:` calls — at the gate level or at the shared `preReconcile:` level:
+
+```yaml
+operatorBox:
+  preReconcile:
+    external:                        # shared — results available to both gates
+      - name: featureFlag
+        url: "{{ .spec.flagUrl }}"
+    enqueueGate:
+      external:                      # gate-specific calls, run after shared
+        - name: quota
+          url: "{{ .spec.quotaUrl }}"
+      when:
+        - field: "{{ .external.featureFlag.body }}"
+          equals: "true"
+    reconcileGate:
+      when:
+        - field: "{{ .external.quota.body }}"
+          equals: "available"
+```
+
+Calls run in order — shared first, then gate-level. Each call's results are injected into the resolver before the next call runs, so later calls can reference earlier results.
+
 Both gates use the full resolver chain (`.spec`, `.metadata`, serve intent, profiles, notes). Logic lives in `pkg/katalog` (`EvaluatePreReconcile`, `EvaluateEnqueueFilter`) and is called via registered closures so neither the informer factory nor the kordinator has a direct katalog dependency.
+
+`EvaluateWhen` renamed to `EvaluateConditions` — the function evaluates both `when:` (AND) and `anyOf:` (OR), so the name now reflects what it does.
 
 **`gated` state in Control Center** — separate from healthy/degraded. Purple badge with gate reason. `StatusCounts.Gated` propagates through the full CC chain.
 

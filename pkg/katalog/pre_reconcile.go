@@ -5,18 +5,20 @@ import (
 	"fmt"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/external"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/kubernetes"
 )
 
-// EvaluatePreReconcile evaluates preReconcile.when/anyOf for the named CRD.
+// EvaluatePreReconcile evaluates preReconcile.reconcileGate conditions for the named CRD.
 // Returns (true, "") when conditions pass and the reconciler should run.
 // Returns (false, reason) when gated — reconciler must not be called.
 //
-// Uses the full resolver chain: profiles, notes, serve intent — mirrors
-// the enrichment in GenericReconciler.reconcileCore.
-func (k *Katalog) EvaluatePreReconcile(ctx context.Context, crdName string, obj *unstructured.Unstructured) (allowed bool, reason string) {
+// preReconcile.external runs first (shared enrichment), then reconcileGate.external,
+// then conditions are evaluated against the accumulated resolver.
+func (k *Katalog) EvaluatePreReconcile(ctx context.Context, crdName string, obj *unstructured.Unstructured, cs kubernetes.Interface) (allowed bool, reason string) {
 	if obj == nil {
 		return true, ""
 	}
@@ -25,7 +27,7 @@ func (k *Katalog) EvaluatePreReconcile(ctx context.Context, crdName string, obj 
 		return true, ""
 	}
 	rc := entry.PreReconcileCheck()
-	if !rc.HasConditions() {
+	if !rc.HasReconcileGate() {
 		return true, ""
 	}
 
@@ -41,6 +43,19 @@ func (k *Katalog) EvaluatePreReconcile(ctx context.Context, crdName string, obj 
 	}
 	if intent := orktypes.ServeIntentFromObject(resolver.Data()); intent != nil {
 		resolver = resolver.WithRequest(intent)
+	}
+
+	gvk := entry.GVKString()
+
+	if rc.HasPreReconcileExternal() {
+		if resolver, err = external.Run(ctx, gvk, resolver, rc.External, cs); err != nil {
+			return true, ""
+		}
+	}
+	if rc.HasReconcileGateExternal() {
+		if resolver, err = external.Run(ctx, gvk, resolver, rc.ReconcileGate.External, cs); err != nil {
+			return true, ""
+		}
 	}
 
 	eval := resolver.TemplateEvaluator()
@@ -50,11 +65,13 @@ func (k *Katalog) EvaluatePreReconcile(ctx context.Context, crdName string, obj 
 	return true, ""
 }
 
-// EvaluateEnqueueFilter evaluates preReconcile.enqueueGate.when/anyOf for the named CRD.
+// EvaluateEnqueueFilter evaluates preReconcile.enqueueGate conditions for the named CRD.
 // Returns true when the object should be enqueued, false when it should be dropped.
-// Accepts domain.Object so it works for both dynamic and typed CRDs — the template
-// resolver handles the conversion via objectToMap internally.
-func (k *Katalog) EvaluateEnqueueFilter(ctx context.Context, crdName string, obj domain.Object) bool {
+// Accepts domain.Object so it works for both dynamic and typed CRDs.
+//
+// preReconcile.external runs first (shared enrichment), then enqueueGate.external,
+// then conditions are evaluated against the accumulated resolver.
+func (k *Katalog) EvaluateEnqueueFilter(ctx context.Context, crdName string, obj domain.Object, cs kubernetes.Interface) bool {
 	if obj == nil {
 		return true
 	}
@@ -62,8 +79,8 @@ func (k *Katalog) EvaluateEnqueueFilter(ctx context.Context, crdName string, obj
 	if !ok {
 		return true
 	}
-	g := entry.PreReconcileCheck().EnqueueGate
-	if !g.HasConditions() {
+	rc := entry.PreReconcileCheck()
+	if !rc.HasEnqueueGate() {
 		return true
 	}
 
@@ -79,6 +96,20 @@ func (k *Katalog) EvaluateEnqueueFilter(ctx context.Context, crdName string, obj
 	}
 	if intent := orktypes.ServeIntentFromObject(resolver.Data()); intent != nil {
 		resolver = resolver.WithRequest(intent)
+	}
+
+	gvk := entry.GVKString()
+
+	if rc.HasPreReconcileExternal() {
+		if resolver, err = external.Run(ctx, gvk, resolver, rc.External, cs); err != nil {
+			return true
+		}
+	}
+	g := rc.EnqueueGate
+	if rc.HasEnqueueGateExternal() {
+		if resolver, err = external.Run(ctx, gvk, resolver, g.External, cs); err != nil {
+			return true
+		}
 	}
 
 	eval := resolver.TemplateEvaluator()

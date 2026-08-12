@@ -38,7 +38,7 @@ func (k *Kontroller) evaluatePreReconcileCheck(
 	if k.kat == nil || obj == nil {
 		return false, ""
 	}
-	allowed, reason := k.kat.EvaluatePreReconcile(ctx, crdName, obj)
+	allowed, reason := k.kat.EvaluatePreReconcile(ctx, crdName, obj, k.kube.Clientset())
 	return !allowed, reason
 }
 
