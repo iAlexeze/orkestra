@@ -51,10 +51,16 @@ operatorBox:
     ...               # → when-conditions.md
 
   preReconcile:
+    external:         # → preReconcile.external section below (shared calls)
+      - ...
     enqueueGate:      # → preReconcile.enqueueGate section below
+      external:
+        - ...
       when:
         - ...
     reconcileGate:    # → preReconcile.reconcileGate section below
+      external:
+        - ...
       when:
         - ...
       anyOf:
@@ -305,17 +311,27 @@ Pre-reconcile gate conditions. Two sub-blocks control where in the pipeline the 
 - **`enqueueGate`** — evaluated by the informer before the item enters the work queue.
 - **`reconcileGate`** — evaluated by the kordinator after the item is dequeued, before the reconciler is called.
 
+`external:` calls can be declared at the `preReconcile:` level (shared, available to both gates) or inside either gate (gate-specific). Calls run in order — shared first, then gate-level. Results accumulate in the resolver under `.external.<name>.*` and are available to subsequent calls and `when:`/`anyOf:` conditions.
+
 ```yaml
 operatorBox:
   preReconcile:
+    external:                          # shared — results available to both gates
+      - name: featureFlag
+        url: "{{ .spec.flagServiceUrl }}/{{ .metadata.name }}"
     enqueueGate:
+      external:                        # gate-specific, runs after shared
+        - name: quota
+          url: "{{ .spec.quotaUrl }}"
       when:
-        - field: "{{ .spec.active }}"
+        - field: "{{ .external.featureFlag.body }}"
           equals: "true"
     reconcileGate:
       when:
         - field: "{{ .spec.enabled }}"
           equals: "true"
+        - field: "{{ .external.quota.body }}"
+          equals: "available"
       anyOf:
         - field: "{{ .spec.environment }}"
           equals: "production"
@@ -327,26 +343,12 @@ operatorBox:
 
 Evaluated by the **informer** in `handleEvent` before the item enters the work queue. When the gate fires the object is silently dropped — it never reaches the kordinator or reconciler.
 
-```yaml
-operatorBox:
-  preReconcile:
-    enqueueGate:
-      when:
-        - field: "{{ .spec.active }}"
-          equals: "true"
-      anyOf:
-        - field: "{{ .spec.environment }}"
-          equals: "production"
-        - field: "{{ .spec.environment }}"
-          equals: "staging"
-```
-
 | Property | Behavior |
 |---|---|
 | **Phase** | Before the item enters the queue |
 | **On gate** | Object dropped. No queue pressure. No kordinator overhead. |
 | **Health state** | No effect — kordinator is never involved |
-| **Resolver** | Full chain — CR fields, profiles, notes, serve intent |
+| **Resolver** | Full chain — CR fields, profiles, notes, serve intent, external results |
 | **Caveat** | If the gating field changes without a watch event (e.g. resync only), the object stays out until the next event arrives |
 
 ### `preReconcile.reconcileGate`
@@ -358,8 +360,12 @@ Evaluated by the **kordinator** after the item is dequeued. When conditions fail
 | **Phase** | After dequeue, before the reconciler runs |
 | **On gate** | Item dropped. No error. No status write. |
 | **Health state** | `gated` — idle, not degraded. Clears on next successful reconcile. |
-| **Resolver** | Full chain — CR fields, profiles, notes, serve intent |
+| **Resolver** | Full chain — CR fields, profiles, notes, serve intent, external results |
 | **On CR update** | Object re-enqueued; gate re-evaluated with new field values |
+
+### `preReconcile.external`
+
+HTTP or gRPC calls declared here run before either gate. Results are available to both `enqueueGate` and `reconcileGate` conditions. Follows the same `external:` contract as `reconciler.hooks.external` — see [external reference](13-external.md).
 
 ### Comparison
 
@@ -369,6 +375,7 @@ Evaluated by the **kordinator** after the item is dequeued. When conditions fail
 | Phase | Before queue entry | After dequeue | Inside reconcile cycle |
 | Effect | Object never queued | Reconcile cycle skipped | Individual resource skipped |
 | Health on gate | No effect | `gated` (idle) | No effect |
+| Supports `external:` | Yes | Yes | Yes |
 
 All [condition operators](06-when-conditions.md#operators) are supported. `when:` requires ALL conditions to pass (AND). `anyOf:` requires at least one (OR). Both may be specified simultaneously — both must pass.
 
