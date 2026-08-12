@@ -1,0 +1,46 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: conditional-reconciliation
+  author: orkspace
+  version: 0.1.0
+  description: >
+    Pre-reconcile gate conditions via operatorBox.preReconcile:.
+    App is only reconciled when spec.enabled is true — the kordinator
+    evaluates the condition before calling the reconciler.
+    Route reconciles unconditionally.
+
+spec:
+  crds:
+    app:
+      crdFile: ./crd-app.yaml
+      operatorBox:
+        preReconcile:
+          when:
+            - field: "{{ .spec.enabled }}"
+              equals: "true"
+        status:
+          fields:
+            - path: phase
+              value: "Running"
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}"
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              reconcile: true
+
+    route:
+      crdFile: ./crd-route.yaml
+      operatorBox:
+        status:
+          fields:
+            - path: phase
+              value: "Running"
+        onCreate:
+          services:
+            - name: "{{ .metadata.name }}"
+              type: ClusterIP
+              port: "{{ .spec.port }}"
+              targetPort: "{{ .spec.port }}"
+              reconcile: true
