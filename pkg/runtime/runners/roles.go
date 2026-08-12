@@ -20,7 +20,7 @@ import (
 // Owner references ensure cleanup when the CR is deleted.
 func RunRoles(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.RoleTemplateSource,

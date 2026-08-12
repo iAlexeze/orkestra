@@ -42,7 +42,7 @@ type fakeShared struct {
 	currentCycle int
 }
 
-// FakeKubeclient implements kubeclient.KubeClient using k8s fakes.
+// FakeKubeclient implements kubeclient.Interface using k8s fakes.
 // All operations are recorded in Ops() for simulation output.
 type FakeKubeclient struct {
 	clientset kubernetes.Interface
@@ -128,14 +128,14 @@ func (f *FakeKubeclient) Args() kubeclient.Args {
 	return kubeclient.Args{}
 }
 
-func (f *FakeKubeclient) WithArgs(args kubeclient.Args) kubeclient.KubeClient {
+func (f *FakeKubeclient) WithArgs(args kubeclient.Args) kubeclient.Interface {
 	cp := *f
 	cp.rawArgs = map[string]interface{}(args)
 	cp.args = nil
 	return &cp
 }
 
-func (f *FakeKubeclient) ScopedFor(eval func(string) (string, bool)) kubeclient.KubeClient {
+func (f *FakeKubeclient) ScopedFor(eval func(string) (string, bool)) kubeclient.Interface {
 	cp := *f
 	if len(f.rawArgs) == 0 {
 		return &cp
@@ -277,8 +277,8 @@ type fakescope string
 func (f fakescope) Name() meta.RESTScopeName { return meta.RESTScopeName(f) }
 func (f fakescope) String() string           { return string(f) }
 
-// Compile check — *FakeKubeclient must satisfy kubeclient.KubeClient.
-var _ kubeclient.KubeClient = (*FakeKubeclient)(nil)
+// Compile check — *FakeKubeclient must satisfy kubeclient.Interface.
+var _ kubeclient.Interface = (*FakeKubeclient)(nil)
 
 // CRUD stubs — record operations. Get always returns NotFound so the reconciler
 // takes the Create path on every simulated cycle, producing visible create ops.

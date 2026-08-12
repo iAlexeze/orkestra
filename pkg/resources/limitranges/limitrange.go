@@ -36,7 +36,7 @@ type ResolvedLimitRangeSpec struct {
 // Create creates a LimitRange if it does not already exist.
 // Idempotent — skips if it already exists.
 // Owner reference set for cascade deletion.
-func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedLimitRangeSpec) error {
+func Create(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedLimitRangeSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -77,7 +77,7 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 
 // Apply creates or updates a LimitRange using Server-Side Apply.
 // Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
-func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedLimitRangeSpec) error {
+func Apply(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedLimitRangeSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -113,12 +113,12 @@ func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object,
 }
 
 // Update applies the LimitRange via SSA. Delegates to Apply.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedLimitRangeSpec) error {
+func Update(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedLimitRangeSpec) error {
 	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the LimitRange if it exists.
-func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedLimitRangeSpec) error {
+func Delete(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedLimitRangeSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -142,7 +142,7 @@ func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 }
 
 // DeleteIfOwned deletes the LimitRange only if it is owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 	owner domain.Object, name, namespace string) error {
 
 	existing, err := kube.Clientset().CoreV1().LimitRanges(namespace).
@@ -165,7 +165,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 // Idempotent — skips namespaces where the LimitRange already exists.
 func CopyToNamespaces(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	owner domain.Object,
 	spec ResolvedLimitRangeSpec,
 	toNamespaces []string,
@@ -247,7 +247,7 @@ func Resolve(src orktypes.LimitRangeTemplateSource, ownerName string, reg orktyp
 // Otherwise uses the declared Limits slice.
 func resolveLimits(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	spec ResolvedLimitRangeSpec,
 	owner domain.Object,
 ) ([]orktypes.LimitRangeItem, error) {

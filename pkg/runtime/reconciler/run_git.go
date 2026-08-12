@@ -67,7 +67,7 @@ func runGit(
 	ctx context.Context,
 	gvk string,
 	resolver *orktmpl.Resolver,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	obj domain.Object,
 	gvr schema.GroupVersionResource,
 	spec *orktypes.GitHookSpec,

@@ -36,7 +36,7 @@ import (
 // path — that decision belongs to whoever calls POST /api/v1/apply directly.
 func ApplyTargetFields(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	clusters *ClusterRegistry,
 	kat *katalog.Katalog,
 	notes orktypes.NoteRegistry,

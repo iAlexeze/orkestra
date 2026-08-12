@@ -23,7 +23,7 @@ import (
 // without a separate onReconcile declaration.
 func RunDeployments(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.DeploymentTemplateSource,

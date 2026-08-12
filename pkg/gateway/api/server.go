@@ -41,7 +41,7 @@ type APIServer struct {
 	mu        sync.RWMutex
 	tokens    *TokenSet
 	oidcCache *oidcpkg.Cache
-	kube      kubeclient.KubeClient
+	kube      kubeclient.Interface
 	clusters  *ClusterRegistry
 	kat       *katalog.Katalog
 	ownNS     string
@@ -49,7 +49,7 @@ type APIServer struct {
 
 // NewAPIServer resolves all tokens (bootstrapping/rotating Secrets as
 // needed) and returns a ready-to-register server.
-func NewAPIServer(ctx context.Context, kat *katalog.Katalog, kube kubeclient.KubeClient, clusters *ClusterRegistry, ownNS string) (*APIServer, error) {
+func NewAPIServer(ctx context.Context, kat *katalog.Katalog, kube kubeclient.Interface, clusters *ClusterRegistry, ownNS string) (*APIServer, error) {
 	if !kat.HasServeEnabled() {
 		return nil, nil // not enabled — caller skips registration
 	}

@@ -11,7 +11,7 @@ import (
 // enrichGroupWithStorageClass fetches the StorageClass for each PVC and embeds
 // it under "_storageClass". A no-op when storageclass enrichment is not enabled
 // on the CRD.
-func enrichGroupWithStorageClass(ctx context.Context, kube kubeclient.KubeClient, m map[string]interface{}, crd orktypes.CRDEntry) {
+func enrichGroupWithStorageClass(ctx context.Context, kube kubeclient.Interface, m map[string]interface{}, crd orktypes.CRDEntry) {
 	if !enrichmentEnabled("storageclass", crd) {
 		return
 	}

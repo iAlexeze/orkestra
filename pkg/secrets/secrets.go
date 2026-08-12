@@ -22,7 +22,7 @@ import (
 // SecretExists checks whether a Secret with the given name exists in the namespace.
 // Uses ResourceVersion: "0" to read from the API server watch cache (not etcd).
 // Returns true if the secret exists, false on NotFound, error on API failure.
-func SecretExists(ctx context.Context, kube kubeclient.KubeClient, namespace, name string) (bool, error) {
+func SecretExists(ctx context.Context, kube kubeclient.Interface, namespace, name string) (bool, error) {
 	_, err := kube.Clientset().CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{
 		ResourceVersion: "0", // watch cache — avoids etcd round-trip
 	})
@@ -43,7 +43,7 @@ func SecretExists(ctx context.Context, kube kubeclient.KubeClient, namespace, na
 //   - rotateAfter is not set
 //   - Secret does not exist
 //   - Generated-at annotation is missing or unparseable → regenerate to be safe
-func SecretNeedsRotation(ctx context.Context, kube kubeclient.KubeClient, namespace, name, rotateAfter string) (bool, error) {
+func SecretNeedsRotation(ctx context.Context, kube kubeclient.Interface, namespace, name, rotateAfter string) (bool, error) {
 	if rotateAfter == "" {
 		return false, nil
 	}
@@ -74,7 +74,7 @@ func SecretNeedsRotation(ctx context.Context, kube kubeclient.KubeClient, namesp
 // DeleteSecretForRotation deletes a Secret so it can be recreated with fresh values.
 // Called when SecretNeedsRotation returns true. The next create call
 // then generates new credentials and annotates with the current time.
-func DeleteSecretForRotation(ctx context.Context, kube kubeclient.KubeClient, namespace, name string) error {
+func DeleteSecretForRotation(ctx context.Context, kube kubeclient.Interface, namespace, name string) error {
 	err := kube.Clientset().CoreV1().Secrets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !IsNotFoundErr(err) {
 		return fmt.Errorf("deleting secret %s/%s for rotation: %w", namespace, name, err)
@@ -95,7 +95,7 @@ func GenerationAnnotations(rotateAfter string) map[string]string {
 
 // annotateSecret writes the generated-at and rotate-after annotations onto
 // an existing Secret. Used when a Secret exists but was created without annotations.
-func annotateSecret(ctx context.Context, kube kubeclient.KubeClient, namespace, name, rotateAfter string) error {
+func annotateSecret(ctx context.Context, kube kubeclient.Interface, namespace, name, rotateAfter string) error {
 	secret, err := kube.Clientset().CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{
 		ResourceVersion: "0",
 	})

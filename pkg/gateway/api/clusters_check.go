@@ -45,7 +45,7 @@ func CheckClusters(
 	ctx context.Context,
 	k *katalog.Katalog,
 	clusters map[string]orktypes.GatewayClusterConfig,
-	localKube kubeclient.KubeClient,
+	localKube kubeclient.Interface,
 	ownNS string,
 ) []ClusterCheckResult {
 	scheme, _ := k.Scheme()

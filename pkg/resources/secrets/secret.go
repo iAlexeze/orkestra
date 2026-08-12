@@ -65,7 +65,7 @@ type ResolvedSecretSpec struct {
 // When FromSecret is set, copies data from the source Secret automatically.
 // Idempotent — skips creation if the Secret already exists.
 // Owner reference is set so the Secret is garbage collected when the CR is deleted.
-func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedSecretSpec) error {
+func Create(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedSecretSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("secret.Create: invalid spec: %w", err)
 	}
@@ -111,7 +111,7 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 
 // Apply creates or updates a Secret using Server-Side Apply.
 // Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
-func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedSecretSpec) error {
+func Apply(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedSecretSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("secret.Apply: invalid spec: %w", err)
 	}
@@ -151,12 +151,12 @@ func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object,
 }
 
 // Update applies the Secret via SSA. Delegates to Apply.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedSecretSpec) error {
+func Update(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedSecretSpec) error {
 	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the Secret if it exists.
-func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedSecretSpec) error {
+func Delete(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedSecretSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -201,7 +201,7 @@ func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 //	        - staging
 func CopyToNamespaces(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	owner domain.Object,
 	spec ResolvedSecretSpec,
 	toNamespaces []string,
@@ -250,7 +250,7 @@ func CopyToNamespaces(
 }
 
 // DeleteIfOwned deletes the Secret if it exists and is owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 	owner domain.Object, name, namespace string) error {
 
 	existing, err := kube.Clientset().CoreV1().Secrets(namespace).
@@ -308,7 +308,7 @@ func Resolve(src orktypes.SecretTemplateSource, ownerName string) ResolvedSecret
 // Otherwise uses the static data declared in the spec.
 func resolveData(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	spec ResolvedSecretSpec,
 	owner domain.Object,
 ) (map[string][]byte, map[string]string, error) {

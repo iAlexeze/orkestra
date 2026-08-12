@@ -119,7 +119,7 @@ func RegisterRuntimeObjects() {
 	// {{ .Kind }} — custom reconciler constructor
 	// Calls {{ .Alias }}.{{ .Function }}() to build the user's reconciler.
 	orktypes.ReconcilerRegistry[schema.GroupVersionKind{Group: "{{ .Group }}", Version: "{{ .Version }}", Kind: "{{ .Kind }}"}] =
-		func(kube kubeclient.KubeClient, inf cache.SharedIndexInformer, ev event.Recorder) domain.Reconciler {
+		func(kube kubeclient.Interface, inf cache.SharedIndexInformer, ev event.Recorder) domain.Reconciler {
 			return {{ .Alias }}.{{ .Function }}(kube, inf, ev)
 		}
 {{ end }}{{ end }}

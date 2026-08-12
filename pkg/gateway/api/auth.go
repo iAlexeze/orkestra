@@ -93,7 +93,7 @@ func (ts *TokenSet) MatchesOIDC(ctx context.Context, bearer string) (name, sub s
 // secretRef entries are bootstrapped/rotated via the Kubernetes client.
 // token entries are expanded from environment variables.
 // OIDC entries are stored in the TokenSet and verified per request via oidcCache.
-func LoadTokens(ctx context.Context, tokens []orktypes.APIToken, kube kubeclient.KubeClient, ownNamespace string, oidcCache *oidcpkg.Cache) (*TokenSet, error) {
+func LoadTokens(ctx context.Context, tokens []orktypes.APIToken, kube kubeclient.Interface, ownNamespace string, oidcCache *oidcpkg.Cache) (*TokenSet, error) {
 	ts := &TokenSet{oidcCache: oidcCache}
 	for _, t := range tokens {
 		switch {
@@ -123,7 +123,7 @@ func LoadTokens(ctx context.Context, tokens []orktypes.APIToken, kube kubeclient
 
 // ResolveSecretRef reads the token from a Kubernetes Secret, creating or
 // rotating it as needed using the same annotation-based rotation as pkg/secrets.
-func ResolveSecretRef(ctx context.Context, ref *orktypes.APISecretRef, kube kubeclient.KubeClient, ownNamespace string) (string, error) {
+func ResolveSecretRef(ctx context.Context, ref *orktypes.APISecretRef, kube kubeclient.Interface, ownNamespace string) (string, error) {
 	ns := ref.Namespace
 	if ns == "" {
 		ns = ownNamespace
@@ -174,7 +174,7 @@ func ResolveSecretRef(ctx context.Context, ref *orktypes.APISecretRef, kube kube
 
 // createTokenSecret creates a new Kubernetes Secret with the given token value
 // and generation annotations for the rotation clock.
-func createTokenSecret(ctx context.Context, kube kubeclient.KubeClient, ns, name, key, token, rotateAfter string) error {
+func createTokenSecret(ctx context.Context, kube kubeclient.Interface, ns, name, key, token, rotateAfter string) error {
 	annotations := secrets.GenerationAnnotations(rotateAfter)
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

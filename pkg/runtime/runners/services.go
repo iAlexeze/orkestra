@@ -17,7 +17,7 @@ import (
 // Same update/reconcile: true semantics as RunDeployments.
 func RunServices(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.ServiceTemplateSource,

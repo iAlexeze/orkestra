@@ -25,12 +25,12 @@ func ExportedSchemaHandler(kat *katalog.Katalog) http.Handler {
 	return schemaHandler(kat)
 }
 
-func ExportedResourcesHandler(kube kubeclient.KubeClient, kat *katalog.Katalog, notes orktypes.NoteRegistry) http.Handler {
-	return resourcesHandler(kube, &ClusterRegistry{clients: map[string]kubeclient.KubeClient{}}, kat, notes)
+func ExportedResourcesHandler(kube kubeclient.Interface, kat *katalog.Katalog, notes orktypes.NoteRegistry) http.Handler {
+	return resourcesHandler(kube, &ClusterRegistry{clients: map[string]kubeclient.Interface{}}, kat, notes)
 }
 
-func ExportedApplyHandler(kube kubeclient.KubeClient, kat *katalog.Katalog, notes orktypes.NoteRegistry) http.Handler {
-	return applyHandler(kube, &ClusterRegistry{clients: map[string]kubeclient.KubeClient{}}, kat, notes)
+func ExportedApplyHandler(kube kubeclient.Interface, kat *katalog.Katalog, notes orktypes.NoteRegistry) http.Handler {
+	return applyHandler(kube, &ClusterRegistry{clients: map[string]kubeclient.Interface{}}, kat, notes)
 }
 
 func ExportedCheckServePermission(w http.ResponseWriter, r *http.Request, crd *orktypes.CRDEntry, class orktypes.ServeEndpointClass, op, ns, alias string) bool {

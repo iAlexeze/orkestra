@@ -24,7 +24,7 @@ import (
 
 // Create creates an Ingress owned by the CR if it does not already exist.
 // Idempotent — if the Ingress exists, does nothing and returns nil.
-func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedIngressSpec) error {
+func Create(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedIngressSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("ingress.Create: invalid spec: %w", err)
 	}
@@ -64,7 +64,7 @@ func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 
 // Apply creates or updates an Ingress using Server-Side Apply.
 // Sends only the fields Orkestra owns; k8s-injected defaults are invisible.
-func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedIngressSpec) error {
+func Apply(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedIngressSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("ingress.Apply: invalid spec: %w", err)
 	}
@@ -99,12 +99,12 @@ func Apply(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object,
 }
 
 // Update applies the Ingress via SSA. Delegates to Apply.
-func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedIngressSpec) error {
+func Update(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedIngressSpec) error {
 	return Apply(ctx, kube, owner, spec)
 }
 
 // Delete deletes the Ingress if it exists.
-func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedIngressSpec) error {
+func Delete(ctx context.Context, kube kubeclient.Interface, owner domain.Object, spec ResolvedIngressSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -132,7 +132,7 @@ func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 }
 
 // DeleteIfOwned deletes the Ingress if it exists and is owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 	owner domain.Object, name, namespace string) error {
 
 	existing, err := kube.Clientset().NetworkingV1().Ingresses(namespace).

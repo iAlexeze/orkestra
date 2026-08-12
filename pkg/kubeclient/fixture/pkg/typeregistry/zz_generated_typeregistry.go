@@ -97,7 +97,7 @@ func RegisterRuntimeObjects() {
 	// BlockchainNode — custom reconciler constructor
 	// Calls bnconstructor.NewBlockchainNodeReconciler() to build the user's reconciler.
 	orktypes.ReconcilerRegistry[schema.GroupVersionKind{Group: "demo.orkestra.io", Version: "v1alpha1", Kind: "BlockchainNode"}] =
-		func(kube kubeclient.KubeClient, inf cache.SharedIndexInformer, ev event.Recorder) domain.Reconciler {
+		func(kube kubeclient.Interface, inf cache.SharedIndexInformer, ev event.Recorder) domain.Reconciler {
 			return bnconstructor.NewBlockchainNodeReconciler(kube, inf, ev)
 		}
 

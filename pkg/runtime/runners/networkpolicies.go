@@ -21,7 +21,7 @@ import (
 // reconcile: true — re-reads the source policy on every reconcile and syncs changes.
 func RunNetworkPolicies(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.NetworkPolicyTemplateSource,

@@ -222,7 +222,7 @@ func (k *Kubeclient) Args() Args {
 // WithArgs returns a shallow copy of the Kubeclient with the given args stored
 // as rawArgs. Used by the runtime to attach katalog-declared args before a hook
 // or constructor is called; ScopedFor then evaluates templates at reconcile time.
-func (k *Kubeclient) WithArgs(args Args) KubeClient {
+func (k *Kubeclient) WithArgs(args Args) Interface {
 	cp := *k
 	cp.rawArgs = map[string]interface{}(args)
 	cp.args = nil
@@ -232,7 +232,7 @@ func (k *Kubeclient) WithArgs(args Args) KubeClient {
 // ScopedFor evaluates template expressions in rawArgs using eval and returns a
 // copy with the resolved args attached. Called by GenericReconciler after building
 // the per-CR resolver so hook authors see evaluated args automatically.
-func (k *Kubeclient) ScopedFor(eval func(string) (string, bool)) KubeClient {
+func (k *Kubeclient) ScopedFor(eval func(string) (string, bool)) Interface {
 	cp := *k
 	if len(k.rawArgs) == 0 {
 		return &cp

@@ -31,7 +31,7 @@ import (
 //	schedule: "{{ .spec.syncSchedule }}" dynamic — from CR spec
 func RunCronJobs(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.CronJobTemplateSource,

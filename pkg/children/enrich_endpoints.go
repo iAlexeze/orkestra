@@ -12,7 +12,7 @@ import (
 // enrichGroupWithEndpoints embeds _endpoints into each service map.
 // Reads the EndpointSlice for each service and embeds IP:port pairs.
 // A no-op when endpoint enrichment is not enabled on the CRD.
-func enrichGroupWithEndpoints(ctx context.Context, kube kubeclient.KubeClient, m map[string]interface{}, crd orktypes.CRDEntry) {
+func enrichGroupWithEndpoints(ctx context.Context, kube kubeclient.Interface, m map[string]interface{}, crd orktypes.CRDEntry) {
 	if !enrichmentEnabled("endpoints", crd) {
 		return
 	}
@@ -36,7 +36,7 @@ func enrichGroupWithEndpoints(ctx context.Context, kube kubeclient.KubeClient, m
 
 // enrichServiceWithEndpoints fetches the EndpointSlice for the named service
 // and embeds a list of {ip, port, ready} maps under _endpoints.
-func enrichServiceWithEndpoints(ctx context.Context, kube kubeclient.KubeClient, ns, svcName string, obj map[string]interface{}) {
+func enrichServiceWithEndpoints(ctx context.Context, kube kubeclient.Interface, ns, svcName string, obj map[string]interface{}) {
 	list, err := kube.DynamicClient().
 		Resource(EndpointSliceGVR).
 		Namespace(ns).

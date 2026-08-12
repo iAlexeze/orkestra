@@ -16,7 +16,7 @@ import (
 // RunHPAs resolves and applies HorizontalPodAutoscaler template declarations.
 func RunHPAs(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.HPATemplateSource,

@@ -15,7 +15,7 @@ import (
 //
 // StatefulSet PVC names are deterministic: <templateName>-<stsName>-<ordinal>.
 // This lets us fetch each PVC directly without a List+filter.
-func enrichGroupWithStatefulSetPVCs(ctx context.Context, kube kubeclient.KubeClient, m map[string]interface{}, crd orktypes.CRDEntry) {
+func enrichGroupWithStatefulSetPVCs(ctx context.Context, kube kubeclient.Interface, m map[string]interface{}, crd orktypes.CRDEntry) {
 	if !enrichmentEnabled("pvcs", crd) {
 		return
 	}

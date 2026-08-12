@@ -67,7 +67,7 @@ import (
 // Status patching proceeds with whatever children were successfully read.
 func ReadChildren(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	obj domain.Object,
 	resolver *orktmpl.Resolver,
 	crd orktypes.CRDEntry,
@@ -352,7 +352,7 @@ func ReadChildren(
 // present in crd.Enrich do real API work; all others return immediately.
 func applySecondPhaseEnrichments(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	children map[string]interface{},
 	crd orktypes.CRDEntry,
 ) {

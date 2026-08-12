@@ -36,7 +36,7 @@ const slackApplyTimeout = 30 * time.Second
 // POST /api/v1/apply call use.
 func NewSlackHandler(
 	src ResolvedSlackSource,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	clusters *api.ClusterRegistry,
 	kat *katalog.Katalog,
 	notes orktypes.NoteRegistry,

@@ -15,7 +15,7 @@ import (
 // kind is the Kubernetes Kind used to scope the event field selector
 // (involvedObject.kind). Pass "" to skip the kind filter — used for custom
 // resources whose exact kind is not known statically.
-func enrichGroupWithWarnings(ctx context.Context, kube kubeclient.KubeClient, m map[string]interface{}, crd orktypes.CRDEntry, kind string) {
+func enrichGroupWithWarnings(ctx context.Context, kube kubeclient.Interface, m map[string]interface{}, crd orktypes.CRDEntry, kind string) {
 	if !enrichmentEnabled("events", crd) {
 		return
 	}
@@ -48,7 +48,7 @@ func enrichGroupWithWarnings(ctx context.Context, kube kubeclient.KubeClient, m 
 // For workload kinds (Deployment, StatefulSet, ReplicaSet) pod-level Warning
 // events are also aggregated, because container failures (ImagePullBackOff,
 // OOMKilled, etc.) are recorded on the Pod, not on the workload itself.
-func enrichWithWarnings(ctx context.Context, kube kubeclient.KubeClient, ns, name, kind string, obj map[string]interface{}) {
+func enrichWithWarnings(ctx context.Context, kube kubeclient.Interface, ns, name, kind string, obj map[string]interface{}) {
 	if ns == "" {
 		return
 	}
@@ -83,7 +83,7 @@ func enrichWithWarnings(ctx context.Context, kube kubeclient.KubeClient, ns, nam
 // fetchOwnedPodWarnings lists pods matching the workload's label selector and
 // returns aggregated Warning events from each pod. One API call per pod, all
 // served from the informer cache (ResourceVersion "0").
-func fetchOwnedPodWarnings(ctx context.Context, kube kubeclient.KubeClient, ns string, obj map[string]interface{}) []interface{} {
+func fetchOwnedPodWarnings(ctx context.Context, kube kubeclient.Interface, ns string, obj map[string]interface{}) []interface{} {
 	selector := podLabelSelector(obj)
 	if selector == "" {
 		return nil

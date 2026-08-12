@@ -16,7 +16,7 @@ import (
 // RunPVCs resolves and applies PersistentVolumeClaim template declarations.
 func RunPVCs(
 	ctx context.Context,
-	kube kubeclient.KubeClient,
+	kube kubeclient.Interface,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.PVCTemplateSource,
