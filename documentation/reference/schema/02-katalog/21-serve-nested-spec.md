@@ -129,3 +129,41 @@ spec:
 → [`serve labels/annotations`](20-serve.md#serve-labelsannotations) — labels and annotations as fields
 
 → [Target Mode API](../../../concepts/self-service/02-target-mode.md) — submitting fields instead of CRs
+
+---
+
+## `target.clusters`
+
+Scopes the apply fan-out for a specific named target or alias to a subset of
+`serve.clusters`. When absent, fan-out uses all of `serve.clusters`. Reads and
+lists always use the local cluster regardless of this setting.
+
+```yaml
+serve:
+  clusters:
+    - prod
+    - staging
+    - eu-west
+  target:
+    prod-release:
+      primary: true
+      clusters:
+        - prod              # restricts to prod only — staging and eu-west skipped
+    canary:
+      clusters:
+        - '{{ if eq .request.region "eu" }}eu-west{{ else }}staging{{ end }}'
+```
+
+Every entry in `target.clusters` must appear in `serve.clusters` — `ork validate`
+rejects any name that is not declared there. Template expressions skip this check
+at validate time; the resolved name is validated against `serve.clusters` at apply time.
+
+| Value type | Validation | Resolution |
+|------------|------------|------------|
+| Static name | Checked against `gateway.clusters` AND `serve.clusters` at `ork validate` time | Looked up in registry at apply time |
+| Template expression | Parse + function existence checked at `ork validate` time | Resolved against intent fields at apply time |
+| Absent | — | Fan-out uses all of `serve.clusters`; falls back to local if that is also absent |
+
+→ [`serve.clusters`](20-serve.md#serveclusters) — CRD-level routing whitelist and default fan-out  
+→ [`gateway.clusters`](24-gateway-clusters.md) — registering clusters  
+→ [Multi-cluster routing](../../../concepts/self-service/10-multi-cluster-routing.md) — concept overview

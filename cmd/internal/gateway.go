@@ -1,9 +1,12 @@
 // cmd/internal/gateway.go
 //
-// Gateway startup — a minimal process that handles only TLS/security
-// setup and serves admission/conversion webhooks. No reconcilers, no informer
-// factory, no konductor election (webhook servers are stateless and can run
-// as multiple replicas).
+// Gateway startup — handles TLS/security, admission/conversion webhooks,
+// and the Serve layer (Gateway API + intake webhooks). No reconcilers, no
+// informer factory, no konductor election (webhook servers are stateless and
+// can run as multiple replicas).
+
+//go:build gateway
+
 package internal
 
 import (
@@ -28,12 +31,13 @@ import (
 	"github.com/orkspace/orkestra/pkg/utils"
 )
 
-// KonductGateway starts the gateway — TLS + WebhookServer only.
+// KonductGateway starts the production gateway — TLS, WebhookServer
+// (admission/conversion), and the Serve layer (Gateway API + intake webhooks).
 // No konductor election — the gateway is stateless and supports multiple replicas.
 func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 
 	if !utils.IsRunningInCluster() {
-		fmt.Println("orkestra: ork gate only runs inside a Kubernetes pod. Use 'ork run' for local development.")
+		fmt.Println("orkestra: ork gate only runs inside a Kubernetes pod. Use 'ork gate run' for local development.")
 		os.Exit(1)
 	}
 
@@ -124,7 +128,14 @@ func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	// Registers POST /api/v1/apply, GET/DELETE /api/v1/resources/, GET /api/v1/schema/
 	// only when gateway.api.enabled: true in the Katalog and at least one
 	// CRD has serve.enabled: true.
-	api, apiErr := apigateway.NewAPIServer(ctx, kat, kube, kfg.Cluster().Namespace())
+
+	// Build the cluster registry once — shared by the API server and intake server.
+	clusters, clustersErr := apigateway.BuildClusterRegistry(ctx, kat, kube, kfg.Cluster().Namespace())
+	if clustersErr != nil {
+		logger.Fatal().Err(clustersErr).Msg("gateway cluster registry setup failed")
+	}
+
+	api, apiErr := apigateway.NewAPIServer(ctx, kat, kube, clusters, kfg.Cluster().Namespace())
 	if apiErr != nil {
 		logger.Fatal().Err(apiErr).Msg("gateway API setup failed")
 	}
@@ -132,7 +143,7 @@ func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	// gateway.webhooks — inbound intent delivery (GitHub/GitLab push,
 	// Slack, generic HTTP). Only meaningful alongside the Gateway API
 	// (ork validate enforces this), but resolved and registered separately
-	intakeSrv, intakeErr := intake.NewIntakeServer(ctx, kat, kube, kfg.Cluster().Namespace())
+	intakeSrv, intakeErr := intake.NewIntakeServer(ctx, kat, kube, clusters, kfg.Cluster().Namespace())
 	if intakeErr != nil {
 		logger.Fatal().Err(intakeErr).Msg("gateway webhooks setup failed")
 	}

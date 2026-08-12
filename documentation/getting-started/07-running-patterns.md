@@ -151,3 +151,4 @@ ork e2e
 - [`ork run`](../reference/cli/07-run.md) — full flag reference
 - [Publishing a Pattern](../guides/registry/01-publishing.md)
 - [Consuming Patterns](../guides/registry/02-consuming.md)
+- [Artifact signing guide](../security/10-artifact-signing.md)

@@ -51,6 +51,11 @@ var (
 	writeFileAndFormat = utils.WriteFileAndFormat
 )
 
+// sortedKeys returns a sorted slice of all keys from the given map.
+func sortedKeys[V any](m map[string]V) []string {
+	return utils.SortedKeys(m)
+}
+
 // toAbsPath converts p to an absolute path.
 // If p is already absolute, it is returned unchanged.
 // If p is relative, it is resolved relative to the current working directory.

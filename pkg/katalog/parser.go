@@ -91,6 +91,7 @@ func (k *Katalog) KomposeRuntimeKatalog(
 	k.Spec.Imports = m.ToSpecImports()
 	k.Security = m.ToSecurity()
 	k.Gateway = m.ToGateway()
+	k.Publish = m.ToPublish()
 	k.Notification = m.ToNotification()
 	k.Providers = m.ToProviders()
 	k.Profiles = m.ToProfiles()
@@ -114,6 +115,9 @@ func (k *Katalog) KomposeRuntimeKatalog(
 	}
 	if err := orktypes.ExpandGatewayWebhookIncludes(k.Gateway, k.katalogDir); err != nil {
 		return nil, fmt.Errorf("gateway.webhooks: %w", err)
+	}
+	if err := orktypes.ExpandGatewayClustersInclude(k.Gateway, k.katalogDir); err != nil {
+		return nil, fmt.Errorf("gateway.clusters: %w", err)
 	}
 
 	for name, entry := range k.enabledCRDs {

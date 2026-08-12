@@ -306,5 +306,19 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 43. Validate gateway clusters (entries, credential forms, serve.cluster refs)
+	// -------------------------------------------------------------------------
+	if err := k.ValidateGatewayClusters(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 44. Validate Publish config
+	// -------------------------------------------------------------------------
+	if err := k.validatePublish(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }

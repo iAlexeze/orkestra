@@ -989,6 +989,159 @@ func TestLookupByAPIVersionAndKind_MultipleEntries(t *testing.T) {
 	}
 }
 
+func TestServeEnabledCRDsForCluster(t *testing.T) {
+	// mirrors the multi-cluster walkthrough scenario:
+	//   website  → staging + prod (static)
+	//   function → prod only (static)
+	//   config   → template (conservative: all clusters)
+	//   draft    → no clusters (local only → never appears on a remote cluster)
+	k := &Katalog{
+		enabledCRDs: map[string]orktypes.CRDEntry{
+			"website": {
+				APITypes: orktypes.APITypes{Kind: "Website", Plural: "websites"},
+				Serve: &orktypes.ServeConfig{
+					Enabled:  true,
+					Clusters: []string{"staging", "prod"},
+				},
+			},
+			"function": {
+				APITypes: orktypes.APITypes{Kind: "Function", Plural: "functions"},
+				Serve: &orktypes.ServeConfig{
+					Enabled:  true,
+					Clusters: []string{"prod"},
+				},
+			},
+			"config": {
+				APITypes: orktypes.APITypes{Kind: "Config", Plural: "configs"},
+				Serve: &orktypes.ServeConfig{
+					Enabled:  true,
+					Clusters: []string{`{{ if eq .request.env "prod" }}prod{{ else }}staging{{ end }}`},
+				},
+			},
+			"draft": {
+				APITypes: orktypes.APITypes{Kind: "Draft", Plural: "drafts"},
+				Serve: &orktypes.ServeConfig{
+					Enabled:  true,
+					Clusters: nil, // local only
+				},
+			},
+		},
+	}
+
+	kindsFor := func(crds []*orktypes.CRDEntry) map[string]bool {
+		out := make(map[string]bool, len(crds))
+		for _, c := range crds {
+			out[c.APITypes.Kind] = true
+		}
+		return out
+	}
+
+	t.Run("staging", func(t *testing.T) {
+		got := kindsFor(k.ServeEnabledCRDsForCluster("staging"))
+		if !got["Website"] {
+			t.Error("expected Website on staging")
+		}
+		if got["Function"] {
+			t.Error("Function should not appear on staging (prod only)")
+		}
+		if !got["Config"] {
+			t.Error("expected Config on staging (template — conservative)")
+		}
+		if got["Draft"] {
+			t.Error("Draft should not appear on staging (local only)")
+		}
+	})
+
+	t.Run("prod", func(t *testing.T) {
+		got := kindsFor(k.ServeEnabledCRDsForCluster("prod"))
+		if !got["Website"] {
+			t.Error("expected Website on prod")
+		}
+		if !got["Function"] {
+			t.Error("expected Function on prod")
+		}
+		if !got["Config"] {
+			t.Error("expected Config on prod (template — conservative)")
+		}
+		if got["Draft"] {
+			t.Error("Draft should not appear on prod (local only)")
+		}
+	})
+
+	t.Run("unknown cluster", func(t *testing.T) {
+		got := k.ServeEnabledCRDsForCluster("eu-west")
+		// only template-routed CRDs (Config) appear for unknown clusters
+		kinds := kindsFor(got)
+		if !kinds["Config"] {
+			t.Error("expected Config on eu-west (template — conservative)")
+		}
+		if kinds["Website"] || kinds["Function"] || kinds["Draft"] {
+			t.Errorf("only template CRDs should appear for unknown cluster, got %v", kinds)
+		}
+	})
+}
+
+func TestServeEnabledCRDsForCluster_TargetOverride(t *testing.T) {
+	// serve.clusters: [staging, prod]; target.prod-only.clusters: [prod]
+	// Both staging and prod appear in serve.clusters, so both clusters see the CRD.
+	k := &Katalog{
+		enabledCRDs: map[string]orktypes.CRDEntry{
+			"website": {
+				APITypes: orktypes.APITypes{Kind: "Website", Plural: "websites"},
+				Serve: &orktypes.ServeConfig{
+					Enabled:  true,
+					Clusters: []string{"staging", "prod"},
+					Target: orktypes.ServeTargetValue{
+						Entries: map[string]*orktypes.ServeTargetConfig{
+							"prod-only": {Clusters: []string{"prod"}},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, cluster := range []string{"staging", "prod"} {
+		crds := k.ServeEnabledCRDsForCluster(cluster)
+		if len(crds) != 1 || crds[0].APITypes.Kind != "Website" {
+			t.Errorf("expected Website on %s, got %v", cluster, crds)
+		}
+	}
+}
+
+func TestServeEnabledCRDsForCluster_TargetTemplateRouted(t *testing.T) {
+	// serve.clusters empty; target has a template cluster → CRD appears on all.
+	k := &Katalog{
+		enabledCRDs: map[string]orktypes.CRDEntry{
+			"app": {
+				APITypes: orktypes.APITypes{Kind: "App", Plural: "apps"},
+				Serve: &orktypes.ServeConfig{
+					Enabled: true,
+					Target: orktypes.ServeTargetValue{
+						Entries: map[string]*orktypes.ServeTargetConfig{
+							"primary": {Clusters: []string{`{{ .request.env }}`}},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, cluster := range []string{"prod", "staging", "eu-west"} {
+		crds := k.ServeEnabledCRDsForCluster(cluster)
+		if len(crds) != 1 {
+			t.Errorf("expected App on %s (template target), got %d CRDs", cluster, len(crds))
+		}
+	}
+}
+
+func TestServeEnabledCRDsForCluster_NilKatalog(t *testing.T) {
+	var k *Katalog
+	if crds := k.ServeEnabledCRDsForCluster("prod"); crds != nil {
+		t.Errorf("expected nil from nil Katalog, got %v", crds)
+	}
+}
+
 func TestLookupByAPIVersionAndKind_InvalidAPIVersion(t *testing.T) {
 	k := &Katalog{
 		enabledCRDs: map[string]orktypes.CRDEntry{

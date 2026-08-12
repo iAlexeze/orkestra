@@ -53,7 +53,7 @@ func slackRequest(t *testing.T, secret string, form url.Values) *http.Request {
 }
 
 func TestSlackHandler_MethodNotAllowed(t *testing.T) {
-	h := NewSlackHandler(testSlackSource("s3cr3t", "/deploy"), nil, nil, orktypes.NoteRegistry{}, newFakeSlackClient())
+	h := NewSlackHandler(testSlackSource("s3cr3t", "/deploy"), nil, nil, nil, orktypes.NoteRegistry{}, newFakeSlackClient())
 	req := httptest.NewRequest(http.MethodGet, "/webhooks/slack", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -63,7 +63,7 @@ func TestSlackHandler_MethodNotAllowed(t *testing.T) {
 }
 
 func TestSlackHandler_InvalidSignature(t *testing.T) {
-	h := NewSlackHandler(testSlackSource("s3cr3t", "/deploy"), nil, nil, orktypes.NoteRegistry{}, newFakeSlackClient())
+	h := NewSlackHandler(testSlackSource("s3cr3t", "/deploy"), nil, nil, nil, orktypes.NoteRegistry{}, newFakeSlackClient())
 	form := url.Values{"command": {"/deploy"}, "text": {"app"}}
 	req := slackRequest(t, "wrong-secret", form)
 	rr := httptest.NewRecorder()
@@ -74,7 +74,7 @@ func TestSlackHandler_InvalidSignature(t *testing.T) {
 }
 
 func TestSlackHandler_UnknownCommand(t *testing.T) {
-	h := NewSlackHandler(testSlackSource("s3cr3t", "/deploy"), nil, nil, orktypes.NoteRegistry{}, newFakeSlackClient())
+	h := NewSlackHandler(testSlackSource("s3cr3t", "/deploy"), nil, nil, nil, orktypes.NoteRegistry{}, newFakeSlackClient())
 	form := url.Values{"command": {"/rollback"}, "text": {"app"}}
 	req := slackRequest(t, "s3cr3t", form)
 	rr := httptest.NewRecorder()
@@ -88,7 +88,7 @@ func TestSlackHandler_UnknownCommand(t *testing.T) {
 }
 
 func TestSlackHandler_InvalidArgs(t *testing.T) {
-	h := NewSlackHandler(testSlackSource("s3cr3t", "/deploy"), nil, nil, orktypes.NoteRegistry{}, newFakeSlackClient())
+	h := NewSlackHandler(testSlackSource("s3cr3t", "/deploy"), nil, nil, nil, orktypes.NoteRegistry{}, newFakeSlackClient())
 	form := url.Values{"command": {"/deploy"}, "text": {""}}
 	req := slackRequest(t, "s3cr3t", form)
 	rr := httptest.NewRecorder()
@@ -104,7 +104,7 @@ func TestSlackHandler_InvalidArgs(t *testing.T) {
 func TestSlackHandler_UnknownTarget(t *testing.T) {
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
 	kat := intakeTestKatalog("")
-	h := NewSlackHandler(testSlackSource("s3cr3t", "/deploy"), kube, kat, orktypes.NoteRegistry{}, newFakeSlackClient())
+	h := NewSlackHandler(testSlackSource("s3cr3t", "/deploy"), kube, nil, kat, orktypes.NoteRegistry{}, newFakeSlackClient())
 	form := url.Values{"command": {"/deploy"}, "text": {"does-not-exist"}}
 	req := slackRequest(t, "s3cr3t", form)
 	rr := httptest.NewRecorder()
@@ -121,7 +121,7 @@ func TestSlackHandler_ValidCommand_AcksThenAppliesInBackground(t *testing.T) {
 	kube := simulate.NewFakeKubeclient(runtime.NewScheme())
 	kat := intakeTestKatalog("resolved-name") // serve.name declared — no raw name needed
 	slack := newFakeSlackClient()
-	h := NewSlackHandler(testSlackSource("s3cr3t", "/deploy"), kube, kat, orktypes.NoteRegistry{}, slack)
+	h := NewSlackHandler(testSlackSource("s3cr3t", "/deploy"), kube, nil, kat, orktypes.NoteRegistry{}, slack)
 
 	form := url.Values{
 		"command":      {"/deploy"},

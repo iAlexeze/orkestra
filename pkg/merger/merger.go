@@ -53,6 +53,9 @@ type Merger struct {
 	// gateway holds the gateway deployment config of the final katalog
 	gateway *orktypes.GatewayConfig
 
+	// publish holds the publishing and consumer policy of the final katalog
+	publish *orktypes.PublishConfig
+
 	// profiles holds the merged user-defined profile registry of the final katalog
 	profiles orktypes.ProfileRegistry
 
@@ -376,6 +379,13 @@ func (m *Merger) ToNotification() *orktypes.KatalogNotification {
 func (m *Merger) ToGateway() *orktypes.GatewayConfig {
 	m.mustBeMerged()
 	return m.gateway
+}
+
+// ToPublish returns the publish config of the merged result.
+// Used by KomposeRuntimeKatalog to populate Katalog.Publish.
+func (m *Merger) ToPublish() *orktypes.PublishConfig {
+	m.mustBeMerged()
+	return m.publish
 }
 
 // ToProfiles returns the merged user-defined profile registry of the merged result.

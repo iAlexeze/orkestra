@@ -81,6 +81,48 @@ func (k *Katalog) BuildServeEnabledCRDs() []*orktypes.CRDEntry {
 	return serveEnabled
 }
 
+// ServeEnabledCRDsForCluster returns the serve-enabled CRDs that should be
+// present on the named remote cluster. A CRD is included when:
+//   - serve.clusters contains clusterName (static match), OR
+//   - serve.clusters contains a template expression (resolved at apply time —
+//     the CRD could land on any cluster, so include conservatively), OR
+//   - any target.clusters entry matches by the same rules above.
+//
+// CRDs with no serve.clusters (local-only) are never included.
+func (k *Katalog) ServeEnabledCRDsForCluster(clusterName string) []*orktypes.CRDEntry {
+	if k == nil {
+		return nil
+	}
+	var out []*orktypes.CRDEntry
+	for _, crd := range k.enabledCRDs {
+		if !crd.ServeEnabled() || crd.Serve == nil {
+			continue
+		}
+		if crdRoutesToCluster(crd.Serve, clusterName) {
+			entry := crd
+			out = append(out, &entry)
+		}
+	}
+	return out
+}
+
+// crdRoutesToCluster reports whether a serve config routes to the named cluster.
+func crdRoutesToCluster(s *orktypes.ServeConfig, clusterName string) bool {
+	for _, c := range s.Clusters {
+		if orktypes.IsTemplate(c) || c == clusterName {
+			return true
+		}
+	}
+	for _, target := range s.Target.Entries {
+		for _, c := range target.TargetClusters() {
+			if orktypes.IsTemplate(c) || c == clusterName {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // -----------------------------------------------------------------------------
 // Lookup Methods (O(1) index-based)
 // -----------------------------------------------------------------------------

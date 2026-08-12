@@ -48,6 +48,7 @@ type FakeKubeclient struct {
 	clientset kubernetes.Interface
 	dynamic   dynamic.Interface
 	mapper    meta.RESTMapper
+	scheme    *runtime.Scheme
 	shared    *fakeShared
 
 	rawArgs map[string]interface{}
@@ -85,6 +86,7 @@ func NewFakeKubeclient(scheme *runtime.Scheme, dynamicObjects ...runtime.Object)
 	})
 
 	f.clientset = cs
+	f.scheme = scheme
 
 	dyn := fakedynamic.NewSimpleDynamicClient(scheme, dynamicObjects...) // For custom + seeded pre-existing instances
 	// PrependReactor intercepts every operation and records it before the
@@ -114,6 +116,7 @@ func (f *FakeKubeclient) Clientset() kubernetes.Interface  { return f.clientset 
 func (f *FakeKubeclient) DynamicClient() dynamic.Interface { return f.dynamic }
 func (f *FakeKubeclient) Mapper() meta.RESTMapper          { return f.mapper }
 func (f *FakeKubeclient) RestConfig() *rest.Config         { return nil }
+func (f *FakeKubeclient) Scheme() *runtime.Scheme          { return f.scheme }
 
 func (f *FakeKubeclient) Args() kubeclient.Args {
 	if f.args != nil {

@@ -88,8 +88,84 @@ Push and pull work identically. Credentials come from `~/.docker/config.json` �
 
 ---
 
+---
+
+## How do I sign a pattern?
+
+Push first, then sign:
+
+```bash
+ork push postgres:v14 ./patterns/postgres/
+ork pattern sign postgres:v14
+```
+
+Or in one step:
+
+```bash
+ork push postgres:v14 ./patterns/postgres/ --sign
+```
+
+Signing uses Cosign keyless — no keys, no secrets. The ambient OIDC token in CI
+is the credential. In GitHub Actions this is the workflow identity; locally it
+opens a browser-based OIDC flow.
+
+After signing, `ork inspect` shows the signer on the `Signed:` row without any
+extra flags.
+
+→ [Artifact Signing](../security/10-artifact-signing.md)
+
+---
+
+## How do I test signing without a real registry?
+
+Use `--sign-local` or `ork pattern sign --local`. This pushes to
+[ttl.sh](https://ttl.sh) — a free ephemeral OCI registry — signs it, and prints
+the exact verify and inspect commands:
+
+```bash
+# From push
+ork push postgres:v14 ./ --sign-local --ttl 24h
+
+# Or directly
+ork pattern sign postgres:v14 --local --dir ./patterns/postgres/ --ttl 24h
+```
+
+```text
+✓ Pushed  oci://ttl.sh/ork-a3f9c2/postgres:24h
+✓ Signed
+
+  Expires in   24h
+  Verify:      ork pattern verify oci://ttl.sh/ork-a3f9c2/postgres:24h --no-tlog
+  Inspect:     ork inspect oci://ttl.sh/ork-a3f9c2/postgres:24h
+```
+
+Use `--no-tlog` when verifying ephemeral artifacts — the Rekor transparency log
+is not useful for a short-lived test artifact.
+
+---
+
+## How do I require consumers to verify the signature?
+
+Add a `publish:` block to `katalog.yaml`:
+
+```yaml
+publish:
+  signing:
+    verify: true
+    expectedIdentities:
+      - github.com/myorg/postgres/.github/workflows/release.yaml@refs/heads/main
+```
+
+With `verify: true`, consumers who run `ork pull --verify` are blocked unless a
+valid signature from one of the listed identities is present.
+
+→ [`publish:` schema](../reference/schema/02-katalog/23-publish.md)
+
+---
+
 ## Further reading
 
 - **[Orkestra Registry](../orkestra-registry/index.md)** — full publishing and pulling reference
 - **[simulate gates](../orkestra-registry/05-simulate.md)** — how simulate quality signals work
 - **[e2e gates](../orkestra-registry/04-e2e.md)** — how e2e quality signals work
+- **[Artifact Signing](../security/10-artifact-signing.md)** — keyless signing, CI setup, local testing

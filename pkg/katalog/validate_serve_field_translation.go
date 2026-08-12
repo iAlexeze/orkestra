@@ -5,7 +5,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/orkspace/orkestra/pkg/note"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
@@ -75,7 +74,7 @@ Use value for a single destination, values for fanout to multiple paths.
 	}
 
 	if hasVal {
-		if err := compileServeExpr(crdName, fieldName, "value", config.Value, funcMap); err != nil {
+		if err := validateTemplate("serve.fields", crdName, fieldName, "value", config.Value, funcMap); err != nil {
 			return err
 		}
 	}
@@ -94,34 +93,11 @@ Use value for a single destination, values for fanout to multiple paths.
 			if expr == "" {
 				return fmt.Errorf("%s CRD %q: serve.fields %q: values[%q] expression must not be empty", failureMark(), crdName, fieldName, specPath)
 			}
-			if err := compileServeExpr(crdName, fieldName, fmt.Sprintf("values[%q]", specPath), expr, funcMap); err != nil {
+			if err := validateTemplate("serve.fields", crdName, fieldName, fmt.Sprintf("values[%q]", specPath), expr, funcMap); err != nil {
 				return err
 			}
 		}
 	}
 
 	return nil
-}
-
-func compileServeExpr(crdName, fieldName, location, expr string, funcMap template.FuncMap) error {
-	if _, err := template.New("").Funcs(funcMap).Parse(expr); err != nil {
-		return fmt.Errorf("%s CRD %q: serve.fields %q: %s: invalid template: %s", failureMark(), crdName, fieldName, location, err.Error())
-	}
-	return nil
-}
-
-// buildFuncMapForValidation builds a stub FuncMap that includes all registered
-// note functions (so cross-note references compile) and all built-in functions.
-// User-defined notes from the Katalog are added as stubs — only parsing is
-// checked, not execution.
-func buildFuncMapForValidation(notes orktypes.NoteRegistry) template.FuncMap {
-	builtins := note.Map()
-	funcMap := make(template.FuncMap, len(builtins)+len(notes.Functions))
-	for k, v := range builtins {
-		funcMap[k] = v
-	}
-	for _, n := range notes.Functions {
-		funcMap[n.Name] = func() interface{} { return "" }
-	}
-	return funcMap
 }

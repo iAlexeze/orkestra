@@ -41,6 +41,7 @@ import (
 //   - Target lookup: resolves the target identifier to a CRD entry (when serve.target is set)
 func resourcesHandler(
 	kube kubeclient.KubeClient,
+	clusters *ClusterRegistry,
 	kat *katalog.Katalog,
 	notes orktypes.NoteRegistry,
 ) http.HandlerFunc {
@@ -77,12 +78,35 @@ func resourcesHandler(
 			return
 		}
 
+		// ── Cluster routing ───────────────────────────────────────────────────────
+		// ?cluster=<name> explicitly targets a registered remote cluster.
+		// Falls back to static CRD config; template cluster expressions are
+		// skipped on the read path (fields is nil → indeterminate).
+		effectiveKube := kube
+		if clusterName := r.URL.Query().Get("cluster"); clusterName != "" {
+			c, ok := clusters.ClientFor(clusterName)
+			if !ok {
+				writeJSONError(w, http.StatusBadRequest, "cluster not registered",
+					fmt.Sprintf("cluster %q is not registered in gateway.clusters", clusterName),
+				)
+				return
+			}
+			effectiveKube = c
+		} else {
+			derived, clusterErr := resolveReadCluster(crd, alias, notes, clusters, kube)
+			if clusterErr != nil {
+				writeJSONError(w, http.StatusBadRequest, "cluster routing error", clusterErr.Error())
+				return
+			}
+			effectiveKube = derived
+		}
+
 		switch r.Method {
 		case http.MethodGet:
 			if name == "" {
-				listResources(w, r, kube, ns, crd, alias, notes)
+				listResources(w, r, effectiveKube, ns, crd, alias, notes)
 			} else {
-				getResource(w, r, kube, ns, name, crd, alias, notes)
+				getResource(w, r, effectiveKube, ns, name, crd, alias, notes)
 			}
 		case http.MethodDelete:
 			if name == "" {
@@ -91,7 +115,7 @@ func resourcesHandler(
 				)
 				return
 			}
-			deleteResource(w, r, kube, ns, name, crd, alias)
+			deleteResource(w, r, effectiveKube, ns, name, crd, alias)
 		default:
 			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed",
 				fmt.Sprintf("method %q is not supported for /api/v1/resources", r.Method),

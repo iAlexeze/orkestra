@@ -1,6 +1,8 @@
 package katalog
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 
 	"github.com/orkspace/orkestra/pkg/konfig"
@@ -27,6 +29,7 @@ type Katalog struct {
 	Notes        orktypes.NoteRegistry                 `yaml:"notes,omitempty"`
 	Profiles     orktypes.ProfileRegistry              `yaml:"profiles,omitempty"`
 	Gateway      *orktypes.GatewayConfig               `yaml:"gateway,omitempty"`
+	Publish      *orktypes.PublishConfig               `yaml:"publish,omitempty"`
 	Notification *orktypes.KatalogNotification         `yaml:"notification,omitempty"`
 	Providers    []orktypes.KatalogProviderRequirement `yaml:"providers,omitempty"`
 	projectInfo  interface{}                           `yaml:"projectInfo,omitempty"`
@@ -58,6 +61,14 @@ type Katalog struct {
 	targetIndex     map[string]string `yaml:"-" json:"-"` // target -> crd name
 
 	webhookNameIndex map[string]string `yaml:"-" json:"-"` // lowercase(webhook entry name) -> source ("github"/"gitlab"/"slack"/"generic")
+}
+
+// GatewayClusters returns the gateway.clusters entries map, or nil when none are declared.
+func (k *Katalog) GatewayClusters() map[string]orktypes.GatewayClusterConfig {
+	if k == nil || k.Gateway == nil || k.Gateway.Clusters == nil {
+		return nil
+	}
+	return k.Gateway.Clusters.Entries
 }
 
 // EnabledCRDs returns a map of enabled CRDs keyed by their name.
@@ -113,6 +124,20 @@ func (k *Katalog) WithCRDFiles() []string {
 	return k.withCRDFiles
 }
 
+// HasIntentFiles reports whether intent.yaml or intent.json are present in the
+// katalog directory. Used at validate time to enforce publish.tests.intent: true.
+func (k *Katalog) HasIntentFiles() bool {
+	if k.katalogDir == "" {
+		return false
+	}
+	for _, name := range []string{"intent.yaml", "intent.json"} {
+		if _, err := os.Stat(filepath.Join(k.katalogDir, name)); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
 // Metadata returns the Katalog metadata.
 func (k *Katalog) Metadata() orktypes.KatalogMeta {
 	return k.metadata
@@ -164,6 +189,9 @@ func (k *Katalog) CRDEntry(name string) (orktypes.CRDEntry, bool) {
 
 // Scheme builds and returns a runtime.Scheme with all Katalog types registered.
 func (k *Katalog) Scheme() (*runtime.Scheme, error) {
+	if k == nil {
+		return nil, nil
+	}
 	return NewSchemeRegistry(k)
 }
 

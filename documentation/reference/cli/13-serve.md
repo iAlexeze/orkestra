@@ -721,8 +721,8 @@ ork serve apply [flags]
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
 | `--file` | `-f` | _(auto-detect)_ | Intent or CR file (YAML or JSON) |
-| `--api` | | `http://localhost:8080` | Gateway base URL |
-| `--token` | | _(required)_ | Bearer token for the gateway |
+| `--api` | `-a` | `http://localhost:8080` | Gateway base URL |
+| `--token` | `-t` | _(required)_ | Bearer token for the gateway |
 | `--dry-run` | | `false` | Preview without applying — the CR is not written to the cluster |
 
 ### Examples
@@ -742,6 +742,9 @@ ork serve apply -f cr.yaml --api https://gateway.myorg.io --token "$ORK_TOKEN"
 
 # Local gateway (default port)
 ork serve apply --token "$ORK_TOKEN"
+
+# Show the raw gateway response (useful when diagnosing rejections)
+ork serve apply -f intent.yaml --api https://gateway.myorg.io -t "$ORK_TOKEN" --verbose
 ```
 
 ### Output
