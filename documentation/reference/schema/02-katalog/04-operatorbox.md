@@ -51,10 +51,14 @@ operatorBox:
     ...               # → when-conditions.md
 
   preReconcile:
-    when:             # → preReconcile section below
-      - ...
-    anyOf:
-      - ...
+    enqueueGate:      # → preReconcile.enqueueGate section below
+      when:
+        - ...
+    reconcileGate:    # → preReconcile.reconcileGate section below
+      when:
+        - ...
+      anyOf:
+        - ...
 
   rollBackOnError: false
   autoscale:
@@ -296,41 +300,77 @@ Templates are Go templates evaluated against the CR object. Use `{{ .Name }}`, `
 
 ## `preReconcile`
 
-Pre-reconcile gate conditions. Evaluated by the kordinator **before** the reconciler is invoked. When conditions fail, the reconcile cycle is dropped entirely — the reconciler is not called, no resources are created or deleted, and the CRD reports health state `gated`.
+Pre-reconcile gate conditions. Two sub-blocks control where in the pipeline the gate fires:
+
+- **`enqueueGate`** — evaluated by the informer before the item enters the work queue.
+- **`reconcileGate`** — evaluated by the kordinator after the item is dequeued, before the reconciler is called.
 
 ```yaml
 operatorBox:
   preReconcile:
-    when:
-      - field: "{{ .spec.enabled }}"
-        equals: "true"
-    anyOf:
-      - field: "{{ .spec.environment }}"
-        equals: "production"
-      - field: "{{ .spec.environment }}"
-        equals: "staging"
+    enqueueGate:
+      when:
+        - field: "{{ .spec.active }}"
+          equals: "true"
+    reconcileGate:
+      when:
+        - field: "{{ .spec.enabled }}"
+          equals: "true"
+      anyOf:
+        - field: "{{ .spec.environment }}"
+          equals: "production"
+        - field: "{{ .spec.environment }}"
+          equals: "staging"
 ```
 
-### Gate semantics
+### `preReconcile.enqueueGate`
+
+Evaluated by the **informer** in `handleEvent` before the item enters the work queue. When the gate fires the object is silently dropped — it never reaches the kordinator or reconciler.
+
+```yaml
+operatorBox:
+  preReconcile:
+    enqueueGate:
+      when:
+        - field: "{{ .spec.active }}"
+          equals: "true"
+      anyOf:
+        - field: "{{ .spec.environment }}"
+          equals: "production"
+        - field: "{{ .spec.environment }}"
+          equals: "staging"
+```
 
 | Property | Behavior |
 |---|---|
-| **Scope** | Per-CR — each CR's gate is evaluated independently |
+| **Phase** | Before the item enters the queue |
+| **On gate** | Object dropped. No queue pressure. No kordinator overhead. |
+| **Health state** | No effect — kordinator is never involved |
+| **Resolver** | Full chain — CR fields, profiles, notes, serve intent |
+| **Caveat** | If the gating field changes without a watch event (e.g. resync only), the object stays out until the next event arrives |
+
+### `preReconcile.reconcileGate`
+
+Evaluated by the **kordinator** after the item is dequeued. When conditions fail, the item is discarded without calling the reconciler and the CRD reports health state `gated`.
+
+| Property | Behavior |
+|---|---|
 | **Phase** | After dequeue, before the reconciler runs |
-| **On gate** | Item dropped from queue without re-queuing. No error. No status write. |
+| **On gate** | Item dropped. No error. No status write. |
 | **Health state** | `gated` — idle, not degraded. Clears on next successful reconcile. |
+| **Resolver** | Full chain — CR fields, profiles, notes, serve intent |
 | **On CR update** | Object re-enqueued; gate re-evaluated with new field values |
 
-### Difference from resource-level `when:`
+### Comparison
 
-| | `operatorBox.reconcile.when` | Resource `when:` in `onCreate` / `onReconcile` |
-|---|---|---|
-| Evaluated by | Kordinator (before reconciler) | Reconciler (inside reconcile loop) |
-| Effect | Entire cycle skipped | Individual resource skipped |
-| Health on gate | `gated` (idle) | No effect on health |
-| Re-queue on gate | No | Normal re-queue |
+| | `preReconcile.enqueueGate` | `preReconcile.reconcileGate` | Resource `when:` |
+|---|---|---|---|
+| Evaluated by | Informer (`handleEvent`) | Kordinator (after dequeue) | Reconciler (inside loop) |
+| Phase | Before queue entry | After dequeue | Inside reconcile cycle |
+| Effect | Object never queued | Reconcile cycle skipped | Individual resource skipped |
+| Health on gate | No effect | `gated` (idle) | No effect |
 
-All [condition operators](06-when-conditions.md#operators) are supported. `when:` requires ALL conditions to pass (AND). `anyOf:` requires at least one to pass (OR). Both may be specified simultaneously — both must pass.
+All [condition operators](06-when-conditions.md#operators) are supported. `when:` requires ALL conditions to pass (AND). `anyOf:` requires at least one (OR). Both may be specified simultaneously — both must pass.
 
 See [Conditional Reconciliation](../../../concepts/conditional/04-conditional-reconciliation.md) for the full concept guide.
 

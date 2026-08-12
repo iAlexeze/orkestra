@@ -7,22 +7,9 @@ import (
 
 // ── PreReconcileConfig ────────────────────────────────────────────────────────────
 
-// PreReconcileConfig declares the conditions that gate entry into the reconcile
-// loop for a given CR. Evaluated in the kordinator before safeReconcile —
-// when conditions are not met the reconciler is never called.
-//
-// YAML:
-//
-//	operatorBox:
-//	  reconcile:
-//	    when:
-//	      - field: "{{ inBusinessHours }}"
-//	        equals: "true"
-//	    anyOf:
-//	      - field: "{{ .cross.database.status.phase }}"
-//	        equals: "Ready"
-type PreReconcileConfig struct {
-	// When declares AND conditions. All must be true for the reconciler to be called.
+// GateConditions declares when/anyOf conditions shared by both preReconcile gates.
+type GateConditions struct {
+	// When declares AND conditions. All must be true for the gate to pass.
 	When []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
 	// AnyOf declares OR conditions. At least one must be true.
@@ -30,25 +17,76 @@ type PreReconcileConfig struct {
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 }
 
-// HasConditions reports whether any gate conditions are declared.
-func (r *PreReconcileConfig) HasConditions() bool {
-	return r != nil && (len(r.When) > 0 || len(r.AnyOf) > 0)
+// HasConditions reports whether any conditions are declared.
+func (g *GateConditions) HasConditions() bool {
+	return g != nil && (len(g.When) > 0 || len(g.AnyOf) > 0)
 }
 
 // WhenConditions returns the AND conditions, safe on nil receiver.
+func (g *GateConditions) WhenConditions() []Condition {
+	if g == nil {
+		return nil
+	}
+	return g.When
+}
+
+// AnyOfConditions returns the OR conditions, safe on nil receiver.
+func (g *GateConditions) AnyOfConditions() []Condition {
+	if g == nil {
+		return nil
+	}
+	return g.AnyOf
+}
+
+// PreReconcileConfig groups the two pre-reconcile gates under operatorBox.preReconcile.
+//
+// YAML:
+//
+//	operatorBox:
+//	  preReconcile:
+//	    enqueueGate:
+//	      when:
+//	        - field: "{{ .spec.active }}"
+//	          equals: "true"
+//	    reconcileGate:
+//	      when:
+//	        - field: "{{ .spec.enabled }}"
+//	          equals: "true"
+//	      anyOf:
+//	        - field: "{{ .cross.database.status.phase }}"
+//	          equals: "Ready"
+type PreReconcileConfig struct {
+	// EnqueueGate declares informer-level gate conditions evaluated in handleEvent
+	// before the object enters the work queue. When the gate fires the object is
+	// silently dropped — it never reaches the kordinator or reconciler.
+	// No health state change; kordinator is never involved.
+	EnqueueGate *GateConditions `yaml:"enqueueGate,omitempty" json:"enqueueGate,omitempty"`
+
+	// ReconcileGate declares kordinator-level gate conditions evaluated after
+	// dequeue, before the reconciler is called. When conditions are not met
+	// the item is discarded and CRD health is set to gated.
+	ReconcileGate *GateConditions `yaml:"reconcileGate,omitempty" json:"reconcileGate,omitempty"`
+}
+
+// HasConditions reports whether reconcileGate has any conditions declared.
+func (r *PreReconcileConfig) HasConditions() bool {
+	return r != nil && r.ReconcileGate.HasConditions()
+}
+
+// WhenConditions returns the reconcileGate AND conditions, safe on nil receiver.
 func (r *PreReconcileConfig) WhenConditions() []Condition {
 	if r == nil {
 		return nil
 	}
-	return r.When
+	return r.ReconcileGate.WhenConditions()
 }
 
-// AnyOfConditions returns the OR conditions, safe on nil receiver.
+// AnyOfConditions returns the reconcileGate OR conditions, safe on nil receiver.
 func (r *PreReconcileConfig) AnyOfConditions() []Condition {
 	if r == nil {
 		return nil
 	}
-	return r.AnyOf
+	return r.ReconcileGate.AnyOfConditions()
 }
 
 // ── OperatorBoxConfig ──────────────────────────────────────────────────────────

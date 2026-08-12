@@ -15,9 +15,10 @@ spec:
 
       operatorBox:
         preReconcile:
-          when:
-            - field: "{{ .spec.enabled }}"
-              equals: "true"
+          reconcileGate:
+            when:
+              - field: "{{ .spec.enabled }}"
+                equals: "true"
 
         status:
           fields:

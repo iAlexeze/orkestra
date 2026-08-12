@@ -1,7 +1,7 @@
 # Conditional Reconciliation
 
 `when:` conditions on resources tell Orkestra *what* to create and when.
-This example goes one layer deeper: `operatorBox.preReconcile:` conditions tell
+This example goes one layer deeper: `operatorBox.preReconcile.reconcileGate:` conditions tell
 Orkestra *whether to reconcile at all*.
 
 The difference is where evaluation happens. Resource conditions are evaluated
@@ -9,7 +9,7 @@ inside the reconciler. Pre-reconcile conditions are evaluated by the
 **kordinator** — Orkestra's internal coordinator that sits between the work
 queue and the reconcilers.
 
-**What you learn:** `operatorBox.preReconcile:`, the kordinator gate, presence
+**What you learn:** `operatorBox.preReconcile.reconcileGate:`, the kordinator gate, presence
 and absence assertions in simulate, and using `--envtest` to verify gate
 behaviour against a real API server.
 
@@ -20,7 +20,7 @@ behaviour against a real API server.
 ## The kordinator
 
 Every time a CR is created or updated, the kordinator dequeues the event and
-decides whether to call the reconciler. With `preReconcile.when:` declared in the
+decides whether to call the reconciler. With `preReconcile.reconcileGate:` declared in the
 [`Katalog`](./katalog.yaml), it
 evaluates the conditions first.
 
@@ -50,9 +50,10 @@ is `false`, the kordinator discards the event and the reconciler never runs.
 ```yaml
 operatorBox:
   preReconcile:
-    when:
-      - field: "{{ .spec.enabled }}"
-        equals: "true"
+    reconcileGate:
+      when:
+        - field: "{{ .spec.enabled }}"
+          equals: "true"
 ```
 
 ---

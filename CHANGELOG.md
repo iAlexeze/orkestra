@@ -170,36 +170,37 @@ ork webhook play -f katalog.yaml --webhook payments-repo \
 
 ---
 
-### Conditional reconciliation — `operatorBox.preReconcile`
+### Pre-reconcile gates — `operatorBox.preReconcile`
 
-Pre-reconcile gates let the kordinator evaluate conditions **before** calling the reconciler. When a CR does not satisfy the gate, the reconcile cycle is dropped entirely — the reconciler is never called, no resources are created or deleted, and the CRD reports health state `gated`.
+Two gate points under `operatorBox.preReconcile`, each firing at a different stage of the pipeline:
 
 ```yaml
 operatorBox:
   preReconcile:
-    when:
-      - field: "{{ .spec.enabled }}"
-        equals: "true"
-    anyOf:
-      - field: "{{ .spec.environment }}"
-        equals: "production"
-      - field: "{{ .spec.environment }}"
-        equals: "staging"
+    enqueueGate:          # informer layer — before the item enters the queue
+      when:
+        - field: "{{ .spec.active }}"
+          equals: "true"
+    reconcileGate:        # kordinator layer — after dequeue, before reconciler
+      when:
+        - field: "{{ .spec.enabled }}"
+          equals: "true"
+      anyOf:
+        - field: "{{ .spec.environment }}"
+          equals: "production"
+        - field: "{{ .spec.environment }}"
+          equals: "staging"
 ```
 
-Gates are evaluated per-CR using the same resolver chain available inside the reconciler (`.spec`, `.metadata`, serve intent, profiles, notes). When conditions fail the item is dropped without re-queuing — it waits for the next CR change event. No error is recorded. CRD health stays `gated` (idle, not degraded).
+**`enqueueGate`** — evaluated by the informer in `handleEvent`. Object is silently dropped before it ever enters the work queue. No health state change; no kordinator involvement. Zero queue pressure for objects that should be completely ignored.
 
-**`gated` state in Control Center** — new state separate from healthy/degraded. Purple badge, shows the gate reason. `StatusCounts.Gated` propagates through the full CC chain (`/katalog` endpoint, health and info handlers, summary view, CRD detail).
+**`reconcileGate`** — evaluated by the kordinator after dequeue. When conditions fail the reconcile cycle is skipped and CRD health is set to `gated` (idle, not degraded). Clears on the next successful reconcile.
 
-`crdFiles` / `crFiles` added to `E2ESpec` alongside the existing `SimulateSpec` fields. Both support multiple CRDs and CRs in a single test file:
+Both gates use the full resolver chain (`.spec`, `.metadata`, serve intent, profiles, notes). Logic lives in `pkg/katalog` (`EvaluatePreReconcile`, `EvaluateEnqueueFilter`) and is called via registered closures so neither the informer factory nor the kordinator has a direct katalog dependency.
 
-```yaml
-spec:
-  crdFiles: [crd-app.yaml, crd-route.yaml]
-  crFiles:  [cr-app.yaml, cr-route.yaml]
-```
+**`gated` state in Control Center** — separate from healthy/degraded. Purple badge with gate reason. `StatusCounts.Gated` propagates through the full CC chain.
 
-`tests/simulate-envtest/04-conditional-reconciliation/` — envtest simulate suite covering gate-pass (Deployment created) and gate-discard (`absent: [{resource: deployments}]`). `examples/intermediate/05-when-conditions/conditional-reconciliation/` — App (gated) + Route (unconditional) pack with simulate and e2e.
+`crdFiles` / `crFiles` added to `E2ESpec`. `tests/simulate-envtest/04-conditional-reconciliation/` covers gate-pass and gate-discard via envtest simulate. `examples/intermediate/05-when-conditions/conditional-reconciliation/` — App (reconcileGate) + Route (unconditional) pack.
 
 ---
 

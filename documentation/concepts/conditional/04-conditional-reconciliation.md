@@ -1,8 +1,8 @@
 # Conditional Reconciliation
 
-Conditional reconciliation lets you gate an entire reconcile cycle on conditions evaluated **before** the reconciler is called. When a CR does not satisfy the conditions, the reconciler is skipped entirely — the object is not re-queued, no resources are created or deleted, and the CRD's health state stays idle (not degraded).
+Conditional reconciliation lets you gate an entire reconcile cycle on conditions evaluated **before** the reconciler is called. When a CR does not satisfy the conditions, the reconciler is skipped entirely — no resources are created or deleted, and the CRD's health state stays idle (not degraded).
 
-This is distinct from resource-level conditions (`when:` on individual resources inside `onCreate`/`onReconcile`). Those conditions are evaluated inside the reconciler. `operatorBox.preReconcile.when` is evaluated by the kordinator before the reconciler is even invoked.
+This is distinct from resource-level conditions (`when:` on individual resources inside `onCreate`/`onReconcile`). Those conditions are evaluated inside the reconciler. `operatorBox.preReconcile` is evaluated earlier — either at the informer level (`enqueueGate:`) before the item enters the queue, or at the kordinator level (`reconcileGate:`) before the reconciler is called.
 
 ---
 
@@ -17,10 +17,11 @@ spec:
         kind: App
         version: v1alpha1
       operatorBox:
-        reconcile:
-          when:
-            - field: "{{ .spec.enabled }}"
-              equals: "true"
+        preReconcile:
+          reconcileGate:
+            when:
+              - field: "{{ .spec.enabled }}"
+                equals: "true"
         onReconcile:
           deployments:
             - name: "{{ .metadata.name }}"
@@ -53,15 +54,16 @@ All condition operators available in resource-level `when:` blocks are available
 `anyOf:` (OR semantics) is also supported alongside `when:` (AND semantics):
 
 ```yaml
-reconcile:
-  when:
-    - field: "{{ .spec.enabled }}"
-      equals: "true"
-  anyOf:
-    - field: "{{ .spec.environment }}"
-      equals: "production"
-    - field: "{{ .spec.environment }}"
-      equals: "staging"
+preReconcile:
+  reconcileGate:
+    when:
+      - field: "{{ .spec.enabled }}"
+        equals: "true"
+    anyOf:
+      - field: "{{ .spec.environment }}"
+        equals: "production"
+      - field: "{{ .spec.environment }}"
+        equals: "staging"
 ```
 
 Both blocks must pass for reconciliation to proceed.
@@ -80,18 +82,42 @@ The state is separate from healthy and degraded — it is idle, not an error. It
 
 ---
 
+## Enqueue-level gate (`preReconcile.enqueueGate`)
+
+`preReconcile.enqueueGate` fires even earlier — inside the informer's `handleEvent`, before the item enters the work queue. The object is silently dropped without ever reaching the kordinator.
+
+```yaml
+operatorBox:
+  preReconcile:
+    enqueueGate:
+      when:
+        - field: "{{ .spec.active }}"
+          equals: "true"
+```
+
+Use `enqueueGate` when you want zero queue pressure for objects that should be completely ignored. Use `reconcileGate` when you want the kordinator to track the gated state and surface it as health (`gated`).
+
+| | `preReconcile.enqueueGate` | `preReconcile.reconcileGate` |
+|---|---|---|
+| **Evaluated by** | Informer (`handleEvent`) | Kordinator (after dequeue) |
+| **Phase** | Before queue entry | After dequeue |
+| **Health on gate** | No effect | `gated` (idle) |
+| **Caveat** | Object stays out until next watch event | Clears on next successful reconcile |
+
+---
+
 ## Difference from resource-level conditions
 
-| | `operatorBox.preReconcile.when` | `onCreate` / `onReconcile` resource `when:` |
+| | `preReconcile.enqueueGate` or `reconcileGate` | `onCreate` / `onReconcile` resource `when:` |
 |---|---|---|
-| **Evaluated by** | Kordinator (before reconciler) | Reconciler (inside reconcile loop) |
+| **Evaluated by** | Informer or kordinator | Reconciler (inside reconcile loop) |
 | **Scope** | Entire reconcile cycle | Individual resource |
-| **Effect** | Reconciler never called | Resource is skipped; other resources still created |
-| **Health on gate** | `gated` (idle) | No effect on health |
+| **Effect** | Object never queued or reconciler never called | Resource is skipped; other resources still created |
+| **Health on gate** | `enqueueGate`: no effect; `reconcileGate`: `gated` | No effect on health |
 | **Error on gate** | None | None |
 | **Re-queue** | No — waits for next CR change event | Normal re-queue |
 
-Use pre-reconcile gates when: the entire operator should stay dormant until a condition is met (feature flag, license, environment). Use resource-level conditions when: most resources should be created but some are optional.
+Use pre-reconcile gates when the entire operator should stay dormant until a condition is met. Use resource-level conditions when most resources should be created but some are optional.
 
 ---
 

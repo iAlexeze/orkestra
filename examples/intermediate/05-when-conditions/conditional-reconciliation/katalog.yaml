@@ -16,9 +16,10 @@ spec:
       crdFile: ./crd-app.yaml
       operatorBox:
         preReconcile:
-          when:
-            - field: "{{ .spec.enabled }}"
-              equals: "true"
+          reconcileGate:
+            when:
+              - field: "{{ .spec.enabled }}"
+                equals: "true"
         status:
           fields:
             - path: phase
