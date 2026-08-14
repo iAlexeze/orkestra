@@ -225,11 +225,26 @@ func resolveServeIdentity(
 				crd.Serve.Name, err,
 			)
 		}
+		// Ensure serve.name is a valid kubernetes name
+		name = strings.TrimSpace(name)
+		if err := validateK8sName(name); err != nil {
+			return fmt.Errorf(
+				"serve.name %q is invalid: %w",
+				name, err,
+			)
+		}
 		obj.SetName(strings.TrimSpace(name))
 	} else if name, ok := raw["name"].(string); ok && strings.TrimSpace(name) != "" {
 		// serve.name not declared — use the caller-supplied name, matching
 		// full CR mode's behavior for the same case.
-		obj.SetName(strings.TrimSpace(name))
+		name = strings.TrimSpace(name)
+		if err := validateK8sName(name); err != nil {
+			return fmt.Errorf(
+				"name %q is invalid: %w",
+				name, err,
+			)
+		}
+		obj.SetName(name)
 	}
 
 	if crd.HasServeNamespace() {
@@ -241,7 +256,15 @@ func resolveServeIdentity(
 				crd.Serve.Namespace, err,
 			)
 		}
-		obj.SetNamespace(strings.TrimSpace(ns))
+		// Ensure serve.namespace is a valid kubernetes namespace
+		ns = strings.TrimSpace(ns)
+		if err := validateK8sName(ns); err != nil {
+			return fmt.Errorf(
+				"serve.namespace %q is invalid: %w",
+				ns, err,
+			)
+		}
+		obj.SetNamespace(ns)
 	}
 
 	return nil

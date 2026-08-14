@@ -32,6 +32,9 @@ var (
 	// resolveScalarField resolves a dot-notation path (e.g., "status.phase")
 	// against a map and returns the value as a string.
 	resolveScalarField = orktypes.ResolveScalarField
+
+	// validateK8sName tests that a string is a valid Kubernetes name.
+	validateK8sName = utils.ValidKubernetesName
 )
 
 // resolvePollURL builds the poll URL for the Gateway API response.

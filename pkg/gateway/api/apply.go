@@ -556,6 +556,9 @@ func applyHandler(
 // resolveServeMeta resolves serve.name and serve.namespace on a full CR in-place.
 // Called in full CR mode when the platform team has set these expressions on
 // the CRD — the submitted spec fields are the resolver data source.
+// resolveServeMeta resolves serve.name and serve.namespace on a full CR in-place.
+// Called in full CR mode when the platform team has set these expressions on
+// the CRD — the submitted spec fields are the resolver data source.
 func resolveServeMeta(
 	obj *unstructured.Unstructured,
 	crd *orktypes.CRDEntry,
@@ -567,10 +570,18 @@ func resolveServeMeta(
 
 	// Build resolver from the submitted spec so expressions like
 	// `{{ .repository }}` resolve against spec fields.
-	data := map[string]interface{}{}
-	if spec, ok := obj.Object["spec"].(map[string]interface{}); ok {
-		for k, v := range spec {
-			data[k] = v
+	data := map[string]interface{}{
+		"metadata": obj.Object["metadata"],
+		"spec":     obj.Object["spec"],
+	}
+
+	// Add labels and annotations as top-level fields for convenience
+	if meta, ok := obj.Object["metadata"].(map[string]interface{}); ok {
+		if labels, ok := meta["labels"].(map[string]interface{}); ok {
+			data["labels"] = labels
+		}
+		if annotations, ok := meta["annotations"].(map[string]interface{}); ok {
+			data["annotations"] = annotations
 		}
 	}
 	resolver := orktmpl.NewResolverFromMap(data).WithUserNotes(notes)
@@ -578,23 +589,53 @@ func resolveServeMeta(
 	if crd.HasServeName() {
 		name, err := resolver.Resolve(crd.Serve.Name)
 		if err != nil || strings.TrimSpace(name) == "" {
+			logger.Error().
+				Str("serve.name", crd.Serve.Name).
+				Err(err).
+				Msg("serve.name could not be resolved")
 			return fmt.Errorf(
 				"serve.name %q could not be resolved: %w",
 				crd.Serve.Name, err,
 			)
 		}
-		obj.SetName(strings.TrimSpace(name))
+		name = strings.TrimSpace(name)
+		if err := validateK8sName(name); err != nil {
+			logger.Error().
+				Str("serve.name", name).
+				Err(err).
+				Msg("serve.name is not a valid kubernetes name")
+			return fmt.Errorf(
+				"serve.name %q is not a valid kubernetes name: %w",
+				name, err,
+			)
+		}
+		obj.SetName(name)
 	}
 
 	if crd.HasServeNamespace() {
 		ns, err := resolver.Resolve(crd.Serve.Namespace)
 		if err != nil || strings.TrimSpace(ns) == "" {
+			logger.Error().
+				Str("serve.namespace", crd.Serve.Namespace).
+				Err(err).
+				Msg("serve.namespace could not be resolved")
 			return fmt.Errorf(
 				"serve.namespace %q could not be resolved: %w",
 				crd.Serve.Namespace, err,
 			)
 		}
-		obj.SetNamespace(strings.TrimSpace(ns))
+		ns = strings.TrimSpace(ns)
+		if err := validateK8sName(ns); err != nil {
+			logger.Error().
+				Str("serve.namespace", ns).
+				Err(err).
+				Msg("serve.namespace is not a valid kubernetes namespace")
+			return fmt.Errorf(
+				"serve.namespace %q is not a valid kubernetes namespace: %w",
+				ns, err,
+			)
+		}
+		obj.SetNamespace(ns)
 	}
 
 	return nil

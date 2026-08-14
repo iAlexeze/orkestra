@@ -93,13 +93,8 @@ spec:
             primary: true
           preview:
             include: ./serve/aliases/preview.yaml
-            modes:
-              cr: false
           internal:
             include: ./serve/aliases/internal.yaml
-            modes:
-              target: false
-              cr: false
             apply:
               targetOverride: false
 
