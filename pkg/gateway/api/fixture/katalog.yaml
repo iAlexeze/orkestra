@@ -23,6 +23,7 @@
 #   getServeAlias / getServeTarget — provenance notes consumed by the operatorBox
 #   ?dryRun=true             — POST /api/v1/apply preview with field violations
 #   GET /api/v1/schema/      — service catalog (category + description)
+#   serve.modes              — per-target mode control (target/CR mode)
 #
 # Tokens:
 #   control-center  — secretRef (fixture-cc-token); set controlCenter.gatewayToken.secretRef.name in Helm
@@ -92,8 +93,16 @@ spec:
             primary: true
           preview:
             include: ./serve/aliases/preview.yaml
+            modes:
+              cr: false
           internal:
             include: ./serve/aliases/internal.yaml
+            modes:
+              target: false
+              cr: false
+            apply:
+              targetOverride: false
+
         namespace: '{{ teamName }}'
         category: "Compute"
         description: "Self-service application and infrastructure provisioning"

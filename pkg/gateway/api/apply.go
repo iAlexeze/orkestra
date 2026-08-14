@@ -213,6 +213,13 @@ func applyHandler(
 			crd = resolution.CRD
 			alias = resolution.Alias
 
+			if !crd.TargetModeEnabledFor(alias) {
+				writeJSONError(w, http.StatusBadRequest, "target mode not enabled",
+					fmt.Sprintf("Target mode is not enabled for '%q'", target),
+				)
+				return
+			}
+
 			built, err := BuildCRFromTarget(raw, crd, notes)
 			if err != nil {
 				writeJSON(w, http.StatusBadRequest, ApplyResponse{
@@ -261,6 +268,13 @@ func applyHandler(
 				return
 			}
 
+			if !crd.FullCRModeEnabledFor(alias) {
+				writeJSONError(w, http.StatusBadRequest, "CR mode not enabled",
+					fmt.Sprintf("Full CR mode is not enabled for kind %q", full.GetKind()),
+				)
+				return
+			}
+
 			obj = &full
 			InjectProvenanceAnnotations(obj, crd.ServeTarget(), "", OIDCSubFromContext(r.Context()))
 			gvr = crd.GVR()
@@ -284,10 +298,11 @@ func applyHandler(
 			return
 		}
 
-		// CRD-level forceConflict is a katalog declaration; ?overwrite=true is a
-		// per-request override. Either one sets Force=true.
+		// CRD-level/target-level forceConflict is a katalog declaration;
+		// ?overwrite=true is a per-request override.
+		// Either one sets Force=true.
 		if !overwrite && crd != nil && crd.Serve != nil {
-			overwrite = crd.Serve.ForceConflict
+			overwrite = crd.ServeForceConflictEnabledFor(alias)
 		}
 
 		if obj.GetName() == "" {
@@ -364,6 +379,17 @@ func applyHandler(
 							})
 							return
 						}
+
+						// ── Resolve Targe Override ───────────────────────────────────────────────────────
+						if override {
+							if !crd.ServeTargetOverrideEnabledFor(storedSurface) {
+								writeJSONError(w, http.StatusBadRequest, "target override not enabled",
+									fmt.Sprintf("Target override is not enabled for %q", storedSurface),
+								)
+								return
+							}
+						}
+
 						logger.FromContext(r.Context()).Warn().
 							Str("from", storedSurface).
 							Str("to", incomingSurface).

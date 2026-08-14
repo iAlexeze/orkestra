@@ -26,8 +26,8 @@ To simulate what `ci-pipeline` can do:
 
 ```bash
 # Allowed on primary (ci-pipeline has get/list at CRD level)
-ork serve play -f $KATALOG --token ci-pipeline --operation list -i pkg/gateway/api/fixture/intent/primary.yaml
+ork serve play -f $KATALOG --token ci-pipeline --operation list -i pkg/gateway/api/fixture/intent/primary.yaml --target apifixture
 
 # Denied — ci-pipeline is not listed in the preview or internal alias token maps
-ork serve play -f $KATALOG --token ci-pipeline -i pkg/gateway/api/fixture/intent/preview.json
+ork serve play -f $KATALOG --token ci-pipeline -i pkg/gateway/api/fixture/intent/preview.json --target preview
 ```

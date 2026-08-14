@@ -102,7 +102,7 @@ func ApplyTargetFields(
 		}, http.StatusUnprocessableEntity
 	}
 
-	overwrite := crd.Serve != nil && crd.Serve.ForceConflict
+	overwrite := crd.ServeForceConflictEnabledFor(alias)
 	patchOpts := metav1.PatchOptions{
 		FieldManager: konfig.FieldManagerGateway,
 		Force:        boolPtr(overwrite),

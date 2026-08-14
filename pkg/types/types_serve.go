@@ -24,6 +24,10 @@ type ServeConfig struct {
 	// Default: false.
 	Enabled bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
 
+	// Modes controls which apply modes are allowed for this CRD.
+	// Both default to true for backward compatibility.
+	Modes *ServeModes `yaml:"modes,omitempty" json:"modes,omitempty"`
+
 	// Include is a path (relative to the katalog file) to a YAML file with a
 	// "fields:" map and/or an "additionalFields:" block (same shape as the
 	// inline equivalents below). Expanded at load time — the result is merged
@@ -66,12 +70,8 @@ type ServeConfig struct {
 	// Defaults to the lowercased kind when not set.
 	Target ServeTargetValue `yaml:"target,omitempty" json:"target,omitempty"`
 
-	// ForceConflict, when true, sets Force: true on every server-side apply
-	// for this CRD — the gateway takes ownership of any conflicting fields
-	// rather than surfacing a conflict error. Equivalent to helm --force-conflict.
-	// Can be overridden per-request with ?overwrite=true regardless of this setting.
-	// Default: false.
-	ForceConflict bool `yaml:"forceConflict,omitempty" json:"forceConflict,omitempty"`
+	// Apply configures apply-time behaviour for all targets (fallback).
+	Apply *ServeApplyConfig `yaml:"apply,omitempty" json:"apply,omitempty"`
 
 	// Name is a template expression the Gateway API resolves server-side to
 	// decide the CR's metadata.name — e.g. '{{ repoSlug .spec.repository }}'.
@@ -154,6 +154,50 @@ func (s *ServeConfig) ClusterAllowed(name string) bool {
 		}
 	}
 	return false
+}
+
+type ServeModes struct {
+	// Target mode — submit fields with a target identifier.
+	// Default: true.
+	Target *bool `yaml:"target,omitempty" json:"target,omitempty"`
+
+	// CR mode — submit a full Kubernetes CR (apiVersion + kind).
+	// Default: true.
+	CR *bool `yaml:"cr,omitempty" json:"cr,omitempty"`
+}
+
+// TargetModeEnabled returns true if target mode is allowed.
+// Default: true
+func (s *ServeModes) TargetModeEnabled() bool {
+	if s == nil || s.Target == nil {
+		return true // default
+	}
+	return *s.Target
+}
+
+// CRModeEnabled returns true if CR mode is allowed.
+// Default: true
+func (s *ServeModes) CRModeEnabled() bool {
+	if s == nil || s.CR == nil {
+		return true // default
+	}
+	return *s.CR
+}
+
+// TargetModeEnabled returns true if target mode is allowed.
+func (s *ServeConfig) TargetModeEnabled() bool {
+	if s == nil || s.Modes == nil || s.Modes.Target == nil {
+		return true // default
+	}
+	return *s.Modes.Target
+}
+
+// FullCRModeEnabled returns true if full CR mode is allowed.
+func (s *ServeConfig) FullCRModeEnabled() bool {
+	if s == nil || s.Modes == nil || s.Modes.CR == nil {
+		return true // default
+	}
+	return *s.Modes.CR
 }
 
 // ServeAliasConfigSettings is the config block on a target entry.

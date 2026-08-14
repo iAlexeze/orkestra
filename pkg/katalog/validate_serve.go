@@ -15,55 +15,60 @@ import (
 // This is the single entry point for Serve validation, keeping the main
 // pipeline clean and grouping all Serve checks together.
 func (k *Katalog) ValidateServe() error {
-	// 1. Validate serve.additionalFields (key syntax, enum, uniqueness)
+	// 1. Validate serve.modes: at least one mode enabled
+	if err := k.validateServeModes(); err != nil {
+		return err
+	}
+
+	// 2. Validate serve.additionalFields (key syntax, enum, uniqueness)
 	if err := k.validateServeAdditionalFields(); err != nil {
 		return err
 	}
 
-	// 2. Validate serve.fields path configurations (uniqueness, format, nested)
+	// 3. Validate serve.fields path configurations (uniqueness, format, nested)
 	if err := k.validateServeFieldPaths(); err != nil {
 		return err
 	}
 
-	// 3. Validate serve field order: values don't collide
+	// 4. Validate serve field order: values don't collide
 	if err := k.validateServeFieldOrder(); err != nil {
 		return err
 	}
 
-	// 4. Validate serve.namespace — required on namespaced+serve-enabled CRDs,
+	// 5. Validate serve.namespace — required on namespaced+serve-enabled CRDs,
 	//    rejected on cluster-scoped ones, incompatible with a pinned watch
 	//    scope when templated
 	if err := k.validateServeNamespace(); err != nil {
 		return err
 	}
 
-	// 5. Validate Serve response config — payload template compilation and
+	// 6. Validate Serve response config — payload template compilation and
 	//    payload/exclude path conflicts (warnings, not errors)
 	if err := k.validateServeResponseConfig(); err != nil {
 		return err
 	}
 
-	// 6. Validate Serve tokens and namespace restrictions per CRD
+	// 7. Validate Serve tokens and namespace restrictions per CRD
 	if err := k.validateServeTokenRestrictions(); err != nil {
 		return err
 	}
 
-	// 7. Validate Serve targets per CRD; uniqueness across the katalog
+	// 8. Validate Serve targets per CRD; uniqueness across the katalog
 	if err := k.validateServeTarget(); err != nil {
 		return err
 	}
 
-	// 8. Validate Serve response config (depends on CRD)
+	// 9. Validate Serve response config (depends on CRD)
 	if err := k.validateServeResponseConfig(); err != nil {
 		return err
 	}
 
-	// 9. Validate serve.aliases — name format, routing uniqueness, token references
+	// 10. Validate serve.aliases — name format, routing uniqueness, token references
 	if err := k.validateServeAliases(); err != nil {
 		return err
 	}
 
-	// 10. Validate serve.fields value/values — mutual exclusion, dot-notation keys,
+	// 11. Validate serve.fields value/values — mutual exclusion, dot-notation keys,
 	//     template compilation
 	if err := k.validateServeFieldTranslation(); err != nil {
 		return err

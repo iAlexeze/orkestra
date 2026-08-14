@@ -11,7 +11,7 @@ import (
 // Template expressions are parse-checked only — name resolution is deferred to
 // apply time.
 func (k *Katalog) ValidateGatewayClusters() error {
-	if !k.IsGatewayEnabled() {
+	if !k.IsGatewayEnabled() || !k.Gateway.HasClusters() {
 		return nil
 	}
 
@@ -25,6 +25,10 @@ func (k *Katalog) ValidateGatewayClusters() error {
 // validateClusterEntries checks that each gateway.clusters entry is structurally valid:
 // endpoint required, exactly one credential form declared, required fields present.
 func validateClusterEntries(g *orktypes.GatewayConfig) error {
+	if !g.HasClusters() {
+		return nil
+	}
+
 	for name, cfg := range g.Clusters.Entries {
 		prefix := fmt.Sprintf("gateway.clusters.%s", name)
 

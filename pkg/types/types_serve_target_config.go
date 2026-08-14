@@ -118,6 +118,12 @@ type ServeTargetConfig struct {
 	// The primary's config authority role is unaffected by Enabled.
 	Enabled *bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
 
+	// Apply configures apply-time behaviour for this specific target.
+	Apply *ServeApplyConfig `yaml:"apply,omitempty" json:"apply,omitempty"`
+
+	// Modes controls which apply modes are allowed for this target.
+	Modes *ServeModes `yaml:"modes,omitempty" json:"modes,omitempty"`
+
 	// Include is a path (relative to the katalog file) to a YAML file with
 	// tokens: and/or config: keys. Inline fields take precedence on merge.
 	Include string `yaml:"include,omitempty" json:"include,omitempty"`

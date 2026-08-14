@@ -309,6 +309,143 @@ func (c *CRDEntry) HasServeName() bool {
 	return c.Serve != nil && c.Serve.Name != ""
 }
 
+// TargetModeEnabled reports whether target mode is enabled for this CRD.
+// Defaults to true when serve.modes is omitted or when serve.modes.target is nil.
+func (c *CRDEntry) TargetModeEnabled() bool {
+	if !c.ServeEnabled() {
+		return false
+	}
+	if c.Serve.Modes == nil || c.Serve.Modes.Target == nil {
+		return true
+	}
+	return *c.Serve.Modes.Target
+}
+
+// FullCRModeEnabled reports whether full CR mode is enabled for this CRD.
+// Defaults to true when serve.modes is omitted or when serve.modes.cr is nil.
+func (c *CRDEntry) FullCRModeEnabled() bool {
+	if !c.ServeEnabled() {
+		return false
+	}
+	if c.Serve.Modes == nil || c.Serve.Modes.CR == nil {
+		return true
+	}
+	return *c.Serve.Modes.CR
+}
+
+// HasServeModes reports whether serve.modes is explicitly configured.
+func (c *CRDEntry) HasServeModes() bool {
+	return c.ServeEnabled() && c.Serve.Modes != nil
+}
+
+// effectiveServeModes returns the effective modes for a target,
+// merging target-level and CRD-level settings.
+// Resolution order:
+//  1. Target-level (serve.targets[<name>].modes)
+//  2. CRD-level (serve.modes)
+//  3. Default (both true)
+func (c *CRDEntry) effectiveServeModes(target string) *ServeModes {
+	result := &ServeModes{
+		Target: boolPtr(true),
+		CR:     boolPtr(true),
+	}
+
+	if !c.ServeEnabled() {
+		return result
+	}
+
+	// 1. Start with CRD-level
+	if c.Serve.Modes != nil {
+		if c.Serve.Modes.Target != nil {
+			result.Target = c.Serve.Modes.Target
+		}
+		if c.Serve.Modes.CR != nil {
+			result.CR = c.Serve.Modes.CR
+		}
+	}
+
+	// 2. Override with target-level (if set)
+	if c.Serve.Target.Entries != nil {
+		if cfg, ok := c.Serve.Target.Entries[target]; ok && cfg.Modes != nil {
+			if cfg.Modes.Target != nil {
+				result.Target = cfg.Modes.Target
+			}
+			if cfg.Modes.CR != nil {
+				result.CR = cfg.Modes.CR
+			}
+		}
+	}
+
+	return result
+}
+
+// TargetModeEnabledFor returns whether target mode is enabled for the given target.
+func (c *CRDEntry) TargetModeEnabledFor(target string) bool {
+	if !c.ServeEnabled() {
+		return false
+	}
+	return *c.effectiveServeModes(target).Target
+}
+
+// FullCRModeEnabledFor returns whether CR mode is enabled for the given target.
+func (c *CRDEntry) FullCRModeEnabledFor(target string) bool {
+	if !c.ServeEnabled() {
+		return false
+	}
+	return *c.effectiveServeModes(target).CR
+}
+
+func boolPtr(b bool) *bool { return &b }
+
+// effectiveServeApplyOverrides returns the effective override
+// for a target, merging target-level and CRD-level settings.
+func (c *CRDEntry) effectiveServeApplyOverrides(target string) *ServeApplyOverrides {
+	result := &ServeApplyOverrides{
+		TargetConflict:   boolPtr(true), // default: allow
+		ResourceConflict: boolPtr(true), // default: allow
+	}
+
+	// 1. Start with CRD-level
+	if c.Serve.Apply != nil && c.Serve.Apply.Overrides != nil {
+		if c.Serve.Apply.Overrides.TargetConflict != nil {
+			result.TargetConflict = c.Serve.Apply.Overrides.TargetConflict
+		}
+		if c.Serve.Apply.Overrides.ResourceConflict != nil {
+			result.ResourceConflict = c.Serve.Apply.Overrides.ResourceConflict
+		}
+	}
+
+	// 2. Override with target-level (if set)
+	if c.Serve.Target.Entries != nil {
+		if cfg, ok := c.Serve.Target.Entries[target]; ok && cfg.Apply != nil && cfg.Apply.Overrides != nil {
+			if cfg.Apply.Overrides.TargetConflict != nil {
+				result.TargetConflict = cfg.Apply.Overrides.TargetConflict
+			}
+			if cfg.Apply.Overrides.ResourceConflict != nil {
+				result.ResourceConflict = cfg.Apply.Overrides.ResourceConflict
+			}
+		}
+	}
+
+	return result
+}
+
+func (c *CRDEntry) ServeForceConflictEnabledFor(target string) bool {
+	if !c.ServeEnabled() {
+		return false
+	}
+	override := c.effectiveServeApplyOverrides(target)
+	return *override.ResourceConflict
+}
+
+func (c *CRDEntry) ServeTargetOverrideEnabledFor(target string) bool {
+	if !c.ServeEnabled() {
+		return false
+	}
+	override := c.effectiveServeApplyOverrides(target)
+	return *override.TargetConflict
+}
+
 // HasServeFields reports whether this CRD declares any serve.fields.
 func (c *CRDEntry) HasServeFields() bool {
 	return c.ServeEnabled() && c.Serve.Fields != nil && len(c.Serve.Fields) > 0
