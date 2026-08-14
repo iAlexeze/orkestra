@@ -97,10 +97,10 @@ serve:
 
 ## Default Behavior
 
-**`resourceConflict` (was `forceConflict`)**: 
+**`resourceConflict`**: 
 - Default: `true` — allows `?overwrite=true` to force field conflicts
 - When `false`: even `?overwrite=true` is rejected
 
-**`targetConflict` (was `targetOverride`)**: 
+**`targetConflict`**: 
 - Default: `true` — allows `?override=true` to change routing surface
 - When `false`: even `?override=true` is rejected
