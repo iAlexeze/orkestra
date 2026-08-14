@@ -227,6 +227,81 @@ Both gates use the full resolver chain (`.spec`, `.metadata`, serve intent, prof
 
 `crdFiles` / `crFiles` added to `E2ESpec`. `tests/simulate-envtest/04-conditional-reconciliation/` covers gate-pass and gate-discard via envtest simulate. `examples/intermediate/05-when-conditions/conditional-reconciliation/` — App (reconcileGate) + Route (unconditional) pack.
 
+### Serve modes, apply-time controls, and field selectors
+
+Three new blocks under `serve` and per target give platform teams granular control over the Gateway API surface, override behaviour, and full CR routing.
+
+**`serve.modes`** — controls which apply modes are available for a CRD. Both default to `true`.
+
+```yaml
+serve:
+  enabled: true
+  modes:
+    target: true   # target mode — submit fields with a target identifier
+    cr: false      # full CR mode — submit a complete Kubernetes CR
+
+  targets:
+    staging:
+      primary: true
+      modes:
+        target: false   # disable target mode in staging
+```
+
+At least one mode must be enabled. `ork validate` enforces this. Can be set at the CRD level and per target.
+
+**`serve.apply.overrides`** — controls whether request-level overrides (`?overwrite=true` and `?override=true`) are honoured. Both default to `true` (allow overrides). This is a second line of defence — even if the caller passes the override parameter, the gateway can reject it based on the configuration.
+
+```yaml
+serve:
+  enabled: true
+  apply:
+    overrides:
+      resourceConflict: true   # allow ?overwrite=true (SSA field ownership)
+      targetConflict: false    # disallow ?override=true (routing surface changes)
+
+  targets:
+    staging:
+      primary: true
+      apply:
+        overrides:
+          targetConflict: true   # only staging allows routing changes
+
+    production:
+      primary: false
+      # inherits CRD-level
+```
+
+**`resourceConflict`** (previously `forceConflict`) — when `true`, callers can pass `?overwrite=true` to force field ownership on server-side apply. When `false`, the override is rejected regardless of the request.
+
+**`targetConflict`** (previously `targetOverride`) — when `true`, callers can pass `?override=true` to change the routing surface (target/alias) of an existing CR. When `false`, the override is rejected and routing surface changes are always disallowed.
+
+Both settings can be set at the CRD level (fallback) and per target. Target-level wins when set.
+
+**`serve.targets[<name>].fieldSelector`** — links full CRs to a target based on field values. When a CR matches ALL key-value pairs, it is automatically routed to that target — enabling per-target response config, tokens, permissions, and mode enforcement for full CR mode.
+
+```yaml
+serve:
+  enabled: true
+  targets:
+    internal:
+      fieldSelector:
+        spec.workloadType: app
+      modes:
+        cr: false          # internal disallows full CRs
+      apply:
+        targetOverride: false
+```
+
+**`fieldSelector`** — a map of dot-notation field paths to values (max 3 per target). This is a true selector — like Service → Pod selection. Each target must have a unique selector. `ork validate` enforces uniqueness and warns if a target has `cr: false` but no field selector.
+
+Validation rules:
+- Max 3 field selectors per target
+- Unique across targets — no two targets can share the same `path:value` pair
+- Must be valid dot-notation paths (e.g., `spec.mealPlan: dinner`)
+- Values must be non-empty
+
+The target becomes the owner of the matched CR — controlling its mode, response config, tokens, and provenance.
+
 ---
 
 ## v0.7.14 — Aliases and Intent Provenance

@@ -71,7 +71,7 @@ func ApplyTargetFields(
 		return &ApplyResponse{Message: err.Error()}, http.StatusBadRequest
 	}
 	InjectProvenanceAnnotations(obj, crd.ServeTarget(), alias, tokenName)
-	InjectIntentAnnotation(obj, fields)
+	InjectServeIntentAnnotation(obj, fields)
 	gvr := crd.GVR()
 
 	patchBody, err := json.Marshal(obj.Object)
@@ -102,7 +102,7 @@ func ApplyTargetFields(
 		}, http.StatusUnprocessableEntity
 	}
 
-	overwrite := crd.Serve != nil && crd.Serve.ForceConflict
+	overwrite := crd.ServeForceConflictEnabledFor(alias)
 	patchOpts := metav1.PatchOptions{
 		FieldManager: konfig.FieldManagerGateway,
 		Force:        boolPtr(overwrite),

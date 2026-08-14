@@ -82,8 +82,11 @@ func TestServeTargetValue_MarshalYAML_ShorthandRoundtrip(t *testing.T) {
 	}
 }
 
+// ─── ServeTargetValue JSON tests ────────────────────────────────────────────
+
 func TestServeTargetValue_UnmarshalJSON_String(t *testing.T) {
 	var tv types.ServeTargetValue
+	// The custom unmarshaler accepts a string in JSON
 	if err := json.Unmarshal([]byte(`"smartapp"`), &tv); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -99,6 +102,31 @@ func TestServeTargetValue_UnmarshalJSON_Object(t *testing.T) {
 	}
 	if tv.Entries["smartapp"] == nil || !tv.Entries["smartapp"].Primary {
 		t.Error("expected primary smartapp entry")
+	}
+}
+
+func TestServeTargetValue_MarshalJSON_ShorthandRoundtrip(t *testing.T) {
+	// Single primary entry with no extra config → round-trips to scalar.
+	tv := types.ServeTargetValue{
+		Entries: map[string]*types.ServeTargetConfig{
+			"myapp": {Primary: true},
+		},
+	}
+	b, err := json.Marshal(struct {
+		Target types.ServeTargetValue `json:"target"`
+	}{Target: tv})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var back struct {
+		Target types.ServeTargetValue `json:"target"`
+	}
+	if err := json.Unmarshal(b, &back); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	// Should round-trip to scalar
+	if back.Target.Shorthand != "myapp" && back.Target.Entries["myapp"] == nil {
+		t.Errorf("round-trip lost myapp: %+v", back.Target)
 	}
 }
 
@@ -165,7 +193,7 @@ func TestServeTargetConfig_ResponseConfig(t *testing.T) {
 	}
 }
 
-// ── CRDEntry.ServeTokensFor ───────────────────────────────────────────────────
+// ─── CRDEntry.ServeTokensFor ───────────────────────────────────────────────────
 
 func crdWithTargetMap() *types.CRDEntry {
 	return &types.CRDEntry{

@@ -213,6 +213,13 @@ func applyHandler(
 			crd = resolution.CRD
 			alias = resolution.Alias
 
+			if !crd.TargetModeEnabledFor(alias) {
+				writeJSONError(w, http.StatusBadRequest, "target mode not enabled",
+					fmt.Sprintf("Target mode is not enabled for '%q'", target),
+				)
+				return
+			}
+
 			built, err := BuildCRFromTarget(raw, crd, notes)
 			if err != nil {
 				writeJSON(w, http.StatusBadRequest, ApplyResponse{
@@ -222,7 +229,7 @@ func applyHandler(
 			}
 			obj = built
 			InjectProvenanceAnnotations(obj, crd.ServeTarget(), alias, OIDCSubFromContext(r.Context()))
-			InjectIntentAnnotation(obj, raw)
+			InjectServeIntentAnnotation(obj, raw)
 			gvr = crd.GVR()
 
 			// ─── Marshal built CR for the patch body ──────────────────────
@@ -261,10 +268,40 @@ func applyHandler(
 				return
 			}
 
+			// If the CRD has matchFields, try to find a matching target
+			matchedTarget := ""
+			if target := crd.EffectiveServeTargetForMap(full.Object); target != "" {
+				matchedTarget = target
+			}
+			if matchedTarget != "" {
+				logger.FromContext(r.Context()).Debug().
+					Str("kind", full.GetKind()).
+					Str("name", full.GetName()).
+					Str("namespace", full.GetNamespace()).
+					Str("target", matchedTarget).
+					Msg("matched target")
+			}
+
+			// Determine the effective target for mode checking and provenance
+			effectiveTarget := matchedTarget
+			if effectiveTarget == "" {
+				effectiveTarget = crd.ServeTarget()
+			}
+
+			if !crd.FullCRModeEnabledFor(effectiveTarget) {
+				writeJSONError(w, http.StatusBadRequest, "CR mode not enabled",
+					fmt.Sprintf("Full CR mode is not enabled for %q", effectiveTarget),
+				)
+				return
+			}
+
 			obj = &full
-			InjectProvenanceAnnotations(obj, crd.ServeTarget(), "", OIDCSubFromContext(r.Context()))
-			gvr = crd.GVR()
-			patchBody = body // raw body is already a valid CR
+
+			// ─── Inject Provenance Annotations ────────────────────────────────────────
+			InjectProvenanceAnnotations(obj, crd.ServeTarget(), matchedTarget, OIDCSubFromContext(r.Context()))
+			if matchedTarget != "" {
+				InjectFieldSelectorAnnotations(obj, matchedTarget, crd.FieldSelectorForTarget(matchedTarget))
+			}
 
 			// Resolve serve.name and serve.namespace when declared on the CRD.
 			if err := resolveServeMeta(obj, crd, notes); err != nil {
@@ -273,6 +310,21 @@ func applyHandler(
 				})
 				return
 			}
+		}
+
+		// ─── Marshal the modified CR ───────────────────────────────────────────────
+		patchBody, err = json.Marshal(obj.Object)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, ApplyResponse{
+				Message: fmt.Sprintf("failed to marshal CR with annotations: %v", err),
+			})
+			return
+		}
+		gvr = crd.GVR()
+
+		// ─── Resolve final effective target ──────────────────────────────────────────
+		if effectiveTarget := crd.EffectiveServeTargetForMap(obj.Object); effectiveTarget != "" {
+			alias = effectiveTarget
 		}
 
 		// ── Cluster routing ───────────────────────────────────────────────────────
@@ -284,10 +336,11 @@ func applyHandler(
 			return
 		}
 
-		// CRD-level forceConflict is a katalog declaration; ?overwrite=true is a
-		// per-request override. Either one sets Force=true.
+		// CRD-level/target-level forceConflict is a katalog declaration;
+		// ?overwrite=true is a per-request override.
+		// Either one sets Force=true.
 		if !overwrite && crd != nil && crd.Serve != nil {
-			overwrite = crd.Serve.ForceConflict
+			overwrite = crd.ServeForceConflictEnabledFor(alias)
 		}
 
 		if obj.GetName() == "" {
@@ -364,6 +417,17 @@ func applyHandler(
 							})
 							return
 						}
+
+						// ── Resolve Targe Override ───────────────────────────────────────────────────────
+						if override {
+							if !crd.ServeTargetOverrideEnabledFor(storedSurface) {
+								writeJSONError(w, http.StatusBadRequest, "target override not enabled",
+									fmt.Sprintf("Target override is not enabled for %q", storedSurface),
+								)
+								return
+							}
+						}
+
 						logger.FromContext(r.Context()).Warn().
 							Str("from", storedSurface).
 							Str("to", incomingSurface).
@@ -530,6 +594,9 @@ func applyHandler(
 // resolveServeMeta resolves serve.name and serve.namespace on a full CR in-place.
 // Called in full CR mode when the platform team has set these expressions on
 // the CRD — the submitted spec fields are the resolver data source.
+// resolveServeMeta resolves serve.name and serve.namespace on a full CR in-place.
+// Called in full CR mode when the platform team has set these expressions on
+// the CRD — the submitted spec fields are the resolver data source.
 func resolveServeMeta(
 	obj *unstructured.Unstructured,
 	crd *orktypes.CRDEntry,
@@ -541,10 +608,18 @@ func resolveServeMeta(
 
 	// Build resolver from the submitted spec so expressions like
 	// `{{ .repository }}` resolve against spec fields.
-	data := map[string]interface{}{}
-	if spec, ok := obj.Object["spec"].(map[string]interface{}); ok {
-		for k, v := range spec {
-			data[k] = v
+	data := map[string]interface{}{
+		"metadata": obj.Object["metadata"],
+		"spec":     obj.Object["spec"],
+	}
+
+	// Add labels and annotations as top-level fields for convenience
+	if meta, ok := obj.Object["metadata"].(map[string]interface{}); ok {
+		if labels, ok := meta["labels"].(map[string]interface{}); ok {
+			data["labels"] = labels
+		}
+		if annotations, ok := meta["annotations"].(map[string]interface{}); ok {
+			data["annotations"] = annotations
 		}
 	}
 	resolver := orktmpl.NewResolverFromMap(data).WithUserNotes(notes)
@@ -552,23 +627,53 @@ func resolveServeMeta(
 	if crd.HasServeName() {
 		name, err := resolver.Resolve(crd.Serve.Name)
 		if err != nil || strings.TrimSpace(name) == "" {
+			logger.Error().
+				Str("serve.name", crd.Serve.Name).
+				Err(err).
+				Msg("serve.name could not be resolved")
 			return fmt.Errorf(
 				"serve.name %q could not be resolved: %w",
 				crd.Serve.Name, err,
 			)
 		}
-		obj.SetName(strings.TrimSpace(name))
+		name = strings.TrimSpace(name)
+		if err := validateK8sName(name); err != nil {
+			logger.Error().
+				Str("serve.name", name).
+				Err(err).
+				Msg("serve.name is not a valid kubernetes name")
+			return fmt.Errorf(
+				"serve.name %q is not a valid kubernetes name: %w",
+				name, err,
+			)
+		}
+		obj.SetName(name)
 	}
 
 	if crd.HasServeNamespace() {
 		ns, err := resolver.Resolve(crd.Serve.Namespace)
 		if err != nil || strings.TrimSpace(ns) == "" {
+			logger.Error().
+				Str("serve.namespace", crd.Serve.Namespace).
+				Err(err).
+				Msg("serve.namespace could not be resolved")
 			return fmt.Errorf(
 				"serve.namespace %q could not be resolved: %w",
 				crd.Serve.Namespace, err,
 			)
 		}
-		obj.SetNamespace(strings.TrimSpace(ns))
+		ns = strings.TrimSpace(ns)
+		if err := validateK8sName(ns); err != nil {
+			logger.Error().
+				Str("serve.namespace", ns).
+				Err(err).
+				Msg("serve.namespace is not a valid kubernetes namespace")
+			return fmt.Errorf(
+				"serve.namespace %q is not a valid kubernetes namespace: %w",
+				ns, err,
+			)
+		}
+		obj.SetNamespace(ns)
 	}
 
 	return nil
@@ -596,10 +701,10 @@ func InjectProvenanceAnnotations(obj *unstructured.Unstructured, target, alias, 
 	obj.SetAnnotations(ann)
 }
 
-// InjectIntentAnnotation stores the raw intent payload as a JSON-encoded
+// InjectServeIntentAnnotation stores the raw intent payload as a JSON-encoded
 // annotation so the admission webhook can bind it as .request in validation
 // rules, enabling intent-level gates before field translation.
-func InjectIntentAnnotation(obj *unstructured.Unstructured, raw map[string]interface{}) {
+func InjectServeIntentAnnotation(obj *unstructured.Unstructured, raw map[string]interface{}) {
 	b, err := json.Marshal(raw)
 	if err != nil {
 		return
@@ -609,6 +714,24 @@ func InjectIntentAnnotation(obj *unstructured.Unstructured, raw map[string]inter
 		ann = make(map[string]string, 1)
 	}
 	ann[labels.AnnotationServeIntent] = string(b)
+	obj.SetAnnotations(ann)
+}
+
+// InjectFieldSelectorAnnotations adds the field selector target and selectors to the CR.
+func InjectFieldSelectorAnnotations(obj *unstructured.Unstructured, target string, selector map[string]string) {
+	if target == "" || len(selector) == 0 {
+		return
+	}
+	ann := obj.GetAnnotations()
+	if ann == nil {
+		ann = make(map[string]string)
+	}
+	ann[labels.AnnotationServeSelectorTarget] = target
+
+	b, err := json.Marshal(selector)
+	if err == nil {
+		ann[labels.AnnotationServeSelector] = string(b)
+	}
 	obj.SetAnnotations(ann)
 }
 

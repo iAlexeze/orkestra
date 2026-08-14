@@ -34,7 +34,7 @@ func (k *Katalog) validateServeAliases() error {
 	}
 
 	for crdName, crd := range k.enabledCRDs {
-		if !crd.ServeEnabled() || crd.Serve == nil {
+		if !crd.ServeEnabled() || !crd.TargetModeEnabled() {
 			continue
 		}
 
@@ -50,24 +50,11 @@ func (k *Katalog) validateServeAliases() error {
 				}
 			}
 			if len(primaries) == 0 {
-				return fmt.Errorf(`
-──────────────────────────────────────────────
-%s serve.target map has no primary: true entry
-   CRD: %s
-
-Exactly one entry in the map must declare primary: true to identify the
-primary target. Or use the scalar shorthand: target: <name>
-──────────────────────────────────────────────`, failureMark(), crdName)
+				return errServeTargetNoPrimary(crdName)
 			}
 			if len(primaries) > 1 {
 				sort.Strings(primaries)
-				return fmt.Errorf(`
-──────────────────────────────────────────────
-%s serve.target map has multiple primary: true entries: %s
-   CRD: %s
-
-Exactly one entry may declare primary: true.
-──────────────────────────────────────────────`, failureMark(), strings.Join(primaries, ", "), crdName)
+				return errServeTargetMultiplePrimaries(crdName, primaries)
 			}
 		}
 
@@ -135,6 +122,39 @@ Exactly one entry may declare primary: true.
 	}
 
 	return nil
+}
+
+// ── error helpers ────────────────────────────────────────────────────────────
+
+func errServeTargetNoPrimary(crd string) error {
+	return fmt.Errorf(`
+──────────────────────────────────────────────
+%s serve.target map has no primary: true entry
+   CRD: %s
+
+Exactly one entry in the map must declare primary: true to identify the
+primary target. Or use the scalar shorthand:
+  serve:
+    target: myapp
+──────────────────────────────────────────────`, failureMark(), crd)
+}
+
+func errServeTargetMultiplePrimaries(crd string, primaries []string) error {
+	return fmt.Errorf(`
+──────────────────────────────────────────────
+%s serve.target map has multiple primary: true entries: %s
+   CRD: %s
+
+Exactly one entry may declare primary: true.
+
+Remove the extra primary: true flags:
+  serve:
+    target:
+      app:
+        primary: true   # keep this one
+      preview:
+        primary: false  # or omit the field
+──────────────────────────────────────────────`, failureMark(), strings.Join(primaries, ", "), crd)
 }
 
 func errServeAliasInvalidName(crd, alias string) error {

@@ -57,8 +57,6 @@ spec:
 | `labels` | — | Label keys exposed as self-service form fields, written to `metadata.labels` on apply. Each entry needs an explicit `type`. |
 | `annotations` | — | Annotation keys exposed as self-service form fields, written to `metadata.annotations` on apply. Each entry needs an explicit `type`. |
 | `include` | — | Path (relative to the katalog file) to a YAML file containing `fields:`, `labels:`, and/or `annotations:` keys. Inline entries take precedence. Expanded at load time. |
-| `forceConflict` | `false` | When `true`, every Gateway API request for this CRD uses `Force: true` on server-side apply — the gateway takes ownership of any conflicting fields rather than surfacing a conflict error. Equivalent to `helm --force-conflict`. Callers can still override per-request with `?overwrite=true`. |
-| `name` | — | Template expression resolving the CR's `metadata.name`. Optional, unlike `namespace` — when unset (the common case), the caller must supply a name. See [`serve.name`](#servename) below. |
 | `namespace` | — | Template expression resolving the namespace a new CR is created in. Required on a namespaced CRD with `serve.enabled: true`; rejected on a cluster-scoped one. See [`serve.namespace`](#servenamespace) below. |
 | `clusters` | — | List of registered cluster names (static or template expressions). Declares which clusters this CRD's intents may be applied to, and is the default fan-out when no target override is set. Absent means local cluster only. See [`serve.clusters`](#serveclusters) below. |
 
@@ -179,6 +177,61 @@ This only affects the Gateway API. A raw `kubectl apply` is unaffected either wa
 
 **The cluster-scoped alternative.** A CRD can sidestep this entirely by being cluster-scoped (`namespaced: false`) and having `onCreate` provision a namespace as a *child resource* of the CR instead — the CR itself has no namespace, so there's nothing for `serve.namespace` to resolve. Two different answers to the same "a developer shouldn't have to pick a namespace" problem, matched to two different scope choices: cluster-scoped + `onCreate`-provisions-a-child-namespace, or namespaced + `serve.namespace`-routes-into-a-platform-provisioned-one.
 
+## `serve.modes`
+
+Controls which apply modes are available for this CRD. Both modes default to `true` for backward compatibility.
+
+```yaml
+serve:
+  enabled: true
+  modes:
+    target: true   # target mode — submit fields with a target identifier
+    cr: false      # full CR mode — submit a complete Kubernetes CR
+```
+
+**`target`** — when `true`, callers can use the target mode format: `{"target": "app", "fields": ...}`. This is the intent-first delivery model where callers submit flat fields and the gateway builds the CR.
+
+**`cr`** — when `true`, callers can use the full CR format: `{"apiVersion": "...", "kind": "...", "spec": {...}}`. This is the traditional Kubernetes CR submission model.
+
+Both modes default to `true` when omitted. At least one mode must be enabled. `ork validate` enforces this.
+
+**Examples**
+
+Only target mode — enforce intent-first delivery:
+
+```yaml
+serve:
+  enabled: true
+  target: app
+  modes:
+    target: true
+    cr: false
+```
+
+Only full CR mode — disable intent-first delivery:
+
+```yaml
+serve:
+  enabled: true
+  modes:
+    target: false
+    cr: true
+```
+
+Both modes enabled (default):
+
+```yaml
+serve:
+  enabled: true
+  # modes omitted — both true by default
+```
+
+**Validation rules** — `ork validate` checks that:
+
+1. At least one mode is enabled.
+2. If `target` is `false`, `serve.target` must not be set (a target is only meaningful when target mode is enabled).
+
+---
 ## `serve.clusters`
 
 Declares which registered clusters this CRD's intents are allowed to be applied to,
@@ -308,9 +361,11 @@ When omitted, defaults to the lowercased kind (`AppRequest` → `apprequest`).
 ```yaml
 serve:
   enabled: true
+  targetOverride: true
   target:
     smartapp:
       primary: true
+      targetOverride: false   # overrides the global setting
     preview:
       enabled: true           # default; omit to keep it simple
       include: ./serve/aliases/preview.yaml

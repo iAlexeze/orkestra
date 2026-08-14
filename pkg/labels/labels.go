@@ -185,4 +185,14 @@ const (
 	// enabling intent-level gates that fire on the caller's vocabulary before any
 	// field translation has occurred.
 	AnnotationServeIntent = "orkestra.orkspace.io/serve-intent"
+	// AnnotationServeSelectorTarget records the target that was matched by field selector.
+	// Set by the gateway when a full CR is routed via fieldSelector.
+	// Example: "kitchen"
+	AnnotationServeSelectorTarget = "orkestra.orkspace.io/serve-selector-target"
+
+	// AnnotationServeSelector records the field selector that caused routing.
+	// Set by the gateway when a full CR is routed via fieldSelector.
+	// Value is a JSON-encoded map of field paths to values.
+	// Example: '{"spec.mealPlan":"dinner","spec.kitchenConfig":"standard"}'
+	AnnotationServeSelector = "orkestra.orkspace.io/serve-selector"
 )
