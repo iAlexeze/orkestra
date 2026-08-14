@@ -74,6 +74,11 @@ func (k *Katalog) ValidateServe() error {
 		return err
 	}
 
+	// 12. Validate serve target field selectors
+	if err := k.validateServeFieldSelector(); err != nil {
+		return err
+	}
+
 	return nil
 }
 

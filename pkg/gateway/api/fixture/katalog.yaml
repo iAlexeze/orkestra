@@ -95,6 +95,11 @@ spec:
             include: ./serve/aliases/preview.yaml
           internal:
             include: ./serve/aliases/internal.yaml
+            fieldSelector:
+              spec.workloadType: app
+              metadata.name: internal-memo
+            modes:
+              cr: false
             apply:
               targetOverride: false
 

@@ -39,47 +39,95 @@ Resolution order per target:
 2. CRD-level (`serve.apply.overrides`)
 3. Default (`true` — allow overrides)
 
+
+## `serve.targets[<name>].fieldSelector`
+
+Links full CRs to a target based on field values. When a CR matches ALL key-value pairs, it is automatically routed to that target — enabling per-target response config, tokens, permissions, and mode enforcement for full CR mode.
+
+```yaml
+serve:
+  enabled: true
+  targets:
+    internal:
+      fieldSelector:
+        spec.workloadType: app
+      modes:
+        cr: false          # internal disallows full CRs
+      apply:
+        targetOverride: false
+```
+
+**`fieldSelector`** — a map of dot-notation field paths to values (max 3 per target). This is a true selector — like Service → Pod selection. Each target must have a unique selector. `ork validate` enforces uniqueness.
+
+**Validation rules:**
+
+| Rule | Description |
+|------|-------------|
+| **Maximum 3 selectors** | Each target can have at most 3 field selectors — keep it simple, avoid overlapping. |
+| **Unique across targets** | No two targets can share the same `path:value` pair — routing must be deterministic. |
+| **Dot-notation format** | Paths must be valid dot-notation paths (e.g., `spec.mealPlan`, not `.mealPlan`). |
+| **Valid Kubernetes names** | Each path segment must be a valid Kubernetes qualified name. |
+| **Non-empty values** | Values cannot be empty strings. |
+
+**Warnings:**
+
+| Condition | Warning |
+|-----------|---------|
+| CR mode disabled (`modes.cr: false`) and no `fieldSelector` | Target is unreachable via full CR mode — add field selectors or enable CR mode. |
+| CR mode disabled globally (`serve.modes.cr: false`) and `fieldSelector` set | field selectors will have no effect — CR mode is disabled globally. |
+
+```yaml
+targets:
+  internal:
+    modes:
+      cr: false          # full CR mode disabled
+    # no fieldSelector → warning: target unreachable via full CR mode
+```
+
+```yaml
+targets:
+  internal:
+    fieldSelector:
+      spec.workloadType: app
+    modes:
+      cr: false          # full CR mode disabled, but fieldSelector provides a way in
+    # ✅ no warning — fieldSelector routes CRs to this target
+```
+
+**The warnings are advisory.** `ork validate` does not block — it informs the platform team of potential misconfigurations.
+
 **Examples**
 
-Disable all overrides globally:
+Route CRs with `spec.workloadType: app` to `internal`, and enforce `cr: false`:
+
 ```yaml
 serve:
   enabled: true
-  apply:
-    overrides:
-      resourceConflict: false
-      targetConflict: false
-```
-
-Per-target override (only staging allows routing surface changes):
-```yaml
-serve:
-  enabled: true
-  apply:
-    overrides:
-      resourceConflict: false
-      targetConflict: false
-
   targets:
-    staging:
-      primary: true
+    internal:
+      modes:
+        cr: false
+      fieldSelector:
+        spec.workloadType: app
       apply:
-        overrides:
-          targetConflict: true    # only staging allows ?override=true
-
-    production:
-      primary: false
-      # inherits CRD-level: resourceConflict: false, targetConflict: false
+        targetOverride: false
 ```
 
-Disable force field conflicts globally, but allow routing surface changes:
-```yaml
-serve:
-  enabled: true
-  apply:
-    overrides:
-      resourceConflict: false   # nobody can force field conflicts
-      targetConflict: true      # anyone can change routing surfaces
+Full CRs with `spec.workloadType: app` are routed to `internal`, and `cr: false` is enforced. The mode check uses the effective target, not the primary target.
+
+**Validation errors:**
+
+```bash
+ork validate
+✗ CRD "platRsc": target "internal" has 4 field selectors — maximum is 3
+✗ CRD "platRsc": field selector "spec.workloadType=app" is used by both targets "internal" and "kitchen" — field selectors must be unique across targets
+✗ CRD "platRsc": target "internal" has invalid field selector path ".workloadType": field selector path cannot start or end with a dot. Usage example: 'spec.mealPlan'
+```
+
+**Warnings:**
+
+```bash
+⚠ CRD "platRsc": target "internal" has fieldSelector but CR mode is disabled — fieldSelector will have no effect
 ```
 
 ## Quick Scan
@@ -95,7 +143,7 @@ serve:
 - When set to `false`, even if the caller passes `?overwrite=true` or `?override=true`, the request is rejected
 - This is the **second line of defense**
 
-## Default Behavior
+### Default Behavior
 
 **`resourceConflict`**: 
 - Default: `true` — allows `?overwrite=true` to force field conflicts

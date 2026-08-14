@@ -77,7 +77,7 @@ func runCreateUpdateChain(k *katalog.Katalog, raw map[string]interface{}, tokenN
 	// Stage 4: Provenance — stamp first, then print the CR so annotations are visible
 	printStage(4, "Provenance annotations")
 	api.InjectProvenanceAnnotations(obj, crd.ServeTarget(), alias, source)
-	api.InjectIntentAnnotation(obj, raw)
+	api.InjectServeIntentAnnotation(obj, raw)
 	ann := obj.GetAnnotations()
 	keys := make([]string, 0, len(ann))
 	for k := range ann {

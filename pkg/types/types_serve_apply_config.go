@@ -1,5 +1,15 @@
 package types
 
+import (
+	"github.com/orkspace/orkestra/pkg/utils"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+)
+
+const (
+	// MaxServeTargetFieldSelector is the maximum number of field selectors per target.
+	MaxServeTargetFieldSelector = 3
+)
+
 // ServeApplyOverrides configures override behaviours for apply operations.
 type ServeApplyOverrides struct {
 	// TargetConflict, when true, allows callers to change the target/alias
@@ -106,4 +116,102 @@ func (c *CRDEntry) HasResourceConflict() bool {
 	}
 
 	return false
+}
+
+// EffectiveServeTargetForCR returns the effective target for a given CR.
+// Resolution order:
+//  1. If the CR matches a target via fieldSelector, use that target.
+//  2. Otherwise, fall back to the primary target (serve.target).
+//  3. Returns empty string if no target is found.
+//
+// This is the single source of truth for target resolution across the gateway.
+func (c *CRDEntry) EffectiveServeTargetForCR(obj *unstructured.Unstructured) string {
+	if !c.ServeEnabled() {
+		return ""
+	}
+
+	// 1. Try fieldSelector
+	if target := c.ServeTargetForFieldSelector(obj.Object); target != "" {
+		return target
+	}
+
+	// 2. Fall back to primary target
+	return c.ServeTarget()
+}
+
+// EffectiveServeTargetForMap is the same as EffectiveServeTargetForCR but accepts
+// a map[string]interface{} instead of an Unstructured.
+func (c *CRDEntry) EffectiveServeTargetForMap(obj map[string]interface{}) string {
+	if !c.ServeEnabled() {
+		return ""
+	}
+
+	if target := c.ServeTargetForFieldSelector(obj); target != "" {
+		return target
+	}
+
+	return c.ServeTarget()
+}
+
+// ─── FieldSelector methods ─────────────────────────────────────────────────────
+
+// HasServeTargetFieldSelector reports whether the ServeTargetConfig has any fieldSelector set.
+func (t *ServeTargetConfig) HasServeTargetFieldSelector() bool {
+	if t == nil {
+		return false
+	}
+	return len(t.FieldSelector) > 0
+}
+
+// Len returns the number of field selectors.
+func (t *ServeTargetConfig) Len() int {
+	if t == nil {
+		return 0
+	}
+	return len(t.FieldSelector)
+}
+
+// HasServeTargetFieldSelector reports whether the CRDEntry has any fieldSelector set on any target.
+func (c *CRDEntry) HasServeTargetFieldSelector() bool {
+	if !c.ServeEnabled() {
+		return false
+	}
+	if c.Serve.Target.Entries == nil {
+		return false
+	}
+	for _, cfg := range c.Serve.Target.Entries {
+		if cfg.HasServeTargetFieldSelector() {
+			return true
+		}
+	}
+	return false
+}
+
+// FieldSelectorForTarget returns the fieldSelector for a specific target.
+func (c *CRDEntry) FieldSelectorForTarget(target string) map[string]string {
+	if !c.ServeEnabled() || c.Serve.Target.Entries == nil {
+		return nil
+	}
+	if cfg, ok := c.Serve.Target.Entries[target]; ok {
+		return cfg.FieldSelector
+	}
+	return nil
+}
+
+// ServeTargetForFieldSelector returns the target name that matches the given fields.
+// Returns empty string if no target matches.
+func (c *CRDEntry) ServeTargetForFieldSelector(obj map[string]interface{}) string {
+	if !c.ServeEnabled() || c.Serve.Target.Entries == nil {
+		return ""
+	}
+
+	for targetName, cfg := range c.Serve.Target.Entries {
+		if !cfg.HasServeTargetFieldSelector() {
+			continue
+		}
+		if utils.MatchesAllServeTargetFieldSelectors(obj, cfg.FieldSelector) {
+			return targetName
+		}
+	}
+	return ""
 }

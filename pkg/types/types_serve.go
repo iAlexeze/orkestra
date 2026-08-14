@@ -73,6 +73,25 @@ type ServeConfig struct {
 	// Apply configures apply-time behaviour for all targets (fallback).
 	Apply *ServeApplyConfig `yaml:"apply,omitempty" json:"apply,omitempty"`
 
+	// MatchFields is a list of dot-notation field paths that link a full CR
+	// to this target. When a CR contains all the specified fields, it is
+	// automatically routed to this target.
+	//
+	// Used to enable target-level controls (tokens, response config, permissions)
+	// for CRs submitted in full CR mode. Without matchFields, full CR mode
+	// bypasses target-level controls.
+	//
+	// Each target must have a unique match list. ork validate enforces this.
+	// At least one match field is recommended when cr mode is disabled.
+	//
+	// Maximum: 3 fields
+	//
+	// Example:
+	//   matchFields:
+	//     - spec.mealPlan
+	//     - spec.kitchenConfig
+	MatchFields []string `yaml:"matchFields,omitempty" json:"matchFields,omitempty"`
+
 	// Name is a template expression the Gateway API resolves server-side to
 	// decide the CR's metadata.name — e.g. '{{ repoSlug .spec.repository }}'.
 	// Once set, it always wins over whatever (if anything) the client sent.
