@@ -16,6 +16,7 @@ type gatedReconciler struct {
 	inner  domain.Reconciler
 	gate   *orktypes.PreReconcileConfig
 	getObj func() *unstructured.Unstructured
+	notes  orktypes.NoteRegistry
 }
 
 func (g *gatedReconciler) Reconcile(ctx context.Context, key string) error {
@@ -30,7 +31,7 @@ func (g *gatedReconciler) Reconcile(ctx context.Context, key string) error {
 	if err != nil {
 		return g.inner.Reconcile(ctx, key)
 	}
-	eval := resolver.TemplateEvaluator()
+	eval := resolver.WithUserNotes(g.notes).TemplateEvaluator()
 
 	// Evaluate preReconcile.enqueueGate first — mirrors informer-level drop in live path.
 	if g.gate.EnqueueGate.HasConditions() {
@@ -40,7 +41,7 @@ func (g *gatedReconciler) Reconcile(ctx context.Context, key string) error {
 	}
 
 	// Evaluate preReconcile.when/anyOf — mirrors kordinator gate in live path.
-	if g.gate.HasConditions() {
+	if g.gate.ReconcileGate.HasConditions() {
 		if !orktypes.EvaluateConditions(resolver.Data(), g.gate.WhenConditions(), g.gate.AnyOfConditions(), eval) {
 			return nil // gated — skip, no error
 		}
@@ -51,9 +52,9 @@ func (g *gatedReconciler) Reconcile(ctx context.Context, key string) error {
 
 // wrapWithGate returns r wrapped with a preReconcile gate check if the CRD
 // declares any filter or when/anyOf conditions; otherwise returns r unchanged.
-func wrapWithGate(r domain.Reconciler, gate *orktypes.PreReconcileConfig, getObj func() *unstructured.Unstructured) domain.Reconciler {
-	if gate == nil || (!gate.HasConditions() && !gate.EnqueueGate.HasConditions()) {
+func wrapWithGate(r domain.Reconciler, gate *orktypes.PreReconcileConfig, notes orktypes.NoteRegistry, getObj func() *unstructured.Unstructured) domain.Reconciler {
+	if gate == nil || (!gate.ReconcileGate.HasConditions() && !gate.EnqueueGate.HasConditions()) {
 		return r
 	}
-	return &gatedReconciler{inner: r, gate: gate, getObj: getObj}
+	return &gatedReconciler{inner: r, gate: gate, getObj: getObj, notes: notes}
 }

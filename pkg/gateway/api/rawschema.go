@@ -64,6 +64,8 @@ type RawSchemaSection struct {
 // caller sees all four CR destinations (spec, labels, annotations, and implicit
 // metadata like name/namespace) and is responsible for mapping their data.
 //
+// By default, it querries the API server in the gateway cluster
+// Pass ?cluster=<name> to target a remote cluster managed by the gateway
 // Unlike GET /api/v1/schema?target=<t>, this endpoint:
 //   - Requires ?kind= (the Kubernetes kind string, not the serve target).
 //   - Returns raw OpenAPI properties, not the curated ServeFieldConfig list.
@@ -71,8 +73,13 @@ type RawSchemaSection struct {
 //   - Is intended for callers who will use full CR mode in POST /api/v1/apply.
 func rawSchemaHandler(
 	kube kubeclient.Interface,
+	clusters *ClusterRegistry,
 	kat *katalog.Katalog,
 ) http.HandlerFunc {
+	var notes orktypes.NoteRegistry
+	if !kat.IsEmpty() {
+		notes = kat.UserNotes()
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed", "only GET requests are supported")
@@ -138,7 +145,43 @@ func rawSchemaHandler(
 
 		// CRD name is <plural>.<group>.
 		crdName := crd.APITypes.Plural + "." + crd.APITypes.Group
-		obj, err := kube.DynamicClient().
+
+		// ── Cluster routing ───────────────────────────────────────────────────────
+		// ?cluster=<name> explicitly targets a registered remote cluster.
+		effectiveKube := kube
+		if clusterName := r.URL.Query().Get("cluster"); clusterName != "" {
+			c, ok := clusters.ClientFor(clusterName)
+			if !ok {
+				writeJSONError(w, http.StatusBadRequest, "cluster not registered",
+					fmt.Sprintf("cluster %q is not registered in gateway.clusters", clusterName),
+				)
+				return
+			}
+			effectiveKube = c
+		} else {
+			derived, clusterErr := resolveReadCluster(crd, "", notes, clusters, kube)
+			if clusterErr != nil {
+				writeJSONError(w, http.StatusBadRequest, "cluster routing error", clusterErr.Error())
+				return
+			}
+			effectiveKube = derived
+		}
+
+		dynamicClient := effectiveKube.DynamicClient()
+		// Create a resource checker
+		checker := resourceChecker(dynamicClient)
+		defer checker.InvalidateAll()
+
+		// Check if the CRD exists
+		if !checker.Exists(r.Context(), crdGVR, "", crdName) {
+			writeJSONError(w, http.StatusNotFound, "CRD not found",
+				fmt.Sprintf("CRD %q not found", crdName),
+			)
+			return
+		}
+
+		// Fetch the CRD definition from the Kubernetes API.
+		obj, err := dynamicClient.
 			Resource(crdGVR).
 			Get(r.Context(), crdName, metav1.GetOptions{})
 		if err != nil {
@@ -181,7 +224,7 @@ func rawSchemaHandler(
 func extractStorageSpecSchema(
 	crdObj map[string]interface{},
 ) (properties map[string]interface{}, required []string) {
-	versions, ok := utils.NestedSlice(crdObj, "spec", "versions")
+	versions, ok := nestedSlice(crdObj, "spec", "versions")
 	if !ok {
 		return nil, nil
 	}
@@ -199,7 +242,7 @@ func extractStorageSpecSchema(
 		}
 
 		// Navigate to the spec schema.
-		specSchema, ok := utils.NestedMap(ver, "schema", "openAPIV3Schema", "properties", "spec")
+		specSchema, ok := nestedMap(ver, "schema", "openAPIV3Schema", "properties", "spec")
 		if !ok {
 			return nil, nil
 		}

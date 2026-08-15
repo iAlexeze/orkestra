@@ -43,22 +43,23 @@ func generateRBACInfo(crd orktypes.CRDEntry, v crdDisplayValues) RBACInfo {
 			Description: fmt.Sprintf("Update status of %s resources", crd.Name),
 		})
 	}
+	box := crd.OperatorBox
 
 	// 3. Resources from declarative templates
-	if crd.OperatorBox.OnCreate != nil {
-		resourceRules := extractResourceRules(crd.OperatorBox.OnCreate)
+	if box.OnCreate != nil {
+		resourceRules := extractResourceRules(box.OnCreate)
 		rules = append(rules, resourceRules...)
 	}
 
 	// 4. Resources from onReconcile
-	if crd.OperatorBox.OnReconcile != nil {
-		resourceRules := extractResourceRules(crd.OperatorBox.OnReconcile)
+	if box.OnReconcile != nil {
+		resourceRules := extractResourceRules(box.OnReconcile)
 		rules = append(rules, resourceRules...)
 	}
 
 	// 5. Resources from onDelete
-	if crd.OperatorBox.OnDelete != nil {
-		resourceRules := extractResourceRules(crd.OperatorBox.OnDelete)
+	if box.OnDelete != nil {
+		resourceRules := extractResourceRules(box.OnDelete)
 		rules = append(rules, resourceRules...)
 	}
 

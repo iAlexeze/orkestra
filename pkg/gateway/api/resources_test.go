@@ -61,7 +61,7 @@ func TestParsePath(t *testing.T) {
 }
 
 func TestResourcesHandler_UnknownKind(t *testing.T) {
-	h := resourcesHandler(nil, &ClusterRegistry{}, nil, orktypes.NoteRegistry{})
+	h := resourcesHandler(nil, &ClusterRegistry{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/resources/unknown/default", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -71,7 +71,7 @@ func TestResourcesHandler_UnknownKind(t *testing.T) {
 }
 
 func TestResourcesHandler_MethodNotAllowed(t *testing.T) {
-	h := resourcesHandler(nil, &ClusterRegistry{}, registeredKatalog("platform"), orktypes.NoteRegistry{})
+	h := resourcesHandler(nil, &ClusterRegistry{}, registeredKatalog("platform"))
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/resources/platform/default/x", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -81,7 +81,7 @@ func TestResourcesHandler_MethodNotAllowed(t *testing.T) {
 }
 
 func TestResourcesHandler_BadPath(t *testing.T) {
-	h := resourcesHandler(nil, &ClusterRegistry{}, nil, orktypes.NoteRegistry{})
+	h := resourcesHandler(nil, &ClusterRegistry{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/resources/onlyone", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -91,7 +91,7 @@ func TestResourcesHandler_BadPath(t *testing.T) {
 }
 
 func TestResourcesHandler_DeleteRequiresName(t *testing.T) {
-	h := resourcesHandler(nil, &ClusterRegistry{}, registeredKatalog("thing"), orktypes.NoteRegistry{})
+	h := resourcesHandler(nil, &ClusterRegistry{}, registeredKatalog("thing"))
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/resources/thing/default", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)

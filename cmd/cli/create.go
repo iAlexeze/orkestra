@@ -62,11 +62,11 @@ func init() {
 	rootCmd.AddCommand(createCmd)
 	createCmd.AddCommand(createClusterCmd)
 
-	createClusterCmd.Flags().String("name", "ork-playground", "Cluster name")
-	createClusterCmd.Flags().String("provider", "kind", "Cluster provider (only 'kind' is supported)")
-	createClusterCmd.Flags().Int("workers", 0, "Number of kind worker nodes (default: 0, control-plane only)")
-	createClusterCmd.Flags().String("version", "", "kind version to use (default: "+cluster.DefaultKindVersion+")")
-	createClusterCmd.Flags().Int("count", 1, "Number of clusters to create; names get a -1/-2/-3 suffix")
+	createClusterCmd.Flags().StringP("name", "n", "ork-playground", "Cluster name")
+	createClusterCmd.Flags().StringP("provider", "p", "kind", "Cluster provider (only 'kind' is supported)")
+	createClusterCmd.Flags().IntP("workers", "w", 0, "Number of kind worker nodes (default: 0, control-plane only)")
+	createClusterCmd.Flags().StringP("version", "v", "", "kind version to use (default: "+cluster.DefaultKindVersion+")")
+	createClusterCmd.Flags().IntP("count", "c", 1, "Number of clusters to create; names get a -1/-2/-3 suffix")
 
 	// Shadow global flags
 	shadowGlobalCommandFlags(createCmd, "file")

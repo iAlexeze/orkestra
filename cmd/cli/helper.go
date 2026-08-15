@@ -46,9 +46,10 @@ var (
 	healthIconWarn  = utils.HealthIconWarning
 
 	// other cli utilities
-	orkestraLogo       = utils.OrkestraLogoCLI
-	isRunningInCluster = utils.IsRunningInCluster
-	writeFileAndFormat = utils.WriteFileAndFormat
+	orkestraLogo        = utils.OrkestraLogoCLI
+	isRunningInCluster  = utils.IsRunningInCluster
+	writeFileAndFormat  = utils.WriteFileAndFormat
+	splitCommaSeparated = utils.SplitCommaSeparated
 )
 
 // sortedKeys returns a sorted slice of all keys from the given map.

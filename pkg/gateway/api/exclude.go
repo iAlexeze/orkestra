@@ -6,7 +6,6 @@ import (
 
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 // ApplyExclusions strips excluded paths from a response object.
@@ -93,7 +92,7 @@ func ApplyExclusions(
 		for _, p := range paths {
 			p = strings.TrimSpace(p)
 			if p != "" {
-				utils.DeleteNestedPath(response, p)
+				deleteNestedPath(response, p)
 			}
 		}
 	}

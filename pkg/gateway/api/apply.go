@@ -149,8 +149,11 @@ func applyHandler(
 	kube kubeclient.Interface,
 	clusters *ClusterRegistry,
 	kat *katalog.Katalog,
-	notes orktypes.NoteRegistry,
 ) http.HandlerFunc {
+	var notes orktypes.NoteRegistry
+	if !kat.IsEmpty() {
+		notes = kat.UserNotes()
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed", "only POST requests are supported")
@@ -175,8 +178,8 @@ func applyHandler(
 		}
 
 		dryRun := r.URL.Query().Get("dryRun") == "true"
-		overwrite := r.URL.Query().Get("overwrite") == "true"
-		override := r.URL.Query().Get("override") == "true"
+		overwrite := r.URL.Query().Get("overwrite") == "true" // SSA forceConflict
+		override := r.URL.Query().Get("override") == "true"   // TargetConflict
 
 		var (
 			obj       *unstructured.Unstructured
@@ -336,11 +339,19 @@ func applyHandler(
 			return
 		}
 
-		// CRD-level/target-level forceConflict is a katalog declaration;
-		// ?overwrite=true is a per-request override.
-		// Either one sets Force=true.
-		if !overwrite && crd != nil && crd.Serve != nil {
-			overwrite = crd.ServeForceConflictEnabledFor(alias)
+		// ── Force conflict ───────────────────────────────────────────────────────
+		// Resolve force conflict: enabled if CRD/target permits it and request requests it
+		forceConflictEnabled := crd.ServeForceConflictEnabledFor(alias)
+		if overwrite && !forceConflictEnabled {
+			writeJSONError(w, http.StatusBadRequest, "forceConflict not enabled",
+				fmt.Sprintf("Force conflict is not enabled for %q", alias),
+			)
+			return
+		}
+
+		// If CRD/target enables forceConflict, treat as force even without ?overwrite=true
+		if !overwrite && forceConflictEnabled {
+			overwrite = true
 		}
 
 		if obj.GetName() == "" {

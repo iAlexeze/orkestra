@@ -84,9 +84,9 @@ type PreReconcileConfig struct {
 	ReconcileGate *GateConditions `yaml:"reconcileGate,omitempty" json:"reconcileGate,omitempty"`
 }
 
-// HasConditions reports whether reconcileGate has any when/anyOf conditions declared.
-func (r *PreReconcileConfig) HasConditions() bool {
-	return r != nil && r.ReconcileGate.HasConditions()
+// HasPreReconcileConditions reports whether reconcileGate has any when/anyOf conditions declared.
+func (r *PreReconcileConfig) HasPreReconcileConditions() bool {
+	return r != nil && (r.ReconcileGate.HasConditions() || r.EnqueueGate.HasConditions())
 }
 
 // HasEnqueueGate reports whether the enqueue gate has anything to evaluate.
@@ -303,6 +303,11 @@ type OperatorBoxConfig struct {
 	When []Condition `yaml:"when,omitempty"`
 
 	AnyOf []Condition `yaml:"anyOf,omitempty"`
+}
+
+// IsEmpty reports true when this operatorBox is empty
+func (box *OperatorBoxConfig) IsEmpty() bool {
+	return box == nil
 }
 
 // HookDeclaration declares where a Go hook function lives.

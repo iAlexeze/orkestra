@@ -489,13 +489,13 @@ func (k *Katalog) GenerateGatewayRBACRules() []rbacv1.PolicyRule {
 // CRDs with no serve.cluster (local fallback) do not appear in the returned map.
 // They are handled by GenerateGatewayRBACRules instead.
 func (k *Katalog) GenerateGatewayClusterRBACRules() (map[string][]rbacv1.PolicyRule, []string) {
-	clusters := k.GatewayClusters()
-	if len(clusters) == 0 {
+	// Return early if gateway is disabled, serve is disabled, or NO clusters are defined
+	if !k.IsGatewayEnabled() || !k.HasServeEnabled() || k.GatewayClustersEmpty() {
 		return nil, nil
 	}
 
-	// Initialise a slot for every registered cluster so callers can always
-	// iterate the registered set, even if some end up with no rules.
+	clusters := k.GatewayClusters()
+	// Initialize a slot for every registered cluster
 	clusterRules := make(map[string][]rbacv1.PolicyRule, len(clusters))
 	for name := range clusters {
 		clusterRules[name] = nil
@@ -504,29 +504,42 @@ func (k *Katalog) GenerateGatewayClusterRBACRules() (map[string][]rbacv1.PolicyR
 	var templateKinds []string
 
 	for _, crd := range k.ServeEnabledCRDs() {
-		rule := rbacv1.PolicyRule{
-			APIGroups: []string{crd.APITypes.Group},
-			Resources: []string{crd.APITypes.Plural, crd.APITypes.Plural + "/status"},
-			Verbs:     []string{"get", "list", "create", "update", "patch", "delete"},
+		// Build rules for this specific CRD
+		crdRules := []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{crd.APITypes.Group},
+				Resources: []string{crd.APITypes.Plural, crd.APITypes.Plural + "/status"},
+				Verbs:     []string{"get", "list", "create", "update", "patch", "delete"},
+			},
+			{
+				APIGroups:     []string{"apiextensions.k8s.io"},
+				Resources:     []string{"customresourcedefinitions"},
+				Verbs:         []string{"get", "list"},
+				ResourceNames: []string{crd.APITypes.Plural + "." + crd.APITypes.Group},
+			},
 		}
 
 		staticTargets := map[string]bool{}
 		hasTemplate := false
 
-		for _, sc := range crd.Serve.Clusters {
-			if clusterIsTemplate(sc) {
-				hasTemplate = true
-			} else {
-				staticTargets[sc] = true
-			}
-		}
-
-		for _, entry := range crd.Serve.Target.Entries {
-			for _, tc := range entry.TargetClusters() {
-				if clusterIsTemplate(tc) {
+		// Check clusters defined at CRD level
+		if crd.Serve != nil {
+			for _, sc := range crd.Serve.Clusters {
+				if isTemplate(sc) {
 					hasTemplate = true
 				} else {
-					staticTargets[tc] = true
+					staticTargets[sc] = true
+				}
+			}
+
+			// Check clusters defined at target level
+			for _, entry := range crd.Serve.Target.Entries {
+				for _, tc := range entry.TargetClusters() {
+					if isTemplate(tc) {
+						hasTemplate = true
+					} else {
+						staticTargets[tc] = true
+					}
 				}
 			}
 		}
@@ -534,18 +547,20 @@ func (k *Katalog) GenerateGatewayClusterRBACRules() (map[string][]rbacv1.PolicyR
 		if hasTemplate {
 			templateKinds = append(templateKinds, crd.APITypes.Kind)
 			for name := range clusters {
-				clusterRules[name] = append(clusterRules[name], rule)
+				clusterRules[name] = append(clusterRules[name], crdRules...)
 			}
-		} else {
+		} else if len(staticTargets) > 0 {
+			// Assign rules only to static targets
 			for clusterName := range staticTargets {
 				if _, ok := clusterRules[clusterName]; ok {
-					clusterRules[clusterName] = append(clusterRules[clusterName], rule)
+					clusterRules[clusterName] = append(clusterRules[clusterName], crdRules...)
 				}
 			}
 		}
+		// If no clusters and no targets (local only), skip - no RBAC needed
 	}
 
-	// Drop clusters that received no rules — nothing to apply there.
+	// Drop clusters that received no rules
 	for name, rules := range clusterRules {
 		if len(rules) == 0 {
 			delete(clusterRules, name)
@@ -553,11 +568,6 @@ func (k *Katalog) GenerateGatewayClusterRBACRules() (map[string][]rbacv1.PolicyR
 	}
 
 	return clusterRules, templateKinds
-}
-
-// clusterIsTemplate reports whether a cluster routing value is a Go template expression.
-func clusterIsTemplate(s string) bool {
-	return strings.Contains(s, "{{")
 }
 
 // ResolveGVR resolves a ManagedResource into a concrete GroupVersionResource.

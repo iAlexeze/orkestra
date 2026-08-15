@@ -71,6 +71,16 @@ func (k *Katalog) GatewayClusters() map[string]orktypes.GatewayClusterConfig {
 	return k.Gateway.Clusters.Entries
 }
 
+// GatewayClusterCount returns the number of gateway clusters defined.
+func (k *Katalog) GatewayClusterCount() int {
+	return len(k.GatewayClusters())
+}
+
+// GatewayClustersEmpty returns true if no gateway clusters are defined.
+func (k *Katalog) GatewayClustersEmpty() bool {
+	return k.GatewayClusterCount() == 0
+}
+
 // EnabledCRDs returns a map of enabled CRDs keyed by their name.
 func (k *Katalog) EnabledCRDs() map[string]orktypes.CRDEntry {
 	return k.enabledCRDs
@@ -114,6 +124,19 @@ func (k *Katalog) EnabledCRDMap() map[string]orktypes.CRDEntry {
 // AllCRDs returns all CRDs including disabled ones (from Spec).
 func (k *Katalog) AllCRDs() map[string]orktypes.CRDEntry {
 	return k.Spec.CRDs
+}
+
+// UserNotes returns all user defined notes in the katalog
+func (k *Katalog) UserNotes() orktypes.NoteRegistry {
+	if k == nil {
+		return orktypes.NoteRegistry{}
+	}
+	return k.Notes
+}
+
+// IsEmpty reports true when the katalog is nil.
+func (k *Katalog) IsEmpty() bool {
+	return k == nil
 }
 
 // WithCRDFiles returns the names of CRDs that declared a crdFile.

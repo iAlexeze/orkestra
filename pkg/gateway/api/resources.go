@@ -43,8 +43,11 @@ func resourcesHandler(
 	kube kubeclient.Interface,
 	clusters *ClusterRegistry,
 	kat *katalog.Katalog,
-	notes orktypes.NoteRegistry,
 ) http.HandlerFunc {
+	var notes orktypes.NoteRegistry
+	if !kat.IsEmpty() {
+		notes = kat.UserNotes()
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		kind, ns, name, err := parsePath(r.URL.Path)
 		if err != nil {
@@ -80,8 +83,6 @@ func resourcesHandler(
 
 		// ── Cluster routing ───────────────────────────────────────────────────────
 		// ?cluster=<name> explicitly targets a registered remote cluster.
-		// Falls back to static CRD config; template cluster expressions are
-		// skipped on the read path (fields is nil → indeterminate).
 		effectiveKube := kube
 		if clusterName := r.URL.Query().Get("cluster"); clusterName != "" {
 			c, ok := clusters.ClientFor(clusterName)

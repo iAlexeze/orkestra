@@ -432,10 +432,15 @@ func writeClusterRBACFiles(k *katalog.Katalog, outputFile string) error {
 	clusters := k.GatewayClusters()
 
 	if len(templateKinds) > 0 {
+		crdTxt := "CRDs"
+		if len(templateKinds) == 1 {
+			crdTxt = "CRD"
+		}
+
 		fmt.Fprintf(os.Stderr,
-			"\nwarning: template-routed CRD(s) added to all cluster RBAC files: %s\n"+
+			"\n%s warning: template-routed %s added to all cluster RBAC files: %s\n"+
 				"  Remove rules for clusters that should not have access.\n",
-			strings.Join(templateKinds, ", "),
+			warningMark(), crdTxt, strings.Join(templateKinds, ", "),
 		)
 	}
 
