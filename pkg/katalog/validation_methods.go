@@ -248,6 +248,16 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		// Handle finalizers
 		if len(crd.OperatorBox.Finalizers) == 0 {
 			crd.OperatorBox.Finalizers = k.Spec.Finalizers
+			if crd.HasServeTarget() {
+				for _, target := range crd.Serve.Target.Entries {
+					if target.OperatorBox.IsEmpty() {
+						continue
+					}
+					if target.OperatorBox.Finalizers == nil {
+						crd.OperatorBox.Finalizers = target.OperatorBox.Finalizers
+					}
+				}
+			}
 		}
 
 		// Ensure operatorBox.reconciler is always initialised so runtime callsites
@@ -288,6 +298,32 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 			rec.Queue.FailureThreshold = kfg.Katalog().DefaultFailureThreshold()
 		}
 		crd.OperatorBox.Reconciler = rec
+
+		// Apply defaults for targets
+		if crd.HasServeTarget() {
+			for _, target := range crd.Serve.Target.Entries {
+				if target.OperatorBox.IsEmpty() {
+					continue
+				}
+				if target.OperatorBox.Reconciler == nil {
+					target.OperatorBox.Reconciler = &orktypes.ReconcilerConfig{}
+				}
+				rec := target.OperatorBox.Reconciler
+				if rec.Workers == 0 {
+					rec.Workers = kfg.Katalog().DefaultWorkers()
+				}
+				if rec.Resync.Duration == 0 {
+					rec.Resync.Duration = kfg.Katalog().DefaultResync()
+				}
+				if rec.Queue.MaxDepth == 0 {
+					rec.Queue.MaxDepth = kfg.Katalog().DefaultQueueDepth()
+				}
+				if rec.Queue.FailureThreshold == 0 {
+					rec.Queue.FailureThreshold = kfg.Katalog().DefaultFailureThreshold()
+				}
+				target.OperatorBox.Reconciler = rec
+			}
+		}
 
 		// Handle Notifications
 		if k.IsEmailNotificationEnabled() || k.IsSlackNotificationEnabled() {

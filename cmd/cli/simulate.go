@@ -42,13 +42,14 @@ should produce so the run is repeatable and verifiable:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		crdName, _ := cmd.Flags().GetString("crd")
 		maxCycles, _ := cmd.Flags().GetInt("cycles")
+		target, _ := cmd.Flags().GetString("target")
 
 		skipExternal, _ := cmd.Flags().GetBool("skip-external")
 		debugOps, _ := cmd.Flags().GetBool("debug-ops")
 		devServer, _ := cmd.Flags().GetBool("dev-server")
 		useEnvtest, _ := cmd.Flags().GetBool("envtest")
 		k8sVersion, _ := cmd.Flags().GetString("k8s-version")
-		opts := simulate.RunOptions{SkipExternal: skipExternal}
+		opts := simulate.RunOptions{SkipExternal: skipExternal, Target: target}
 
 		if devServer {
 			devServerPort, _ := cmd.Flags().GetInt("dev-server-port")
@@ -1146,6 +1147,7 @@ func init() {
 	simulateCmd.Flags().String("cr", "", "Path to the CR YAML file to simulate")
 	simulateCmd.Flags().String("crd", "", "CRD name to simulate (default: all CRDs in Katalog)")
 	simulateCmd.Flags().Int("cycles", 10, "Maximum number of reconcile cycles")
+	simulateCmd.Flags().StringP("target", "t", "", "Target that provides the operatorbox for simulate")
 	simulateCmd.Flags().StringSlice("skip", []string{}, "Comma-separated path patterns to skip during ./... discovery (e.g. vendor,cr-e2e.yaml)")
 	simulateCmd.Flags().Bool("skip-external", false, "Stub external: HTTP calls with empty 200 responses instead of hitting the real network")
 	simulateCmd.Flags().Bool("debug-ops", false, "Print every recorded op with its cycle number (diagnostic)")

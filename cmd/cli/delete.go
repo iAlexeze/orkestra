@@ -16,19 +16,25 @@ var deleteCmd = &cobra.Command{
 
 var deleteClusterCmd = &cobra.Command{
 	Use:   "cluster",
-	Short: "Delete a local kind cluster created by ork create cluster",
-	Long: `Deletes a local kind cluster by name.
+	Short: "Delete one or more local kind clusters created by ork create cluster",
+	Long: `Deletes one or more local kind cluster by name.
+	Separated by commas.
+
 
   ork delete cluster
-  ork delete cluster --name ork-e2e`,
+  ork delete cluster --name ork-e2e
+  ork delete cluster --name ork-1,ork-2,ork-3`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
 
-		fmt.Printf("→ Deleting cluster '%s'...\n", name)
-		if err := cluster.DeleteKindCluster(name); err != nil {
-			return err
+		nameList := splitCommaSeparated(name)
+		for _, n := range nameList {
+			fmt.Printf("→ Deleting cluster '%s'...\n", n)
+			if err := cluster.DeleteKindCluster(n); err != nil {
+				return err
+			}
+			fmt.Printf("Cluster '%s' deleted.\n", n)
 		}
-		fmt.Printf("Cluster '%s' deleted.\n", name)
 		return nil
 	},
 }
@@ -37,7 +43,7 @@ func init() {
 	rootCmd.AddCommand(deleteCmd)
 	deleteCmd.AddCommand(deleteClusterCmd)
 
-	deleteClusterCmd.Flags().String("name", "ork-playground", "Cluster name")
+	deleteClusterCmd.Flags().StringP("name", "n", "ork-playground", "Cluster name. Accepts multiple names separated by commas.")
 
 	// Shadow global flags
 	shadowGlobalCommandFlags(deleteClusterCmd, "file")
