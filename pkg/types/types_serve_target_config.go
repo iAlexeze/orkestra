@@ -240,6 +240,11 @@ type ServeTargetConfig struct {
 	//     spec.environment: staging
 	FieldSelector map[string]string `yaml:"fieldSelector,omitempty" json:"fieldSelector,omitempty"`
 
+	// OperatorBox configures reconciliation for this target.
+	// When set, the runtime uses this instead of the CRD-level operatorBox.
+	// When not set, the runtime falls back to the CRD-level operatorBox.
+	OperatorBox *OperatorBoxConfig `yaml:"operatorBox,omitempty" json:"operatorBox,omitempty"`
+
 	// Modes controls which apply modes are allowed for this target.
 	Modes *ServeModes `yaml:"modes,omitempty" json:"modes,omitempty"`
 

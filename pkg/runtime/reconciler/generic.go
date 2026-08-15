@@ -173,14 +173,14 @@ func NewGenericReconciler[PTR domain.Object](
 		ev = discardRecorder{}
 	}
 
-	workers := crd.OperatorBox.Reconciler.Workers
+	box := crd.OperatorBox
+	workers := box.Reconciler.Workers
 	if workers <= 0 {
 		workers = 1
 	}
 	sem := autoscaler.NewResizableSemaphore(workers)
 	autoMet := autoscaler.NewAutoMetrics(sem)
 
-	box := crd.OperatorBox
 	// Always inject a system finalizer so handleDeletion runs before the CR is removed.
 	// This guarantees explicit GC for cluster-scoped resources (Namespaces, ClusterRoles,
 	// ClusterRoleBindings, PVs, cluster-scoped custom resources) that Kubernetes GC
@@ -210,16 +210,16 @@ func NewGenericReconciler[PTR domain.Object](
 	if crd.AutoscaleEnabled() {
 		baseline := orktypes.AutoscaleBaseline{
 			Workers:  workers,
-			MaxDepth: crd.OperatorBox.Reconciler.Queue.MaxDepth,
-			Resync:   crd.OperatorBox.Reconciler.Resync.Duration,
+			MaxDepth: box.Reconciler.Queue.MaxDepth,
+			Resync:   box.Reconciler.Resync.Duration,
 		}
 		r.autoscaler = autoscaler.NewAutoscaler(
 			crd.APITypes.Kind,
-			crd.OperatorBox.Autoscale,
+			box.Autoscale,
 			baseline,
 			r,
 			autoMet,
-			crd.OperatorBox.Cross,
+			box.Cross,
 		)
 	}
 

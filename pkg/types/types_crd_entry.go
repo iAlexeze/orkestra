@@ -4,6 +4,8 @@ package types
 import (
 	"sort"
 
+	"github.com/orkspace/orkestra/pkg/labels"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -275,6 +277,43 @@ type CRDEntry struct {
 	// When enabled, the Control Center renders a [+ Create] button for this CRD
 	// and serves its schema via GET /api/v1/schema/{kind}.
 	Serve *ServeConfig `yaml:"serve,omitempty" json:"serve,omitempty"`
+}
+
+// EffectiveOperatorBox returns the operatorBox for a given target.
+func (c *CRDEntry) EffectiveOperatorBox(target string) *OperatorBoxConfig {
+	if target == "" {
+		return &c.OperatorBox
+	}
+	if c.Serve != nil && c.Serve.Target.Entries != nil {
+		if cfg, ok := c.Serve.Target.Entries[target]; ok && cfg.OperatorBox != nil {
+			return cfg.OperatorBox
+		}
+	}
+	return &c.OperatorBox
+}
+
+// ResolveTargetFromAnnotations extracts the effective target from a CR's annotations.
+// Resolution order:
+//  1. serve-alias annotation (most specific)
+//  2. serve-target annotation (primary target)
+//  3. Empty string (no target found)
+func ResolveTargetFromAnnotations(obj *unstructured.Unstructured) string {
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
+		return ""
+	}
+
+	// 1. Check alias first (most specific)
+	if alias, ok := annotations[labels.AnnotationServeAlias]; ok && alias != "" {
+		return alias
+	}
+
+	// 2. Fall back to target
+	if target, ok := annotations[labels.AnnotationServeTarget]; ok && target != "" {
+		return target
+	}
+
+	return ""
 }
 
 type ConversionVersionSpec struct {
