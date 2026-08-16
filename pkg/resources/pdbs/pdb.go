@@ -153,7 +153,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 		}
 		return err
 	}
-	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != labels.EffectiveOwnerKey(owner.GetName(), owner.GetAnnotations()) {
 		return nil
 	}
 	return kube.Clientset().PolicyV1().PodDisruptionBudgets(namespace).
@@ -200,8 +200,6 @@ func Resolve(src orktypes.PDBTemplateSource, ownerName string, reg orktypes.Prof
 	}
 
 	// System labels
-	spec.Labels[labels.ManagedKey] = labels.ManagedValue
-	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }
@@ -209,6 +207,7 @@ func Resolve(src orktypes.PDBTemplateSource, ownerName string, reg orktypes.Prof
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildPDB(owner domain.Object, spec ResolvedPDBSpec, namespace string) *policyv1.PodDisruptionBudget {
+	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	apiVersion := ""
 	kind := ""
 	if u, ok := owner.(*unstructured.Unstructured); ok {

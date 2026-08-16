@@ -7,6 +7,7 @@ import (
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/logger"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -71,18 +72,18 @@ func (r *GenericReconciler[PTR]) getLatestObject(ctx context.Context, namespace,
 //
 //	Configured finalizers: ["protection.orkestra.io/finalizer"]
 //	After calling ensureFinalizers, the resource's metadata.finalizers will include it.
-func (r *GenericReconciler[PTR]) ensureFinalizers(ctx context.Context, obj PTR) error {
-	if len(r.operatorBox.Finalizers) == 0 {
+func (r *GenericReconciler[PTR]) ensureFinalizers(ctx context.Context, obj PTR, box orktypes.OperatorBoxConfig) error {
+	if len(box.Finalizers) == 0 {
 		return nil
 	}
 
 	logger.Debug().
 		Str("name", obj.GetName()).
-		Any("crd finalizers", r.operatorBox.Finalizers).
+		Any("crd finalizers", box.Finalizers).
 		Msgf("checking finalizers: %v", obj.GetFinalizers())
 
 	needsUpdate := false
-	for _, f := range r.operatorBox.Finalizers {
+	for _, f := range box.Finalizers {
 		if !ContainsFinalizer(obj, f) {
 			needsUpdate = true
 			break
@@ -93,7 +94,7 @@ func (r *GenericReconciler[PTR]) ensureFinalizers(ctx context.Context, obj PTR) 
 	}
 
 	newFinalizers := obj.GetFinalizers()
-	for _, f := range r.operatorBox.Finalizers {
+	for _, f := range box.Finalizers {
 		if !ContainsFinalizer(obj, f) {
 			newFinalizers = append(newFinalizers, f)
 		}
@@ -109,14 +110,14 @@ func (r *GenericReconciler[PTR]) ensureFinalizers(ctx context.Context, obj PTR) 
 	return r.kube.PatchFinalizers(ctx, obj, newFinalizers)
 }
 
-func (r *GenericReconciler[PTR]) removeFinalizers(ctx context.Context, obj PTR) error {
+func (r *GenericReconciler[PTR]) removeFinalizers(ctx context.Context, obj PTR, box orktypes.OperatorBoxConfig) error {
 	if len(obj.GetFinalizers()) == 0 {
 		return nil
 	}
 
 	newFinalizers := make([]string, 0, len(obj.GetFinalizers()))
 	for _, f := range obj.GetFinalizers() {
-		if !slices.Contains(r.operatorBox.Finalizers, f) {
+		if !slices.Contains(box.Finalizers, f) {
 			newFinalizers = append(newFinalizers, f)
 		}
 	}

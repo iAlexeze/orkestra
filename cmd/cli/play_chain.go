@@ -187,7 +187,7 @@ func playRunSimulate(ctx context.Context, katalogFile string, obj *unstructured.
 	if simulateConfig != "" {
 		return runSimulateWithCR(ctx, simulateConfig, tmp.Name())
 	}
-	return runSimulate(ctx, katalogFile, tmp.Name(), "", 10, simulate.RunOptions{SkipExternal: true}, false, false, "")
+	return runSimulate(ctx, katalogFile, tmp.Name(), cliSimulateOptions{MaxCycles: 10, SkipExternal: true})
 }
 
 // runSimulateWithCR runs simulate using the spec file for katalog/cycles/expect
@@ -252,7 +252,7 @@ func runSimulateWithCR(ctx context.Context, specPath, crFile string) error {
 		crdOpts.Peers = in.peers
 		crdOpts.ExistingInstances = in.existing
 		expect := simulate.ExpectForCRD(doc.Spec.Expect, name)
-		if err := simulateOne(ctx, kat, name, in.cr, cycles, crdOpts, false, false, nil, "", expect); err != nil {
+		if err := simulateOne(ctx, kat, name, in.cr, cycles, crdOpts, cliSimulateOptions{}, nil, expect); err != nil {
 			failed = append(failed, name)
 		}
 	}

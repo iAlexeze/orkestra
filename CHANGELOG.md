@@ -227,6 +227,44 @@ Both gates use the full resolver chain (`.spec`, `.metadata`, serve intent, prof
 
 `crdFiles` / `crFiles` added to `E2ESpec`. `tests/simulate-envtest/04-conditional-reconciliation/` covers gate-pass and gate-discard via envtest simulate. `examples/intermediate/05-when-conditions/conditional-reconciliation/` — App (reconcileGate) + Route (unconditional) pack.
 
+### Per-target `operatorBox` — surface-specific reconciliation
+
+`serve.target.<name>.operatorBox` overrides the CRD-level `operatorBox` for CRs routed through that surface. The gateway stamps `orkestra.orkspace.io/serve-target` on every applied CR; the runtime reads that annotation at reconcile time and uses the matching target's templates instead of the shared CRD-level ones. CRs applied via `kubectl apply` (no annotation) fall back to the CRD-level `operatorBox`.
+
+```yaml
+operatorBox:
+  onCreate:
+    deployments:
+      - name: "{{ .metadata.name }}"
+    services:
+      - name: "{{ .metadata.name }}-svc"
+
+serve:
+  enabled: true
+  target:
+    web:
+      primary: true
+      operatorBox:
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}-web"
+    apifixture:
+      operatorBox:
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}-apifixture"
+```
+
+`preReconcile` and `status` follow the same pattern — a target may declare its own gate conditions or status fields, with the CRD-level config as the fallback when absent. Reconciler-level settings (`reconciler.workers`, `reconciler.resync`, `reconciler.queue`, `reconciler.profile`, `autoscale`, `rollback`) are rejected by `ork validate` on target entries — the worker pool is fixed at CRD level.
+
+Cleanup on target change is handled automatically: `DeleteIfOwned` removes resources declared by the previous target's operatorBox that are no longer present in the new one.
+
+**`ork simulate --target <name>`** — simulates a specific target's operatorBox. Also declarable in `simulate.yaml` via `spec.target:`. CLI flag takes precedence over the spec field.
+
+**`simulate.yaml` `spec.target:`** — new field. Pins the simulated reconciliation to a named target's operatorBox, equivalent to passing `--target` on the CLI.
+
+**`ork simulate` refactored** — CLI simulate helpers now take a `cliSimulateOptions` struct instead of a flat parameter list, reducing signature length across `runSimulate`, `runSimulateFromSpec`, `runSimulateDiscovery`, and `simulateOne`.
+
 ### Serve modes, apply-time controls, and field selectors
 
 Three new blocks under `serve` and per target give platform teams granular control over the Gateway API surface, override behaviour, and full CR routing.

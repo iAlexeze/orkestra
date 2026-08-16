@@ -51,6 +51,7 @@ func (r *GenericReconciler[PTR]) patchStatusWithChildren(
 	obj PTR,
 	resolver *orktmpl.Resolver,
 	reconcileErr error,
+	box orktypes.OperatorBoxConfig,
 	valResult ...*ValidationResult,
 ) {
 	// ── Layer 3: extend resolver with child resource state ─────────────────
@@ -58,7 +59,7 @@ func (r *GenericReconciler[PTR]) patchStatusWithChildren(
 	// The new resolver's data map includes a "children" key so that
 	// status field expressions can reference child status:
 	//   {{ .children.cronjob.status.lastScheduleTime }}
-	if reconcileErr == nil && (r.operatorBox.OnCreate != nil || r.operatorBox.OnReconcile != nil) {
+	if reconcileErr == nil && (box.OnCreate != nil || box.OnReconcile != nil) {
 		children := children.ReadChildren(ctx, r.kube, obj, resolver, r.crd)
 		resolver = resolver.WithChildren(children) // ← reassign — WithChildren returns new resolver
 	}
@@ -68,7 +69,7 @@ func (r *GenericReconciler[PTR]) patchStatusWithChildren(
 	if len(valResult) > 0 {
 		vr = valResult[0]
 	}
-	if err := runStatusPatch(ctx, r, obj, resolver, reconcileErr, vr); err != nil {
+	if err := runStatusPatch(ctx, r, obj, resolver, reconcileErr, vr, box); err != nil {
 		logger.FromContext(ctx).Warn().Err(err).
 			Str("name", obj.GetName()).
 			Msg("status: patch failed — continuing")
@@ -89,6 +90,7 @@ func runStatusPatch[PTR domain.Object](
 	resolver *orktmpl.Resolver,
 	reconcileErr error,
 	valResult *ValidationResult,
+	box orktypes.OperatorBoxConfig,
 ) error {
 	// ── Layer 1: Ready condition ───────────────────────────────────────────
 	// Always written — on success and failure — so operators can monitor
@@ -120,13 +122,13 @@ func runStatusPatch[PTR domain.Object](
 	// Errors in field resolution are logged as warnings and do not fail the reconcile.
 	logger.FromContext(ctx).Debug().
 		Str("name", obj.GetName()).
-		Bool("has_status_config", r.operatorBox.Status != nil && r.operatorBox.Status.HasFields()).
+		Bool("has_status_config", box.Status != nil && box.Status.HasFields()).
 		Bool("reconcile_error", reconcileErr != nil).
 		AnErr("reconcile_err", reconcileErr).
 		Msg("status: layer2 evaluation")
 
-	if r.operatorBox.Status != nil && r.operatorBox.Status.HasFields() {
-		fields := r.operatorBox.Status.Fields
+	if box.Status != nil && box.Status.HasFields() {
+		fields := box.Status.Fields
 		if reconcileErr != nil {
 			var conditional []orktypes.StatusFieldSpec
 			for _, f := range fields {

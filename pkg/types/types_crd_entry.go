@@ -5,7 +5,6 @@ import (
 	"sort"
 
 	"github.com/orkspace/orkestra/pkg/labels"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -280,13 +279,27 @@ type CRDEntry struct {
 }
 
 // EffectiveOperatorBox returns the operatorBox for a given target.
+// When a target entry declares its own operatorBox, non-template fields
+// (preReconcile, status) fall back to the CRD-level values when absent
+// on the target — so a CRD-level gate or status config applies to all
+// surfaces unless a target explicitly overrides it.
 func (c *CRDEntry) EffectiveOperatorBox(target string) *OperatorBoxConfig {
 	if target == "" {
 		return &c.OperatorBox
 	}
 	if c.Serve != nil && c.Serve.Target.Entries != nil {
 		if cfg, ok := c.Serve.Target.Entries[target]; ok && cfg.OperatorBox != nil {
-			return cfg.OperatorBox
+			box := *cfg.OperatorBox
+			if box.PreReconcile == nil {
+				box.PreReconcile = c.OperatorBox.PreReconcile
+			}
+			if box.Status == nil {
+				box.Status = c.OperatorBox.Status
+			}
+			if box.Reconciler == nil {
+				box.Reconciler = c.OperatorBox.Reconciler
+			}
+			return &box
 		}
 	}
 	return &c.OperatorBox
@@ -297,8 +310,7 @@ func (c *CRDEntry) EffectiveOperatorBox(target string) *OperatorBoxConfig {
 //  1. serve-alias annotation (most specific)
 //  2. serve-target annotation (primary target)
 //  3. Empty string (no target found)
-func ResolveTargetFromAnnotations(obj *unstructured.Unstructured) string {
-	annotations := obj.GetAnnotations()
+func ResolveTargetFromAnnotations(annotations map[string]string) string {
 	if annotations == nil {
 		return ""
 	}

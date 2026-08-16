@@ -153,7 +153,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 		}
 		return err
 	}
-	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != labels.EffectiveOwnerKey(owner.GetName(), owner.GetAnnotations()) {
 		return nil
 	}
 	return kube.Clientset().CoreV1().ResourceQuotas(namespace).
@@ -236,8 +236,6 @@ func Resolve(src orktypes.ResourceQuotaTemplateSource, ownerName string, reg ork
 	for k, v := range src.Labels {
 		spec.Labels[k] = v
 	}
-	spec.Labels[labels.ManagedKey] = labels.ManagedValue
-	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }
@@ -297,6 +295,7 @@ func buildResourceQuota(
 	namespace string,
 	hard map[string]string,
 ) *corev1.ResourceQuota {
+	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	return &corev1.ResourceQuota{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      spec.Name,

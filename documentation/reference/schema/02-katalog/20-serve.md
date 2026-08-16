@@ -732,6 +732,68 @@ serve:
 | `include` | string | Path **relative to the katalog file** to a YAML file with `tokens:` and/or `config:` keys. Resolved at load time. Inline fields take precedence on merge. |
 | `tokens` | map | Per-entry token restrictions — same shape as `serve.tokens`. When set, only tokens listed here are checked for access to this surface. |
 | `config.response` | object | Same `default`, `payload`, `exclude`, and `poll` fields as `serve.config.response`. |
+| `operatorBox` | object | Per-target operatorBox — overrides the CRD-level `operatorBox` for CRs routed through this surface. See [`serve.target.<name>.operatorBox`](#servetargetnameoperatorbox) below. |
+
+### `serve.target.<name>.operatorBox`
+
+When a CR is submitted through the gateway, the apply handler stamps `orkestra.orkspace.io/serve-target` on it. The runtime reconciler reads this annotation at reconcile time and uses the matching target's `operatorBox` instead of the CRD-level one. CRs applied via `kubectl apply` (no annotation) always fall back to the CRD-level `operatorBox`.
+
+This makes it possible to deploy different resources depending on which surface submitted the intent — without branching on `when:` conditions inside a single shared operatorBox:
+
+```yaml
+spec:
+  crds:
+    website:
+      operatorBox:             # fallback — used by kubectl apply / unknown targets
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}"
+          services:
+            - name: "{{ .metadata.name }}-svc"
+
+      serve:
+        enabled: true
+        target:
+          web:
+            primary: true
+            operatorBox:       # used when CR arrives via the "web" target
+              onCreate:
+                deployments:
+                  - name: "{{ .metadata.name }}-web"
+          apifixture:
+            operatorBox:       # used when CR arrives via the "apifixture" target
+              onCreate:
+                deployments:
+                  - name: "{{ .metadata.name }}-apifixture"
+```
+
+**Resolution order** (most specific first):
+
+1. The target entry whose name matches `serve-alias` annotation (alias wins over primary)
+2. The target entry whose name matches `serve-target` annotation
+3. CRD-level `operatorBox` — fallback when no annotation or no matching target
+
+**Cleanup on target change** — when a CR moves between targets (e.g. re-submitted via a different surface), the previous target's resources are cleaned up automatically via a label-selector sweep on `orkestra-owner=<name>.<prevTarget>`. No manual cleanup is needed. To retain old-target resources deliberately, set `keepPreviousSurface: true` in `target.<name>.apply.overrides`.
+
+**What stays fixed at the CRD level** — worker counts, resync intervals, and autoscale config are always taken from the CRD-level `operatorBox`. Only templates (`onReconcile`, `onCreate`, `onDelete`), status, finalizers, and external/cross blocks are resolved per-target.
+
+→ [Full per-target operatorBox reference](26-serve-target-operatorbox.md) — preReconcile gates, surface switch cleanup, `keepPreviousSurface`, simulate patterns
+
+**Simulating a specific target** — use `spec.target` in the simulate file, or `--target` on the CLI:
+
+```yaml
+# simulate-web.yaml
+spec:
+  katalog: ./katalog.yaml
+  cr: ./cr.yaml
+  target: web
+  expect:
+    ops:
+      - cycle: 1
+        verb: create
+        resource: deployments
+        name: my-app-web
+```
 
 ### `include:` files for target entries
 

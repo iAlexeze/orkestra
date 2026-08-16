@@ -311,7 +311,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface, owner domain.
 	}
 
 	// Only delete if we own it
-	if labelsMap[orklabels.OrkestraOwner] != owner.GetName() {
+	if labelsMap[orklabels.OrkestraOwner] != orklabels.EffectiveOwnerKey(owner.GetName(), owner.GetAnnotations()) {
 		return nil
 	}
 
@@ -344,12 +344,11 @@ func buildUnstructured(spec ResolvedCustomResourceSpec, owner domain.Object, gvk
 	// Labels: merge user-declared + Orkestra managed orklabels. Copy rather than
 	// mutate spec.Metadata.Labels directly — that map may be shared/reused
 	// (e.g. across forEach expansions of the same source).
-	lbls := make(map[string]string, len(spec.Metadata.Labels)+2)
+	lbls := make(map[string]string, len(spec.Metadata.Labels)+3)
 	for k, v := range spec.Metadata.Labels {
 		lbls[k] = v
 	}
-	lbls[orklabels.ManagedKey] = orklabels.ManagedValue
-	lbls[orklabels.OrkestraOwner] = owner.GetName()
+	orklabels.StampOrkestraLabels(lbls, owner.GetName(), owner.GetAnnotations())
 	u.SetLabels(lbls)
 
 	// Annotations: copy for the same reason as Labels above.

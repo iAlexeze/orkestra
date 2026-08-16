@@ -19,7 +19,7 @@ func effectiveOperatorBox(entry orktypes.CRDEntry, cr *unstructured.Unstructured
 		return entry.EffectiveOperatorBox(target)
 	}
 
-	effectiveTarget := orktypes.ResolveTargetFromAnnotations(cr)
+	effectiveTarget := orktypes.ResolveTargetFromAnnotations(cr.GetAnnotations())
 	return entry.EffectiveOperatorBox(effectiveTarget)
 }
 
