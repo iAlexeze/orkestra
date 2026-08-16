@@ -326,7 +326,11 @@ func applyHandler(
 		gvr = crd.GVR()
 
 		// ─── Resolve final effective target ──────────────────────────────────────────
-		if effectiveTarget := crd.EffectiveServeTargetForMap(obj.Object); effectiveTarget != "" {
+		// Only override alias when a fieldSelector explicitly matched — never fall
+		// back to the primary target here, since that would mask an explicitly
+		// named target (e.g. "web") with the primary (e.g. "apifixture") and
+		// bypass the routing surface conflict check.
+		if effectiveTarget := crd.ServeTargetForFieldSelector(obj.Object); effectiveTarget != "" {
 			alias = effectiveTarget
 		}
 

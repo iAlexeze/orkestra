@@ -133,7 +133,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 		}
 		return err
 	}
-	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != labels.EffectiveOwnerKey(owner.GetName(), owner.GetAnnotations()) {
 		return nil
 	}
 	return kube.Clientset().RbacV1().ClusterRoles().Delete(ctx, name, metav1.DeleteOptions{})
@@ -155,8 +155,6 @@ func Resolve(src orktypes.ClusterRoleTemplateSource, ownerName string) ResolvedC
 	for k, v := range src.Labels {
 		spec.Labels[k] = v
 	}
-	spec.Labels[labels.ManagedKey] = labels.ManagedValue
-	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	for _, r := range src.Rules {
 		spec.Rules = append(spec.Rules, rbacv1.PolicyRule{
@@ -173,6 +171,7 @@ func Resolve(src orktypes.ClusterRoleTemplateSource, ownerName string) ResolvedC
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildClusterRole(owner domain.Object, spec ResolvedClusterRoleSpec) *rbacv1.ClusterRole {
+	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	cr := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   spec.Name,

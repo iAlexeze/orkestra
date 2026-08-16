@@ -9,20 +9,28 @@ Kubernetes GC does **not** cascade owner references from namespace-scoped resour
 | Namespace-scoped → | Namespace-scoped | ✅ |
 | Namespace-scoped → | Cluster-scoped | ❌ |
 
-When a ReconcilerProbe CR (namespace-scoped) creates cluster-scoped resources (Namespaces, ClusterRoles, ClusterRoleBindings, PersistentVolumes), they become orphaned on CR deletion.
+When a CR creates cluster-scoped resources (Namespaces, ClusterRoles, ClusterRoleBindings, PersistentVolumes), they orphan on CR deletion. Explicit deletion is required.
 
-## The Solution
+## Two deletion paths
 
-[`cluster_scoped_deletion.go`](../cluster_scoped_deletion.go) provides `DeleteOwnedClusterScopedResources()` — called during CR deletion to explicitly clean up owned cluster-scoped resources.
+| Path | Mechanism | File |
+|------|-----------|------|
+| **CR deletion** | Template-based — resolves names from the box declaration, expands `forEach` | [`cluster_scoped_deletion.go`](../cluster_scoped_deletion.go) |
+| **Surface switch** | Label-selector sweep — finds resources by `orkestra-owner=<prevOwnerKey>` | [`surface_sweep.go`](../surface_sweep.go) |
 
-### How it works
+### Why two mechanisms?
 
-1. **Collect sources** from `OnCreate`, `OnReconcile`, `OnDelete`
-2. **Resolve names** through the template resolver
-3. **Check ownership** — only delete if the CR is the owner
-4. **Delete** the resource
+Template-based deletion works at CR deletion time because the CR's spec is intact — names resolve, `forEach` expands correctly.
 
-### Currently handled resources
+For surface switches the spec may have already changed before cleanup runs (e.g. `spec.regions` is cleared when routing away from a `regional` target). Template-based deletion would expand `forEach` to nothing and silently miss the orphans. Label-selector sweep is immune to spec changes.
+
+Namespace-scoped resources on the CR deletion path do not need explicit cleanup — Kubernetes GC handles them via owner references. Only cluster-scoped resources require `DeleteOwnedClusterScopedResources`.
+
+## CR deletion — `DeleteOwnedClusterScopedResources`
+
+Covers `onCreate`, `onReconcile`, and `onDelete` blocks. Called from the reconciler deletion path.
+
+### Currently handled resource types
 
 | Resource |
 |----------|
@@ -30,58 +38,52 @@ When a ReconcilerProbe CR (namespace-scoped) creates cluster-scoped resources (N
 | ClusterRole |
 | ClusterRoleBinding |
 | PersistentVolume |
-| Custom Resources |
+| Custom Resources (cluster-scoped) |
 
-## Adding a new cluster-scoped resource
+### Adding a new cluster-scoped resource type
 
-1. **Add `DeleteIfOwned`** to the resource package (`pkg/resources/<resource>/`)
-2. **Add collection function** in `cluster_scoped_deletion.go` following the existing pattern
-3. **Call it** from `DeleteOwnedClusterScopedResources()`
-4. **Update the list** above
+1. Add `DeleteIfOwned` to the resource package (`pkg/resources/<resource>/`)
+2. Add a `deleteOwned<Resource>` function to `cluster_scoped_deletion.go` following the existing pattern — collect sources from `allHooks(box)`, call `ExpandForEach*`, resolve name via `resolver.Resolve`, call `DeleteIfOwned`
+3. Call it from `DeleteOwnedClusterScopedResources`
+4. Update the table above
 
-### Pattern to follow
+## Surface switch — `SweepOwned*`
+
+`SweepOwnedNamespacedResources` and `SweepOwnedClusterScopedResources` list all resources of each known type with `orkestra-owner=<prevOwnerKey>` and delete them.
+
+### Adding a new resource type to the sweep
+
+Add a list+delete block to the appropriate sweep function in `surface_sweep.go`:
 
 ```go
-func deleteOwned<Resources>(
-    ctx context.Context,
-    kube kubeclient.KubeClient,
-    resolver *orktmpl.Resolver,
-    obj domain.Object,
-    box orktypes.OperatorBoxConfig,
-) error {
-    var srcs []orktypes.<Resource>TemplateSource
-    if box.OnCreate != nil {
-        srcs = append(srcs, box.OnCreate.<Resources>...)
+// namespaced
+if list, err := cs.AppsV1().<Resources>(ns).List(ctx, opts); err == nil {
+    for _, r := range list.Items {
+        collect("<resource>/"+r.Name, cs.AppsV1().<Resources>(ns).Delete(ctx, r.Name, dopts))
     }
-    if box.OnReconcile != nil {
-        srcs = append(srcs, box.OnReconcile.<Resources>...)
-    }
-    if box.OnDelete != nil {
-        srcs = append(srcs, box.OnDelete.<Resources>...)
-    }
+}
 
-    for i, src := range srcs {
-        name, err := resolver.Resolve(src.Name)
-        if err != nil || name == "" {
-            continue
-        }
-        if err := ork<resource>.DeleteIfOwned(ctx, kube, obj, name); err != nil {
-            return fmt.Errorf("<resource>[%d] %q: %w", i, name, err)
-        }
+// cluster-scoped
+if list, err := cs.<Group>().<Resources>().List(ctx, opts); err == nil {
+    for _, r := range list.Items {
+        collect("<resource>/"+r.Name, cs.<Group>().<Resources>().Delete(ctx, r.Name, dopts))
     }
-    return nil
 }
 ```
 
-## Integration point
+## Integration points
 
-In the reconciler deletion path:
-
+**CR deletion** (`handleDeletion`):
 ```go
-// Cluster-scoped resources require explicit deletion: GC does not cascade owner references to them.
-if err := runners.DeleteOwnedClusterScopedResources(ctx, kube, resolver, obj, r.operatorBox); err != nil {
-    return fmt.Errorf("cluster-scoped resource cleanup: %w", err)
+if err := runners.DeleteOwnedClusterScopedResources(ctx, kube, resolver, obj, box); err != nil {
+    return err
 }
+```
+
+**Surface switch** (`cleanupPreviousSurface`):
+```go
+runners.SweepOwnedNamespacedResources(ctx, kube, prevOwnerKey, ns)
+runners.SweepOwnedClusterScopedResources(ctx, kube, prevOwnerKey)
 ```
 
 ---

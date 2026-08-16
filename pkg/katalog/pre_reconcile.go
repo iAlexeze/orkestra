@@ -26,8 +26,10 @@ func (k *Katalog) EvaluatePreReconcile(ctx context.Context, crdName string, obj 
 	if !ok {
 		return true, ""
 	}
-	rc := entry.PreReconcileCheck()
-	if !rc.HasReconcileGate() {
+	target := orktypes.ResolveTargetFromAnnotations(obj.GetAnnotations())
+	box := entry.EffectiveOperatorBox(target)
+	rc := box.PreReconcile
+	if rc == nil || !rc.HasReconcileGate() {
 		return true, ""
 	}
 
@@ -79,8 +81,10 @@ func (k *Katalog) EvaluateEnqueueFilter(ctx context.Context, crdName string, obj
 	if !ok {
 		return true
 	}
-	rc := entry.PreReconcileCheck()
-	if !rc.HasEnqueueGate() {
+	target := orktypes.ResolveTargetFromAnnotations(obj.GetAnnotations())
+	box := entry.EffectiveOperatorBox(target)
+	rc := box.PreReconcile
+	if rc == nil || !rc.HasEnqueueGate() {
 		return true
 	}
 

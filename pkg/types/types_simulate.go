@@ -29,6 +29,7 @@ type SimulateSpec struct {
 	CRDFiles     []string        `yaml:"crdFiles,omitempty"`
 	Cycles       int             `yaml:"cycles,omitempty"` // default 10 when unset
 	SkipExternal bool            `yaml:"skipExternal,omitempty"`
+	Target       string          `yaml:"target,omitempty"` // serve target to use for reconciliation
 	Expect       *SimulateExpect `yaml:"expect,omitempty"` // nil = op-print only
 }
 

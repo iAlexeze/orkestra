@@ -148,7 +148,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 		return err
 	}
 	// Only delete if we own it
-	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != labels.EffectiveOwnerKey(owner.GetName(), owner.GetAnnotations()) {
 		return nil
 	}
 	return kube.Clientset().AppsV1().Deployments(namespace).
@@ -219,8 +219,6 @@ func Resolve(src orktypes.DeploymentTemplateSource, ownerName string, reg orktyp
 	}
 
 	// Orkestra system labels — always added
-	spec.Labels[labels.ManagedKey] = labels.ManagedValue
-	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }
@@ -228,6 +226,7 @@ func Resolve(src orktypes.DeploymentTemplateSource, ownerName string, reg orktyp
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace string) *appsv1.Deployment {
+	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	// Debug line
 	logger.Debug().
 		Interface("env", spec.Env).

@@ -36,6 +36,7 @@ spec:
   cr: ./cr.yaml
   cycles: 5
   skipExternal: false
+  target: web    # optional — simulate a specific serve target's operatorBox
 
   expect:
     noErrors: true
@@ -91,6 +92,7 @@ No `spec:`. Each imported file runs independently. The suite fails if any file f
 | `cr` | yes | | Path to the CR YAML file. Multi-doc YAML supported — each doc matched to its CRD by `kind`. Extra docs of the CRD-under-test's OWN kind aren't reconciled — they're seeded as pre-existing instances so `operator: unique` (and similar reconcile-time checks that list other instances) can be simulated. Only the first doc of that kind is actually reconciled |
 | `cycles` | no | `10` | Maximum number of reconcile cycles to run |
 | `skipExternal` | no | `false` | Stub all `external:` HTTP calls with an empty 200 response instead of hitting the real network |
+| `target` | no | — | Serve target whose `operatorBox` governs the simulated reconciliation. When set, the runtime uses that target's templates instead of the CRD-level `operatorBox`. Equivalent to passing `--target` on the CLI; the CLI flag takes precedence when both are set. |
 
 ### `spec.expect`
 

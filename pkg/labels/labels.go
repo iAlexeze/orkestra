@@ -125,6 +125,11 @@ const (
 	// reconcile loops to determine whether a resource should be updated or deleted.
 	OrkestraOwner = "orkestra-owner"
 
+	// OrkestraServeTarget records the effective serve surface (alias → target)
+	// that was active when a child resource was created. Used to detect orphaned
+	// resources after a surface switch and clean them up on the next reconcile.
+	OrkestraServeTarget = "orkestra-serve-target"
+
 	// LabelCreatedBy identifies the creator of a resource.
 	LabelCreatedBy = "app.kubernetes.io/createdBy"
 
@@ -195,4 +200,52 @@ const (
 	// Value is a JSON-encoded map of field paths to values.
 	// Example: '{"spec.mealPlan":"dinner","spec.kitchenConfig":"standard"}'
 	AnnotationServeSelector = "orkestra.orkspace.io/serve-selector"
+
+	// AnnotationLastSurface records the serve surface (target name) that was active
+	// on the last successful reconcile of a CR. Written by the reconciler after
+	// surface orphan cleanup so that the next reconcile can detect a surface switch
+	// and clean up resources from the previous surface.
+	AnnotationLastSurface = "orkestra.orkspace.io/last-surface"
 )
+
+// EffectiveOwnerKey returns the ownership identity to stamp on child resources
+// and to use in DeleteIfOwned checks. When the owner has an active serve target
+// the identity encodes both CR name and target so resources from different
+// surfaces have distinct labels and orphan detection is precise.
+//
+// Format:
+//   - target mode:  "<crName>.<target>"  e.g. "hello-website.web"
+//   - direct apply: "<crName>"           e.g. "hello-website"
+func EffectiveOwnerKey(ownerName string, ownerAnnotations map[string]string) string {
+	if ownerAnnotations != nil {
+		if t := ownerAnnotations[AnnotationServeAlias]; t != "" {
+			return ownerName + "." + t
+		}
+		if t := ownerAnnotations[AnnotationServeTarget]; t != "" {
+			return ownerName + "." + t
+		}
+	}
+	return ownerName
+}
+
+// StampOrkestraLabels stamps all Orkestra system ownership labels onto lbls.
+// Consolidates the managed, owner, and serve-target labels into one call so
+// every child resource is stamped consistently from its build* function.
+// ownerAnnotations may be nil (e.g. direct kubectl apply — no serve-target set).
+//
+// OrkestraOwner encodes the surface identity via EffectiveOwnerKey so that
+// resources from different serve surfaces carry distinct labels. This enables
+// precise orphan detection when a CR switches targets.
+func StampOrkestraLabels(lbls map[string]string, ownerName string, ownerAnnotations map[string]string) {
+	lbls[ManagedKey] = ManagedValue
+	lbls[OrkestraOwner] = EffectiveOwnerKey(ownerName, ownerAnnotations)
+	if ownerAnnotations != nil {
+		target := ownerAnnotations[AnnotationServeAlias]
+		if target == "" {
+			target = ownerAnnotations[AnnotationServeTarget]
+		}
+		if target != "" {
+			lbls[OrkestraServeTarget] = target
+		}
+	}
+}

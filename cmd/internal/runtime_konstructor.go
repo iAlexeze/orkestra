@@ -316,9 +316,9 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 		}
 
 		// ── Enqueue filter — Tier 2b (pre-enqueue condition gate) ─────────────
-		// Register when the CRD declares operatorBox.preReconcile.enqueueGate or
-		// preReconcile.external conditions.
-		if rc := crd.PreReconcileCheck(); rc.HasEnqueueGate() {
+		// Register when any operatorBox (CRD-level or per-target) declares an
+		// enqueueGate. EvaluateEnqueueFilter resolves the effective box at runtime.
+		if crd.HasAnyEnqueueGate() {
 			crdNameForFilter := crd.Name
 			katForFilter := kat
 			cs := kube.Clientset()

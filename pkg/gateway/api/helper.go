@@ -37,7 +37,7 @@ var (
 	validateK8sName = utils.ValidKubernetesName
 
 	// Others
-	resourceChecker = utils.NewResourceChecker
+	resourceChecker  = utils.NewResourceChecker
 	nestedSlice      = utils.NestedSlice
 	nestedMap        = utils.NestedMap
 	deleteNestedPath = utils.DeleteNestedPath

@@ -109,10 +109,12 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 	// output explains exactly what was omitted and why.
 	result := &Result{}
 	box := effectiveOperatorBox(crdEntry, cr, opts.Target)
+	// Copy the effective box so we don't mutate the original CRD entry.
+	boxCopy := *box
 	for _, phase := range []*orktypes.HookTemplates{
-		box.OnCreate,
-		box.OnReconcile,
-		box.OnDelete,
+		boxCopy.OnCreate,
+		boxCopy.OnReconcile,
+		boxCopy.OnDelete,
 	} {
 		if phase == nil {
 			continue
@@ -121,6 +123,9 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 		*phase = filtered
 		result.Notes = append(result.Notes, skipped...)
 	}
+	// Build effective CRD entry — reconciler uses target's operatorBox, not the CRD-level one.
+	effectiveCRDEntry := crdEntry
+	effectiveCRDEntry.OperatorBox = boxCopy
 
 	scheme, err := kat.Scheme()
 	if err != nil {
@@ -226,7 +231,7 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 		r = factoryFn(fakeKube, informer, event.Discard())
 	} else {
 		r = reconciler.NewGenericReconciler(
-			crdEntry,
+			effectiveCRDEntry,
 			informer,
 			nil,
 			fakeKube,
@@ -242,7 +247,7 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 		return nil, err
 	}
 
-	r = wrapWithGate(r, box.PreReconcile, kat.Notes, getFromIndexerOrFallback(indexer, key, cr))
+	r = wrapWithGate(r, boxCopy.PreReconcile, kat.Notes, getFromIndexerOrFallback(indexer, key, cr))
 
 	loopResult := runLoop(ctx, r, fakeKube, key, maxCycles)
 	loopResult.Notes = result.Notes

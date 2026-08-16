@@ -26,6 +26,17 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
+// cliSimulateOptions groups the CLI-level flags that flow through all simulate helpers.
+type cliSimulateOptions struct {
+	CRDName      string
+	MaxCycles    int
+	Target       string
+	SkipExternal bool
+	DebugOps     bool
+	UseEnvtest   bool
+	K8sVersion   string
+}
+
 var simulateCmd = &cobra.Command{
 	Use:   "simulate",
 	Short: "Simulate operator reconciliation in memory — no cluster required",
@@ -40,18 +51,16 @@ should produce so the run is repeatable and verifiable:
   ork simulate -f katalog.yaml --cr cr.yaml # direct flags; op-print only
   ork simulate ./...                        # discovers all simulate.yaml files recursively`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		crdName, _ := cmd.Flags().GetString("crd")
-		maxCycles, _ := cmd.Flags().GetInt("cycles")
-		target, _ := cmd.Flags().GetString("target")
+		cliOpts := cliSimulateOptions{}
+		cliOpts.CRDName, _ = cmd.Flags().GetString("crd")
+		cliOpts.MaxCycles, _ = cmd.Flags().GetInt("cycles")
+		cliOpts.Target, _ = cmd.Flags().GetString("target")
+		cliOpts.SkipExternal, _ = cmd.Flags().GetBool("skip-external")
+		cliOpts.DebugOps, _ = cmd.Flags().GetBool("debug-ops")
+		cliOpts.UseEnvtest, _ = cmd.Flags().GetBool("envtest")
+		cliOpts.K8sVersion, _ = cmd.Flags().GetString("k8s-version")
 
-		skipExternal, _ := cmd.Flags().GetBool("skip-external")
-		debugOps, _ := cmd.Flags().GetBool("debug-ops")
-		devServer, _ := cmd.Flags().GetBool("dev-server")
-		useEnvtest, _ := cmd.Flags().GetBool("envtest")
-		k8sVersion, _ := cmd.Flags().GetString("k8s-version")
-		opts := simulate.RunOptions{SkipExternal: skipExternal, Target: target}
-
-		if devServer {
+		if devServer, _ := cmd.Flags().GetBool("dev-server"); devServer {
 			devServerPort, _ := cmd.Flags().GetInt("dev-server-port")
 			if err := devserver.Start(devServerPort); err != nil {
 				return fmt.Errorf("starting dev server: %w", err)
@@ -61,8 +70,7 @@ should produce so the run is repeatable and verifiable:
 		// Discovery mode: ork simulate ./...
 		if len(args) > 0 && args[0] == "./..." {
 			skipRaw, _ := cmd.Flags().GetStringSlice("skip")
-			root := "."
-			return runSimulateDiscovery(cmd.Context(), root, crdName, maxCycles, skipRaw, debugOps, useEnvtest, k8sVersion)
+			return runSimulateDiscovery(cmd.Context(), ".", skipRaw, cliOpts)
 		}
 
 		katalogFile, _ := cmd.Flags().GetString("file")
@@ -83,7 +91,7 @@ should produce so the run is repeatable and verifiable:
 
 		// Simulate kind: assert mode
 		if isSimulateDoc(katalogFile) {
-			return runSimulateFromSpec(cmd.Context(), katalogFile, crdName, maxCycles, debugOps, useEnvtest, k8sVersion)
+			return runSimulateFromSpec(cmd.Context(), katalogFile, cliOpts)
 		}
 
 		// Reject E2E files with a clear message
@@ -99,11 +107,12 @@ should produce so the run is repeatable and verifiable:
 			return fmt.Errorf("--cr is required")
 		}
 
-		return runSimulate(cmd.Context(), katalogFile, crFile, crdName, maxCycles, opts, debugOps, useEnvtest, k8sVersion)
+		return runSimulate(cmd.Context(), katalogFile, crFile, cliOpts)
 	},
 }
 
-func runSimulate(ctx context.Context, katalogFile, crFile, crdName string, maxCycles int, opts simulate.RunOptions, debugOps, useEnvtest bool, k8sVersion string) error {
+func runSimulate(ctx context.Context, katalogFile, crFile string, cliOpts cliSimulateOptions) error {
+	maxCycles := cliOpts.MaxCycles
 	if maxCycles <= 0 {
 		maxCycles = 10
 	}
@@ -134,11 +143,13 @@ func runSimulate(ctx context.Context, katalogFile, crFile, crdName string, maxCy
 
 	// If --crd is given, simulate that CRD only. Otherwise simulate all.
 	var targets []string
-	if crdName != "" {
-		targets = []string{crdName}
+	if cliOpts.CRDName != "" {
+		targets = []string{cliOpts.CRDName}
 	} else {
 		targets = kat.CRDNames()
 	}
+
+	baseOpts := simulate.RunOptions{SkipExternal: cliOpts.SkipExternal, Target: cliOpts.Target}
 
 	for _, name := range targets {
 		crdEntry, ok := kat.CRDEntry(name)
@@ -153,17 +164,17 @@ func runSimulate(ctx context.Context, katalogFile, crFile, crdName string, maxCy
 			}
 			return fmt.Errorf("no CR found for CRD %q (kind: %s) in %s", name, crdEntry.APITypes.Kind, crFile)
 		}
-		crdOpts := opts
+		crdOpts := baseOpts
 		crdOpts.Peers = in.peers
 		crdOpts.ExistingInstances = in.existing
-		if err := simulateOne(ctx, kat, name, in.cr, maxCycles, crdOpts, debugOps, useEnvtest, nil, k8sVersion, nil); err != nil {
+		if err := simulateOne(ctx, kat, name, in.cr, maxCycles, crdOpts, cliOpts, nil, nil); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstructured.Unstructured, maxCycles int, opts simulate.RunOptions, debugOps, useEnvtest bool, crdPaths []string, k8sVersion string, expect *orktypes.SimulateExpect) error {
+func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstructured.Unstructured, maxCycles int, opts simulate.RunOptions, cliOpts cliSimulateOptions, crdPaths []string, expect *orktypes.SimulateExpect) error {
 	fmt.Printf("Simulating %s/%s\n", crdName, cr.GetName())
 
 	// Emit notes for operatorBox blocks that cannot execute in the fake cluster.
@@ -185,11 +196,11 @@ func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *
 	start := time.Now()
 	var result *simulate.Result
 	var err error
-	if useEnvtest {
+	if cliOpts.UseEnvtest {
 		if len(crdPaths) == 0 {
 			return fmt.Errorf("%s --envtest requires spec.crd or spec.crdFiles to be set", failureMark())
 		}
-		result, err = simulate.RunWithEnvtest(ctx, kat, crdName, cr, maxCycles, opts, crdPaths, k8sVersion)
+		result, err = simulate.RunWithEnvtest(ctx, kat, crdName, cr, maxCycles, opts, crdPaths, cliOpts.K8sVersion)
 	} else {
 		result, err = simulate.Run(ctx, kat, crdName, cr, maxCycles, opts)
 	}
@@ -201,7 +212,7 @@ func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *
 	spin.Stop()
 	elapsed := time.Since(start)
 
-	if debugOps {
+	if cliOpts.DebugOps {
 		fmt.Printf("  [debug-ops] %d total ops recorded across all cycles:\n", len(result.AllOps))
 		for _, op := range result.AllOps {
 			fmt.Printf("  [debug-ops]   cycle=%-2d  verb=%-8s  resource=%-20s  name=%s\n",
@@ -551,7 +562,7 @@ func isSimulateDoc(path string) bool {
 
 // runSimulateFromSpec loads a simulate.yaml and runs it in assert mode.
 // Aggregator form (imports, no spec) expands each imported file in order.
-func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCycles int, debugOps, useEnvtest bool, k8sVersion string) error {
+func runSimulateFromSpec(ctx context.Context, path string, cliOpts cliSimulateOptions) error {
 	if abs, err := filepath.Abs(path); err == nil {
 		path = abs
 	}
@@ -574,7 +585,7 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 			if !filepath.IsAbs(impPath) {
 				impPath = filepath.Join(dir, impPath)
 			}
-			if err := runSimulateFromSpec(ctx, impPath, crdName, maxCycles, debugOps, useEnvtest, k8sVersion); err != nil {
+			if err := runSimulateFromSpec(ctx, impPath, cliOpts); err != nil {
 				return err
 			}
 		}
@@ -595,10 +606,18 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 
 	cycles := doc.Spec.Cycles
 	if cycles <= 0 {
-		cycles = maxCycles
+		cycles = cliOpts.MaxCycles
 	}
 
-	opts := simulate.RunOptions{SkipExternal: doc.Spec.SkipExternal}
+	// CLI flag wins over spec field for both target and skipExternal.
+	effectiveTarget := cliOpts.Target
+	if effectiveTarget == "" {
+		effectiveTarget = doc.Spec.Target
+	}
+	opts := simulate.RunOptions{
+		SkipExternal: cliOpts.SkipExternal || doc.Spec.SkipExternal,
+		Target:       effectiveTarget,
+	}
 
 	katalogPath := filepath.Join(dir, doc.Spec.Katalog)
 
@@ -651,8 +670,8 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 	}
 
 	var targets []string
-	if crdName != "" {
-		targets = []string{crdName}
+	if cliOpts.CRDName != "" {
+		targets = []string{cliOpts.CRDName}
 	} else {
 		targets = kat.CRDNames()
 	}
@@ -674,7 +693,7 @@ func runSimulateFromSpec(ctx context.Context, path string, crdName string, maxCy
 		crdOpts.Peers = in.peers
 		crdOpts.ExistingInstances = in.existing
 		expect := simulate.ExpectForCRD(doc.Spec.Expect, name)
-		if err := simulateOne(ctx, kat, name, in.cr, cycles, crdOpts, debugOps, useEnvtest, crdPaths, k8sVersion, expect); err != nil {
+		if err := simulateOne(ctx, kat, name, in.cr, cycles, crdOpts, cliOpts, crdPaths, expect); err != nil {
 			failed = append(failed, name)
 		}
 	}
@@ -709,9 +728,9 @@ type simulateFileResult struct {
 	cycleErrs bool
 }
 
-// runSimulateDiscovery finds all e2e.yaml files under root, simulates each,
+// runSimulateDiscovery finds all simulate.yaml files under root, simulates each,
 // and prints an aggregate summary.
-func runSimulateDiscovery(ctx context.Context, root, crdName string, maxCycles int, skip []string, debugOps, useEnvtest bool, k8sVersion string) error {
+func runSimulateDiscovery(ctx context.Context, root string, skip []string, cliOpts cliSimulateOptions) error {
 	var patterns []string
 	for _, s := range skip {
 		patterns = append(patterns, s)
@@ -729,12 +748,17 @@ func runSimulateDiscovery(ctx context.Context, root, crdName string, maxCycles i
 
 	absRoot, _ := filepath.Abs(root)
 
+	// In discovery mode each file declares its own target; don't let a CLI
+	// --target flag override every file in the suite.
+	fileOpts := cliOpts
+	fileOpts.Target = ""
+
 	var results []simulateFileResult
 	for _, p := range paths {
 		rel, _ := filepath.Rel(absRoot, p)
 
 		start := time.Now()
-		err := runSimulateFromSpec(ctx, p, crdName, maxCycles, debugOps, useEnvtest, k8sVersion)
+		err := runSimulateFromSpec(ctx, p, fileOpts)
 		elapsed := time.Since(start)
 
 		var res simulateFileResult

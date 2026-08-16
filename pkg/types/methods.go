@@ -23,6 +23,44 @@ func (e CRDEntry) PreReconcileCheck() *PreReconcileConfig {
 	return e.OperatorBox.PreReconcile
 }
 
+// HasAnyEnqueueGate reports whether the CRD-level or any per-target operatorBox
+// declares an enqueueGate. Used at startup to decide whether to register the
+// informer enqueue filter — must register if ANY surface can gate enqueueing.
+func (e CRDEntry) HasAnyEnqueueGate() bool {
+	if rc := e.OperatorBox.PreReconcile; rc != nil && rc.HasEnqueueGate() {
+		return true
+	}
+	if e.Serve != nil {
+		for _, cfg := range e.Serve.Target.Entries {
+			if cfg.OperatorBox != nil {
+				if rc := cfg.OperatorBox.PreReconcile; rc != nil && rc.HasEnqueueGate() {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// HasAnyReconcileGate reports whether the CRD-level or any per-target operatorBox
+// declares a reconcileGate. Used at dequeue time to decide whether to evaluate
+// the gate before calling the reconciler.
+func (e CRDEntry) HasAnyReconcileGate() bool {
+	if rc := e.OperatorBox.PreReconcile; rc != nil && rc.HasReconcileGate() {
+		return true
+	}
+	if e.Serve != nil {
+		for _, cfg := range e.Serve.Target.Entries {
+			if cfg.OperatorBox != nil {
+				if rc := cfg.OperatorBox.PreReconcile; rc != nil && rc.HasReconcileGate() {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 // IsBuiltInType reports whether this CRD represents a built‑in Kubernetes resource.
 // Built‑ins rely on enrichment to populate group, version, plural, and scope.
 func (c *CRDEntry) IsBuiltInType() bool {

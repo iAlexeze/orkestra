@@ -145,7 +145,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 		return err
 	}
 
-	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != labels.EffectiveOwnerKey(owner.GetName(), owner.GetAnnotations()) {
 		return nil
 	}
 
@@ -213,15 +213,13 @@ func Resolve(src orktypes.ReplicaSetTemplateSource, ownerName string, reg orktyp
 		spec.RollingUpdate = &r
 	}
 
-	spec.Labels[labels.ManagedKey] = labels.ManagedValue
-	spec.Labels[labels.OrkestraOwner] = ownerName
-
 	return spec
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildReplicaSet(owner domain.Object, spec ResolvedReplicaSetSpec, namespace string) *appsv1.ReplicaSet {
+	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	logger.Debug().
 		Interface("env", spec.Env).
 		Interface("envFrom", spec.EnvFrom).

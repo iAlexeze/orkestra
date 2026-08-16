@@ -23,6 +23,12 @@ type ServeApplyOverrides struct {
 	// Can be overridden per-request with ?overwrite=true regardless of this setting.
 	// Default: false.
 	ResourceConflict *bool `yaml:"resourceConflict,omitempty" json:"resourceConflict,omitempty"`
+
+	// KeepPreviousSurface, when true, leaves resources created by a prior serve
+	// target alive when the CR switches to a new target. By default (false) the
+	// reconciler deletes orphaned child resources whose serve-target label no
+	// longer matches the CR's active surface.
+	KeepPreviousSurface *bool `yaml:"keepPreviousSurface,omitempty" json:"keepPreviousSurface,omitempty"`
 }
 
 // ServeApplyConfig configures apply-time behaviour for a CRD or target.
@@ -39,7 +45,8 @@ func (s *ServeConfig) HasOverride() bool {
 	if s == nil || s.Apply == nil || s.Apply.Overrides == nil {
 		return false
 	}
-	return s.Apply.Overrides.TargetConflict != nil || s.Apply.Overrides.ResourceConflict != nil
+	o := s.Apply.Overrides
+	return o.TargetConflict != nil || o.ResourceConflict != nil || o.KeepPreviousSurface != nil
 }
 
 // HasOverride reports whether the ServeTargetConfig has any override fields set.
@@ -47,7 +54,8 @@ func (t *ServeTargetConfig) HasOverride() bool {
 	if t == nil || t.Apply == nil || t.Apply.Overrides == nil {
 		return false
 	}
-	return t.Apply.Overrides.TargetConflict != nil || t.Apply.Overrides.ResourceConflict != nil
+	o := t.Apply.Overrides
+	return o.TargetConflict != nil || o.ResourceConflict != nil || o.KeepPreviousSurface != nil
 }
 
 // HasOverride reports whether the CRDEntry has any override fields set
@@ -115,6 +123,26 @@ func (c *CRDEntry) HasResourceConflict() bool {
 		}
 	}
 
+	return false
+}
+
+// KeepPreviousSurface reports whether the CRDEntry or the given target
+// has keepPreviousSurface enabled. CRD-level wins if set; otherwise the
+// target entry is checked.
+func (c *CRDEntry) KeepPreviousSurface(target string) bool {
+	if !c.ServeEnabled() {
+		return false
+	}
+	if c.Serve.Apply != nil && c.Serve.Apply.Overrides != nil && c.Serve.Apply.Overrides.KeepPreviousSurface != nil {
+		return *c.Serve.Apply.Overrides.KeepPreviousSurface
+	}
+	if c.Serve.Target.Entries != nil {
+		if cfg, ok := c.Serve.Target.Entries[target]; ok {
+			if cfg.Apply != nil && cfg.Apply.Overrides != nil && cfg.Apply.Overrides.KeepPreviousSurface != nil {
+				return *cfg.Apply.Overrides.KeepPreviousSurface
+			}
+		}
+	}
 	return false
 }
 

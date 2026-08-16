@@ -147,7 +147,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 		return err
 	}
 	// Only delete if we own it
-	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != labels.EffectiveOwnerKey(owner.GetName(), owner.GetAnnotations()) {
 		return nil
 	}
 	return kube.Clientset().CoreV1().Services(namespace).
@@ -202,8 +202,6 @@ func Resolve(src orktypes.ServiceTemplateSource, ownerName string) ResolvedServi
 	}
 
 	// System labels
-	spec.Labels[labels.ManagedKey] = labels.ManagedValue
-	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }
@@ -211,6 +209,7 @@ func Resolve(src orktypes.ServiceTemplateSource, ownerName string) ResolvedServi
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildService(owner domain.Object, spec ResolvedServiceSpec, namespace string) *corev1.Service {
+	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	svcType := corev1.ServiceTypeClusterIP
 	switch spec.Type {
 	case "NodePort":

@@ -299,32 +299,6 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		}
 		crd.OperatorBox.Reconciler = rec
 
-		// Apply defaults for targets
-		if crd.HasServeTarget() {
-			for _, target := range crd.Serve.Target.Entries {
-				if target.OperatorBox.IsEmpty() {
-					continue
-				}
-				if target.OperatorBox.Reconciler == nil {
-					target.OperatorBox.Reconciler = &orktypes.ReconcilerConfig{}
-				}
-				rec := target.OperatorBox.Reconciler
-				if rec.Workers == 0 {
-					rec.Workers = kfg.Katalog().DefaultWorkers()
-				}
-				if rec.Resync.Duration == 0 {
-					rec.Resync.Duration = kfg.Katalog().DefaultResync()
-				}
-				if rec.Queue.MaxDepth == 0 {
-					rec.Queue.MaxDepth = kfg.Katalog().DefaultQueueDepth()
-				}
-				if rec.Queue.FailureThreshold == 0 {
-					rec.Queue.FailureThreshold = kfg.Katalog().DefaultFailureThreshold()
-				}
-				target.OperatorBox.Reconciler = rec
-			}
-		}
-
 		// Handle Notifications
 		if k.IsEmailNotificationEnabled() || k.IsSlackNotificationEnabled() {
 			enabled := true
