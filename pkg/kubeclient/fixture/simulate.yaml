@@ -8,3 +8,5 @@ metadata:
 imports:
   - 01-hooks/simulate.yaml
   - 02-constructor/simulate.yaml
+  - 03-hooks-targets/simulate-v2-enabled.yaml
+  - 03-hooks-targets/simulate-v2-disabled.yaml

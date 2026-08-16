@@ -295,7 +295,7 @@ func buildResourceQuota(
 	namespace string,
 	hard map[string]string,
 ) *corev1.ResourceQuota {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	return &corev1.ResourceQuota{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      spec.Name,

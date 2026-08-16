@@ -153,7 +153,7 @@ func Resolve(src orktypes.ServiceAccountTemplateSource, ownerName string) Resolv
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildServiceAccount(owner domain.Object, spec ResolvedServiceAccountSpec, namespace string) *corev1.ServiceAccount {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      spec.Name,

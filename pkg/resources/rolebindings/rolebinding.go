@@ -208,7 +208,7 @@ func Resolve(src orktypes.RoleBindingTemplateSource, ownerName string) ResolvedR
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildRoleBinding(owner domain.Object, spec ResolvedRoleBindingSpec, namespace string) *rbacv1.RoleBinding {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	return &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      spec.Name,

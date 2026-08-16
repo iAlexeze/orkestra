@@ -226,7 +226,7 @@ func Resolve(src orktypes.DeploymentTemplateSource, ownerName string, reg orktyp
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace string) *appsv1.Deployment {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	// Debug line
 	logger.Debug().
 		Interface("env", spec.Env).

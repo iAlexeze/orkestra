@@ -207,7 +207,7 @@ func Resolve(src orktypes.PDBTemplateSource, ownerName string, reg orktypes.Prof
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildPDB(owner domain.Object, spec ResolvedPDBSpec, namespace string) *policyv1.PodDisruptionBudget {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	apiVersion := ""
 	kind := ""
 	if u, ok := owner.(*unstructured.Unstructured); ok {

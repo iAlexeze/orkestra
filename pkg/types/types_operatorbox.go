@@ -310,6 +310,7 @@ func (box *OperatorBoxConfig) IsEmpty() bool {
 	return box == nil
 }
 
+
 // HookDeclaration declares where a Go hook function lives.
 // Read by ork generate to emit HookRegistry entries in zz_generated_runtime_registry.go.
 // The declared function must match the signature: func() domain.AnyReconcileHooks

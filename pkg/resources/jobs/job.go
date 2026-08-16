@@ -181,7 +181,7 @@ func Resolve(src orktypes.JobTemplateSource, backoffLimit int, ownerName string,
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildJob(owner domain.Object, spec ResolvedJobSpec, namespace string) *batchv1.Job {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	backoffLimit := int32(spec.BackoffLimit)
 
 	container := corev1.Container{

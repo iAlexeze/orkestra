@@ -236,7 +236,10 @@ func EffectiveOwnerKey(ownerName string, ownerAnnotations map[string]string) str
 // OrkestraOwner encodes the surface identity via EffectiveOwnerKey so that
 // resources from different serve surfaces carry distinct labels. This enables
 // precise orphan detection when a CR switches targets.
-func StampOrkestraLabels(lbls map[string]string, ownerName string, ownerAnnotations map[string]string) {
+func StampOrkestraLabels(lbls map[string]string, ownerName string, ownerAnnotations map[string]string) map[string]string {
+	if lbls == nil {
+		lbls = make(map[string]string)
+	}
 	lbls[ManagedKey] = ManagedValue
 	lbls[OrkestraOwner] = EffectiveOwnerKey(ownerName, ownerAnnotations)
 	if ownerAnnotations != nil {
@@ -248,4 +251,5 @@ func StampOrkestraLabels(lbls map[string]string, ownerName string, ownerAnnotati
 			lbls[OrkestraServeTarget] = target
 		}
 	}
+	return lbls
 }

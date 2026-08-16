@@ -1,6 +1,6 @@
 module github.com/orkspace/orkestra-args-constructor
 
-go 1.26.4
+go 1.26.6
 
 require (
 	github.com/orkspace/orkestra v0.0.0

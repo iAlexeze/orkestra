@@ -141,7 +141,7 @@ func Resolve(src orktypes.PVTemplateSource, ownerName string) ResolvedPVSpec {
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildPV(owner domain.Object, spec ResolvedPVSpec) *corev1.PersistentVolume {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	capacityQty := resource.MustParse(spec.Capacity)
 
 	var accessModes []corev1.PersistentVolumeAccessMode

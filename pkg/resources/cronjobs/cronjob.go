@@ -294,7 +294,7 @@ func Resolve(src orktypes.CronJobTemplateSource, ownerName string, reg orktypes.
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildCronJob(owner domain.Object, spec ResolvedCronJobSpec, namespace string) *batchv1.CronJob {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	cj := &batchv1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      spec.Name,

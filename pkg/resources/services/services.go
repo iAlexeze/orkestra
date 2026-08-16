@@ -209,7 +209,7 @@ func Resolve(src orktypes.ServiceTemplateSource, ownerName string) ResolvedServi
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildService(owner domain.Object, spec ResolvedServiceSpec, namespace string) *corev1.Service {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	svcType := corev1.ServiceTypeClusterIP
 	switch spec.Type {
 	case "NodePort":

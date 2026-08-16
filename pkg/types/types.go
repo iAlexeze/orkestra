@@ -21,6 +21,18 @@ var ListRegistry = map[schema.GroupVersionKind]func() runtime.Object{}
 var HookRegistry = map[schema.GroupVersionKind]func() domain.AnyReconcileHooks{}
 var ReconcilerRegistry = map[schema.GroupVersionKind]NewReconcilerFunc{}
 
+// TargetHookRegistry and TargetReconcilerRegistry hold per-target factories for
+// CRDs whose targets declare a distinct hook binary or custom constructor.
+// Outer key: GVK. Inner key: target name (matches serve.target.<name>).
+// Populated by the generator alongside HookRegistry / ReconcilerRegistry and
+// consumed by addTargetHooks() / addTargetConstructors() during Katalog validation.
+//
+// Targets that share the CRD-level binary (only overriding hooks.args) do NOT
+// appear here — mergeReconcilerConfig in EffectiveOperatorBox handles them at
+// reconcile time without any separate registration.
+var TargetHookRegistry = map[schema.GroupVersionKind]map[string]func() domain.AnyReconcileHooks{}
+var TargetReconcilerRegistry = map[schema.GroupVersionKind]map[string]NewReconcilerFunc{}
+
 // SchemeAdderFns holds AddToScheme functions collected from generated init()
 // calls. Each generated zz_generated_runtime_registry.go appends to this slice
 // in its init(); NewSchemeRegistry drains it via RegisterTypedScheme.

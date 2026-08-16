@@ -330,7 +330,7 @@ func resolveData(
 }
 
 func buildConfigMap(owner domain.Object, spec ResolvedConfigMapSpec, namespace string, data map[string]string) *corev1.ConfigMap {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      spec.Name,

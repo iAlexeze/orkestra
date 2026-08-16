@@ -11,31 +11,37 @@ This makes the target the unit of runtime execution: the same CRD can behave dif
 ```yaml
 spec:
   crds:
-    website:
+    app:
       operatorBox:               # CRD-level fallback — used by kubectl apply / unknown targets
-        onCreate:
-          deployments:
-            - name: "{{ .metadata.name }}"
+        reconciler:
+          hooks:
+            location: github.com/myorg/myoperator/hooks
+            function: AppHooks
+            args:
+              featureEnabled: '{{ .external.flags.body }}'
+              inBusinessHours: '{{ inBusinessHours }}'
 
       serve:
         enabled: true
         target:
-          web:
+          v2-enabled:
             primary: true
-            operatorBox:         # used when CR arrives via the "web" target
+            operatorBox:         # hooks — args forced, gate active
               preReconcile:
                 enqueueGate:
                   when:
-                    - field: "{{ .spec.image }}"
-                      notEquals: ""
-              onCreate:
-                deployments:
-                  - name: "{{ .metadata.name }}-web"
-                    image: "{{ .spec.image }}"
-                    replicas: "{{ .spec.replicas }}"
+                    - field: '{{ inBusinessHours }}'
+                      equals: "true"
+              reconciler:
+                hooks:
+                  location: github.com/myorg/myoperator/hooks
+                  function: AppHooks
+                  args:
+                    featureEnabled: "true"
+                    inBusinessHours: '{{ inBusinessHours }}'
 
           regional:
-            operatorBox:         # used when CR arrives via the "regional" target
+            operatorBox:         # declarative — forEach over regions
               preReconcile:
                 reconcileGate:
                   when:
@@ -150,14 +156,7 @@ CRD-level wins if set; per-target applies otherwise.
 
 ## What stays fixed at the CRD level
 
-Per-target `operatorBox` overrides lifecycle templates and gates. These fields are always taken from the CRD-level `operatorBox`:
-
-- Worker counts, resync intervals, and autoscale config
-- `finalizers`
-- `rollBackOnError`
-- `reconciler.constructor` and `reconciler.hooks` (custom reconciler wiring)
-
-Only `onCreate`, `onReconcile`, `onDelete`, `preReconcile`, `status`, and `external`/`cross` blocks are resolved per-target.
+Reconciler settings — `workers`, `resync`, and `autoscale` — are always taken from the CRD-level `operatorBox`. Everything else (`onCreate`, `onReconcile`, `onDelete`, `preReconcile`, `status`, `reconciler.hooks`, `reconciler.hooks.args`) can be overridden per-target. When a target's `operatorBox` omits a block, it falls back to the CRD-level value.
 
 ---
 

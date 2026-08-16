@@ -219,7 +219,7 @@ func Resolve(src orktypes.ReplicaSetTemplateSource, ownerName string, reg orktyp
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildReplicaSet(owner domain.Object, spec ResolvedReplicaSetSpec, namespace string) *appsv1.ReplicaSet {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	logger.Debug().
 		Interface("env", spec.Env).
 		Interface("envFrom", spec.EnvFrom).
