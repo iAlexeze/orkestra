@@ -337,7 +337,7 @@ func resolveData(
 }
 
 func buildSecret(owner domain.Object, spec ResolvedSecretSpec, namespace string, data map[string][]byte, stringData map[string]string) *corev1.Secret {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	secretType := corev1.SecretTypeOpaque
 	switch strings.ToLower(spec.Type) {
 	case "kubernetes.io/tls":

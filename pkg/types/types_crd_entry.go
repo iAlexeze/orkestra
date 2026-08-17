@@ -4,7 +4,7 @@ package types
 import (
 	"sort"
 
-	"github.com/orkspace/orkestra/pkg/labels"
+	"github.com/orkspace/orkestra/domain"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -255,6 +255,17 @@ type CRDEntry struct {
 	// NotificationEnabled returns whether this CRD belongs to katalog with notification access
 	NotificationEnabled *bool `yaml:"-" json:"-"`
 
+	// TargetHookFactories — per-target hook factories, keyed by target name.
+	// Populated by addTargetHooks() from TargetHookRegistry.
+	// Only set for targets that declare a distinct hook binary from the CRD-level.
+	// Targets that share the CRD-level binary (only overriding args) are absent —
+	// mergeReconcilerConfig handles them at reconcile time via EffectiveOperatorBox.
+	TargetHookFactories map[string]func() domain.AnyReconcileHooks `yaml:"-" json:"-"`
+
+	// TargetReconcilerFactories — per-target constructor factories, keyed by target name.
+	// Populated by addTargetConstructors() from TargetReconcilerRegistry.
+	TargetReconcilerFactories map[string]NewReconcilerFunc `yaml:"-" json:"-"`
+
 	// RemoveFinalizers -> testing
 	RemoveFinalizers bool `yaml:"removeFinalizers,omitempty" json:"removeFinalizers,omitempty"`
 
@@ -283,6 +294,12 @@ type CRDEntry struct {
 // (preReconcile, status) fall back to the CRD-level values when absent
 // on the target — so a CRD-level gate or status config applies to all
 // surfaces unless a target explicitly overrides it.
+//
+// Reconciler merge: target args override CRD-level args, but identity fields
+// (location, function, alias, resources) and tuning fields (workers, resync,
+// queue) always come from the CRD-level when the target omits them.
+// HookFactory is runtime-registered on the CRD-level box only and is always
+// propagated so the hook binary is reachable from every target surface.
 func (c *CRDEntry) EffectiveOperatorBox(target string) *OperatorBoxConfig {
 	if target == "" {
 		return &c.OperatorBox
@@ -296,36 +313,61 @@ func (c *CRDEntry) EffectiveOperatorBox(target string) *OperatorBoxConfig {
 			if box.Status == nil {
 				box.Status = c.OperatorBox.Status
 			}
-			if box.Reconciler == nil {
-				box.Reconciler = c.OperatorBox.Reconciler
-			}
+			box.Reconciler = mergeReconcilerConfig(c.OperatorBox.Reconciler, box.Reconciler)
+			// HookFactory is set at load time on the CRD-level box only.
+			box.HookFactory = c.OperatorBox.HookFactory
 			return &box
 		}
 	}
 	return &c.OperatorBox
 }
 
-// ResolveTargetFromAnnotations extracts the effective target from a CR's annotations.
-// Resolution order:
-//  1. serve-alias annotation (most specific)
-//  2. serve-target annotation (primary target)
-//  3. Empty string (no target found)
-func ResolveTargetFromAnnotations(annotations map[string]string) string {
-	if annotations == nil {
-		return ""
+// mergeReconcilerConfig merges a per-target reconciler on top of the CRD-level one.
+// Workers, resync, queue, and profile are always taken from the CRD-level (they stay
+// fixed). Hook identity fields (location, function, alias, resources) come from the
+// CRD-level when the target omits them. Args are merged key-by-key with target winning.
+func mergeReconcilerConfig(base, target *ReconcilerConfig) *ReconcilerConfig {
+	if target == nil {
+		return base
 	}
-
-	// 1. Check alias first (most specific)
-	if alias, ok := annotations[labels.AnnotationServeAlias]; ok && alias != "" {
-		return alias
-	}
-
-	// 2. Fall back to target
-	if target, ok := annotations[labels.AnnotationServeTarget]; ok && target != "" {
+	if base == nil {
 		return target
 	}
-
-	return ""
+	// Start from base so workers/resync/queue/profile/default/constructor are inherited.
+	merged := *base
+	if target.Hooks != nil {
+		if merged.Hooks == nil {
+			merged.Hooks = target.Hooks
+		} else {
+			h := *merged.Hooks
+			// Identity fields: target wins only when explicitly set.
+			if target.Hooks.Location != "" {
+				h.Location = target.Hooks.Location
+			}
+			if target.Hooks.Function != "" {
+				h.Function = target.Hooks.Function
+			}
+			if target.Hooks.Alias != "" {
+				h.Alias = target.Hooks.Alias
+			}
+			if len(target.Hooks.Resources) > 0 {
+				h.Resources = target.Hooks.Resources
+			}
+			// Args: merge key-by-key; target overrides CRD-level per key.
+			if len(target.Hooks.Args) > 0 {
+				args := make(map[string]interface{}, len(h.Args)+len(target.Hooks.Args))
+				for k, v := range h.Args {
+					args[k] = v
+				}
+				for k, v := range target.Hooks.Args {
+					args[k] = v
+				}
+				h.Args = args
+			}
+			merged.Hooks = &h
+		}
+	}
+	return &merged
 }
 
 type ConversionVersionSpec struct {
@@ -595,6 +637,13 @@ func (c *CRDEntry) ServeAliases() map[string]*ServeTargetConfig {
 // HasServeAliases reports whether this CRD has any enabled non-primary target entries.
 func (c *CRDEntry) HasServeAliases() bool {
 	return len(c.ServeAliases()) > 0
+}
+
+// HasServeTargetEntries reports whether any named target entries are declared
+// under serve.target. Used by addTargetHooks and addTargetConstructors to skip
+// CRDs that have no per-target operatorBox declarations.
+func (c *CRDEntry) HasServeTargetEntries() bool {
+	return c.ServeEnabled() && c.Serve.Target.Entries != nil
 }
 
 // AliasNames returns a sorted slice of alias names for this CRD, or nil if none.

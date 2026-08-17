@@ -231,7 +231,7 @@ func resolveAccessModes(modes []string) []corev1.PersistentVolumeAccessMode {
 }
 
 func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns string) *appsv1.StatefulSet {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	apiVersion := ""
 	kind := ""
 	if u, ok := owner.(*unstructured.Unstructured); ok {

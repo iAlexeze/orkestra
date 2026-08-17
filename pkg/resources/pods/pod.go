@@ -210,7 +210,7 @@ func Resolve(src orktypes.PodTemplateSource, ownerName string, reg orktypes.Prof
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildPod(owner domain.Object, spec ResolvedPodSpec, namespace string) *corev1.Pod {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        spec.Name,

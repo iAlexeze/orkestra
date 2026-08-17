@@ -1,4 +1,4 @@
-## v0.7.15 — Gateway Webhook Intake + Artifact Signing [UNRELEASED]
+## v0.7.15 — Gateway Webhook Intake + Artifact Signing
 
 ### Artifact signing — Cosign keyless, `publish:` block, local testing
 
@@ -229,7 +229,9 @@ Both gates use the full resolver chain (`.spec`, `.metadata`, serve intent, prof
 
 ### Per-target `operatorBox` — surface-specific reconciliation
 
-`serve.target.<name>.operatorBox` overrides the CRD-level `operatorBox` for CRs routed through that surface. The gateway stamps `orkestra.orkspace.io/serve-target` on every applied CR; the runtime reads that annotation at reconcile time and uses the matching target's templates instead of the shared CRD-level ones. CRs applied via `kubectl apply` (no annotation) fall back to the CRD-level `operatorBox`.
+`serve.target.<name>.operatorBox` overrides the CRD-level `operatorBox` for CRs routed through that surface. The gateway stamps `orkestra.orkspace.io/serve-target` on every applied CR; the runtime reads that annotation at reconcile time and uses the matching target's templates, hooks, and gates instead of the shared CRD-level ones. CRs applied via `kubectl apply` (no annotation) fall back to the CRD-level `operatorBox`.
+
+This applies equally to declarative and typed (hooks/constructor) operators. A per-target `reconciler.hooks.args` block means the same binary receives different resolved values depending on which surface delivered the intent — no code change, no separate operator:
 
 ```yaml
 operatorBox:
@@ -255,9 +257,9 @@ serve:
             - name: "{{ .metadata.name }}-apifixture"
 ```
 
-`preReconcile` and `status` follow the same pattern — a target may declare its own gate conditions or status fields, with the CRD-level config as the fallback when absent. Reconciler-level settings (`reconciler.workers`, `reconciler.resync`, `reconciler.queue`, `reconciler.profile`, `autoscale`, `rollback`) are rejected by `ork validate` on target entries — the worker pool is fixed at CRD level.
+`preReconcile`, `status`, and `reconciler.hooks.args` follow the same pattern — a target may declare its own values, with the CRD-level config as the fallback when absent. Reconciler settings (`workers`, `resync`, `autoscale`) are fixed at CRD level.
 
-Cleanup on target change is handled automatically: `DeleteIfOwned` removes resources declared by the previous target's operatorBox that are no longer present in the new one.
+Cleanup on target switch is handled automatically via a label-selector sweep on `orkestra-owner=<name>.<prevTarget>` — immune to spec fields being cleared before cleanup runs. `keepPreviousSurface: true` skips the sweep when both surfaces should run simultaneously.
 
 **`ork simulate --target <name>`** — simulates a specific target's operatorBox. Also declarable in `simulate.yaml` via `spec.target:`. CLI flag takes precedence over the spec field.
 

@@ -189,7 +189,7 @@ func Resolve(src orktypes.RoleTemplateSource, ownerName string) ResolvedRoleSpec
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildRole(owner domain.Object, spec ResolvedRoleSpec, namespace string) *rbacv1.Role {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	return &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      spec.Name,

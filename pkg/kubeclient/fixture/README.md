@@ -24,8 +24,9 @@ story with the two typed operator patterns:
 
 | Sub-directory | CRD | Pattern | World state | External call |
 |---|---|---|---|---|
-| [`01-hooks/`](01-hooks/) | `BlockchainApp` | hooks | note evaluated by runtime → passed via args | runtime calls flag service when in business hours |
-| [`02-constructor/`](02-constructor/) | `BlockchainNode` | constructor | constructor checks clock using window from args | constructor calls flag service when in business hours |
+| [`01-hooks/`](01-hooks/README.md) | `BlockchainApp` | hooks | note evaluated by runtime → passed via args | runtime calls flag service when in business hours |
+| [`02-constructor/`](02-constructor/README.md) | `BlockchainNode` | constructor | constructor checks clock using window from args | constructor calls flag service when in business hours |
+| [`03-hooks-targets/`](03-hooks-targets/README.md) | `BlockchainAppWithTargets` | hooks + per-target operatorBox | same hook binary; `featureEnabled` and gate vary by target surface | no HTTP call — flag value resolved from target args |
 
 **Requirement:** `ork` CLI — install from [orkestra-install](https://github.com/orkspace/orkestra#getting-started)
 

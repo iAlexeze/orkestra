@@ -149,7 +149,7 @@ func Resolve(src orktypes.PVCTemplateSource, ownerName string) ResolvedPVCSpec {
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildPVC(owner domain.Object, spec ResolvedPVCSpec, ns string) *corev1.PersistentVolumeClaim {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	apiVersion := ""
 	kind := ""
 	if u, ok := owner.(*unstructured.Unstructured); ok {

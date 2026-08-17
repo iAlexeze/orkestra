@@ -37,10 +37,12 @@ import (
 func TypeRegistry(crds map[string]orktypes.CRDEntry, dryRun bool) (bool, error) {
 
 	var (
-		imports     []importEntry
-		entries     []registryEntry   // typed CRDs → ObjectRegistry + ListRegistry + RegisterTypedScheme
-		hookEntries []hookEntry       // Go hooks → HookRegistry
-		recEntries  []reconcilerEntry // custom constructors → ReconcilerRegistry
+		imports           []importEntry
+		entries           []registryEntry   // typed CRDs → ObjectRegistry + ListRegistry + RegisterTypedScheme
+		hookEntries       []hookEntry       // Go hooks → HookRegistry
+		recEntries        []reconcilerEntry // custom constructors → ReconcilerRegistry
+		targetHookEntries []targetHookEntry // per-target hooks → TargetHookRegistry
+		targetRecEntries  []targetRecEntry  // per-target constructors → TargetReconcilerRegistry
 
 		seenObjectAliases = map[string]string{}
 		seenHookAliases   = map[string]string{}
@@ -158,12 +160,89 @@ func TypeRegistry(crds map[string]orktypes.CRDEntry, dryRun bool) (bool, error) 
 				Kind:     crd.APITypes.Kind,
 			})
 		}
+
+		// ── Per-target hooks ──────────────────────────────────────────────────
+		// A target that declares reconciler.hooks with a different location than
+		// the CRD-level hooks binary needs its own import and a TargetHookRegistry
+		// entry. Targets that only override args share the CRD-level binary and
+		// are handled at runtime by mergeReconcilerConfig in EffectiveOperatorBox.
+		if crd.Serve != nil && crd.Serve.Target.Entries != nil {
+			crdLevelHookLocation := ""
+			if crd.OperatorBox.Reconciler != nil && crd.OperatorBox.Reconciler.Hooks != nil {
+				crdLevelHookLocation = crd.OperatorBox.Reconciler.Hooks.Location
+			}
+			for targetName, targetCfg := range crd.Serve.Target.Entries {
+				if targetCfg.OperatorBox == nil || targetCfg.OperatorBox.Reconciler == nil {
+					continue
+				}
+				h := targetCfg.OperatorBox.Reconciler.Hooks
+				if h == nil || h.Location == "" || h.Location == crdLevelHookLocation {
+					continue
+				}
+				if err := validateHookEntry(h, crd.Name+" target "+targetName); err != nil {
+					return false, err
+				}
+				hookAlias := resolveAlias(h.Alias, crd.Name+"hooks", h.Location)
+				if err := dedupeImport(seenHookAliases, hookAlias, h.Location, crd.Name); err != nil {
+					return false, err
+				}
+				if _, seen := seenHookAliases[hookAlias]; !seen {
+					imports = append(imports, importEntry{Alias: hookAlias, Location: h.Location})
+					seenHookAliases[hookAlias] = h.Location
+				}
+				targetHookEntries = append(targetHookEntries, targetHookEntry{
+					Alias:      hookAlias,
+					Function:   h.Function,
+					Group:      crd.APITypes.Group,
+					Version:    crd.APITypes.Version,
+					Kind:       crd.APITypes.Kind,
+					TargetName: targetName,
+				})
+			}
+		}
+
+		// ── Per-target constructors ───────────────────────────────────────────
+		// A target that declares reconciler.default: false with its own constructor
+		// gets a TargetReconcilerRegistry entry so startCRDWorkers can build a
+		// MuxReconciler with the right sub-reconciler per target.
+		if crd.Serve != nil && crd.Serve.Target.Entries != nil {
+			for targetName, targetCfg := range crd.Serve.Target.Entries {
+				if targetCfg.OperatorBox == nil || targetCfg.OperatorBox.Reconciler == nil {
+					continue
+				}
+				rec := targetCfg.OperatorBox.Reconciler
+				if rec.Default == nil || *rec.Default || rec.ConstructorDecl == nil {
+					continue
+				}
+				c := rec.ConstructorDecl
+				if err := validateConstructorEntry(c, crd.Name+" target "+targetName); err != nil {
+					return false, err
+				}
+				recAlias := resolveAlias(c.Alias, crd.Name+"rec", c.Location)
+				if err := dedupeImport(seenRecAliases, recAlias, c.Location, crd.Name); err != nil {
+					return false, err
+				}
+				if _, seen := seenRecAliases[recAlias]; !seen {
+					imports = append(imports, importEntry{Alias: recAlias, Location: c.Location})
+					seenRecAliases[recAlias] = c.Location
+				}
+				targetRecEntries = append(targetRecEntries, targetRecEntry{
+					Alias:      recAlias,
+					Function:   c.Function,
+					Group:      crd.APITypes.Group,
+					Version:    crd.APITypes.Version,
+					Kind:       crd.APITypes.Kind,
+					TargetName: targetName,
+				})
+			}
+		}
 	}
 
 	// ── Nothing to generate ───────────────────────────────────────────────────
 	// Pure dynamic template Katalogs produce zero entries — this is correct.
 	// GenericReconciler handles them at runtime. Exit cleanly, no file written.
-	if len(entries) == 0 && len(recEntries) == 0 && len(hookEntries) == 0 {
+	if len(entries) == 0 && len(recEntries) == 0 && len(hookEntries) == 0 &&
+		len(targetHookEntries) == 0 && len(targetRecEntries) == 0 {
 		return false, nil
 	}
 
@@ -174,8 +253,10 @@ func TypeRegistry(crds map[string]orktypes.CRDEntry, dryRun bool) (bool, error) 
 		Entries:            entries,
 		HookEntries:        hookEntries,
 		RecEntries:         recEntries,
-		NeedsRecImports:    len(recEntries) > 0,
-		NeedsHookImports:   len(hookEntries) > 0,
+		TargetHookEntries:  targetHookEntries,
+		TargetRecEntries:   targetRecEntries,
+		NeedsRecImports:    len(recEntries) > 0 || len(targetRecEntries) > 0,
+		NeedsHookImports:   len(hookEntries) > 0 || len(targetHookEntries) > 0,
 		NeedsSchemeImports: len(entries) > 0,
 	}
 

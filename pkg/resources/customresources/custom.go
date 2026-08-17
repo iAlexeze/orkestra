@@ -348,7 +348,7 @@ func buildUnstructured(spec ResolvedCustomResourceSpec, owner domain.Object, gvk
 	for k, v := range spec.Metadata.Labels {
 		lbls[k] = v
 	}
-	orklabels.StampOrkestraLabels(lbls, owner.GetName(), owner.GetAnnotations())
+	lbls = orklabels.StampOrkestraLabels(lbls, owner.GetName(), owner.GetAnnotations())
 	u.SetLabels(lbls)
 
 	// Annotations: copy for the same reason as Labels above.

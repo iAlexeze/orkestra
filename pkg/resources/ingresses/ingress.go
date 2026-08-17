@@ -210,7 +210,7 @@ func Resolve(src orktypes.IngressTemplateSource, ownerName string) ResolvedIngre
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildIngress(owner domain.Object, spec ResolvedIngressSpec, namespace string) *networkingv1.Ingress {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	apiVersion := ""
 	kind := ""
 	if u, ok := owner.(*unstructured.Unstructured); ok {

@@ -171,7 +171,7 @@ func Resolve(src orktypes.ClusterRoleTemplateSource, ownerName string) ResolvedC
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildClusterRole(owner domain.Object, spec ResolvedClusterRoleSpec) *rbacv1.ClusterRole {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	cr := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   spec.Name,

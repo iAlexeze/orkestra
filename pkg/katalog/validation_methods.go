@@ -365,60 +365,6 @@ func (k *Katalog) addRuntimeObjects() error {
 	return nil
 }
 
-// ---------------------------------------------------------------------------------
-// Add reconcilers
-func (k *Katalog) addReconcilers() error {
-	for name, crd := range k.enabledCRDs {
-		rc := crd.OperatorBox
-
-		// Add providers block
-		if len(rc.ProviderBlocks) > 0 {
-			blocks, err := orktypes.ParseProviderBlocks(rc.RawProviders)
-			if err != nil {
-				return err
-			}
-			rc.ProviderBlocks = blocks
-		}
-
-		if !crd.IsDynamic() {
-			if crd.DefaultReconcile() {
-				continue
-			}
-
-			constructorFn, ok := orktypes.ReconcilerRegistry[crd.GroupVersionKind]
-			if !ok {
-				return fmt.Errorf(
-					"CRD %q: no constructor registered — "+
-						"check reconciler.constructor in Katalog and re-run ork generate registry",
-					name,
-				)
-			}
-
-			rc.Constructor = constructorFn
-		}
-
-		crd.OperatorBox = rc
-		k.enabledCRDs[name] = crd
-	}
-	return nil
-}
-
-// ---------------------------------------------------------------------------------
-// Add hooks
-func (k *Katalog) addHooks() error {
-	for name, crd := range k.enabledCRDs {
-		if !crd.DefaultReconcile() {
-			continue
-		}
-		if hookFn, ok := orktypes.HookRegistry[crd.GroupVersionKind]; ok {
-			crd.OperatorBox.HookFactory = hookFn
-			k.enabledCRDs[name] = crd
-		}
-		// not found — fine, GenericReconciler runs without hooks
-	}
-	return nil
-}
-
 // validateStatus sets IgnoreStatusPatch and IgnoreObservedGeneration on each
 // enabled CRD entry based on the built-in resource registry.
 //

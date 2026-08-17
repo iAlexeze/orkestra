@@ -313,7 +313,7 @@ func buildNetworkPolicyFromSpec(
 	namespace string,
 	npSpec networkingv1.NetworkPolicySpec,
 ) *networkingv1.NetworkPolicy {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      spec.Name,

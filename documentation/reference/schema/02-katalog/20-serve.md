@@ -775,7 +775,7 @@ spec:
 
 **Cleanup on target change** — when a CR moves between targets (e.g. re-submitted via a different surface), the previous target's resources are cleaned up automatically via a label-selector sweep on `orkestra-owner=<name>.<prevTarget>`. No manual cleanup is needed. To retain old-target resources deliberately, set `keepPreviousSurface: true` in `target.<name>.apply.overrides`.
 
-**What stays fixed at the CRD level** — worker counts, resync intervals, and autoscale config are always taken from the CRD-level `operatorBox`. Only templates (`onReconcile`, `onCreate`, `onDelete`), status, finalizers, and external/cross blocks are resolved per-target.
+**What stays fixed at the CRD level** — reconciler settings (`workers`, `resync`, `autoscale`) are always taken from the CRD-level `operatorBox`. Everything else — templates, gates, status, hooks, and `hooks.args` — falls back to the CRD-level value when absent on the target, and can be overridden when present.
 
 → [Full per-target operatorBox reference](26-serve-target-operatorbox.md) — preReconcile gates, surface switch cleanup, `keepPreviousSurface`, simulate patterns
 

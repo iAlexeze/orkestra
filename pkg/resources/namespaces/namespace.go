@@ -190,7 +190,7 @@ func Resolve(src orktypes.NamespaceTemplateSource, ownerName string) ResolvedNam
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildNamespace(owner domain.Object, spec ResolvedNamespaceSpec) *corev1.Namespace {
-	labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   spec.Name,

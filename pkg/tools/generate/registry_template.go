@@ -25,6 +25,16 @@ import "text/template"
 //	  Required when reconciler.default: false and reconciler.constructor is declared.
 //	  Same pattern as HookRegistry — external function, import + closure.
 //
+//	TargetHookRegistry
+//	  Required when a serve.target entry declares reconciler.hooks with a different
+//	  location than the CRD-level hooks binary. Keyed by GVK then target name.
+//	  addTargetHooks() reads this at startup to set TargetHookFactories.
+//
+//	TargetReconcilerRegistry
+//	  Required when a serve.target entry declares reconciler.default: false with
+//	  its own constructor. Keyed by GVK then target name.
+//	  addTargetConstructors() reads this at startup to set TargetReconcilerFactories.
+//
 //	RegisterTypedScheme
 //	  Called by NewSchemeRegistry for typed CRDs.
 //	  Each compiled API type package exports AddToScheme. This calls them all.
@@ -123,11 +133,39 @@ func RegisterRuntimeObjects() {
 			return {{ .Alias }}.{{ .Function }}(kube, inf, ev)
 		}
 {{ end }}{{ end }}
+{{ if .TargetHookEntries }}{{ range .TargetHookEntries }}
+	// {{ .Kind }}/{{ .TargetName }} — per-target Go hook factory
+	// Distinct hook binary for this target; TargetHookFactories carries it into startCRDWorkers.
+	{
+		gvk := schema.GroupVersionKind{Group: "{{ .Group }}", Version: "{{ .Version }}", Kind: "{{ .Kind }}"}
+		if orktypes.TargetHookRegistry[gvk] == nil {
+			orktypes.TargetHookRegistry[gvk] = map[string]func() domain.AnyReconcileHooks{}
+		}
+		orktypes.TargetHookRegistry[gvk]["{{ .TargetName }}"] = func() domain.AnyReconcileHooks {
+			return {{ .Alias }}.{{ .Function }}()
+		}
+	}
+{{ end }}{{ end }}
+{{ if .TargetRecEntries }}{{ range .TargetRecEntries }}
+	// {{ .Kind }}/{{ .TargetName }} — per-target custom reconciler constructor
+	// Distinct reconciler for this target; TargetReconcilerFactories carries it into startCRDWorkers.
+	{
+		gvk := schema.GroupVersionKind{Group: "{{ .Group }}", Version: "{{ .Version }}", Kind: "{{ .Kind }}"}
+		if orktypes.TargetReconcilerRegistry[gvk] == nil {
+			orktypes.TargetReconcilerRegistry[gvk] = map[string]orktypes.NewReconcilerFunc{}
+		}
+		orktypes.TargetReconcilerRegistry[gvk]["{{ .TargetName }}"] = func(kube kubeclient.Interface, inf cache.SharedIndexInformer, ev event.Recorder) domain.Reconciler {
+			return {{ .Alias }}.{{ .Function }}(kube, inf, ev)
+		}
+	}
+{{ end }}{{ end }}
 	logger.Debug().
 		Int("objectRegistrySize", len(orktypes.ObjectRegistry)).
 		Int("listRegistrySize", len(orktypes.ListRegistry)).
 		{{ if .HookEntries }}Int("hookRegistrySize", len(orktypes.HookRegistry)).{{ end }}
 		{{ if .RecEntries }}Int("reconcilerRegistrySize", len(orktypes.ReconcilerRegistry)).{{ end }}
+		{{ if .TargetHookEntries }}Int("targetHookRegistrySize", len(orktypes.TargetHookRegistry)).{{ end }}
+		{{ if .TargetRecEntries }}Int("targetRecRegistrySize", len(orktypes.TargetReconcilerRegistry)).{{ end }}
 		Msg("Runtime objects registered")
 }
 `))

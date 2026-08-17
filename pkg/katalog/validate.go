@@ -58,6 +58,14 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	if err := k.addReconcilers(); err != nil {
 		return nil, err
 	}
+
+	// -------------------------------------------------------------------------
+	// 6b. Add Target Constructors	// TargetReconcilerRegistry → TargetReconcilerFactories
+	// -------------------------------------------------------------------------
+	if err := k.addTargetConstructors(); err != nil {
+		return nil, err
+	}
+
 	// -------------------------------------------------------------------------
 	// 7. Add RuntimeObjects	// ObjectRegistry + ListRegistry
 	// -------------------------------------------------------------------------
@@ -69,6 +77,13 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	// 8. Add Hooks	// HookRegistry → HookFactory
 	// -------------------------------------------------------------------------
 	if err := k.addHooks(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 8b. Add Target Hooks		// TargetHookRegistry → TargetHookFactories
+	// -------------------------------------------------------------------------
+	if err := k.addTargetHooks(); err != nil {
 		return nil, err
 	}
 

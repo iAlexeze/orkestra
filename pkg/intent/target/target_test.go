@@ -1,4 +1,4 @@
-package api
+package target
 
 import (
 	"testing"
@@ -434,4 +434,113 @@ func TestNewBuildCRFromTarget(t *testing.T) {
 	// Check name and namespace
 	assert.Equal(t, "payments-api", obj.GetName())
 	assert.Equal(t, "team-payments-staging", obj.GetNamespace())
+}
+
+func TestIsTargetRequest(t *testing.T) {
+	assert.True(t, IsTargetRequest(map[string]interface{}{
+		"target": "app",
+	}))
+	// target wins even when apiVersion is also present (gradual migration path)
+	assert.True(t, IsTargetRequest(map[string]interface{}{
+		"target":     "app",
+		"apiVersion": "v1",
+	}))
+	assert.False(t, IsTargetRequest(map[string]interface{}{
+		"apiVersion": "platform.myorg.io/v1",
+		"kind":       "App",
+	}))
+	assert.False(t, IsTargetRequest(map[string]interface{}{}))
+}
+
+func TestBuildCRFromTarget(t *testing.T) {
+	appCRD := &orktypes.CRDEntry{
+		APITypes: orktypes.APITypes{
+			Group:   "platform.myorg.io",
+			Version: "v1",
+			Kind:    "App",
+			Plural:  "apps",
+		},
+		GroupVersionKind: schema.GroupVersionKind{
+			Group: "platform.myorg.io", Version: "v1", Kind: "App",
+		},
+		Serve: &orktypes.ServeConfig{
+			Target: orktypes.ServeTargetValue{Entries: map[string]*orktypes.ServeTargetConfig{
+				"app": {Primary: true},
+			}},
+			Name:      `{{ .repository | repoSlug }}`,
+			Namespace: `{{ .team }}-{{ .environment }}`,
+			Fields: map[string]orktypes.ServeFieldConfig{
+				"repository":  {},
+				"image":       {},
+				"environment": {},
+				"replicas":    {},
+			},
+			Labels: map[string]orktypes.ServeFieldConfig{
+				"team": {},
+			},
+			Annotations: map[string]orktypes.ServeFieldConfig{
+				"jira-ticket": {},
+			},
+		},
+	}
+
+	t.Run("spec fields routed correctly", func(t *testing.T) {
+		raw := map[string]interface{}{
+			"target":      "app",
+			"repository":  "myorg/payments-api",
+			"image":       "ghcr.io/myorg/payments-api:v1",
+			"environment": "staging",
+			"replicas":    float64(2),
+			"team":        "payments",
+			"jira-ticket": "PLAT-1234",
+		}
+
+		obj, err := BuildCRFromTarget(raw, appCRD, orktypes.NoteRegistry{})
+		require.NoError(t, err)
+
+		spec := obj.Object["spec"].(map[string]interface{})
+		assert.Equal(t, "myorg/payments-api", spec["repository"])
+		assert.Equal(t, "ghcr.io/myorg/payments-api:v1", spec["image"])
+		assert.Equal(t, "staging", spec["environment"])
+		assert.Equal(t, float64(2), spec["replicas"])
+
+		labels := obj.Object["metadata"].(map[string]interface{})["labels"].(map[string]interface{})
+		assert.Equal(t, "payments", labels["team"])
+
+		annotations := obj.Object["metadata"].(map[string]interface{})["annotations"].(map[string]interface{})
+		assert.Equal(t, "PLAT-1234", annotations["jira-ticket"])
+
+		// team and jira-ticket must NOT be in spec.
+		assert.Nil(t, spec["team"])
+		assert.Nil(t, spec["jira-ticket"])
+	})
+
+	t.Run("unknown fields ignored", func(t *testing.T) {
+		raw := map[string]interface{}{
+			"target":        "app",
+			"repository":    "myorg/payments-api",
+			"team":          "payments",
+			"environment":   "staging",
+			"unknown-field": "should be ignored",
+		}
+		obj, err := BuildCRFromTarget(raw, appCRD, orktypes.NoteRegistry{})
+		require.NoError(t, err)
+
+		spec := obj.Object["spec"].(map[string]interface{})
+		_, exists := spec["unknown-field"]
+		assert.False(t, exists)
+	})
+
+	t.Run("apiVersion and kind set from CRD entry", func(t *testing.T) {
+		raw := map[string]interface{}{
+			"target":      "app",
+			"repository":  "myorg/payments-api",
+			"team":        "payments",
+			"environment": "staging",
+		}
+		obj, err := BuildCRFromTarget(raw, appCRD, orktypes.NoteRegistry{})
+		require.NoError(t, err)
+		assert.Equal(t, "platform.myorg.io/v1", obj.GetAPIVersion())
+		assert.Equal(t, "App", obj.GetKind())
+	})
 }
