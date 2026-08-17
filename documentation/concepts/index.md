@@ -110,6 +110,14 @@ The [Operator of Operators](operator-of-operators/) pattern lets one Orkestra op
 
 ---
 
+## Reusability and Composition
+
+[Reusability and Composition](reusability/) is the system-level view of how every layer in Orkestra — the runtime, Motifs, Katalogs, Komposers, notes, profiles, args, and targets — follows the same principle: share what is common, declare what varies.
+
+→ [Read: Reusability and Composition](reusability/)
+
+---
+
 ## Every CRD is a Live API
 
 Every CRD you declare in a Katalog becomes a live HTTP API outside the cluster — health, config, CR list, CR detail, and events, all served from in-memory cache on port 8080. This is the transport layer for the Control Center, ONCOP, and operator autoscaling.
