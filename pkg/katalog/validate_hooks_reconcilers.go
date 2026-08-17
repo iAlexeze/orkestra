@@ -24,9 +24,12 @@ func (k *Katalog) addReconcilers() error {
 
 		if !crd.IsDynamic() {
 			if crd.DefaultReconcile() {
-				// Per-target constructors (reconciler.default: false on a target operatorBox)
-				// are owned by addTargetConstructors, which reads TargetReconcilerRegistry.
-				// Nothing to do here for those targets.
+				// Wire per-target entries that opt out of the default reconciler
+				// (reconciler.default: false). These use the same ReconcilerRegistry
+				// keyed by the CRD's GVK, but are stored on the target's OperatorBox.
+				if err := wirePerTargetConstructors(name, &crd); err != nil {
+					return err
+				}
 				crd.OperatorBox = rc
 				k.enabledCRDs[name] = crd
 				continue
@@ -153,6 +156,36 @@ func (k *Katalog) addTargetHooks() error {
 }
 
 // ---------------------------------------------------------------------------------
+// wirePerTargetConstructors wires constructors for per-target entries that have
+// reconciler.default: false set on their own OperatorBox. These targets share the
+// CRD-level GVK and look up their constructor in ReconcilerRegistry, storing it
+// directly on targetCfg.OperatorBox.Constructor.
+func wirePerTargetConstructors(crdName string, crd *orktypes.CRDEntry) error {
+	if !crd.HasServeTargetEntries() {
+		return nil
+	}
+	for targetName, targetCfg := range crd.Serve.Target.Entries {
+		if targetCfg.OperatorBox == nil || targetCfg.OperatorBox.Reconciler == nil {
+			continue
+		}
+		rec := targetCfg.OperatorBox.Reconciler
+		if rec.Default == nil || *rec.Default || rec.ConstructorDecl == nil {
+			continue
+		}
+		fn, ok := orktypes.ReconcilerRegistry[crd.GroupVersionKind]
+		if !ok {
+			return fmt.Errorf(
+				"CRD %q target %q: reconciler.default: false declared but "+
+					"no ReconcilerRegistry entry for this GVK — re-run ork generate registry",
+				crdName, targetName,
+			)
+		}
+		targetCfg.OperatorBox.Constructor = fn
+		crd.Serve.Target.Entries[targetName] = targetCfg
+	}
+	return nil
+}
+
 // addTargetConstructors wires per-target constructor factories from
 // TargetReconcilerRegistry onto CRDEntry.TargetReconcilerFactories.
 func (k *Katalog) addTargetConstructors() error {
@@ -194,4 +227,3 @@ func (k *Katalog) addTargetConstructors() error {
 	}
 	return nil
 }
-
