@@ -182,6 +182,64 @@ type ReconcilerConfig struct {
 	Queue Queue `yaml:"queue,omitempty" json:"queue,omitempty"`
 }
 
+// IsDefault returns true when the reconciler should use the GenericReconciler.
+// When Default is nil (not declared), it defaults to true.
+func (r *ReconcilerConfig) IsDefault() bool {
+    if r == nil {
+        return true
+    }
+    if r.Default == nil {
+        return true
+    }
+    return *r.Default
+}
+
+// HasHooksDecl reports whether a hook declaration exists.
+func (r *ReconcilerConfig) HasHooksDecl() bool {
+    if r == nil {
+        return false
+    }
+    return r.Hooks != nil
+}
+
+// HasConstructorDecl reports whether a constructor declaration exists.
+func (r *ReconcilerConfig) HasConstructorDecl() bool {
+    if r == nil {
+        return false
+    }
+    return r.ConstructorDecl != nil
+}
+
+// IsEmpty reports whether the reconciler config has no meaningful settings.
+// Used to skip unnecessary config blocks in the Katalog.
+func (r *ReconcilerConfig) IsEmpty() bool {
+    if r == nil {
+        return true
+    }
+    if r.Default != nil {
+        return false
+    }
+    if r.Hooks != nil {
+        return false
+    }
+    if r.ConstructorDecl != nil {
+        return false
+    }
+    if r.Profile != "" {
+        return false
+    }
+    if r.Workers != 0 {
+        return false
+    }
+    if r.Resync.Duration != 0 {
+        return false
+    }
+    if !r.Queue.IsEmpty() {
+        return false
+    }
+    return true
+}
+
 // OperatorBoxConfig is the per-CRD configuration block in a Katalog. It controls
 // which reconciler implementation runs, what resources to manage, and how lifecycle
 // hooks, status, admission, autoscaling, and rollback behave.

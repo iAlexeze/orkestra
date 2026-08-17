@@ -31,6 +31,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
+	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
@@ -223,7 +224,7 @@ func applyHandler(
 				return
 			}
 
-			built, err := BuildCRFromTarget(raw, crd, notes)
+			built, err := orktarget.BuildCRFromTarget(raw, crd, notes)
 			if err != nil {
 				writeJSON(w, http.StatusBadRequest, ApplyResponse{
 					Message: err.Error(),

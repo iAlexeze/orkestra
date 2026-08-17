@@ -17,10 +17,6 @@ func ParsePath(path string) (kind, ns, name string, err error) {
 	return parsePath(path)
 }
 
-func IsTargetRequest(raw map[string]interface{}) bool {
-	return isTargetRequest(raw)
-}
-
 func ExportedSchemaHandler(kat *katalog.Katalog) http.Handler {
 	return schemaHandler(kat)
 }

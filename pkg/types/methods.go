@@ -370,6 +370,15 @@ func (c *CRDEntry) HooksArgs() map[string]interface{} {
 	return nil
 }
 
+// HooksArgs returns the args map from this reconciler config's hooks declaration.
+// Returns nil when no hooks are declared or no args are set.
+func (r *ReconcilerConfig) HooksArgs() map[string]interface{} {
+	if r == nil || r.Hooks == nil {
+		return nil
+	}
+	return r.Hooks.Args
+}
+
 // HooksExternal returns the external call specs declared under reconciler.hooks.external.
 // Returns nil when no hooks declaration or no external calls are declared.
 func (c *CRDEntry) HooksExternal() []ExternalCallSpec {
@@ -392,6 +401,44 @@ func (c *CRDEntry) ConstructorArgs() map[string]interface{} {
 	}
 	return nil
 }
+
+// TargetConstructorArgs returns the constructor args declared under
+// serve.target.entries[targetName].operatorBox.reconciler.constructor.args.
+// Returns nil when the target entry, its operatorBox, or its constructor declaration is absent.
+func (c *CRDEntry) TargetConstructorArgs(targetName string) map[string]interface{} {
+	if c.Serve == nil || c.Serve.Target.Entries == nil {
+		return nil
+	}
+	entry, ok := c.Serve.Target.Entries[targetName]
+	if !ok || entry.OperatorBox == nil || entry.OperatorBox.Reconciler == nil {
+		return nil
+	}
+	if entry.OperatorBox.Reconciler.ConstructorDecl == nil {
+		return nil
+	}
+	return entry.OperatorBox.Reconciler.ConstructorDecl.Args
+}
+
+// HasTargetConstructorFactories reports whether any serve target declares a
+// custom constructor (reconciler.default: false with a constructor declaration).
+func (c *CRDEntry) HasTargetConstructorFactories() bool {
+	if c.Serve == nil || c.Serve.Target.Entries == nil {
+		return false
+	}
+	for _, entry := range c.Serve.Target.Entries {
+		box := entry.OperatorBox
+		if box.IsEmpty() {
+			continue
+		}
+		rec := box.Reconciler
+		if rec.IsEmpty() || rec.IsDefault() || !rec.HasConstructorDecl() {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
 
 // IsEnabledAllEndpoints reports whether the all endpoints are disabled for this CRD.
 // Defaults to false when omitted.

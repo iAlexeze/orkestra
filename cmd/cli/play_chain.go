@@ -14,6 +14,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/registry/simulate"
+	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"gopkg.in/yaml.v3"
@@ -62,7 +63,7 @@ func runCreateUpdateChain(k *katalog.Katalog, raw map[string]interface{}, tokenN
 	// Stage 3: CR construction
 	printStage(3, "CR construction")
 	notes := k.Notes
-	obj, err := api.BuildCRFromTarget(raw, crd, notes)
+	obj, err := orktarget.BuildCRFromTarget(raw, crd, notes)
 	if err != nil {
 		printStageError(err.Error())
 		return nil, nil, "", err
@@ -300,7 +301,7 @@ func runIntentPlay(katalogPath, intentFile string) (string, error) {
 		return target, fmt.Errorf("intent file must declare a 'token' — token: <name>")
 	}
 
-	obj, err := api.BuildCRFromTarget(raw, crd, k.Notes)
+	obj, err := orktarget.BuildCRFromTarget(raw, crd, k.Notes)
 	if err != nil {
 		return target, fmt.Errorf("CR construction: %w", err)
 	}

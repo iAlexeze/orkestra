@@ -1,9 +1,17 @@
-# Per-Target Args — BlockchainAppWithTargets
+# Per-Target OperatorBox — BlockchainAppWithTargets
 
-The same hook binary can behave differently on different surfaces. The platform
-team declares two targets — `v2-enabled` and `v2-disabled` — each with its own
-`operatorBox` and its own `args`. The hook reads `kube.Args()` and never knows
-which surface it came from.
+Three surfaces, one CRD, three different reconcile strategies — all dispatched
+by the runtime based on the `orkestra.io/serve-target` annotation the gateway
+stamps on the CR.
+
+| Target | Strategy | What it does |
+|--------|----------|--------------|
+| `v2-enabled` | Per-target hooks | Same binary as `v2-disabled`; args force `featureEnabled=true` and gate on business hours |
+| `v2-disabled` | Per-target hooks | Same binary; args force `featureEnabled=false`, no gate |
+| `v2-ctor` | Per-target constructor | Distinct `domain.Reconciler` implementation; reads `featureEnabled` from args, owns the full reconcile loop |
+
+**Hooks targets** share one binary. The Katalog's `args` determine what each
+surface means — the hook reads `kube.Args()` and never knows which surface it came from:
 
 ```yaml
 serve:
@@ -19,7 +27,7 @@ serve:
         reconciler:
           hooks:
             args:
-              featureEnabled: "true"    # forced — no HTTP call needed
+              featureEnabled: "true"
               inBusinessHours: '{{ inBusinessHours }}'
 
     v2-disabled:
@@ -27,12 +35,28 @@ serve:
         reconciler:
           hooks:
             args:
-              featureEnabled: "false"   # forced off — no gate
+              featureEnabled: "false"
               inBusinessHours: '{{ inBusinessHours }}'
 ```
 
-The hook code is identical to `01-hooks`. The Katalog determines what each
-surface means; the caller just picks a target:
+**Constructor target** brings its own `domain.Reconciler`. The runtime wraps
+all three in a `MuxReconciler` that routes each CR to the right reconciler at
+dispatch time:
+
+```yaml
+    v2-ctor:
+      operatorBox:
+        reconciler:
+          default: false
+          constructor:
+            location: github.com/orkspace/orkestra-args-hooks-targets/constructor
+            function: NewBlockchainAppWithTargetsReconciler
+            alias: bcctor
+            args:
+              featureEnabled: "true"
+```
+
+The caller just picks a target:
 
 **Requirement:** `ork` CLI — install from [orkestra-install](https://github.com/orkspace/orkestra#getting-started)
 
@@ -49,8 +73,31 @@ make registry
 ```bash
 make clean && make build
 ork validate katalog.yaml
+```
+
+### Simulate and Play without a cluster
+
+
+#### Simulate
+
+```bash
 ork simulate -f simulate-v2-enabled.yaml
 ork simulate -f simulate-v2-disabled.yaml
+ork simulate
+```
+
+#### Play
+
+- First check permissions:
+
+```bash
+ork serve can-i --token dev --operation create --target v2-enabled
+```
+
+- Then Play:
+
+```bash
+ork serve play -i intent/intent-v2-enabled.yaml --token dev
 ```
 
 ## Step 3 — Run
@@ -92,8 +139,17 @@ kubectl get blockchainappwithtargets 03-hooks-targets-my-chain \
 Switch to `v2-disabled` (feature off, no gate):
 
 ```bash
-ork serve apply -f intent/intent-v2-disabled.yaml --token $TOKEN --api http://localhost:8888
+ork serve apply -f intent/intent-v2-disabled.json --token $TOKEN --api http://localhost:8888
 ```
+
+Switch to `v2-ctor` (constructor reconciler, feature on):
+
+```bash
+ork serve apply -f intent/intent-v2-ctor.json --token $TOKEN --api http://localhost:8888
+```
+
+The runtime routes this CR to `BlockchainAppWithTargetsReconciler` via `MuxReconciler`
+instead of the CRD-level `GenericReconciler`.
 
 > Switching targets cleans up the previous surface's resources automatically.
 > `keepPreviousSurface: true` on the target entry skips the cleanup when you

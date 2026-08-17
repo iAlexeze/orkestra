@@ -1,4 +1,4 @@
-package api
+package target
 
 import (
 	"fmt"
@@ -6,16 +6,16 @@ import (
 
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	"github.com/orkspace/orkestra/pkg/utils"
+	// "github.com/orkspace/orkestra/pkg/utils"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-// isTargetRequest reports whether raw is a target-mode request.
+// IsTargetRequest reports whether raw is a target-mode request.
 //
 // Detection rule: presence of "target" key, regardless of whether
 // "apiVersion" is also present. This lets callers migrate incrementally
 // by adding "target" without immediately removing Kubernetes fields.
-func isTargetRequest(raw map[string]interface{}) bool {
+func IsTargetRequest(raw map[string]interface{}) bool {
 	_, ok := raw["target"]
 	return ok
 }
@@ -157,13 +157,13 @@ func routeFields(
 		}
 
 		// ─── Labels ──────────────────────────────────────────────────────
-		if utils.MapContains(labelFields, key) {
+		if mapContains(labelFields, key) {
 			labels[key] = fmt.Sprintf("%v", submitted)
 			continue
 		}
 
 		// ─── Annotations ─────────────────────────────────────────────────
-		if utils.MapContains(annotationFields, key) {
+		if mapContains(annotationFields, key) {
 			annotations[key] = fmt.Sprintf("%v", submitted)
 			continue
 		}
@@ -180,8 +180,8 @@ func routeFields(
 // setSpecValue writes a value to a dot-notation spec path, creating intermediate
 // maps as needed. Flat paths (no dot) are assigned directly.
 func setSpecValue(spec map[string]interface{}, path string, value interface{}) error {
-	if utils.IsNestedPath(path) {
-		return utils.SetNestedPath(spec, path, value)
+	if isNestedPath(path) {
+		return setNestedPath(spec, path, value)
 	}
 	spec[path] = value
 	return nil

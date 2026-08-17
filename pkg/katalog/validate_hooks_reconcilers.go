@@ -24,28 +24,9 @@ func (k *Katalog) addReconcilers() error {
 
 		if !crd.IsDynamic() {
 			if crd.DefaultReconcile() {
-				// Per-target operatorBoxes can declare reconciler.default: false with a
-				// constructor — apply the same registration check as the CRD-level path.
-				if crd.Serve != nil && crd.Serve.Target.Entries != nil {
-					for targetName, targetCfg := range crd.Serve.Target.Entries {
-						if targetCfg.OperatorBox == nil || targetCfg.OperatorBox.Reconciler == nil {
-							continue
-						}
-						rec := targetCfg.OperatorBox.Reconciler
-						if rec.Default != nil && !*rec.Default {
-							constructorFn, ok := orktypes.ReconcilerRegistry[crd.GroupVersionKind]
-							if !ok {
-								return fmt.Errorf(
-									"CRD %q target %q: reconciler.default: false but no constructor registered — "+
-										"check reconciler.constructor in Katalog and re-run ork generate registry",
-									name, targetName,
-								)
-							}
-							targetCfg.OperatorBox.Constructor = constructorFn
-							crd.Serve.Target.Entries[targetName] = targetCfg
-						}
-					}
-				}
+				// Per-target constructors (reconciler.default: false on a target operatorBox)
+				// are owned by addTargetConstructors, which reads TargetReconcilerRegistry.
+				// Nothing to do here for those targets.
 				crd.OperatorBox = rc
 				k.enabledCRDs[name] = crd
 				continue

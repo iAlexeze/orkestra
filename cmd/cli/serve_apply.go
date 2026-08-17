@@ -34,13 +34,17 @@ Example (explicit file):
   ork serve apply -f intent.yaml --api https://gateway.myorg.io --token "$ORK_TOKEN"
 
 Example (dry run — no CR applied):
-  ork serve apply -f cr.yaml --api https://gateway.myorg.io --token "$ORK_TOKEN" --dry-run`,
+  ork serve apply -f cr.yaml --api https://gateway.myorg.io --token "$ORK_TOKEN" --dry-run
+
+Example (override routing surface conflict):
+  ork serve apply -f intent.yaml --api https://gateway.myorg.io --token "$ORK_TOKEN" --override`,
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		file, _ := cmd.Flags().GetString("file")
 		apiURL, _ := cmd.Flags().GetString("api")
 		token, _ := cmd.Flags().GetString("token")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		override, _ := cmd.Flags().GetBool("override")
 
 		if file == "" {
 			file = resolveDefaultIntentFile()
@@ -60,8 +64,13 @@ Example (dry run — no CR applied):
 		}
 
 		endpoint := strings.TrimRight(apiURL, "/") + "/api/v1/apply"
-		if dryRun {
+		switch {
+		case dryRun && override:
+			endpoint += "?dryRun=true&override=true"
+		case dryRun:
 			endpoint += "?dryRun=true"
+		case override:
+			endpoint += "?override=true"
 		}
 
 		req, err := http.NewRequestWithContext(cmd.Context(), http.MethodPost, endpoint, bytes.NewReader(body))
@@ -154,6 +163,7 @@ func init() {
 	serveApplyCmd.Flags().StringP("api", "a", "http://localhost:8080", "Gateway base URL")
 	serveApplyCmd.Flags().StringP("token", "t", "", "Bearer token for the gateway")
 	serveApplyCmd.Flags().Bool("dry-run", false, "Preview without applying — the CR is not written to the cluster")
+	serveApplyCmd.Flags().Bool("override", false, "Override routing surface conflict — allows switching a resource to a different target")
 
 	_ = serveApplyCmd.MarkFlagRequired("token")
 

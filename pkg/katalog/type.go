@@ -134,6 +134,14 @@ func (k *Katalog) UserNotes() orktypes.NoteRegistry {
 	return k.Notes
 }
 
+// UserProfiles returns all user defined profiles in the katalog
+func (k *Katalog) UserProfiles() orktypes.ProfileRegistry {
+	if k == nil {
+		return orktypes.ProfileRegistry{}
+	}
+	return k.Profiles
+}
+
 // IsEmpty reports true when the katalog is nil.
 func (k *Katalog) IsEmpty() bool {
 	return k == nil

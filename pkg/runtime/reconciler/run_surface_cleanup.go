@@ -6,7 +6,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/runtime/runners"
-	orktypes "github.com/orkspace/orkestra/pkg/types"
+	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 )
 
 // cleanupPreviousSurface deletes all resources belonging to the surface the CR
@@ -25,7 +25,7 @@ func (r *GenericReconciler[PTR]) cleanupPreviousSurface(
 	ctx context.Context,
 	rawObj PTR,
 ) error {
-	target := orktypes.ResolveTargetFromAnnotations(rawObj.GetAnnotations())
+	target := orktarget.ResolveTargetFromAnnotations(rawObj.GetAnnotations())
 	if target == "" || r.crd.KeepPreviousSurface(target) {
 		return nil
 	}

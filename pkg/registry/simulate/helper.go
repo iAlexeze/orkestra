@@ -9,6 +9,7 @@ import (
 
 	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/tools/cache"
 )
@@ -19,7 +20,7 @@ func effectiveOperatorBox(entry orktypes.CRDEntry, cr *unstructured.Unstructured
 		return entry.EffectiveOperatorBox(target)
 	}
 
-	effectiveTarget := orktypes.ResolveTargetFromAnnotations(cr.GetAnnotations())
+	effectiveTarget := orktarget.ResolveTargetFromAnnotations(cr.GetAnnotations())
 	return entry.EffectiveOperatorBox(effectiveTarget)
 }
 

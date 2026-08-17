@@ -43,19 +43,8 @@ spec:
 
       operatorBox:
         reconciler:
-          default: true
-          # hooks:
-          #   location: github.com/orkspace/orkestra-args-hooks-targets/hooks
-          #   function: BlockchainAppHooks
-          #   alias: bchooks
-          #   resources:
-          #     - kind: Deployment
-          #   args:
-          #     featureEnabled: '{{ .external.flags.body }}'
-          #     inBusinessHours: '{{ inBusinessHours }}'
           workers: 2
           resync: 30s
-
         status:
           fields:
             - path: phase
@@ -69,6 +58,12 @@ spec:
       serve:
         enabled: true
         namespace: default
+        tokens:
+          dev:
+            permissions:
+              resources:
+                - create
+                - update
         fields:
           image:
             label: "Container image"
@@ -91,7 +86,6 @@ spec:
                       equals: "true"
               reconciler:
                 hooks:
-          hooks:
                   location: github.com/orkspace/orkestra-args-hooks-targets/hooks
                   function: BlockchainAppHooks
                   alias: bchooks
@@ -113,3 +107,14 @@ spec:
                   args:
                     featureEnabled: "false"
                     inBusinessHours: '{{ inBusinessHours }}'
+
+          v2-ctor:
+            operatorBox:
+              reconciler:
+                default: false
+                constructor:
+                  location: github.com/orkspace/orkestra-args-hooks-targets/constructor
+                  function: NewBlockchainAppWithTargetsReconciler
+                  alias: bcctor
+                  args:
+                    featureEnabled: "true"

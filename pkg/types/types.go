@@ -161,3 +161,21 @@ type Queue struct {
 	// 0 → uses FAILURE_THRESHOLD env var.
 	FailureThreshold int `yaml:"failureThreshold,omitempty" json:"failureThreshold,omitempty" validate:"omitempty,gte=0"`
 }
+
+// IsEmpty reports whether the queue configuration has no meaningful settings.
+// Used to skip unnecessary config blocks in the Katalog.
+func (q *Queue) IsEmpty() bool {
+	if q == nil {
+		return true
+	}
+	if q.Shared != nil {
+		return false
+	}
+	if q.MaxDepth != 0 {
+		return false
+	}
+	if q.FailureThreshold != 0 {
+		return false
+	}
+	return true
+}

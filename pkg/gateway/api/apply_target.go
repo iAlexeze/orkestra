@@ -15,6 +15,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
+	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
@@ -66,7 +67,7 @@ func ApplyTargetFields(
 		return &ApplyResponse{Message: clusterErr.Error()}, http.StatusBadRequest
 	}
 
-	obj, err := BuildCRFromTarget(fields, crd, notes)
+	obj, err := orktarget.BuildCRFromTarget(fields, crd, notes)
 	if err != nil {
 		return &ApplyResponse{Message: err.Error()}, http.StatusBadRequest
 	}
