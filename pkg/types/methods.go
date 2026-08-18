@@ -23,6 +23,44 @@ func (e CRDEntry) PreReconcileCheck() *PreReconcileConfig {
 	return e.OperatorBox.PreReconcile
 }
 
+// HasAnyEnqueueGate reports whether the CRD-level or any per-target operatorBox
+// declares an enqueueGate. Used at startup to decide whether to register the
+// informer enqueue filter — must register if ANY surface can gate enqueueing.
+func (e CRDEntry) HasAnyEnqueueGate() bool {
+	if rc := e.OperatorBox.PreReconcile; rc != nil && rc.HasEnqueueGate() {
+		return true
+	}
+	if e.Serve != nil {
+		for _, cfg := range e.Serve.Target.Entries {
+			if cfg.OperatorBox != nil {
+				if rc := cfg.OperatorBox.PreReconcile; rc != nil && rc.HasEnqueueGate() {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// HasAnyReconcileGate reports whether the CRD-level or any per-target operatorBox
+// declares a reconcileGate. Used at dequeue time to decide whether to evaluate
+// the gate before calling the reconciler.
+func (e CRDEntry) HasAnyReconcileGate() bool {
+	if rc := e.OperatorBox.PreReconcile; rc != nil && rc.HasReconcileGate() {
+		return true
+	}
+	if e.Serve != nil {
+		for _, cfg := range e.Serve.Target.Entries {
+			if cfg.OperatorBox != nil {
+				if rc := cfg.OperatorBox.PreReconcile; rc != nil && rc.HasReconcileGate() {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 // IsBuiltInType reports whether this CRD represents a built‑in Kubernetes resource.
 // Built‑ins rely on enrichment to populate group, version, plural, and scope.
 func (c *CRDEntry) IsBuiltInType() bool {
@@ -332,6 +370,15 @@ func (c *CRDEntry) HooksArgs() map[string]interface{} {
 	return nil
 }
 
+// HooksArgs returns the args map from this reconciler config's hooks declaration.
+// Returns nil when no hooks are declared or no args are set.
+func (r *ReconcilerConfig) HooksArgs() map[string]interface{} {
+	if r == nil || r.Hooks == nil {
+		return nil
+	}
+	return r.Hooks.Args
+}
+
 // HooksExternal returns the external call specs declared under reconciler.hooks.external.
 // Returns nil when no hooks declaration or no external calls are declared.
 func (c *CRDEntry) HooksExternal() []ExternalCallSpec {
@@ -353,6 +400,43 @@ func (c *CRDEntry) ConstructorArgs() map[string]interface{} {
 		return r.ConstructorDecl.Args
 	}
 	return nil
+}
+
+// TargetConstructorArgs returns the constructor args declared under
+// serve.target.entries[targetName].operatorBox.reconciler.constructor.args.
+// Returns nil when the target entry, its operatorBox, or its constructor declaration is absent.
+func (c *CRDEntry) TargetConstructorArgs(targetName string) map[string]interface{} {
+	if c.Serve == nil || c.Serve.Target.Entries == nil {
+		return nil
+	}
+	entry, ok := c.Serve.Target.Entries[targetName]
+	if !ok || entry.OperatorBox == nil || entry.OperatorBox.Reconciler == nil {
+		return nil
+	}
+	if entry.OperatorBox.Reconciler.ConstructorDecl == nil {
+		return nil
+	}
+	return entry.OperatorBox.Reconciler.ConstructorDecl.Args
+}
+
+// HasTargetConstructorFactories reports whether any serve target declares a
+// custom constructor (reconciler.default: false with a constructor declaration).
+func (c *CRDEntry) HasTargetConstructorFactories() bool {
+	if c.Serve == nil || c.Serve.Target.Entries == nil {
+		return false
+	}
+	for _, entry := range c.Serve.Target.Entries {
+		box := entry.OperatorBox
+		if box.IsEmpty() {
+			continue
+		}
+		rec := box.Reconciler
+		if rec.IsEmpty() || rec.IsDefault() || !rec.HasConstructorDecl() {
+			continue
+		}
+		return true
+	}
+	return false
 }
 
 // IsEnabledAllEndpoints reports whether the all endpoints are disabled for this CRD.

@@ -27,7 +27,6 @@ import (
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
-	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // Registrar is the subset of health.HealthServer used here.
@@ -104,10 +103,6 @@ func (s *APIServer) ReloadTokens(ctx context.Context) error {
 
 // Register wires all Gateway API routes onto the given Registrar.
 func (s *APIServer) Register(reg Registrar) {
-	var notes orktypes.NoteRegistry
-	if s.kat != nil {
-		notes = s.kat.Notes
-	}
 	if !s.kat.HasServeEnabled() {
 		return
 	}
@@ -137,16 +132,16 @@ func (s *APIServer) Register(reg Registrar) {
 	}
 
 	// POST /api/v1/apply
-	reg.Register("/api/v1/apply", auth(applyHandler(s.kube, s.clusters, s.kat, notes)))
+	reg.Register("/api/v1/apply", auth(applyHandler(s.kube, s.clusters, s.kat)))
 
 	// GET/DELETE /api/v1/resources/...
-	reg.Register("/api/v1/resources/", auth(resourcesHandler(s.kube, s.clusters, s.kat, notes)))
+	reg.Register("/api/v1/resources/", auth(resourcesHandler(s.kube, s.clusters, s.kat)))
 
 	// GET /api/v1/schema/...
 	reg.Register("/api/v1/schema", auth(schemaHandler(s.kat)))
 
 	// GET /api/v1/raw-schema
-	reg.Register("/api/v1/raw-schema", auth(rawSchemaHandler(s.kube, s.kat)))
+	reg.Register("/api/v1/raw-schema", auth(rawSchemaHandler(s.kube, s.clusters, s.kat)))
 
 	logger.Info().Msg("Gateway API routes registered: /api/v1/apply, /api/v1/resources/, /api/v1/schema, /api/v1/raw-schema")
 }

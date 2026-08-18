@@ -57,8 +57,6 @@ spec:
 | `labels` | — | Label keys exposed as self-service form fields, written to `metadata.labels` on apply. Each entry needs an explicit `type`. |
 | `annotations` | — | Annotation keys exposed as self-service form fields, written to `metadata.annotations` on apply. Each entry needs an explicit `type`. |
 | `include` | — | Path (relative to the katalog file) to a YAML file containing `fields:`, `labels:`, and/or `annotations:` keys. Inline entries take precedence. Expanded at load time. |
-| `forceConflict` | `false` | When `true`, every Gateway API request for this CRD uses `Force: true` on server-side apply — the gateway takes ownership of any conflicting fields rather than surfacing a conflict error. Equivalent to `helm --force-conflict`. Callers can still override per-request with `?overwrite=true`. |
-| `name` | — | Template expression resolving the CR's `metadata.name`. Optional, unlike `namespace` — when unset (the common case), the caller must supply a name. See [`serve.name`](#servename) below. |
 | `namespace` | — | Template expression resolving the namespace a new CR is created in. Required on a namespaced CRD with `serve.enabled: true`; rejected on a cluster-scoped one. See [`serve.namespace`](#servenamespace) below. |
 | `clusters` | — | List of registered cluster names (static or template expressions). Declares which clusters this CRD's intents may be applied to, and is the default fan-out when no target override is set. Absent means local cluster only. See [`serve.clusters`](#serveclusters) below. |
 
@@ -179,6 +177,61 @@ This only affects the Gateway API. A raw `kubectl apply` is unaffected either wa
 
 **The cluster-scoped alternative.** A CRD can sidestep this entirely by being cluster-scoped (`namespaced: false`) and having `onCreate` provision a namespace as a *child resource* of the CR instead — the CR itself has no namespace, so there's nothing for `serve.namespace` to resolve. Two different answers to the same "a developer shouldn't have to pick a namespace" problem, matched to two different scope choices: cluster-scoped + `onCreate`-provisions-a-child-namespace, or namespaced + `serve.namespace`-routes-into-a-platform-provisioned-one.
 
+## `serve.modes`
+
+Controls which apply modes are available for this CRD. Both modes default to `true` for backward compatibility.
+
+```yaml
+serve:
+  enabled: true
+  modes:
+    target: true   # target mode — submit fields with a target identifier
+    cr: false      # full CR mode — submit a complete Kubernetes CR
+```
+
+**`target`** — when `true`, callers can use the target mode format: `{"target": "app", "fields": ...}`. This is the intent-first delivery model where callers submit flat fields and the gateway builds the CR.
+
+**`cr`** — when `true`, callers can use the full CR format: `{"apiVersion": "...", "kind": "...", "spec": {...}}`. This is the traditional Kubernetes CR submission model.
+
+Both modes default to `true` when omitted. At least one mode must be enabled. `ork validate` enforces this.
+
+**Examples**
+
+Only target mode — enforce intent-first delivery:
+
+```yaml
+serve:
+  enabled: true
+  target: app
+  modes:
+    target: true
+    cr: false
+```
+
+Only full CR mode — disable intent-first delivery:
+
+```yaml
+serve:
+  enabled: true
+  modes:
+    target: false
+    cr: true
+```
+
+Both modes enabled (default):
+
+```yaml
+serve:
+  enabled: true
+  # modes omitted — both true by default
+```
+
+**Validation rules** — `ork validate` checks that:
+
+1. At least one mode is enabled.
+2. If `target` is `false`, `serve.target` must not be set (a target is only meaningful when target mode is enabled).
+
+---
 ## `serve.clusters`
 
 Declares which registered clusters this CRD's intents are allowed to be applied to,
@@ -308,9 +361,11 @@ When omitted, defaults to the lowercased kind (`AppRequest` → `apprequest`).
 ```yaml
 serve:
   enabled: true
+  targetOverride: true
   target:
     smartapp:
       primary: true
+      targetOverride: false   # overrides the global setting
     preview:
       enabled: true           # default; omit to keep it simple
       include: ./serve/aliases/preview.yaml
@@ -677,6 +732,68 @@ serve:
 | `include` | string | Path **relative to the katalog file** to a YAML file with `tokens:` and/or `config:` keys. Resolved at load time. Inline fields take precedence on merge. |
 | `tokens` | map | Per-entry token restrictions — same shape as `serve.tokens`. When set, only tokens listed here are checked for access to this surface. |
 | `config.response` | object | Same `default`, `payload`, `exclude`, and `poll` fields as `serve.config.response`. |
+| `operatorBox` | object | Per-target operatorBox — overrides the CRD-level `operatorBox` for CRs routed through this surface. See [`serve.target.<name>.operatorBox`](#servetargetnameoperatorbox) below. |
+
+### `serve.target.<name>.operatorBox`
+
+When a CR is submitted through the gateway, the apply handler stamps `orkestra.orkspace.io/serve-target` on it. The runtime reconciler reads this annotation at reconcile time and uses the matching target's `operatorBox` instead of the CRD-level one. CRs applied via `kubectl apply` (no annotation) always fall back to the CRD-level `operatorBox`.
+
+This makes it possible to deploy different resources depending on which surface submitted the intent — without branching on `when:` conditions inside a single shared operatorBox:
+
+```yaml
+spec:
+  crds:
+    website:
+      operatorBox:             # fallback — used by kubectl apply / unknown targets
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}"
+          services:
+            - name: "{{ .metadata.name }}-svc"
+
+      serve:
+        enabled: true
+        target:
+          web:
+            primary: true
+            operatorBox:       # used when CR arrives via the "web" target
+              onCreate:
+                deployments:
+                  - name: "{{ .metadata.name }}-web"
+          apifixture:
+            operatorBox:       # used when CR arrives via the "apifixture" target
+              onCreate:
+                deployments:
+                  - name: "{{ .metadata.name }}-apifixture"
+```
+
+**Resolution order** (most specific first):
+
+1. The target entry whose name matches `serve-alias` annotation (alias wins over primary)
+2. The target entry whose name matches `serve-target` annotation
+3. CRD-level `operatorBox` — fallback when no annotation or no matching target
+
+**Cleanup on target change** — when a CR moves between targets (e.g. re-submitted via a different surface), the previous target's resources are cleaned up automatically via a label-selector sweep on `orkestra-owner=<name>.<prevTarget>`. No manual cleanup is needed. To retain old-target resources deliberately, set `keepPreviousSurface: true` in `target.<name>.apply.overrides`.
+
+**What stays fixed at the CRD level** — reconciler settings (`workers`, `resync`, `autoscale`) are always taken from the CRD-level `operatorBox`. Everything else — templates, gates, status, hooks, and `hooks.args` — falls back to the CRD-level value when absent on the target, and can be overridden when present.
+
+→ [Full per-target operatorBox reference](26-serve-target-operatorbox.md) — preReconcile gates, surface switch cleanup, `keepPreviousSurface`, simulate patterns
+
+**Simulating a specific target** — use `spec.target` in the simulate file, or `--target` on the CLI:
+
+```yaml
+# simulate-web.yaml
+spec:
+  katalog: ./katalog.yaml
+  cr: ./cr.yaml
+  target: web
+  expect:
+    ops:
+      - cycle: 1
+        verb: create
+        resource: deployments
+        name: my-app-web
+```
 
 ### `include:` files for target entries
 

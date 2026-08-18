@@ -210,7 +210,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 		}
 		return fmt.Errorf("cronjob.DeleteIfOwned: getting %q: %w", name, err)
 	}
-	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != labels.EffectiveOwnerKey(owner.GetName(), owner.GetAnnotations()) {
 		return nil
 	}
 	return kube.Clientset().BatchV1().CronJobs(namespace).
@@ -288,15 +288,13 @@ func Resolve(src orktypes.CronJobTemplateSource, ownerName string, reg orktypes.
 		spec.Labels[k] = v
 	}
 
-	spec.Labels[labels.ManagedKey] = labels.ManagedValue
-	spec.Labels[labels.OrkestraOwner] = ownerName
-
 	return spec
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildCronJob(owner domain.Object, spec ResolvedCronJobSpec, namespace string) *batchv1.CronJob {
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	cj := &batchv1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      spec.Name,

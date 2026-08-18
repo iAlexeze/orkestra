@@ -252,7 +252,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 	}
 
 	// Only delete if we own it
-	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != labels.EffectiveOwnerKey(owner.GetName(), owner.GetAnnotations()) {
 		return nil
 	}
 	return kube.Clientset().CoreV1().ConfigMaps(namespace).
@@ -279,9 +279,6 @@ func Resolve(src orktypes.ConfigMapTemplateSource, ownerName string) ResolvedCon
 	for k, v := range src.Labels {
 		spec.Labels[k] = v
 	}
-
-	spec.Labels[labels.ManagedKey] = labels.ManagedValue
-	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }
@@ -333,6 +330,7 @@ func resolveData(
 }
 
 func buildConfigMap(owner domain.Object, spec ResolvedConfigMapSpec, namespace string, data map[string]string) *corev1.ConfigMap {
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      spec.Name,

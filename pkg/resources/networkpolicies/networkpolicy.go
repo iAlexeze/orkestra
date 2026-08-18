@@ -155,7 +155,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 		}
 		return err
 	}
-	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != labels.EffectiveOwnerKey(owner.GetName(), owner.GetAnnotations()) {
 		return nil
 	}
 	return kube.Clientset().NetworkingV1().NetworkPolicies(namespace).
@@ -243,8 +243,6 @@ func Resolve(src orktypes.NetworkPolicyTemplateSource, ownerName string, reg ork
 	for k, v := range src.Labels {
 		spec.Labels[k] = v
 	}
-	spec.Labels[labels.ManagedKey] = labels.ManagedValue
-	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }
@@ -315,6 +313,7 @@ func buildNetworkPolicyFromSpec(
 	namespace string,
 	npSpec networkingv1.NetworkPolicySpec,
 ) *networkingv1.NetworkPolicy {
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      spec.Name,

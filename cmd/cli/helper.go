@@ -46,9 +46,10 @@ var (
 	healthIconWarn  = utils.HealthIconWarning
 
 	// other cli utilities
-	orkestraLogo       = utils.OrkestraLogoCLI
-	isRunningInCluster = utils.IsRunningInCluster
-	writeFileAndFormat = utils.WriteFileAndFormat
+	orkestraLogo        = utils.OrkestraLogoCLI
+	isRunningInCluster  = utils.IsRunningInCluster
+	writeFileAndFormat  = utils.WriteFileAndFormat
+	splitCommaSeparated = utils.SplitCommaSeparated
 )
 
 // sortedKeys returns a sorted slice of all keys from the given map.
@@ -725,6 +726,10 @@ func printTypedOperatorHint(err *katalog.TypedOperatorError, command string) {
 // katalog. Reads timeline state from the KatalogDeprecation methods.
 // Prints nothing if the block is nil or today is before timeline.from.
 func printKatalogDeprecation(d *orktypes.KatalogDeprecation) {
+	printKatalogDeprecationWithHint(d, "")
+}
+
+func printKatalogDeprecationWithHint(d *orktypes.KatalogDeprecation, hint string) {
 	if d == nil {
 		return
 	}
@@ -733,17 +738,7 @@ func printKatalogDeprecation(d *orktypes.KatalogDeprecation) {
 	if state == "none" {
 		return
 	}
-	printDeprecationBlock(state, d.Message, d.MigratedTo, d.TimelineTo(), d.DaysUntilEOL(today))
-
-	// Stale accept flag warnings — shown after the block so they are not missed.
-	if d.Accept != nil {
-		if d.Accept.Eol && !d.Accept.BeforeEol {
-			fmt.Printf("  %s accept.eol is set without accept.beforeEol — eol: true alone is not sufficient\n", yellow("⚠"))
-		}
-		if d.Accept.BeforeEol && !d.Accept.Eol && state == "eol" {
-			fmt.Printf("  %s accept.beforeEol is set but the EOL date has passed — add accept.eol: true or ork run will refuse to start\n", yellow("⚠"))
-		}
-	}
+	printDeprecationBlock(state, d.Message, d.MigratedTo, d.TimelineTo(), hint, d.DaysUntilEOL(today))
 }
 
 // printPatternDeprecation prints the deprecation notice for a registry pattern
@@ -766,7 +761,7 @@ func printPatternDeprecation(dep *registry.PatternDeprecated) {
 }
 
 // printDeprecationBlock renders the deprecation block for a given state.
-func printDeprecationBlock(state, message, migrateTo, eolDate string, daysLeft int) {
+func printDeprecationBlock(state, message, migrateTo, eolDate, hint string, daysLeft int) {
 	switch state {
 	case "eol":
 		fmt.Printf("\n%s  END OF LIFE\n", red("✗"))
@@ -786,6 +781,9 @@ func printDeprecationBlock(state, message, migrateTo, eolDate string, daysLeft i
 	}
 	if migrateTo != "" {
 		fmt.Printf("  Migrate to:  %s\n", bold(migrateTo))
+	}
+	if hint != "" {
+		fmt.Printf("  %s\n", hint)
 	}
 	fmt.Println()
 }

@@ -153,7 +153,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 		return err
 	}
 	// Only delete if we own it
-	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != labels.EffectiveOwnerKey(owner.GetName(), owner.GetAnnotations()) {
 		return nil
 	}
 	return kube.Clientset().CoreV1().Pods(namespace).
@@ -203,8 +203,6 @@ func Resolve(src orktypes.PodTemplateSource, ownerName string, reg orktypes.Prof
 	}
 
 	// System labels — always present
-	spec.Labels[labels.ManagedKey] = labels.ManagedValue
-	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }
@@ -212,6 +210,7 @@ func Resolve(src orktypes.PodTemplateSource, ownerName string, reg orktypes.Prof
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildPod(owner domain.Object, spec ResolvedPodSpec, namespace string) *corev1.Pod {
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        spec.Name,

@@ -9,9 +9,16 @@ import "strings"
 //  1. The primary entry's map key in serve.target (map form).
 //  2. serve.target shorthand string (before load-time expansion).
 //  3. Lowercased kind — "App" → "app", "DatabaseCluster" → "databasecluster".
+//
+// Returns an empty string when target mode is disabled (serve.modes.target: false).
+// This ensures that when target mode is turned off, the CRD has no target
+// regardless of what the configuration declares.
 func (c *CRDEntry) ServeTarget() string {
 	if c.Serve == nil {
 		return strings.ToLower(c.APITypes.Kind)
+	}
+	if !c.TargetModeEnabled() {
+		return ""
 	}
 	// Shorthand (before scalar expansion at load time).
 	if c.Serve.Target.Shorthand != "" {
@@ -27,13 +34,18 @@ func (c *CRDEntry) ServeTarget() string {
 }
 
 // HasServeTarget reports whether this CRD can be addressed by its primary target.
-// Returns false when serve is disabled, kind is absent, or the primary entry's
-// enabled flag is false. A disabled primary means the CRD is only reachable
-// via its alias entries.
+// Returns false when:
+//   - serve is disabled
+//   - kind is absent
+//   - target mode is disabled (serve.modes.target: false)
+//   - the primary entry's enabled flag is false
+//
+// A disabled primary means the CRD is only reachable via its alias entries.
 func (c *CRDEntry) HasServeTarget() bool {
-	if !c.ServeEnabled() || c.APITypes.Kind == "" {
+	if !c.ServeEnabled() || c.APITypes.Kind == "" || !c.TargetModeEnabled() {
 		return false
 	}
+
 	if c.Serve.Target.IsZero() {
 		return true // no target config at all → default enabled
 	}
@@ -52,10 +64,21 @@ func (c *CRDEntry) ServeTargetOrEmpty() string {
 	return c.ServeTarget()
 }
 
+// FirstServeTargetEntry returns the first serve entry in the map
+func (c *CRDEntry) FirstServeTargetEntry() *ServeTargetConfig {
+	if c.Serve == nil || !c.TargetModeEnabled() {
+		return nil
+	}
+	for _, cfg := range c.Serve.Target.Entries {
+		return cfg
+	}
+	return nil
+}
+
 // PrimaryTarget returns the TargetConfig whose Primary flag is true, or nil when
 // no primary entry is declared (scalar shorthand, or no target configured).
 func (c *CRDEntry) PrimaryTarget() *ServeTargetConfig {
-	if c.Serve == nil {
+	if c.Serve == nil || !c.TargetModeEnabled() {
 		return nil
 	}
 	for _, cfg := range c.Serve.Target.Entries {
@@ -70,7 +93,7 @@ func (c *CRDEntry) PrimaryTarget() *ServeTargetConfig {
 // Intended for CLI display only — callers that resolve requests should use
 // LookupTarget, which filters disabled entries.
 func (c *CRDEntry) AllServeTargets() map[string]*ServeTargetConfig {
-	if c.Serve == nil {
+	if c.Serve == nil || !c.TargetModeEnabled() {
 		return nil
 	}
 	return c.Serve.Target.Entries
@@ -79,7 +102,7 @@ func (c *CRDEntry) AllServeTargets() map[string]*ServeTargetConfig {
 // LookupTarget returns the TargetConfig for the given entry name if it is enabled.
 // Returns nil for disabled entries, the primary when name matches, and unknown names.
 func (c *CRDEntry) LookupTarget(name string) *ServeTargetConfig {
-	if c.Serve == nil {
+	if c.Serve == nil || !c.TargetModeEnabled() {
 		return nil
 	}
 	cfg, ok := c.Serve.Target.Entries[name]

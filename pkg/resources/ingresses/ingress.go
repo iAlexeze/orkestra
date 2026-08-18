@@ -143,7 +143,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 		}
 		return err
 	}
-	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != labels.EffectiveOwnerKey(owner.GetName(), owner.GetAnnotations()) {
 		return nil
 	}
 	return kube.Clientset().NetworkingV1().Ingresses(namespace).
@@ -190,8 +190,6 @@ func Resolve(src orktypes.IngressTemplateSource, ownerName string) ResolvedIngre
 	}
 
 	// System labels
-	spec.Labels[labels.ManagedKey] = labels.ManagedValue
-	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	if src.TLS != nil && src.TLS.Create {
 		secretName := src.TLS.SecretName
@@ -212,6 +210,7 @@ func Resolve(src orktypes.IngressTemplateSource, ownerName string) ResolvedIngre
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildIngress(owner domain.Object, spec ResolvedIngressSpec, namespace string) *networkingv1.Ingress {
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	apiVersion := ""
 	kind := ""
 	if u, ok := owner.(*unstructured.Unstructured); ok {

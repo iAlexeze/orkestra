@@ -384,16 +384,35 @@ func (a APIAuth) IsEmpty() bool {
 	return len(a.Tokens) == 0
 }
 
+// KatalogLifecyclePolicy holds lifecycle-related enforcement rules within a policy: block.
+type KatalogLifecyclePolicy struct {
+	// MinMaturity sets the minimum lifecycle maturity allowed for imported patterns.
+	// Imports below this floor are errors at ork validate time rather than warnings.
+	// Valid values: alpha, beta, stable (deprecated imports are always errors without accept).
+	MinMaturity LifecycleMaturity `yaml:"minMaturity,omitempty" json:"minMaturity,omitempty"`
+}
+
+// KatalogPolicy declares platform-level enforcement rules for a Komposer.
+// Policy is distinct from lifecycle: — it is a platform-tier concern that
+// governs what imports are allowed, not what the pattern itself signals.
+// Structured as policy.<area>.* so new policy categories (security, registry,
+// user-defined) can grow alongside lifecycle without flattening into one block.
+type KatalogPolicy struct {
+	Lifecycle *KatalogLifecyclePolicy `yaml:"lifecycle,omitempty" json:"lifecycle,omitempty"`
+}
+
 // KatalogFile is the top-level structure of a katalog.yaml file.
 // It contains optional imports (files and helm charts) plus inline CRDs.
 // Orkestra's in-built merger resolves all imports and merges everything into one KatalogSpec.
 type KatalogFile struct {
-	APIVersion string          `yaml:"apiVersion"`
-	Kind       string          `yaml:"kind"`
-	Metadata   KatalogMeta     `yaml:"metadata"`
-	Imports    *KatalogSources `yaml:"imports,omitempty"`
-	Spec       KatalogSpec     `yaml:"spec"`
-	Security   KatalogSecurity `yaml:"security"`
+	APIVersion string            `yaml:"apiVersion"`
+	Kind       string            `yaml:"kind"`
+	Metadata   KatalogMeta       `yaml:"metadata"`
+	Lifecycle  *KatalogLifecycle `yaml:"lifecycle,omitempty" json:"lifecycle,omitempty"`
+	Policy     *KatalogPolicy    `yaml:"policy,omitempty"    json:"policy,omitempty"`
+	Imports    *KatalogSources   `yaml:"imports,omitempty"`
+	Spec       KatalogSpec       `yaml:"spec"`
+	Security   KatalogSecurity   `yaml:"security"`
 
 	// CrossAccess sets the default cross-read policy for all CRDs in this Katalog.
 	// When false, no other Katalog may read any CRD in this one via cross:.
@@ -496,10 +515,6 @@ type KatalogMeta struct {
 	// time. The operator and runtime ignore this field — it is purely for
 	// persona-aware tooling and Control Center UI.
 	Projects map[string]interface{} `yaml:"projects,omitempty" json:"projects,omitempty"`
-
-	// Deprecation marks this pattern as deprecated. When set, consumers
-	// (ork validate, ork inspect, ork patterns) display a warning.
-	Deprecation *KatalogDeprecation `yaml:"deprecation,omitempty" json:"deprecation,omitempty"`
 }
 
 // DeprecationTimeline sets the date window for deprecation display.
@@ -509,21 +524,78 @@ type DeprecationTimeline struct {
 	To   string `yaml:"to,omitempty"   json:"to,omitempty"`   // EOL on this date
 }
 
-// DeprecationAccept records explicit operator acknowledgement that a deprecated
-// or EOL katalog is intentionally kept running.
-type DeprecationAccept struct {
-	// BeforeEol allows ork run / ork gate to start while the pattern is in the
-	// deprecation warning window (from ≤ today < to, or no timeline).
-	BeforeEol bool `yaml:"beforeEol,omitempty" json:"beforeEol,omitempty"`
-	// Eol allows ork run / ork gate to start after the pattern has passed its
-	// end-of-life date (today ≥ to). Requires BeforeEol to also be true.
-	Eol bool `yaml:"eol,omitempty" json:"eol,omitempty"`
+// LifecycleMaturity signals the stability level of a Katalog pattern.
+type LifecycleMaturity string
+
+const (
+	MaturityAlpha      LifecycleMaturity = "alpha"
+	MaturityBeta       LifecycleMaturity = "beta"
+	MaturityStable     LifecycleMaturity = "stable"
+	MaturityDeprecated LifecycleMaturity = "deprecated"
+)
+
+// LifecycleCompat declares which Kubernetes and Orkestra versions this pattern
+// has been verified against. Both fields accept Masterminds semver range syntax.
+type LifecycleCompat struct {
+	Kubernetes string `yaml:"kubernetes,omitempty" json:"kubernetes,omitempty"`
+	Orkestra   string `yaml:"orkestra,omitempty"   json:"orkestra,omitempty"`
+}
+
+// KomposerAcceptEntry acknowledges the lifecycle state of a single imported pattern.
+// Naming a pattern here accepts any deprecation or pre-stable maturity concern for
+// that import. Version, when set, scopes the acceptance to a semver range — ork
+// validate warns when the imported version no longer matches (stale acceptance).
+type KomposerAcceptEntry struct {
+	Name    string `yaml:"name"`
+	Author  string `yaml:"author,omitempty"  json:"author,omitempty"`
+	Version string `yaml:"version,omitempty" json:"version,omitempty"` // semver range; omit = all versions
+}
+
+// KomposerAccept is valid only on a Komposer. It declares which imported patterns
+// the Komposer author has evaluated and accepted, regardless of their lifecycle state.
+type KomposerAccept struct {
+	Patterns []KomposerAcceptEntry `yaml:"patterns,omitempty" json:"patterns,omitempty"`
+}
+
+// Accepts reports whether the given pattern name (and optional author) is covered.
+func (a *KomposerAccept) Accepts(name, author string) bool {
+	if a == nil {
+		return false
+	}
+	for _, e := range a.Patterns {
+		if e.Name != name {
+			continue
+		}
+		if author != "" && e.Author != "" && e.Author != author {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+// KatalogLifecycle is the top-level policy block for a Katalog. It governs
+// maturity signals, deprecation, and compatibility gates. The runtime ignores
+// this field — it is read only by tooling (ork validate, ork push, ork inspect).
+type KatalogLifecycle struct {
+	Maturity      LifecycleMaturity   `yaml:"maturity,omitempty"      json:"maturity,omitempty"`
+	Deprecation   *KatalogDeprecation `yaml:"deprecation,omitempty"   json:"deprecation,omitempty"`
+	Compatibility *LifecycleCompat    `yaml:"compatibility,omitempty" json:"compatibility,omitempty"`
+	// Accept is only valid on a Komposer. It acknowledges lifecycle concerns of imported patterns.
+	Accept *KomposerAccept `yaml:"accept,omitempty" json:"accept,omitempty"`
+}
+
+// IsDeprecated reports whether the lifecycle block declares the pattern deprecated.
+func (l *KatalogLifecycle) IsDeprecated() bool {
+	if l == nil {
+		return false
+	}
+	return l.Maturity == MaturityDeprecated || (l.Deprecation != nil && l.Deprecation.IsDeprecated())
 }
 
 // KatalogDeprecation carries deprecation guidance for registry consumers.
 type KatalogDeprecation struct {
 	Timeline   *DeprecationTimeline `yaml:"timeline,omitempty"   json:"timeline,omitempty"`
-	Accept     *DeprecationAccept   `yaml:"accept,omitempty"     json:"accept,omitempty"`
 	MigratedTo string               `yaml:"migratedTo,omitempty" json:"migratedTo,omitempty"`
 	Message    string               `yaml:"message,omitempty"    json:"message,omitempty"`
 }
@@ -626,24 +698,6 @@ func (d *KatalogDeprecation) DaysUntilEOL(today time.Time) int {
 	return days
 }
 
-// AcceptsBeforeEol reports whether the operator has acknowledged running this
-// pattern during the deprecation warning window.
-func (d *KatalogDeprecation) AcceptsBeforeEol() bool {
-	if d == nil || d.Accept == nil {
-		return false
-	}
-	return d.Accept.BeforeEol
-}
-
-// AcceptsEol reports whether the operator has acknowledged running this pattern
-// after it has passed its end-of-life date. Both accept.beforeEol and accept.eol
-// must be true.
-func (d *KatalogDeprecation) AcceptsEol() bool {
-	if d == nil || d.Accept == nil {
-		return false
-	}
-	return d.Accept.BeforeEol && d.Accept.Eol
-}
 
 // KatalogSources declares where to load CRD definitions from.
 // Sources are loaded before spec.crds — inline CRDs are merged last

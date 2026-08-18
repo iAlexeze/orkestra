@@ -111,10 +111,21 @@ the local cluster — the one the gateway runs on. This is unchanged behaviour.
 
 ## Read path behaviour
 
-When the gateway reads resources (GET requests), cluster templates are not
-resolved — the intent fields are not available on the read path. The gateway
-falls back to the local cluster for reads and lists. Writes (POST, PATCH,
-DELETE) resolve the cluster expression against the submitted fields.
+GET requests for resources and schema support a `?cluster=<name>` query parameter
+that routes the request to the named registered cluster:
+
+```bash
+# Read a resource from a specific cluster
+curl /api/v1/resources/AppRequest/default/payments-api?cluster=prod \
+  -H "Authorization: Bearer $TOKEN"
+
+# Get the schema for a target on a specific cluster
+curl /api/v1/schema?target=app&cluster=staging \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+When `?cluster` is omitted, the gateway reads from the local cluster. When the
+cluster name is not registered, the gateway returns a 404.
 
 ## Onboarding a new cluster
 

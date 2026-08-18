@@ -105,6 +105,7 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/health"
+	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
@@ -316,9 +317,9 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 		}
 
 		// ── Enqueue filter — Tier 2b (pre-enqueue condition gate) ─────────────
-		// Register when the CRD declares operatorBox.preReconcile.enqueueGate or
-		// preReconcile.external conditions.
-		if rc := crd.PreReconcileCheck(); rc.HasEnqueueGate() {
+		// Register when any operatorBox (CRD-level or per-target) declares an
+		// enqueueGate. EvaluateEnqueueFilter resolves the effective box at runtime.
+		if crd.HasAnyEnqueueGate() {
 			crdNameForFilter := crd.Name
 			katForFilter := kat
 			cs := kube.Clientset()
@@ -429,6 +430,30 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 			factory = func() domain.Reconciler {
 				return crd.OperatorBox.Constructor(ctorKube, infCopy, ev)
 			}
+		}
+
+		// Wrap with MuxReconciler when per-target constructors are declared.
+		// MuxReconciler dispatches each reconcile cycle to the matching target's
+		// domain.Reconciler, falling back to the base factory for CRs with no
+		// annotation or an unrecognised target name.
+		if crd.HasTargetConstructorFactories() {
+			baseFactory := factory
+			crdCopy := crd
+			factory = func() domain.Reconciler {
+				targets := make(map[string]domain.Reconciler, len(crdCopy.TargetReconcilerFactories))
+				for targetName, ctor := range crdCopy.TargetReconcilerFactories {
+					var targetKube kubeclient.Interface = kube
+					if args := crdCopy.TargetConstructorArgs(targetName); len(args) > 0 {
+						targetKube = kube.WithArgs(kubeclient.Args(args))
+					}
+					targets[targetName] = ctor(targetKube, infCopy, ev)
+				}
+				return orktarget.NewMuxReconciler(infCopy, targets, baseFactory())
+			}
+			logger.Debug().
+				Str("gvk", gvk).
+				Int("targets", len(crd.TargetReconcilerFactories)).
+				Msg("wiring MuxReconciler factory")
 		}
 
 		// Register informs the DependencyKordinator which informer and factory

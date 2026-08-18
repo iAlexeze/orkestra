@@ -163,9 +163,65 @@ valid signature from one of the listed identities is present.
 
 ---
 
+## How do I mark a pattern as deprecated?
+
+Set `lifecycle.maturity: deprecated` and fill in `lifecycle.deprecation`:
+
+```yaml
+lifecycle:
+  maturity: deprecated
+  deprecation:
+    migratedTo: ghcr.io/myorg/katalogs/webapp@v2.0.0
+    message: "Migrate to v2.0.0 before 2027-01-01."
+    timeline:
+      from: "2026-01-01"
+      to: "2027-01-01"
+```
+
+Then push normally — `ork push` creates a new artifact with the deprecation metadata baked in. The previous version is not modified.
+
+→ [Lifecycle guide](guides/registry/10-lifecycle.md)
+
+---
+
+## What does maturity: alpha mean for consumers?
+
+`ork validate` prints a non-fatal warning when a Katalog or an imported pattern carries `maturity: alpha` or `maturity: beta`. The warning does not block validation — it is informational.
+
+To acknowledge the warning on a Komposer, list the pattern in `lifecycle.accept.patterns`:
+
+```yaml
+lifecycle:
+  accept:
+    patterns:
+      - name: cache-operator
+        author: myorg
+```
+
+---
+
+## How do I suppress lifecycle warnings in ork validate?
+
+Warnings for deprecated or pre-stable imports are suppressed by declaring acceptance on the Komposer — not by a flag, and not on the Katalog itself.
+
+```yaml
+lifecycle:
+  accept:
+    patterns:
+      - name: webapp-operator
+        author: myorg
+```
+
+Each `patterns` entry covers all lifecycle concerns for that import — deprecated, alpha, beta.
+
+→ [Lifecycle — Accept](guides/registry/10-lifecycle.md#accept--komposer-level)
+
+---
+
 ## Further reading
 
 - **[Orkestra Registry](../orkestra-registry/index.md)** — full publishing and pulling reference
 - **[simulate gates](../orkestra-registry/05-simulate.md)** — how simulate quality signals work
 - **[e2e gates](../orkestra-registry/04-e2e.md)** — how e2e quality signals work
 - **[Artifact Signing](../security/10-artifact-signing.md)** — keyless signing, CI setup, local testing
+- **[Lifecycle](guides/registry/10-lifecycle.md)** — maturity, deprecation, compatibility, and acceptance

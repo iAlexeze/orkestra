@@ -105,15 +105,17 @@ func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) (map[string]ork
 		)
 	}
 
-	if dep := doc.Metadata.Deprecation; dep != nil {
-		msg := fmt.Sprintf("warning: registry pattern %q@%s is deprecated", cleanURL, version)
-		if dep.MigratedTo != "" {
-			msg += fmt.Sprintf(" — migrate to: %s", dep.MigratedTo)
+	if lc := doc.Lifecycle; lc != nil {
+		if dep := lc.Deprecation; dep != nil {
+			msg := fmt.Sprintf("warning: registry pattern %q@%s is deprecated", cleanURL, version)
+			if dep.MigratedTo != "" {
+				msg += fmt.Sprintf(" — migrate to: %s", dep.MigratedTo)
+			}
+			if dep.Message != "" {
+				msg += fmt.Sprintf(" (%s)", dep.Message)
+			}
+			fmt.Fprintln(os.Stderr, msg)
 		}
-		if dep.Message != "" {
-			msg += fmt.Sprintf(" (%s)", dep.Message)
-		}
-		fmt.Fprintln(os.Stderr, msg)
 	}
 
 	registryRef := fmt.Sprintf("%s@%s", cleanURL, version)

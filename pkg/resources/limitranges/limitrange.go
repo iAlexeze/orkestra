@@ -153,7 +153,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 		}
 		return err
 	}
-	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != labels.EffectiveOwnerKey(owner.GetName(), owner.GetAnnotations()) {
 		return nil
 	}
 	return kube.Clientset().CoreV1().LimitRanges(namespace).
@@ -234,8 +234,6 @@ func Resolve(src orktypes.LimitRangeTemplateSource, ownerName string, reg orktyp
 	for k, v := range src.Labels {
 		spec.Labels[k] = v
 	}
-	spec.Labels[labels.ManagedKey] = labels.ManagedValue
-	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }
@@ -290,6 +288,7 @@ func buildLimitRange(
 	namespace string,
 	limits []orktypes.LimitRangeItem,
 ) *corev1.LimitRange {
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	return &corev1.LimitRange{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      spec.Name,

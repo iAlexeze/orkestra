@@ -1,0 +1,33 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: cache-operator
+  version: v0.2.0
+  description: >
+    Cache operator v0.2.0 — alpha, API surface is settling.
+  author: myorg
+  license: Apache-2.0
+
+lifecycle:
+  maturity: alpha
+
+spec:
+  crds:
+    cache:
+      crdFile: ./crd-cache.yaml
+
+      imports:
+        - motif: ../01-motifs/web-service/motif.yaml
+          with:
+            image: "{{ .spec.image }}"
+            port: "{{ .spec.port }}"
+            replicas: "{{ .spec.replicas }}"
+
+      operatorBox:
+        reconciler:
+          workers: 2
+          resync: 1m
+        status:
+          fields:
+            - path: phase
+              value: "Running"

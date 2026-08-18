@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/orkspace/orkestra/pkg/gateway/api"
+	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/registry/simulate"
@@ -62,7 +63,7 @@ func runCreateUpdateChain(k *katalog.Katalog, raw map[string]interface{}, tokenN
 	// Stage 3: CR construction
 	printStage(3, "CR construction")
 	notes := k.Notes
-	obj, err := api.BuildCRFromTarget(raw, crd, notes)
+	obj, err := orktarget.BuildCRFromTarget(raw, crd, notes)
 	if err != nil {
 		printStageError(err.Error())
 		return nil, nil, "", err
@@ -77,7 +78,7 @@ func runCreateUpdateChain(k *katalog.Katalog, raw map[string]interface{}, tokenN
 	// Stage 4: Provenance — stamp first, then print the CR so annotations are visible
 	printStage(4, "Provenance annotations")
 	api.InjectProvenanceAnnotations(obj, crd.ServeTarget(), alias, source)
-	api.InjectIntentAnnotation(obj, raw)
+	api.InjectServeIntentAnnotation(obj, raw)
 	ann := obj.GetAnnotations()
 	keys := make([]string, 0, len(ann))
 	for k := range ann {
@@ -187,7 +188,7 @@ func playRunSimulate(ctx context.Context, katalogFile string, obj *unstructured.
 	if simulateConfig != "" {
 		return runSimulateWithCR(ctx, simulateConfig, tmp.Name())
 	}
-	return runSimulate(ctx, katalogFile, tmp.Name(), "", 10, simulate.RunOptions{SkipExternal: true}, false, false, "")
+	return runSimulate(ctx, katalogFile, tmp.Name(), cliSimulateOptions{MaxCycles: 10, SkipExternal: true})
 }
 
 // runSimulateWithCR runs simulate using the spec file for katalog/cycles/expect
@@ -252,7 +253,7 @@ func runSimulateWithCR(ctx context.Context, specPath, crFile string) error {
 		crdOpts.Peers = in.peers
 		crdOpts.ExistingInstances = in.existing
 		expect := simulate.ExpectForCRD(doc.Spec.Expect, name)
-		if err := simulateOne(ctx, kat, name, in.cr, cycles, crdOpts, false, false, nil, "", expect); err != nil {
+		if err := simulateOne(ctx, kat, name, in.cr, cycles, crdOpts, cliSimulateOptions{}, nil, expect); err != nil {
 			failed = append(failed, name)
 		}
 	}
@@ -300,7 +301,7 @@ func runIntentPlay(katalogPath, intentFile string) (string, error) {
 		return target, fmt.Errorf("intent file must declare a 'token' — token: <name>")
 	}
 
-	obj, err := api.BuildCRFromTarget(raw, crd, k.Notes)
+	obj, err := orktarget.BuildCRFromTarget(raw, crd, k.Notes)
 	if err != nil {
 		return target, fmt.Errorf("CR construction: %w", err)
 	}

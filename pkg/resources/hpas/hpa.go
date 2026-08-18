@@ -145,7 +145,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 		}
 		return err
 	}
-	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != labels.EffectiveOwnerKey(owner.GetName(), owner.GetAnnotations()) {
 		return nil
 	}
 	return kube.Clientset().AutoscalingV2().HorizontalPodAutoscalers(namespace).
@@ -208,8 +208,6 @@ func Resolve(src orktypes.HPATemplateSource, ownerName string, reg orktypes.Prof
 	}
 
 	// System labels
-	spec.Labels[labels.ManagedKey] = labels.ManagedValue
-	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }
@@ -217,6 +215,7 @@ func Resolve(src orktypes.HPATemplateSource, ownerName string, reg orktypes.Prof
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildHPA(owner domain.Object, spec ResolvedHPASpec, namespace string) *autoscalingv2.HorizontalPodAutoscaler {
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	apiVersion := ""
 	kind := ""
 	if u, ok := owner.(*unstructured.Unstructured); ok {

@@ -4,6 +4,7 @@ package types
 import (
 	"sort"
 
+	"github.com/orkspace/orkestra/domain"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -254,6 +255,17 @@ type CRDEntry struct {
 	// NotificationEnabled returns whether this CRD belongs to katalog with notification access
 	NotificationEnabled *bool `yaml:"-" json:"-"`
 
+	// TargetHookFactories — per-target hook factories, keyed by target name.
+	// Populated by addTargetHooks() from TargetHookRegistry.
+	// Only set for targets that declare a distinct hook binary from the CRD-level.
+	// Targets that share the CRD-level binary (only overriding args) are absent —
+	// mergeReconcilerConfig handles them at reconcile time via EffectiveOperatorBox.
+	TargetHookFactories map[string]func() domain.AnyReconcileHooks `yaml:"-" json:"-"`
+
+	// TargetReconcilerFactories — per-target constructor factories, keyed by target name.
+	// Populated by addTargetConstructors() from TargetReconcilerRegistry.
+	TargetReconcilerFactories map[string]NewReconcilerFunc `yaml:"-" json:"-"`
+
 	// RemoveFinalizers -> testing
 	RemoveFinalizers bool `yaml:"removeFinalizers,omitempty" json:"removeFinalizers,omitempty"`
 
@@ -275,6 +287,87 @@ type CRDEntry struct {
 	// When enabled, the Control Center renders a [+ Create] button for this CRD
 	// and serves its schema via GET /api/v1/schema/{kind}.
 	Serve *ServeConfig `yaml:"serve,omitempty" json:"serve,omitempty"`
+}
+
+// EffectiveOperatorBox returns the operatorBox for a given target.
+// When a target entry declares its own operatorBox, non-template fields
+// (preReconcile, status) fall back to the CRD-level values when absent
+// on the target — so a CRD-level gate or status config applies to all
+// surfaces unless a target explicitly overrides it.
+//
+// Reconciler merge: target args override CRD-level args, but identity fields
+// (location, function, alias, resources) and tuning fields (workers, resync,
+// queue) always come from the CRD-level when the target omits them.
+// HookFactory is runtime-registered on the CRD-level box only and is always
+// propagated so the hook binary is reachable from every target surface.
+func (c *CRDEntry) EffectiveOperatorBox(target string) *OperatorBoxConfig {
+	if target == "" {
+		return &c.OperatorBox
+	}
+	if c.Serve != nil && c.Serve.Target.Entries != nil {
+		if cfg, ok := c.Serve.Target.Entries[target]; ok && cfg.OperatorBox != nil {
+			box := *cfg.OperatorBox
+			if box.PreReconcile == nil {
+				box.PreReconcile = c.OperatorBox.PreReconcile
+			}
+			if box.Status == nil {
+				box.Status = c.OperatorBox.Status
+			}
+			box.Reconciler = mergeReconcilerConfig(c.OperatorBox.Reconciler, box.Reconciler)
+			// HookFactory is set at load time on the CRD-level box only.
+			box.HookFactory = c.OperatorBox.HookFactory
+			return &box
+		}
+	}
+	return &c.OperatorBox
+}
+
+// mergeReconcilerConfig merges a per-target reconciler on top of the CRD-level one.
+// Workers, resync, queue, and profile are always taken from the CRD-level (they stay
+// fixed). Hook identity fields (location, function, alias, resources) come from the
+// CRD-level when the target omits them. Args are merged key-by-key with target winning.
+func mergeReconcilerConfig(base, target *ReconcilerConfig) *ReconcilerConfig {
+	if target == nil {
+		return base
+	}
+	if base == nil {
+		return target
+	}
+	// Start from base so workers/resync/queue/profile/default/constructor are inherited.
+	merged := *base
+	if target.Hooks != nil {
+		if merged.Hooks == nil {
+			merged.Hooks = target.Hooks
+		} else {
+			h := *merged.Hooks
+			// Identity fields: target wins only when explicitly set.
+			if target.Hooks.Location != "" {
+				h.Location = target.Hooks.Location
+			}
+			if target.Hooks.Function != "" {
+				h.Function = target.Hooks.Function
+			}
+			if target.Hooks.Alias != "" {
+				h.Alias = target.Hooks.Alias
+			}
+			if len(target.Hooks.Resources) > 0 {
+				h.Resources = target.Hooks.Resources
+			}
+			// Args: merge key-by-key; target overrides CRD-level per key.
+			if len(target.Hooks.Args) > 0 {
+				args := make(map[string]interface{}, len(h.Args)+len(target.Hooks.Args))
+				for k, v := range h.Args {
+					args[k] = v
+				}
+				for k, v := range target.Hooks.Args {
+					args[k] = v
+				}
+				h.Args = args
+			}
+			merged.Hooks = &h
+		}
+	}
+	return &merged
 }
 
 type ConversionVersionSpec struct {
@@ -307,6 +400,143 @@ func (c *CRDEntry) ServeEnabled() bool {
 // resolves and applies a name override when this is true.
 func (c *CRDEntry) HasServeName() bool {
 	return c.Serve != nil && c.Serve.Name != ""
+}
+
+// TargetModeEnabled reports whether target mode is enabled for this CRD.
+// Defaults to true when serve.modes is omitted or when serve.modes.target is nil.
+func (c *CRDEntry) TargetModeEnabled() bool {
+	if !c.ServeEnabled() {
+		return false
+	}
+	if c.Serve.Modes == nil || c.Serve.Modes.Target == nil {
+		return true
+	}
+	return *c.Serve.Modes.Target
+}
+
+// FullCRModeEnabled reports whether full CR mode is enabled for this CRD.
+// Defaults to true when serve.modes is omitted or when serve.modes.cr is nil.
+func (c *CRDEntry) FullCRModeEnabled() bool {
+	if !c.ServeEnabled() {
+		return false
+	}
+	if c.Serve.Modes == nil || c.Serve.Modes.CR == nil {
+		return true
+	}
+	return *c.Serve.Modes.CR
+}
+
+// HasServeModes reports whether serve.modes is explicitly configured.
+func (c *CRDEntry) HasServeModes() bool {
+	return c.ServeEnabled() && c.Serve.Modes != nil
+}
+
+// effectiveServeModes returns the effective modes for a target,
+// merging target-level and CRD-level settings.
+// Resolution order:
+//  1. Target-level (serve.targets[<name>].modes)
+//  2. CRD-level (serve.modes)
+//  3. Default (both true)
+func (c *CRDEntry) effectiveServeModes(target string) *ServeModes {
+	result := &ServeModes{
+		Target: boolPtr(true),
+		CR:     boolPtr(true),
+	}
+
+	if !c.ServeEnabled() {
+		return result
+	}
+
+	// 1. Start with CRD-level
+	if c.Serve.Modes != nil {
+		if c.Serve.Modes.Target != nil {
+			result.Target = c.Serve.Modes.Target
+		}
+		if c.Serve.Modes.CR != nil {
+			result.CR = c.Serve.Modes.CR
+		}
+	}
+
+	// 2. Override with target-level (if set)
+	if c.Serve.Target.Entries != nil {
+		if cfg, ok := c.Serve.Target.Entries[target]; ok && cfg.Modes != nil {
+			if cfg.Modes.Target != nil {
+				result.Target = cfg.Modes.Target
+			}
+			if cfg.Modes.CR != nil {
+				result.CR = cfg.Modes.CR
+			}
+		}
+	}
+
+	return result
+}
+
+// TargetModeEnabledFor returns whether target mode is enabled for the given target.
+func (c *CRDEntry) TargetModeEnabledFor(target string) bool {
+	if !c.ServeEnabled() {
+		return false
+	}
+	return *c.effectiveServeModes(target).Target
+}
+
+// FullCRModeEnabledFor returns whether CR mode is enabled for the given target.
+func (c *CRDEntry) FullCRModeEnabledFor(target string) bool {
+	if !c.ServeEnabled() {
+		return false
+	}
+	return *c.effectiveServeModes(target).CR
+}
+
+func boolPtr(b bool) *bool { return &b }
+
+// effectiveServeApplyOverrides returns the effective override
+// for a target, merging target-level and CRD-level settings.
+func (c *CRDEntry) effectiveServeApplyOverrides(target string) *ServeApplyOverrides {
+	result := &ServeApplyOverrides{
+		TargetConflict:   boolPtr(true), // default: allow
+		ResourceConflict: boolPtr(true), // default: allow
+	}
+
+	// 1. Start with CRD-level
+	if c.Serve.Apply != nil && c.Serve.Apply.Overrides != nil {
+		if c.Serve.Apply.Overrides.TargetConflict != nil {
+			result.TargetConflict = c.Serve.Apply.Overrides.TargetConflict
+		}
+		if c.Serve.Apply.Overrides.ResourceConflict != nil {
+			result.ResourceConflict = c.Serve.Apply.Overrides.ResourceConflict
+		}
+	}
+
+	// 2. Override with target-level (if set)
+	if c.Serve.Target.Entries != nil {
+		if cfg, ok := c.Serve.Target.Entries[target]; ok && cfg.Apply != nil && cfg.Apply.Overrides != nil {
+			if cfg.Apply.Overrides.TargetConflict != nil {
+				result.TargetConflict = cfg.Apply.Overrides.TargetConflict
+			}
+			if cfg.Apply.Overrides.ResourceConflict != nil {
+				result.ResourceConflict = cfg.Apply.Overrides.ResourceConflict
+			}
+		}
+	}
+
+	return result
+}
+
+func (c *CRDEntry) ServeForceConflictEnabledFor(target string) bool {
+	if !c.ServeEnabled() {
+		return false
+	}
+	override := c.effectiveServeApplyOverrides(target)
+	return *override.ResourceConflict
+}
+
+func (c *CRDEntry) ServeTargetOverrideEnabledFor(target string) bool {
+	if !c.ServeEnabled() {
+		return false
+	}
+	override := c.effectiveServeApplyOverrides(target)
+	return *override.TargetConflict
 }
 
 // HasServeFields reports whether this CRD declares any serve.fields.
@@ -407,6 +637,13 @@ func (c *CRDEntry) ServeAliases() map[string]*ServeTargetConfig {
 // HasServeAliases reports whether this CRD has any enabled non-primary target entries.
 func (c *CRDEntry) HasServeAliases() bool {
 	return len(c.ServeAliases()) > 0
+}
+
+// HasServeTargetEntries reports whether any named target entries are declared
+// under serve.target. Used by addTargetHooks and addTargetConstructors to skip
+// CRDs that have no per-target operatorBox declarations.
+func (c *CRDEntry) HasServeTargetEntries() bool {
+	return c.ServeEnabled() && c.Serve.Target.Entries != nil
 }
 
 // AliasNames returns a sorted slice of alias names for this CRD, or nil if none.

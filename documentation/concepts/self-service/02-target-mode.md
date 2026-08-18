@@ -220,6 +220,51 @@ At apply time, `.status` is not yet available. Callers should poll `pollUrl` to 
 
 ---
 
+!!! tip "The one-sentence version"
+    The Katalog declares operators; targets declare operational profiles; OperatorBoxes execute those profiles; the Gateway selects the profile; the Runtime provides the shared machinery.
+
+## Target as a unit of runtime execution
+
+A target is not only a routing identifier. Each named target in `serve.target` can carry its own `operatorBox` — a complete set of lifecycle hooks, resource templates, and `preReconcile` gates. When the CR is reconciled, the reconciler selects the `operatorBox` that matches the active target.
+
+This means the same CRD can provision different infrastructure depending on which surface submitted the intent:
+
+```yaml
+serve:
+  target:
+    web:
+      primary: true
+      operatorBox:
+        preReconcile:
+          enqueueGate:
+            when:
+              - field: "{{ .spec.image }}"
+                notEquals: ""
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}-web"
+
+    regional:
+      operatorBox:
+        preReconcile:
+          reconcileGate:
+            when:
+              - field: "{{ len .spec.regions }}"
+                notEquals: "0"
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}-{{ .item }}"
+              forEach:
+                field: spec.regions
+                as: item
+```
+
+When a CR switches from one target to another (re-submitted via a different surface), the reconciler detects the change and cleans up resources from the previous target before applying the new box.
+
+→ [Per-target operatorBox schema](../../reference/schema/02-katalog/26-serve-target-operatorbox.md) — gates, surface cleanup, `keepPreviousSurface`
+
+---
+
 ## See also
 
 → [`serve.target` schema reference](../../reference/schema/02-katalog/20-serve.md#servetarget)

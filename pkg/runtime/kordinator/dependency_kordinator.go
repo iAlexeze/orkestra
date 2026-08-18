@@ -501,6 +501,8 @@ func (k *DependencyKordinator) startCRDWorkers(ctx context.Context, gvk string, 
 
 	crdCtx, cancel := context.WithCancel(ctx)
 	wg := &sync.WaitGroup{}
+
+	//
 	rec := entry.ReconcilerFactory()
 
 	// Inject the per-CRD workqueue so SetQueueDepthLimit and the resync goroutine

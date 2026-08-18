@@ -27,8 +27,10 @@ type registryTemplateData struct {
 	//	SchemeEntries    []registryEntry
 	HookEntries        []hookEntry
 	RecEntries         []reconcilerEntry
-	NeedsRecImports    bool // true when RecEntries is non-empty
-	NeedsHookImports   bool // true when HookEntries is non-empty
+	TargetHookEntries  []targetHookEntry
+	TargetRecEntries   []targetRecEntry
+	NeedsRecImports    bool // true when RecEntries or TargetRecEntries is non-empty
+	NeedsHookImports   bool // true when HookEntries or TargetHookEntries is non-empty
 	NeedsSchemeImports bool // true when Entries is non-empty (metav1.AddToGroupVersion needed)
 }
 
@@ -60,6 +62,27 @@ type reconcilerEntry struct {
 	Group    string
 	Version  string
 	Kind     string
+}
+
+// targetHookEntry represents one TargetHookRegistry assignment in the generated file.
+// TargetName is the serve.target map key that declares the distinct hook binary.
+type targetHookEntry struct {
+	Alias      string
+	Function   string
+	Group      string
+	Version    string
+	Kind       string
+	TargetName string
+}
+
+// targetRecEntry represents one TargetReconcilerRegistry assignment in the generated file.
+type targetRecEntry struct {
+	Alias      string
+	Function   string
+	Group      string
+	Version    string
+	Kind       string
+	TargetName string
 }
 
 // Docs and dashboards

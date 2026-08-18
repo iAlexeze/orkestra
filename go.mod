@@ -1,6 +1,6 @@
 module github.com/orkspace/orkestra
 
-go 1.26.5
+go 1.26.6
 
 require (
 	cloud.google.com/go/pubsub v1.50.2

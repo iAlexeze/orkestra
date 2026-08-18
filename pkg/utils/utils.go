@@ -2,9 +2,13 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"math/rand/v2"
 	"os"
+	"strings"
 	"time"
+
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 type Status string
@@ -104,4 +108,13 @@ func Exit(err error) {
 		os.Stderr.WriteString(err.Error() + "\n")
 	}
 	os.Exit(1)
+}
+
+// ValidKubernetesName uses IsDNS1123Subdomain tests for a string that conforms to the
+// definition of a subdomain in DNS (RFC 1123).
+func ValidKubernetesName(name string) error {
+	if errs := validation.IsDNS1123Label(name); len(errs) > 0 {
+		return fmt.Errorf("invalid name %q: %s", name, strings.Join(errs, "; "))
+	}
+	return nil
 }

@@ -10,6 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 
+	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
@@ -66,12 +67,12 @@ func ApplyTargetFields(
 		return &ApplyResponse{Message: clusterErr.Error()}, http.StatusBadRequest
 	}
 
-	obj, err := BuildCRFromTarget(fields, crd, notes)
+	obj, err := orktarget.BuildCRFromTarget(fields, crd, notes)
 	if err != nil {
 		return &ApplyResponse{Message: err.Error()}, http.StatusBadRequest
 	}
 	InjectProvenanceAnnotations(obj, crd.ServeTarget(), alias, tokenName)
-	InjectIntentAnnotation(obj, fields)
+	InjectServeIntentAnnotation(obj, fields)
 	gvr := crd.GVR()
 
 	patchBody, err := json.Marshal(obj.Object)
@@ -102,7 +103,7 @@ func ApplyTargetFields(
 		}, http.StatusUnprocessableEntity
 	}
 
-	overwrite := crd.Serve != nil && crd.Serve.ForceConflict
+	overwrite := crd.ServeForceConflictEnabledFor(alias)
 	patchOpts := metav1.PatchOptions{
 		FieldManager: konfig.FieldManagerGateway,
 		Force:        boolPtr(overwrite),

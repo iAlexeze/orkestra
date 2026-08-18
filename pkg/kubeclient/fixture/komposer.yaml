@@ -11,3 +11,4 @@ imports:
   files:
     - 01-hooks/katalog.yaml
     - 02-constructor/katalog.yaml
+    - 03-hooks-targets/katalog.yaml

@@ -248,6 +248,16 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		// Handle finalizers
 		if len(crd.OperatorBox.Finalizers) == 0 {
 			crd.OperatorBox.Finalizers = k.Spec.Finalizers
+			if crd.HasServeTarget() {
+				for _, target := range crd.Serve.Target.Entries {
+					if target.OperatorBox.IsEmpty() {
+						continue
+					}
+					if target.OperatorBox.Finalizers == nil {
+						crd.OperatorBox.Finalizers = target.OperatorBox.Finalizers
+					}
+				}
+			}
 		}
 
 		// Ensure operatorBox.reconciler is always initialised so runtime callsites
@@ -351,60 +361,6 @@ func (k *Katalog) addRuntimeObjects() error {
 		crd.DynamicModeObject = objFn
 		crd.ListDynamicModeObject = listFn
 		k.enabledCRDs[name] = crd
-	}
-	return nil
-}
-
-// ---------------------------------------------------------------------------------
-// Add reconcilers
-func (k *Katalog) addReconcilers() error {
-	for name, crd := range k.enabledCRDs {
-		rc := crd.OperatorBox
-
-		// Add providers block
-		if len(rc.ProviderBlocks) > 0 {
-			blocks, err := orktypes.ParseProviderBlocks(rc.RawProviders)
-			if err != nil {
-				return err
-			}
-			rc.ProviderBlocks = blocks
-		}
-
-		if !crd.IsDynamic() {
-			if crd.DefaultReconcile() {
-				continue
-			}
-
-			constructorFn, ok := orktypes.ReconcilerRegistry[crd.GroupVersionKind]
-			if !ok {
-				return fmt.Errorf(
-					"CRD %q: no constructor registered — "+
-						"check reconciler.constructor in Katalog and re-run ork generate registry",
-					name,
-				)
-			}
-
-			rc.Constructor = constructorFn
-		}
-
-		crd.OperatorBox = rc
-		k.enabledCRDs[name] = crd
-	}
-	return nil
-}
-
-// ---------------------------------------------------------------------------------
-// Add hooks
-func (k *Katalog) addHooks() error {
-	for name, crd := range k.enabledCRDs {
-		if !crd.DefaultReconcile() {
-			continue
-		}
-		if hookFn, ok := orktypes.HookRegistry[crd.GroupVersionKind]; ok {
-			crd.OperatorBox.HookFactory = hookFn
-			k.enabledCRDs[name] = crd
-		}
-		// not found — fine, GenericReconciler runs without hooks
 	}
 	return nil
 }

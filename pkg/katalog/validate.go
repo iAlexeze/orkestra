@@ -14,9 +14,16 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	}
 
 	// -------------------------------------------------------------------------
-	// 2. Deprecation timeline validation
+	// 2a. Lifecycle validation (deprecation, maturity, compatibility syntax)
 	// -------------------------------------------------------------------------
-	if err := k.validateDeprecation(); err != nil {
+	if err := k.validateLifecycle(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 2b. Policy block validation (minMaturity enum)
+	// -------------------------------------------------------------------------
+	if err := k.validatePolicy(); err != nil {
 		return nil, err
 	}
 
@@ -58,6 +65,14 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	if err := k.addReconcilers(); err != nil {
 		return nil, err
 	}
+
+	// -------------------------------------------------------------------------
+	// 6b. Add Target Constructors	// TargetReconcilerRegistry → TargetReconcilerFactories
+	// -------------------------------------------------------------------------
+	if err := k.addTargetConstructors(); err != nil {
+		return nil, err
+	}
+
 	// -------------------------------------------------------------------------
 	// 7. Add RuntimeObjects	// ObjectRegistry + ListRegistry
 	// -------------------------------------------------------------------------
@@ -69,6 +84,13 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	// 8. Add Hooks	// HookRegistry → HookFactory
 	// -------------------------------------------------------------------------
 	if err := k.addHooks(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 8b. Add Target Hooks		// TargetHookRegistry → TargetHookFactories
+	// -------------------------------------------------------------------------
+	if err := k.addTargetHooks(); err != nil {
 		return nil, err
 	}
 

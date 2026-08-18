@@ -122,7 +122,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 		return err
 	}
 	// Only delete if we own it
-	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != labels.EffectiveOwnerKey(owner.GetName(), owner.GetAnnotations()) {
 		return nil
 	}
 	return kube.Clientset().CoreV1().ServiceAccounts(namespace).
@@ -147,15 +147,13 @@ func Resolve(src orktypes.ServiceAccountTemplateSource, ownerName string) Resolv
 		spec.Labels[k] = v
 	}
 
-	spec.Labels[labels.ManagedKey] = labels.ManagedValue
-	spec.Labels[labels.OrkestraOwner] = ownerName
-
 	return spec
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildServiceAccount(owner domain.Object, spec ResolvedServiceAccountSpec, namespace string) *corev1.ServiceAccount {
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      spec.Name,

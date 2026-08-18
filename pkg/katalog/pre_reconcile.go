@@ -6,6 +6,7 @@ import (
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/external"
+	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -26,8 +27,10 @@ func (k *Katalog) EvaluatePreReconcile(ctx context.Context, crdName string, obj 
 	if !ok {
 		return true, ""
 	}
-	rc := entry.PreReconcileCheck()
-	if !rc.HasReconcileGate() {
+	target := orktarget.ResolveTargetFromAnnotations(obj.GetAnnotations())
+	box := entry.EffectiveOperatorBox(target)
+	rc := box.PreReconcile
+	if rc == nil || !rc.HasReconcileGate() {
 		return true, ""
 	}
 
@@ -79,8 +82,10 @@ func (k *Katalog) EvaluateEnqueueFilter(ctx context.Context, crdName string, obj
 	if !ok {
 		return true
 	}
-	rc := entry.PreReconcileCheck()
-	if !rc.HasEnqueueGate() {
+	target := orktarget.ResolveTargetFromAnnotations(obj.GetAnnotations())
+	box := entry.EffectiveOperatorBox(target)
+	rc := box.PreReconcile
+	if rc == nil || !rc.HasEnqueueGate() {
 		return true
 	}
 
@@ -89,10 +94,10 @@ func (k *Katalog) EvaluateEnqueueFilter(ctx context.Context, crdName string, obj
 		return true
 	}
 	if !k.Profiles.IsEmpty() {
-		resolver = resolver.WithProfiles(k.Profiles)
+		resolver = resolver.WithProfiles(k.UserProfiles())
 	}
 	if !k.Notes.IsEmpty() {
-		resolver = resolver.WithUserNotes(k.Notes)
+		resolver = resolver.WithUserNotes(k.UserNotes())
 	}
 	if intent := orktypes.ServeIntentFromObject(resolver.Data()); intent != nil {
 		resolver = resolver.WithRequest(intent)

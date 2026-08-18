@@ -1,4 +1,137 @@
-## v0.7.15 — Gateway Webhook Intake + Artifact Signing [UNRELEASED]
+## v0.7.16 — Per-Target OperatorBox and MuxReconciler
+
+### Per-target operatorBox
+
+Each `serve.target.entries` entry can now declare its own `operatorBox` — resources, lifecycle hooks, and preReconcile gates (`enqueueGate` / `reconcileGate`). The reconciler selects the active box from `serve-alias` / `serve-target` annotations on the CR at reconcile time.
+
+```yaml
+serve:
+  target:
+    entries:
+      v2-enabled:
+        operatorBox:
+          enqueueGate: "{{ isBusinessHours }}"
+          reconciler:
+            hooks: true
+      v2-ctor:
+        operatorBox:
+          reconciler:
+            default: false   # use a dedicated constructor from ReconcilerRegistry
+```
+
+`reconciler.default: false` wires the target's constructor from `ReconcilerRegistry` at load time. A missing registry entry is a load-time error — the Runtime refuses to start rather than falling back silently.
+
+Surface switches are detected via `orkestra.orkspace.io/last-surface` and cleaned up with a label-selector sweep (`SweepOwnedNamespaced` / `SweepOwnedClusterScoped`) rather than template expansion, which is immune to spec fields being cleared before cleanup runs. `keepPreviousSurface: true` skips the sweep when set.
+
+`EffectiveOwnerKey` stamps and checks ownership as `<name>.<alias>` for target-mode CRs, allowing per-surface resource isolation.
+
+---
+
+### MuxReconciler and `pkg/intent/target/`
+
+`MuxReconciler` holds one `domain.Reconciler` per registered target. At reconcile time the kordinator reads the target annotation and dispatches to the matching reconciler, falling back to the CRD-level reconciler when no target-specific one is registered. The kordinator sees one reconciler; the routing is internal.
+
+Target resolution and CR construction move into a dedicated `pkg/intent/target/` package, separating the intent layer from the gateway API package. `target.go` and its tests follow.
+
+---
+
+### `ork serve apply --override`
+
+Routing conflict detection (`409`) is still enforced when a target switch is attempted without an explicit override. Pass `--override` (or `?override=true` on the API) to route to the new target and trigger surface cleanup of the old one.
+
+---
+
+### Fixture: `03-hooks-targets`
+
+`pkg/kubeclient/fixture/03-hooks-targets` — three targets on one CRD proving each dispatch path end-to-end:
+
+- `v2-enabled` — hooks with an `enqueueGate` (business hours), `featureEnabled: true`
+- `v2-disabled` — same hook binary, `featureEnabled: false`, no gate
+- `v2-ctor` — `reconciler.default: false`, dedicated constructor
+
+---
+
+### Documentation
+
+`documentation/concepts/reusability/` — new section covering Reusability and Composition in Orkestra.
+
+---
+
+### `lifecycle:` block — maturity, deprecation, compatibility, and platform policy
+
+A new top-level `lifecycle:` block on every Katalog and Komposer file replaces the old `metadata.deprecation:` approach with a first-class lifecycle model.
+
+```yaml
+lifecycle:
+  maturity: beta          # alpha | beta | stable | deprecated
+
+  deprecation:
+    message: "Replaced by task-runner"
+    migratedTo: task-runner:v1.0.0
+    timeline:
+      from: "2026-01-01"
+      to:   "2027-01-01"
+
+  compatibility:
+    orkestra: ">= 0.7.0"
+    kubernetes: ">= 1.28"
+```
+
+**Maturity** — four levels: `alpha`, `beta`, `stable`, `deprecated`. The presence of a `deprecation:` block is the primary signal; `maturity: deprecated` without a block emits a warning rather than an error. `maturity: deprecated` with a block is always valid.
+
+**Deprecation** — a deprecated Katalog always blocks startup when run directly. Consumers acknowledge it via `lifecycle.accept.patterns` on their Komposer, not by a field on the Katalog itself.
+
+**Compatibility** — declares minimum `orkestra` and `kubernetes` semver constraints. `ork validate` rejects patterns that declare versions below the installed runtime.
+
+**Kind boundary** — `lifecycle.accept.patterns` belongs on a Komposer. Declaring `lifecycle.accept` on a Katalog is a validation error.
+
+---
+
+### Komposer-level lifecycle acceptance — `lifecycle.accept.patterns`
+
+Komposers accept deprecated Katalogs at the point of composition:
+
+```yaml
+lifecycle:
+  accept:
+    patterns:
+      - name: webapp-operator
+        version: ">= 1.0.0, < 2.0.0"   # optional semver range
+      - name: cache-operator
+```
+
+`version:` scopes acceptance to a semver range. Acceptance without a range applies to any version of that pattern.
+
+---
+
+### Platform policy — `policy.lifecycle.minMaturity`
+
+Operators can declare a minimum maturity floor for all imported patterns:
+
+```yaml
+policy:
+  lifecycle:
+    minMaturity: beta   # alpha | beta | stable; deprecated is rejected
+```
+
+`ork validate` rejects any Katalog whose maturity is below the declared floor. `minMaturity: deprecated` is itself a validation error — the policy is a quality floor, not a filter.
+
+`policy:` is structured as `policy.<area>.*` so security, registry, and user-defined policy categories can grow alongside `lifecycle:` without flattening.
+
+---
+
+### Registry guide examples 13–16
+
+Four new self-contained steps extend the registry guide:
+
+- **13-deprecation-accept** — accept a deprecated Katalog via Komposer `lifecycle.accept.patterns`; scoped version acceptance
+- **14-lifecycle-maturity** — maturity progression from `alpha` through `stable`; `ork inspect` output at each stage
+- **15-lifecycle-compatibility** — declaring `orkestra` and `kubernetes` version constraints; validation rejection behaviour
+- **16-komposer-accept** — `lifecycle.accept.patterns` on a Komposer composing both a deprecated and an alpha Katalog; scoped `version:` range
+
+---
+
+## v0.7.15 — Gateway Webhook Intake + Artifact Signing
 
 ### Artifact signing — Cosign keyless, `publish:` block, local testing
 
@@ -226,6 +359,121 @@ Both gates use the full resolver chain (`.spec`, `.metadata`, serve intent, prof
 **`gated` state in Control Center** — separate from healthy/degraded. Purple badge with gate reason. `StatusCounts.Gated` propagates through the full CC chain.
 
 `crdFiles` / `crFiles` added to `E2ESpec`. `tests/simulate-envtest/04-conditional-reconciliation/` covers gate-pass and gate-discard via envtest simulate. `examples/intermediate/05-when-conditions/conditional-reconciliation/` — App (reconcileGate) + Route (unconditional) pack.
+
+### Per-target `operatorBox` — surface-specific reconciliation
+
+`serve.target.<name>.operatorBox` overrides the CRD-level `operatorBox` for CRs routed through that surface. The gateway stamps `orkestra.orkspace.io/serve-target` on every applied CR; the runtime reads that annotation at reconcile time and uses the matching target's templates, hooks, and gates instead of the shared CRD-level ones. CRs applied via `kubectl apply` (no annotation) fall back to the CRD-level `operatorBox`.
+
+This applies equally to declarative and typed (hooks/constructor) operators. A per-target `reconciler.hooks.args` block means the same binary receives different resolved values depending on which surface delivered the intent — no code change, no separate operator:
+
+```yaml
+operatorBox:
+  onCreate:
+    deployments:
+      - name: "{{ .metadata.name }}"
+    services:
+      - name: "{{ .metadata.name }}-svc"
+
+serve:
+  enabled: true
+  target:
+    web:
+      primary: true
+      operatorBox:
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}-web"
+    apifixture:
+      operatorBox:
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}-apifixture"
+```
+
+`preReconcile`, `status`, and `reconciler.hooks.args` follow the same pattern — a target may declare its own values, with the CRD-level config as the fallback when absent. Reconciler settings (`workers`, `resync`, `autoscale`) are fixed at CRD level.
+
+Cleanup on target switch is handled automatically via a label-selector sweep on `orkestra-owner=<name>.<prevTarget>` — immune to spec fields being cleared before cleanup runs. `keepPreviousSurface: true` skips the sweep when both surfaces should run simultaneously.
+
+**`ork simulate --target <name>`** — simulates a specific target's operatorBox. Also declarable in `simulate.yaml` via `spec.target:`. CLI flag takes precedence over the spec field.
+
+**`simulate.yaml` `spec.target:`** — new field. Pins the simulated reconciliation to a named target's operatorBox, equivalent to passing `--target` on the CLI.
+
+**`ork simulate` refactored** — CLI simulate helpers now take a `cliSimulateOptions` struct instead of a flat parameter list, reducing signature length across `runSimulate`, `runSimulateFromSpec`, `runSimulateDiscovery`, and `simulateOne`.
+
+### Serve modes, apply-time controls, and field selectors
+
+Three new blocks under `serve` and per target give platform teams granular control over the Gateway API surface, override behaviour, and full CR routing.
+
+**`serve.modes`** — controls which apply modes are available for a CRD. Both default to `true`.
+
+```yaml
+serve:
+  enabled: true
+  modes:
+    target: true   # target mode — submit fields with a target identifier
+    cr: false      # full CR mode — submit a complete Kubernetes CR
+
+  targets:
+    staging:
+      primary: true
+      modes:
+        target: false   # disable target mode in staging
+```
+
+At least one mode must be enabled. `ork validate` enforces this. Can be set at the CRD level and per target.
+
+**`serve.apply.overrides`** — controls whether request-level overrides (`?overwrite=true` and `?override=true`) are honoured. Both default to `true` (allow overrides). This is a second line of defence — even if the caller passes the override parameter, the gateway can reject it based on the configuration.
+
+```yaml
+serve:
+  enabled: true
+  apply:
+    overrides:
+      resourceConflict: true   # allow ?overwrite=true (SSA field ownership)
+      targetConflict: false    # disallow ?override=true (routing surface changes)
+
+  targets:
+    staging:
+      primary: true
+      apply:
+        overrides:
+          targetConflict: true   # only staging allows routing changes
+
+    production:
+      primary: false
+      # inherits CRD-level
+```
+
+**`resourceConflict`** (previously `forceConflict`) — when `true`, callers can pass `?overwrite=true` to force field ownership on server-side apply. When `false`, the override is rejected regardless of the request.
+
+**`targetConflict`** (previously `targetOverride`) — when `true`, callers can pass `?override=true` to change the routing surface (target/alias) of an existing CR. When `false`, the override is rejected and routing surface changes are always disallowed.
+
+Both settings can be set at the CRD level (fallback) and per target. Target-level wins when set.
+
+**`serve.targets[<name>].fieldSelector`** — links full CRs to a target based on field values. When a CR matches ALL key-value pairs, it is automatically routed to that target — enabling per-target response config, tokens, permissions, and mode enforcement for full CR mode.
+
+```yaml
+serve:
+  enabled: true
+  targets:
+    internal:
+      fieldSelector:
+        spec.workloadType: app
+      modes:
+        cr: false          # internal disallows full CRs
+      apply:
+        targetOverride: false
+```
+
+**`fieldSelector`** — a map of dot-notation field paths to values (max 3 per target). This is a true selector — like Service → Pod selection. Each target must have a unique selector. `ork validate` enforces uniqueness and warns if a target has `cr: false` but no field selector.
+
+Validation rules:
+- Max 3 field selectors per target
+- Unique across targets — no two targets can share the same `path:value` pair
+- Must be valid dot-notation paths (e.g., `spec.mealPlan: dinner`)
+- Values must be non-empty
+
+The target becomes the owner of the matched CR — controlling its mode, response config, tokens, and provenance.
 
 ---
 

@@ -44,7 +44,7 @@ func (k *Katalog) validateServeResponseConfig() error {
 				// Still check if it references any payload keys in the template itself
 				for key := range payloadKeys {
 					if slices.Contains(excludePaths, key) {
-						warning := fmt.Sprintf("⚠️  CRD %q: exclude template references payload key %q — potential conflict\n", crdName, key)
+						warning := fmt.Sprintf("%s CRD %q: exclude template references payload key %q — potential conflict\n", warningMark(), crdName, key)
 						crd.Warnings.AddWarning(warning)
 					}
 				}
@@ -65,6 +65,7 @@ func (k *Katalog) validateServeResponseConfig() error {
 				crd.Warnings.AddWarning(warning)
 			}
 		}
+		k.enabledCRDs[crdName] = crd
 	}
 	return nil
 }

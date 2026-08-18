@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
@@ -32,6 +33,16 @@ var (
 	// resolveScalarField resolves a dot-notation path (e.g., "status.phase")
 	// against a map and returns the value as a string.
 	resolveScalarField = orktypes.ResolveScalarField
+
+	// validateK8sName tests that a string is a valid Kubernetes name.
+	validateK8sName = utils.ValidKubernetesName
+
+	// Others
+	resourceChecker  = utils.NewResourceChecker
+	nestedSlice      = utils.NestedSlice
+	nestedMap        = utils.NestedMap
+	deleteNestedPath = utils.DeleteNestedPath
+	isTargetRequest  = orktarget.IsTargetRequest
 )
 
 // resolvePollURL builds the poll URL for the Gateway API response.

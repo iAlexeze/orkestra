@@ -7,13 +7,11 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/event"
 	orkexternal "github.com/orkspace/orkestra/pkg/external"
 	"github.com/orkspace/orkestra/pkg/katalog"
-	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/runtime/kordinator"
 	"github.com/orkspace/orkestra/pkg/runtime/reconciler"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -71,6 +69,9 @@ type RunOptions struct {
 	// reconcile-time checks that list other instances, like operator:
 	// unique, can see them) but are never themselves reconciled.
 	ExistingInstances []*unstructured.Unstructured
+
+	// Target specifies the target to use for this simulation
+	Target string
 }
 
 // Run simulates the operator against an in-memory cluster.
@@ -107,10 +108,13 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 	// The removed resources are surfaced as notes in the result so the simulate
 	// output explains exactly what was omitted and why.
 	result := &Result{}
+	box := effectiveOperatorBox(crdEntry, cr, opts.Target)
+	// Copy the effective box so we don't mutate the original CRD entry.
+	boxCopy := *box
 	for _, phase := range []*orktypes.HookTemplates{
-		crdEntry.OperatorBox.OnCreate,
-		crdEntry.OperatorBox.OnReconcile,
-		crdEntry.OperatorBox.OnDelete,
+		boxCopy.OnCreate,
+		boxCopy.OnReconcile,
+		boxCopy.OnDelete,
 	} {
 		if phase == nil {
 			continue
@@ -119,6 +123,9 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 		*phase = filtered
 		result.Notes = append(result.Notes, skipped...)
 	}
+	// Build effective CRD entry — reconciler uses target's operatorBox, not the CRD-level one.
+	effectiveCRDEntry := crdEntry
+	effectiveCRDEntry.OperatorBox = boxCopy
 
 	scheme, err := kat.Scheme()
 	if err != nil {
@@ -223,8 +230,8 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 	if factoryFn, ok := orktypes.ReconcilerRegistry[gvk]; ok {
 		r = factoryFn(fakeKube, informer, event.Discard())
 	} else {
-		r = reconciler.NewGenericReconciler[domain.Object](
-			crdEntry,
+		r = reconciler.NewGenericReconciler(
+			effectiveCRDEntry,
 			informer,
 			nil,
 			fakeKube,
@@ -235,58 +242,16 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 		)
 	}
 
-	key, err := cache.MetaNamespaceKeyFunc(cr)
+	key, err := resolveCacheKey(cr)
 	if err != nil {
-		return nil, fmt.Errorf("computing CR key: %w", err)
+		return nil, err
 	}
 
-	r = wrapWithGate(r, crdEntry.OperatorBox.PreReconcile, func() *unstructured.Unstructured {
-		item, exists, _ := indexer.GetByKey(key)
-		if !exists || item == nil {
-			return nil
-		}
-		if u, ok := item.(*unstructured.Unstructured); ok {
-			return u
-		}
-		return cr
-	})
+	r = wrapWithGate(r, boxCopy.PreReconcile, kat.Notes, getFromIndexerOrFallback(indexer, key, cr))
 
 	loopResult := runLoop(ctx, r, fakeKube, key, maxCycles)
 	loopResult.Notes = result.Notes
 	return loopResult, nil
-}
-
-// seedManagedMeta pre-populates managed labels and annotations on the CR so the
-// reconciler's idempotency guards skip those patches in every cycle.
-func seedManagedMeta(cr *unstructured.Unstructured, katalogName string) {
-	labels := cr.GetLabels()
-	if labels == nil {
-		labels = map[string]string{}
-	}
-	labels[orklabels.ManagedKey] = orklabels.ManagedValue
-	labels[orklabels.DeletionProtectionLabel] = orklabels.DeletionProtectionValue
-	cr.SetLabels(labels)
-
-	ann := cr.GetAnnotations()
-	if ann == nil {
-		ann = map[string]string{}
-	}
-	ann[orklabels.AnnotationManagedBy] = katalogName
-	ann[orklabels.AnnotationManagedSince] = time.Now().UTC().Format(time.RFC3339)
-	cr.SetAnnotations(ann)
-}
-
-// opsMatch returns true when two op slices have the same verb+resource sequence.
-func opsMatch(a, b []Op) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i].Verb != b[i].Verb || a[i].Resource != b[i].Resource {
-			return false
-		}
-	}
-	return true
 }
 
 // newFakeInformer wraps a static indexer as a SharedIndexInformer.

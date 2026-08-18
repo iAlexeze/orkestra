@@ -159,7 +159,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface,
 		return err
 	}
 	// Only delete if we own it
-	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != labels.EffectiveOwnerKey(owner.GetName(), owner.GetAnnotations()) {
 		return nil
 	}
 	return kube.Clientset().CoreV1().Namespaces().
@@ -184,15 +184,13 @@ func Resolve(src orktypes.NamespaceTemplateSource, ownerName string) ResolvedNam
 		spec.Labels[k] = v
 	}
 
-	spec.Labels[labels.ManagedKey] = labels.ManagedValue
-	spec.Labels[labels.OrkestraOwner] = ownerName
-
 	return spec
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildNamespace(owner domain.Object, spec ResolvedNamespaceSpec) *corev1.Namespace {
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   spec.Name,

@@ -122,7 +122,7 @@ func DeleteIfOwned(ctx context.Context, kube kubeclient.Interface, owner domain.
 		}
 		return err
 	}
-	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != labels.EffectiveOwnerKey(owner.GetName(), owner.GetAnnotations()) {
 		return nil
 	}
 	return kube.Clientset().AppsV1().StatefulSets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
@@ -190,9 +190,6 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string, reg orkty
 		spec.Annotations[k] = v
 	}
 
-	spec.Labels[labels.ManagedKey] = labels.ManagedValue
-	spec.Labels[labels.OrkestraOwner] = ownerName
-
 	if src.RollingUpdate != nil && src.RollingUpdate.Profile != "" {
 		expansion, err := profiles.ApplyRollingUpdateProfile(src.RollingUpdate.Profile, reg)
 		if err != nil {
@@ -234,6 +231,7 @@ func resolveAccessModes(modes []string) []corev1.PersistentVolumeAccessMode {
 }
 
 func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns string) *appsv1.StatefulSet {
+	spec.Labels = labels.StampOrkestraLabels(spec.Labels, owner.GetName(), owner.GetAnnotations())
 	apiVersion := ""
 	kind := ""
 	if u, ok := owner.(*unstructured.Unstructured); ok {

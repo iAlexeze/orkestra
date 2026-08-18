@@ -76,7 +76,14 @@ type GenericReconciler[PTR domain.Object] struct {
 	// construction time from the user's ReconcileHooks[PTR]. Stored as
 	// ObjectHooks rather than ReconcileHooks[PTR] so the reconciler remains
 	// compatible with the runtime registry path (PTR = domain.Object interface).
-	hooks       domain.ObjectHooks
+	hooks domain.ObjectHooks
+
+	// targetHooks holds per-target hook sets for CRDs that have distinct hook
+	// binaries per serve.target entry (TargetHookFactories non-empty).
+	// Built once at construction time; read concurrently during reconcile.
+	// When empty, all targets fall back to the CRD-level hooks field.
+	targetHooks map[string]domain.ObjectHooks
+
 	operatorBox orktypes.OperatorBoxConfig
 	newObj      func() PTR
 	crd         orktypes.CRDEntry
@@ -169,18 +176,28 @@ func NewGenericReconciler[PTR domain.Object](
 		hooks = binder.BindToObjectHooks()
 	}
 
+	// Build per-target hook sets for targets that declare a distinct hook binary.
+	// Targets that share the CRD-level binary only override args and use hooks above.
+	targetHooks := make(map[string]domain.ObjectHooks, len(crd.TargetHookFactories))
+	for targetName, factory := range crd.TargetHookFactories {
+		anyH := factory()
+		if binder, ok := anyH.(domain.HookBinder); ok {
+			targetHooks[targetName] = binder.BindToObjectHooks()
+		}
+	}
+
 	if ev == nil {
 		ev = discardRecorder{}
 	}
 
-	workers := crd.OperatorBox.Reconciler.Workers
+	box := crd.OperatorBox
+	workers := box.Reconciler.Workers
 	if workers <= 0 {
 		workers = 1
 	}
 	sem := autoscaler.NewResizableSemaphore(workers)
 	autoMet := autoscaler.NewAutoMetrics(sem)
 
-	box := crd.OperatorBox
 	// Always inject a system finalizer so handleDeletion runs before the CR is removed.
 	// This guarantees explicit GC for cluster-scoped resources (Namespaces, ClusterRoles,
 	// ClusterRoleBindings, PVs, cluster-scoped custom resources) that Kubernetes GC
@@ -200,6 +217,7 @@ func NewGenericReconciler[PTR domain.Object](
 		event:             ev,
 		kube:              kube,
 		hooks:             hooks,
+		targetHooks:       targetHooks,
 		newObj:            newObj,
 		workerSem:         sem,
 		autoMetrics:       autoMet,
@@ -210,16 +228,16 @@ func NewGenericReconciler[PTR domain.Object](
 	if crd.AutoscaleEnabled() {
 		baseline := orktypes.AutoscaleBaseline{
 			Workers:  workers,
-			MaxDepth: crd.OperatorBox.Reconciler.Queue.MaxDepth,
-			Resync:   crd.OperatorBox.Reconciler.Resync.Duration,
+			MaxDepth: box.Reconciler.Queue.MaxDepth,
+			Resync:   box.Reconciler.Resync.Duration,
 		}
 		r.autoscaler = autoscaler.NewAutoscaler(
 			crd.APITypes.Kind,
-			crd.OperatorBox.Autoscale,
+			box.Autoscale,
 			baseline,
 			r,
 			autoMet,
-			crd.OperatorBox.Cross,
+			box.Cross,
 		)
 	}
 
@@ -293,6 +311,13 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	}
 	rawObj := obj.DeepCopyObject().(PTR)
 
+	// Resolve the effective operatorBox and target for this CR. CRs routed through
+	// the gateway carry a serve-target annotation; the box for that target governs
+	// this cycle. Falls back to the CRD-level box for direct kubectl applies.
+	box, target := r.effectiveBoxAndTarget(rawObj)
+	hooks := r.hooksFor(target)
+	ctx = r.withTargetArgs(ctx, box)
+
 	// Normalize before mutation/validation/template rendering ─────────────
 	// Normalize + base resolver
 	obj, resolver, normalizeChanges, err := r.applyNormalize(ctx, rawObj)
@@ -306,7 +331,7 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 		resolver = resolver.WithProfiles(r.kat.Profiles)
 	}
 	if r.kat != nil && !r.kat.Notes.IsEmpty() {
-		resolver = resolver.WithUserNotes(r.kat.Notes)
+		resolver = resolver.WithUserNotes(r.kat.UserNotes())
 	}
 	// Inject raw serve intent as .request.<field> so operatorBox templates,
 	// mutation rules, and validation rules can all read the caller's vocabulary.
@@ -366,7 +391,7 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 		r.event.Eventf(obj, corev1.EventTypeNormal, "Deleting",
 			fmt.Sprintf("Deleting %s %s/%s", r.crd.GVKString(), obj.GetNamespace(), obj.GetName()))
 
-		return r.handleDeletion(ctx, resolver, obj)
+		return r.handleDeletion(ctx, resolver, obj, box, hooks)
 	}
 
 	// Namespace guard — skip reconcile for CRs in restricted or non-allowed namespaces.
@@ -389,14 +414,14 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	// If RemoveFinalizers is false (normal operation), ensure required finalizers exist.
 	// If RemoveFinalizers is true (e.g., for testing or forced cleanup), remove them.
 	if !r.crd.RemoveFinalizers {
-		if err := r.ensureFinalizers(ctx, obj); err != nil {
+		if err := r.ensureFinalizers(ctx, obj, box); err != nil {
 			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"FinalizerError",
 				fmt.Sprintf("Failed to add finalizers: %v", err))
 			return err
 		}
 	} else {
 		logger.FromContext(ctx).Debug().Msgf("removing finalizers for %s", obj.GetName())
-		if err := r.removeFinalizers(ctx, obj); err != nil {
+		if err := r.removeFinalizers(ctx, obj, box); err != nil {
 			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"FinalizerRemovalError",
 				fmt.Sprintf("Failed to remove finalizers: %v", err))
 			return err
@@ -466,7 +491,12 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	}
 
 	// ── Step 5: Reconcile implementation ──────────────────────────────────────
-	return r.reconcileImpl(ctx, resolver, obj)
+	if err := r.reconcileImpl(ctx, resolver, obj, box, hooks); err != nil {
+		return err
+	}
+
+	// ── Step 6: Surface orphan cleanup ────────────────────────────────────────
+	return r.cleanupPreviousSurface(ctx, rawObj)
 }
 
 // reconcileImpl dispatches to the correct reconcile implementation.
@@ -479,7 +509,7 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 //  4. Reconcile dispatch
 //  5. Failure trigger check — record failure; trigger rollback if threshold met
 //  6. Status patch
-func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *orktmpl.Resolver, obj PTR) error {
+func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *orktmpl.Resolver, obj PTR, box orktypes.OperatorBoxConfig, hooks domain.ObjectHooks) error {
 	var err error
 
 	// ── Phase 1: Rollback gate ────────────────────────────────────────────────
@@ -523,7 +553,7 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 		var valErr error
 		resolver, lastValResult, valErr = r.applyReconcileTimeValidation(ctx, resolver, obj)
 		if valErr != nil {
-			r.patchStatusWithChildren(ctx, obj, resolver, valErr, lastValResult)
+			r.patchStatusWithChildren(ctx, obj, resolver, valErr, box, lastValResult)
 			return valErr
 		}
 	}
@@ -537,29 +567,29 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 				Msg("reconcile mutation failed — continuing")
 		}
 	}
-	hasTemplates := r.operatorBox.OnCreate != nil || r.operatorBox.OnReconcile != nil
+	hasTemplates := box.OnCreate != nil || box.OnReconcile != nil
 	switch {
-	case r.hooks.OnReconcile != nil:
+	case hooks.OnReconcile != nil:
 		// Go hooks — user-provided, full type-safe access.
 		// Requires: ork generate registry to register in HookRegistry.
 		//
 		// Order: by default declared templates run first (hybrid 90/10 pattern).
 		// Set hooks.runHooksFirst: true in the Katalog to run the hook first.
 		if !r.crd.RunHooksFirst() && hasTemplates {
-			resolver, err = r.runTemplateReconcile(ctx, resolver, obj)
+			resolver, err = r.runTemplateReconcile(ctx, resolver, obj, box)
 		}
 		if err == nil {
-			err = r.hooks.OnReconcile(ctx, obj)
+			err = hooks.OnReconcile(ctx, obj)
 		}
 		if err == nil && r.crd.RunHooksFirst() && hasTemplates {
-			resolver, err = r.runTemplateReconcile(ctx, resolver, obj)
+			resolver, err = r.runTemplateReconcile(ctx, resolver, obj, box)
 		}
 
-	case r.operatorBox.OnCreate != nil || r.operatorBox.OnReconcile != nil:
+	case box.OnCreate != nil || box.OnReconcile != nil:
 		// Declarative templates — interpreted at runtime.
 		// Requires: nothing. ork generate registry NOT needed.
 		// The returned resolver carries cross/external/git data for status evaluation.
-		resolver, err = r.runTemplateReconcile(ctx, resolver, obj)
+		resolver, err = r.runTemplateReconcile(ctx, resolver, obj, box)
 
 	default:
 		// No-op — finalizers, events, metrics still handled above.
@@ -634,7 +664,7 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 	// Always patch status — best-effort, never fails reconcile.
 	// Called with the outcome so Ready condition reflects reality.
 	// Must run before the error return so Ready=False is written on failure.
-	r.patchStatusWithChildren(ctx, obj, resolver, err, lastValResult)
+	r.patchStatusWithChildren(ctx, obj, resolver, err, box, lastValResult)
 
 	if err != nil {
 		logger.FromContext(ctx).Error().Err(err).
@@ -680,17 +710,17 @@ func (r *GenericReconciler[PTR]) namespaceAllowed(
 // handleDeletion runs cleanup then removes our finalizers.
 // Finalizers are never removed on error — object stays protected until
 // cleanup succeeds.
-func (r *GenericReconciler[PTR]) handleDeletion(ctx context.Context, resolver *orktmpl.Resolver, obj PTR) error {
+func (r *GenericReconciler[PTR]) handleDeletion(ctx context.Context, resolver *orktmpl.Resolver, obj PTR, box orktypes.OperatorBoxConfig, hooks domain.ObjectHooks) error {
 	switch {
-	case r.hooks.OnDelete != nil:
-		if err := r.hooks.OnDelete(ctx, obj); err != nil {
+	case hooks.OnDelete != nil:
+		if err := hooks.OnDelete(ctx, obj); err != nil {
 			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"DeleteError",
 				fmt.Sprintf("Deletion hook failed: %v", err))
 			return fmt.Errorf("deletion hook: %w", err)
 		}
 
-	case r.operatorBox.OnDelete != nil:
-		if err := r.runTemplateOnDelete(ctx, resolver, obj); err != nil {
+	case box.OnDelete != nil:
+		if err := r.runTemplateOnDelete(ctx, resolver, obj, box); err != nil {
 			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"DeleteError",
 				fmt.Sprintf("Template deletion failed: %v", err))
 			return fmt.Errorf("template deletion: %w", err)
@@ -701,15 +731,15 @@ func (r *GenericReconciler[PTR]) handleDeletion(ctx context.Context, resolver *o
 	// onDelete block exists: the GC does not cascade through owner references on them.
 	// runTemplateOnDelete already handles this when OnDelete is set; run it here for all
 	// other cases (no onDelete block, or Go hook path).
-	if r.operatorBox.OnDelete == nil {
+	if box.OnDelete == nil {
 		if kube, ok := kubeclient.FromContext(ctx); ok {
-			if err := runners.DeleteOwnedClusterScopedResources(ctx, kube, resolver, obj, r.operatorBox); err != nil {
+			if err := runners.DeleteOwnedClusterScopedResources(ctx, kube, resolver, obj, box); err != nil {
 				return fmt.Errorf("namespace cleanup: %w", err)
 			}
 		}
 	}
 
-	if err := r.removeFinalizers(ctx, obj); err != nil {
+	if err := r.removeFinalizers(ctx, obj, box); err != nil {
 		r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"FinalizerRemovalError",
 			fmt.Sprintf("Failed to remove finalizers: %v", err))
 		return err

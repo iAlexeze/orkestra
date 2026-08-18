@@ -28,7 +28,7 @@ import (
 // runTemplateReconcile interprets the Katalog's onCreate and onReconcile blocks.
 // Returns the enriched resolver so callers (reconcileImpl) can pass cross/external
 // data into patchStatusWithChildren for status field evaluation.
-func (r *GenericReconciler[PTR]) runTemplateReconcile(ctx context.Context, resolver *orktmpl.Resolver, obj domain.Object) (*orktmpl.Resolver, error) {
+func (r *GenericReconciler[PTR]) runTemplateReconcile(ctx context.Context, resolver *orktmpl.Resolver, obj domain.Object, box orktypes.OperatorBoxConfig) (*orktmpl.Resolver, error) {
 	kube, ok := kubeclient.FromContext(ctx)
 	if !ok {
 		return resolver, fmt.Errorf("kubeclient not found in context")
@@ -42,8 +42,8 @@ func (r *GenericReconciler[PTR]) runTemplateReconcile(ctx context.Context, resol
 	// Step 2: cross-CRD observation
 	// Reads from sibling CRD informer caches via r.katalogRegistry — zero API calls.
 	// Must run first so git, docker, external calls, and resources can reference .cross.*
-	if len(r.operatorBox.Cross) > 0 {
-		crossData := r.readCross(ctx, obj, r.operatorBox.Cross, resolver)
+	if len(box.Cross) > 0 {
+		crossData := r.readCross(ctx, obj, box.Cross, resolver)
 		logger.FromContext(ctx).Debug().
 			Str("observer", obj.GetName()).
 			Int("cross_entries", len(crossData)).
@@ -57,13 +57,13 @@ func (r *GenericReconciler[PTR]) runTemplateReconcile(ctx context.Context, resol
 	// Step 3: Git hook
 	// Runs before external calls so URLs, tokens, and payloads can reference .git.commit,
 	// .git.changed, and .git.path. Git is a declarative precondition for pipelines.
-	if t := r.operatorBox.OnReconcile; t != nil && t.Git != nil {
+	if t := box.OnReconcile; t != nil && t.Git != nil {
 		resolver, err = runGit(ctx, r.crd.GVKString(), resolver, kube, obj, r.crd.GVR(), t.Git)
 		if err != nil {
 			return resolver, fmt.Errorf("git hook: %w", err)
 		}
 	}
-	if t := r.operatorBox.OnCreate; t != nil && t.Git != nil {
+	if t := box.OnCreate; t != nil && t.Git != nil {
 		resolver, err = runGit(ctx, r.crd.GVKString(), resolver, kube, obj, r.crd.GVR(), t.Git)
 		if err != nil {
 			return resolver, fmt.Errorf("git hook: %w", err)
@@ -72,13 +72,13 @@ func (r *GenericReconciler[PTR]) runTemplateReconcile(ctx context.Context, resol
 
 	// Step 4: external HTTP calls
 	// Runs after Git so external URLs can embed commit hashes or paths.
-	if t := r.operatorBox.OnReconcile; t != nil && len(t.External) > 0 {
+	if t := box.OnReconcile; t != nil && len(t.External) > 0 {
 		resolver, err = runExternal(ctx, r.crd.GVKString(), resolver, t.External, r.kube.Clientset())
 		if err != nil {
 			return resolver, fmt.Errorf("external calls: %w", err)
 		}
 	}
-	if t := r.operatorBox.OnCreate; t != nil && len(t.External) > 0 {
+	if t := box.OnCreate; t != nil && len(t.External) > 0 {
 		resolver, err = runExternal(ctx, r.crd.GVKString(), resolver, t.External, r.kube.Clientset())
 		if err != nil {
 			return resolver, fmt.Errorf("external calls: %w", err)
@@ -87,13 +87,13 @@ func (r *GenericReconciler[PTR]) runTemplateReconcile(ctx context.Context, resol
 
 	// Step 5: Docker hook
 	// Runs after external so build/push can use tokens or metadata from external calls.
-	if t := r.operatorBox.OnReconcile; t != nil && t.Docker != nil {
+	if t := box.OnReconcile; t != nil && t.Docker != nil {
 		resolver, err = runDocker(ctx, r.crd.GVKString(), resolver, t.Docker)
 		if err != nil {
 			return resolver, fmt.Errorf("docker hook: %w", err)
 		}
 	}
-	if t := r.operatorBox.OnCreate; t != nil && t.Docker != nil {
+	if t := box.OnCreate; t != nil && t.Docker != nil {
 		resolver, err = runDocker(ctx, r.crd.GVKString(), resolver, t.Docker)
 		if err != nil {
 			return resolver, fmt.Errorf("docker hook: %w", err)
@@ -101,23 +101,23 @@ func (r *GenericReconciler[PTR]) runTemplateReconcile(ctx context.Context, resol
 	}
 
 	// Step 6: onCreate resource groups (update=false)
-	if t := r.operatorBox.OnCreate; t != nil {
+	if t := box.OnCreate; t != nil {
 		if err := r.runResourceGroup(ctx, kube, resolver, obj, t, false); err != nil {
 			return resolver, err
 		}
 	}
 
 	// Step 7: onReconcile resource groups (update=true)
-	if t := r.operatorBox.OnReconcile; t != nil {
+	if t := box.OnReconcile; t != nil {
 		if err := r.runResourceGroup(ctx, kube, resolver, obj, t, true); err != nil {
 			return resolver, err
 		}
 	}
 
 	// Step 8: provider dispatch
-	if len(r.operatorBox.ProviderBlocks) > 0 && r.providerRegistry != nil && r.providerRegistry.Len() > 0 {
+	if len(box.ProviderBlocks) > 0 && r.providerRegistry != nil && r.providerRegistry.Len() > 0 {
 		kubeReader := &kubeReaderAdapter{kube: kube}
-		if err := runProviders(ctx, obj, resolver, r.operatorBox.ProviderBlocks, r.providerRegistry, kubeReader, r.providerStats); err != nil {
+		if err := runProviders(ctx, obj, resolver, box.ProviderBlocks, r.providerRegistry, kubeReader, r.providerStats); err != nil {
 			return resolver, fmt.Errorf("providers: %w", err)
 		}
 	}
@@ -247,7 +247,7 @@ func (r *GenericReconciler[PTR]) runResourceGroup(
 }
 
 // runTemplateOnDelete interprets the onDelete block.
-func (r *GenericReconciler[PTR]) runTemplateOnDelete(ctx context.Context, resolver *orktmpl.Resolver, obj domain.Object) error {
+func (r *GenericReconciler[PTR]) runTemplateOnDelete(ctx context.Context, resolver *orktmpl.Resolver, obj domain.Object, box orktypes.OperatorBoxConfig) error {
 	kube, ok := kubeclient.FromContext(ctx)
 	if !ok {
 		return fmt.Errorf("kubeclient not found in context")
@@ -255,7 +255,7 @@ func (r *GenericReconciler[PTR]) runTemplateOnDelete(ctx context.Context, resolv
 
 	guard := r.namespaceGuardFunc(ctx, obj)
 
-	if t := r.operatorBox.OnDelete; t != nil {
+	if t := box.OnDelete; t != nil {
 		if t.Ordered {
 			if err := r.runOrderedDelete(ctx, kube, resolver, obj, t, guard); err != nil {
 				return err
@@ -268,16 +268,16 @@ func (r *GenericReconciler[PTR]) runTemplateOnDelete(ctx context.Context, resolv
 		}
 	}
 
-	if len(r.operatorBox.ProviderBlocks) > 0 && r.providerRegistry != nil {
+	if len(box.ProviderBlocks) > 0 && r.providerRegistry != nil {
 		kubeReader := &kubeReaderAdapter{kube: kube}
-		if err := runProviderDelete(ctx, obj, resolver, r.operatorBox.ProviderBlocks, r.providerRegistry, kubeReader, r.providerStats); err != nil {
+		if err := runProviderDelete(ctx, obj, resolver, box.ProviderBlocks, r.providerRegistry, kubeReader, r.providerStats); err != nil {
 			return fmt.Errorf("provider cleanup: %w", err)
 		}
 	}
 
 	// Cluster-scoped resources cannot have namespace-scoped owners, so GC never cleans them up.
 	// Always run explicit cleanup regardless of ordered/unordered path.
-	if err := runners.DeleteOwnedClusterScopedResources(ctx, kube, resolver, obj, r.operatorBox); err != nil {
+	if err := runners.DeleteOwnedClusterScopedResources(ctx, kube, resolver, obj, box); err != nil {
 		return fmt.Errorf("cluster-scoped resource cleanup: %w", err)
 	}
 

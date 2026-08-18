@@ -322,8 +322,9 @@ func BuildCRDInfoHandler(
 				}
 			}
 
-			providers := make([]ProviderInfoResponse, 0, len(crd.OperatorBox.ProviderBlocks))
-			for _, block := range crd.OperatorBox.ProviderBlocks {
+			box := crd.OperatorBox
+			providers := make([]ProviderInfoResponse, 0, len(box.ProviderBlocks))
+			for _, block := range box.ProviderBlocks {
 				kinds := make([]string, 0, len(block.Declarations))
 				seen := make(map[string]struct{})
 				for _, decl := range block.Declarations {
@@ -522,6 +523,7 @@ func BuildKatalogHandler(
 				statusCounts.Pending++
 			}
 
+			box := crd.OperatorBox
 			crds = append(crds, CRDSummaryResponse{
 				Name:                     crd.Name,
 				State:                    state,
@@ -544,10 +546,10 @@ func BuildKatalogHandler(
 				RBACCount:                generateRBACInfo(crd, v).TotalRules,
 				ResourceCount:            v.resourceCount,
 				DeletionProtection:       isCRDProtected(deletionProtectedCRDs, crd.APITypes.Plural, crd.APITypes.Group),
-				ProviderCount:            len(crd.OperatorBox.ProviderBlocks),
+				ProviderCount:            len(box.ProviderBlocks),
 				OperatorBox: OperatorBoxSummary{
 					Type:           "generic",
-					HasTemplates:   crd.OperatorBox.OnCreate != nil,
+					HasTemplates:   box.OnCreate != nil,
 					HasHooks:       crd.HasHooks(),
 					HasConstructor: crd.HasConstructor(),
 				},
@@ -858,9 +860,10 @@ func resolveCRDDisplayValues(
 	kfg *konfig.Konfig,
 	inf cache.SharedIndexInformer,
 ) crdDisplayValues {
+	box := crd.OperatorBox
 
 	// Queue depth
-	maxDepth := crd.OperatorBox.Reconciler.Queue.MaxDepth
+	maxDepth := box.Reconciler.Queue.MaxDepth
 	maxDepthSource := "configured"
 	if maxDepth == 0 {
 		maxDepth = kfg.Katalog().DefaultQueueDepth()
@@ -868,17 +871,17 @@ func resolveCRDDisplayValues(
 	}
 
 	// Resync
-	resync := crd.OperatorBox.Reconciler.Resync.String()
+	resync := box.Reconciler.Resync.String()
 	resyncSource := "configured"
-	if crd.OperatorBox.Reconciler.Resync.Duration == 0 {
+	if box.Reconciler.Resync.Duration == 0 {
 		resyncSource = "default"
 		resync = kfg.Katalog().DefaultResync().String()
 	}
 
 	// Workers
-	workers := crd.OperatorBox.Reconciler.Workers
+	workers := box.Reconciler.Workers
 	workersSource := "configured"
-	if crd.OperatorBox.Reconciler.Workers == 0 {
+	if box.Reconciler.Workers == 0 {
 		workers = kfg.Katalog().DefaultWorkers()
 		workersSource = "default"
 	}

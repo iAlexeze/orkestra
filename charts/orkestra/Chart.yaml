@@ -6,8 +6,8 @@ description: >-
   namespace protection with admission webhooks, and observe everything in the
   Control Center. Runtime and Gateway deploy independently.
 type: application
-version: 1.7.10
-appVersion: "0.7.10"
+version: 1.7.16
+appVersion: "0.7.16"
 
 keywords:
   - orkestra
@@ -65,16 +65,24 @@ annotations:
       url: https://raw.githubusercontent.com/orkspace/orkestra/main/documentation/assets/controlcenter/pv-watcher-workers.png
   artifacthub.io/changes: |
     - kind: added
-      description: "ork e2e: --report-file flag writes results as GFM markdown tables (passed + failed with error column)"
+      description: "Per-target operatorBox: each serve.target.entries entry can declare its own operatorBox with hooks, gates, and reconciler config"
     - kind: added
-      description: "ork e2e: spec.onFailure — diagnostic kubectl and shell commands printed when any expectation fails"
+      description: "MuxReconciler: dispatches to the correct reconciler per target at reconcile time; kordinator sees one reconciler"
     - kind: added
-      description: "ork e2e: per-expectation onFailure — diagnostics printed immediately when that specific checkpoint fails"
+      description: "pkg/intent/target/: target resolution and CR construction move into a dedicated package separate from gateway API"
     - kind: added
-      description: "ork e2e: terminal output split — passed cases first, failed cases with indented error detail"
+      description: "ork serve apply --override: force-route to a new target and trigger surface cleanup of the old one"
+    - kind: added
+      description: "Fixture 03-hooks-targets: three targets on one CRD proving hooks, gate, and constructor dispatch paths"
+    - kind: added
+      description: "documentation/concepts/reusability/: new Reusability and Composition section"
     - kind: fixed
-      description: "forEach silently no-op on NetworkPolicy, ResourceQuota, LimitRange, ClusterRole, ClusterRoleBinding"
-    - kind: fixed
-      description: "NetworkPolicy, ResourceQuota, LimitRange, ClusterRole, ClusterRoleBinding not tracked as children in CR detail"
-    - kind: fixed
-      description: "isFileMotif: bare relative motif paths not recognised as file paths"
+      description: "reconciler.default: false — constructor now wired from ReconcilerRegistry at load time; missing entry is a load-time error"
+    - kind: added
+      description: "lifecycle: block — maturity (alpha/beta/stable/deprecated), deprecation, compatibility, and platform policy on every Katalog"
+    - kind: added
+      description: "lifecycle.accept.patterns on Komposer: accept deprecated Katalogs at composition time with optional semver version range"
+    - kind: added
+      description: "policy.minMaturity: platform-level maturity floor; ork validate rejects patterns below the declared floor"
+    - kind: added
+      description: "Registry guide examples 13–16: deprecation-accept, lifecycle-maturity, lifecycle-compatibility, komposer-accept"

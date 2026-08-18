@@ -227,7 +227,7 @@ func resolveClusterTargets(
 
 // resolveReadCluster returns the single effective kubeclient.Interface for read operations
 // (GET, LIST, DELETE). When serve.clusters has static names, the first is used.
-// Templates and the local fallback return localKube.
+// Empty templates (after resolution) and the local fallback return localKube.
 func resolveReadCluster(
 	crd *orktypes.CRDEntry,
 	alias string,
