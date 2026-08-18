@@ -1,0 +1,32 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: webapp-operator
+  version: v1.0.0
+  description: WebApp operator — stable, semantic versioning applies and breaking changes are gated behind major versions.
+  author: myorg
+  license: Apache-2.0
+
+lifecycle:
+  maturity: stable
+
+spec:
+  crds:
+    webapp:
+      crdFile: ./crd.yaml
+
+      imports:
+        - motif: ../01-motifs/web-service/motif.yaml
+          with:
+            image: "{{ .spec.image }}"
+            port: "{{ .spec.port }}"
+            replicas: "{{ .spec.replicas }}"
+
+      operatorBox:
+        reconciler:
+          workers: 2
+          resync: 1m
+        status:
+          fields:
+            - path: phase
+              value: "Running"

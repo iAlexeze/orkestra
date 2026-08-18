@@ -3,10 +3,10 @@ package reconciler
 import (
 	"context"
 
+	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/runtime/runners"
-	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 )
 
 // cleanupPreviousSurface deletes all resources belonging to the surface the CR

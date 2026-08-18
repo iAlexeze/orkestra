@@ -3,16 +3,14 @@ kind: Katalog
 metadata:
   name: legacy-worker
   version: 1.0.0
-  description: Tests accept.beforeEol + accept.eol allowing startup past the end-of-life date.
+  description: "Tests deprecation past end-of-life date — validates cleanly at schema level."
+lifecycle:
   deprecation:
     message: "Replaced by task-runner which uses the Jobs API"
     migratedTo: task-runner:v1.0.0
     timeline:
       from: "2020-01-01"
       to:   "2021-01-01"
-    accept:
-      beforeEol: true
-      eol: true
 spec:
   crds:
     widget:

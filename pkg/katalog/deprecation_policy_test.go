@@ -13,25 +13,17 @@ func TestCheckDeprecationPolicy_NilBlock(t *testing.T) {
 	assert.NoError(t, k.CheckDeprecationPolicy())
 }
 
-func TestCheckDeprecationPolicy_NoTimeline_NoAccept(t *testing.T) {
+func TestCheckDeprecationPolicy_NoTimeline_Deprecated(t *testing.T) {
 	k := katalogWithDeprecation(&orktypes.KatalogDeprecation{
 		Message: "use v2",
 	})
 	err := k.CheckDeprecationPolicy()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "beforeEol: true")
 	assert.Contains(t, err.Error(), "deprecated")
+	assert.Contains(t, err.Error(), "lifecycle:")
 }
 
-func TestCheckDeprecationPolicy_NoTimeline_Accepted(t *testing.T) {
-	k := katalogWithDeprecation(&orktypes.KatalogDeprecation{
-		Message: "use v2",
-		Accept:  &orktypes.DeprecationAccept{BeforeEol: true},
-	})
-	assert.NoError(t, k.CheckDeprecationPolicy())
-}
-
-func TestCheckDeprecationPolicy_WarningWindow_NoAccept(t *testing.T) {
+func TestCheckDeprecationPolicy_WarningWindow(t *testing.T) {
 	k := katalogWithDeprecation(&orktypes.KatalogDeprecation{
 		Message: "use v2",
 		Timeline: &orktypes.DeprecationTimeline{
@@ -41,19 +33,7 @@ func TestCheckDeprecationPolicy_WarningWindow_NoAccept(t *testing.T) {
 	})
 	err := k.CheckDeprecationPolicy()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "beforeEol: true")
-}
-
-func TestCheckDeprecationPolicy_WarningWindow_Accepted(t *testing.T) {
-	k := katalogWithDeprecation(&orktypes.KatalogDeprecation{
-		Message: "use v2",
-		Timeline: &orktypes.DeprecationTimeline{
-			From: "2020-01-01",
-			To:   "2099-01-01",
-		},
-		Accept: &orktypes.DeprecationAccept{BeforeEol: true},
-	})
-	assert.NoError(t, k.CheckDeprecationPolicy())
+	assert.Contains(t, err.Error(), "lifecycle:")
 }
 
 func TestCheckDeprecationPolicy_BeforeFrom_NoAcceptNeeded(t *testing.T) {
@@ -67,7 +47,7 @@ func TestCheckDeprecationPolicy_BeforeFrom_NoAcceptNeeded(t *testing.T) {
 	assert.NoError(t, k.CheckDeprecationPolicy())
 }
 
-func TestCheckDeprecationPolicy_EOL_NeitherAccepted(t *testing.T) {
+func TestCheckDeprecationPolicy_EOL(t *testing.T) {
 	k := katalogWithDeprecation(&orktypes.KatalogDeprecation{
 		Message: "use v2",
 		Timeline: &orktypes.DeprecationTimeline{
@@ -78,49 +58,7 @@ func TestCheckDeprecationPolicy_EOL_NeitherAccepted(t *testing.T) {
 	err := k.CheckDeprecationPolicy()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "end-of-life")
-	assert.Contains(t, err.Error(), "beforeEol: true")
-	assert.Contains(t, err.Error(), "eol: true")
-}
-
-func TestCheckDeprecationPolicy_EOL_OnlyBeforeEol(t *testing.T) {
-	k := katalogWithDeprecation(&orktypes.KatalogDeprecation{
-		Message: "use v2",
-		Timeline: &orktypes.DeprecationTimeline{
-			From: "2020-01-01",
-			To:   "2020-06-01",
-		},
-		Accept: &orktypes.DeprecationAccept{BeforeEol: true},
-	})
-	err := k.CheckDeprecationPolicy()
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "eol: true")
-}
-
-func TestCheckDeprecationPolicy_EOL_BothAccepted(t *testing.T) {
-	k := katalogWithDeprecation(&orktypes.KatalogDeprecation{
-		Message: "use v2",
-		Timeline: &orktypes.DeprecationTimeline{
-			From: "2020-01-01",
-			To:   "2020-06-01",
-		},
-		Accept: &orktypes.DeprecationAccept{BeforeEol: true, Eol: true},
-	})
-	assert.NoError(t, k.CheckDeprecationPolicy())
-}
-
-func TestCheckDeprecationPolicy_EOL_OnlyEolWithoutBeforeEol(t *testing.T) {
-	// eol: true alone is insufficient — beforeEol must also be true
-	k := katalogWithDeprecation(&orktypes.KatalogDeprecation{
-		Message: "use v2",
-		Timeline: &orktypes.DeprecationTimeline{
-			From: "2020-01-01",
-			To:   "2020-06-01",
-		},
-		Accept: &orktypes.DeprecationAccept{Eol: true},
-	})
-	err := k.CheckDeprecationPolicy()
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "beforeEol: true")
+	assert.Contains(t, err.Error(), "lifecycle:")
 }
 
 func TestCheckDeprecationPolicy_MigrationTargetInError(t *testing.T) {

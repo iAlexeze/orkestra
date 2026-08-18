@@ -118,7 +118,9 @@ func (m *MuxReconciler) SetRollbackNotifiers(onTrigger, onClear func()) {
 }
 
 func (m *MuxReconciler) GetAutoMetrics() *autoscaler.AutoMetrics {
-	if exporter, ok := m.fallback.(interface{ GetAutoMetrics() *autoscaler.AutoMetrics }); ok {
+	if exporter, ok := m.fallback.(interface {
+		GetAutoMetrics() *autoscaler.AutoMetrics
+	}); ok {
 		return exporter.GetAutoMetrics()
 	}
 	return nil

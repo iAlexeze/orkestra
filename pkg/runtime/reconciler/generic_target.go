@@ -6,9 +6,9 @@ import (
 	"slices"
 
 	"github.com/orkspace/orkestra/domain"
+	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
-	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 

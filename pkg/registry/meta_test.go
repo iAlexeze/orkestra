@@ -139,7 +139,7 @@ func TestLoadPatternMeta_Fixture(t *testing.T) {
 		t.Errorf("Name = %q; want registry-pack-probe", meta.Name)
 	}
 	if meta.Deprecated == nil {
-		t.Fatal("Deprecated is nil — fixture has metadata.deprecation")
+		t.Fatal("Deprecated is nil — fixture has lifecycle.deprecation")
 	}
 	if meta.Deprecated.MigratedTo == "" {
 		t.Errorf("MigratedTo is empty")
@@ -159,6 +159,7 @@ metadata:
   name: old-redis
   version: v6
   description: "Legacy Redis operator"
+lifecycle:
   deprecation:
     migratedTo: ghcr.io/test/patterns/redis:v7
     message: "Upgrade to v7 — adds TLS support"

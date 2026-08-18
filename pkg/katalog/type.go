@@ -38,6 +38,8 @@ type Katalog struct {
 
 	// Internal — enabledCRDs is enriched and validated; Spec.CRDs holds all (including disabled)
 	metadata           orktypes.KatalogMeta         `yaml:"-" json:"-"`
+	lifecycle          *orktypes.KatalogLifecycle   `yaml:"-" json:"-"`
+	policy             *orktypes.KatalogPolicy      `yaml:"-" json:"-"`
 	enabledCRDs        map[string]orktypes.CRDEntry `yaml:"-" json:"-"`
 	serveEnabledCRDs   []*orktypes.CRDEntry         `yaml:"-" json:"-"`
 	withCRDFiles       []string                     `yaml:"-" json:"-"` // CRD names that declared crdFile, captured before the field is cleared
@@ -174,42 +176,55 @@ func (k *Katalog) Metadata() orktypes.KatalogMeta {
 	return k.metadata
 }
 
+// Lifecycle returns the lifecycle policy block, or nil if absent.
+func (k *Katalog) Lifecycle() *orktypes.KatalogLifecycle {
+	return k.lifecycle
+}
+
+// Policy returns the platform policy block, or nil if absent.
+func (k *Katalog) Policy() *orktypes.KatalogPolicy {
+	return k.policy
+}
+
 // Deprecation returns the raw deprecation block, or nil if absent.
 func (k *Katalog) Deprecation() *orktypes.KatalogDeprecation {
-	return k.metadata.Deprecation
+	if k.lifecycle == nil {
+		return nil
+	}
+	return k.lifecycle.Deprecation
 }
 
 // IsDeprecated returns true if the Katalog is deprecated.
 func (k *Katalog) IsDeprecated() bool {
-	if k.metadata.Deprecation == nil {
+	if k.lifecycle == nil {
 		return false
 	}
-	return k.metadata.Deprecation.IsDeprecated()
+	return k.lifecycle.IsDeprecated()
 }
 
 // IsMigrated returns true if the Katalog is deprecated and has a migration target.
 func (k *Katalog) IsMigrated() bool {
-	if k.metadata.Deprecation == nil {
+	if k.lifecycle == nil || k.lifecycle.Deprecation == nil {
 		return false
 	}
-	return k.metadata.Deprecation.MigrationTarget() != ""
+	return k.lifecycle.Deprecation.MigrationTarget() != ""
 }
 
 // MigrationTarget returns the value of the MigratedTo field.
-// If the deprecation block is nil or empty, it returns an empty string.
+// If the lifecycle or deprecation block is nil, it returns an empty string.
 func (k *Katalog) MigrationTarget() string {
-	if k.metadata.Deprecation == nil {
+	if k.lifecycle == nil || k.lifecycle.Deprecation == nil {
 		return ""
 	}
-	return k.metadata.Deprecation.MigrationTarget()
+	return k.lifecycle.Deprecation.MigrationTarget()
 }
 
 // MigrationMessage returns the deprecation message.
 func (k *Katalog) MigrationMessage() string {
-	if k.metadata.Deprecation == nil {
+	if k.lifecycle == nil || k.lifecycle.Deprecation == nil {
 		return ""
 	}
-	return k.metadata.Deprecation.MigrationMessage()
+	return k.lifecycle.Deprecation.MigrationMessage()
 }
 
 // CRDEntry returns the enabled CRD entry for the given name.

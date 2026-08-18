@@ -3,7 +3,8 @@ kind: Katalog
 metadata:
   name: legacy-worker
   version: 1.0.0
-  description: Tests that metadata.deprecation requires a message field.
+  description: Tests that lifecycle.deprecation requires a message field.
+lifecycle:
   deprecation:
     migratedTo: task-runner:v1.0.0
     # message is required — this should fail validation

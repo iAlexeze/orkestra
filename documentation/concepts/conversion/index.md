@@ -2,36 +2,53 @@
 
 Schema evolution is the problem of changing what a CR looks like over time — without breaking the operators, clients, and stored objects that depend on the current shape.
 
-Orkestra provides two approaches. The choice comes down to one question: does the Kubernetes API server need to know there are two versions?
+Orkestra provides three approaches, each anchored to a different API layer. The choice is really a question of where in the stack the translation should live.
 
 ---
 
-## Two approaches
+## Three approaches, three layers
 
-**[`normalize:`](./01-normalize.md)** — the API server never sees two versions. The Katalog normalises input format variation before reconcile runs. One CRD version. No webhook. No TLS.
+**[Kubernetes API — `conversion.paths:`](./02-conversion-paths.md)**
 
-**[`conversion.paths:`](./02-conversion-paths.md)** — the API server stores objects at one version and serves them at another. Orkestra Gateway handles `/convert`. Multi-version CRD, bidirectional, lossless.
+The API server is the translation point. Orkestra Gateway handles `/convert`; the API server stores objects at one version and serves them at another. Multi-version CRD, bidirectional, lossless.
+
+Use when external clients target a specific API version, or when live objects at v1 must remain readable as v1.
 
 ---
 
-## Pick one
+**[Runtime API — `normalize:`](./01-normalize.md)**
 
-| | `normalize:` | `conversion.paths:` |
-|---|---|---|
-| **CRD versions** | One | Two or more |
-| **Kubernetes sees** | One schema | Multi-version CRD spec |
-| **Conversion webhook** | No | Yes — Orkestra Gateway's `/convert` |
-| **TLS required** | No | Yes — auto-generated |
-| **Objects in etcd** | One format | One storage version, served in any declared version |
-| **Best for** | Internal operators, tolerating input shape variation | Public APIs, external clients targeting a specific version, migrating live objects |
+The reconciler is the translation point. The runtime normalises input format variation before reconcile runs. One CRD version. No webhook. No TLS.
 
-If you control who creates the CRs and want to iterate quickly: `normalize:`.
+Use when you control who creates the CRs and want to tolerate input shape variation without versioning overhead.
 
-If external clients target a specific API version, or you have live objects at v1 that **must** remain readable as v1: `conversion.paths:`.
+---
+
+**[Gateway API — `serve.fields.values`](./03-serve-translation.md)**
+
+The Gateway is the translation point. Callers submit a simplified intent through the Gateway API; `serve.fields.values` fans the fields out to the CRD's internal schema before the CR is written. One CRD version. No webhook. The CRD schema is an implementation detail — callers never see it.
+
+Use when callers submit intents through the Gateway and should not be coupled to the CRD schema.
+
+---
+
+## At a glance
+
+| | Kubernetes API | Runtime API | Gateway API |
+|---|---|---|---|
+| **Mechanism** | `conversion.paths:` | `normalize:` | `serve.fields.values` |
+| **Translation point** | API server (`/convert`) | Reconciler | Gateway (before CR is written) |
+| **CRD versions** | Two or more | One | One |
+| **Caller sees CRD schema** | Yes | Yes | No |
+| **Conversion webhook** | Yes — Orkestra Gateway's `/convert` | No | No |
+| **TLS required** | Yes — auto-generated | No | No |
+| **Gateway required** | Yes | No | Yes |
+| **Objects in etcd** | One storage version, served in any declared version | One format | One format |
 
 ---
 
 ## Where to go next
 
-- **[normalize:](./01-normalize.md)** — input tolerance without versioning overhead
-- **[conversion.paths:](./02-conversion-paths.md)** — multi-version API with Orkestra as the conversion webhook
+- **[Kubernetes API — conversion.paths:](./02-conversion-paths.md)** — multi-version CRD with Orkestra as the conversion webhook
+- **[Runtime API — normalize:](./01-normalize.md)** — input tolerance without versioning overhead
+- **[Gateway API — serve.fields.values](./03-serve-translation.md)** — Gateway-layer translation; callers never see the CRD schema
