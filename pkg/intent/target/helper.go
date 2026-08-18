@@ -3,13 +3,13 @@ package target
 import "github.com/orkspace/orkestra/pkg/utils"
 
 var (
-    validateK8sName = utils.ValidKubernetesName
-    isNestedPath = utils.IsNestedPath
-    setNestedPath = utils.SetNestedPath
+	validateK8sName = utils.ValidKubernetesName
+	isNestedPath    = utils.IsNestedPath
+	setNestedPath   = utils.SetNestedPath
 )
 
 // mapContains is a nil-safe map membership check.
 // Wraps utils.MapContains for local convenience.
 func mapContains[V any](m map[string]V, key string) bool {
-    return utils.MapContains(m, key)
+	return utils.MapContains(m, key)
 }

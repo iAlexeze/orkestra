@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
+	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/tools/cache"
 )

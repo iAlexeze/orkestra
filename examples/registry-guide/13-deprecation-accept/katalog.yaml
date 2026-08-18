@@ -4,20 +4,19 @@ metadata:
   name: webapp-operator
   version: v1.0.0
   description: >
-    WebApp operator v1.0.0 — deprecated in favour of v2.0.0 which uses
-    spec.healthPath and enforces internal registry images.
+    WebApp operator v1.0.0 — deprecated. Consumers must acknowledge this
+    in their Komposer before Orkestra will start.
   author: myorg
   license: Apache-2.0
-  tags:
-    - web
-    - stateless
-    - deprecated
 
-  # Deprecation block — surfaced by ork inspect, ork patterns,
-  # and ork validate when this pattern is pulled as a registry source.
+lifecycle:
+  maturity: deprecated
   deprecation:
     migratedTo: ghcr.io/myorg/katalogs/webapp@v2.0.0
     message: "v1.0.0 is end-of-life. Migrate to v2.0.0: add spec.healthPath to your CRs."
+    timeline:
+      from: "2025-01-01"
+      to: "2026-06-01"
 
 spec:
   crds:
@@ -25,13 +24,11 @@ spec:
       crdFile: ./crd-v1.yaml
 
       imports:
-        - motif: oci://ghcr.io/myorg/motifs/web-service:v1.1.0
+        - motif: ../01-motifs/web-service/motif.yaml
           with:
             image: "{{ .spec.image }}"
             port: "{{ .spec.port }}"
             replicas: "{{ .spec.replicas }}"
-            host: "{{ .spec.host }}"
-            resourceProfile: "{{ .spec.resourceProfile }}"
 
       operatorBox:
         reconciler:
@@ -41,5 +38,3 @@ spec:
           fields:
             - path: phase
               value: "Running"
-            - path: ready
-              value: "{{ allReplicasReady .children.deployment }}"

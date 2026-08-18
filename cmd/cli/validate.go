@@ -153,7 +153,11 @@ Examples:
 		builtIn := 0
 		custom := 0
 
-		printKatalogDeprecation(k.Deprecation())
+		var deprecationHint string
+		if konfig.IsKomposerKind(docKind) {
+			deprecationHint = "To acknowledge this import, add it to lifecycle.accept.patterns in your Komposer."
+		}
+		printKatalogDeprecationWithHint(k.Deprecation(), deprecationHint)
 
 		// Print each CRD entry with enrichment info
 		for _, entry := range sortedEntries {

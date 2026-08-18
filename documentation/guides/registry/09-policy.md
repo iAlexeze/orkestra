@@ -134,4 +134,4 @@ cd 04-katalog-platform
 # Follow the steps in the README
 ```
 
-→ Next: [Deprecation](10-deprecation.md)
+→ Next: [Lifecycle](10-lifecycle.md)

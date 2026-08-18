@@ -191,6 +191,8 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 		Metadata:   doc.Metadata,
 	}
 	m.apiMetadata = apiMetadata
+	m.lifecycle = doc.Lifecycle
+	m.policy = doc.Policy
 	m.security = doc.Security
 	m.notification = doc.Notification
 	m.providers = doc.Providers
@@ -462,6 +464,12 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 	}
 	if doc.Publish != nil {
 		m.publish = doc.Publish
+	}
+	if doc.Lifecycle != nil {
+		m.lifecycle = doc.Lifecycle
+	}
+	if doc.Policy != nil {
+		m.policy = doc.Policy
 	}
 
 	mergedProfiles, err := accProfiles.Merge(doc.Profiles, path)

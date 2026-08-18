@@ -3,15 +3,14 @@ kind: Katalog
 metadata:
   name: legacy-worker
   version: 1.0.0
-  description: Tests accept.beforeEol allowing startup during the deprecation warning window.
+  description: "Tests deprecation with timeline — warning window, no accept needed at Katalog level."
+lifecycle:
   deprecation:
     message: "Replaced by task-runner which uses the Jobs API"
     migratedTo: task-runner:v1.0.0
     timeline:
       from: "2026-01-01"
       to:   "2027-01-01"
-    accept:
-      beforeEol: true
 spec:
   crds:
     widget:

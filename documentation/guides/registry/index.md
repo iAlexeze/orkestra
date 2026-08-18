@@ -38,7 +38,7 @@ The quality signals are annotations baked into the OCI artifact at push time. `o
 | [Upgrading Patterns](07-upgrade.md) | Motif upgrade, katalog follows, version isolation, rollback |
 | [API Evolution](08-api-evolution.md) | CRD field restructuring — with webhooks and without |
 | [Policy](09-policy.md) | Platform admission, allowedRegistries, supply chain control |
-| [Deprecation](10-deprecation.md) | Pattern lifecycle: deprecate, warn consumers, retire |
+| [Lifecycle](10-lifecycle.md) | Maturity, deprecation, compatibility, and acceptance at katalog and komposer level |
 
 ---
 
@@ -77,4 +77,4 @@ Set these before any `ork push` or `ork pull` command. `docker login <registry>`
 - [Upgrading Patterns](07-upgrade.md) — motif upgrade, katalog follows, version isolation, rollback
 - [API Evolution](08-api-evolution.md) — CRD field restructuring with and without webhooks
 - [Policy](09-policy.md) — platform admission, allowedRegistries, supply chain control
-- [Deprecation](10-deprecation.md) — pattern lifecycle: deprecate, warn consumers, retire
+- [Lifecycle](10-lifecycle.md) — maturity, deprecation, compatibility, and acceptance at katalog and komposer level

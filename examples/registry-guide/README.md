@@ -13,6 +13,7 @@ By the end of this guide you will have:
 - Composed multiple Katalogs into a single Komposer
 - Upgraded a live pattern and rolled it back
 - Deprecated a pattern and migrated consumers to a replacement
+- Declared lifecycle maturity, compatibility ranges, and acceptance at both katalog and komposer level
 - Built a typed Go operator with hooks for complex business logic
 - Combined declarative and typed katalogs in one Komposer
 - Automated the full pipeline with GitHub Actions
@@ -57,10 +58,14 @@ This provisions a single-node kind cluster named `ork-playground` and sets your 
 | [06-pattern-zoo](./06-pattern-zoo/README.md) | Mix OCI registry patterns, local katalogs, and Helm sources |
 | [07-upgrade](./07-upgrade/README.md) | Publish v1.1.0, upgrade a live CR, verify zero downtime |
 | [08-bad-actor](./08-bad-actor/README.md) | Audit trail: trace who pushed what and when |
-| [09-deprecation](./09-deprecation/README.md) | Mark a pattern deprecated, migrate consumers to the replacement |
-| [10-hooks-katalog](./10-hooks-katalog/README.md) | Typed Go operator: hooks, generate registry, build, publish |
-| [11-typed-komposer](./11-typed-komposer/README.md) | Combine declarative and typed katalogs in one Komposer |
-| [12-ork-action](./12-ork-action/README.md) | GitHub Actions: automate validate → simulate → push |
+| [09-hooks-katalog](./09-hooks-katalog/README.md) | Typed Go operator: hooks, generate registry, build, publish |
+| [10-typed-komposer](./10-typed-komposer/README.md) | Combine declarative and typed katalogs in one Komposer |
+| [11-ork-action](./11-ork-action/README.md) | GitHub Actions: automate validate → simulate → push |
+| [12-deprecation](./12-deprecation/README.md) | Mark a pattern deprecated, migrate consumers to the replacement |
+| [13-deprecation-accept](./13-deprecation-accept/README.md) | Accept a deprecated pattern at katalog level and at komposer level |
+| [14-lifecycle-maturity](./14-lifecycle-maturity/README.md) | Signal stability with alpha / beta / stable / deprecated |
+| [15-lifecycle-compatibility](./15-lifecycle-compatibility/README.md) | Declare verified Kubernetes and Orkestra version ranges |
+| [16-komposer-accept](./16-komposer-accept/README.md) | Komposer that acknowledges multiple patterns with different lifecycle concerns |
 
 ---
 

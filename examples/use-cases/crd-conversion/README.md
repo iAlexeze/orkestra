@@ -1,6 +1,6 @@
 # CRD Conversion
 
-Two approaches to the same problem: a CronJob operator that accepts multiple schedule formats. The Kubebuilder CronJob tutorial rewritten in YAML — with and without a conversion webhook.
+Three approaches to the same problem: a CronJob operator that accepts multiple schedule formats. The Kubebuilder CronJob tutorial rewritten in YAML — each example isolates one translation strategy.
 
 | Example | What it teaches |
 |---------|-----------------|
@@ -19,6 +19,7 @@ Every example ships with a runnable `e2e.yaml`. Run a single example end-to-end:
 ```bash
 cd with-webhooks && ork e2e
 cd without-webhooks && ork e2e
+cd with-serve-translation && ork e2e
 ```
 
 Or run both together:

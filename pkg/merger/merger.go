@@ -66,6 +66,12 @@ type Merger struct {
 	// notes holds the Katalog-level user-defined note registry.
 	notes orktypes.NoteRegistry
 
+	// lifecycle holds the lifecycle policy of the final katalog.
+	lifecycle *orktypes.KatalogLifecycle
+
+	// policy holds the platform policy block of the final katalog.
+	policy *orktypes.KatalogPolicy
+
 	// projects holds the merged projectInfo configuration of the final katalog
 	projects map[string]interface{}
 
@@ -407,6 +413,19 @@ func (m *Merger) ToSpecImports() []orktypes.MotifImport {
 func (m *Merger) ToNotes() orktypes.NoteRegistry {
 	m.mustBeMerged()
 	return m.notes
+}
+
+// ToLifecycle returns the lifecycle policy of the merged result.
+// Used by KomposeRuntimeKatalog to populate Katalog.lifecycle.
+func (m *Merger) ToLifecycle() *orktypes.KatalogLifecycle {
+	m.mustBeMerged()
+	return m.lifecycle
+}
+
+// ToPolicy returns the platform policy block of the merged result.
+func (m *Merger) ToPolicy() *orktypes.KatalogPolicy {
+	m.mustBeMerged()
+	return m.policy
 }
 
 // ToProjectInfo returns merged project information of the merged result

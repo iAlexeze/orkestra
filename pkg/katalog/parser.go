@@ -99,6 +99,8 @@ func (k *Katalog) KomposeRuntimeKatalog(
 	k.projectInfo = m.ToProjectInfo()
 	k.enabledCRDs = m.Enabled()           // Enabled CRDs for all operations
 	k.metadata = m.APIMetadata().Metadata // Metadata for CLI and health endpoints
+	k.lifecycle = m.ToLifecycle()
+	k.policy = m.ToPolicy()
 	k.APIVersion = m.APIMetadata().APIVersion
 	k.Kind = m.APIMetadata().Kind
 	k.konfig = kfg

@@ -24,4 +24,3 @@ func ResolveTargetFromAnnotations(annotations map[string]string) string {
 
 	return ""
 }
-

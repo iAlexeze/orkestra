@@ -14,9 +14,16 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	}
 
 	// -------------------------------------------------------------------------
-	// 2. Deprecation timeline validation
+	// 2a. Lifecycle validation (deprecation, maturity, compatibility syntax)
 	// -------------------------------------------------------------------------
-	if err := k.validateDeprecation(); err != nil {
+	if err := k.validateLifecycle(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 2b. Policy block validation (minMaturity enum)
+	// -------------------------------------------------------------------------
+	if err := k.validatePolicy(); err != nil {
 		return nil, err
 	}
 

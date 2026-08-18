@@ -439,7 +439,6 @@ func (c *CRDEntry) HasTargetConstructorFactories() bool {
 	return false
 }
 
-
 // IsEnabledAllEndpoints reports whether the all endpoints are disabled for this CRD.
 // Defaults to false when omitted.
 func (c *CRDEntry) IsEnabledAllEndpoints() bool {
