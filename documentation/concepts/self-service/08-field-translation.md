@@ -113,7 +113,7 @@ ork init --pack use-cases/crd-conversion
 
 The `with-serve-translation` variant demonstrates `values` fanout of a cron string to a structured schedule object.
 
-## See also
+## Where to go next
 
 - **Reference:** → [serve — field translation](../../reference/schema/02-katalog/22-serve-field-translation.md) — `value`, `values`, `.value`, `.request` reference
 - **Target mode:** → [02-target-mode.md](02-target-mode.md) — how the serve layer works end-to-end

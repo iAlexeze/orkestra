@@ -225,7 +225,7 @@ Which CRDs appear with a **[+ Create]** button in the Control Center and have th
 
 → [crd-entry.md — serve block](02-crd-entry.md#serve)
 
-## See also
+## Where to go next
 
 → [concepts/self-service](../../../concepts/self-service/) — conceptual overview
 

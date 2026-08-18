@@ -66,7 +66,7 @@ Internal field injected by `ork-doctor` at generation time. Holds developer-side
 
 ---
 
-## See also
+## Where to go next
 
 - [01-top-level.md](../01-top-level.md) — full Katalog wire format
 - [ork inspect](../../../cli/11-inspect.md) — displays metadata fields

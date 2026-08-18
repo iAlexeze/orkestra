@@ -110,7 +110,7 @@ ork init --pack use-cases/idp
  -->
 ---
 
-## See also
+## Where to go next
 
 → [`serve.labels` / `serve.annotations` schema reference](../../reference/schema/02-katalog/20-serve.md)
 

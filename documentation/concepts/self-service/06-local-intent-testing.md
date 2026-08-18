@@ -137,7 +137,7 @@ When `--intent` is omitted, `ork serve play` looks for `intent.yaml` first, then
 
 ---
 
-## See also
+## Where to go next
 
 - [CLI reference — ork serve play](../../reference/cli/13-serve.md#ork-serve-play)
 - [Gateway as a Delivery Layer](05-gateway-as-delivery-layer.md) — what the chain does in production

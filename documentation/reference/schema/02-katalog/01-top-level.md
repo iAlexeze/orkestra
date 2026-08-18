@@ -128,7 +128,7 @@ Named profile definitions shared across all CRD entries in this Katalog. Profile
 
 → Full reference: [User-Defined Profiles](../../../concepts/profiles/10-user-defined-profiles.md)
 
-## See also
+## Where to go next
 
 - [crd-entry.md](02-crd-entry.md)
 - [katalog-security.md](10-katalog-security.md)

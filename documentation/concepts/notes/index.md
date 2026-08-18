@@ -120,7 +120,7 @@ cd intermediate/09-notes/01-built-in
 ork validate && ork simulate
 ```
 
-## See also
+## Where to go next
 
 - [Reference: built-in notes](../../reference/orkestra-notes/index.md) — full function catalog by domain
 - [User-defined profiles](../profiles/10-user-defined-profiles.md) — same distribution mechanism via `spec.imports`

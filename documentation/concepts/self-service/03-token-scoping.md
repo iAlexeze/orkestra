@@ -108,7 +108,7 @@ Not a silent drop, not a generic `401`:
 
 ---
 
-## See also
+## Where to go next
 
 → [Serve token permissions](../../security/08-serve-permissions.md) — the security-model write-up: denial responses, `ork validate` checks, how this layers with `allowedNamespaces`
 

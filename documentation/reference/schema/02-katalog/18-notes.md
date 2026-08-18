@@ -83,7 +83,7 @@ spec:
 
 A Motif can also use `notes.include:` — the path resolves relative to the Motif file.
 
-## See also
+## Where to go next
 
 - [Notes concept](../../../concepts/notes/index.md) — built-in reference, composition guide
 - [Motif schema](../01-motif/index.md) — `notes:` on a Motif

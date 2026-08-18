@@ -205,7 +205,7 @@ For full push-and-sign in one step:
 
 ---
 
-## See also
+## Where to go next
 
 - [`ork pattern sign` / `ork pattern verify`](../reference/cli/12-pattern.md)
 - [`ork push --sign`](../reference/cli/09-push.md)

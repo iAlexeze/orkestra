@@ -139,7 +139,7 @@ return orkdeploy.Update(ctx, r.kube, webapp, spec)
 
 ---
 
-## See also
+## Where to go next
 
 - `from-controller-runtime` pack — `ork init --pack from-controller-runtime`
 - [ork migrate reference](../../reference/cli/migrate.md)

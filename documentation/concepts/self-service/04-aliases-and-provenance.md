@@ -327,7 +327,7 @@ The same runtime. The same CRD. The same Kubernetes resource. Different surfaces
 
 ---
 
-## See also
+## Where to go next
 
 - [Schema reference — serve.target](../../reference/schema/02-katalog/20-serve.md#servetarget)
 - [Token scoping](03-token-scoping.md)

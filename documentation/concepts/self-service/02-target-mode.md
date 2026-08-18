@@ -265,7 +265,7 @@ When a CR switches from one target to another (re-submitted via a different surf
 
 ---
 
-## See also
+## Where to go next
 
 → [`serve.target` schema reference](../../reference/schema/02-katalog/20-serve.md#servetarget)
 

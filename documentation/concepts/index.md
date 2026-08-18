@@ -118,6 +118,14 @@ The [Operator of Operators](operator-of-operators/) pattern lets one Orkestra op
 
 ---
 
+## Self-Service
+
+[Self-Service](self-service/) is how every Orkestra operator becomes a self-service API by default. The serve layer translates intent from any caller — a CI pipeline, a Slack bot, a browser form, a webhook — into Kubernetes objects, without the caller knowing what an `apiVersion` is. No separate portal. No secondary system to wire up.
+
+→ [Read: Self-Service](self-service/)
+
+---
+
 ## Every CRD is a Live API
 
 Every CRD you declare in a Katalog becomes a live HTTP API outside the cluster — health, config, CR list, CR detail, and events, all served from in-memory cache on port 8080. This is the transport layer for the Control Center, ONCOP, and operator autoscaling.
@@ -174,8 +182,9 @@ The [Health Subsystem](health-subsystem/) is Orkestra's liveness, readiness, and
 
 ---
 
-## Internal Developer Platform
+## Testing in Orkestra
 
-An [Internal Developer Platform](idp/) built on Orkestra is not a separate application. It is the gateway, a Katalog with two config fields enabled, and optionally a form in the Control Center. The Gateway API is a CRUD REST surface for CRs — any HTTP client can create, read, or delete the resources your operator manages, without kubeconfig or kubectl.
+[Testing in Orkestra](testing/) is built into every layer — not bolted on. Six tools cover intent delivery, admission rules, webhook intake, and reconciliation entirely without a cluster. `ork e2e` is the final gate, not the first one.
 
-→ [Read: Internal Developer Platform](idp/)
+→ [Read: Testing in Orkestra](testing/)
+

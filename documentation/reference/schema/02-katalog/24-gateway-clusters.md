@@ -166,7 +166,7 @@ ork clusters bootstrap --context kind-prod --name prod
 
 See [ork clusters bootstrap](../../cli/clusters-bootstrap.md) for the full onboarding workflow.
 
-## See also
+## Where to go next
 
 - [`serve.cluster`](20-serve.md) — default cluster for a CRD entry
 - [`target.cluster`](21-serve-nested-spec.md) — per-target cluster override

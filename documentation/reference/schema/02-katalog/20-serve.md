@@ -1000,7 +1000,7 @@ When an OIDC token matches, the verified `sub` claim is stamped on the CR as `or
 | `vaultOIDC.allow` must not be empty | Declare at least one field — empty block accepts any Vault entity token |
 | Duplicate token names | Reported at first duplicate |
 
-## See also
+## Where to go next
 
 - **Conceptual overview:** → [idp](../../../concepts/self-service/)
 - **Aliases and intent provenance:** → [concepts/self-service/04-aliases-and-provenance.md](../../../concepts/self-service/04-aliases-and-provenance.md)

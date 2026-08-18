@@ -233,7 +233,7 @@ hold the ServiceAccount and token Secret in `kube-system`. No credentials
 cross from target cluster to gateway cluster automatically — the bootstrap
 command creates them once; rotation is a future concern.
 
-## See also
+## Where to go next
 
 - [`gateway.clusters` schema](../../reference/schema/02-katalog/24-gateway-clusters.md)
 - [`serve.cluster` field](../../reference/schema/02-katalog/20-serve.md)

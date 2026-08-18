@@ -106,7 +106,7 @@ ork e2e -f e2e.yaml
 
 ---
 
-## See also
+## Where to go next
 
 - [ork simulate](../simulate/index.md) — the fast inner loop; use before E2E
 - [Declarative Integration Testing](../envtest/index.md) — the middle tier: real API server, no cluster

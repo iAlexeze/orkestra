@@ -4,7 +4,8 @@ OLM exists because operators were binaries. When the unit of distribution is a b
 
 Orkestra removes the problem at the root. The operator is not a binary — it is a pattern. Patterns are data. Data's lifecycle is not an external concern to manage. It is a built-in property of the artifact.
 
-**Lifecycle follows production.** The same model that bakes tests into the artifact at publish time is the model that governs maturity, upgrade, compatibility, deprecation, and deletion. There is no separate lifecycle system to install. You write patterns, and the lifecycle comes with them.
+!!! tip "Lifecycle follows production"
+    The same model that bakes tests into the artifact at publish time is the model that governs maturity, upgrade, compatibility, deprecation, and deletion. There is no separate lifecycle system to install. You write patterns, and the lifecycle comes with them.
 
 ---
 
@@ -212,9 +213,7 @@ lifecycle:
     orkestra: ">=0.7.14"
 ```
 
-`ork validate --cluster` checks the running cluster's server version against the declared range and fails if incompatible. `ork run` and `ork serve apply` also check at apply time — a CR apply against an incompatible cluster fails with a clear message rather than a runtime error.
-
-Without `--cluster`, the compatibility check is skipped and a note is printed.
+`ork validate` checks the declared range at validation time and warns when an import falls outside the declared bounds.
 
 Accepted range syntax follows semver conventions:
 

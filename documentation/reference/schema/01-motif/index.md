@@ -229,7 +229,7 @@ If the same profile name appears in the same class in both the Katalog and an im
 
 ---
 
-## See also
+## Where to go next
 
 - [Katalog schema](../02-katalog/01-top-level.md) — where `imports:` lives on the CRD entry
 - [operatorBox](../02-katalog/04-operatorbox.md) — the Katalog's own resources, merged alongside Motif resources

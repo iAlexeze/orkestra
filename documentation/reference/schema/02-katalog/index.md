@@ -95,7 +95,7 @@ This scaffolds the simplest Katalog — a single CRD that creates a Deployment a
 
 ---
 
-## See also
+## Where to go next
 
 - [Motif schema](../01-motif/index.md) — reusable resource blocks imported by Katalogs
 - [Komposer schema](../03-komposer/index.md) — composing multiple Katalogs

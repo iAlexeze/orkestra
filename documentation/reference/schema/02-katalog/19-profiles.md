@@ -113,7 +113,7 @@ A Motif can also use `profiles.include:` — the path resolves relative to the M
 | Same name, different classes | Fine — class is the scope boundary |
 | Name matches a built-in | Warning logged; user definition wins |
 
-## See also
+## Where to go next
 
 - [User-Defined Profiles concept](../../../concepts/profiles/10-user-defined-profiles.md) — full sub-class reference, template expressions, validation, resolution order
 - [Motif schema](../01-motif/index.md) — `profiles:` on a Motif

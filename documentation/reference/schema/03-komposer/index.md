@@ -138,7 +138,7 @@ This starts a Komposer that pulls a versioned Katalog from the Orkestra OCI regi
 
 ---
 
-## See also
+## Where to go next
 
 - [Katalog schema](../02-katalog/01-top-level.md) — the unit a Komposer imports
 - [Motif schema](../01-motif/index.md) — reusable resource blocks imported by Katalogs
