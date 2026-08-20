@@ -1,20 +1,50 @@
 # Output — the rewritten file
 
-`ork migrate` performs a mechanical rewrite of the `Reconcile` method. The output is structured so you can review and complete it — not run it as-is.
+## toclient mode (default)
 
-## Signature change
+`ork migrate` (without `--mode`) produces the minimum change needed to run your reconciler inside Orkestra. Only two things change:
+
+### SetupWithManager is removed
+
+Replaced with a comment:
+
+```go
+// SetupWithManager removed — Orkestra provides the informer, workqueue,
+// worker pool, leader election, panic recovery, and metrics.
+// Delete this file's main.go and scheme registration too.
+```
+
+### A constructor is injected
+
+```go
+func NewWebAppReconciler(kube kubeclient.Interface) domain.Reconciler {
+    return domain.ReconcilerFrom(&WebAppReconciler{
+        client: kubeclient.ToClient(kube),
+    })
+}
+```
+
+`kubeclient.ToClient` returns a `client.Client` — the same type your struct field already holds. `domain.ReconcilerFrom` adapts the `ctrl.Request` signature to Orkestra's interface. Your `Reconcile` method body is completely untouched.
+
+---
+
+## native mode (`--mode native`)
+
+Full mechanical rewrite to idiomatic Orkestra style.
+
+### Signature change
 
 ```go
 // Before
-func (r *WebAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *WebAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error)
 
 // After
-func (r *WebAppReconciler) Reconcile(ctx context.Context, key string) error {
+func (r *WebAppReconciler) Reconcile(ctx context.Context, key string) error
 ```
 
 `key` is `namespace/name` — the same as `req.String()`. Orkestra calls this from its worker pool, which already manages concurrency, retries, and leader election.
 
-## Return statements
+### Return statements
 
 Every `ctrl.Result` is collapsed:
 
@@ -37,7 +67,7 @@ return nil
 
 Return an error to trigger a retry. Orkestra's backoff policy applies automatically.
 
-## req.NamespacedName
+### req.NamespacedName
 
 When the body uses `req.NamespacedName`, the tool injects a key split at the top of `Reconcile` and replaces usages:
 
@@ -50,17 +80,7 @@ namespace, name := parts[0], parts[1]
 r.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, webapp)
 ```
 
-## SetupWithManager
-
-The method is removed and replaced with a comment:
-
-```go
-// SetupWithManager removed — Orkestra provides the informer, workqueue,
-// worker pool, leader election, panic recovery, and metrics.
-// Delete this file's main.go and scheme registration too.
-```
-
-## r.Status().Update()
+### r.Status().Update()
 
 Flagged inline — Orkestra uses a different status API:
 
@@ -68,10 +88,14 @@ Flagged inline — Orkestra uses a different status API:
 nil /* TODO(ork migrate): replace with r.kube.PatchStatus(ctx, obj, GroupVersionResource, map[string]interface{}{...}) */
 ```
 
-## TODO markers
+### TODO markers
 
 All items that need human review are marked `// TODO(ork migrate):`. After migration:
 
 ```bash
 grep -rn "TODO(ork migrate)" ./my-operator/
 ```
+
+---
+
+Next: [Generated files](02-generated-files.md)

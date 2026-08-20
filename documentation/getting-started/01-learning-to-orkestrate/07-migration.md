@@ -25,8 +25,8 @@ ork init --pack from-controller-runtime
 
 If your operator only creates Kubernetes resources and applies rules — start with `01-declarative`. You may not need Go at all.
 
-If you have an existing `Reconcile` method you want to keep — start with `04-constructor-migration`. One signature change is all it costs.
+If you have an existing `Reconcile` method you want to keep — start with `04-constructor-migration`. Zero changes to your reconciler. Two lines in a constructor are all it costs.
 
-If you want the migration automated — run `ork migrate` in `06-ork-migrate`.
+If you want the constructor injected automatically — run `ork migrate` in `06-ork-migrate`. It removes `SetupWithManager` and injects the two-line constructor for you.
 
 → [Migration Guide](../../guides/migration/index.md) — detailed page per option

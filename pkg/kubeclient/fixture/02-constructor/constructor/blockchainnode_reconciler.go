@@ -10,35 +10,23 @@ import (
 
 	apiv1 "github.com/orkspace/orkestra-args-constructor/api/v1alpha1"
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	orkdeploy "github.com/orkspace/orkestra/pkg/resources/deployments"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
-	"k8s.io/client-go/tools/cache"
 )
 
 // BlockchainNodeReconciler implements domain.Reconciler for the BlockchainNode CRD.
 type BlockchainNodeReconciler struct {
-	informer cache.SharedIndexInformer
-	kube     kubeclient.Interface
-	ev       event.Recorder
+	kube kubeclient.Interface
 }
 
 // NewBlockchainNodeReconciler is the constructor function registered in the Katalog.
-func NewBlockchainNodeReconciler(
-	kube kubeclient.Interface,
-	informer cache.SharedIndexInformer,
-	ev event.Recorder,
-) domain.Reconciler {
-	return &BlockchainNodeReconciler{
-		informer: informer,
-		kube:     kube,
-		ev:       ev,
-	}
+func NewBlockchainNodeReconciler(kube kubeclient.Interface) domain.Reconciler {
+	return &BlockchainNodeReconciler{kube: kube}
 }
 
 func (r *BlockchainNodeReconciler) Reconcile(ctx context.Context, key string) error {
-	raw, exists, err := r.informer.GetIndexer().GetByKey(key)
+	raw, exists, err := r.kube.GetInformer().GetIndexer().GetByKey(key)
 	if err != nil {
 		return fmt.Errorf("cache lookup %q: %w", key, err)
 	}

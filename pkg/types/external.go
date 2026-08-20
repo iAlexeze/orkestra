@@ -193,6 +193,11 @@ type ExternalCallSpec struct {
 	// When set, this entry is replaced in-place by the listed calls.
 	// Resolved relative to the katalog file's directory. Cleared after expansion.
 	Include string `yaml:"include,omitempty" json:"include,omitempty"`
+
+	// RetryBackoff configures how many times and how long to wait between
+	// retries for this specific external call before returning an error.
+	// Shorthand ("3s") sets initial only; full form gives full control.
+	RetryBackoff *RetryBackoffConfig `yaml:"retryBackoff,omitempty" json:"retryBackoff,omitempty"`
 }
 
 // ExternalCallResult is the result of one HTTP call, injected into the resolver

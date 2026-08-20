@@ -44,41 +44,29 @@ import (
 
 	apiv1 "github.com/orkspace/from-controller-runtime-all-options/options/constructor/api/v1alpha1"
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/tools/cache"
 	sigs "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // WebAppReconciler implements domain.Reconciler for the ConstructorApp CRD.
 type WebAppReconciler struct {
-	informer cache.SharedIndexInformer
-	kube     kubeclient.KubeClient
-	ev       event.Recorder
+	kube kubeclient.Interface
 }
 
 // NewWebAppReconciler is the constructor function registered in the Katalog.
-func NewWebAppReconciler(
-	kube kubeclient.KubeClient,
-	informer cache.SharedIndexInformer,
-	ev event.Recorder,
-) domain.Reconciler {
-	return &WebAppReconciler{
-		informer: informer,
-		kube:     kube,
-		ev:       ev,
-	}
+func NewWebAppReconciler(kube kubeclient.Interface) domain.Reconciler {
+	return &WebAppReconciler{kube: kube}
 }
 
 // Reconcile is called by Orkestra's worker pool for every queued ConstructorApp key.
 // key is namespace/name — same as req.String() in controller-runtime.
 func (r *WebAppReconciler) Reconcile(ctx context.Context, key string) error {
-	raw, exists, err := r.informer.GetIndexer().GetByKey(key)
+	raw, exists, err := r.kube.GetInformer().GetIndexer().GetByKey(key)
 	if err != nil {
 		return fmt.Errorf("cache lookup %q: %w", key, err)
 	}
@@ -104,7 +92,7 @@ func (r *WebAppReconciler) Reconcile(ctx context.Context, key string) error {
 		return err
 	}
 
-	r.ev.Eventf(webapp, corev1.EventTypeNormal, "WebAppReconciled",
+	r.kube.GetEventRecorder().Eventf(webapp, corev1.EventTypeNormal, "WebAppReconciled",
 		"ConstructorApp %s/%s reconciled", webapp.Namespace, webapp.Name)
 
 	return r.kube.PatchStatus(ctx, webapp, map[string]interface{}{

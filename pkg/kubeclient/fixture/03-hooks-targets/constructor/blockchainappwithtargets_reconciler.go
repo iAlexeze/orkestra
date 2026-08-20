@@ -6,11 +6,9 @@ import (
 
 	apiv1 "github.com/orkspace/orkestra-args-hooks-targets/api/v1alpha1"
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	orkdeploy "github.com/orkspace/orkestra/pkg/resources/deployments"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
-	"k8s.io/client-go/tools/cache"
 )
 
 // BlockchainAppWithTargetsReconciler is the per-target constructor reconciler
@@ -18,27 +16,17 @@ import (
 // (declared in katalog serve.target.<name>.operatorBox.reconciler.constructor.args)
 // rather than calling a live feature-flag endpoint.
 type BlockchainAppWithTargetsReconciler struct {
-	informer cache.SharedIndexInformer
-	kube     kubeclient.Interface
-	ev       event.Recorder
+	kube kubeclient.Interface
 }
 
 // NewBlockchainAppWithTargetsReconciler is the constructor registered in
 // serve.target.v2-ctor.operatorBox.reconciler.constructor.
-func NewBlockchainAppWithTargetsReconciler(
-	kube kubeclient.Interface,
-	informer cache.SharedIndexInformer,
-	ev event.Recorder,
-) domain.Reconciler {
-	return &BlockchainAppWithTargetsReconciler{
-		informer: informer,
-		kube:     kube,
-		ev:       ev,
-	}
+func NewBlockchainAppWithTargetsReconciler(kube kubeclient.Interface) domain.Reconciler {
+	return &BlockchainAppWithTargetsReconciler{kube: kube}
 }
 
 func (r *BlockchainAppWithTargetsReconciler) Reconcile(ctx context.Context, key string) error {
-	raw, exists, err := r.informer.GetIndexer().GetByKey(key)
+	raw, exists, err := r.kube.GetInformer().GetIndexer().GetByKey(key)
 	if err != nil {
 		return fmt.Errorf("cache lookup %q: %w", key, err)
 	}

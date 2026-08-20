@@ -477,6 +477,20 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 		labelMgr.EnsureStrictModeExemptLabel(obj, effectiveStrict)
 	}
 
+	// User-defined labels from CRDEntry.Labels — values are templates resolved
+	// against the current CR. Keys must be static valid label identifiers.
+	if r.crd.HasUserLabels() {
+		resolved := make(map[string]string, len(r.crd.Labels))
+		for k, v := range r.crd.Labels {
+			val, err := resolver.Resolve(v)
+			if err != nil {
+				return fmt.Errorf("labels: CRD %q: key %q: %w", r.crd.Name, k, err)
+			}
+			resolved[k] = val
+		}
+		labelMgr.EnsureUserLabels(obj, resolved)
+	}
+
 	// One atomic patch: diff serverLabels → desired. No-op if nothing changed.
 	if err := r.kube.PatchLabels(ctx, obj, serverLabels, obj.GetLabels()); err != nil {
 		return err

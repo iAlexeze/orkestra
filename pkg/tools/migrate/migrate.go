@@ -16,6 +16,23 @@ import (
 	"strings"
 )
 
+// Mode controls how much of the source file migrate rewrites.
+type Mode string
+
+const (
+	// ModeNative rewrites the full controller-runtime signature to Orkestra's
+	// native style: Reconcile(ctx, key string) error, struct fields replaced,
+	// call sites adapted. Most invasive; produces fully idiomatic Orkestra code.
+	ModeNative Mode = "native"
+
+	// ModeToClient is the minimal migration path. The Reconcile signature,
+	// struct fields, and call sites are left completely unchanged. Only
+	// SetupWithManager is removed and a constructor using kubeclient.ToClient
+	// and domain.ReconcilerFrom is injected. Two lines of new code; zero
+	// changes to existing reconciler logic.
+	ModeToClient Mode = "toclient"
+)
+
 // Result holds the output of a migration rewrite.
 type Result struct {
 	// Source is the rewritten Go source, gofmt-formatted.
@@ -26,6 +43,8 @@ type Result struct {
 	PkgName string
 	// Warnings are patterns flagged but not automatically rewritten.
 	Warnings []string
+	// Mode is the migration mode used to produce this result.
+	Mode Mode
 }
 
 // replacement is a byte-range substitution to apply to source text.
@@ -36,8 +55,19 @@ type replacement struct {
 }
 
 // Rewrite parses src, locates a controller-runtime Reconcile method, and
-// returns the source with the Orkestra constructor signature applied.
-func Rewrite(src []byte) (*Result, error) {
+// returns the source rewritten according to mode.
+//
+// ModeToClient is the recommended starting point: zero changes to Reconcile
+// or call sites, only SetupWithManager removed and a ToClient constructor
+// injected. ModeNative performs the full signature and call-site rewrite.
+func Rewrite(src []byte, mode Mode) (*Result, error) {
+	if mode == ModeToClient {
+		return rewriteToClient(src)
+	}
+	return rewriteNative(src)
+}
+
+func rewriteNative(src []byte) (*Result, error) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "", src, parser.ParseComments)
 	if err != nil {
@@ -212,7 +242,118 @@ func Rewrite(src []byte) (*Result, error) {
 		res.Source = formatted
 	}
 
+	res.Mode = ModeNative
 	return res, nil
+}
+
+// rewriteToClient performs the minimal migration: removes SetupWithManager and
+// injects a constructor using kubeclient.ToClient + domain.ReconcilerFrom.
+// The Reconcile signature, struct fields, and all call sites are untouched.
+func rewriteToClient(src []byte) (*Result, error) {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "", src, parser.ParseComments)
+	if err != nil {
+		return nil, fmt.Errorf("parse: %w", err)
+	}
+
+	res := &Result{PkgName: f.Name.Name, Mode: ModeToClient}
+
+	fn := findReconcile(f)
+	if fn == nil {
+		return nil, fmt.Errorf("no Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) found")
+	}
+	if len(fn.Recv.List) > 0 {
+		res.ReceiverType = typeName(fn.Recv.List[0].Type)
+	}
+
+	var reps []replacement
+
+	// Remove SetupWithManager.
+	for _, decl := range f.Decls {
+		setupFn, ok := decl.(*ast.FuncDecl)
+		if !ok || setupFn.Name.Name != "SetupWithManager" || setupFn.Recv == nil {
+			continue
+		}
+		reps = append(reps, replacement{
+			start: off(fset, setupFn.Pos()),
+			end:   off(fset, setupFn.End()),
+			text: "// SetupWithManager removed — Orkestra provides the informer, workqueue,\n" +
+				"// worker pool, leader election, panic recovery, and metrics.\n" +
+				"// Delete this file's main.go and scheme registration too.",
+		})
+		res.Warnings = append(res.Warnings, "SetupWithManager removed — delete main.go and scheme registration")
+	}
+
+	result := applyReplacements(src, reps)
+
+	// Inject constructor using ToClient + ReconcilerFrom.
+	if res.ReceiverType != "" {
+		constructorName := "New" + res.ReceiverType
+		// Only inject if not already present.
+		hasConstructor := false
+		for _, decl := range f.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if ok && fn.Recv == nil && fn.Name.Name == constructorName {
+				hasConstructor = true
+				break
+			}
+		}
+		if !hasConstructor {
+			constructor := fmt.Sprintf(`
+// %s is the Orkestra constructor. It replaces SetupWithManager — no other
+// changes to the reconciler are needed. ToClient returns the same client.Client
+// your reconciler already uses; ReconcilerFrom adapts the signature.
+func %s(kube kubeclient.Interface) domain.Reconciler {
+	return domain.ReconcilerFrom(&%s{
+		client: kubeclient.ToClient(kube),
+	})
+}
+`, constructorName, constructorName, res.ReceiverType)
+			result = append(result, []byte(constructor)...)
+		}
+	}
+
+	result = rewriteImportsToClient(result)
+
+	formatted, fmtErr := format.Source(result)
+	if fmtErr != nil {
+		res.Warnings = append(res.Warnings, fmt.Sprintf("gofmt failed (%v) — check output manually", fmtErr))
+		res.Source = result
+	} else {
+		res.Source = formatted
+	}
+
+	return res, nil
+}
+
+// rewriteImportsToClient removes the ctrl import (no longer needed for
+// SetupWithManager) and injects ToClient/ReconcilerFrom import hints.
+func rewriteImportsToClient(src []byte) []byte {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "", src, parser.ParseComments)
+	if err != nil {
+		return src
+	}
+
+	var reps []replacement
+	for _, imp := range f.Imports {
+		path := strings.Trim(imp.Path.Value, `"`)
+		if path == "sigs.k8s.io/controller-runtime" {
+			start := off(fset, imp.Pos())
+			end := off(fset, imp.End())
+			if end < len(src) && src[end] == '\n' {
+				end++
+			}
+			reps = append(reps, replacement{start: start, end: end, text: ""})
+		}
+	}
+
+	result := applyReplacements(src, reps)
+	result = injectImport(result,
+		"// TODO(ork migrate): add these imports:\n"+
+			"//   \"github.com/orkspace/orkestra/domain\"\n"+
+			"//   \"github.com/orkspace/orkestra/pkg/kubeclient\"")
+	return result
 }
 
 // rewriteKubeCalls rewrites r.Get/Create/Patch (and r.<field>.Get/Create/Patch)

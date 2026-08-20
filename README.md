@@ -2,8 +2,12 @@
   <img src="./documentation/assets/logo.png" alt="Orkestra" height="96" />
 
   <h1>Orkestra</h1>
-  <p><strong>A runtime for Kubernetes operators.</strong></p>
-  <h3><em>Declare. Run.</em></h3>
+  <p><strong>Kubernetes operators without the infrastructure.</strong></p>
+  <p>
+    Reconciliation as a runtime service.<br/>
+    Security as a runtime service.<br/>
+    Intent Delivery as a runtime service.
+  </p>
 
   <p>
     <a href="https://github.com/orkspace/orkestra/releases"><img src="https://img.shields.io/github/v/release/orkspace/orkestra" alt="Release" /></a>
@@ -23,17 +27,43 @@
 
 ---
 
-You have a **CRD**. Kubernetes stores it, validates it, and serves it.
+Every Kubernetes operator carries three kinds of infrastructure no one wanted to build:
 
-The only missing piece is something that **watches** it and **acts** on it.
+- **Reconciliation infrastructure** — informers, workqueues, worker pools, leader election, retries, backoff, finalizers, status patching, panic recovery
+- **Security infrastructure** — admission webhooks, validation rules, mutation rules, RBAC generation, TLS management
+- **Intent delivery infrastructure** — CR construction, caller interfaces, field routing, value translation, schema evolution
 
-Traditionally that means **Go**: informers, workqueues, reconcile loops, code generation, Dockerfiles, Helm charts — a software project per operator. Most engineers never start. Teams that do spend weeks before the first CR reconciles.
+None of this is the reason the operator exists. All of it is the cost of entry.
 
-**Orkestra removes that entirely.**
+Orkestra absorbs all three. You declare behavior — or keep your existing `Reconcile` function — and the runtime handles the rest.
 
 ---
 
-## Declare
+## If you already have a controller-runtime operator
+
+Two lines. Your `Reconcile` method is completely untouched.
+
+```go
+func NewWebAppReconciler(kube kubeclient.Interface) domain.Reconciler {
+    return domain.ReconcilerFrom(&WebAppReconciler{
+        Client: kubeclient.ToClient(kube),
+    })
+}
+```
+
+Remove `SetupWithManager`, `Scheme`, and `main.go`. Orkestra provides the informer, workqueue, worker pool, leader election, panic recovery, metrics, retries, health endpoints, and admission webhooks. Or run `ork migrate` to have the constructor injected automatically:
+
+```bash
+ork migrate ./controller/webapp_controller.go -o ./my-operator
+```
+
+→ [Migration Guide](https://orkestra.sh/docs/guides/migration) · [ork migrate reference](https://orkestra.sh/docs/reference/cli/migrate)
+
+---
+
+## If you are starting from scratch
+
+No Go required. Declare what the operator should do:
 
 ```yaml
 apiVersion: orkestra.orkspace.io/v1
@@ -59,19 +89,13 @@ spec:
               reconcile: true
 ```
 
-That is the whole operator.
-
-## Run
-
-```console
+```bash
 ork run
 ```
 
-Orkestra reads the Katalog, applies the CRD and CR, starts the operator, creates the Deployment and Service, sets owner references on both, writes status, emits Kubernetes events, corrects drift, and exposes health, metrics, and a control center.
+Orkestra reads the Katalog, installs the CRD, starts the operator, creates the Deployment and Service, sets owner references, writes status, emits events, corrects drift, and exposes health, metrics, and a control center.
 
 Not a single line of Go.
-
-*Your CRD is enough. The rest is just a Katalog.*
 
 ---
 
@@ -92,9 +116,11 @@ Every CRD declared in a Katalog becomes a complete, isolated operator. Nothing t
 | **Status** | `Ready` condition + your own status fields written after every reconcile. |
 | **Health API** | `/katalog/{crd}/health`, `/katalog/{crd}/cr`, `/metrics` — per CRD. |
 | **Prometheus metrics** | Reconcile totals, queue depth, error rate — labeled by GVK. |
+| **Admission webhooks** | Validation and mutation declared in the Katalog. No webhook server to write or deploy. |
+| **RBAC** | `ork generate rbac` derives ClusterRoles from the Katalog. No manual authoring. |
 | **Deletion protection** | Orkestra and everything it manages cannot be accidentally `kubectl delete`. |
 | **Control Center** | Realtime visibility per CRD, per Katalog, across instances. Auto-generated operator docs — overview, reconcile mode, child resources, kubectl reference, access control. |
-| **Developer portal** | `serve.enabled: true` on any CRD surfaces a self-service form in the Control Center. Users submit CRs through a browser — no kubectl, no YAML. |
+| **Developer portal** | `serve.enabled: true` on any CRD surfaces a self-service form in the Control Center. Callers submit intent in their vocabulary — no kubectl, no YAML, no Kubernetes knowledge required. |
 
 ---
 
@@ -115,14 +141,14 @@ curl -sSL https://get.orkestra.sh | bash
 > Extract the archives and add the folder containing `ork.exe` and `orkcc.exe` to your `PATH`.
 
 ### Initialize and run
-```console
+```bash
 ork init
 ork run
 ```
 
 > No cluster? Add `--dev` to create a temporary kind cluster. Requires Docker.
 
-`ork init` scaffolds a `katalog.yaml`, `crd.yaml`, and `cr.yaml` in the current directory — like `terraform init`.
+`ork init` scaffolds a `katalog.yaml`, `crd.yaml`, and `cr.yaml` in the current directory.
 
 **→ [Learning to Orkestrate](https://orkestra.sh/docs/getting-started/learning-to-orkestrate)** — the guided path from first operator to full platform. Every capability has a runnable example.
 
@@ -130,9 +156,7 @@ ork run
 
 ### Control Center
 
-In another terminal:
-
-```console
+```bash
 ork control
 ```
 > → localhost:8081 · username:password → orkestra
@@ -160,23 +184,19 @@ Six Runtimes. 75 CRDs. One Control Center.
 | **Lines of Go** | 400+ per operator | 0 |
 | **Adding a new CRD** | Days to weeks | Minutes |
 
-79 MB is a live measurement from a 10-CRD runtime (`process_resident_memory_bytes` from the `/metrics` endpoint — [raw scrape](./documentation/assets/controlcenter/public/metrics.txt)). The memory reduction works because Orkestra pays the cost of client-go, leader election, and health servers once per runtime. Per-CRD cost is a goroutine pool and an in-memory cache. Isolation works the same way `kube-controller-manager` isolates Deployment, StatefulSet, and Job controllers — dedicated informer, queue, and worker pool per CRD. A panic in one is caught by `safeReconcile`; the others keep running. The Control Center aggregates all runtimes into a single dashboard.
+79 MB is a live measurement from a 10-CRD runtime (`process_resident_memory_bytes` from the `/metrics` endpoint — [raw scrape](./documentation/assets/controlcenter/public/metrics.txt)). The reduction works because Orkestra pays the cost of client-go, leader election, and health servers once per runtime. Per-CRD cost is a goroutine pool and an in-memory cache — the same isolation model as `kube-controller-manager`. A panic in one CRD is caught by `safeReconcile`; the others keep running.
 
 ---
 
 ## What Orkestra is not
 
-**Not an operator framework — an operator runtime.** A framework gives you libraries and conventions. Orkestra gives you a runtime with platform tools to build, test, evaluate, visualize, and operate operators and control planes.
+**Not an operator framework — an operator runtime.** A framework gives you libraries and conventions. Orkestra gives you a runtime: the reconciliation loop, security layer, and delivery surface are the runtime's job. You write the behavior.
 
-**Not an operator — a runtime for operators.** Each CRD in a Katalog becomes its own operator. Orkestra is the runtime that runs them all.
+**Not a replacement for Go.** Hooks and constructors exist for exactly this reason. ~90% of operators are declarative; ~10% need code. Orkestra handles the 90% and gives the 10% a clean seam — the same informer, queue, health, and metrics infrastructure, with a single function to implement.
 
-**Not a developer portal by default — but every operator can become one.** `serve.enabled: true` on any CRD exposes a self-service form in the Control Center. Users submit CRs through a browser without kubectl or YAML. The developer portal is the operator — Orkestra just surfaces it.
+**Not GitOps.** Katalogs define long-lived API contracts resolved at startup. Treat Katalog changes like any other runtime change — deploy through a pipeline.
 
-**Not a replacement for Go.** Hooks and constructors exist for exactly this reason. ~90% of operators are declarative; ~10% need code. Orkestra handles the 90% and gives the 10% a clean interface — the same informer, queue, health, and metrics infrastructure, with a single function to implement.
-
-**Not GitOps.** Katalogs define long-lived API contracts and are resolved at startup. Silently reloading them mid-flight is dangerous. Treat Katalog changes like any other runtime change — deploy through a pipeline.
-
-**Not a product — a primitive layer.** Notes, autoscaler, serve mode, Katalogs — none of these are products. They are primitives ready for composition. What you build on top of them is.
+**Not a product — a primitive layer.** Notes, autoscaler, serve mode, Katalogs — none of these are products. They are primitives ready for composition.
 
 ---
 
@@ -184,7 +204,8 @@ Six Runtimes. 75 CRDs. One Control Center.
 
 | | |
 |---|---|
-| [Why Orkestra](https://orkestra.sh/blog/why-orkestra) | What Orkestra is, how it works, and why it’s different |
+| [Migration Guide](https://orkestra.sh/docs/guides/migration) | Bring an existing controller-runtime operator into Orkestra — zero changes to your reconciler |
+| [Why Orkestra](https://orkestra.sh/blog/why-orkestra) | What Orkestra is, how it works, and why it's different |
 | [Foundations](https://orkestra.sh/docs/foundations) | The decisions that shaped the design — and why they hold |
 | [Trust and Failure Model](https://orkestra.sh/publications/trust-and-failure-model) | What happens when things go wrong |
 | [Getting Started](https://orkestra.sh/docs/getting-started) | First operator in under an hour |

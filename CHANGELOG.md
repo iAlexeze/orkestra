@@ -1,4 +1,4 @@
-## v0.7.16 — Per-Target OperatorBox and MuxReconciler
+## v0.7.16 — Per-Target OperatorBox, MuxReconciler, and controller-runtime Compatibility [UNRELEASED]
 
 ### Per-target operatorBox
 
@@ -117,6 +117,63 @@ policy:
 `ork validate` rejects any Katalog whose maturity is below the declared floor. `minMaturity: deprecated` is itself a validation error — the policy is a quality floor, not a filter.
 
 `policy:` is structured as `policy.<area>.*` so security, registry, and user-defined policy categories can grow alongside `lifecycle:` without flattening.
+
+---
+
+### controller-runtime compatibility
+
+`kubeclient.Interface` is now the single injection point for constructor-based reconcilers. It composes informer access, kube calls, event recording, and args — replacing the previous three-parameter constructor signature.
+
+`kubeclient.ToClient(kube)` wraps `kubeclient.Interface` as a `client.Client`, so existing controller-runtime reconcilers plug in without any changes inside `Reconcile`. `domain.ReconcilerFrom` adapts the `ctrl.Request` signature. Two lines in a constructor replace `SetupWithManager`, `Scheme`, and `main.go`.
+
+```go
+func NewWebAppReconciler(kube kubeclient.Interface) domain.Reconciler {
+    return domain.ReconcilerFrom(&WebAppReconciler{
+        Client: kubeclient.ToClient(kube),
+    })
+}
+```
+
+`ork migrate` defaults to `--mode toclient` — zero changes to `Reconcile`, constructor injected automatically.
+
+---
+
+### `watch:` block
+
+`operatorBox.watch` declares secondary Kubernetes resources the informer should watch. When a watched resource changes, Orkestra resolves the owning primary CR and enqueues it — no Go required. Supports per-entry event filters (`on:`) and enqueue gates.
+
+```yaml
+operatorBox:
+  watch:
+    - apiVersion: v1
+      kind: ConfigMap
+      name: shared-config
+      on: [update]
+    - apiVersion: apps/v1
+      kind: Deployment
+      enqueueGate:
+        sentinels: [generationChanged]
+```
+
+---
+
+### `queue.retryBackoff:` on operatorBox
+
+`operatorBox.reconciler.queue.retryBackoff` declares the per-CRD backoff applied between failed reconcile attempts. Accepts a plain duration (shorthand for `initial` only) or the full form.
+
+```yaml
+operatorBox:
+  reconciler:
+    queue:
+      retryBackoff: 5s          # shorthand — initial: 5s, defaults for the rest
+
+      # full form:
+      retryBackoff:
+        initial: 1s
+        max: 30s
+        multiplier: 2.0
+        maxAttempts: 5
+```
 
 ---
 

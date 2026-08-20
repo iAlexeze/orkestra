@@ -607,6 +607,9 @@ func (k *DependencyKordinator) startCRDWorkers(ctx context.Context, gvk string, 
 			k.runWorkerForGVK(crdCtx, gvk, id)
 		}(workerID)
 	}
+
+	// Start secondary watch informers for each operatorBox.watch entry.
+	k.startWatchInformers(crdCtx, entry.CRD)
 }
 
 // stopCRDWorkers cancels the CRD context and waits for all workers to drain.

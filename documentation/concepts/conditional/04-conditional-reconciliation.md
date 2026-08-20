@@ -106,6 +106,48 @@ Use `enqueueGate` when you want zero queue pressure for objects that should be c
 
 ---
 
+## Sentinels — gate on what changed
+
+`preReconcile.enqueueGate` and `reconcileGate` evaluate the *current* state of the CR — they answer "does this object satisfy a condition right now?" Sentinels answer a different question: "did a specific thing change between the last version and this version?"
+
+```yaml
+operatorBox:
+  preReconcile:
+    sentinels:
+      - generationChanged
+      - labelsChanged
+    enqueueGate:
+      when:
+        - field: "{{ generationChanged }}"
+          equals: "true"
+```
+
+Sentinels are declared in `preReconcile.sentinels` and computed at the informer level — in the `UpdateFunc`, before the gate is evaluated. Each sentinel compares the old and new object and produces `"true"` or `"false"`. Declared sentinels become template functions available in `enqueueGate` and `reconcileGate` conditions.
+
+| Sentinel | Fires when |
+|---|---|
+| `generationChanged` | `.metadata.generation` incremented (spec change on most CRDs) |
+| `labelsChanged` | label set differs between old and new object |
+| `annotationsChanged` | annotation set differs |
+| `deletionStarted` | `deletionTimestamp` was nil, is now set |
+| `finalizersChanged` | finalizer list differs |
+
+A sentinel that is not declared is not available in gate templates — `ork validate` rejects templates that reference undeclared sentinel names.
+
+
+!!! tip "A sentinel is not a Note"
+    Notes carry arbitrary values into the reconcile context and can be read anywhere in templates. A sentinel is narrower: it answers a yes/no question about what changed between two versions of the object, and it is only available in gate conditions — not in `onCreate`/`onReconcile` templates or `status:` field mappings. Use a Note when you need a value inside reconciliation; use a sentinel when you need to decide whether reconciliation should run at all.
+
+### Why declare rather than use `.metadata.generation` directly
+
+You could write `field: "{{ .metadata.generation }}"` and compare it to a static value, but generation is a monotonically increasing counter — there is no "previous value" available inside a stateless template. Sentinels are computed at event time, when both the old and new versions of the object are available side by side. That comparison window is gone by the time the object reaches a gate or reconciler, which is why sentinels must be declared and computed upfront.
+
+### Sentinel scope
+
+Sentinels are computed at the same level as `enqueueGate` — at event time, when both the old and new versions of the object are visible. The values travel with the queued item, so both `enqueueGate` and `reconcileGate` see them. A sentinel referenced in a `reconcileGate` reflects what changed when the object was last updated, not a recomputed comparison at reconcile time.
+
+---
+
 ## Difference from resource-level conditions
 
 | | `preReconcile.enqueueGate` or `reconcileGate` | `onCreate` / `onReconcile` resource `when:` |

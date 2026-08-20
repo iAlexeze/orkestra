@@ -317,14 +317,31 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 		}
 
 		// ── Enqueue filter — Tier 2b (pre-enqueue condition gate) ─────────────
-		// Register when any operatorBox (CRD-level or per-target) declares an
-		// enqueueGate. EvaluateEnqueueFilter resolves the effective box at runtime.
-		if crd.HasAnyEnqueueGate() {
-			crdNameForFilter := crd.Name
-			katForFilter := kat
-			cs := kube.Clientset()
+		// Two paths depending on whether sentinels are declared:
+		//
+		// 1. No sentinels — single-object filter; only newObj available.
+		//    EvaluateEnqueueFilter evaluates enqueueGate with no sentinel values.
+		//
+		// 2. Sentinels declared — update filter; oldObj and newObj both available.
+		//    Sentinels are computed here and carried through the QueueItem so
+		//    reconcileGate can rebuild the same preReconcile resolver after dequeue.
+		//    Also covers CRDs with sentinels but no enqueueGate — sentinel map
+		//    is still computed and forwarded for reconcileGate use.
+		crdNameForFilter := crd.Name
+		katForFilter := kat
+		cs := kube.Clientset()
+
+		if crd.WithSentinels() {
+			declared := crd.OperatorBox.PreReconcile.DeclaredSentinels()
+			infFactory.RegisterUpdateEnqueueFilter(gvk, declared, func(new domain.Object, sentinels map[string]string) bool {
+				return katForFilter.EvaluateEnqueueFilter(ctx, crdNameForFilter, new, cs, sentinels)
+			})
+			logger.Debug().
+				Str("crd", crd.APITypes.Kind).
+				Msg("informer: sentinel update filter registered (Tier 2b)")
+		} else if crd.HasAnyEnqueueGate() {
 			infFactory.RegisterEnqueueFilter(gvk, func(obj domain.Object) bool {
-				return katForFilter.EvaluateEnqueueFilter(ctx, crdNameForFilter, obj, cs)
+				return katForFilter.EvaluateEnqueueFilter(ctx, crdNameForFilter, obj, cs, nil)
 			})
 			logger.Debug().
 				Str("crd", crd.APITypes.Kind).
@@ -421,14 +438,17 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 
 			logger.Debug().Str("gvk", gvk).Msg("wiring custom reconciler factory")
 
-			// Attach constructor.args to a copy of the kube client; the constructor reads them via kube.Args().
-			var ctorKube kubeclient.Interface = kube
+			// Attach constructor.args, informer, and event recorder to a copy of the
+			// kube client. Constructor authors access them via kube.GetInformer() etc.
+			var ctorKube kubeclient.Interface = kube.
+				WithInformer(infCopy).
+				WithEventRecorder(ev)
 			if args := crd.ConstructorArgs(); len(args) > 0 {
-				ctorKube = kube.WithArgs(kubeclient.Args(args))
+				ctorKube = ctorKube.WithArgs(kubeclient.Args(args))
 			}
 
 			factory = func() domain.Reconciler {
-				return crd.OperatorBox.Constructor(ctorKube, infCopy, ev)
+				return crd.OperatorBox.Constructor(ctorKube)
 			}
 		}
 
@@ -442,11 +462,13 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 			factory = func() domain.Reconciler {
 				targets := make(map[string]domain.Reconciler, len(crdCopy.TargetReconcilerFactories))
 				for targetName, ctor := range crdCopy.TargetReconcilerFactories {
-					var targetKube kubeclient.Interface = kube
+					var targetKube kubeclient.Interface = kube.
+						WithInformer(infCopy).
+						WithEventRecorder(ev)
 					if args := crdCopy.TargetConstructorArgs(targetName); len(args) > 0 {
-						targetKube = kube.WithArgs(kubeclient.Args(args))
+						targetKube = targetKube.WithArgs(kubeclient.Args(args))
 					}
-					targets[targetName] = ctor(targetKube, infCopy, ev)
+					targets[targetName] = ctor(targetKube)
 				}
 				return orktarget.NewMuxReconciler(infCopy, targets, baseFactory())
 			}

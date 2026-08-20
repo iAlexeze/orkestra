@@ -65,15 +65,16 @@ func (f *Factory) getOrCreate(
 
 	inf := cache.NewSharedIndexInformer(lw, obj, resync, cache.Indexers{})
 
+	gvkStr := gvk.String()
 	// Ensure GVK is normalized for all CRDs
 	inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			normalizeInformerObject(obj, gvk)
 			f.handleEvent(obj)
 		},
-		UpdateFunc: func(_, newObj interface{}) {
+		UpdateFunc: func(oldObj, newObj interface{}) {
 			normalizeInformerObject(newObj, gvk)
-			f.handleEvent(newObj)
+			f.handleUpdateEvent(gvkStr, oldObj, newObj)
 		},
 		DeleteFunc: func(obj interface{}) {
 			normalizeInformerObject(obj, gvk)

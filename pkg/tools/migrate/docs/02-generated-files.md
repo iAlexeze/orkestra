@@ -89,3 +89,7 @@ Run `go mod tidy` to resolve indirect dependencies.
 ## The rewritten reconciler
 
 Same filename as the input. See [01-output.md](01-output.md) for what changed.
+
+---
+
+Next: [Limitations](03-limitations.md)

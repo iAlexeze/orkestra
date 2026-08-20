@@ -42,6 +42,47 @@ type Resolver struct {
 	mergedFuncs template.FuncMap
 }
 
+// WithSentinels adds the declared sentinel names to the resolver's FuncMap.
+// Each sentinel is a no-arg function that returns its computed string value.
+//
+// Pass nil for values at validate time — sentinels return "" (stub for parse).
+// Pass the computed values map at runtime — built by the informer UpdateFunc.
+//
+// Sentinels layer on top of any existing mergedFuncs (including user notes).
+// Templates that reference an undeclared sentinel name fail to parse — this is
+// how `ork validate` catches misuse without executing templates.
+func (r *Resolver) WithSentinels(declared []string, values map[string]string) *Resolver {
+	if len(declared) == 0 {
+		return r
+	}
+	base := orkNotes
+	if r.mergedFuncs != nil {
+		base = r.mergedFuncs
+	}
+	merged := make(template.FuncMap, len(base)+len(declared))
+	for k, v := range base {
+		merged[k] = v
+	}
+	for _, name := range declared {
+		n := name // capture
+		merged[n] = func() string { return values[n] }
+	}
+	r.mergedFuncs = merged
+	return r
+}
+
+// SentinelFuncMap returns a FuncMap containing stubs for each declared sentinel.
+// All stubs return "" — only template parsing is checked, not execution.
+// Used by validators that need to parse gate templates without a full Resolver.
+func SentinelFuncMap(declared []string) template.FuncMap {
+	fm := make(template.FuncMap, len(declared))
+	for _, name := range declared {
+		n := name
+		fm[n] = func() string { return "" }
+	}
+	return fm
+}
+
 // WithProfiles attaches a user-defined profile registry to the resolver.
 // Call this after NewResolver when the katalog declares a profiles: block.
 func (r *Resolver) WithProfiles(reg orktypes.ProfileRegistry) *Resolver {

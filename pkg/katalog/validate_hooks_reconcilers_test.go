@@ -4,11 +4,9 @@ import (
 	"testing"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/tools/cache"
 )
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -20,7 +18,7 @@ func stubHookFn() func() domain.AnyReconcileHooks {
 }
 
 func stubRecFn() orktypes.NewReconcilerFunc {
-	return func(kubeclient.Interface, cache.SharedIndexInformer, event.Recorder) domain.Reconciler {
+	return func(kubeclient.Interface) domain.Reconciler {
 		return nil
 	}
 }

@@ -1,0 +1,6 @@
+apiVersion: watch.orkestra.io/v1alpha1
+kind: WatchProbe
+metadata:
+  name: probe-alpha
+  namespace: default
+spec: {}

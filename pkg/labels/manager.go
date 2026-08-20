@@ -242,6 +242,33 @@ func (m *Manager) EnsureStrictModeExemptLabel(obj domain.Object, strictModeEnabl
 	return true
 }
 
+// EnsureUserLabels merges user-defined labels onto obj.
+// Values are expected to have been resolved from templates before this call.
+// Existing keys set by the user are overwritten; keys absent from extra are
+// left untouched. Returns true if any label was added or changed.
+//
+// The caller must persist any change via kube.PatchLabels.
+func (m *Manager) EnsureUserLabels(obj domain.Object, extra map[string]string) bool {
+	if len(extra) == 0 {
+		return false
+	}
+	lbls := obj.GetLabels()
+	if lbls == nil {
+		lbls = make(map[string]string, len(extra))
+	}
+	changed := false
+	for k, v := range extra {
+		if lbls[k] != v {
+			lbls[k] = v
+			changed = true
+		}
+	}
+	if changed {
+		obj.SetLabels(lbls)
+	}
+	return changed
+}
+
 // ── Getters ───────────────────────────────────────────────────────────────────
 
 func (m *Manager) IsStandalone() bool {

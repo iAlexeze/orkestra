@@ -9,8 +9,16 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	sigs "sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// EventRecorder is a minimal interface for recording Kubernetes events.
+// pkg/event.Recorder satisfies this — kubeclient does not import pkg/event
+// directly to avoid an import cycle (pkg/event imports pkg/kubeclient).
+type EventRecorder interface {
+	Eventf(obj runtime.Object, eventType, reason, messageFmt string, args ...interface{})
+}
 
 // Interface is the interface every registry function depends on.
 // *Kubeclient satisfies this with real clients.
@@ -29,6 +37,22 @@ type Interface interface {
 	// WithArgs returns a copy of this Interface with the given args attached.
 	// Used by the runtime to inject per-CRD args before calling a hook or constructor.
 	WithArgs(args Args) Interface
+
+	// WithInformer returns a copy of this Interface with the primary CRD informer
+	// attached. Called by the runtime before invoking a constructor function.
+	WithInformer(inf cache.SharedIndexInformer) Interface
+
+	// WithEventRecorder returns a copy of this Interface with the event recorder
+	// attached. Called by the runtime before invoking a constructor function.
+	WithEventRecorder(ev EventRecorder) Interface
+
+	// GetInformer returns the primary CRD's SharedIndexInformer.
+	// Available inside constructor functions — nil if called outside that context.
+	GetInformer() cache.SharedIndexInformer
+
+	// GetEventRecorder returns the event recorder for this CRD.
+	// Available inside constructor functions — nil if called outside that context.
+	GetEventRecorder() EventRecorder
 
 	// ScopedFor evaluates any template expressions in the rawArgs using eval and
 	// returns a copy of this Interface with the resolved args attached.

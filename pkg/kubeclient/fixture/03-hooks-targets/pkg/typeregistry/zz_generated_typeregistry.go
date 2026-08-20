@@ -9,14 +9,12 @@ package typeregistry
 
 import (
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/tools/cache"
 
 	bcappwithtargetsv1 "github.com/orkspace/orkestra-args-hooks-targets/api/v1alpha1"
 	bcctor "github.com/orkspace/orkestra-args-hooks-targets/constructor"
@@ -105,8 +103,8 @@ func RegisterRuntimeObjects() {
 		if orktypes.TargetReconcilerRegistry[gvk] == nil {
 			orktypes.TargetReconcilerRegistry[gvk] = map[string]orktypes.NewReconcilerFunc{}
 		}
-		orktypes.TargetReconcilerRegistry[gvk]["v2-ctor"] = func(kube kubeclient.Interface, inf cache.SharedIndexInformer, ev event.Recorder) domain.Reconciler {
-			return bcctor.NewBlockchainAppWithTargetsReconciler(kube, inf, ev)
+		orktypes.TargetReconcilerRegistry[gvk]["v2-ctor"] = func(kube kubeclient.Interface) domain.Reconciler {
+			return bcctor.NewBlockchainAppWithTargetsReconciler(kube)
 		}
 	}
 
