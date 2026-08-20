@@ -2,7 +2,7 @@
 
 Declarative Kubernetes Operator Runtime • Security-First • GitOps-Native
 
-Orkestra is a **declarative operator runtime**: a platform for building Kubernetes operators using pure YAML. This Helm chart deploys:
+Orkestra is the **Kubernetes operator runtime** — operators without the infrastructure. This Helm chart deploys:
 
 - **Orkestra Runtime** — the operator engine that reconciles your CRDs
 - **Orkestra Gateway** — admission webhooks, deletion protection, namespace protection, and TLS — runs standalone or alongside the runtime

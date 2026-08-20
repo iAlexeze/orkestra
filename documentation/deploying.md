@@ -1,6 +1,6 @@
 # Deploying Orkestra
 
-Deploy Orkestra — the declarative Kubernetes operator runtime — along with its Control Center for multi-instance observability.
+Deploy Orkestra — the Kubernetes operator runtime — along with its Control Center for multi-instance observability.
 
 ---
 

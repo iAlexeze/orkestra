@@ -6,7 +6,7 @@
 
 ## Where we are
 
-Orkestra is a complete declarative operator runtime for Kubernetes. The core is shipped and running in production. Here is what exists today:
+Orkestra is the Kubernetes operator runtime. The core is shipped and running in production. Here is what exists today:
 
 **Runtime**
 

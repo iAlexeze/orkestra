@@ -2,7 +2,7 @@
 
 ## What is Orkestra?
 
-Orkestra is a declarative operator runtime for Kubernetes. It turns CRDs into
+Orkestra is the Kubernetes operator runtime. It turns CRDs into
 fully functional operators without controllers, reconcilers, or conversion code.
 
 You declare what a CRD should do — create a Deployment and a Service, apply
