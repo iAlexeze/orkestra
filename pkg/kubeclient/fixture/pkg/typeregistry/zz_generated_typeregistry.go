@@ -9,14 +9,12 @@ package typeregistry
 
 import (
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/tools/cache"
 
 	bcnodev1 "github.com/orkspace/orkestra-args-constructor/api/v1alpha1"
 	bnconstructor "github.com/orkspace/orkestra-args-constructor/constructor"
@@ -97,8 +95,8 @@ func RegisterRuntimeObjects() {
 	// BlockchainNode — custom reconciler constructor
 	// Calls bnconstructor.NewBlockchainNodeReconciler() to build the user's reconciler.
 	orktypes.ReconcilerRegistry[schema.GroupVersionKind{Group: "demo.orkestra.io", Version: "v1alpha1", Kind: "BlockchainNode"}] =
-		func(kube kubeclient.Interface, inf cache.SharedIndexInformer, ev event.Recorder) domain.Reconciler {
-			return bnconstructor.NewBlockchainNodeReconciler(kube, inf, ev)
+		func(kube kubeclient.Interface) domain.Reconciler {
+			return bnconstructor.NewBlockchainNodeReconciler(kube)
 		}
 
 	logger.Debug().

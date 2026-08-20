@@ -138,7 +138,11 @@ func (k *Kontroller) processItemForGVK(ctx context.Context, gvk string, item que
 	if entry, ok := k.katalog.Get(gvk); ok {
 		if entry.CRD.HasAnyReconcileGate() {
 			obj := k.objectFromCache(entry, item.Key)
-			if gated, reason := k.evaluatePreReconcileCheck(ctx, obj, entry.CRD.Name); gated {
+			var sentinelMap map[string]string
+			if item.SentinelMap != nil {
+				sentinelMap = *item.SentinelMap
+			}
+			if gated, reason := k.evaluatePreReconcileCheck(ctx, obj, entry.CRD.Name, sentinelMap); gated {
 				k.crdHealthMap[gvk].RecordGated(reason)
 				wq.Queue.Forget(item)
 				return

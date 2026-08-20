@@ -14,6 +14,14 @@ import (
 type QueueItem struct {
 	Key string
 	GVK string
+	// SentinelMap carries event-time sentinel values computed in the informer's
+	// UpdateFunc (oldObj vs newObj). Both enqueueGate and reconcileGate share the
+	// same preReconcile context — reconcileGate rebuilds the resolver from this map
+	// after dequeue, when oldObj is no longer available.
+	// nil when no preReconcile.sentinels are declared (common case — deduplication
+	// behaviour is unchanged). Non-nil items dedup by pointer identity, meaning
+	// each sentinel-bearing enqueue is treated as a distinct work item.
+	SentinelMap *map[string]string
 }
 
 type Workqueue struct {
@@ -57,6 +65,50 @@ func (q *Workqueue) Enqueue(obj interface{}, gvk string) {
 	}
 
 	q.Queue.Add(QueueItem{Key: key, GVK: gvk})
+}
+
+// EnqueueKey adds a pre-computed key directly to the workqueue.
+// Used when the key is resolved from an ownerReference or another indirect source
+// rather than from the object itself.
+func (q *Workqueue) EnqueueKey(key, gvk string) {
+	if limit := q.maxDepth.Load(); limit > 0 && int32(q.Queue.Len()) >= limit {
+		logger.Warn().
+			Str("key", key).
+			Str("gvk", gvk).
+			Int32("limit", limit).
+			Int("depth", q.Queue.Len()).
+			Msg("enqueue: queue depth limit reached — item dropped")
+		return
+	}
+	q.Queue.Add(QueueItem{Key: key, GVK: gvk})
+}
+
+// EnqueueWithSentinels adds a key to the workqueue alongside the sentinel values
+// computed at event time (oldObj vs newObj in the informer UpdateFunc).
+// The sentinel map is passed as a pointer so the item remains comparable — two
+// sentinel-bearing enqueues for the same key are treated as distinct items.
+func (q *Workqueue) EnqueueWithSentinels(obj interface{}, gvk string, sentinels map[string]string) {
+	if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+		obj = tombstone.Obj
+	}
+
+	key, err := cache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		logger.Error().Err(err).Str("gvk", gvk).Msg("enqueue: failed to get key")
+		return
+	}
+
+	if limit := q.maxDepth.Load(); limit > 0 && int32(q.Queue.Len()) >= limit {
+		logger.Warn().
+			Str("key", key).
+			Str("gvk", gvk).
+			Int32("limit", limit).
+			Int("depth", q.Queue.Len()).
+			Msg("enqueue: queue depth limit reached — item dropped")
+		return
+	}
+
+	q.Queue.Add(QueueItem{Key: key, GVK: gvk, SentinelMap: &sentinels})
 	logger.Debug().Str("key", key).Str("gvk", gvk).Msg("enqueued")
 }
 

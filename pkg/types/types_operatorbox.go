@@ -3,6 +3,7 @@ package types
 
 import (
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/runtime/sentinel"
 )
 
 // ── PreReconcileConfig ────────────────────────────────────────────────────────────
@@ -49,6 +50,194 @@ func (g *GateConditions) AnyOfConditions() []Condition {
 	return g.AnyOf
 }
 
+// ExternalCalls returns the external calls declared on this gate, or nil when
+// the gate is nil or has no external declarations.
+func (g *GateConditions) ExternalCalls() []ExternalCallSpec {
+	if g == nil {
+		return nil
+	}
+	return g.External
+}
+
+// ── Watch event types ─────────────────────────────────────────────────────
+
+// WatchEvent is the string type for watch event types used in WatchEntry.On.
+type WatchEvent string
+
+const (
+	WatchEventCreate WatchEvent = "create"
+	WatchEventUpdate WatchEvent = "update"
+	WatchEventDelete WatchEvent = "delete"
+)
+
+// ValidWatchEvents returns all known watch event values in declaration order.
+func ValidWatchEvents() []string {
+	return []string{
+		string(WatchEventCreate),
+		string(WatchEventUpdate),
+		string(WatchEventDelete),
+	}
+}
+
+// IsValidWatchEvent reports whether s is a known watch event type.
+func IsValidWatchEvent(s string) bool {
+	switch WatchEvent(s) {
+	case WatchEventCreate, WatchEventUpdate, WatchEventDelete:
+		return true
+	}
+	return false
+}
+
+// ── Sentinel names ────────────────────────────────────────────────────────
+
+// Sentinel is the string type for event-time sentinel names declared under
+// preReconcile.sentinels and used in enqueueGate/reconcileGate templates.
+// The canonical type and constants live in pkg/runtime/sentinel; these are
+// re-exported here so callers only need to import pkg/types.
+type Sentinel = sentinel.Sentinel
+
+const (
+	SentinelGenerationChanged  = sentinel.GenerationChanged
+	SentinelLabelsChanged      = sentinel.LabelsChanged
+	SentinelAnnotationsChanged = sentinel.AnnotationsChanged
+	SentinelDeletionStarted    = sentinel.DeletionStarted
+	SentinelFinalizersChanged  = sentinel.FinalizersChanged
+)
+
+// ValidSentinels returns all known sentinel names in declaration order.
+func ValidSentinels() []string { return sentinel.ValidSentinels() }
+
+// IsValidSentinel reports whether s is a known sentinel name.
+func IsValidSentinel(s string) bool { return sentinel.IsValid(s) }
+
+// ── WatchEntry ────────────────────────────────────────────────────────────────
+
+// WatchEntry declares a secondary Kubernetes resource Orkestra should watch.
+// When the resource changes, Orkestra resolves the relevant primary CR key(s)
+// and enqueues them — no Go required.
+//
+// Key resolution: if the changed object has an ownerReference pointing to a
+// primary CR, that CR is enqueued. Otherwise all known CRs of the primary kind
+// are enqueued (shared-resource broadcast).
+//
+// YAML:
+//
+//	operatorBox:
+//	  watch:
+//	    - apiVersion: apps/v1
+//	      kind: Deployment
+//	    - apiVersion: v1
+//	      kind: ConfigMap
+//	      namespace: my-operator-system
+//	      name: shared-config
+//	    - apiVersion: v1
+//	      kind: Node
+//	      on: [update]
+type WatchEntry struct {
+	// APIVersion is the Kubernetes API version of the resource to watch.
+	// e.g. "apps/v1", "v1", "networking.k8s.io/v1"
+	APIVersion string `yaml:"apiVersion" json:"apiVersion" validate:"required"`
+
+	// Kind is the Kubernetes Kind of the resource to watch.
+	// e.g. "Deployment", "ConfigMap", "Node"
+	Kind string `yaml:"kind" json:"kind" validate:"required"`
+
+	// Namespace restricts the watch to a single namespace.
+	// When empty the watch is cluster-scoped (all namespaces).
+	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty"`
+
+	// Name restricts the watch to a single named resource.
+	// When set only events for that specific object trigger the enqueue.
+	// Typically used for well-known shared resources (a specific ConfigMap or Secret).
+	Name string `yaml:"name,omitempty" json:"name,omitempty"`
+
+	// On declares which event types trigger the enqueue.
+	// Valid values: WatchEventCreate, WatchEventUpdate, WatchEventDelete.
+	// When empty all three event types are watched.
+	On []string `yaml:"on,omitempty" json:"on,omitempty"`
+
+	// EnqueueGate declares conditions evaluated before enqueueing when the watch
+	// fires. Sentinels (e.g. generationChanged) are computed against the watched
+	// resource's oldObj / newObj at UpdateFunc time and are valid here.
+	// When nil all events that pass the On filter are enqueued.
+	EnqueueGate *GateConditions `yaml:"enqueueGate,omitempty" json:"enqueueGate,omitempty"`
+
+	// KeyFrom overrides the default key resolution (ownerReference → broadcast).
+	// Declare when the standard mechanisms do not express the mapping you need.
+	// When nil the runtime checks ownerReferences first; if none match the primary
+	// CRD it broadcasts to all known primary CRs.
+	KeyFrom *WatchKeyFrom `yaml:"keyFrom,omitempty" json:"keyFrom,omitempty"`
+}
+
+// WatchKeyFrom overrides the default ownerReference → broadcast key resolution
+// for a watch: entry. Exactly one of Label or Name must be set.
+//
+//	keyFrom:
+//	  label: "app.kubernetes.io/cr-owner"   # label on the watched object carries the key
+//
+//	keyFrom:
+//	  name: "my-singleton-cr"               # always enqueue this named primary CR
+//	  namespace: "my-namespace"             # optional; omit for cluster-scoped CRDs
+type WatchKeyFrom struct {
+	// Label names a label on the watched object whose value is the primary CR key.
+	// The value must be a valid Kubernetes key: "namespace/name" or bare "name".
+	// Mutually exclusive with Name.
+	Label string `yaml:"label,omitempty" json:"label,omitempty"`
+
+	// Name is a fixed primary CR name to enqueue regardless of which watched
+	// object changed. Use for singleton operators (one CR per cluster).
+	// Mutually exclusive with Label.
+	Name string `yaml:"name,omitempty" json:"name,omitempty"`
+
+	// Namespace qualifies Name. Omit for cluster-scoped primary CRDs.
+	// Ignored when Label is set.
+	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty"`
+}
+
+// Key returns the enqueue key for the fixed-name variant.
+func (kf *WatchKeyFrom) Key() string {
+	if kf.Namespace != "" {
+		return kf.Namespace + "/" + kf.Name
+	}
+	return kf.Name
+}
+
+// WatchesOn reports whether the entry should fire for the given event type.
+func (w WatchEntry) WatchesOn(event string) bool {
+	if len(w.On) == 0 {
+		return true
+	}
+	for _, e := range w.On {
+		if e == event {
+			return true
+		}
+	}
+	return false
+}
+
+// InvalidOnValues returns any On values that are not valid WatchEvent constants.
+// Returns nil when all values are valid.
+func (w WatchEntry) InvalidOnValues() []string {
+	var invalid []string
+	for _, e := range w.On {
+		if !IsValidWatchEvent(e) {
+			invalid = append(invalid, e)
+		}
+	}
+	return invalid
+}
+
+// ToManagedResource converts the entry to a ManagedResource suitable for
+// ResolveGVR — used for RBAC generation.
+func (w WatchEntry) ToManagedResource() ManagedResource {
+	return ManagedResource{
+		APIVersion: w.APIVersion,
+		Kind:       w.Kind,
+	}
+}
+
+// ── PreReconcileConfig ────────────────────────────────────────────────────────────
+
 // PreReconcileConfig groups the two pre-reconcile gates under operatorBox.preReconcile.
 //
 // YAML:
@@ -72,6 +261,18 @@ type PreReconcileConfig struct {
 	// available in both enqueueGate and reconcileGate field expressions.
 	External []ExternalCallSpec `yaml:"external,omitempty" json:"external,omitempty"`
 
+	// Sentinels declares the event-time values this operator uses in gate conditions.
+	// Each sentinel is computed by the informer's UpdateFunc against oldObj/newObj
+	// and carried through the queue entry so both enqueueGate and reconcileGate
+	// can reference it. The informer computes only declared sentinels.
+	//
+	// Valid values: SentinelGenerationChanged, SentinelLabelsChanged, SentinelAnnotationsChanged,
+	// SentinelDeletionStarted, SentinelFinalizersChanged.
+	//
+	// ork validate fails if a sentinel is used in a gate template but not declared
+	// here, or if a sentinel is used outside the preReconcile context.
+	Sentinels []string `yaml:"sentinels,omitempty" json:"sentinels,omitempty"`
+
 	// EnqueueGate declares informer-level gate conditions evaluated in handleEvent
 	// before the object enters the work queue. When the gate fires the object is
 	// silently dropped — it never reaches the kordinator or reconciler.
@@ -82,6 +283,30 @@ type PreReconcileConfig struct {
 	// dequeue, before the reconciler is called. When conditions are not met
 	// the item is discarded and CRD health is set to gated.
 	ReconcileGate *GateConditions `yaml:"reconcileGate,omitempty" json:"reconcileGate,omitempty"`
+}
+
+// DeclaredSentinels returns the sentinel names declared under preReconcile.sentinels.
+// Returns nil when no sentinels are declared. Safe on nil receiver.
+func (r *PreReconcileConfig) DeclaredSentinels() []string {
+	if r == nil {
+		return nil
+	}
+	return r.Sentinels
+}
+
+// InvalidSentinels returns any sentinel values that are not valid Sentinel constants.
+// Returns nil when all values are valid. Safe on nil receiver.
+func (r *PreReconcileConfig) InvalidSentinels() []string {
+	if r == nil {
+		return nil
+	}
+	var invalid []string
+	for _, s := range r.Sentinels {
+		if !IsValidSentinel(s) {
+			invalid = append(invalid, s)
+		}
+	}
+	return invalid
 }
 
 // HasPreReconcileConditions reports whether reconcileGate has any when/anyOf conditions declared.
@@ -112,6 +337,22 @@ func (r *PreReconcileConfig) HasEnqueueGateExternal() bool {
 // HasReconcileGateExternal reports whether the reconcileGate declares external calls.
 func (r *PreReconcileConfig) HasReconcileGateExternal() bool {
 	return r != nil && r.ReconcileGate != nil && len(r.ReconcileGate.External) > 0
+}
+
+// GateExternalCalls returns all external calls declared across enqueueGate and
+// reconcileGate. Returns nil when the receiver is nil or neither gate has calls.
+func (r *PreReconcileConfig) GateExternalCalls() [][]ExternalCallSpec {
+	if r == nil {
+		return nil
+	}
+	var phases [][]ExternalCallSpec
+	if calls := r.EnqueueGate.ExternalCalls(); len(calls) > 0 {
+		phases = append(phases, calls)
+	}
+	if calls := r.ReconcileGate.ExternalCalls(); len(calls) > 0 {
+		phases = append(phases, calls)
+	}
+	return phases
 }
 
 // WhenConditions returns the reconcileGate AND conditions, safe on nil receiver.
@@ -200,6 +441,11 @@ func (r *ReconcilerConfig) HasHooksDecl() bool {
 		return false
 	}
 	return r.Hooks != nil
+}
+
+// HasRetryBackoff reports whether a retryBackoff is declared on this reconciler's queue.
+func (r *ReconcilerConfig) HasRetryBackoff() bool {
+	return r != nil && r.Queue.HasRetryBackoff()
 }
 
 // HasConstructorDecl reports whether a constructor declaration exists.
@@ -309,6 +555,13 @@ type OperatorBoxConfig struct {
 	// Cross declares cross-CRD observations.
 	// Read before any resource groups — results available as .cross.<as>.status.*
 	Cross []CrossCRDDeclaration `yaml:"cross,omitempty" json:"cross,omitempty"`
+
+	// Watch declares secondary Kubernetes resources Orkestra should watch.
+	// When a watched resource changes, Orkestra resolves the relevant primary
+	// CR key(s) and enqueues them. The reconciler runs normally — the watched
+	// resource's current state is available via .children.* as usual.
+	// nil → no secondary watches; only the primary CRD informer is active.
+	Watch []WatchEntry `yaml:"watch,omitempty" json:"watch,omitempty"`
 
 	// Autoscale declares runtime autoscale behavior for this operatorbox.
 	// When declared, the autoscaler evaluates conditions on a ticker and applies

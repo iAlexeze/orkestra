@@ -16,6 +16,7 @@ package informer
 import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/runtime/sentinel"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -31,6 +32,51 @@ func (f *Factory) RegisterEnqueueFilter(gvkStr string, fn func(domain.Object) bo
 	defer f.mu.Unlock()
 
 	f.enqueueFilters[gvkStr] = fn
+}
+
+// RegisterUpdateEnqueueFilter registers sentinel configuration for a GVK.
+// declared is the list of sentinel names from preReconcile.sentinels; gate
+// decides whether to enqueue and receives the already-computed sentinel values.
+// Sentinel computation (old vs new comparison) happens inside handleUpdateEvent —
+// the caller only passes configuration, not computation.
+// Only one config per GVK — subsequent calls overwrite.
+func (f *Factory) RegisterUpdateEnqueueFilter(gvkStr string, declared []string, gate func(domain.Object, map[string]string) bool) {
+	if gate == nil {
+		return
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.updateFilters[gvkStr] = &updateFilterCfg{declared: declared, gate: gate}
+}
+
+// updateEnqueueAllowed evaluates the registered update config for the given GVK.
+// Sentinel computation happens here using oldObj and newObj — the result is passed
+// to the gate function. Returns (true, nil, false) when no config is registered.
+func (f *Factory) updateEnqueueAllowed(gvkStr string, oldObj, newObj interface{}) (bool, map[string]string, bool) {
+	f.mu.RLock()
+	cfg, ok := f.updateFilters[gvkStr]
+	f.mu.RUnlock()
+	if !ok {
+		return true, nil, false
+	}
+
+	oldDomain, okOld := toDomainObject(oldObj)
+	newDomain, okNew := toDomainObject(newObj)
+	if !okOld || !okNew {
+		return true, nil, true
+	}
+	sentinels := sentinel.Compute(cfg.declared, oldDomain, newDomain)
+	allowed := cfg.gate(newDomain, sentinels)
+	return allowed, sentinels, true
+}
+
+// toDomainObject unwraps a cache tombstone and asserts to domain.Object.
+func toDomainObject(obj interface{}) (domain.Object, bool) {
+	if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+		obj = tombstone.Obj
+	}
+	d, ok := obj.(domain.Object)
+	return d, ok
 }
 
 // enqueueAllowed evaluates the registered enqueue filter for the given GVK.
@@ -50,11 +96,7 @@ func (f *Factory) enqueueAllowed(gvkStr string, obj interface{}) bool {
 
 	// Unwrap tombstone — produced when a deletion event arrives after the object
 	// has already been removed from the cache.
-	if ts, ok := obj.(cache.DeletedFinalStateUnknown); ok {
-		obj = ts.Obj
-	}
-
-	domObj, ok := obj.(domain.Object)
+	domObj, ok := toDomainObject(obj)
 	if !ok {
 		return true // can't evaluate — let it through
 	}

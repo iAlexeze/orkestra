@@ -44,6 +44,7 @@ operatorBox:
 | `sleep` | no | `""` | Delay before this call. Go duration. For development and sequencing async side-effects — not for production rate limiting. |
 | `fires.reconcile` | no | `true` | When `false`, the call is skipped during reconcile — it only runs at admission time. Applies when the call is declared under `validation.external` or `mutation.external`. No effect on `onReconcile.external` calls. |
 | `include` | no | — | Path to a YAML file with a top-level `calls:` list. When set, this entry is replaced in-place by the listed calls. Resolved relative to the katalog file. Cleared after expansion. |
+| `retryBackoff` | no | — | Retry this specific call with exponential backoff before returning an error. Shorthand (`"2s"`) sets `initial` only; full form: `initial`, `max`, `multiplier`, `maxAttempts`. See [retry backoff](../../concepts/operatorbox/09-retry-backoff.md). |
 
 ## Result context
 

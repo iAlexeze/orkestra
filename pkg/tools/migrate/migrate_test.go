@@ -56,7 +56,7 @@ func (r *WebAppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 `
 
 func TestRewrite_SignatureChange(t *testing.T) {
-	res, err := Rewrite([]byte(baseline))
+	res, err := Rewrite([]byte(baseline), ModeNative)
 	if err != nil {
 		t.Fatalf("Rewrite: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestRewrite_SignatureChange(t *testing.T) {
 }
 
 func TestRewrite_ReturnCollapse(t *testing.T) {
-	res, err := Rewrite([]byte(baseline))
+	res, err := Rewrite([]byte(baseline), ModeNative)
 	if err != nil {
 		t.Fatalf("Rewrite: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestRewrite_ReturnCollapse(t *testing.T) {
 }
 
 func TestRewrite_ReqNamespacedName(t *testing.T) {
-	res, err := Rewrite([]byte(baseline))
+	res, err := Rewrite([]byte(baseline), ModeNative)
 	if err != nil {
 		t.Fatalf("Rewrite: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestRewrite_ReqNamespacedName(t *testing.T) {
 }
 
 func TestRewrite_ReqString(t *testing.T) {
-	res, err := Rewrite([]byte(baseline))
+	res, err := Rewrite([]byte(baseline), ModeNative)
 	if err != nil {
 		t.Fatalf("Rewrite: %v", err)
 	}
@@ -128,7 +128,7 @@ func TestRewrite_ReqString(t *testing.T) {
 }
 
 func TestRewrite_SetupWithManagerRemoved(t *testing.T) {
-	res, err := Rewrite([]byte(baseline))
+	res, err := Rewrite([]byte(baseline), ModeNative)
 	if err != nil {
 		t.Fatalf("Rewrite: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestRewrite_SetupWithManagerRemoved(t *testing.T) {
 }
 
 func TestRewrite_StructRewritten(t *testing.T) {
-	res, err := Rewrite([]byte(baseline))
+	res, err := Rewrite([]byte(baseline), ModeNative)
 	if err != nil {
 		t.Fatalf("Rewrite: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestRewrite_StructRewritten(t *testing.T) {
 }
 
 func TestRewrite_ConstructorGenerated(t *testing.T) {
-	res, err := Rewrite([]byte(baseline))
+	res, err := Rewrite([]byte(baseline), ModeNative)
 	if err != nil {
 		t.Fatalf("Rewrite: %v", err)
 	}
@@ -183,7 +183,7 @@ func TestRewrite_ConstructorGenerated(t *testing.T) {
 }
 
 func TestRewrite_StatusUpdateFlagged(t *testing.T) {
-	res, err := Rewrite([]byte(baseline))
+	res, err := Rewrite([]byte(baseline), ModeNative)
 	if err != nil {
 		t.Fatalf("Rewrite: %v", err)
 	}
@@ -205,7 +205,7 @@ func TestRewrite_StatusUpdateFlagged(t *testing.T) {
 }
 
 func TestRewrite_ReceiverType(t *testing.T) {
-	res, err := Rewrite([]byte(baseline))
+	res, err := Rewrite([]byte(baseline), ModeNative)
 	if err != nil {
 		t.Fatalf("Rewrite: %v", err)
 	}
@@ -218,7 +218,7 @@ func TestRewrite_ReceiverType(t *testing.T) {
 }
 
 func TestRewrite_NoCtrlImport(t *testing.T) {
-	res, err := Rewrite([]byte(baseline))
+	res, err := Rewrite([]byte(baseline), ModeNative)
 	if err != nil {
 		t.Fatalf("Rewrite: %v", err)
 	}
@@ -245,7 +245,7 @@ func (r *MyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 }
 `
-	res, err := Rewrite([]byte(src))
+	res, err := Rewrite([]byte(src), ModeNative)
 	if err != nil {
 		t.Fatalf("Rewrite: %v", err)
 	}
@@ -265,6 +265,63 @@ func (r *MyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	}
 }
 
+func TestRewrite_ToClientMode_ReconcileUnchanged(t *testing.T) {
+	const src = `package controller
+
+import (
+	"context"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+type WebAppReconciler struct {
+	client client.Client
+}
+
+func (r *WebAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	return ctrl.Result{}, nil
+}
+
+func (r *WebAppReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).For(&WebApp{}).Complete(r)
+}
+`
+	res, err := Rewrite([]byte(src), ModeToClient)
+	if err != nil {
+		t.Fatalf("Rewrite ModeToClient: %v", err)
+	}
+	out := string(res.Source)
+
+	// Reconcile signature must be untouched.
+	if !strings.Contains(out, "req ctrl.Request") {
+		t.Error("expected Reconcile signature to be unchanged (req ctrl.Request still present)")
+	}
+	if strings.Contains(out, "key string") {
+		t.Error("expected Reconcile signature NOT to be rewritten to (ctx, key string)")
+	}
+
+	// Constructor injected.
+	if !strings.Contains(out, "func NewWebAppReconciler(kube kubeclient.Interface)") {
+		t.Error("expected ToClient constructor to be injected")
+	}
+	if !strings.Contains(out, "kubeclient.ToClient(kube)") {
+		t.Error("expected kubeclient.ToClient in constructor")
+	}
+	if !strings.Contains(out, "domain.ReconcilerFrom") {
+		t.Error("expected domain.ReconcilerFrom in constructor")
+	}
+
+	// SetupWithManager removed.
+	if strings.Contains(out, "SetupWithManager") && !strings.Contains(out, "removed") {
+		t.Error("expected SetupWithManager to be removed or replaced with comment")
+	}
+
+	// Mode recorded.
+	if res.Mode != ModeToClient {
+		t.Errorf("expected Mode ModeToClient, got %q", res.Mode)
+	}
+}
+
 func TestRewrite_NoReconcileMethod(t *testing.T) {
 	src := `package controller
 
@@ -272,7 +329,7 @@ type MyReconciler struct{}
 
 func (r *MyReconciler) DoSomething() {}
 `
-	_, err := Rewrite([]byte(src))
+	_, err := Rewrite([]byte(src), ModeNative)
 	if err == nil {
 		t.Error("expected error when no Reconcile method found")
 	}

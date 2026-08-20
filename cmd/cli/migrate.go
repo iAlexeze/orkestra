@@ -16,22 +16,26 @@ import (
 
 var migrateCmd = &cobra.Command{
 	Use:   "migrate <file>",
-	Short: "Migrate a controller-runtime Reconcile method to the Orkestra constructor signature",
-	Long: `Parses a Go file containing a controller-runtime Reconcile method and rewrites it
-to the Orkestra constructor signature:
+	Short: "Migrate a controller-runtime operator to Orkestra",
+	Long: `Migrates a controller-runtime reconciler to Orkestra. Your Reconcile logic
+is untouched — Orkestra takes over the infrastructure.
 
-  Before: Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error)
-  After:  Reconcile(ctx context.Context, key string) error
+Default mode (--mode toclient): zero changes to your Reconcile signature or
+call sites. SetupWithManager is removed; a two-line constructor using
+kubeclient.ToClient and domain.ReconcilerFrom is injected. Your reconciler
+compiles and runs inside Orkestra with no other edits.
 
-With -o, the rewritten file and scaffolding (katalog.yaml, simulate.yaml,
-e2e.yaml, go.mod) are written to the output directory. Without -o, the
-original file is replaced after confirmation.
+  ork migrate ./controller/webapp_controller.go -o ./my-operator
 
-The output is a starting point — review TODO(ork migrate) comments before running.
+The output directory receives the rewritten file plus scaffolding:
+katalog.yaml, simulate.yaml, e2e.yaml, go.mod, Makefile, Dockerfile.
+
+For a full rewrite to idiomatic Orkestra style (new Reconcile signature,
+struct fields, call sites), use --mode native.
 
 Examples:
   ork migrate ./controller/webapp_controller.go -o ./my-operator
-  ork migrate ./controller/webapp_controller.go --module github.com/myorg/my-operator -o ./out
+  ork migrate ./controller/webapp_controller.go --mode native -o ./out
   ork migrate ./controller/webapp_controller.go  # prompts before replacing`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -39,13 +43,24 @@ Examples:
 		outputDir, _ := cmd.Flags().GetString("output")
 		modulePath, _ := cmd.Flags().GetString("module")
 		operatorName, _ := cmd.Flags().GetString("name")
+		modeFlag, _ := cmd.Flags().GetString("mode")
+
+		var mode migrate.Mode
+		switch modeFlag {
+		case "native":
+			mode = migrate.ModeNative
+		case "toclient", "":
+			mode = migrate.ModeToClient
+		default:
+			return fmt.Errorf("unknown --mode %q: valid values are toclient, native", modeFlag)
+		}
 
 		src, err := os.ReadFile(inputPath)
 		if err != nil {
 			return fmt.Errorf("read %s: %w", inputPath, err)
 		}
 
-		res, err := migrate.Rewrite(src)
+		res, err := migrate.Rewrite(src, mode)
 		if err != nil {
 			return fmt.Errorf("migrate: %w", err)
 		}
@@ -161,6 +176,7 @@ func init() {
 	migrateCmd.Flags().StringP("output", "o", "", "Write output to this directory (non-destructive; skips confirmation)")
 	migrateCmd.Flags().String("module", "", "Go module path for the migrated operator (e.g. github.com/myorg/my-operator)")
 	migrateCmd.Flags().String("name", "", "Operator name in kebab-case (e.g. my-operator); derived from receiver type if omitted")
+	migrateCmd.Flags().String("mode", "toclient", "Migration mode: toclient (default, zero Reconcile changes) or native (full rewrite)")
 
 	// Shadow global flags so they don't appear under `ork migrate`
 	shadowGlobalCommandFlags(migrateCmd, "file")

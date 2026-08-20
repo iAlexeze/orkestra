@@ -23,6 +23,7 @@ crds:
 | `maxDepth` | int | `100` (`QUEUE_DEPTH` env) | Maximum items the queue holds. When the limit is reached, new reconcile events are **dropped** — not queued, not retried. The resync period will re-enqueue the CR on the next tick. |
 | `failureThreshold` | int | `5` (`FAILURE_THRESHOLD` env) | Consecutive reconcile failures before the operatorBox transitions to degraded. Resets to zero on the next successful reconcile. |
 | `shared` | bool | `false` | Use the shared global workqueue instead of an isolated per-CRD queue. Rarely needed. |
+| `retryBackoff` | duration or object | — | Intra-reconcile retry backoff. Shorthand (`5s`) sets `initial` only; full form: `initial`, `max`, `multiplier`, `maxAttempts`. See [retry backoff](../../concepts/operatorbox/09-retry-backoff.md). |
 
 Defaults are controlled by `QUEUE_DEPTH` and `FAILURE_THRESHOLD` environment variables in the runtime deployment — set them in `values.yaml` under `runtime.config`.
 

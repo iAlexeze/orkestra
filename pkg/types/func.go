@@ -2,13 +2,14 @@ package types
 
 import (
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
-	"k8s.io/client-go/tools/cache"
 )
 
-type NewReconcilerFunc func(
-	kube kubeclient.Interface,
-	inf cache.SharedIndexInformer,
-	ev event.Recorder,
-) domain.Reconciler
+// NewReconcilerFunc is the constructor signature every custom reconciler must match.
+// It lives in pkg/types (not domain) to avoid an import cycle: domain must not
+// import kubeclient, but the constructor function takes kubeclient.Interface.
+//
+// The runtime injects the primary CRD's informer and event recorder into kube
+// before calling the constructor — access them via kube.GetInformer() and
+// kube.GetEventRecorder(). Constructor args are available via kube.Args().
+type NewReconcilerFunc func(kube kubeclient.Interface) domain.Reconciler

@@ -21,6 +21,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -45,6 +46,13 @@ type Kubeclient struct {
 	// args holds the fully-evaluated args for the current reconcile scope.
 	// Set by ScopedFor; nil means fall back to rawArgs as-is.
 	args Args
+
+	// informer is the primary CRD's SharedIndexInformer, injected by the runtime
+	// before the constructor is called. Accessible via Informer().
+	informer cache.SharedIndexInformer
+	// eventRecorder is the event recorder for this CRD, injected by the runtime
+	// before the constructor is called. Accessible via GetEventRecorder().
+	eventRecorder EventRecorder
 
 	// Testing
 	FakeClientset kubernetes.Interface
@@ -239,4 +247,32 @@ func (k *Kubeclient) ScopedFor(eval func(string) (string, bool)) Interface {
 	}
 	cp.args = ResolveArgsMap(k.rawArgs, eval)
 	return &cp
+}
+
+// WithInformer returns a copy of this Interface with the primary CRD informer
+// attached. Called by the runtime before invoking a constructor function.
+func (k *Kubeclient) WithInformer(inf cache.SharedIndexInformer) Interface {
+	cp := *k
+	cp.informer = inf
+	return &cp
+}
+
+// WithEventRecorder returns a copy of this Interface with the event recorder
+// attached. Called by the runtime before invoking a constructor function.
+func (k *Kubeclient) WithEventRecorder(ev EventRecorder) Interface {
+	cp := *k
+	cp.eventRecorder = ev
+	return &cp
+}
+
+// GetInformer returns the primary CRD's SharedIndexInformer.
+// Available inside constructor functions — nil if called outside that context.
+func (k *Kubeclient) GetInformer() cache.SharedIndexInformer {
+	return k.informer
+}
+
+// GetEventRecorder returns the event recorder for this CRD.
+// Available inside constructor functions — nil if called outside that context.
+func (k *Kubeclient) GetEventRecorder() EventRecorder {
+	return k.eventRecorder
 }

@@ -85,6 +85,20 @@ type Factory struct {
 	// enqueueAllowed unwraps tombstones and asserts to domain.Object before
 	// calling the function — works for both dynamic and typed CRDs.
 	enqueueFilters map[string]func(domain.Object) bool
+
+	// updateFilters maps GVK string to a sentinel-aware update config.
+	// The factory computes sentinels from declared names at event time and
+	// calls gate to decide whether to enqueue. Splitting the two means
+	// runtime_konstructor.go only passes configuration; computation stays here.
+	updateFilters map[string]*updateFilterCfg
+}
+
+// updateFilterCfg holds the configuration registered for a sentinel-aware GVK.
+// declared is captured at startup; gate is evaluated at event time with the
+// already-computed sentinel values so the closure never needs to call sentinel.Compute.
+type updateFilterCfg struct {
+	declared []string
+	gate     func(newObj domain.Object, sentinels map[string]string) bool
 }
 
 func SharedInformerFactory(
@@ -108,5 +122,6 @@ func SharedInformerFactory(
 		ready:            make(chan struct{}),
 		namespaceFilters: make(map[string]*NamespaceFilter),
 		enqueueFilters:   make(map[string]func(domain.Object) bool),
+		updateFilters:    make(map[string]*updateFilterCfg),
 	}
 }

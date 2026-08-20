@@ -21,6 +21,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	k8stesting "k8s.io/client-go/testing"
+	"k8s.io/client-go/tools/cache"
 	sigs "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -51,8 +52,10 @@ type FakeKubeclient struct {
 	scheme    *runtime.Scheme
 	shared    *fakeShared
 
-	rawArgs map[string]interface{}
-	args    kubeclient.Args
+	rawArgs       map[string]interface{}
+	args          kubeclient.Args
+	informer      cache.SharedIndexInformer
+	eventRecorder kubeclient.EventRecorder
 }
 
 // dynamicObjects seeds the fake dynamic client's tracker at construction —
@@ -143,6 +146,21 @@ func (f *FakeKubeclient) ScopedFor(eval func(string) (string, bool)) kubeclient.
 	cp.args = kubeclient.ResolveArgsMap(f.rawArgs, eval)
 	return &cp
 }
+
+func (f *FakeKubeclient) WithInformer(inf cache.SharedIndexInformer) kubeclient.Interface {
+	cp := *f
+	cp.informer = inf
+	return &cp
+}
+
+func (f *FakeKubeclient) WithEventRecorder(ev kubeclient.EventRecorder) kubeclient.Interface {
+	cp := *f
+	cp.eventRecorder = ev
+	return &cp
+}
+
+func (f *FakeKubeclient) GetInformer() cache.SharedIndexInformer     { return f.informer }
+func (f *FakeKubeclient) GetEventRecorder() kubeclient.EventRecorder { return f.eventRecorder }
 
 // AdvanceCycle increments the cycle counter. Call between simulated reconciles.
 func (f *FakeKubeclient) AdvanceCycle() {

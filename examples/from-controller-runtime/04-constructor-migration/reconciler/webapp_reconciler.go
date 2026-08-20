@@ -2,130 +2,99 @@
 
 // reconciler/webapp_reconciler.go
 //
-// The WebApp reconciler lifted from controller-runtime into Orkestra.
+// The WebApp reconciler from 00-controller-runtime-baseline, migrated to Orkestra.
 //
-// Compare with 00-controller-runtime-baseline/controller/webapp_controller.go.
-// The reconcile logic is identical — same Deployment spec, same Service spec,
-// same status patch, same IsNotFound guard. The only change is the signature:
+// Compare this file with 00-controller-runtime-baseline/controller/webapp_controller.go.
+// The differences are exactly three:
 //
-//	Before: Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error)
-//	After:  Reconcile(ctx context.Context, key string) error
+//  1. SetupWithManager is gone — Orkestra provides the informer, workqueue,
+//     worker pool, leader election, panic recovery, and metrics.
 //
-// key is namespace/name — the same string as req.String(). Everything inside
-// the method is unchanged.
+//  2. Scheme is gone — Orkestra handles scheme registration.
 //
-// What was removed (owned by Orkestra now):
-//   - ctrl.NewManager and all setup in main.go
-//   - ctrl.NewControllerManagedBy / SetupWithManager
-//   - scheme registration
-//   - ctrl.Result retry semantics (return nil = done, return error = requeue)
+//  3. NewWebAppReconciler is added — two lines wire the reconciler into Orkestra:
+//     kubeclient.ToClient wraps Orkestra's interface as a client.Client,
+//     domain.ReconcilerFrom adapts the ctrl.Request signature.
 //
-// Orkestra provides (without you writing any of it):
-//   - Informer watching the WebApp CRD
-//   - Workqueue with deduplication and backoff
-//   - Worker pool (configurable in Katalog: workers: N)
-//   - safeReconcile panic recovery
-//   - Prometheus metrics (reconcile total, duration, queue depth)
-//   - Per-CRD health tracking
-//   - Leader election
-//
-// You own (same as before):
-//   - Reading objects from the informer cache
-//   - Finalizer management
-//   - Kubernetes events
-//   - Status updates
-//   - All reconcile logic
+// Everything else — struct, Reconcile signature, reconcileDeployment,
+// reconcileService, r.Get, r.Status().Update — is word for word the same as
+// the baseline. Nothing inside Reconcile changed.
 package reconciler
 
 import (
 	"context"
 	"fmt"
-	"strings"
 
-	apiv1 "github.com/orkspace/from-controller-runtime-demo/api/v1alpha1"
-	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/event"
-	"github.com/orkspace/orkestra/pkg/kubeclient"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/tools/cache"
-	sigs "sigs.k8s.io/controller-runtime/pkg/client"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	demov1alpha1 "github.com/orkspace/from-controller-runtime-demo/api/v1alpha1"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
 )
 
-// WebAppReconciler implements domain.Reconciler for the WebApp CRD.
+// WebAppReconciler reconciles a WebApp object.
+// Struct is identical to the baseline — embedded client.Client, same fields.
+// Scheme is removed: Orkestra registers the scheme at startup.
 type WebAppReconciler struct {
-	informer cache.SharedIndexInformer
-	kube     kubeclient.KubeClient
-	ev       event.Recorder
+	client.Client
 }
 
-// NewWebAppReconciler is the constructor function registered in the Katalog.
-func NewWebAppReconciler(
-	kube kubeclient.KubeClient,
-	informer cache.SharedIndexInformer,
-	ev event.Recorder,
-) domain.Reconciler {
-	return &WebAppReconciler{
-		informer: informer,
-		kube:     kube,
-		ev:       ev,
-	}
-}
-
-// Reconcile is called by Orkestra's worker pool for every queued WebApp key.
-// key is namespace/name — same as req.String() in controller-runtime.
-func (r *WebAppReconciler) Reconcile(ctx context.Context, key string) error {
-	raw, exists, err := r.informer.GetIndexer().GetByKey(key)
-	if err != nil {
-		return fmt.Errorf("cache lookup %q: %w", key, err)
-	}
-	if !exists {
-		return nil
-	}
-
-	webapp, ok := raw.(*apiv1.WebApp)
-	if !ok {
-		return fmt.Errorf("unexpected type %T", raw)
-	}
-	webapp = webapp.DeepCopyObject().(*apiv1.WebApp)
-
-	if webapp.DeletionTimestamp != nil {
-		// Owner references clean up Deployment and Service automatically.
-		return nil
-	}
-
-	if err := r.reconcileDeployment(ctx, webapp); err != nil {
-		return err
-	}
-	if err := r.reconcileService(ctx, webapp); err != nil {
-		return err
-	}
-
-	r.ev.Eventf(webapp, corev1.EventTypeNormal, "WebAppReconciled",
-		"WebApp %s/%s reconciled", webapp.Namespace, webapp.Name)
-
-	return r.kube.PatchStatus(ctx, webapp, map[string]interface{}{
-		"phase":    "Running",
-		"endpoint": fmt.Sprintf("%s-svc.%s.svc.cluster.local", webapp.Name, webapp.Namespace),
-		"replicas": webapp.Spec.Replicas,
+// NewWebAppReconciler is the only new code.
+// Two lines replace all of main.go, scheme registration, and SetupWithManager.
+func NewWebAppReconciler(kube kubeclient.Interface) domain.Reconciler {
+	return domain.ReconcilerFrom(&WebAppReconciler{
+		Client: kubeclient.ToClient(kube),
 	})
 }
 
-// reconcileDeployment — same logic as the controller-runtime baseline.
-// StrategicMergeFrom is used here because Deployment's container list carries
-// patchMergeKey:"name" annotations — the API server merges containers by name
-// rather than replacing the list wholesale. sigs.StrategicMergeFrom works here too.
-func (r *WebAppReconciler) reconcileDeployment(ctx context.Context, webapp *apiv1.WebApp) error {
+// Reconcile — identical to the baseline. Signature, body, and return types unchanged.
+func (r *WebAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+
+	webapp := &demov1alpha1.WebApp{}
+	if err := r.Get(ctx, req.NamespacedName, webapp); err != nil {
+		if errors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, err
+	}
+
+	if err := r.reconcileDeployment(ctx, webapp); err != nil {
+		logger.Error(err, "failed to reconcile Deployment")
+		return ctrl.Result{}, err
+	}
+
+	if err := r.reconcileService(ctx, webapp); err != nil {
+		logger.Error(err, "failed to reconcile Service")
+		return ctrl.Result{}, err
+	}
+
+	webapp.Status.Phase = "Running"
+	webapp.Status.Endpoint = fmt.Sprintf("%s.%s.svc.cluster.local", webapp.Name, webapp.Namespace)
+	webapp.Status.Replicas = webapp.Spec.Replicas
+	if err := r.Status().Update(ctx, webapp); err != nil {
+		logger.Error(err, "failed to update WebApp status")
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{}, nil
+}
+
+func (r *WebAppReconciler) reconcileDeployment(ctx context.Context, webapp *demov1alpha1.WebApp) error {
 	replicas := webapp.Spec.Replicas
-	desired := &appsv1.Deployment{
+	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      webapp.Name,
 			Namespace: webapp.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(webapp, apiv1.GroupVersionKind),
+				*metav1.NewControllerRef(webapp, demov1alpha1.GroupVersionKind),
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -153,29 +122,25 @@ func (r *WebAppReconciler) reconcileDeployment(ctx context.Context, webapp *apiv
 	}
 
 	existing := &appsv1.Deployment{}
-	err := r.kube.Get(ctx, webapp.Namespace, webapp.Name, existing)
+	err := r.Get(ctx, client.ObjectKey{Name: webapp.Name, Namespace: webapp.Namespace}, existing)
 	if errors.IsNotFound(err) {
-		return r.kube.Create(ctx, desired)
+		return r.Create(ctx, deploy)
 	}
 	if err != nil {
 		return err
 	}
-	patch := sigs.StrategicMergeFrom(existing.DeepCopy())
-	existing.Spec = desired.Spec
-	return r.kube.Patch(ctx, existing, patch)
+	patch := client.MergeFrom(existing.DeepCopy())
+	existing.Spec = deploy.Spec
+	return r.Patch(ctx, existing, patch)
 }
 
-// reconcileService — same logic as the controller-runtime baseline.
-// MergeFrom (JSON merge patch) is correct here — Service ports have no strategic
-// merge key, so replace semantics are what the API server applies anyway.
-// sigs.MergeFrom works here too.
-func (r *WebAppReconciler) reconcileService(ctx context.Context, webapp *apiv1.WebApp) error {
-	desired := &corev1.Service{
+func (r *WebAppReconciler) reconcileService(ctx context.Context, webapp *demov1alpha1.WebApp) error {
+	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      webapp.Name + "-svc",
 			Namespace: webapp.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(webapp, apiv1.GroupVersionKind),
+				*metav1.NewControllerRef(webapp, demov1alpha1.GroupVersionKind),
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -190,23 +155,14 @@ func (r *WebAppReconciler) reconcileService(ctx context.Context, webapp *apiv1.W
 	}
 
 	existing := &corev1.Service{}
-	err := r.kube.Get(ctx, webapp.Namespace, webapp.Name+"-svc", existing)
+	err := r.Get(ctx, client.ObjectKey{Name: webapp.Name + "-svc", Namespace: webapp.Namespace}, existing)
 	if errors.IsNotFound(err) {
-		return r.kube.Create(ctx, desired)
+		return r.Create(ctx, svc)
 	}
 	if err != nil {
 		return err
 	}
-	patch := sigs.MergeFrom(existing.DeepCopy())
-	existing.Spec.Ports = desired.Spec.Ports
-	return r.kube.Patch(ctx, existing, patch)
-}
-
-// namespacedName splits a cache key "namespace/name" into its parts.
-func namespacedName(key string) (namespace, name string) {
-	parts := strings.SplitN(key, "/", 2)
-	if len(parts) == 2 {
-		return parts[0], parts[1]
-	}
-	return "", parts[0]
+	patch := client.MergeFrom(existing.DeepCopy())
+	existing.Spec.Ports = svc.Spec.Ports
+	return r.Patch(ctx, existing, patch)
 }

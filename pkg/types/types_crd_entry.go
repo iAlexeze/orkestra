@@ -156,7 +156,11 @@ type CRDEntry struct {
 	// ── OperatorBox ────────────────────────────────────────────────────
 	OperatorBox OperatorBoxConfig `yaml:"operatorBox,omitempty" json:"operatorBox,omitempty"`
 
-	// Labels           Labels  `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
+	// Labels specifies additional metadata labels to attach to the CR of this CRD entry.
+	// These labels can be used for organization, watch filtering, or identification purposes.
+	// They are not used for reconciliation filtering (see LabelSelector for that).
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
+
 	// LabelSelector filters which resources this CRD entry reconciles.
 	// Only resources whose labels match ALL declared key-value pairs are watched.
 	// Required for built-in types (ConfigMap, Pod, etc.) — without a selector,

@@ -228,7 +228,7 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 	// so hook BindToObjectHooks type-assertions and cross: lookups both work.
 	var r domain.Reconciler
 	if factoryFn, ok := orktypes.ReconcilerRegistry[gvk]; ok {
-		r = factoryFn(fakeKube, informer, event.Discard())
+		r = factoryFn(fakeKube.WithInformer(informer).WithEventRecorder(event.Discard()))
 	} else {
 		r = reconciler.NewGenericReconciler(
 			effectiveCRDEntry,

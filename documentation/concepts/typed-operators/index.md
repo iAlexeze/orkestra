@@ -1,36 +1,94 @@
 # Typed Operators
 
-Orkestra operators are declarative by default — no Go required. Typed operators are the escape hatch for the cases that genuinely need code.
+Every controller-runtime operator has two layers.
 
-A typed operator references compiled Go types. Everything else — informers, workqueues, drift correction, status, metrics — works exactly as it does for a pure YAML operator.
+**Infrastructure** — Manager setup, informer cache, workqueue, predicates, event handlers, retry logic, leader election, metrics, panic recovery. This is the same in every operator. You write it, maintain it, debug it, and upgrade it — for every operator you build.
+
+**Business logic** — your `Reconcile` function. The part that is actually yours.
+
+Orkestra separates them. You write `Reconcile(ctx context.Context, key string) error` — the same logic you have today. Orkestra provides the rest: informers, workqueue, worker pool, retry backoff, watch on secondary resources, enqueue and reconcile gates, resync, leader election, metrics, panic recovery. You declare the topology in the Katalog. You never touch the infrastructure again.
+
+```go
+// Your reconciler — untouched. Same struct, same Reconcile signature, same logic.
+type PipelineReconciler struct {
+    client client.Client
+}
+
+func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (reconcile.Result, error) {
+    // your logic, unchanged
+}
+
+// The constructor — the only new code. Replaces main.go and SetupWithManager.
+// ToClient adapts Orkestra's kube hub to the client.Client your reconciler already uses.
+// ReconcilerFrom adapts the controller-runtime signature to Orkestra's interface.
+func NewPipelineReconciler(kube kubeclient.Interface) domain.Reconciler {
+    return domain.ReconcilerFrom(&PipelineReconciler{
+        client: kubeclient.ToClient(kube),
+    })
+}
+```
+
+```yaml
+# The infrastructure — declared, not written.
+operatorBox:
+  reconciler:
+    workers: 4
+    resync: 30s
+    queue:
+      retryBackoff: 500ms
+  watch:
+    - apiVersion: v1
+      kind: ConfigMap
+      name: shared-config
+      on: [update]
+      enqueueGate:
+        when:
+          - field: "{{ generationChanged }}"
+            equals: "true"
+  preReconcile:
+    sentinels: [generationChanged]
+```
+
+Watches on secondary resources, retry backoff, enqueue filtering — declared. Your reconciler sees none of it. It just runs.
 
 ---
 
-## When to use typed operators
+## Patterns
 
-Use a typed operator when your reconcile logic needs:
+→ **[Hooks — hybrid](./01-hooks.md#hybrid)** *(recommended)* — declare everything Orkestra handles well in the Katalog; write Go only for what templates cannot express. Orkestra runs declared templates first, then your hook. The smallest surface area of Go code.
 
-- **External calls the `external:` block cannot express** — the `external:` block handles HTTP calls declaratively (GET/POST, bearer tokens, response gating). Use hooks when you need non-HTTP protocols, SDK calls, database connections, or multi-step interactions that can't be expressed as "call a URL and gate on the response". If you need to provision a user inside PostgreSQL, call an AWS SDK, or run a gRPC call, that needs a hook.
-- **Complex computed fields** — deriving values from multiple sources, running logic that template expressions cannot express
-- **A fully custom reconciler** — integrating an existing operator's logic without rewriting it
+→ **[Hooks — hooks only](./01-hooks.md#hooks-only)** — the hook manages all child resources in Go. Use when type-safe control over every resource matters more than keeping declarations in YAML.
 
-If your operator only creates Kubernetes resources and applies rules, stay declarative.
+→ **[Constructor](./02-constructor.md)** — replace the reconciler entirely. Your Go code owns the full reconcile loop. The right entry point when migrating an existing controller-runtime operator — change the signature, remove the Manager, register the constructor. The rest of your code is unchanged.
+
+→ **[Mixing all three](./03-mixed.md)** — a declarative operator, a hooks operator, and a constructor operator composed into one runtime from a single Komposer.
+
+→ **[Migrating from controller-runtime](./05-migration.md)** — have a working controller-runtime operator? The `from-controller-runtime` pack shows the same operator expressed five ways, and `ork migrate` automates the constructor path.
+
+→ **[Reusability](./06-reusability.md)** — one binary, many deployments. The same hook or constructor serves different environments, tiers, and tenants — API type routing via `apiTypes`, behavior routing via `args:`.
+
+---
 
 !!! note "Templates already see the full spec"
     Template expressions have access to the complete CR — `{{ .spec.* }}`, `{{ .status.* }}`, `{{ .metadata.* }}` — regardless of whether `apiTypes.location` is set. The template resolver converts any object to `map[string]interface{}` before executing expressions. Setting `location` is for Go code only.
 
+## When to write Go
+
+Stay declarative when your operator creates Kubernetes resources and applies rules. Reach for Go when you need:
+
+- **Non-HTTP protocols** — SDK calls, gRPC, database connections, multi-step interactions that can't be expressed as "call a URL and gate on the response"
+- **Complex computed fields** — logic that template expressions cannot express
+- **An existing reconciler** — integrating a controller-runtime operator without rewriting it
+
 ---
 
-## The patterns
+## The infrastructure you are declaring
 
-→ [Hooks — hybrid](./01-hooks.md#hybrid) **(recommended)** — declare everything Orkestra handles well in the Katalog; write Go only for what templates cannot express. Orkestra runs declared templates first, then the hook.
+The Katalog fields that replace what you used to write:
 
-→ [Hooks — hooks only](./01-hooks.md#hooks-only) — the hook manages all child resources in Go. Use when type-safe control over every resource matters more than keeping declarations in YAML.
+- [watch](../operatorbox/watch.md) — secondary resource informers, enqueue filtering, key resolution
+- [retryBackoff](../operatorbox/09-retry-backoff.md) — per-call and per-reconciler retry with exponential backoff
+- [Conditional reconciliation](../conditional/04-conditional-reconciliation.md) — enqueue gates, reconcile gates, sentinels
+- [Profiles](../operatorbox/06-profiles/) — worker count, resync, queue depth — named and reusable across CRDs
+- [Reconciler model](../reconciler-model/) — how items move from the informer cache through the workqueue to your Reconcile call
 
-→ [Constructor](./02-constructor.md) — replace the reconciler entirely. Your Go code owns the full reconcile loop; declared templates are not applied. Use when migrating an existing controller-runtime operator or running a custom state machine.
-
-→ [Mixing all three](./03-mixed.md) — a declarative operator, a hooks operator, and a constructor operator composed into one runtime from a single Komposer.
-
-→ [Migrating from controller-runtime](./05-migration.md) — have a working controller-runtime operator? The `from-controller-runtime` pack shows the same operator expressed five ways, and `ork migrate` automates the constructor path.
-
-→ [Reusability](./06-reusability.md) — one binary, many deployments. The same hook or constructor serves different environments, tiers, and tenants — API type routing via `apiTypes`, behavior routing via `args:`.

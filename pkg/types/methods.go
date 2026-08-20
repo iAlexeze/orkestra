@@ -245,6 +245,22 @@ func (c *CRDEntry) ConstructorManagedResources() []ManagedResource {
 	return c.OperatorBox.Reconciler.ConstructorDecl.Resources
 }
 
+// WithWatchEntries reports whether this CRD declares any secondary watch entries.
+func (c *CRDEntry) WithWatchEntries() bool {
+	return len(c.OperatorBox.Watch) > 0
+}
+
+// WithSentinels reports whether this CRD declares any preReconcile sentinels.
+func (c *CRDEntry) WithSentinels() bool {
+	return len(c.OperatorBox.PreReconcile.DeclaredSentinels()) > 0
+}
+
+// WatchEntries returns the secondary watch entries declared under operatorBox.watch.
+// Returns nil when no watch entries are declared.
+func (c *CRDEntry) WatchEntries() []WatchEntry {
+	return c.OperatorBox.Watch
+}
+
 // HasTemplates reports whether this CRD declares any declarative hook templates.
 // Used by `ork generate` to determine whether to emit generated runtime hooks.
 func (c *CRDEntry) HasTemplates() bool {
@@ -756,6 +772,11 @@ func IsValidServiceType(t string) bool {
 	default:
 		return false
 	}
+}
+
+// HasUserLabels reports whether the CRD entry declares any user-defined labels.
+func (e CRDEntry) HasUserLabels() bool {
+	return len(e.Labels) > 0
 }
 
 // IsValidProtocol reports whether the provided protocol is valid.

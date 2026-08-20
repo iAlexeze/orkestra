@@ -19,7 +19,7 @@ import (
 //
 // preReconcile.external runs first (shared enrichment), then reconcileGate.external,
 // then conditions are evaluated against the accumulated resolver.
-func (k *Katalog) EvaluatePreReconcile(ctx context.Context, crdName string, obj *unstructured.Unstructured, cs kubernetes.Interface) (allowed bool, reason string) {
+func (k *Katalog) EvaluatePreReconcile(ctx context.Context, crdName string, obj *unstructured.Unstructured, cs kubernetes.Interface, sentinels map[string]string) (allowed bool, reason string) {
 	if obj == nil {
 		return true, ""
 	}
@@ -46,6 +46,9 @@ func (k *Katalog) EvaluatePreReconcile(ctx context.Context, crdName string, obj 
 	}
 	if intent := orktypes.ServeIntentFromObject(resolver.Data()); intent != nil {
 		resolver = resolver.WithRequest(intent)
+	}
+	if len(sentinels) > 0 {
+		resolver = resolver.WithSentinels(rc.DeclaredSentinels(), sentinels)
 	}
 
 	gvk := entry.GVKString()
@@ -74,7 +77,7 @@ func (k *Katalog) EvaluatePreReconcile(ctx context.Context, crdName string, obj 
 //
 // preReconcile.external runs first (shared enrichment), then enqueueGate.external,
 // then conditions are evaluated against the accumulated resolver.
-func (k *Katalog) EvaluateEnqueueFilter(ctx context.Context, crdName string, obj domain.Object, cs kubernetes.Interface) bool {
+func (k *Katalog) EvaluateEnqueueFilter(ctx context.Context, crdName string, obj domain.Object, cs kubernetes.Interface, sentinels map[string]string) bool {
 	if obj == nil {
 		return true
 	}
@@ -101,6 +104,9 @@ func (k *Katalog) EvaluateEnqueueFilter(ctx context.Context, crdName string, obj
 	}
 	if intent := orktypes.ServeIntentFromObject(resolver.Data()); intent != nil {
 		resolver = resolver.WithRequest(intent)
+	}
+	if len(sentinels) > 0 {
+		resolver = resolver.WithSentinels(rc.DeclaredSentinels(), sentinels)
 	}
 
 	gvk := entry.GVKString()

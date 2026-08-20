@@ -66,18 +66,12 @@ Use `fetch: true` when pulling the constructor from a remote module you have not
 **String values support Go template expressions**, including strings inside nested maps — the resolver recurses into them. Integers and booleans have no template syntax (YAML parses them as native types) so they are always read as-is. Dynamic string values — those with `{{ }}` — need to be resolved per-CR at reconcile time. The constructor calls `kube.ScopedFor(resolver.TemplateEvaluator())` itself after building its resolver:
 
 ```go
-func NewPipelineReconciler(
-    kube kubeclient.KubeClient,
-    informer cache.SharedIndexInformer,
-    ev event.Recorder,
-) domain.Reconciler {
+func NewPipelineReconciler(kube kubeclient.Interface) domain.Reconciler {
     // Static args are safe to read at construction time — no templates involved.
     maxRetries      := kube.Args().Int("maxRetries")
     notifyOnSuccess := kube.Args().Bool("notifyOnSuccess")
     return &PipelineReconciler{
         kube:            kube,   // holds rawArgs; ScopedFor resolves them at reconcile time
-        informer:        informer,
-        event:           ev,
         maxRetries:      maxRetries,
         notifyOnSuccess: notifyOnSuccess,
     }
@@ -111,21 +105,17 @@ package reconciler
 
 import (
     "github.com/orkspace/orkestra/pkg/kubeclient"
-    "github.com/orkspace/orkestra/pkg/event"
     "github.com/orkspace/orkestra/domain"
-    "k8s.io/client-go/tools/cache"
 )
 
-func NewPipelineReconciler(
-    kube kubeclient.Kubeclient,
-    informer cache.SharedIndexInformer,
-    ev *event.Event,
-) domain.Reconciler {
-    return &PipelineReconciler{kube: kube, informer: informer, event: ev}
+func NewPipelineReconciler(kube kubeclient.Interface) domain.Reconciler {
+    return &PipelineReconciler{kube: kube}
 }
 ```
 
 Orkestra calls this function once at startup and uses the returned `domain.Reconciler` for all reconcile events on this CRD.
+
+The informer and event recorder are available via `kube.GetInformer()` and `kube.GetEventRecorder()` — injected by the runtime before the constructor is called. Constructor args are read via `kube.Args()`.
 
 ---
 

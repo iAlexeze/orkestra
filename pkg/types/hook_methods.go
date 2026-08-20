@@ -31,6 +31,15 @@ func (h HookTemplates) IsEmpty() bool {
 		h.Docker == nil
 }
 
+// ExternalCalls returns the external call specs declared in this hook phase.
+// Returns nil when the receiver is nil or has no external declarations.
+func (h *HookTemplates) ExternalCalls() []ExternalCallSpec {
+	if h == nil {
+		return nil
+	}
+	return h.External
+}
+
 // HasAnyHooks reports whether this CRD declares any onCreate, onReconcile, or onDelete hooks.
 func (c *CRDEntry) HasAnyHookTemplates() bool {
 	return c.HasOnCreate() || c.HasOnReconcile() || c.HasOnDelete()

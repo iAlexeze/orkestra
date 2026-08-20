@@ -698,7 +698,6 @@ func (d *KatalogDeprecation) DaysUntilEOL(today time.Time) int {
 	return days
 }
 
-
 // KatalogSources declares where to load CRD definitions from.
 // Sources are loaded before spec.crds — inline CRDs are merged last
 // and win on name conflict (allowing local overrides of remote definitions).
