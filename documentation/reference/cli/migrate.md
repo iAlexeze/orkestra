@@ -37,13 +37,13 @@ Full rewrite to idiomatic Orkestra style:
 
 | Before | After |
 |--------|-------|
-| `Reconcile(ctx, req ctrl.Request) (ctrl.Result, error)` | `Reconcile(ctx context.Context, key string) error` |
-| `return ctrl.Result{}, err` | `return err` |
-| `return ctrl.Result{}, nil` | `return nil` |
-| `req.NamespacedName` | `client.ObjectKey{Namespace: namespace, Name: name}` |
-| `req.String()` | `key` |
+| `Reconcile(ctx, req ctrl.Request) (ctrl.Result, error)` | `Reconcile(ctx context.Context, req domain.Request) (domain.Result, error)` |
+| `return ctrl.Result{}, err` | `return domain.Result{}, err` |
+| `return ctrl.Result{}, nil` | `return domain.Result{}, nil` |
+| `return ctrl.Result{RequeueAfter: X}, nil` | `return domain.Result{RequeueAfter: X}, nil` |
+| `req.NamespacedName` | `req.NamespacedName` (available on `domain.Request` directly) |
+| `req.String()` | `req.String()` (preserved — `domain.Request` implements `Stringer`) |
 | `r.Status().Update(...)` | flagged `// TODO(ork migrate):` |
-| `ctrl.Result{RequeueAfter: X}` | flagged `// TODO(ork migrate):` |
 | `SetupWithManager` method | removed with explanation comment |
 | `ctrl` import | removed |
 
@@ -89,7 +89,7 @@ grep -rn "TODO(ork migrate)" ./my-operator/
 ```
 
 **toclient mode:**
-1. Set `group`, `kind`, `plural`, `location` in `katalog.yaml`
+1. Set `group` and `plural` in `katalog.yaml` — `kind`, `version`, `location`, `alias`, `object`, `objectList`, `resources:`, and `watch:` are auto-detected from `SetupWithManager`
 2. Delete `main.go`, scheme registration, and manager setup
 3. Fill in resource assertions in `simulate.yaml` and `e2e.yaml`
 4. Run `go mod tidy`

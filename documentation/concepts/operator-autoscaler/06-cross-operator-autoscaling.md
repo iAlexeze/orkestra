@@ -167,7 +167,7 @@ autoscale:
   cooldown: 1m
 
   conditions:
-    anyOf:
+    or:
       - field: cross.db.metrics.errorRatePercent
         greaterThan: "5"
 

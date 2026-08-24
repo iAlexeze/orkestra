@@ -70,10 +70,10 @@ func TestValidateAdmissionOperators_UnknownOperatorInWhen(t *testing.T) {
 	assert.Contains(t, err.Error(), "greaterOrEqual")
 }
 
-func TestValidateAdmissionOperators_UnknownOperatorInAnyOf(t *testing.T) {
+func TestValidateAdmissionOperators_UnknownOperatorInOr(t *testing.T) {
 	k := katalogWithValidationRule("app", orktypes.ValidationRule{
 		Field: "spec.replicas", Prefix: "x", Message: "msg",
-		AnyOf: []orktypes.Condition{{Field: "spec.tier", Operator: "notARealOp"}},
+		Or: []orktypes.Condition{{Field: "spec.tier", Operator: "notARealOp"}},
 	})
 	err := k.validateAdmissionOperators()
 	require.Error(t, err)

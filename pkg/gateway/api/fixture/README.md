@@ -21,12 +21,12 @@ conditional admission rules, type-specific child resources, and status projectio
 | Schema catalog endpoint (`GET /api/v1/schema/`) | `katalog.yaml` → `serve.category` / `serve.description` |
 | Admission webhook — unconditional deny | `admission/platformresource.yaml` rules 1–3 |
 | Admission webhook — `deny when:` | `admission/platformresource.yaml` rule 4 (domain for cert) |
-| Admission webhook — `deny anyOf:` | `admission/platformresource.yaml` rule 5 (repoURL for app/monitoring) |
+| Admission webhook — `deny or:` | `admission/platformresource.yaml` rule 5 (repoURL for app/monitoring) |
 | Admission webhook — `warn when:` | `admission/platformresource.yaml` rule 7 (productionApproval) |
 | Admission webhook — `warn when: isDirectApply .` | `admission/platformresource.yaml` last rule — fires for kubectl/CI direct applies |
 | Serve field categories (`serve.fields.category`) | `serve/platformresource.yaml` |
 | Conditional field visibility (`serve.fields.when`) | `serve/platformresource.yaml` |
-| Conditional field visibility (`serve.fields.anyOf`) | `serve/platformresource.yaml` |
+| Conditional field visibility (`serve.fields.or`) | `serve/platformresource.yaml` |
 | Disabled/locked fields (`serve.fields.disabled`) | `serve/platformresource.yaml` |
 | `ignore` — hide system fields from form | `katalog.yaml` → `serve.ignore` |
 | CRD schema defaults pre-populating form inputs | `crd.yaml` |
@@ -142,7 +142,7 @@ kubectl get secret ork-apply-token -n orkestra-system \
 ### Step 6 — conditional admission rules
 
 The CRs in [crs/](./crs/) each target one specific admission rule. Use them to
-verify conditional `when:`/`anyOf:` behaviour against a running cluster:
+verify conditional `when:`/`or:` behaviour against a running cluster:
 
 ```bash
 # No violations — happy path
@@ -183,7 +183,7 @@ pkg/gateway/fixture/
   simulate.yaml                — in-memory simulation spec
   e2e.yaml                     — full cluster e2e spec
   cleanup.sh                   — manual teardown for --use-current runs
-  admission/platformresource.yaml  — validation rules (deny, deny when, deny anyOf, warn when)
+  admission/platformresource.yaml  — validation rules (deny, deny when, deny or, warn when)
   serve/platformresource.yaml        — field hints, categories, conditions, disabled fields
   status/platformresource.yaml     — status field projections
   crs/                             — targeted CRs for conditional rule testing

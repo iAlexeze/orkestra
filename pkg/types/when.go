@@ -3,7 +3,7 @@
 // EvaluateConditions — extended condition evaluation with OR logic.
 //
 // The when: field ([]Condition) uses AND semantics.
-// anyOf: is a new parallel field on template sources with OR semantics.
+// or: is a parallel field on template sources with OR semantics.
 //
 //	# AND only
 //	when:
@@ -11,7 +11,7 @@
 //	    equals: "Ready"
 //
 //	# OR
-//	anyOf:
+//	or:
 //	  - field: status.phase
 //	    equals: "Failed"
 //	  - field: status.phase
@@ -21,7 +21,7 @@
 //	when:
 //	  - field: spec.enabled
 //	    equals: "true"
-//	anyOf:
+//	or:
 //	  - field: status.phase
 //	    equals: "Failed"
 //	  - field: status.phase
@@ -48,21 +48,21 @@ type TemplateEvaluator func(tmpl string) (string, bool)
 // IsTemplate reports whether s contains a Go template expression.
 func IsTemplate(s string) bool { return strings.Contains(s, "{{") }
 
-// EvaluateConditions evaluates when: (allOf, AND) and anyOf: (OR) conditions.
+// EvaluateConditions evaluates when: (allOf, AND) and or: (OR) conditions.
 // data is resolver.Data() — full CR map including children, external, cross.
 // eval is optional — pass nil to disable template evaluation (backward compatible).
 //
 // Both blocks must pass when both are declared.
 // Empty blocks always pass.
-func EvaluateConditions(data map[string]interface{}, allOf []Condition, anyOf []Condition, eval TemplateEvaluator) bool {
+func EvaluateConditions(data map[string]interface{}, allOf []Condition, or []Condition, eval TemplateEvaluator) bool {
 	for _, cond := range allOf {
 		if !EvaluateOneCond(data, cond, eval) {
 			return false
 		}
 	}
-	if len(anyOf) > 0 {
+	if len(or) > 0 {
 		passed := false
-		for _, cond := range anyOf {
+		for _, cond := range or {
 			if EvaluateOneCond(data, cond, eval) {
 				passed = true
 				break

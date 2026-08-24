@@ -140,11 +140,11 @@ ForEach declares dynamic expansion (same as other resource types)
 
 ---
 
-### `anyOf`
+### `or`
 
 Type: list
 
-AnyOf holds OR conditions (same as other resource types)
+Or holds OR conditions (same as other resource types)
 
 ---
 
@@ -240,7 +240,7 @@ Sleep injects an artificial delay into the reconcile of this resource. Useful fo
 | `reconcile` | boolean |
 | `when` | list |
 | `forEach` | object |
-| `anyOf` | list |
+| `or` | list |
 | `once` | boolean |
 | `rotateAfter` | string |
 | `tls` | object |

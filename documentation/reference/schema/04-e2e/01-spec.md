@@ -115,7 +115,7 @@ See [05-custom-target.md](05-custom-target.md) for full documentation and use ca
 
 ## `spec.notes`
 
-Declares user-defined note functions available as template expressions in `when:` and `anyOf:` conditions on `expect` entries. Uses the same syntax as `notes:` in a Katalog — a list of named Go template expressions evaluated against the current context.
+Declares user-defined note functions available as template expressions in `when:` and `or:` conditions on `expect` entries. Uses the same syntax as `notes:` in a Katalog — a list of named Go template expressions evaluated against the current context.
 
 ```yaml
 spec:
@@ -125,7 +125,7 @@ spec:
         expression: '{{ and weekday (timeInWindow "09:00" "18:00") }}'
 ```
 
-Notes defined here are available by name in any `when:` or `anyOf:` condition on an `expect` entry:
+Notes defined here are available by name in any `when:` or `or:` condition on an `expect` entry:
 
 ```yaml
 expect:

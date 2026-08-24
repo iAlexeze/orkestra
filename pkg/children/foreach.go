@@ -32,7 +32,7 @@
 // returned slice contains static (non-template) values ready for the
 // registry functions.
 //
-// when: and anyOf: on forEach sources are evaluated per-item — each
+// when: and or: on forEach sources are evaluated per-item — each
 // expanded source may pass or fail conditions independently.
 package children
 

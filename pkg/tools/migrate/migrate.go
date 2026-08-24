@@ -21,8 +21,8 @@ type Mode string
 
 const (
 	// ModeNative rewrites the full controller-runtime signature to Orkestra's
-	// native style: Reconcile(ctx, key string) error, struct fields replaced,
-	// call sites adapted. Most invasive; produces fully idiomatic Orkestra code.
+	// native style: Reconcile(ctx context.Context, req domain.Request) (domain.Result, error),
+	// struct fields replaced, call sites adapted. Most invasive; produces fully idiomatic Orkestra code.
 	ModeNative Mode = "native"
 
 	// ModeToClient is the minimal migration path. The Reconcile signature,
@@ -45,6 +45,31 @@ type Result struct {
 	Warnings []string
 	// Mode is the migration mode used to produce this result.
 	Mode Mode
+	// Owns lists types detected in Owns() calls inside SetupWithManager.
+	// Each entry is a resource the operator owns and should appear in constructor.managedResources:.
+	Owns []DetectedType
+	// Watches lists types detected in Watches() calls inside SetupWithManager.
+	// Each entry should appear in operatorBox.watch:.
+	Watches []DetectedType
+	// Primary holds the type information extracted from the For() call in SetupWithManager.
+	Primary PrimaryType
+}
+
+// DetectedType is a resource type extracted from an Owns() or Watches() call.
+type DetectedType struct {
+	Kind       string
+	APIVersion string // best-effort from import path; may be TODO if not resolvable
+}
+
+// PrimaryType holds the type information extracted from the For() call in SetupWithManager.
+// All fields are best-effort; unresolvable fields are left empty.
+type PrimaryType struct {
+	Kind       string // struct name from For(&pkg.Kind{})
+	Object     string // same as Kind
+	ObjectList string // Kind + "List" by convention
+	Version    string // last path segment of import when it looks like a version (e.g. v1alpha1)
+	Location   string // full import path of the package (e.g. github.com/org/project/api/v1alpha1)
+	Alias      string // import alias used in source (e.g. demov1alpha1)
 }
 
 // replacement is a byte-range substitution to apply to source text.
@@ -89,34 +114,31 @@ func rewriteNative(src []byte) (*Result, error) {
 		}
 	}
 
-	ctxParam, reqParam := "ctx", "req"
+	res.Primary, res.Owns, res.Watches = extractOwnsWatches(f)
+
+	ctxParam := "ctx"
 	params := fn.Type.Params.List
 	if len(params) > 0 && len(params[0].Names) > 0 {
 		ctxParam = params[0].Names[0].Name
 	}
-	if len(params) > 1 && len(params[1].Names) > 0 {
-		reqParam = params[1].Names[0].Name
-	}
 
 	var reps []replacement
 
-	// Change params to (ctx context.Context, key string)
+	// Change params to (ctx context.Context, req domain.Request)
 	reps = append(reps, replacement{
 		start: off(fset, fn.Type.Params.Opening),
 		end:   off(fset, fn.Type.Params.Closing) + 1,
-		text:  fmt.Sprintf("(%s context.Context, key string)", ctxParam),
+		text:  fmt.Sprintf("(%s context.Context, req domain.Request)", ctxParam),
 	})
 
-	// Change return type to error
+	// Change return type to (domain.Result, error)
 	if fn.Type.Results != nil {
 		reps = append(reps, replacement{
 			start: off(fset, fn.Type.Results.Opening),
 			end:   off(fset, fn.Type.Results.Closing) + 1,
-			text:  "error",
+			text:  "(domain.Result, error)",
 		})
 	}
-
-	usesNamespacedName := false
 
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
 		switch x := n.(type) {
@@ -127,10 +149,11 @@ func rewriteNative(src []byte) (*Result, error) {
 			secondText := sliceSrc(src, fset, x.Results[1])
 			var text string
 			if hasRequeueAfter(x.Results[0]) {
-				text = "// TODO(ork migrate): RequeueAfter removed — equivalent is `return err`.\n\t\t// A non-nil error requeues with exponential backoff. To requeue without\n\t\t// signalling failure, return a sentinel error or use a named error type.\n\t\treturn " + secondText
-				res.Warnings = append(res.Warnings, "ctrl.Result{RequeueAfter:} found — equivalent is `return err`; non-nil error requeues with backoff")
+				// Preserve RequeueAfter through domain.Result
+				afterExpr := requeueAfterExpr(x.Results[0])
+				text = "return domain.Result{RequeueAfter: " + afterExpr + "}, " + secondText
 			} else {
-				text = "return " + secondText
+				text = "return domain.Result{}, " + secondText
 			}
 			reps = append(reps, replacement{
 				start: off(fset, x.Pos()),
@@ -138,34 +161,6 @@ func rewriteNative(src []byte) (*Result, error) {
 				text:  text,
 			})
 
-		case *ast.SelectorExpr:
-			ident, ok := x.X.(*ast.Ident)
-			if !ok || ident.Name != reqParam {
-				return true
-			}
-			if x.Sel.Name == "NamespacedName" {
-				usesNamespacedName = true
-				reps = append(reps, replacement{
-					start: off(fset, x.Pos()),
-					end:   off(fset, x.End()),
-					text:  "client.ObjectKey{Namespace: namespace, Name: name}",
-				})
-			}
-
-		case *ast.CallExpr:
-			// req.String() → key
-			sel, ok := x.Fun.(*ast.SelectorExpr)
-			if !ok {
-				return true
-			}
-			ident, ok := sel.X.(*ast.Ident)
-			if ok && ident.Name == reqParam && sel.Sel.Name == "String" && len(x.Args) == 0 {
-				reps = append(reps, replacement{
-					start: off(fset, x.Pos()),
-					end:   off(fset, x.End()),
-					text:  "key",
-				})
-			}
 		}
 		return true
 	})
@@ -211,16 +206,6 @@ func rewriteNative(src []byte) (*Result, error) {
 		res.Warnings = append(res.Warnings, "SetupWithManager removed — delete main.go and scheme registration")
 	}
 
-	// Inject key split at top of Reconcile body when req.NamespacedName was used
-	if usesNamespacedName {
-		bodyOpen := off(fset, fn.Body.Lbrace) + 1
-		reps = append(reps, replacement{
-			start: bodyOpen,
-			end:   bodyOpen,
-			text:  "\n\tparts := strings.SplitN(key, \"/\", 2)\n\tnamespace, name := parts[0], parts[1]\n",
-		})
-	}
-
 	result := applyReplacements(src, reps)
 
 	// Rewrite r.Get/Create/Patch → r.kube.* with kubeclient signatures.
@@ -232,7 +217,7 @@ func rewriteNative(src []byte) (*Result, error) {
 		res.Warnings = append(res.Warnings, "reconciler struct not found — update struct fields and add constructor manually")
 	}
 
-	result = rewriteImports(result, usesNamespacedName)
+	result = rewriteImports(result, false)
 
 	formatted, fmtErr := format.Source(result)
 	if fmtErr != nil {
@@ -265,6 +250,8 @@ func rewriteToClient(src []byte) (*Result, error) {
 	if len(fn.Recv.List) > 0 {
 		res.ReceiverType = typeName(fn.Recv.List[0].Type)
 	}
+
+	res.Primary, res.Owns, res.Watches = extractOwnsWatches(f)
 
 	var reps []replacement
 
@@ -326,8 +313,9 @@ func %s(kube kubeclient.Interface) domain.Reconciler {
 	return res, nil
 }
 
-// rewriteImportsToClient removes the ctrl import (no longer needed for
-// SetupWithManager) and injects ToClient/ReconcilerFrom import hints.
+// rewriteImportsToClient injects the domain and kubeclient imports needed by
+// the generated constructor. The ctrl import is kept — toclient mode leaves
+// the Reconcile signature and body unchanged, so ctrl.Request/ctrl.Result stay.
 func rewriteImportsToClient(src []byte) []byte {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "", src, parser.ParseComments)
@@ -335,24 +323,24 @@ func rewriteImportsToClient(src []byte) []byte {
 		return src
 	}
 
-	var reps []replacement
+	hasDomain, hasKubeclient := false, false
 	for _, imp := range f.Imports {
 		path := strings.Trim(imp.Path.Value, `"`)
-		if path == "sigs.k8s.io/controller-runtime" {
-			start := off(fset, imp.Pos())
-			end := off(fset, imp.End())
-			if end < len(src) && src[end] == '\n' {
-				end++
-			}
-			reps = append(reps, replacement{start: start, end: end, text: ""})
+		switch path {
+		case "github.com/orkspace/orkestra/domain":
+			hasDomain = true
+		case "github.com/orkspace/orkestra/pkg/kubeclient":
+			hasKubeclient = true
 		}
 	}
 
-	result := applyReplacements(src, reps)
-	result = injectImport(result,
-		"// TODO(ork migrate): add these imports:\n"+
-			"//   \"github.com/orkspace/orkestra/domain\"\n"+
-			"//   \"github.com/orkspace/orkestra/pkg/kubeclient\"")
+	result := src
+	if !hasDomain {
+		result = injectImport(result, `"github.com/orkspace/orkestra/domain"`)
+	}
+	if !hasKubeclient {
+		result = injectImport(result, `"github.com/orkspace/orkestra/pkg/kubeclient"`)
+	}
 	return result
 }
 
@@ -526,9 +514,7 @@ func rewriteStruct(src []byte, receiverType string) ([]byte, bool) {
 				reps = append(reps, replacement{
 					start: off(fset, st.Fields.Opening),
 					end:   off(fset, st.Fields.Closing) + 1,
-					text: "{\n\tinformer cache.SharedIndexInformer\n" +
-						"\tkube     kubeclient.Interface\n" +
-						"\tev       event.Recorder\n}",
+					text:  "{\n\tkube kubeclient.Interface\n}",
 				})
 			}
 		case *ast.FuncDecl:
@@ -547,16 +533,8 @@ func rewriteStruct(src []byte, receiverType string) ([]byte, bool) {
 	if !hasConstructor {
 		constructor := fmt.Sprintf(`
 // %s is the constructor function registered in the Katalog.
-func %s(
-	kube kubeclient.Interface,
-	informer cache.SharedIndexInformer,
-	ev event.Recorder,
-) domain.Reconciler {
-	return &%s{
-		kube:     kube,
-		informer: informer,
-		ev:       ev,
-	}
+func %s(kube kubeclient.Interface) domain.Reconciler {
+	return &%s{kube: kube}
 }
 `, constructorName, constructorName, receiverType)
 		result = append(result, []byte(constructor)...)
@@ -611,6 +589,28 @@ func hasRequeueAfter(expr ast.Expr) bool {
 		}
 	}
 	return false
+}
+
+// requeueAfterExpr extracts the RequeueAfter value expression text from a ctrl.Result literal.
+// Returns "0" if not found.
+func requeueAfterExpr(expr ast.Expr) string {
+	lit, ok := expr.(*ast.CompositeLit)
+	if !ok {
+		return "0"
+	}
+	fset := token.NewFileSet()
+	for _, elt := range lit.Elts {
+		kv, ok := elt.(*ast.KeyValueExpr)
+		if !ok {
+			continue
+		}
+		if ident, ok := kv.Key.(*ast.Ident); ok && ident.Name == "RequeueAfter" {
+			var buf strings.Builder
+			_ = format.Node(&buf, fset, kv.Value)
+			return buf.String()
+		}
+	}
+	return "0"
 }
 
 // typeName extracts the base type name from a receiver type expression.
@@ -688,11 +688,165 @@ func rewriteImports(src []byte, addStrings bool) []byte {
 	result = injectImport(result,
 		"// TODO(ork migrate): add these imports:\n"+
 			"//   \"github.com/orkspace/orkestra/domain\"\n"+
-			"//   \"github.com/orkspace/orkestra/pkg/event\"\n"+
-			"//   \"github.com/orkspace/orkestra/pkg/kubeclient\"\n"+
-			"//   \"k8s.io/client-go/tools/cache\"")
+			"//   \"github.com/orkspace/orkestra/pkg/kubeclient\"")
 
 	return result
+}
+
+// extractOwnsWatches scans SetupWithManager for For(), Owns(), and Watches() call
+// chains. Import aliases are resolved to apiVersion strings and import paths using
+// the file's import declarations (best-effort; emits TODO when unresolvable).
+func extractOwnsWatches(f *ast.File) (primary PrimaryType, owns, watches []DetectedType) {
+	imports := buildImportMaps(f)
+
+	for _, decl := range f.Decls {
+		fn, ok := decl.(*ast.FuncDecl)
+		if !ok || fn.Name.Name != "SetupWithManager" || fn.Recv == nil {
+			continue
+		}
+		ast.Inspect(fn.Body, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			method := sel.Sel.Name
+			if len(call.Args) == 0 {
+				return true
+			}
+			switch method {
+			case "For":
+				kind, pkgAlias := detectKindAndAlias(call.Args[0])
+				if kind == "" {
+					return true
+				}
+				info := imports[pkgAlias]
+				primary = PrimaryType{
+					Kind:       kind,
+					Object:     kind,
+					ObjectList: kind + "List",
+					Version:    importPathVersion(info.Path),
+					Location:   info.Path,
+					Alias:      pkgAlias,
+				}
+			case "Owns":
+				dt, ok := detectTypeArg(call.Args[0], imports)
+				if !ok {
+					return true
+				}
+				owns = append(owns, dt)
+			case "Watches":
+				dt, ok := detectTypeArg(call.Args[0], imports)
+				if !ok {
+					return true
+				}
+				watches = append(watches, dt)
+			}
+			return true
+		})
+	}
+	return
+}
+
+// detectPkgAlias returns the package alias used in a &pkg.Kind{} expression.
+// importPathVersion extracts the version segment from an import path when the
+// last segment looks like a Go module version tag (e.g. v1, v1alpha1, v2beta2).
+func importPathVersion(path string) string {
+	parts := strings.Split(path, "/")
+	if len(parts) == 0 {
+		return ""
+	}
+	last := parts[len(parts)-1]
+	if len(last) > 1 && last[0] == 'v' && last[1] >= '0' && last[1] <= '9' {
+		return last
+	}
+	return ""
+}
+
+// detectKindAndAlias extracts the struct name and package alias from a
+// &pkg.Kind{} or &Kind{} expression. alias is empty when there is no qualifier.
+func detectKindAndAlias(arg ast.Expr) (kind, alias string) {
+	if unary, ok := arg.(*ast.UnaryExpr); ok {
+		arg = unary.X
+	}
+	lit, ok := arg.(*ast.CompositeLit)
+	if !ok {
+		return "", ""
+	}
+	switch t := lit.Type.(type) {
+	case *ast.SelectorExpr:
+		if ident, ok := t.X.(*ast.Ident); ok {
+			return t.Sel.Name, ident.Name
+		}
+	case *ast.Ident:
+		return t.Name, ""
+	}
+	return "", ""
+}
+
+// detectTypeArg extracts Kind and APIVersion from a &pkg.Kind{} argument.
+func detectTypeArg(arg ast.Expr, imports map[string]importInfo) (DetectedType, bool) {
+	kind, alias := detectKindAndAlias(arg)
+	if kind == "" {
+		return DetectedType{}, false
+	}
+	apiVersion := "TODO"
+	if alias != "" {
+		apiVersion = imports[alias].APIVersion
+	}
+	return DetectedType{Kind: kind, APIVersion: apiVersion}, true
+}
+
+// importInfo holds the resolved values for one import declaration.
+type importInfo struct {
+	Path       string // full import path
+	APIVersion string // best-effort Kubernetes apiVersion
+}
+
+// buildImportMaps returns alias → importInfo for all imports in one pass,
+// replacing the two separate buildImportPathMap / buildImportAliasMap functions.
+func buildImportMaps(f *ast.File) map[string]importInfo {
+	m := make(map[string]importInfo)
+	for _, imp := range f.Imports {
+		path := strings.Trim(imp.Path.Value, `"`)
+		var alias string
+		if imp.Name != nil && imp.Name.Name != "_" && imp.Name.Name != "." {
+			alias = imp.Name.Name
+		} else {
+			parts := strings.Split(path, "/")
+			alias = parts[len(parts)-1]
+		}
+		m[alias] = importInfo{Path: path, APIVersion: importPathToAPIVersion(path)}
+	}
+	return m
+}
+
+// importPathToAPIVersion converts a Go import path to a Kubernetes apiVersion.
+// Examples:
+//
+//	k8s.io/api/apps/v1        → apps/v1
+//	k8s.io/api/core/v1        → v1
+//	k8s.io/api/networking/v1  → networking/v1
+//	github.com/org/project/api/v1alpha1 → TODO: github.com/org/project/api/v1alpha1
+func importPathToAPIVersion(path string) string {
+	parts := strings.Split(path, "/")
+	if len(parts) < 2 {
+		return "TODO"
+	}
+	// k8s.io/api/<group>/<version>
+	if strings.HasPrefix(path, "k8s.io/api/") {
+		group := parts[len(parts)-2]
+		version := parts[len(parts)-1]
+		if group == "core" {
+			return version
+		}
+		return group + "/" + version
+	}
+	// For custom API packages, emit a TODO with the path so the user can fill it in.
+	return "TODO: " + path
 }
 
 // injectImport inserts a line into the first import block found in src.

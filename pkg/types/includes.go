@@ -181,6 +181,86 @@ func ExpandProfileInclude(r *ProfileRegistry, baseDir string) error {
 	return nil
 }
 
+// ExpandWatchEntries resolves include entries in a []WatchEntry list.
+// An entry with include: set is replaced in-place by the "watch:" list from the
+// referenced file. Entries without include: are kept as-is.
+// The include path is resolved relative to baseDir.
+func ExpandWatchEntries(entries []WatchEntry, baseDir string) ([]WatchEntry, error) {
+	var expanded []WatchEntry
+	for _, entry := range entries {
+		if entry.Include == "" {
+			expanded = append(expanded, entry)
+			continue
+		}
+		path := entry.Include
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(baseDir, path)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("reading watch include %q: %w", entry.Include, err)
+		}
+		var f struct {
+			Watch []WatchEntry `yaml:"watch"`
+		}
+		if err := orkutils.StrictUnmarshal(data, &f); err != nil {
+			return nil, fmt.Errorf("parsing watch include %q: %w", entry.Include, err)
+		}
+		expanded = append(expanded, f.Watch...)
+	}
+	return expanded, nil
+}
+
+// ExpandReconcilerInclude resolves the reconciler.include field by reading the
+// referenced file, unmarshaling its "reconciler:" block, and merging it under
+// the inline config. Inline fields take precedence. Cleared after expansion.
+func ExpandReconcilerInclude(r *ReconcilerConfig, baseDir string) error {
+	if r == nil || r.Include == "" {
+		return nil
+	}
+	path := r.Include
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(baseDir, path)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("reading reconciler.include %q: %w", r.Include, err)
+	}
+	var f struct {
+		Reconciler ReconcilerConfig `yaml:"reconciler"`
+	}
+	if err := orkutils.StrictUnmarshal(data, &f); err != nil {
+		return fmt.Errorf("parsing reconciler.include %q: %w", r.Include, err)
+	}
+	inc := f.Reconciler
+	if r.Default == nil && inc.Default != nil {
+		r.Default = inc.Default
+	}
+	if r.Hooks == nil && inc.Hooks != nil {
+		r.Hooks = inc.Hooks
+	}
+	if r.ConstructorDecl == nil && inc.ConstructorDecl != nil {
+		r.ConstructorDecl = inc.ConstructorDecl
+	}
+	if r.Profile == "" && inc.Profile != "" {
+		r.Profile = inc.Profile
+	}
+	if r.Workers == 0 && inc.Workers != 0 {
+		r.Workers = inc.Workers
+	}
+	if r.Resync.Duration == 0 && inc.Resync.Duration != 0 {
+		r.Resync = inc.Resync
+	}
+	if r.Queue.IsEmpty() && !inc.Queue.IsEmpty() {
+		r.Queue = inc.Queue
+	}
+	if r.Requeue == nil && inc.Requeue != nil {
+		r.Requeue = inc.Requeue
+	}
+	r.Include = ""
+	return nil
+}
+
 // ExpandExternalCalls resolves include entries in a []ExternalCallSpec list.
 // An entry with include: set is replaced in-place by the "calls:" list from the
 // referenced file. Entries without include: are kept as-is.

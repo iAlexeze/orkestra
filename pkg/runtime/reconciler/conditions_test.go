@@ -138,23 +138,23 @@ func TestEvaluateConditions_NestedField(t *testing.T) {
 	}
 }
 
-func TestEvaluateConditions_AnyOf(t *testing.T) {
+func TestEvaluateConditions_Or(t *testing.T) {
 	data := buildData(map[string]interface{}{"phase": "Failed"})
 
-	// anyOf — OR semantics
-	anyOf := []orktypes.Condition{
+	// or — OR semantics
+	or := []orktypes.Condition{
 		{Field: "spec.phase", Equals: "Failed"},
 		{Field: "spec.phase", Equals: "Succeeded"},
 	}
-	if !orktypes.EvaluateConditions(data, nil, anyOf, nil) {
-		t.Error("anyOf should pass when at least one condition matches")
+	if !orktypes.EvaluateConditions(data, nil, or, nil) {
+		t.Error("or should pass when at least one condition matches")
 	}
 
-	anyOf = []orktypes.Condition{
+	or = []orktypes.Condition{
 		{Field: "spec.phase", Equals: "Pending"},
 		{Field: "spec.phase", Equals: "Running"},
 	}
-	if orktypes.EvaluateConditions(data, nil, anyOf, nil) {
-		t.Error("anyOf should fail when no conditions match")
+	if orktypes.EvaluateConditions(data, nil, or, nil) {
+		t.Error("or should fail when no conditions match")
 	}
 }

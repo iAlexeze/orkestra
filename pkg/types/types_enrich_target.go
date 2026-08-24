@@ -21,7 +21,7 @@ import (
 //	        - field: "{{ replicasReady .children.deployment }}"
 //	          equals: "false"
 //	  - replicasets:
-//	      anyOf:
+//	      or:
 //	        - field: spec.debug
 //	          equals: "true"
 type EnrichTarget struct {
@@ -32,8 +32,8 @@ type EnrichTarget struct {
 	// in field: values are evaluated against the resolver's full data map
 	// so all note functions (replicasReady, hasCrashingPod, …) are available.
 	// Empty: always enriches (same as shorthand).
-	When  []Condition `yaml:"when,omitempty"`
-	AnyOf []Condition `yaml:"anyOf,omitempty"`
+	When []Condition `yaml:"when,omitempty"`
+	Or   []Condition `yaml:"or,omitempty"`
 }
 
 // UnmarshalYAML handles both shorthand ("pods") and struct form:
@@ -55,14 +55,14 @@ func (e *EnrichTarget) UnmarshalYAML(value *yaml.Node) error {
 		}
 		e.Key = value.Content[0].Value
 		var body struct {
-			When  []Condition `yaml:"when"`
-			AnyOf []Condition `yaml:"anyOf"`
+			When []Condition `yaml:"when"`
+			Or   []Condition `yaml:"or"`
 		}
 		if err := value.Content[1].Decode(&body); err != nil {
 			return fmt.Errorf("enrich target %q: %w", e.Key, err)
 		}
 		e.When = body.When
-		e.AnyOf = body.AnyOf
+		e.Or = body.Or
 		return nil
 	}
 
@@ -72,14 +72,14 @@ func (e *EnrichTarget) UnmarshalYAML(value *yaml.Node) error {
 // MarshalYAML serializes back to the shorthand form when there are no
 // conditions, and to the struct form when conditions are present.
 func (e EnrichTarget) MarshalYAML() (interface{}, error) {
-	if len(e.When) == 0 && len(e.AnyOf) == 0 {
+	if len(e.When) == 0 && len(e.Or) == 0 {
 		return e.Key, nil
 	}
 	type body struct {
-		When  []Condition `yaml:"when,omitempty"`
-		AnyOf []Condition `yaml:"anyOf,omitempty"`
+		When []Condition `yaml:"when,omitempty"`
+		Or   []Condition `yaml:"or,omitempty"`
 	}
 	return map[string]body{
-		e.Key: {When: e.When, AnyOf: e.AnyOf},
+		e.Key: {When: e.When, Or: e.Or},
 	}, nil
 }

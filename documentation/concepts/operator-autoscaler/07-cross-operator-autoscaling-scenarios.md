@@ -136,7 +136,7 @@ autoscale:
   cooldown: 5m
 
   conditions:
-    anyOf:
+    or:
       - cron: "0 23 * * *"
         duration: 3h
 
@@ -225,7 +225,7 @@ autoscale:
   cooldown: 1m
 
   conditions:
-    anyOf:
+    or:
       - field: cross.db.metrics.queueDepth
         greaterThan: "500"
 

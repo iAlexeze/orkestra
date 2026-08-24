@@ -19,7 +19,7 @@ operatorBox:
         when:
           - field: status.phase
             notEquals: "Ready"
-        anyOf: []
+        or: []
         sleep: ""
 ```
 
@@ -37,7 +37,7 @@ operatorBox:
 | `expectedStatus` | no | `0` | When set, any response with a different status code is treated as a failure. When `0`: 4xx/5xx are errors, 2xx/3xx succeed. |
 | `continueOnError` | no | `false` | `false`: failure halts the reconcile and writes `Ready=False` to the CR condition. `true`: failure sets `.error`, the reconcile continues, status fields surface the details. |
 | `when` | no | `[]` | AND conditions evaluated before the call runs. If any condition fails, the call is skipped and `.called` is `"false"`. Template expressions in `field:` and in comparison values (`equals:`, `notEquals:`, etc.) are both resolved. |
-| `anyOf` | no | `[]` | OR conditions. At least one must pass. Combined with `when:` using AND semantics: `(all when:) AND (any one anyOf:)`. |
+| `or` | no | `[]` | OR conditions. At least one must pass. Combined with `when:` using AND semantics: `(all when:) AND (any one or:)`. |
 | `sleep` | no | `""` | Delay injected before this call runs. Go duration format: `"2s"`. Use to pace sequential calls against rate-limited APIs or to wait for an async side-effect from a prior call. Not a substitute for proper `when:` conditions. |
 
 ## Result context
@@ -49,7 +49,7 @@ After a call completes, the following fields are available under `.external.<nam
 | `.status` | `string` | HTTP status code as a string: `"200"`, `"403"`, `"503"`. Empty when the call failed before receiving a response (network error, timeout). |
 | `.body` | `string` | First 4096 bytes of the response body. Truncated silently for larger responses. |
 | `.error` | `string` | Error message when the call failed — includes `"expected status 200, got 403"` for status mismatches. Empty on success. |
-| `.called` | `string` | `"true"` when the call ran. `"false"` when skipped because `when:`/`anyOf:` conditions failed. |
+| `.called` | `string` | `"true"` when the call ran. `"false"` when skipped because `when:`/`or:` conditions failed. |
 | `.<key>` | any | When the response body is a valid JSON object, its top-level keys are merged directly into `.external.<name>` and are navigable by dot path. |
 
 If the response is `{ "queue": { "pendingJobs": 8 } }` and the call is named `metrics`, then `.external.metrics.queue.pendingJobs` resolves to `8` — in template expressions and in `field:` conditions.

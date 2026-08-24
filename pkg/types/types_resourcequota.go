@@ -74,8 +74,8 @@ type ResourceQuotaTemplateSource struct {
 	// Conditions (when:) — all must pass for this resource to be applied.
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
-	// AnyOf — at least one must pass.
-	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	// Or — at least one must pass.
+	Or []Condition `yaml:"or,omitempty" json:"or,omitempty"`
 
 	// Reconcile: true — sync on every reconcile (drift correction).
 	Reconcile bool `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`

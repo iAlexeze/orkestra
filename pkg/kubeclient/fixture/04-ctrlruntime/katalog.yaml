@@ -27,6 +27,13 @@ spec:
         alias: webappv1
 
       operatorBox:
+        watch:
+          - apiVersion: v1
+            kind: ConfigMap
+            index:
+              - name: metadata.labels.app
+                field: "metadata.labels.app"
+
         reconciler:
           default: false
           constructor:

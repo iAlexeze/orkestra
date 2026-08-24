@@ -1,6 +1,6 @@
 # 06 — Full Stack (all patterns combined)
 
-One CR, all five patterns at once. A `FullStackApp` creates 3 regional Deployments (`forEach`), a generated Secret (`once:`), a ConfigMap sourced from a database CR (`cross:`), all gated on a health check (`external:`), with a cleanup Job on terminal phases (`anyOf:`). This is the showcase — everything Orkestra can do in a single declaration.
+One CR, all five patterns at once. A `FullStackApp` creates 3 regional Deployments (`forEach`), a generated Secret (`once:`), a ConfigMap sourced from a database CR (`cross:`), all gated on a health check (`external:`), with a cleanup Job on terminal phases (`or:`). This is the showcase — everything Orkestra can do in a single declaration.
 
 ---
 
@@ -80,7 +80,7 @@ spec:
   regions: [us-east-1, eu-west-1, ap-southeast-1]   # forEach
   serviceUrl: http://localhost:9999                   # external:
   environment: production                             # ConfigMap value
-  notify: "true"                                     # anyOf: notify trigger
+  notify: "true"                                     # or: notify trigger
 ```
 
 ---

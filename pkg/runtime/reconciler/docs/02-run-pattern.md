@@ -20,7 +20,7 @@ func runWidgets(
     // ── Section A: activeNames pre-pass ──────────────────────────────────────
     activeNames := make(map[string]bool, len(srcs))
     for _, s := range srcs {
-        if !orktypes.EvaluateConditions(resolver.Data(), s.Conditions, s.AnyOf) {
+        if !orktypes.EvaluateConditions(resolver.Data(), s.Conditions, s.Or) {
             continue
         }
         n, _ := resolver.Resolve(s.Name)
@@ -35,7 +35,7 @@ func runWidgets(
     for i, src := range srcs {
 
         // B1. Evaluate conditions
-        conditionPassed := orktypes.EvaluateConditions(resolver.Data(), src.Conditions, src.AnyOf)
+        conditionPassed := orktypes.EvaluateConditions(resolver.Data(), src.Conditions, src.Or)
 
         // B2. Early name/namespace resolution
         name, _ := resolver.Resolve(src.Name)
@@ -103,11 +103,11 @@ func runWidgets(
 
 ## Section B1 — Condition evaluation
 
-Always call `orktypes.EvaluateConditions(resolver.Data(), src.Conditions, src.AnyOf)`.
+Always call `orktypes.EvaluateConditions(resolver.Data(), src.Conditions, src.Or)`.
 
 - `resolver.Data()` — the full CR data map including `.children.*`, `.external.*`, `.cross.*`. Do NOT pass the `owner` object directly — it does not have these injected fields.
 - `src.Conditions` — the `when:` block (AND semantics).
-- `src.AnyOf` — the `anyOf:` block (OR semantics). Both must be present on the type struct.
+- `src.Or` — the `or:` block (OR semantics). Both must be present on the type struct.
 
 ## Section B2 — Early name/namespace resolution
 

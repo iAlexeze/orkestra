@@ -80,7 +80,7 @@ The [Reconciler Model](reconciler-model/) is how a CR becomes a running resource
 
 ## Ordered Deletion
 
-[Ordered Deletion](ordered-deletion/) controls the sequence in which child resources are torn down when a CR is deleted. Two models: hard ordered (finalizer held, sequential groups) and condition-based (non-blocking, `when:`/`anyOf:` conditions).
+[Ordered Deletion](ordered-deletion/) controls the sequence in which child resources are torn down when a CR is deleted. Two models: hard ordered (finalizer held, sequential groups) and condition-based (non-blocking, `when:`/`or:` conditions).
 
 → [Read: Ordered Deletion](ordered-deletion/)
 
@@ -152,7 +152,7 @@ The [Health Subsystem](health-subsystem/) is Orkestra's liveness, readiness, and
 
 ## Conditionals
 
-[Conditionals](conditional/) are the logic layer — `when:` and `anyOf:` blocks that control when a resource is created, when a status field is written, and how multi-phase async workflows sequence themselves. Works in Katalogs and Motifs.
+[Conditionals](conditional/) are the logic layer — `when:` and `or:` blocks that control when a resource is created, when a status field is written, and how multi-phase async workflows sequence themselves. Works in Katalogs and Motifs.
 
 → [Read: Conditionals](conditional/)
 

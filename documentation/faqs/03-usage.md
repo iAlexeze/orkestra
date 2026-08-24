@@ -212,7 +212,7 @@ The rule: if you control the CRD and want to tolerate different input shapes —
 
 ## When do I need Go hooks?
 
-The `external:` block handles HTTP already — GET, POST, bearer tokens, chained calls where each result flows into the next via `.external.{name}.body`. `when:` and `anyOf:` handle conditional logic. For most operators, those are enough.
+The `external:` block handles HTTP already — GET, POST, bearer tokens, chained calls where each result flows into the next via `.external.{name}.body`. `when:` and `or:` handle conditional logic. For most operators, those are enough.
 
 Hooks become necessary when the work is genuinely outside HTTP:
 

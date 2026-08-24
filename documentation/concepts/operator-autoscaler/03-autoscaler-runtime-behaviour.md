@@ -20,12 +20,12 @@ On every tick:
 
 1. Read local metrics (`metrics.*`)
 2. Read cross‑operator metrics (`cross.<alias>.metrics.*`)
-3. Evaluate `anyOf` (OR)
+3. Evaluate `or` (OR)
 4. Evaluate `when` (AND)
 5. Combine results  
 
 ```text
-final = anyOf_passes AND when_passes
+final = or_passes AND when_passes
 ```
 
 This evaluation is O(1) and entirely in‑memory.

@@ -39,7 +39,7 @@ notes:
 
 It composes two built-in time notes — `weekday` and `timeInWindow` — into a single named boolean. Both `scaleUp` and `scaleDown` reference it, so the business hours rule lives in one place.
 
-The `autoscale:` block sits alongside the Deployment declaration. Conditions use the same `when:` / `anyOf:` engine as everything else in Orkestra:
+The `autoscale:` block sits alongside the Deployment declaration. Conditions use the same `when:` / `or:` engine as everything else in Orkestra:
 
 ```yaml
 deployments:

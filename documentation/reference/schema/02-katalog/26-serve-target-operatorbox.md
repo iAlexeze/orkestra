@@ -91,7 +91,7 @@ operatorBox:
       when:
         - field: "{{ len .spec.regions }}"
           notEquals: "0"
-      anyOf:
+      or:
         - field: '{{ .spec.tier }}'
           equals: premium
 ```

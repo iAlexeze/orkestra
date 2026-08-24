@@ -8,6 +8,7 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/runtime/autoscaler"
 	orkqueue "github.com/orkspace/orkestra/pkg/runtime/queue"
+	apitypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -48,10 +49,11 @@ var _ domain.Reconciler = (*MuxReconciler)(nil)
 
 // Reconcile looks up the CR by key, resolves its target, and delegates to the
 // matching per-target reconciler (or the fallback when no match is found).
-func (m *MuxReconciler) Reconcile(ctx context.Context, key string) error {
+func (m *MuxReconciler) Reconcile(ctx context.Context, req domain.Request) (domain.Result, error) {
+	key := req.Key
 	raw, exists, err := m.informer.GetIndexer().GetByKey(key)
 	if err != nil {
-		return fmt.Errorf("mux: getting %q from store: %w", key, err)
+		return domain.Result{}, fmt.Errorf("mux: getting %q from store: %w", key, err)
 	}
 	if !exists {
 		return m.reconcileNotFound(ctx, key)
@@ -59,12 +61,12 @@ func (m *MuxReconciler) Reconcile(ctx context.Context, key string) error {
 
 	obj, ok := raw.(domain.Object)
 	if !ok {
-		return fmt.Errorf("mux: type assertion failed for %q (got %T)", key, raw)
+		return domain.Result{}, fmt.Errorf("mux: type assertion failed for %q (got %T)", key, raw)
 	}
 
 	target := ResolveTargetFromAnnotations(obj.GetAnnotations())
 	m.targetCache.Store(key, target)
-	return m.reconcilerFor(target).Reconcile(ctx, key)
+	return m.reconcilerFor(target).Reconcile(ctx, req)
 }
 
 // reconcilerFor returns the reconciler registered for target, or the fallback.
@@ -80,13 +82,17 @@ func (m *MuxReconciler) reconcilerFor(target string) domain.Reconciler {
 // reconcileNotFound routes deletion cycles to the reconciler that last handled
 // this key. The cache entry is removed after routing so stale entries don't
 // accumulate for long-lived operators.
-func (m *MuxReconciler) reconcileNotFound(ctx context.Context, key string) error {
+func (m *MuxReconciler) reconcileNotFound(ctx context.Context, key string) (domain.Result, error) {
 	target := ""
 	if v, ok := m.targetCache.Load(key); ok {
 		target, _ = v.(string)
 	}
 	defer m.targetCache.Delete(key)
-	return m.reconcilerFor(target).Reconcile(ctx, key)
+	ns, name, _ := cache.SplitMetaNamespaceKey(key)
+	return m.reconcilerFor(target).Reconcile(ctx, domain.Request{
+		Key:            key,
+		NamespacedName: apitypes.NamespacedName{Namespace: ns, Name: name},
+	})
 }
 
 // ── CRD-level infrastructure forwarding ──────────────────────────────────────

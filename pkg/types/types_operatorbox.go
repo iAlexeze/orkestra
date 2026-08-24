@@ -2,36 +2,78 @@
 package types
 
 import (
+	"strings"
+
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/runtime/sentinel"
 )
 
+// ── FailPolicy ────────────────────────────────────────────────────────────────────
+
+// FailPolicy controls what a gate does when it cannot evaluate its conditions —
+// for example when an external: call fails or times out.
+type FailPolicy string
+
+const (
+	// FailPolicyOpen passes the gate on evaluation failure.
+	// The object is enqueued / reconciled as if the gate was not declared.
+	// This is the default when failPolicy is omitted.
+	FailPolicyOpen FailPolicy = "open"
+
+	// FailPolicyClosed holds the gate on evaluation failure.
+	// The object is dropped from the queue / held back from the reconciler.
+	// Use on reconcileGate when unknown state is worse than a missed reconcile.
+	FailPolicyClosed FailPolicy = "closed"
+)
+
+// ValidFailPolicies returns all known failPolicy values in declaration order.
+func ValidFailPolicies() []string {
+	return []string{string(FailPolicyOpen), string(FailPolicyClosed)}
+}
+
+// IsValidFailPolicy reports whether s is a known FailPolicy value.
+func IsValidFailPolicy(s string) bool {
+	switch FailPolicy(s) {
+	case FailPolicyOpen, FailPolicyClosed:
+		return true
+	}
+	return false
+}
+
+// FailPolicyJoined returns a comma-separated list of valid failPolicy values for error messages.
+func FailPolicyJoined() string { return strings.Join(ValidFailPolicies(), ", ") }
+
 // ── PreReconcileConfig ────────────────────────────────────────────────────────────
 
-// GateConditions declares when/anyOf conditions and optional external calls
+// GateConditions declares when/or conditions and optional external calls
 // shared by both preReconcile gates.
 type GateConditions struct {
 	// External declares HTTP or gRPC calls made before conditions are evaluated.
 	// Results are injected into the resolver under .external.<name>.* and are
-	// available in when:/anyOf: field expressions.
+	// available in when:/or: field expressions.
 	External []ExternalCallSpec `yaml:"external,omitempty" json:"external,omitempty"`
 
 	// When declares AND conditions. All must be true for the gate to pass.
 	When []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
-	// AnyOf declares OR conditions. At least one must be true.
-	// When both When and AnyOf are declared, both must pass.
-	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	// Or declares OR conditions. At least one must be true.
+	// When both When and Or are declared, both must pass.
+	Or []Condition `yaml:"or,omitempty" json:"or,omitempty"`
+
+	// FailPolicy controls what the gate does when it cannot evaluate its conditions —
+	// for example when an external: call fails or times out.
+	// Defaults to open when omitted.
+	FailPolicy FailPolicy `yaml:"failPolicy,omitempty" json:"failPolicy,omitempty"`
 }
 
-// HasConditions reports whether any when/anyOf conditions are declared.
+// HasConditions reports whether any when/or conditions are declared.
 func (g *GateConditions) HasConditions() bool {
-	return g != nil && (len(g.When) > 0 || len(g.AnyOf) > 0)
+	return g != nil && (len(g.When) > 0 || len(g.Or) > 0)
 }
 
 // HasGate reports whether the gate has anything to evaluate — conditions or external calls.
 func (g *GateConditions) HasGate() bool {
-	return g != nil && (len(g.When) > 0 || len(g.AnyOf) > 0 || len(g.External) > 0)
+	return g != nil && (len(g.When) > 0 || len(g.Or) > 0 || len(g.External) > 0)
 }
 
 // WhenConditions returns the AND conditions, safe on nil receiver.
@@ -42,12 +84,12 @@ func (g *GateConditions) WhenConditions() []Condition {
 	return g.When
 }
 
-// AnyOfConditions returns the OR conditions, safe on nil receiver.
-func (g *GateConditions) AnyOfConditions() []Condition {
+// OrConditions returns the OR conditions, safe on nil receiver.
+func (g *GateConditions) OrConditions() []Condition {
 	if g == nil {
 		return nil
 	}
-	return g.AnyOf
+	return g.Or
 }
 
 // ExternalCalls returns the external calls declared on this gate, or nil when
@@ -167,6 +209,33 @@ type WatchEntry struct {
 	// When nil the runtime checks ownerReferences first; if none match the primary
 	// CRD it broadcasts to all known primary CRs.
 	KeyFrom *WatchKeyFrom `yaml:"keyFrom,omitempty" json:"keyFrom,omitempty"`
+
+	// Index declares field-path indexers that Orkestra registers on this watch's
+	// informer. Each entry makes client.List(ctx, &list, client.MatchingFields{name: value})
+	// serve from the cache instead of making a live API call.
+	//
+	//  watch:
+	//    - apiVersion: v1
+	//      kind: ConfigMap
+	//      index:
+	//        - name: metadata.ownerRef
+	//          field: ".metadata.ownerReferences[0].name"
+	Index []WatchIndex `yaml:"index,omitempty" json:"index,omitempty"`
+
+	// Include is a path (relative to the katalog file) to a YAML file whose
+	// "watch:" list replaces this entry in-place. When set all other fields on
+	// this entry are ignored. Cleared after expansion.
+	Include string `yaml:"include,omitempty" json:"include,omitempty"`
+}
+
+// WatchIndex declares one field-path indexer on a watch: entry informer.
+// Name is used as the index key — it must match the key passed to client.MatchingFields.
+// Field is a dot-separated JSON path into the watched object (e.g. ".spec.owner").
+type WatchIndex struct {
+	// Name is the index name. Must match the key in client.MatchingFields.
+	Name string `yaml:"name" json:"name"`
+	// Field is the JSON path to index on (e.g. ".spec.owner", ".metadata.labels.app").
+	Field string `yaml:"field" json:"field"`
 }
 
 // WatchKeyFrom overrides the default ownerReference → broadcast key resolution
@@ -252,7 +321,7 @@ func (w WatchEntry) ToManagedResource() ManagedResource {
 //	      when:
 //	        - field: "{{ .spec.enabled }}"
 //	          equals: "true"
-//	      anyOf:
+//	      or:
 //	        - field: "{{ .status.phase }}"
 //	          equals: "Ready"
 type PreReconcileConfig struct {
@@ -309,7 +378,7 @@ func (r *PreReconcileConfig) InvalidSentinels() []string {
 	return invalid
 }
 
-// HasPreReconcileConditions reports whether reconcileGate has any when/anyOf conditions declared.
+// HasPreReconcileConditions reports whether reconcileGate has any when/or conditions declared.
 func (r *PreReconcileConfig) HasPreReconcileConditions() bool {
 	return r != nil && (r.ReconcileGate.HasConditions() || r.EnqueueGate.HasConditions())
 }
@@ -363,12 +432,12 @@ func (r *PreReconcileConfig) WhenConditions() []Condition {
 	return r.ReconcileGate.WhenConditions()
 }
 
-// AnyOfConditions returns the reconcileGate OR conditions, safe on nil receiver.
-func (r *PreReconcileConfig) AnyOfConditions() []Condition {
+// OrConditions returns the reconcileGate OR conditions, safe on nil receiver.
+func (r *PreReconcileConfig) OrConditions() []Condition {
 	if r == nil {
 		return nil
 	}
-	return r.ReconcileGate.AnyOfConditions()
+	return r.ReconcileGate.OrConditions()
 }
 
 // ── OperatorBoxConfig ──────────────────────────────────────────────────────────
@@ -421,6 +490,33 @@ type ReconcilerConfig struct {
 
 	// Queue — work queue tuning for this CRD.
 	Queue Queue `yaml:"queue,omitempty" json:"queue,omitempty"`
+
+	// Requeue declares per-object requeue behavior after successful reconciliation.
+	Requeue *RequeueConfig `yaml:"requeue,omitempty"`
+
+	// Include is a path (relative to the katalog file) to a YAML file whose
+	// "reconciler:" block is loaded and merged under this config. Inline fields
+	// take precedence over included ones. Cleared after expansion.
+	Include string `yaml:"include,omitempty" json:"include,omitempty"`
+}
+
+// RequeueConfig declares per-object requeue behavior after a successful reconcile.
+// Evaluated after every reconcile cycle that does not return an error.
+// Errors are handled by queue.retryBackoff, not by requeue.
+type RequeueConfig struct {
+	// After is a template expression resolving to a Go duration string.
+	// Evaluated against the reconciled CR after each successful cycle.
+	// "0s" or empty means no requeue — wait for the next informer event.
+	// Example: '{{ .spec.checkInterval | default "60s" }}'
+	After string `yaml:"after,omitempty"`
+
+	// When declares AND conditions — requeue only fires when all are true.
+	// When absent, requeue fires unconditionally after every reconcile.
+	When []Condition `yaml:"when,omitempty"`
+
+	// Or declares OR conditions — requeue fires when any one is true.
+	// When both When and Or are present, both must pass.
+	Or []Condition `yaml:"or,omitempty"`
 }
 
 // IsDefault returns true when the reconciler should use the GenericReconciler.
@@ -456,6 +552,31 @@ func (r *ReconcilerConfig) HasConstructorDecl() bool {
 	return r.ConstructorDecl != nil
 }
 
+// HasRequeueDecl reports whether a requeue configuration exists.
+func (r *ReconcilerConfig) HasRequeueDecl() bool {
+	if r == nil {
+		return false
+	}
+	return r.Requeue != nil
+}
+
+// IsRequeueEmpty reports whether the requeue configuration is effectively empty.
+func (r *ReconcilerConfig) IsRequeueEmpty() bool {
+	if r == nil || r.Requeue == nil {
+		return true
+	}
+	rc := r.Requeue
+	return rc.After == "" && len(rc.When) == 0 && len(rc.Or) == 0
+}
+
+// IsEmpty reports whether this requeue configuration has no effective behavior.
+func (rc *RequeueConfig) IsEmpty() bool {
+	if rc == nil {
+		return true
+	}
+	return rc.After == "" && len(rc.When) == 0 && len(rc.Or) == 0
+}
+
 // IsEmpty reports whether the reconciler config has no meaningful settings.
 // Used to skip unnecessary config blocks in the Katalog.
 func (r *ReconcilerConfig) IsEmpty() bool {
@@ -483,6 +604,9 @@ func (r *ReconcilerConfig) IsEmpty() bool {
 	if !r.Queue.IsEmpty() {
 		return false
 	}
+	if r.Requeue.IsEmpty() {
+		return false
+	}
 	return true
 }
 
@@ -499,7 +623,7 @@ type OperatorBoxConfig struct {
 	Reconciler *ReconcilerConfig `yaml:"reconciler,omitempty" json:"reconciler,omitempty"`
 
 	// PreReconcile declares pre-reconcile gate conditions. When declared, the kordinator
-	// evaluates when/anyOf before calling the reconciler. If conditions are not met
+	// evaluates when/or before calling the reconciler. If conditions are not met
 	// the reconciler is never called — the item is discarded and re-evaluated on the
 	// next informer tick.
 	// nil → no gate; reconciler is always called (default behavior).
@@ -613,7 +737,7 @@ type OperatorBoxConfig struct {
 	// .spec.image, .children.job.status.succeeded are all accessible.
 	When []Condition `yaml:"when,omitempty"`
 
-	AnyOf []Condition `yaml:"anyOf,omitempty"`
+	Or []Condition `yaml:"or,omitempty"`
 }
 
 // IsEmpty reports true when this operatorBox is empty
@@ -644,8 +768,8 @@ type HookDeclaration struct {
 	// e.g. "projecthooks"
 	Alias string `yaml:"alias,omitempty" json:"alias,omitempty" validate:"omitempty"`
 
-	// Resources — Kubernetes resource types this hook manages (used for RBAC generation).
-	Resources []ManagedResource `json:"resources,omitempty" yaml:"resources,omitempty"`
+	// ManagedResources — Kubernetes resource types this hook manages (used for RBAC generation).
+	ManagedResources []ManagedResource `json:"managedResources,omitempty" yaml:"managedResources,omitempty"`
 
 	// RunHooksFirst — when true, the hook runs before declarative templates.
 	// When false (default), declarative templates run first and the hook is
@@ -694,8 +818,8 @@ type ConstructorDeclaration struct {
 	// Alias — Go import alias. Optional, auto-derived from Location if omitted.
 	Alias string `yaml:"alias,omitempty" json:"alias,omitempty" validate:"omitempty"`
 
-	// Resources — Kubernetes resource types this constructor manages (used for RBAC generation).
-	Resources []ManagedResource `json:"resources,omitempty" yaml:"resources,omitempty"`
+	// ManagedResources — Kubernetes resource types this constructor manages (used for RBAC generation).
+	ManagedResources []ManagedResource `json:"managedResources,omitempty" yaml:"managedResources,omitempty"`
 
 	// Args — arbitrary key/value pairs passed to the constructor at startup.
 	// Read via kube.Args().String("key"), .Bool("key"), etc.
@@ -706,9 +830,21 @@ type ConstructorDeclaration struct {
 // ManagedResource describes a Kubernetes resource type that a typed extension
 // (either a hook or a constructor) will manage.
 //
-// Orkestra uses this information to generate RBAC rules for the operator
-// ServiceAccount. Each declared resource results in permissions to
-// get/list/watch/create/update/patch/delete that resource type.
+// Orkestra uses this information for two purposes:
+//
+//  1. RBAC generation — each declared resource results in permissions to
+//     get/list/watch/create/update/patch/delete that resource type.
+//
+//  2. Implicit watch informer — Orkestra automatically starts a watch informer
+//     for each declared resource, identical to declaring a watch: entry with
+//     all events and owner-reference key resolution. This means:
+//
+//     - r.client.Get / r.client.List for that type are served from cache
+//     - when an owned resource changes, Orkestra enqueues the primary CR
+//
+//     If you need finer control (custom on:, enqueueGate:, keyFrom:, or index:),
+//     declare an explicit watch: entry for that type — it takes priority over
+//     the implicit informer from resources:.
 //
 // For built‑in Kubernetes resources, Kind alone is sufficient because Orkestra
 // resolves the full GroupVersionResource from its internal registry.

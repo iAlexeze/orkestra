@@ -140,4 +140,4 @@ This runs the CronJob operator accepting both schedule formats. Apply both CRs a
 ## Where to go next
 
 - **[conversion.paths:](./02-conversion-paths.md)** — when the API server needs to know about two versions
-- **[Conditionals](../conditional/index.md)** — `when:` and `anyOf:` in depth
+- **[Conditionals](../conditional/index.md)** — `when:` and `or:` in depth

@@ -1,5 +1,5 @@
 # Exercises: cert workload with domain — when: deny rule does NOT fire.
-# The anyOf deny (repoURL required for app/monitoring) also skips — workloadType is cert.
+# The or deny (repoURL required for app/monitoring) also skips — workloadType is cert.
 apiVersion: gateway.fixture.orkestra.io/v1alpha1
 kind: PlatformResource
 metadata:

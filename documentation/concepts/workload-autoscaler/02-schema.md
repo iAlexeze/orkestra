@@ -19,7 +19,7 @@ Two modes, mutually exclusive per direction:
 | `max` | yes | Ceiling — autoscaler never exceeds this value |
 | `min` | no | Floor — defaults to the resolved `replicas` value |
 | `cooldown` | no | Wait between scale events (e.g. `3m`, `30s`). Default `1m` |
-| `scaleUp.conditions` | no | `when:` / `anyOf:` conditions that trigger scale-up |
+| `scaleUp.conditions` | no | `when:` / `or:` conditions that trigger scale-up |
 | `scaleUp.target` | no | Jump to this exact replica count |
 | `scaleUp.increment` | no | Add this many replicas per evaluation tick |
 | `scaleDown.conditions` | no | Conditions that trigger scale-down |

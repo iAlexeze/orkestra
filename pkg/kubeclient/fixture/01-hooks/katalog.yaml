@@ -40,7 +40,7 @@ spec:
             location: github.com/orkspace/orkestra-args-hooks/hooks
             function: BlockchainAppHooks
             alias: bchooks
-            resources:
+            managedResources:
               - kind: Deployment
             external:
               - name: flags

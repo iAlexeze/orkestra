@@ -40,7 +40,7 @@ operatorBox:
 | `expectedStatus` | no | `0` | When set: any other status code is a failure. When `0`: `4xx`/`5xx` is a failure, `2xx` succeeds. |
 | `continueOnError` | no | `false` | `false`: failure halts reconcile, writes `Ready=False`. `true`: failure logged, reconcile continues. |
 | `when` | no | `[]` | AND gate conditions. If any fail, the call is skipped and `.called = "false"`. |
-| `anyOf` | no | `[]` | OR gate conditions. At least one must pass. Combined with `when:` using AND semantics. |
+| `or` | no | `[]` | OR gate conditions. At least one must pass. Combined with `when:` using AND semantics. |
 | `sleep` | no | `""` | Delay before this call. Go duration. For development and sequencing async side-effects — not for production rate limiting. |
 | `fires.reconcile` | no | `true` | When `false`, the call is skipped during reconcile — it only runs at admission time. Applies when the call is declared under `validation.external` or `mutation.external`. No effect on `onReconcile.external` calls. |
 | `include` | no | — | Path to a YAML file with a top-level `calls:` list. When set, this entry is replaced in-place by the listed calls. Resolved relative to the katalog file. Cleared after expansion. |
@@ -53,7 +53,7 @@ operatorBox:
 | `.external.<name>.status` | HTTP status code string (`"200"`, `"503"`). Empty on pre-response failure. |
 | `.external.<name>.body` | First 4096 bytes of response body. |
 | `.external.<name>.error` | Error message on failure; `""` on success. |
-| `.external.<name>.called` | `"true"` when the call ran; `"false"` when skipped by `when:`/`anyOf:`. |
+| `.external.<name>.called` | `"true"` when the call ran; `"false"` when skipped by `when:`/`or:`. |
 | `.external.<name>.<key>` | When the response body is a valid JSON object, its top-level keys are merged in and navigable by dot path. |
 
 If the response is `{ "queue": { "pendingJobs": 8 } }` and the call is named `metrics`, then `external.metrics.queue.pendingJobs` is directly usable in `field:` conditions and `{{ .external.metrics.queue.pendingJobs }}` in template expressions. `.body` is always present alongside parsed fields.

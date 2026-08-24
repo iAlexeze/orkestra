@@ -6,7 +6,7 @@ Every controller-runtime operator has two layers.
 
 **Business logic** — your `Reconcile` function. The part that is actually yours.
 
-Orkestra separates them. You write `Reconcile(ctx context.Context, key string) error` — the same logic you have today. Orkestra provides the rest: informers, workqueue, worker pool, retry backoff, watch on secondary resources, enqueue and reconcile gates, resync, leader election, metrics, panic recovery. You declare the topology in the Katalog. You never touch the infrastructure again.
+Orkestra separates them. You write `Reconcile(ctx context.Context, req domain.Request) (domain.Result, error)` — the same logic you have today. Orkestra provides the rest: informers, workqueue, worker pool, retry backoff, watch on secondary resources, enqueue and reconcile gates, resync, leader election, metrics, panic recovery. You declare the topology in the Katalog. You never touch the infrastructure again.
 
 ```go
 // Your reconciler — untouched. Same struct, same Reconcile signature, same logic.

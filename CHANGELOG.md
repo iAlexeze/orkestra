@@ -1,4 +1,4 @@
-## v0.7.16 — Per-Target OperatorBox, MuxReconciler, and controller-runtime Compatibility [UNRELEASED]
+## v0.7.16 — Per-Target OperatorBox, MuxReconciler, and controller-runtime Compatibility
 
 ### Per-target operatorBox
 
@@ -173,6 +173,101 @@ operatorBox:
         max: 30s
         multiplier: 2.0
         maxAttempts: 5
+```
+
+---
+
+### Breaking: `anyOf:` → `or:` everywhere
+
+`anyOf:` is renamed to `or:` across the entire schema. Semantics unchanged — reads naturally alongside `when:`: "when this AND this, or this OR this."
+
+---
+
+### Breaking: `domain.Reconciler` interface — `key string` → `Request` / `Result`
+
+The `Reconcile` method signature changed:
+
+```go
+// before
+Reconcile(ctx context.Context, key string) error
+
+// after
+Reconcile(ctx context.Context, req domain.Request) (domain.Result, error)
+```
+
+`domain.Request` carries `req.Key` (the old string) and `req.NamespacedName` for convenience. `domain.Result.RequeueAfter` lets a reconciler schedule a precise per-object re-enqueue after a successful reconcile — the kordinator calls `queue.AddAfter` when it is non-zero.
+
+The `domain.ReconcilerFrom` bridge now forwards `ctrl.Result.RequeueAfter` from a wrapped `reconcile.Reconciler`, so migrated operators that returned `ctrl.Result{RequeueAfter: time.Until(cert.Expiry)}` have that timing honored without any code change.
+
+---
+
+### `failPolicy:` on `enqueueGate` and `reconcileGate`
+
+Controls what a gate does when it cannot evaluate its conditions — for example when an `external:` call fails or times out.
+
+```yaml
+preReconcile:
+  reconcileGate:
+    failPolicy: closed   # hold back on evaluation failure
+    external:
+      - name: dep
+        url: "{{ .spec.dependencyUrl }}/health"
+    when:
+      - field: external.dep.status
+        equals: "200"
+```
+
+| Value | Behaviour |
+|-------|-----------|
+| `open` (default) | Gate passes on failure — object is enqueued / reconciled as normal. |
+| `closed` | Gate holds on failure — object is dropped from the queue / withheld from the reconciler. |
+
+The validator warns when `external:` is declared on a gate without an explicit `failPolicy`.
+
+---
+
+### `ToClient` reads from the informer store
+
+`kubeclient.ToClient(kube)` now serves `client.Get` and `client.List` from the informer store for any type that has a registered informer (the primary CRD and every `watch:` entry). Types without an informer fall through to a live API call with a debug log. This restores the cache-backed read behaviour that controller-runtime's `mgr.GetClient()` provided before migration.
+
+Declare a `watch:` entry for any secondary resource type the reconciler reads — the declaration registers both the re-enqueue watch and the cache.
+
+---
+
+### `requeue:` — per-object requeue scheduling for declarative operators
+
+Orkestra's resync fires all objects on a uniform interval. `requeue:` adds per-object, per-state requeue timing — each object schedules its own next reconcile based on its own fields. This makes declarative operators precise where resync is blunt.
+
+```yaml
+operatorBox:
+  reconciler:
+    requeue:
+      after: "{{ timeUntil .status.certExpiry }}"   # per-object, from its own state
+      when:
+        - field: status.phase
+          equals: "Active"
+```
+
+Evaluated after a successful reconcile only — errors go through `queue.retryBackoff`. `after:` takes a plain duration string or a template expression; the full post-reconcile resolver is available (`.spec`, `.status`, `.children`, `.external`).
+
+---
+
+### Breaking: `hooks.resources` / `constructor.resources` → `managedResources`
+
+The `resources:` key under `reconciler.hooks` and `reconciler.constructor` is renamed to `managedResources:`. This aligns the YAML key with the Go method naming (`AllManagedResources`, `HookManagedResources`, `ConstructorManagedResources`) and removes the ambiguity between managed resources (RBAC + implicit informer) and the `watch:` block (secondary informers for re-enqueue).
+
+Update all Katalog files:
+
+```yaml
+# before
+hooks:
+  resources:
+    - kind: Deployment
+
+# after
+hooks:
+  managedResources:
+    - kind: Deployment
 ```
 
 ---
@@ -375,7 +470,7 @@ operatorBox:
       when:
         - field: "{{ .spec.enabled }}"
           equals: "true"
-      anyOf:
+      or:
         - field: "{{ .spec.environment }}"
           equals: "production"
         - field: "{{ .spec.environment }}"
@@ -411,7 +506,7 @@ Calls run in order — shared first, then gate-level. Each call's results are in
 
 Both gates use the full resolver chain (`.spec`, `.metadata`, serve intent, profiles, notes). Logic lives in `pkg/katalog` (`EvaluatePreReconcile`, `EvaluateEnqueueFilter`) and is called via registered closures so neither the informer factory nor the kordinator has a direct katalog dependency.
 
-`EvaluateWhen` renamed to `EvaluateConditions` — the function evaluates both `when:` (AND) and `anyOf:` (OR), so the name now reflects what it does.
+`EvaluateWhen` renamed to `EvaluateConditions` — the function evaluates both `when:` (AND) and `or:` (OR), so the name now reflects what it does.
 
 **`gated` state in Control Center** — separate from healthy/degraded. Purple badge with gate reason. `StatusCounts.Gated` propagates through the full CC chain.
 
@@ -1143,11 +1238,11 @@ serve:
 #                  message: "Branch / Tag is required", action: deny }
 ```
 
-The synthesized rule inherits the field's own `when:`/`anyOf:`, so a field required only under one branch of a discriminator (e.g. `workloadType: app`) stays conditionally required — not unconditionally — matching what a static CRD schema's `required: [...]` list can't express.
+The synthesized rule inherits the field's own `when:`/`or:`, so a field required only under one branch of a discriminator (e.g. `workloadType: app`) stays conditionally required — not unconditionally — matching what a static CRD schema's `required: [...]` list can't express.
 
 ### Fix: `operator: in` was never evaluated in `validation.rules`
 
-`operator: in` was defined for `when:`/`anyOf:` conditions but missing from the separate rule-evaluation switch in both the reconciler and the admission webhook — a `validation.rules` entry using it silently always passed instead of checking comma-separated membership. Both now evaluate it.
+`operator: in` was defined for `when:`/`or:` conditions but missing from the separate rule-evaluation switch in both the reconciler and the admission webhook — a `validation.rules` entry using it silently always passed instead of checking comma-separated membership. Both now evaluate it.
 
 The reconciler and the webhook no longer maintain separate copies of validation-rule evaluation, shorthand resolution, and field lookup — all now shared from `pkg/types` (`EvaluateValidationRule`, `ResolveValidationOp`, `ResolveScalarField`). That duplication is exactly how `operator: in` went unimplemented in both places at once.
 
@@ -1214,11 +1309,11 @@ Every `onCreate`/`onReconcile`/`onDelete` resource declaration (deployments, ser
 
 ### New condition operators: `gte`, `lte`, `between`, `notBetween`, `notIn`, `notContains`, `regex`
 
-Available in both `when:`/`anyOf:` and `validation.rules`, with shorthand fields matching each operator name. Also fixes a real bug: `validation.rules`' `gt`/`lt` were accidentally inclusive when used explicitly (`Min`/`Max` shared their evaluation case) — `Min`/`Max` now resolve to the new `gte`/`lte` unchanged, and explicit `gt`/`lt` are properly strict. An unknown `operator:` value in `validation.rules`/`mutation.rules` is now rejected at katalog-load time instead of silently never matching.
+Available in both `when:`/`or:` and `validation.rules`, with shorthand fields matching each operator name. Also fixes a real bug: `validation.rules`' `gt`/`lt` were accidentally inclusive when used explicitly (`Min`/`Max` shared their evaluation case) — `Min`/`Max` now resolve to the new `gte`/`lte` unchanged, and explicit `gt`/`lt` are properly strict. An unknown `operator:` value in `validation.rules`/`mutation.rules` is now rejected at katalog-load time instead of silently never matching.
 
 ### `operator: unique` — designed and deferred until stable, now implemented
 
-`unique` was designed and declared as a valid operator from its introduction, with enforcement deliberately deferred until it could be checked safely — a rule using it silently always passed in the meantime, in both `validation.rules` and `when:`/`anyOf:`. Now implemented at both enforcement points:
+`unique` was designed and declared as a valid operator from its introduction, with enforcement deliberately deferred until it could be checked safely — a rule using it silently always passed in the meantime, in both `validation.rules` and `when:`/`or:`. Now implemented at both enforcement points:
 
 - **Reconcile time** — the reconciler injects a live checker (`template.Resolver.WithUniquenessChecker`) that lists other instances of the CRD via the API server and denies/gates on a matching field value, excluding the CR under evaluation. Authoritative — immune to cache staleness.
 - **Admission time** — the gateway injects its own checker (`pkg/gateway/webhook/uniqueness.go`), backed by an HTTP call to the runtime's own `GET /katalog/{crd}/cr?field=<dot-path>` endpoint (new `?field=` support) instead of a live `List()` — the runtime already has this data in its informer cache. Deliberately a fast, best-effort early-rejection layer, not a second source of truth: the cache can be momentarily stale, so a duplicate can still slip past admission in a race, but it's caught on the next reconcile regardless — the reconcile-time guarantee never depends on admission catching it first.
@@ -1227,7 +1322,7 @@ Available in both `when:`/`anyOf:` and `validation.rules`, with shorthand fields
 
 ### e2e output assertions now use the stable `Condition` evaluator — formerly deferred until stable
 
-e2e's shell-command and kubectl-output assertions (`equals`, `contains`, `regex`, `oneOf`, …) were kept hand-rolled and separate from `when:`/`anyOf:` until the shared `Condition`/`EvaluateOneCond` evaluator stabilized. Now unified — `pkg/registry/e2e`'s assertion logic delegates to `EvaluateOneCond` per field, so e2e assertions gain every `when:`/`anyOf:` operator (`gte`, `between`, `regex`, …) for free and can no longer drift from that behavior. Field names and error messages are unchanged.
+e2e's shell-command and kubectl-output assertions (`equals`, `contains`, `regex`, `oneOf`, …) were kept hand-rolled and separate from `when:`/`or:` until the shared `Condition`/`EvaluateOneCond` evaluator stabilized. Now unified — `pkg/registry/e2e`'s assertion logic delegates to `EvaluateOneCond` per field, so e2e assertions gain every `when:`/`or:` operator (`gte`, `between`, `regex`, …) for free and can no longer drift from that behavior. Field names and error messages are unchanged.
 
 ### `serve.fields`/`serve labels/annotations` `link:` — a clean display field, decoupled from the evaluation expression
 
@@ -1357,7 +1452,7 @@ notes:
 
 ### `notPrefix`/`notSuffix` condition operators
 
-`when:`/`anyOf:`/`validation.rules` had `prefix`/`suffix` and `notEquals`/`notContains`/`notIn`, but no negated prefix/suffix — a real gap, since RE2 (Go's regex engine) can't express "does not end with X" as a pattern either (no lookahead/lookbehind), leaving no shorthand way to write a rule like "reject `:latest` image tags". `notPrefix`/`notSuffix` close it, evaluated identically everywhere `Condition`/`ValidationRule` already are.
+`when:`/`or:`/`validation.rules` had `prefix`/`suffix` and `notEquals`/`notContains`/`notIn`, but no negated prefix/suffix — a real gap, since RE2 (Go's regex engine) can't express "does not end with X" as a pattern either (no lookahead/lookbehind), leaving no shorthand way to write a rule like "reject `:latest` image tags". `notPrefix`/`notSuffix` close it, evaluated identically everywhere `Condition`/`ValidationRule` already are.
 
 ### `gateway.api.auth.include:` — external token file
 
@@ -1526,7 +1621,7 @@ When `field:` is a template expression, the resolved value is used directly in t
 
 ### Conditional validation and mutation rules
 
-`when:` and `anyOf:` conditions are now supported on `validation.rules` and `mutation.rules` entries. A rule whose conditions do not match is skipped entirely — no violation is recorded, no log entry is emitted.
+`when:` and `or:` conditions are now supported on `validation.rules` and `mutation.rules` entries. A rule whose conditions do not match is skipped entirely — no violation is recorded, no log entry is emitted.
 
 ```yaml
 validation:
@@ -1543,7 +1638,7 @@ validation:
       operator: exists
       message: "spec.repoURL is required for app and monitoring workloads"
       action: deny
-      anyOf:
+      or:
         - field: spec.workloadType
           equals: app
         - field: spec.workloadType
@@ -1552,11 +1647,11 @@ validation:
 
 Conditions are evaluated using the same `EvaluateConditions` engine as template `when:` blocks. Works for both typed and unstructured CRDs — the typed CRD limitation (previously documented as "use Go hooks") is removed. Both `applyReconcileTimeValidation` and `applyReconcileTimeMutation` now use `resolver.Data()` which handles typed CRDs via JSON round-trip.
 
-Admission webhook rules honour `when:` and `anyOf:` in the same way as reconcile-time rules.
+Admission webhook rules honour `when:` and `or:` in the same way as reconcile-time rules.
 
 ### `serve.fields.<name>.required` — browser-native form field enforcement
 
-Setting `required: true` on an serve field marks it as mandatory in the Control Center form. The browser enforces it natively — the label shows an asterisk and the form cannot be submitted while the field is empty. Fields hidden by a `when:` or `anyOf:` condition are automatically excluded from browser constraint validation.
+Setting `required: true` on an serve field marks it as mandatory in the Control Center form. The browser enforces it natively — the label shows an asterisk and the form cannot be submitted while the field is empty. Fields hidden by a `when:` or `or:` condition are automatically excluded from browser constraint validation.
 
 ```yaml
 serve:
@@ -1624,7 +1719,7 @@ hooks:
     featureEnabled: '{{ .external.flags.body }}'
 ```
 
-All `external:` capabilities available to declarative operators — `when:`, `anyOf:`, `continueOnError`, timeout — apply to hook external calls without additional plumbing. Constructor authors who need external data make the call themselves and pass the URL via `args:`.
+All `external:` capabilities available to declarative operators — `when:`, `or:`, `continueOnError`, timeout — apply to hook external calls without additional plumbing. Constructor authors who need external data make the call themselves and pass the URL via `args:`.
 
 ### Cluster-scoped GC and always-on finalizer
 

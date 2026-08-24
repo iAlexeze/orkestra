@@ -63,7 +63,7 @@ operatorBox:
         - ...
       when:
         - ...
-      anyOf:
+      or:
         - ...
 
   rollBackOnError: false
@@ -74,6 +74,48 @@ operatorBox:
 ## `reconciler`
 
 Groups the reconciler identity fields. Omit for declarative-only CRDs — GenericReconciler is the default.
+
+### `reconciler.include`
+
+Loads a shared reconciler config from a file. The file's `reconciler:` block is merged under the inline config — inline fields take precedence over included ones. The path is resolved relative to the Katalog file. Cleared after expansion.
+
+Use this to share hooks location, function, resources, and tuning across targets that only differ in `args` or `preReconcile`:
+
+```yaml
+# katalog.yaml
+serve:
+  target:
+    v2-enabled:
+      operatorBox:
+        reconciler:
+          include: ./shared-reconciler.yaml
+          hooks:
+            args:
+              featureEnabled: "true"
+
+    v2-disabled:
+      operatorBox:
+        reconciler:
+          include: ./shared-reconciler.yaml
+          hooks:
+            args:
+              featureEnabled: "false"
+```
+
+```yaml
+# shared-reconciler.yaml
+reconciler:
+  hooks:
+    location: github.com/myorg/operator/hooks
+    function: AppHooks
+    resources:
+      - kind: Deployment
+      - kind: Service
+  workers: 3
+  resync: 30s
+```
+
+Inline `hooks.args` overrides anything declared in the file's `hooks.args`. The location, function, resources, workers, and resync are inherited from the file.
 
 ### `reconciler.default`
 
@@ -94,7 +136,7 @@ operatorBox:
       function: DatabaseHooks                  # exported function name
       alias: dbhooks                           # import alias (auto-derived if omitted)
       runHooksFirst: false                     # see below
-      resources:                               # RBAC verbs claimed for this hook
+      managedResources:                        # RBAC + implicit watch informer per type
         - kind: StatefulSet
         - kind: Service
         - kind: CronJob
@@ -204,7 +246,7 @@ func onReconcile(ctx context.Context, obj *apiv1.App) error {
 | `timeout` | no | Per-call timeout. Default `5s`. |
 | `continueOnError` | no | When `true`, a failed call leaves `.external.<name>.body` empty rather than aborting reconciliation. Default `false`. |
 | `when` | no | AND-gate conditions. The call is skipped when any condition is false. Same `[]Condition` type as Katalog `when:` blocks — see [conditions reference](06-when-conditions.md). |
-| `anyOf` | no | OR-gate conditions. The call is skipped when no condition is true. |
+| `or` | no | OR-gate conditions. The call is skipped when no condition is true. |
 
 The full `external:` field reference (shared with the top-level `external:` block) is in [13-external.md](13-external.md).
 
@@ -236,7 +278,7 @@ operatorBox:
       location: github.com/example/operator
       function: NewDatabaseReconciler
       alias: dbreconciler
-      resources:
+      managedResources:        # RBAC + implicit watch informer per type
         - kind: StatefulSet
         - kind: Service
       args:
@@ -244,6 +286,15 @@ operatorBox:
         timeoutSeconds: 300
         notifyOnSuccess: true
 ```
+
+#### `reconciler.constructor.managedResources`
+
+Declares the Kubernetes resource types this constructor creates, updates, or deletes. Two things happen for each entry:
+
+- **RBAC** — `get/list/watch/create/update/patch/delete` permissions are generated for the operator ServiceAccount.
+- **Implicit watch** — Orkestra starts a watch informer for the type. After the informer syncs, `r.client.Get` and `r.client.List` for that type are served from cache. When an owned resource changes and has an ownerReference pointing to the primary CR, Orkestra re-enqueues it automatically — no explicit `watch:` entry needed.
+
+If you need a field index, event filtering, or a different key resolution strategy, declare an explicit `watch:` entry for that type. It takes priority over the implicit informer from `managedResources:`.
 
 #### `reconciler.constructor.args`
 
@@ -311,7 +362,7 @@ Pre-reconcile gate conditions. Two sub-blocks control where in the pipeline the 
 - **`enqueueGate`** — evaluated by the informer before the item enters the work queue.
 - **`reconcileGate`** — evaluated by the kordinator after the item is dequeued, before the reconciler is called.
 
-`external:` calls can be declared at the `preReconcile:` level (shared, available to both gates) or inside either gate (gate-specific). Calls run in order — shared first, then gate-level. Results accumulate in the resolver under `.external.<name>.*` and are available to subsequent calls and `when:`/`anyOf:` conditions.
+`external:` calls can be declared at the `preReconcile:` level (shared, available to both gates) or inside either gate (gate-specific). Calls run in order — shared first, then gate-level. Results accumulate in the resolver under `.external.<name>.*` and are available to subsequent calls and `when:`/`or:` conditions.
 
 ```yaml
 operatorBox:
@@ -332,7 +383,7 @@ operatorBox:
           equals: "true"
         - field: "{{ .external.quota.body }}"
           equals: "available"
-      anyOf:
+      or:
         - field: "{{ .spec.environment }}"
           equals: "production"
         - field: "{{ .spec.environment }}"
@@ -377,7 +428,7 @@ HTTP or gRPC calls declared here run before either gate. Results are available t
 | Health on gate | No effect | `gated` (idle) | No effect |
 | Supports `external:` | Yes | Yes | Yes |
 
-All [condition operators](06-when-conditions.md#operators) are supported. `when:` requires ALL conditions to pass (AND). `anyOf:` requires at least one (OR). Both may be specified simultaneously — both must pass.
+All [condition operators](06-when-conditions.md#operators) are supported. `when:` requires ALL conditions to pass (AND). `or:` requires at least one (OR). Both may be specified simultaneously — both must pass.
 
 See [Conditional Reconciliation](../../../concepts/conditional/04-conditional-reconciliation.md) for the full concept guide.
 
@@ -416,7 +467,7 @@ autoscale:
 | `interval` | Evaluation frequency (default: `15s`) |
 | `cooldown` | Min time conditions must be false before restoring baseline (default: `2m`) |
 | `conditions.when` | AND conditions — all must be true |
-| `conditions.anyOf` | OR conditions — at least one must be true |
+| `conditions.or` | OR conditions — at least one must be true |
 | `do.workers` | Override concurrent goroutines when conditions are met |
 | `do.queueDepth` | Override max queue depth |
 | `do.resync` | Override resync interval |

@@ -184,7 +184,7 @@ operatorBox:
     location: github.com/orkspace/orkestra-registry-guide/hooks
     function: DatabaseHooks
     alias: dbhooks
-    resources:
+    managedResources:
       - kind: StatefulSet
       - kind: Service
       - kind: CronJob

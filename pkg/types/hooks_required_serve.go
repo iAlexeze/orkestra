@@ -118,7 +118,7 @@ func serveFieldLabel(cfg ServeFieldConfig, name string) string {
 // Center form. See "Required fields are enforced automatically" at
 // https://orkestra.sh/docs/reference/schema/katalog/validation#required-fields-are-enforced-automatically
 // for the full rationale, including why inheriting the field's own
-// When/AnyOf matters for discriminator-routed CRDs.
+// When/Or matters for discriminator-routed CRDs.
 func (c *CRDEntry) RequiredServeFieldRules() []ValidationRule {
 	var rules []ValidationRule
 	for _, ref := range c.allServeFieldRefs() {
@@ -132,7 +132,7 @@ func (c *CRDEntry) RequiredServeFieldRules() []ValidationRule {
 			Message:  ref.label + " is required",
 			Action:   ValidationActionDeny,
 			When:     ref.cfg.When,
-			AnyOf:    ref.cfg.AnyOf,
+			Or:       ref.cfg.Or,
 		})
 	}
 	return rules
@@ -164,7 +164,7 @@ func (c *CRDEntry) EnumServeFieldRules() []ValidationRule {
 			Message:  ref.label + " must be one of: " + strings.Join(ref.cfg.Enum, ", "),
 			Action:   ValidationActionDeny,
 			When:     when,
-			AnyOf:    ref.cfg.AnyOf,
+			Or:       ref.cfg.Or,
 		})
 	}
 	return rules

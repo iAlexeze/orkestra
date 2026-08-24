@@ -275,7 +275,7 @@
             <div class="idp-field{{ if .Disabled }} idp-field-disabled{{ end }}"
                  id="field-wrap-{{ .Name }}"
                  {{ if .WhenJSON  }}data-when='{{ .WhenJSON }}'{{ end }}
-                 {{ if .AnyOfJSON }}data-anyof='{{ .AnyOfJSON }}'{{ end }}>
+                 {{ if .OrJSON }}data-or='{{ .OrJSON }}'{{ end }}>
 
               {{ if eq .InputType "checkbox" }}
               <div class="idp-checkbox-row">
@@ -392,14 +392,14 @@
 
     function fieldVisible(wrap) {
       var when  = wrap.dataset.when  ? JSON.parse(wrap.dataset.when)  : null;
-      var anyOf = wrap.dataset.anyof ? JSON.parse(wrap.dataset.anyof) : null;
+      var or = wrap.dataset.or ? JSON.parse(wrap.dataset.or) : null;
       if (when  && when.length  && !when.every(evalCond))  return false;
-      if (anyOf && anyOf.length && !anyOf.some(evalCond))  return false;
+      if (or && or.length && !or.some(evalCond))  return false;
       return true;
     }
 
     function applyVisibility() {
-      document.querySelectorAll('.idp-field[data-when], .idp-field[data-anyof]').forEach(function (wrap) {
+      document.querySelectorAll('.idp-field[data-when], .idp-field[data-or]').forEach(function (wrap) {
         wrap.style.display = fieldVisible(wrap) ? '' : 'none';
       });
       // A category heading with no currently-visible fields underneath is just

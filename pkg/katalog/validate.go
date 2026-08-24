@@ -364,5 +364,13 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 47. Validate requeue.after — must be a template expression or a valid
+	//     Go duration string.
+	// -------------------------------------------------------------------------
+	if err := k.validateRequeue(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }

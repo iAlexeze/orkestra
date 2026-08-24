@@ -82,7 +82,7 @@ imports:
   - ./01-multi-region/e2e.yaml
   - ./03-cross-crd/e2e.yaml
   - ./04-once-secret/e2e.yaml
-  - ./05-anyof/e2e.yaml
+  - ./05-or/e2e.yaml
 ```
 
 One `ork e2e` runs the whole suite — one cluster, four tests, sequential. The suite file has no test of its own; it exists only to compose.

@@ -53,7 +53,7 @@ admission denied
 
 Denials exit non-zero. Warnings exit zero — they are advisory only.
 
-`when:` conditions, `anyOf:` groups, and field path expressions all run identically to the real webhook. A rule guarded by `when: workloadType=cert` does not fire for an `app` CR, just as it wouldn't in the cluster.
+`when:` conditions, `or:` groups, and field path expressions all run identically to the real webhook. A rule guarded by `when: workloadType=cert` does not fire for an `app` CR, just as it wouldn't in the cluster.
 
 ---
 

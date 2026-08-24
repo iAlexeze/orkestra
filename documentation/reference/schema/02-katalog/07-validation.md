@@ -37,7 +37,7 @@ validation:
       when:
         - field: spec.workloadType
           equals: cert
-      anyOf:
+      or:
         - field: spec.workloadType
           equals: cert
         - field: spec.workloadType
@@ -87,13 +87,13 @@ Each rule describes one check. Rules are evaluated in order.
 | `operator` + `value` | yes* | Explicit comparison (see operators). `value` supports Go templates. |
 | `valueType` | no | `string` (default), `int`, `float`, `bool` |
 | `when` | no | All conditions must pass for this rule to be evaluated (AND). Empty means unconditional. Conditions support Go template expressions via `EvaluateConditions`. |
-| `anyOf` | no | At least one condition must pass for this rule to be evaluated (OR). When both `when` and `anyOf` are declared, both blocks must pass. |
+| `or` | no | At least one condition must pass for this rule to be evaluated (OR). When both `when` and `or` are declared, both blocks must pass. |
 | `link` | no | The `serve.fields`/`serve labels/annotations` key this rule concerns, when `field:` isn't already a plain, self-describing path — see [Linking a rule to its form field](#linking-a-rule-to-its-form-field-link) below. |
 | `fires.reconcile` | no | `true` (default). Set `false` to make this rule admission-only — the reconciler skips it. Use for rules that read `.request.*` (raw intent) which is only present at the serve-layer admission boundary, not during reconcile. |
 
 *Use either an operator+value pair or a shorthand field.
 
-`when` and `anyOf` use the same `Condition` type as resource templates — see [06-when-conditions.md](06-when-conditions.md) for the full operator reference.
+`when` and `or` use the same `Condition` type as resource templates — see [06-when-conditions.md](06-when-conditions.md) for the full operator reference.
 
 ### Required fields are enforced automatically
 
@@ -260,9 +260,9 @@ See [13-external.md](13-external.md) for the full field reference.
 
 ## Operators
 
-`validation.rules` uses the exact same operator set and shorthand fields as `when:`/`anyOf:` — both are backed by the same `Condition`/`ConditionOperator` evaluation code (`pkg/types/validation_eval.go` and `pkg/types/when.go` share one operator table so the two can't drift apart). See [when/anyOf conditions § Operators](06-when-conditions.md#operators) for the full list.
+`validation.rules` uses the exact same operator set and shorthand fields as `when:`/`or:` — both are backed by the same `Condition`/`ConditionOperator` evaluation code (`pkg/types/validation_eval.go` and `pkg/types/when.go` share one operator table so the two can't drift apart). See [when/or conditions § Operators](06-when-conditions.md#operators) for the full list.
 
-One operator worth calling out: `unique` — field value must be unique across all existing instances of this CRD. It works the same way in `validation.rules` and in `when:`/`anyOf:` (e.g. gating a template source or mutation rule on whether a field is still available), and it's enforced at both reconcile and admission time — just via two different checks with different guarantees:
+One operator worth calling out: `unique` — field value must be unique across all existing instances of this CRD. It works the same way in `validation.rules` and in `when:`/`or:` (e.g. gating a template source or mutation rule on whether a field is still available), and it's enforced at both reconcile and admission time — just via two different checks with different guarantees:
 
 - **Reconcile time** — the reconciler lists other instances via a live call against the API server. This is the authoritative check: immune to cache staleness, always correct.
 - **Admission time** — the gateway asks the runtime's own `/katalog/{crd}/cr?field=` endpoint (served from its informer cache, not a live API call) whether any other instance already has this value. This is a fast, best-effort early rejection, not a second source of truth — if the runtime's cache is a moment stale, a duplicate can still slip through admission, but it's always caught on the very next reconcile regardless. Nothing about the reconcile-time guarantee depends on admission catching it first.

@@ -63,6 +63,29 @@ func Generate(res *Result, opts Options) Files {
 }
 
 func generateKatalog(res *Result, opts Options, crdName, constructorFn string) string {
+	resources := buildResourcesBlock(res.Owns)
+	watchBlock := buildWatchBlock(res.Watches)
+	p := res.Primary
+
+	kind := todoField(p.Kind, "set your CRD kind (e.g. WebApp)")
+	version := p.Version
+	if version == "" {
+		version = "v1alpha1"
+	}
+	object := todoField(p.Object, "set the Go type name (e.g. WebApp)")
+	objectList := p.ObjectList
+	if objectList == "" {
+		objectList = "TODO  # TODO(ork migrate): set the Go list type (e.g. WebAppList)"
+	}
+	location := p.Location
+	if location == "" {
+		location = opts.ModulePath + "/api/" + version + "  # TODO(ork migrate): adjust to your API types package"
+	}
+	alias := p.Alias
+	if alias == "" {
+		alias = "apiv1alpha1"
+	}
+
 	return fmt.Sprintf(`# Schema reference: https://orkestra.sh/docs/reference/schema/katalog/
 apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
@@ -84,19 +107,19 @@ spec:
     %s:
       apiTypes:
         group: TODO  # TODO(ork migrate): set your CRD group (e.g. apps.myorg.io)
-        version: v1alpha1
-        kind: TODO   # TODO(ork migrate): set your CRD kind (e.g. WebApp)
+        version: %s
+        kind: %s
         plural: TODO # TODO(ork migrate): set the plural (e.g. webapps)
-        object: TODO
-        objectList: TODOList
-        location: %s/api/v1alpha1  # TODO(ork migrate): adjust to your API types package
-        alias: apiv1alpha1
+        object: %s
+        objectList: %s
+        location: %s
+        alias: %s
 
       allowedNamespaces:
         - default
 
       operatorBox:
-        reconciler:
+%s        reconciler:
           # default: false — the GenericReconciler is not used.
           # Your constructor owns the full reconcile loop.
           default: false
@@ -104,9 +127,59 @@ spec:
           constructor:
             location: %s/%s  # TODO(ork migrate): adjust to your reconciler package
             function: %s
-            resources:
-              - kind: TODO  # TODO(ork migrate): list every resource kind your operator manages
-`, opts.OperatorName, res.PkgName, crdName, opts.ModulePath, opts.ModulePath, res.PkgName, constructorFn)
+            managedResources:
+%s`, opts.OperatorName, res.PkgName, crdName,
+		version, kind, object, objectList, location, alias,
+		watchBlock, opts.ModulePath, res.PkgName, constructorFn, resources)
+}
+
+// todoField returns the value if non-empty, or a TODO placeholder with the given hint.
+func todoField(value, hint string) string {
+	if value != "" {
+		return value
+	}
+	return "TODO  # TODO(ork migrate): " + hint
+}
+
+// buildResourcesBlock renders the managedResources: list under constructor: from Owns() detections.
+func buildResourcesBlock(owns []DetectedType) string {
+	if len(owns) == 0 {
+		return "              - kind: TODO  # TODO(ork migrate): list every resource kind your operator manages\n"
+	}
+	var b strings.Builder
+	for _, o := range owns {
+		fmt.Fprintf(&b, "              - kind: %s\n", o.Kind)
+		if o.APIVersion != "" && !strings.HasPrefix(o.APIVersion, "TODO") {
+			fmt.Fprintf(&b, "                apiVersion: %s\n", o.APIVersion)
+		} else if strings.HasPrefix(o.APIVersion, "TODO:") {
+			fmt.Fprintf(&b, "                # TODO(ork migrate): apiVersion for %s (%s)\n",
+				o.Kind, strings.TrimPrefix(o.APIVersion, "TODO: "))
+		}
+	}
+	return b.String()
+}
+
+// buildWatchBlock renders the watch: block under operatorBox: from Watches() detections.
+// Returns an empty string when no watch entries were detected.
+func buildWatchBlock(watches []DetectedType) string {
+	if len(watches) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("        watch:\n")
+	for _, w := range watches {
+		apiVer := w.APIVersion
+		suffix := ""
+		if strings.HasPrefix(apiVer, "TODO:") {
+			// Emit the raw import path as a comment so the user knows where to look.
+			suffix = "  # TODO(ork migrate): verify apiVersion (" + strings.TrimPrefix(apiVer, "TODO: ") + ")"
+			apiVer = "TODO"
+		}
+		fmt.Fprintf(&b, "          - apiVersion: %s%s\n", apiVer, suffix)
+		fmt.Fprintf(&b, "            kind: %s\n", w.Kind)
+		fmt.Fprintf(&b, "            on: [create, update, delete]\n")
+	}
+	return b.String()
 }
 
 func generateSimulate(opts Options, crdName string) string {
@@ -340,12 +413,8 @@ grep -rn "TODO(ork migrate)" .
 
 Work through each marker in order:
 
-- [ ] Set ` + "`" + `group` + "`" + `, ` + "`" + `kind` + "`" + `, ` + "`" + `plural` + "`" + `, ` + "`" + `location` + "`" + ` in ` + "`" + `katalog.yaml` + "`" + `
-- [ ] Replace the embedded ` + "`" + `client.Client` + "`" + ` struct field with ` + "`" + `kube kubeclient.Interface` + "`" + `
-- [ ] Update your constructor to accept ` + "`" + `(kube kubeclient.Interface, informer cache.SharedIndexInformer, ev event.Recorder)` + "`" + `
-- [ ] Rename ` + "`" + `r.client` + "`" + ` → ` + "`" + `r.kube` + "`" + ` at all call sites (` + "`" + `Patch` + "`" + ` lines compile unchanged — only the receiver name changes)
-- [ ] Replace ` + "`" + `r.Status().Update()` + "`" + ` with ` + "`" + `r.kube.PatchStatus(ctx, obj, map[string]interface{}{...})` + "`" + `
-- [ ] Add ` + "`" + `github.com/orkspace/orkestra/domain` + "`" + ` and ` + "`" + `pkg/kubeclient` + "`" + ` imports
+- [ ] Update ` + "`" + `group` + "`" + `, ` + "`" + `kind` + "`" + `, ` + "`" + `plural` + "`" + `, ` + "`" + `location` + "`" + ` in ` + "`" + `katalog.yaml` + "`" + `
+- [ ] Review ` + "`" + `managedResources:` + "`" + ` in ` + "`" + `katalog.yaml` + "`" + ` — add or correct the resource kinds your operator manages
 - [ ] Fill in resource assertions in ` + "`" + `simulate.yaml` + "`" + ` and ` + "`" + `e2e.yaml` + "`" + `
 - [ ] Delete ` + "`" + `main.go` + "`" + `, scheme registration, and manager setup
 
@@ -441,19 +510,12 @@ kubectl apply -f bundle.yaml
 
 ## What to know
 
-**` + "`" + `r.client.Patch` + "`" + ` lines compile unchanged.**
-` + "`" + `kubeclient.Patch` + "`" + ` is a type alias for ` + "`" + `sigs.k8s.io/controller-runtime/pkg/client.Patch` + "`" + `, so
-` + "`" + `MergeFrom` + "`" + `, ` + "`" + `StrategicMergeFrom` + "`" + `, and ` + "`" + `Apply` + "`" + ` from controller-runtime satisfy it directly.
-Only the receiver changes: ` + "`" + `r.client` + "`" + ` → ` + "`" + `r.kube` + "`" + `.
+**No changes to ` + "`" + `Reconcile` + "`" + `, struct fields, or call sites.**
+The injected constructor calls ` + "`" + `kubeclient.ToClient(kube)` + "`" + ` to wrap the interface as
+` + "`" + `client.Client` + "`" + ` — your existing field and all ` + "`" + `r.client.*` + "`" + ` calls compile unchanged.
 
-**` + "`" + `r.Status().Update()` + "`" + ` must be replaced manually.**
-The tool flags it but cannot rewrite it — the status fields and GVR are
-specific to your CRD. Replace with ` + "`" + `r.kube.PatchStatus(ctx, obj, fields)` + "`" + `.
-
-**` + "`" + `ctrl.Result{RequeueAfter: X}` + "`" + ` has no direct equivalent.**
-A non-nil error requeues with exponential backoff. To requeue without
-signalling failure, return a sentinel error or use a named error type.
-The TODO comment in the output explains this.
+**` + "`" + `ctrl.Result{RequeueAfter: X}` + "`" + ` is preserved.**
+The bridge propagates ` + "`" + `RequeueAfter` + "`" + ` to Orkestra's work queue — no changes needed.
 
 **` + "`" + `SetupWithManager` + "`" + `, ` + "`" + `main.go` + "`" + `, and scheme registration are gone.**
 Orkestra owns the informer, workqueue, and manager. Delete them — do not

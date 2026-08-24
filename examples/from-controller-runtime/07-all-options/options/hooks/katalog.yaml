@@ -40,7 +40,7 @@ spec:
             location: github.com/orkspace/from-controller-runtime-all-options/options/hooks/hooks
             function: WebAppHooks
             alias: hookswh
-            resources:
+            managedResources:
               - kind: Deployment
               - kind: Service
 

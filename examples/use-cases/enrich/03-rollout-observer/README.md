@@ -1,10 +1,10 @@
 # Enrich 03 — Rollout Observer
 
-`enrich: [replicasets]` with `anyOf:` — replicaset data is fetched when the deployment is not fully ready (rolling update in progress) OR when `spec.debug` is `"true"`. In steady state both conditions are false: the replicaset-list call never fires. During a rollout you can watch the old and new ReplicaSet counts change in real time.
+`enrich: [replicasets]` with `or:` — replicaset data is fetched when the deployment is not fully ready (rolling update in progress) OR when `spec.debug` is `"true"`. In steady state both conditions are false: the replicaset-list call never fires. During a rollout you can watch the old and new ReplicaSet counts change in real time.
 
-**Cost:** zero API calls for the replicaset enrichment in steady state — `anyOf:` acts as a circuit breaker. The pod-list from `enrich: [pods]` still runs unconditionally. Setting `spec.debug: "true"` on a single CR enables the expensive enrichment for that CR only; other CRs in the same operator are unaffected.
+**Cost:** zero API calls for the replicaset enrichment in steady state — `or:` acts as a circuit breaker. The pod-list from `enrich: [pods]` still runs unconditionally. Setting `spec.debug: "true"` on a single CR enables the expensive enrichment for that CR only; other CRs in the same operator are unaffected.
 
-**What you learn:** `anyOf:` in enrichment conditions, combining always-on and conditional targets, debug-mode enrichment without affecting other CRs.
+**What you learn:** `or:` in enrichment conditions, combining always-on and conditional targets, debug-mode enrichment without affecting other CRs.
 
 ---
 
@@ -97,7 +97,7 @@ status:
   # replicaSetCount and oldReplicaSets absent again
 ```
 
-During the rollout: **3 API calls** (pod-list + replicaset-list × the anyOf gate). After: **1 API call**.
+During the rollout: **3 API calls** (pod-list + replicaset-list × the or gate). After: **1 API call**.
 
 ---
 
@@ -142,7 +142,7 @@ This runs everything defined in [e2e.yaml](./e2e.yaml):
 
 ```yaml
 expect:
-  - name: No replicaset data in steady state (anyOf gate held)
+  - name: No replicaset data in steady state (or gate held)
     after: cr-applied
     timeout: 60s
     commands:

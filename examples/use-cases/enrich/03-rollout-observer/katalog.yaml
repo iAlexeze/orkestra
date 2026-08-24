@@ -23,9 +23,9 @@ spec:
         - pods
 
         # replicasets: only during rollouts (replicas not ready) or debug mode.
-        # anyOf: fetches when EITHER condition is true.
+        # or: fetches when EITHER condition is true.
         - replicasets:
-            anyOf:
+            or:
               - field: "{{ replicasReady .children.deployment }}"
                 equals: "false"
               - field: spec.debug

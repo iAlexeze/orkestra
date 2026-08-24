@@ -24,7 +24,7 @@ func (k *Kontroller) objectFromCache(entry RegistryEntry, key string) *unstructu
 	return obj
 }
 
-// evaluatePreReconcileCheck evaluates the preReconcile.when/anyOf gate for the
+// evaluatePreReconcileCheck evaluates the preReconcile.when/or gate for the
 // given CR. Returns (true, reason) when gated — reconciler must not be called.
 // Returns (false, "") when conditions pass.
 //

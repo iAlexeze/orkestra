@@ -39,7 +39,7 @@ ork run
 |---|---|
 | `01-pod-health` | Always-on pod enrichment. `_podHealth` embedded in status on every reconcile: ready count, restart count, crash detection. |
 | `02-warning-events` | Conditional event enrichment. Kubernetes warning events only fetched when the operator detects degraded state — `when:` keeps the cost near-zero in steady state. |
-| `03-rollout-observer` | Conditional ReplicaSet enrichment. Rollout history only fetched during active rollouts — `anyOf:` limits calls to when they actually matter. |
+| `03-rollout-observer` | Conditional ReplicaSet enrichment. Rollout history only fetched during active rollouts — `or:` limits calls to when they actually matter. |
 
 ---
 
@@ -77,8 +77,8 @@ ork run   # runs the komposer — all six operators together
 | `02-external-gate` | `external:` with two calls: a blocking health check and a non-blocking feature flag fetch. `continueOnError: false` vs `true` side by side. |
 | `03-cross-crd` | `cross:` between two CRDs. `DatabaseBackedApp` waits for `ManagedDatabase` to reach `Ready`. The database endpoint flows into a ConfigMap automatically. |
 | `04-once-secret` | `once: true` on a Secret. Generated exactly once. Stable credentials across the lifetime of the CR. |
-| `05-anyof` | `anyOf:` for OR conditions. Combines with `when:` (AND) for `(all of these) AND (any of those)` logic without Go code. |
-| `06-full-stack` | All five patterns together: forEach, external, cross-CRD, once-secret, anyOf. |
+| `05-or` | `or:` for OR conditions. Combines with `when:` (AND) for `(all of these) AND (any of those)` logic without Go code. |
+| `06-full-stack` | All five patterns together: forEach, external, cross-CRD, once-secret, or. |
 
 ---
 

@@ -30,8 +30,73 @@ func (k *Katalog) validateWatchEntries() error {
 		if err := k.validatePreReconcileGateTemplates(crdName, crd); err != nil {
 			return err
 		}
+		if err := k.validateGateFailPolicies(crdName); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+func (k *Katalog) validateGateFailPolicies(crdName string) error {
+	crd, ok := k.enabledCRDs[crdName]
+	if !ok {
+		return nil
+	}
+	pr := crd.OperatorBox.PreReconcile
+	if pr == nil {
+		return nil
+	}
+	type gateInfo struct {
+		gate     *orktypes.GateConditions
+		location string
+	}
+	changed := false
+	for _, gi := range []gateInfo{
+		{pr.EnqueueGate, "preReconcile.enqueueGate"},
+		{pr.ReconcileGate, "preReconcile.reconcileGate"},
+	} {
+		g := gi.gate
+		if g == nil {
+			continue
+		}
+		if g.FailPolicy != "" && !orktypes.IsValidFailPolicy(string(g.FailPolicy)) {
+			return fmt.Errorf("%s crd %q: %s.failPolicy %q is not valid. Valid values: %s",
+				failureMark(), crdName, gi.location, g.FailPolicy, orktypes.FailPolicyJoined())
+		}
+		if len(g.ExternalCalls()) > 0 && g.FailPolicy == "" {
+			crd.Warnings.AddWarning(fmt.Sprintf(
+				"%s has external: calls but no failPolicy declared. "+
+					"Default is open — evaluation failure will pass the gate. "+
+					"Set failPolicy: closed if unknown state should hold back reconciliation.",
+				gi.location))
+			changed = true
+		}
+		if g.FailPolicy == orktypes.FailPolicyClosed && allContinueOnError(g.ExternalCalls()) {
+			crd.Warnings.AddWarning(fmt.Sprintf(
+				"%s has failPolicy: closed but all external: calls have continueOnError: true. "+
+					"continueOnError suppresses call errors before they reach the gate — "+
+					"failPolicy: closed will never trigger. "+
+					"Use when: conditions on external.*.error to gate on suppressed failures instead.",
+				gi.location))
+			changed = true
+		}
+	}
+	if changed {
+		k.enabledCRDs[crdName] = crd
+	}
+	return nil
+}
+
+func allContinueOnError(calls []orktypes.ExternalCallSpec) bool {
+	if len(calls) == 0 {
+		return false
+	}
+	for _, c := range calls {
+		if !c.ContinueOnError {
+			return false
+		}
+	}
+	return true
 }
 
 func validateCRDWatchEntries(crdName string, crd orktypes.CRDEntry) error {
@@ -127,11 +192,11 @@ func (k *Katalog) validatePreReconcileGateTemplates(crdName string, crd orktypes
 				return err
 			}
 		}
-		for i, cond := range gate.AnyOfConditions() {
-			if err := parseGateTemplate(crdName, location, fmt.Sprintf("anyOf[%d].field", i), cond.Field, funcMap); err != nil {
+		for i, cond := range gate.OrConditions() {
+			if err := parseGateTemplate(crdName, location, fmt.Sprintf("or[%d].field", i), cond.Field, funcMap); err != nil {
 				return err
 			}
-			if err := parseGateTemplate(crdName, location, fmt.Sprintf("anyOf[%d].equals", i), cond.Equals, funcMap); err != nil {
+			if err := parseGateTemplate(crdName, location, fmt.Sprintf("or[%d].equals", i), cond.Equals, funcMap); err != nil {
 				return err
 			}
 		}

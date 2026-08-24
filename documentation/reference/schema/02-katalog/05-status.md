@@ -8,7 +8,7 @@ Orkestra writes status in two layers — one automatic, one declarative.
 
 No declaration required. Every managed CR gets this.
 
-**Layer 2 — declarative fields.** Declared under `operatorBox.status`. Fields with `when:`/`anyOf:` conditions are always evaluated — including when reconcile fails — so status can reflect why. Fields without conditions are only written on successful reconcile.
+**Layer 2 — declarative fields.** Declared under `operatorBox.status`. Fields with `when:`/`or:` conditions are always evaluated — including when reconcile fails — so status can reflect why. Fields without conditions are only written on successful reconcile.
 
 ## Wire format
 
@@ -57,7 +57,7 @@ fields:
     clearOnFalse: false            # optional
     when:                          # optional — AND conditions
       - ...
-    anyOf:                         # optional — OR conditions
+    or:                         # optional — OR conditions
       - ...
 ```
 
@@ -69,10 +69,10 @@ fields:
 | `value` | yes | Value to write. Supports Go template expressions. Static strings skip parsing. |
 | `type` | no | Cast the resolved value before writing. Defaults to `string`. |
 | `when` | no | List of conditions — **all must pass** (AND). Field is skipped if any fails. |
-| `anyOf` | no | List of conditions — **at least one must pass** (OR). |
-| `clearOnFalse` | no | When `true` and the `when:`/`anyOf:` condition evaluates to false, write `""` to the field instead of leaving the previous value. Use for transient fields (crash reasons, warning messages) that should disappear when the triggering condition clears. No effect when no conditions are declared. |
+| `or` | no | List of conditions — **at least one must pass** (OR). |
+| `clearOnFalse` | no | When `true` and the `when:`/`or:` condition evaluates to false, write `""` to the field instead of leaving the previous value. Use for transient fields (crash reasons, warning messages) that should disappear when the triggering condition clears. No effect when no conditions are declared. |
 
-When both `when` and `anyOf` are declared, both blocks must pass.
+When both `when` and `or` are declared, both blocks must pass.
 
 ### `type` values
 
@@ -141,7 +141,7 @@ Functions from the Orkestra note library useful in status values:
 | `toBool .spec.enabled` | Cast to bool |
 | `toString .spec.count` | Cast to string |
 
-### `when` and `anyOf` conditions
+### `when` and `or` conditions
 
 Each condition targets a dot-notation field path and applies an operator.
 
@@ -155,7 +155,7 @@ when:
     value: "0"
 ```
 
-`status.fields[].when`/`anyOf` use the exact same `Condition` type, operators, and shorthand fields as resource-template `when:`/`anyOf:` — see [when/anyOf conditions § Operators](06-when-conditions.md#operators) for the full list (`equals`, `contains`, `prefix`/`suffix`, `regex`, `exists`/`notExists`, `gt`/`lt`/`gte`/`lte`/`between`, `in`/`notIn`, the `typeOf` family, and their shorthand names). Absent field is treated as `0` for numeric comparisons.
+`status.fields[].when`/`or` use the exact same `Condition` type, operators, and shorthand fields as resource-template `when:`/`or:` — see [when/or conditions § Operators](06-when-conditions.md#operators) for the full list (`equals`, `contains`, `prefix`/`suffix`, `regex`, `exists`/`notExists`, `gt`/`lt`/`gte`/`lte`/`between`, `in`/`notIn`, the `typeOf` family, and their shorthand names). Absent field is treated as `0` for numeric comparisons.
 
 ## Example: declarative state machine
 

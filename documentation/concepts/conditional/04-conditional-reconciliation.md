@@ -51,7 +51,7 @@ With this configuration:
 
 All condition operators available in resource-level `when:` blocks are available here — `equals`, `contains`, `exists`, `gt`/`lt`, `in`, `regex`, and more. See the [full operator reference](../../reference/schema/02-katalog/06-when-conditions.md#operators).
 
-`anyOf:` (OR semantics) is also supported alongside `when:` (AND semantics):
+`or:` (OR semantics) is also supported alongside `when:` (AND semantics):
 
 ```yaml
 preReconcile:
@@ -59,7 +59,7 @@ preReconcile:
     when:
       - field: "{{ .spec.enabled }}"
         equals: "true"
-    anyOf:
+    or:
       - field: "{{ .spec.environment }}"
         equals: "production"
       - field: "{{ .spec.environment }}"
@@ -103,6 +103,31 @@ Use `enqueueGate` when you want zero queue pressure for objects that should be c
 | **Phase** | Before queue entry | After dequeue |
 | **Health on gate** | No effect | `gated` (idle) |
 | **Caveat** | Object stays out until next watch event | Clears on next successful reconcile |
+
+---
+
+## `failPolicy` — gate behaviour on evaluation failure
+
+When a gate includes `external:` calls, the evaluation can fail — the endpoint is down, the call times out. `failPolicy:` controls what the gate does in that case.
+
+```yaml
+preReconcile:
+  reconcileGate:
+    failPolicy: closed        # evaluation failure → hold back, do not reconcile
+    external:
+      - name: depHealth
+        url: "{{ .spec.dependencyUrl }}/health"
+    when:
+      - field: external.depHealth.status
+        equals: "200"
+```
+
+| Value | Behaviour |
+|-------|-----------|
+| `open` (default) | Evaluation failure passes the gate — CR is enqueued or reconciled as normal. Safe default for `enqueueGate`. |
+| `closed` | Evaluation failure holds the gate — CR is dropped or held back. Use on `reconcileGate` when reconciling against an unknown state is worse than skipping a cycle. |
+
+`ork validate` warns when `external:` calls are declared without an explicit `failPolicy:` — the default `open` may not be the intent for `reconcileGate`.
 
 ---
 

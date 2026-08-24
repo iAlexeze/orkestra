@@ -36,12 +36,14 @@ Full rewrite to idiomatic Orkestra style:
 
 | Before | After |
 |--------|-------|
-| `Reconcile(ctx, req ctrl.Request) (ctrl.Result, error)` | `Reconcile(ctx context.Context, key string) error` |
-| `return ctrl.Result{}, err` | `return err` |
-| `req.NamespacedName` | `client.ObjectKey{Namespace: namespace, Name: name}` |
+| `Reconcile(ctx, req ctrl.Request) (ctrl.Result, error)` | `Reconcile(ctx context.Context, req domain.Request) (domain.Result, error)` |
+| `return ctrl.Result{}, err` | `return domain.Result{}, err` |
+| `return ctrl.Result{}, nil` | `return domain.Result{}, nil` |
+| `return ctrl.Result{RequeueAfter: X}, nil` | `return domain.Result{RequeueAfter: X}, nil` |
+| `req.String()` | `req.String()` (preserved — `domain.Request` implements `Stringer`) |
+| `req.NamespacedName` | `req.NamespacedName` (available directly on `domain.Request`) |
 | `r.client.Get(ctx, key, obj)` | `r.kube.Get(ctx, namespace, name, obj)` |
 | `r.Status().Update(...)` | flagged with `// TODO(ork migrate):` |
-| `ctrl.Result{RequeueAfter: X}` | flagged with `// TODO(ork migrate):` |
 | `SetupWithManager` | removed with explanation comment |
 
 More invasive; produces fully idiomatic Orkestra code.

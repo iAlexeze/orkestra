@@ -265,15 +265,15 @@ var _ domain.Reconciler = (*GenericReconciler[domain.Object])(nil)
 //
 // The semaphore gates concurrent execution — when an autoscaler is active it
 // can reduce effective concurrency below the goroutine count without stopping goroutines.
-func (r *GenericReconciler[PTR]) Reconcile(ctx context.Context, key string) error {
+func (r *GenericReconciler[PTR]) Reconcile(ctx context.Context, req domain.Request) (domain.Result, error) {
 	if err := r.workerSem.Acquire(ctx); err != nil {
-		return err // context cancelled while waiting for a concurrency slot
+		return domain.Result{}, err // context cancelled while waiting for a concurrency slot
 	}
 	start := time.Now()
-	err := r.reconcileCore(ctx, key)
+	err := r.reconcileCore(ctx, req.Key)
 	r.workerSem.Release()
 	r.autoMetrics.RecordReconcile(time.Since(start), err != nil)
-	return err
+	return domain.Result{}, err
 }
 
 func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) error {
@@ -340,7 +340,7 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 		resolver = resolver.WithRequest(intent)
 	}
 	// Gives operator: unique live CRD access for the rest of this reconcile
-	// pass — validation.rules and any when:/anyOf: block evaluated against
+	// pass — validation.rules and any when:/or: block evaluated against
 	// this resolver (mutation rules, template sources) all share it.
 	resolver = resolver.WithUniquenessChecker(newUniquenessChecker(ctx, r.kube, r.crd.GVR(), r.crd.IsNamespaced()))
 	// Run hook-declared external calls before ScopedFor so their results are

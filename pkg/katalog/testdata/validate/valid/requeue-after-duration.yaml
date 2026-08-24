@@ -1,0 +1,14 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: requeue-after-duration
+  version: 0.1.0
+  description: Valid requeue.after with a plain duration string.
+spec:
+  crds:
+    widget:
+      crdFile: ../crd.yaml
+      operatorBox:
+        reconciler:
+          requeue:
+            after: "30s"

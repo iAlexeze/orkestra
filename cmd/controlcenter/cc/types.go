@@ -267,7 +267,7 @@ type ServeField struct {
 	Required    bool
 	Category    string // section heading for visual grouping
 	WhenJSON    string // JSON array of Condition — all must be true (AND)
-	AnyOfJSON   string // JSON array of Condition — at least one must be true (OR)
+	OrJSON      string // JSON array of Condition — at least one must be true (OR)
 	Disabled    string // non-empty → greyed-out field with this message
 }
 

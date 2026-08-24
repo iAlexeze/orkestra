@@ -2,7 +2,7 @@
 
 Orkestra can scale any Deployment — not just ones it created. Add a Deployment by name to `onReconcile:` and Orkestra manages its replica count. Use `apiTypes.kind: Deployment` to watch every Deployment in the cluster and scope with label selectors.
 
-`autoscale:` conditions evaluate against the same Resolver data map used everywhere else in a Katalog. Any source resolved before deployment evaluation — `external:`, `cross:`, time notes, user-defined notes — is available as a field reference in `when:` and `anyOf:` blocks.
+`autoscale:` conditions evaluate against the same Resolver data map used everywhere else in a Katalog. Any source resolved before deployment evaluation — `external:`, `cross:`, time notes, user-defined notes — is available as a field reference in `when:` and `or:` blocks.
 
 ---
 
@@ -240,7 +240,7 @@ Notes can guard scale-up — here, the operator only scales when there are no cr
 ```yaml
 scaleUp:
   conditions:
-    anyOf:
+    or:
       - field: external.kafka.consumerLag
         greaterThan: "1000"
       - field: cross.worker.metrics.queueDepth
@@ -252,4 +252,4 @@ scaleUp:
           weekday: true
 ```
 
-`anyOf:` evaluates as OR — scale up if any condition passes. `when:` evaluates as AND — all conditions must pass. Both can appear in the same `conditions:` block; `when:` and `anyOf:` are evaluated independently and combined with AND.
+`or:` evaluates as OR — scale up if any condition passes. `when:` evaluates as AND — all conditions must pass. Both can appear in the same `conditions:` block; `when:` and `or:` are evaluated independently and combined with AND.

@@ -1022,7 +1022,7 @@ type serveFieldHint struct {
 	Required    bool              `json:"required"`
 	Disabled    string            `json:"disabled"`
 	When        []json.RawMessage `json:"when"`
-	AnyOf       []json.RawMessage `json:"anyOf"`
+	Or          []json.RawMessage `json:"or"`
 	Type        string            `json:"type"`
 	Enum        []string          `json:"enum"`
 }
@@ -1048,15 +1048,15 @@ func buildServeField(name string, hint serveFieldHint) ServeField {
 		Category:    hint.Category,
 		Disabled:    hint.Disabled,
 	}
-	// Encode when/anyOf as JSON strings for the template to embed as data attributes.
+	// Encode when/or as JSON strings for the template to embed as data attributes.
 	if len(hint.When) > 0 {
 		if b, err := json.Marshal(hint.When); err == nil {
 			f.WhenJSON = string(b)
 		}
 	}
-	if len(hint.AnyOf) > 0 {
-		if b, err := json.Marshal(hint.AnyOf); err == nil {
-			f.AnyOfJSON = string(b)
+	if len(hint.Or) > 0 {
+		if b, err := json.Marshal(hint.Or); err == nil {
+			f.OrJSON = string(b)
 		}
 	}
 	switch {

@@ -51,13 +51,13 @@ r.kube.PatchStatus(ctx, webapp, apiv1.GroupVersionResource, map[string]interface
 
 ### ctrl.Result{RequeueAfter: X}
 
-The tool removes `RequeueAfter` and flags it. If you need time-based requeue, return an error — Orkestra's exponential backoff will retry. For periodic reconciliation, use an `external:` schedule or a `when:` condition.
+`RequeueAfter` is preserved through `domain.Result{RequeueAfter: X}` — no information is lost and no TODO is added.
 
 ---
 
 ## Out of scope in both modes
 
-- **kubebuilder RBAC markers** — `// +kubebuilder:rbac:groups=...` are left as-is. They have no effect in Orkestra — declare resources in the Katalog's `resources:` list and generate RBAC via `ork generate rbac`.
+- **kubebuilder RBAC markers** — `// +kubebuilder:rbac:groups=...` are left as-is. They have no effect in Orkestra — declare resources in the Katalog's `managedResources:` list and generate RBAC via `ork generate rbac`.
 - **main.go, scheme registration, manager setup** — these are separate files; the tool only touches the file you pass it. Delete them manually.
 - **Webhooks** — `SetupWebhookWithManager` and admission handlers are not touched.
 - **Multi-file operators** — the tool processes one file at a time. Run it on each reconciler file separately.

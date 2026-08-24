@@ -25,28 +25,29 @@ func NewBlockchainAppWithTargetsReconciler(kube kubeclient.Interface) domain.Rec
 	return &BlockchainAppWithTargetsReconciler{kube: kube}
 }
 
-func (r *BlockchainAppWithTargetsReconciler) Reconcile(ctx context.Context, key string) error {
+func (r *BlockchainAppWithTargetsReconciler) Reconcile(ctx context.Context, req domain.Request) (domain.Result, error) {
+	key := req.Key
 	raw, exists, err := r.kube.GetInformer().GetIndexer().GetByKey(key)
 	if err != nil {
-		return fmt.Errorf("cache lookup %q: %w", key, err)
+		return domain.Result{}, fmt.Errorf("cache lookup %q: %w", key, err)
 	}
 	if !exists {
-		return nil
+		return domain.Result{}, nil
 	}
 
 	app, ok := raw.(*apiv1.BlockchainAppWithTargets)
 	if !ok {
-		return fmt.Errorf("unexpected type %T for key %q", raw, key)
+		return domain.Result{}, fmt.Errorf("unexpected type %T for key %q", raw, key)
 	}
 	app = app.DeepCopyObject().(*apiv1.BlockchainAppWithTargets)
 
 	if app.DeletionTimestamp != nil {
-		return nil
+		return domain.Result{}, nil
 	}
 
 	resolver, err := orktmpl.NewResolver(ctx, app)
 	if err != nil {
-		return fmt.Errorf("building resolver: %w", err)
+		return domain.Result{}, fmt.Errorf("building resolver: %w", err)
 	}
 	kube := r.kube.ScopedFor(resolver.TemplateEvaluator())
 
@@ -73,10 +74,10 @@ func (r *BlockchainAppWithTargetsReconciler) Reconcile(ctx context.Context, key 
 		},
 	}
 	if err := orkdeploy.Apply(ctx, kube, app, spec); err != nil {
-		return fmt.Errorf("blockchainappwithtargets deployment: %w", err)
+		return domain.Result{}, fmt.Errorf("blockchainappwithtargets deployment: %w", err)
 	}
 
-	return kube.PatchStatus(ctx, app, map[string]any{
+	return domain.Result{}, kube.PatchStatus(ctx, app, map[string]any{
 		"phase":          "Running",
 		"network":        app.Spec.Network,
 		"featureEnabled": annotation,

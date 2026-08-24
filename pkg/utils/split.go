@@ -83,3 +83,13 @@ func SplitColonSeparated(s string) []string {
 func SplitSemicolonSeparated(s string) []string {
 	return SplitBySeparator(s, ";")
 }
+
+// SplitField converts a dot-separated field path to a slice of path segments.
+// Accepts both "spec.owner" and ".spec.owner" — the leading dot is stripped.
+func SplitField(field string) []string {
+	field = strings.TrimPrefix(field, ".")
+	if field == "" {
+		return nil
+	}
+	return strings.Split(field, ".")
+}

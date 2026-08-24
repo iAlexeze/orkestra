@@ -40,7 +40,7 @@ spec:
             location: github.com/orkspace/from-controller-runtime-demo/hooks
             function: WebAppHooks
             alias: webhooks
-            resources:
+            managedResources:
               - kind: Deployment
               - kind: Service
 

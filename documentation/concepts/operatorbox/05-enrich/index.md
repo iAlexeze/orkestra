@@ -71,4 +71,4 @@ ork run
 
 - [Cost and When to Use](01-cost-and-when.md) — API call budget, enrichAll warning, the gating pattern
 - [Targets](02-targets.md) — all enrichment targets, what they embed, which notes they unlock
-- [Conditional Enrichment](03-conditional.md) — gate patterns, anyOf, combining conditions
+- [Conditional Enrichment](03-conditional.md) — gate patterns, or, combining conditions
