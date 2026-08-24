@@ -1,11 +1,11 @@
 # Orkestra Helm Chart
 
-![Chart Version](https://img.shields.io/badge/chart%20version-0.7.15-blue?style=flat-square) ![App Version](https://img.shields.io/badge/app%20version-0.7.15-blue?style=flat-square)
+![Chart Version](https://img.shields.io/badge/chart%20version-0.7.16-blue?style=flat-square) ![App Version](https://img.shields.io/badge/app%20version-0.7.16-blue?style=flat-square)
 
 
 Declarative Kubernetes Operator Runtime • Security-First • GitOps-Native
 
-Orkestra is a **declarative operator runtime**: a platform for building Kubernetes operators using pure YAML. This Helm chart deploys:
+Orkestra is the **Kubernetes operator runtime** — operators without the infrastructure. This Helm chart deploys:
 
 - **Orkestra Runtime** — the operator engine that reconciles your CRDs
 - **Orkestra Gateway** — admission webhooks, deletion protection, namespace protection, and TLS — runs standalone or alongside the runtime
