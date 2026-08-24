@@ -5,10 +5,71 @@ import (
 	"context"
 
 	"github.com/orkspace/orkestra/pkg/logger"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 )
+
+// OwnerNameIndex is the name of the auto-registered owner-reference index on every
+// informer created by this factory. Use it with indexer.ByIndex(OwnerNameIndex, ownerName).
+const OwnerNameIndex = "orkestra.io/owner-name"
+
+// OwnerNameIndexFunc indexes an unstructured object by the names of its owner references.
+func OwnerNameIndexFunc(obj interface{}) ([]string, error) {
+	u, ok := obj.(*unstructured.Unstructured)
+	if !ok {
+		return nil, nil
+	}
+	refs := u.GetOwnerReferences()
+	names := make([]string, 0, len(refs))
+	for _, ref := range refs {
+		names = append(names, ref.Name)
+	}
+	return names, nil
+}
+
+// StoreFor returns the informer store for the given GVK, or nil if no informer
+// is registered for that type. Used by kubeclient.ToClient to serve cached reads.
+func (f *Factory) StoreFor(gvk schema.GroupVersionKind) cache.Store {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	entry, ok := f.informers[gvk.String()]
+	if !ok || entry.Informer == nil {
+		return nil
+	}
+	return entry.Informer.GetStore()
+}
+
+// IndexerFor returns the cache.Indexer for the given GVK, or nil if no informer
+// is registered. The indexer supports ByIndex(OwnerNameIndex, ownerName) out of
+// the box; additional indexes can be registered via AddIndexers on the informer.
+func (f *Factory) IndexerFor(gvk schema.GroupVersionKind) cache.Indexer {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	entry, ok := f.informers[gvk.String()]
+	if !ok || entry.Informer == nil {
+		return nil
+	}
+	return entry.Informer.GetIndexer()
+}
+
+// RegisterInformer records an already-running informer under the given GVK so
+// that StoreFor and IndexerFor can serve it. Used by the kordinator to expose
+// watch-entry informers (which it owns and starts itself) to the kubeclient
+// cache layer without going through the full ForListerWatcher path.
+func (f *Factory) RegisterInformer(gvk schema.GroupVersionKind, inf cache.SharedIndexInformer) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	key := gvk.String()
+	if _, exists := f.informers[key]; exists {
+		return // already registered — first registration wins
+	}
+	f.informers[key] = &InformerEntry{
+		Informer: inf,
+		GVK:      &gvk,
+	}
+}
 
 // For creates or returns a SharedIndexInformer for the given object type.
 // Uses the client provider to build the ListerWatcher via newListWatch.
@@ -63,7 +124,9 @@ func (f *Factory) getOrCreate(
 		resync = f.defaultResync
 	}
 
-	inf := cache.NewSharedIndexInformer(lw, obj, resync, cache.Indexers{})
+	inf := cache.NewSharedIndexInformer(lw, obj, resync, cache.Indexers{
+		OwnerNameIndex: OwnerNameIndexFunc,
+	})
 
 	gvkStr := gvk.String()
 	// Ensure GVK is normalized for all CRDs

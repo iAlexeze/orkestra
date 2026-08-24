@@ -358,7 +358,7 @@ func (r *Resolver) WithHealth(health map[string]interface{}) *Resolver {
 // injected under the "_uniquenessChecker" key — the string must match
 // pkg/types' uniquenessCheckerKey constant (same convention as _cronWindows,
 // see when.go). Not template-visible; read internally by operator: unique in
-// both validation.rules and when:/anyOf: (see orktypes.UniquenessChecker).
+// both validation.rules and when:/or: (see orktypes.UniquenessChecker).
 // Only the reconciler calls this, so the operator is enforced at reconcile
 // time only.
 func (r *Resolver) WithUniquenessChecker(checker orktypes.UniquenessChecker) *Resolver {

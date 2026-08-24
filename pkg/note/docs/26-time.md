@@ -41,6 +41,31 @@ when:
 
 ---
 
+### `timeUntil`
+
+Return a Go duration string representing the time remaining until a timestamp. Returns `"0s"` when the timestamp is in the past or unparseable. The primary use is `requeue.after:` — schedule the next reconcile at exactly the right moment for this specific CR.
+
+Keywords: time, until, remaining, duration, expiry, cert, requeue, schedule
+
+```yaml
+operatorBox:
+  reconciler:
+    requeue:
+      after: "{{ timeUntil .status.certExpiry }}"
+      when:
+        - field: status.certExpiry
+          operator: exists
+
+status:
+  fields:
+    - path: timeUntilExpiry
+      value: "{{ timeUntil .status.certExpiry }}"
+      # → "719h43m12s"  (about 30 days)
+      # → "0s"          (already expired)
+```
+
+---
+
 ### `isExpired`
 
 Return `true` when a timestamp plus a duration is in the past. The canonical way to drive rotation logic in `when:` conditions. Duration is an extended duration string — Go's units (`"30m"`, `"24h"`) plus `d`/`w`/`mo`/`y` (`"30d"`, `"1y"`).
@@ -239,6 +264,7 @@ status:
 |------|---------|---------|-------|
 | `timeAgo` | `timestamp string` | `string` | `"Xs ago"` / `"Xm ago"` / `"Xh ago"` / `"Xd ago"` |
 | `timeSince` | `timestamp string` | `int64` | seconds since timestamp |
+| `timeUntil` | `timestamp string` | `string` | Go duration string until timestamp; `"0s"` if past |
 | `isExpired` | `timestamp string, duration string` | `bool` | `true` when `timestamp + duration` is in the past |
 | `timeFormat` | `timestamp, layout string` | `string` | Go time layout |
 | `durationSeconds` | `duration string` | `int64` | Go duration → seconds |

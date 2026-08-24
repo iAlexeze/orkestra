@@ -4,7 +4,7 @@ A constructor replaces the GenericReconciler entirely. Your Go code owns the ful
 
 Use a constructor when:
 
-- **Migrating an existing controller-runtime operator** — change the `Reconcile` signature from `(ctx, req) (Result, error)` to `(ctx, key string) error`, remove the manager setup, and register the constructor in the Katalog. The informer, workqueue, worker pool, leader election, metrics, and panic recovery are all provided by Orkestra. Your reconcile logic is unchanged.
+- **Migrating an existing controller-runtime operator** — change the `Reconcile` signature from `(ctx, req ctrl.Request) (ctrl.Result, error)` to `(ctx context.Context, req domain.Request) (domain.Result, error)`, remove the manager setup, and register the constructor in the Katalog. The informer, workqueue, worker pool, leader election, metrics, and panic recovery are all provided by Orkestra. Your reconcile logic is unchanged.
 - **Running a custom state machine** — when the reconcile loop itself is stateful and not easily expressed as declarative templates with `when:` conditions.
 
 For new operators, prefer [hooks in hybrid mode](./01-hooks.md#hybrid). Only reach for a constructor when you need to own the full loop.
@@ -59,7 +59,14 @@ The `@version` suffix in `location` is shorthand for the `version:` field — `l
 
 Use `fetch: true` when pulling the constructor from a remote module you have not yet added to the project. Use `fetch: false` (or omit it) when the module is already a local dependency.
 
-`resources` declares what Kubernetes resources the constructor manages — required for RBAC generation.
+`resources` declares what Kubernetes resources the constructor manages. It serves two purposes:
+
+- **RBAC generation** — Orkestra generates `get/list/watch/create/update/patch/delete` permissions for each declared type.
+- **Implicit watch informer** — Orkestra automatically starts a watch informer for each declared resource, the same as declaring an explicit `watch:` entry with all events and owner-reference key resolution. This means:
+  - `r.client.Get` and `r.client.List` for that type are served from cache (no live API call after the informer syncs)
+  - When an owned resource changes and has an ownerReference pointing to the primary CR, Orkestra re-enqueues that CR automatically
+
+No extra YAML is needed. If you need finer control — custom event filters, field indexes, or a different key resolution strategy — declare an explicit `watch:` entry for that type. It takes priority over the implicit informer from `resources:`.
 
 `args` passes configuration from the Katalog into the constructor. Orkestra attaches the args to the `kube` client before calling the constructor function — no extra wiring needed.
 
@@ -141,16 +148,16 @@ func (r *WebAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 **After (Orkestra constructor)**:
 ```go
-func (r *WebAppReconciler) Reconcile(ctx context.Context, key string) error {
-    // key == req.String() — same content, no other change to this method
+func (r *WebAppReconciler) Reconcile(ctx context.Context, req domain.Request) (domain.Result, error) {
+    key := req.Key // namespace/name — same content as the old req.String()
     existing := &appsv1.Deployment{}
     err := r.kube.Get(ctx, namespace, name, existing)
     if errors.IsNotFound(err) {
-        return r.kube.Create(ctx, desired)
+        return domain.Result{}, r.kube.Create(ctx, desired)
     }
     patch := client.MergeFrom(existing.DeepCopy())
     existing.Spec = desired.Spec
-    return r.kube.Patch(ctx, existing, patch)
+    return domain.Result{}, r.kube.Patch(ctx, existing, patch)
 }
 ```
 

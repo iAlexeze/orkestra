@@ -202,14 +202,14 @@ forEach:
 
 ---
 
-### `anyOf`
+### `or`
 
 Type: list
 
-AnyOf holds OR conditions — at least one must pass for this resource to be created. Works alongside the existing Conditions (when:) field which uses AND semantics.
+Or holds OR conditions — at least one must pass for this resource to be created. Works alongside the existing Conditions (when:) field which uses AND semantics.
 
 ```yaml
-anyOf:
+or:
   - field: spec.tier
     equals: pro
   - field: spec.tier
@@ -283,7 +283,7 @@ Sleep injects an artificial delay into the reconcile of this resource. Useful fo
 | `startingDeadlineSeconds` | string |
 | `resources` | object |
 | `forEach` | object |
-| `anyOf` | list |
+| `or` | list |
 | `workingDirectory` | string |
 | `securityContext` | object |
 | `podSecurity` | object |

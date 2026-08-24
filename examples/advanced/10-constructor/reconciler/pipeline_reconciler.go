@@ -62,38 +62,39 @@ func NewPipelineReconciler(kube kubeclient.Interface) domain.Reconciler {
 
 // Reconcile is called by Orkestra's worker pool for every queued Pipeline key.
 // It is wrapped in safeReconcile — panics are caught and returned as errors.
-func (r *PipelineReconciler) Reconcile(ctx context.Context, key string) error {
+func (r *PipelineReconciler) Reconcile(ctx context.Context, req domain.Request) (domain.Result, error) {
+	key := req.Key
 	namespace, _, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		return fmt.Errorf("invalid key %q: %w", key, err)
+		return domain.Result{}, fmt.Errorf("invalid key %q: %w", key, err)
 	}
 
 	// Read from the informer cache — no API call
 	raw, exists, err := r.kube.GetInformer().GetIndexer().GetByKey(key)
 	if err != nil {
-		return fmt.Errorf("cache lookup %q: %w", key, err)
+		return domain.Result{}, fmt.Errorf("cache lookup %q: %w", key, err)
 	}
 	if !exists {
 		// CR deleted and finalizers already removed — nothing to do
-		return nil
+		return domain.Result{}, nil
 	}
 
 	pipeline, ok := raw.(*apiv1.Pipeline)
 	if !ok {
-		return fmt.Errorf("unexpected type %T for key %q", raw, key)
+		return domain.Result{}, fmt.Errorf("unexpected type %T for key %q", raw, key)
 	}
 	pipeline = pipeline.DeepCopyObject().(*apiv1.Pipeline)
 
 	// ── Deletion handling ──────────────────────────────────────────────────
 	if pipeline.DeletionTimestamp != nil {
-		return r.handleDeletion(ctx, pipeline)
+		return domain.Result{}, r.handleDeletion(ctx, pipeline)
 	}
 
 	// ── Finalizer ─────────────────────────────────────────────────────────
 	if !containsFinalizer(pipeline, finalizerName) {
 		pipeline.Finalizers = append(pipeline.Finalizers, finalizerName)
 		if err := r.kube.PatchFinalizers(ctx, pipeline, pipeline.Finalizers); err != nil {
-			return fmt.Errorf("adding finalizer: %w", err)
+			return domain.Result{}, fmt.Errorf("adding finalizer: %w", err)
 		}
 	}
 
@@ -102,14 +103,14 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, key string) error {
 	// ── State machine ─────────────────────────────────────────────────────
 	switch pipeline.Status.Phase {
 	case "", apiv1.PipelinePhasePending:
-		return r.handlePending(ctx, pipeline)
+		return domain.Result{}, r.handlePending(ctx, pipeline)
 	case apiv1.PipelinePhaseRunning:
-		return r.handleRunning(ctx, pipeline)
+		return domain.Result{}, r.handleRunning(ctx, pipeline)
 	case apiv1.PipelinePhaseSucceeded, apiv1.PipelinePhaseFailed:
 		// Terminal state — nothing to reconcile
-		return nil
+		return domain.Result{}, nil
 	default:
-		return fmt.Errorf("unknown phase %q for pipeline %s/%s",
+		return domain.Result{}, fmt.Errorf("unknown phase %q for pipeline %s/%s",
 			pipeline.Status.Phase, pipeline.Namespace, pipeline.Name)
 	}
 }

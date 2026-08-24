@@ -18,7 +18,7 @@ The CR is pre-populated with Orkestra's managed labels and annotations before in
 
 ## Same-kind pre-existing instances
 
-A CR file can hold more than one document of the CRD-under-test's own kind, not just sibling kinds. `resolveCRInputs` (in `cmd/cli/simulate.go`) treats the FIRST document of the target kind as the CR that's actually reconciled — unchanged from a single-doc file. Any FURTHER documents of that same kind are seeded into the fake dynamic client only — never reconciled, never added to the informer — so reconcile-time checks that list other instances of the CRD (`operator: unique` in `validation.rules` or `when:`/`anyOf:`) see them as real pre-existing state instead of an empty list.
+A CR file can hold more than one document of the CRD-under-test's own kind, not just sibling kinds. `resolveCRInputs` (in `cmd/cli/simulate.go`) treats the FIRST document of the target kind as the CR that's actually reconciled — unchanged from a single-doc file. Any FURTHER documents of that same kind are seeded into the fake dynamic client only — never reconciled, never added to the informer — so reconcile-time checks that list other instances of the CRD (`operator: unique` in `validation.rules` or `when:`/`or:`) see them as real pre-existing state instead of an empty list.
 
 ```yaml
 # cr.yaml — first doc reconciled, second is pre-existing (same domain → denied)

@@ -34,7 +34,7 @@ spec:
             location: github.com/orkspace/orkestra-args-constructor/constructor
             function: NewBlockchainNodeReconciler
             alias: bnconstructor
-            resources:
+            managedResources:
               - kind: Deployment
             args:
               flagUrl: '{{ .spec.serviceUrl }}/flags/{{ .metadata.name }}/v2Enabled'

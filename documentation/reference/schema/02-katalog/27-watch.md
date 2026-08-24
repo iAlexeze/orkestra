@@ -44,8 +44,53 @@ spec:
 | `name` | string | no | Watch a single named instance. When set, the informer scopes to that object. |
 | `on` | `[]string` | no | Event types to react to. Values: `create`, `update`, `delete`. Defaults to all three when omitted. |
 | `keyFrom` | [WatchKeyFrom](#watchkeyfrom) | no | Override the default key-resolution strategy. See below. |
+| `include` | string | no | Path to a YAML file whose `watch:` list replaces this entry. See [`include`](#include). |
 
 Each `(apiVersion, kind, namespace)` combination must be unique across the `watch` list.
+
+---
+
+## `include`
+
+An entry with only `include:` set is replaced in-place by the `watch:` list from the referenced file. All other fields on that entry are ignored. The path is resolved relative to the Katalog file.
+
+```yaml
+# katalog.yaml
+operatorBox:
+  watch:
+    - include: ./shared-watches.yaml
+    - apiVersion: v1
+      kind: Secret
+      name: api-credentials
+      namespace: default
+```
+
+```yaml
+# shared-watches.yaml
+watch:
+  - apiVersion: apps/v1
+    kind: Deployment
+  - apiVersion: v1
+    kind: ConfigMap
+    index:
+      - name: metadata.labels.app
+        field: metadata.labels.app
+```
+
+Multiple targets that share the same watched types can point to the same file instead of repeating entries:
+
+```yaml
+serve:
+  target:
+    v2-enabled:
+      operatorBox:
+        watch:
+          - include: ./shared-watches.yaml
+    v2-disabled:
+      operatorBox:
+        watch:
+          - include: ./shared-watches.yaml
+```
 
 ---
 
@@ -96,6 +141,39 @@ A watch-triggered enqueue goes through the same `preReconcile.enqueueGate` as a 
 
 ---
 
+## `preReconcile` gates and `failPolicy`
+
+`preReconcile.enqueueGate` and `preReconcile.reconcileGate` both accept a `failPolicy:` field that controls what the gate does when it cannot evaluate — for example when an `external:` call fails or times out.
+
+| Value | Behaviour |
+|-------|-----------|
+| `open` (default) | Evaluation failure passes the gate — the CR is enqueued / reconciled as if the gate was not declared. |
+| `closed` | Evaluation failure holds the gate — the CR is dropped from the queue or held back from the reconciler. |
+
+```yaml
+operatorBox:
+  preReconcile:
+    reconcileGate:
+      failPolicy: closed      # unknown state → hold back, do not reconcile
+      external:
+        - name: depHealth
+          url: "{{ .spec.dependencyUrl }}/health"
+      when:
+        - field: external.depHealth.status
+          equals: "200"
+```
+
+`open` is the safe default for `enqueueGate` — if you cannot evaluate, let the object through. `closed` is the right choice for `reconcileGate` when reconciling against an unknown dependency state is worse than missing a reconcile cycle.
+
+### Validator warnings
+
+`ork validate` emits a warning when:
+
+1. `external:` calls are declared on a gate but `failPolicy` is omitted — the default is `open`, which may not be the intent for `reconcileGate`.
+2. `failPolicy: closed` is declared but all `external:` calls have `continueOnError: true` — `continueOnError` suppresses call errors before they reach the gate, so `closed` will never trigger. Use `when: external.*.error` conditions instead.
+
+---
+
 ## Validation
 
 `ork validate` enforces:
@@ -104,3 +182,4 @@ A watch-triggered enqueue goes through the same `preReconcile.enqueueGate` as a 
 - `on:` values are one of `create`, `update`, `delete`.
 - No two entries share the same `(apiVersion, kind, namespace)`.
 - `keyFrom`, when present, has exactly one of `label` or `name`.
+- `failPolicy`, when present, is one of `open`, `closed`.

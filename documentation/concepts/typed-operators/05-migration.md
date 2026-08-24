@@ -55,16 +55,17 @@ my-operator/
 func (r *WebAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error)
 
 // After
-func (r *WebAppReconciler) Reconcile(ctx context.Context, key string) error
+func (r *WebAppReconciler) Reconcile(ctx context.Context, req domain.Request) (domain.Result, error)
 ```
 
-`key` is `namespace/name` — the same as `req.String()`. Orkestra calls this from its worker pool.
+`req.String()` returns `namespace/name` — same as the controller-runtime `req.String()`. `req.Key` holds the same value as a plain field. `req.NamespacedName` is also available directly. Orkestra calls this from its worker pool.
 
-**Return values collapsed:**
+**Return values rewritten:**
 
 ```go
-return ctrl.Result{}, err   →   return err
-return ctrl.Result{}, nil   →   return nil
+return ctrl.Result{}, err   →   return domain.Result{}, err
+return ctrl.Result{}, nil   →   return domain.Result{}, nil
+return ctrl.Result{RequeueAfter: X}, nil   →   return domain.Result{RequeueAfter: X}, nil
 ```
 
 **Struct and constructor rewritten:**

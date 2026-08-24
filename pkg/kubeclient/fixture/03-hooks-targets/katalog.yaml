@@ -89,7 +89,7 @@ spec:
                   location: github.com/orkspace/orkestra-args-hooks-targets/hooks
                   function: BlockchainAppHooks
                   alias: bchooks
-                  resources:
+                  managedResources:
                     - kind: Deployment
                   args:
                     featureEnabled: "true"
@@ -102,7 +102,7 @@ spec:
                   location: github.com/orkspace/orkestra-args-hooks-targets/hooks
                   function: BlockchainAppHooks
                   alias: bchooks
-                  resources:
+                  managedResources:
                     - kind: Deployment
                   args:
                     featureEnabled: "false"

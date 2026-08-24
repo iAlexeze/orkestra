@@ -10,6 +10,7 @@ All timestamp notes accept RFC3339, RFC3339Nano, `2006-01-02T15:04:05Z`, and `YY
 |------|-------------|
 | `timeAgo` | Return a human-readable elapsed-time string from a timestamp. |
 | `timeSince` | Return the number of seconds elapsed since a timestamp as an integer. |
+| `timeUntil` | Return a Go duration string representing the time remaining until a timestamp. |
 | `isExpired` | Return `true` when a timestamp plus a duration is in the past. |
 | `timeFormat` | Reformat a timestamp string using Go's time format layout. |
 | `durationSeconds` | Parse an extended duration string (Go units plus `d`/`w`/`mo`/`y`) and return the total number of seconds as an integer. |
@@ -40,6 +41,22 @@ when:
   - field: "{{ timeSince (index .metadata.annotations \"myorg.io/last-rotated\") }}"
     operator: gte
     value: "2592000"
+
+# timeUntil
+operatorBox:
+  reconciler:
+    requeue:
+      after: "{{ timeUntil .status.certExpiry }}"
+      when:
+        - field: status.certExpiry
+          operator: exists
+
+status:
+  fields:
+    - path: timeUntilExpiry
+      value: "{{ timeUntil .status.certExpiry }}"
+      # → "719h43m12s"  (about 30 days)
+      # → "0s"          (already expired)
 
 # isExpired
 # Recreate the secret when the rotation annotation says it is due

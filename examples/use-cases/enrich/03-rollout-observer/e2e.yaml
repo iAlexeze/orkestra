@@ -4,7 +4,7 @@ kind: E2E
 metadata:
   name: enrich-rollout-observer-e2e
   description: >
-    anyOf: enrich condition — replicaset data is fetched only during rollouts or
+    or: enrich condition — replicaset data is fetched only during rollouts or
     when spec.debug is true. Verifies no replicaset data in status during steady
     state, and that setting debug: true surfaces the replicaset data immediately.
 
@@ -31,7 +31,7 @@ spec:
           namespace: default
           ready: true
 
-    - name: No replicaset data in steady state (anyOf gate held)
+    - name: No replicaset data in steady state (or gate held)
       after: cr-applied
       timeout: 60s
       commands:

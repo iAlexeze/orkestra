@@ -203,7 +203,7 @@ serve:
 	}
 }
 
-func TestServeFieldAnyOfAndDisabled(t *testing.T) {
+func TestServeFieldOrAndDisabled(t *testing.T) {
 	input := `
 serve:
   enabled: true
@@ -213,7 +213,7 @@ serve:
       order: 1
     prodDeploy:
       label: "Production Deploy"
-      anyOf:
+      or:
         - time:
             after: "08:00"
             before: "18:00"
@@ -228,14 +228,14 @@ serve:
 		t.Fatalf("unmarshal: %v", err)
 	}
 	pd := entry.Serve.Fields["prodDeploy"]
-	if len(pd.AnyOf) != 2 {
-		t.Fatalf("prodDeploy.AnyOf len = %d, want 2", len(pd.AnyOf))
+	if len(pd.Or) != 2 {
+		t.Fatalf("prodDeploy.Or len = %d, want 2", len(pd.Or))
 	}
-	if pd.AnyOf[0].Time == nil || pd.AnyOf[0].Time.After != "08:00" {
-		t.Errorf("prodDeploy.AnyOf[0].Time = %+v", pd.AnyOf[0].Time)
+	if pd.Or[0].Time == nil || pd.Or[0].Time.After != "08:00" {
+		t.Errorf("prodDeploy.Or[0].Time = %+v", pd.Or[0].Time)
 	}
-	if pd.AnyOf[1].DayOfWeek == nil || pd.AnyOf[1].DayOfWeek.Weekday == nil {
-		t.Errorf("prodDeploy.AnyOf[1].DayOfWeek = %+v", pd.AnyOf[1].DayOfWeek)
+	if pd.Or[1].DayOfWeek == nil || pd.Or[1].DayOfWeek.Weekday == nil {
+		t.Errorf("prodDeploy.Or[1].DayOfWeek = %+v", pd.Or[1].DayOfWeek)
 	}
 
 	lf := entry.Serve.Fields["legacyFeature"]

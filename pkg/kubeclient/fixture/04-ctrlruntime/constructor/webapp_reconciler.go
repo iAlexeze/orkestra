@@ -6,6 +6,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -51,6 +52,20 @@ func (r *WebAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (rec
 		return ctrl.Result{}, err
 	}
 
+	if err := r.reconcileConfigMap(ctx, webapp); err != nil {
+		log.Error(err, "reconcileConfigMap failed")
+		return ctrl.Result{}, err
+	}
+
+	// List ConfigMaps by field index — served from cache when the watch informer
+	// has synced; falls back to live API during the first reconcile cycle.
+	cmList := &corev1.ConfigMapList{}
+	if err := r.client.List(ctx, cmList, client.MatchingFields{"metadata.labels.app": webapp.Name}); err != nil {
+		log.Error(err, "list ConfigMaps by index failed")
+	} else {
+		log.Info("configmaps found via index", "count", len(cmList.Items))
+	}
+
 	base := webapp.DeepCopyObject().(client.Object)
 	webapp.Status.Phase = "Running"
 	webapp.Status.Endpoint = fmt.Sprintf("%s.%s.svc.cluster.local", webapp.Name, webapp.Namespace)
@@ -61,6 +76,39 @@ func (r *WebAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (rec
 
 	log.Info("done", "phase", webapp.Status.Phase, "endpoint", webapp.Status.Endpoint, "replicas", webapp.Status.Replicas)
 	return ctrl.Result{}, nil
+}
+
+func (r *WebAppReconciler) reconcileConfigMap(ctx context.Context, webapp *webappv1.WebApp) error {
+	log := ctrl.LoggerFrom(ctx).WithValues("webapp", webapp.Name)
+	desired := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      webapp.Name + "-config",
+			Namespace: webapp.Namespace,
+			Labels:    map[string]string{"app": webapp.Name},
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(webapp, webappv1.GroupVersionKind),
+			},
+		},
+		Data: map[string]string{
+			"image": webapp.Spec.Image,
+		},
+	}
+	existing := &corev1.ConfigMap{}
+	err := r.client.Get(ctx, client.ObjectKey{Name: desired.Name, Namespace: desired.Namespace}, existing)
+	if errors.IsNotFound(err) {
+		log.Info("creating configmap")
+		return r.client.Create(ctx, desired)
+	}
+	if err != nil {
+		return err
+	}
+	if equality.Semantic.DeepEqual(existing.Data, desired.Data) {
+		return nil
+	}
+	log.Info("patching configmap")
+	patch := client.MergeFrom(existing.DeepCopy())
+	existing.Data = desired.Data
+	return r.client.Patch(ctx, existing, patch)
 }
 
 func (r *WebAppReconciler) reconcileDeployment(ctx context.Context, webapp *webappv1.WebApp) error {
@@ -113,8 +161,26 @@ func (r *WebAppReconciler) reconcileDeployment(ctx context.Context, webapp *weba
 		return err
 	}
 
+	// Compare only the fields our reconciler controls. Comparing the whole Spec
+	// fails because the API server adds defaults (Strategy, ProgressDeadlineSeconds,
+	// etc.) that our desired struct omits, causing an endless patch loop.
+	currentReplicas := int32(1)
+	if existing.Spec.Replicas != nil {
+		currentReplicas = *existing.Spec.Replicas
+	}
+	currentImage := ""
+	if len(existing.Spec.Template.Spec.Containers) > 0 {
+		currentImage = existing.Spec.Template.Spec.Containers[0].Image
+	}
+	if currentReplicas == replicas && currentImage == webapp.Spec.Image {
+		return nil
+	}
 	log.Info("patching deployment", "image", webapp.Spec.Image, "replicas", replicas)
 	patch := client.MergeFrom(existing.DeepCopy())
-	existing.Spec = desired.Spec
+	existing.Spec.Replicas = desired.Spec.Replicas
+	if len(existing.Spec.Template.Spec.Containers) > 0 {
+		existing.Spec.Template.Spec.Containers[0].Image = webapp.Spec.Image
+		existing.Spec.Template.Spec.Containers[0].Ports = desired.Spec.Template.Spec.Containers[0].Ports
+	}
 	return r.client.Patch(ctx, existing, patch)
 }

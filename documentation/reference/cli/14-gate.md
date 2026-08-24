@@ -96,7 +96,7 @@ Both are clearly noted in the output so you know they were not checked.
 
 ## How it works
 
-`ork gate` runs the same admission evaluation as the real webhook — the same rules, the same `when:` conditions, the same `anyOf:` logic. A rule guarded by `when: workloadType=cert` does not fire for an `app` CR, just as it wouldn't in the cluster.
+`ork gate` runs the same admission evaluation as the real webhook — the same rules, the same `when:` conditions, the same `or:` logic. A rule guarded by `when: workloadType=cert` does not fire for an `app` CR, just as it wouldn't in the cluster.
 
 `unique:` and `external:` rules are the only exceptions (see Limitations above).
 

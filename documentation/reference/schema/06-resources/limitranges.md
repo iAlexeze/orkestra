@@ -141,11 +141,11 @@ Conditions (when:) — all must pass for this resource to be applied.
 
 ---
 
-### `anyOf`
+### `or`
 
 Type: list
 
-AnyOf — at least one must pass.
+Or — at least one must pass.
 
 ---
 
@@ -186,7 +186,7 @@ Sleep injects an artificial delay. Accepts extended duration units (s, m, h, d, 
 | `limits` | list |
 | `labels` | map |
 | `when` | list |
-| `anyOf` | list |
+| `or` | list |
 | `reconcile` | boolean |
 | `forEach` | object |
 | `sleep` | string |

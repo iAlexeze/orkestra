@@ -44,14 +44,14 @@ In steady state: no event fetch, no `firstWarning` field written. Under degradat
 
 ---
 
-## `anyOf:` — OR logic
+## `or:` — OR logic
 
-`anyOf:` fetches the target when any one condition is true:
+`or:` fetches the target when any one condition is true:
 
 ```yaml
 enrich:
   - events:
-      anyOf:
+      or:
         - field: "{{ hasCrashingPod .children.deployment }}"
           equals: "true"
         - field: "{{ replicasReady .children.deployment }}"

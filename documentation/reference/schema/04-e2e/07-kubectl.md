@@ -66,7 +66,7 @@ Every subcommand supports the same assertion fields:
 | `exists` | Output (trimmed) must be non-empty — field is present and has a value |
 | `notExists` | Output (trimmed) must be empty — field is absent or unset |
 
-Multiple assertions on the same entry all apply. Empty fields are ignored. These are evaluated with the same `Condition` operators as `when:`/`anyOf:` (see [when/anyOf conditions & Operators](../02-katalog/06-when-conditions.md#operators)), against a single synthetic `output` field holding the trimmed command output — the numeric comparisons fail if the output is not parseable as a number.
+Multiple assertions on the same entry all apply. Empty fields are ignored. These are evaluated with the same `Condition` operators as `when:`/`or:` (see [when/or conditions & Operators](../02-katalog/06-when-conditions.md#operators)), against a single synthetic `output` field holding the trimmed command output — the numeric comparisons fail if the output is not parseable as a number.
 
 `oneOf` is useful when the expected value is one of several valid strings — for example, a status field that reflects current runtime state:
 

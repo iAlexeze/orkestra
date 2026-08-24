@@ -30,12 +30,12 @@ const portForwardTimeout = 15 * time.Second
 // verifyExpectation polls until all conditions pass or timeout expires.
 // workDir is the working directory for command checks — relative paths in
 // commands and resource file refs resolve from there.
-// errSkipped is a sentinel returned when a when:/anyOf: gate is not met.
+// errSkipped is a sentinel returned when a when:/or: gate is not met.
 // The runner detects it to record a skipped case rather than a failure.
 var errSkipped = fmt.Errorf("skipped")
 
 func verifyExpectation(ctx context.Context, exp orktypes.E2EExpectation, workDir string, cs kubernetes.Interface, cfg *rest.Config, noteEval orktypes.TemplateEvaluator) error {
-	if !orktypes.EvaluateConditions(nil, exp.When, exp.AnyOf, noteEval) {
+	if !orktypes.EvaluateConditions(nil, exp.When, exp.Or, noteEval) {
 		return errSkipped
 	}
 	if exp.Wait != "" {
@@ -228,7 +228,7 @@ type assertions struct {
 //
 // Each check builds a single-field orktypes.Condition around the trimmed
 // output and evaluates it with the same EvaluateOneCond the reconciler and
-// webhook use for when:/anyOf: — comparison logic (numeric parsing, regex,
+// webhook use for when:/or: — comparison logic (numeric parsing, regex,
 // ranges) lives in exactly one place instead of being reimplemented here,
 // and gains every operator pkg/types supports for free.
 func applyAssertions(output string, a assertions) error {

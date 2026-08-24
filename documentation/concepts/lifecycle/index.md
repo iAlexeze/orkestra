@@ -1,10 +1,8 @@
 # Lifecycle in Orkestra
 
-OLM exists because operators were binaries. When the unit of distribution is a binary, lifecycle management becomes a separate problem — you need a separate system to package, version, upgrade, and deprecate it. OLM is that system for the Kubernetes operator world.
+An Orkestra operator is a Katalog — a YAML artifact, not a binary. That changes where lifecycle management lives. Maturity, compatibility, deprecation, and deletion protection are fields in the Katalog itself. They travel with the artifact from first push to final end-of-life, and are enforced by the same tooling that validates and runs it.
 
-Orkestra removes the problem at the root. The operator is not a binary — it is a pattern. Patterns are data. Data's lifecycle is not an external concern to manage. It is a built-in property of the artifact.
-
-!!! tip "Lifecycle follows production"
+!!! tip "Lifecycle follows the artifact"
     The same model that bakes tests into the artifact at publish time is the model that governs maturity, upgrade, compatibility, deprecation, and deletion. There is no separate lifecycle system to install. You write patterns, and the lifecycle comes with them.
 
 ---
@@ -239,8 +237,3 @@ Per-CRD overrides let you opt individual CRDs out of CR-level or CRD-level prote
 
 ---
 
-## Why this matters
-
-OLM solved the right problem for its era. When operators were binaries, lifecycle management had to be external — and OLM built exactly the system that required: its own controllers, its own CRDs, its own installation lifecycle. The overhead was the necessary cost of the binary constraint.
-
-Orkestra makes the question moot. The operator is a Katalog. Maturity, compatibility, deprecation, and deletion protection are fields in that Katalog. There are no new CRDs, no new controllers, no lifecycle stack to operate. The lifecycle is not a process running somewhere else. It is a record traveling with the artifact — from first push to final EOL.

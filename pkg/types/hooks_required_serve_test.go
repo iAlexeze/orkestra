@@ -66,7 +66,7 @@ func TestRequiredServeFieldRules_SpecField(t *testing.T) {
 	}
 }
 
-func TestRequiredServeFieldRules_InheritsWhenAndAnyOf(t *testing.T) {
+func TestRequiredServeFieldRules_InheritsWhenAndOr(t *testing.T) {
 	appOnly := []Condition{{Field: "spec.workloadType", Equals: "app"}}
 	certOrApp := []Condition{
 		{Field: "spec.workloadType", Equals: "cert"},
@@ -79,8 +79,8 @@ func TestRequiredServeFieldRules_InheritsWhenAndAnyOf(t *testing.T) {
 			// when workloadType: app — the same When already used to hide it
 			// from the form for other workload types.
 			"repoURL": {Label: "Repository URL", Required: true, When: appOnly},
-			// AnyOf carries through the same way.
-			"domain": {Label: "Domain", Required: true, AnyOf: certOrApp},
+			// Or carries through the same way.
+			"domain": {Label: "Domain", Required: true, Or: certOrApp},
 			// A universal field with no condition at all.
 			"team": {Label: "Team", Required: true},
 		},
@@ -95,18 +95,18 @@ func TestRequiredServeFieldRules_InheritsWhenAndAnyOf(t *testing.T) {
 	if len(repoRule.When) != 1 || repoRule.When[0].Field != "spec.workloadType" || repoRule.When[0].Equals != "app" {
 		t.Errorf("repoURL rule.When = %+v, want the field's own When condition carried through", repoRule.When)
 	}
-	if len(repoRule.AnyOf) != 0 {
-		t.Errorf("repoURL rule.AnyOf = %+v, want empty — the field declared When, not AnyOf", repoRule.AnyOf)
+	if len(repoRule.Or) != 0 {
+		t.Errorf("repoURL rule.Or = %+v, want empty — the field declared When, not Or", repoRule.Or)
 	}
 
 	domainRule := findRule(t, rules, "spec.domain")
-	if len(domainRule.AnyOf) != 2 {
-		t.Errorf("domain rule.AnyOf = %+v, want the field's own AnyOf conditions carried through", domainRule.AnyOf)
+	if len(domainRule.Or) != 2 {
+		t.Errorf("domain rule.Or = %+v, want the field's own Or conditions carried through", domainRule.Or)
 	}
 
 	teamRule := findRule(t, rules, "spec.team")
-	if len(teamRule.When) != 0 || len(teamRule.AnyOf) != 0 {
-		t.Errorf("team rule When/AnyOf = %+v/%+v, want both empty — the field declared neither", teamRule.When, teamRule.AnyOf)
+	if len(teamRule.When) != 0 || len(teamRule.Or) != 0 {
+		t.Errorf("team rule When/Or = %+v/%+v, want both empty — the field declared neither", teamRule.When, teamRule.Or)
 	}
 }
 

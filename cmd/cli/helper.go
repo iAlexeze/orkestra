@@ -442,9 +442,9 @@ func printCRDDetail(crd orktypes.CRDEntry, g *katalog.DependencyGraph) {
 					printConditionLine("      ", cond)
 				}
 			}
-			if len(a.Conditions.AnyOf) > 0 {
-				fmt.Printf("    AnyOf (OR):\n")
-				for _, cond := range a.Conditions.AnyOf {
+			if len(a.Conditions.Or) > 0 {
+				fmt.Printf("    Or (OR):\n")
+				for _, cond := range a.Conditions.Or {
 					printConditionLine("      ", cond)
 				}
 			}

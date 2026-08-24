@@ -79,7 +79,7 @@ func runMutation(
 		if !rule.Fires.FiresAtReconcile() {
 			continue
 		}
-		if !orktypes.EvaluateConditions(data, rule.When, rule.AnyOf, resolver.TemplateEvaluator()) {
+		if !orktypes.EvaluateConditions(data, rule.When, rule.Or, resolver.TemplateEvaluator()) {
 			continue
 		}
 

@@ -53,10 +53,10 @@ func TestBuildServeField_Required(t *testing.T) {
 	}
 }
 
-func TestBuildServeField_WhenAnyOfEncodedAsJSON(t *testing.T) {
+func TestBuildServeField_WhenOrEncodedAsJSON(t *testing.T) {
 	hint := serveFieldHint{
-		When:  []json.RawMessage{json.RawMessage(`{"field":"spec.workloadType","equals":"app"}`)},
-		AnyOf: []json.RawMessage{json.RawMessage(`{"field":"spec.workloadType","equals":"cert"}`)},
+		When: []json.RawMessage{json.RawMessage(`{"field":"spec.workloadType","equals":"app"}`)},
+		Or:   []json.RawMessage{json.RawMessage(`{"field":"spec.workloadType","equals":"cert"}`)},
 	}
 	f := buildServeField("repoURL", hint)
 
@@ -68,12 +68,12 @@ func TestBuildServeField_WhenAnyOfEncodedAsJSON(t *testing.T) {
 		t.Errorf("WhenJSON decoded to %v, want the single when: condition", when)
 	}
 
-	var anyOf []map[string]string
-	if err := json.Unmarshal([]byte(f.AnyOfJSON), &anyOf); err != nil {
-		t.Fatalf("AnyOfJSON did not round-trip as JSON: %v", err)
+	var or []map[string]string
+	if err := json.Unmarshal([]byte(f.OrJSON), &or); err != nil {
+		t.Fatalf("OrJSON did not round-trip as JSON: %v", err)
 	}
-	if len(anyOf) != 1 || anyOf[0]["equals"] != "cert" {
-		t.Errorf("AnyOfJSON decoded to %v, want the single anyOf: condition", anyOf)
+	if len(or) != 1 || or[0]["equals"] != "cert" {
+		t.Errorf("OrJSON decoded to %v, want the single or: condition", or)
 	}
 }
 

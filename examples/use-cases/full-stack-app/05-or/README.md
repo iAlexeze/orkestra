@@ -1,8 +1,8 @@
-# 05 — OR Conditions (anyOf:)
+# 05 — OR Conditions (or:)
 
-`anyOf:` fires a resource when any one of several conditions is true. Combined with `when:` (AND), the full logic is: `(when conditions) AND (any one of anyOf conditions)`. This replaces multi-branch `if a || b` hooks in Go with a declarative block on the resource itself.
+`or:` fires a resource when any one of several conditions is true. Combined with `when:` (AND), the full logic is: `(when conditions) AND (any one of or conditions)`. This replaces multi-branch `if a || b` hooks in Go with a declarative block on the resource itself.
 
-**What you learn:** `anyOf:` semantics, combining `when:` AND `anyOf:` OR on the same resource, and how phase transitions cascade through a Job sequence without custom state machine code.
+**What you learn:** `or:` semantics, combining `when:` AND `or:` OR on the same resource, and how phase transitions cascade through a Job sequence without custom state machine code.
 
 ---
 
@@ -76,7 +76,7 @@ kubectl patch flexapp my-flex-app --type=merge -p '{"spec":{"notify":"true"}}'
 
 The notify Job's combined condition now passes:
 - `when: spec.notify == "true"` ✓
-- `anyOf: phase == Running` ✓
+- `or: phase == Running` ✓
 
 ```bash
 kubectl get jobs
@@ -96,7 +96,7 @@ kubectl get flexapp my-flex-app
 
 ## Step 6 — Cascade to cleanup
 
-Phase is now `Succeeded` — the cleanup Job's `anyOf:` fires:
+Phase is now `Succeeded` — the cleanup Job's `or:` fires:
 
 ```bash
 kubectl get jobs
@@ -111,7 +111,7 @@ Both Jobs appeared in sequence without writing any state machine logic. The phas
 
 ## E2E
 
-Run the full lifecycle in one command — spins up a kind cluster, applies the CRD, starts the operator, applies the CR, asserts the Deployment is created and the notify Job fires when the `anyOf:` condition is met, then tears down:
+Run the full lifecycle in one command — spins up a kind cluster, applies the CRD, starts the operator, applies the CR, asserts the Deployment is created and the notify Job fires when the `or:` condition is met, then tears down:
 
 ```bash
 ork e2e
@@ -130,7 +130,7 @@ expect:
         namespace: default
         ready: true
 
-  - name: Notify Job created when anyOf condition is met
+  - name: Notify Job created when or condition is met
     after: cr-applied
     timeout: 60s
     commands:

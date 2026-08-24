@@ -8,7 +8,7 @@ metadata:
   name: simulate-fixture-unique-operator
   author: orkspace
   version: 0.1.0
-  description: "Fixture for operator: unique in validation.rules and when/anyOf."
+  description: "Fixture for operator: unique in validation.rules and when/or."
 
 spec:
   crds:

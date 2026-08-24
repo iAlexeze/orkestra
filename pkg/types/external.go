@@ -178,7 +178,7 @@ type ExternalCallSpec struct {
 
 	// When conditions gate this call — skipped if conditions fail.
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
-	AnyOf      []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	Or         []Condition `yaml:"or,omitempty" json:"or,omitempty"`
 
 	// Sleep injects an artificial delay. Useful for testing.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).

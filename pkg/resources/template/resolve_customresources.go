@@ -29,7 +29,7 @@ func (r *Resolver) ResolveCustomResourceTemplate(src orktypes.CustomResourceTemp
 		Sleep:      src.Sleep,
 		ForEach:    src.ForEach,
 		Conditions: src.Conditions,
-		AnyOf:      src.AnyOf,
+		Or:         src.Or,
 	}
 
 	var err error

@@ -14,7 +14,7 @@
 //	    interval: 15s
 //	    cooldown: 2m
 //	    conditions:
-//	      anyOf:
+//	      or:
 //	        - time:
 //	            after: "08:00"
 //	            before: "17:00"
@@ -51,7 +51,7 @@ type AutoscaleSpec struct {
 	Cooldown Duration `yaml:"cooldown,omitempty" json:"cooldown,omitempty"`
 
 	// Conditions declares the trigger conditions. Both blocks must pass
-	// when both are declared (AND between blocks, OR within anyOf).
+	// when both are declared (AND between blocks, OR within or).
 	Conditions AutoscaleConditions `yaml:"conditions" json:"conditions"`
 
 	// Do declares the override values applied when conditions are met.
@@ -66,9 +66,9 @@ type AutoscaleSpec struct {
 
 // AutoscaleConditions holds the condition blocks for autoscale evaluation.
 type AutoscaleConditions struct {
-	// AnyOf — OR semantics. At least one condition in this list must be true.
+	// Or — OR semantics. At least one condition in this list must be true.
 	// Supports all Condition kinds: time, dayOfWeek, cron, and metric fields.
-	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	Or []Condition `yaml:"or,omitempty" json:"or,omitempty"`
 
 	// When — AND semantics. All conditions in this list must be true.
 	// Supports: metric conditions (metrics.*, cross.<crd>.metrics.*).
@@ -181,9 +181,9 @@ func (a *AutoscaleSpec) HasWhenConditions() bool {
 	return len(a.Conditions.When) > 0
 }
 
-// HasAnyOfConditions returns whether anyOf conditions are declared.
-func (a *AutoscaleSpec) HasAnyOfConditions() bool {
-	return len(a.Conditions.AnyOf) > 0
+// HasOrConditions returns whether or: conditions are declared.
+func (a *AutoscaleSpec) HasOrConditions() bool {
+	return len(a.Conditions.Or) > 0
 }
 
 // HasDoWorkers returns whether do.workers is set.

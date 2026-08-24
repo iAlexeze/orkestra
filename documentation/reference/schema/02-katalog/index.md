@@ -81,7 +81,7 @@ This scaffolds the simplest Katalog — a single CRD that creates a Deployment a
 | [03-apitypes.md](03-apitypes.md) | `apiTypes` — group, kind, version, plural, typed mode |
 | [04-operatorbox.md](04-operatorbox.md) | `operatorBox` — resource templates, reconciliation strategy, pre-reconcile gates |
 | [05-status.md](05-status.md) | `status` — fields written to CR status after reconcile |
-| [06-when-conditions.md](06-when-conditions.md) | `when` / `anyOf` — conditional resource creation |
+| [06-when-conditions.md](06-when-conditions.md) | `when` / `or` — conditional resource creation |
 | [07-validation.md](07-validation.md) | `validation` — admission rules |
 | [08-mutation.md](08-mutation.md) | `mutation` — admission defaults and overrides |
 | [09-conversion.md](09-conversion.md) | `conversion` — multi-version CRD support |

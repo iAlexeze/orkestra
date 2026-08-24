@@ -3,9 +3,9 @@ kind: Katalog
 metadata:
   name: flex-app
   description: >
-    Pattern 05 — anyOf:.
+    Pattern 05 — or:.
     Creates Jobs when any one of several phase conditions is true (OR logic).
-    when: and anyOf: can be combined: when: is AND, anyOf: is OR, both must pass.
+    when: and or: can be combined: when: is AND, or: is OR, both must pass.
     Replaces multi-branch if-conditions in OnReconcile hooks.
 
 spec:
@@ -28,7 +28,7 @@ spec:
             - name: "{{ .metadata.name }}-cleanup"
               image: alpine:3.19
               command: ["/bin/sh", "-c", "echo 'cleanup complete'"]
-              anyOf:
+              or:
                 - field: status.phase
                   equals: "Failed"
                 - field: status.phase
@@ -40,7 +40,7 @@ spec:
               when:
                 - field: spec.notify
                   equals: "true"
-              anyOf:
+              or:
                 - field: status.phase
                   equals: "Running"
                 - field: status.phase

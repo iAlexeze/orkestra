@@ -209,7 +209,7 @@ type resolvedDeclaration struct {
 	Kind       string
 	Fields     map[string]string
 	Conditions []orktypes.Condition // when: AND conditions
-	AnyOf      []orktypes.Condition // anyOf: OR conditions
+	Or         []orktypes.Condition // or: OR conditions
 }
 
 // resolveProviderBlock resolves template expressions in all field values.
@@ -224,7 +224,7 @@ func resolveProviderBlock(
 			Kind:       raw.Kind,
 			Fields:     make(map[string]string, len(raw.Fields)),
 			Conditions: raw.Conditions,
-			AnyOf:      raw.AnyOf,
+			Or:         raw.Or,
 		}
 		for key, tmplVal := range raw.Fields {
 			val, err := resolver.Resolve(tmplVal)
@@ -240,7 +240,7 @@ func resolveProviderBlock(
 }
 
 // filterProviderDeclarations removes declarations whose conditions fail.
-// Uses EvaluateConditions — handles when: (AND), anyOf: (OR), and all operators
+// Uses EvaluateConditions — handles when: (AND), or: (OR), and all operators
 // including typeOf. Takes resolver data (not domain.Object) so that
 // template-resolved .spec.*, .status.*, .cross.* fields are visible.
 func filterProviderDeclarations(
@@ -250,7 +250,7 @@ func filterProviderDeclarations(
 ) []orktypes.ProviderDeclaration {
 	result := make([]orktypes.ProviderDeclaration, 0, len(declarations))
 	for _, decl := range declarations {
-		if !orktypes.EvaluateConditions(data, decl.Conditions, decl.AnyOf, eval) {
+		if !orktypes.EvaluateConditions(data, decl.Conditions, decl.Or, eval) {
 			continue
 		}
 		result = append(result, orktypes.ProviderDeclaration{

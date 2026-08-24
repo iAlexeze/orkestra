@@ -65,12 +65,12 @@ enrich:
           equals: "true"
 ```
 
-`when:` accepts the same condition operators as any other `when:` block — including template expressions that call note functions. `anyOf:` is also supported for OR semantics.
+`when:` accepts the same condition operators as any other `when:` block — including template expressions that call note functions. `or:` is also supported for OR semantics.
 
 ```yaml
 enrich:
   - events:
-      anyOf:
+      or:
         - field: "{{ hasCrashingPod .children.deployment }}"
           equals: "true"
         - field: "{{ replicasReady .children.deployment }}"

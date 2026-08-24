@@ -6,7 +6,7 @@ metadata:
     Pattern 06 — all patterns combined.
     One CR creates 3 regional Deployments (forEach), a generated Secret (once:),
     a ConfigMap from a database CR (cross:), all gated on a health check (external:),
-    with a cleanup Job on terminal phases (anyOf:).
+    with a cleanup Job on terminal phases (or:).
 
 spec:
   crds:
@@ -137,7 +137,7 @@ spec:
             - name: "{{ .metadata.name }}-cleanup"
               image: alpine:3.19
               command: ["/bin/sh", "-c", "echo cleanup"]
-              anyOf:
+              or:
                 - field: status.phase
                   equals: "Failed"
                 - field: status.phase

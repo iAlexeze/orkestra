@@ -22,7 +22,7 @@ The TODOs cover what the tool cannot infer from syntax alone:
 - Add Orkestra imports (`domain`, `kubeclient`, `event`, `cache`)
 - Replace sub-method client calls (`r.Get`, `r.Create`, `r.Patch`) with `r.kube.*`
 - Replace `r.Status().Update()` with `r.kube.PatchStatus()`
-- Fill in `group`, `kind`, `plural`, `location` in `katalog.yaml`
+- Set `group` and `plural` in `katalog.yaml` — `kind`, `version`, `location`, `alias`, `object`, `objectList`, owned `resources:`, and `watch:` entries are auto-detected from `SetupWithManager`
 - Fill in simulate assertions and e2e setup
 
 Once resolved, build and simulate:

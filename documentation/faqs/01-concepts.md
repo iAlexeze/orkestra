@@ -63,7 +63,7 @@ Orkestra provides these capabilities declaratively, with no Go:
 - Admission-time validation and mutation
 
 Go hooks are available when you need them — complex external API calls not covered by the `external:` block, complex
-conditional logic not covered by the `when:` and `anyOf:` blocks. But hooks are additive. The
+conditional logic not covered by the `when:` and `or:` blocks. But hooks are additive. The
 declarative layer handles everything else.
 
 !!! note "When Go becomes necessary"

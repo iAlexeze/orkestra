@@ -7,7 +7,7 @@ import (
 )
 
 // validateAdmissionOperators rejects any validation.rules or mutation.rules
-// entry — including their own when:/anyOf: gating conditions — that declares
+// entry — including their own when:/or: gating conditions — that declares
 // an operator: string outside the known ConditionOperator set. An unknown
 // operator is otherwise silently skipped by the evaluator and the rule
 // always passes; this is exactly how operator: in went unimplemented in
@@ -23,7 +23,7 @@ func (k *Katalog) validateAdmissionOperators() error {
 				if err := checkConditionOperators(rule.When, crd.Name, rule.Field); err != nil {
 					return err
 				}
-				if err := checkConditionOperators(rule.AnyOf, crd.Name, rule.Field); err != nil {
+				if err := checkConditionOperators(rule.Or, crd.Name, rule.Field); err != nil {
 					return err
 				}
 			}
@@ -34,7 +34,7 @@ func (k *Katalog) validateAdmissionOperators() error {
 				if err := checkConditionOperators(rule.When, crd.Name, rule.Field); err != nil {
 					return err
 				}
-				if err := checkConditionOperators(rule.AnyOf, crd.Name, rule.Field); err != nil {
+				if err := checkConditionOperators(rule.Or, crd.Name, rule.Field); err != nil {
 					return err
 				}
 			}

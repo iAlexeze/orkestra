@@ -1,4 +1,4 @@
-# Exercises: deny anyOf — monitoring workload missing spec.repoURL.
+# Exercises: deny or — monitoring workload missing spec.repoURL.
 # Expected: rejected, "spec.repoURL is required for app and monitoring workloads".
 # The when: deny (domain for cert) does NOT fire — workloadType is monitoring.
 apiVersion: gateway.fixture.orkestra.io/v1alpha1
@@ -11,4 +11,4 @@ spec:
   team: team-platform
   environment: staging
   scrapeInterval: 15s
-  # repoURL intentionally absent — triggers deny anyOf rule
+  # repoURL intentionally absent — triggers deny or rule

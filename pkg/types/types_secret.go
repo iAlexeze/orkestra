@@ -85,8 +85,8 @@ type SecretTemplateSource struct {
 	// ForEach declares dynamic expansion (same as other resource types)
 	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
 
-	// AnyOf holds OR conditions (same as other resource types)
-	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	// Or holds OR conditions (same as other resource types)
+	Or []Condition `yaml:"or,omitempty" json:"or,omitempty"`
 
 	// Once — when true, evaluates templates and creates the Secret only if it
 	// does not already exist; every subsequent reconcile is a no-op. Use this

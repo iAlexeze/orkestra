@@ -354,8 +354,8 @@ func mergeReconcilerConfig(base, target *ReconcilerConfig) *ReconcilerConfig {
 			if target.Hooks.Alias != "" {
 				h.Alias = target.Hooks.Alias
 			}
-			if len(target.Hooks.Resources) > 0 {
-				h.Resources = target.Hooks.Resources
+			if len(target.Hooks.ManagedResources) > 0 {
+				h.ManagedResources = target.Hooks.ManagedResources
 			}
 			// Args: merge key-by-key; target overrides CRD-level per key.
 			if len(target.Hooks.Args) > 0 {

@@ -11,8 +11,8 @@ Each file is a minimal `PlatformResource` CR targeting one specific rule or comb
 | `app-production-approved.yaml` | Same `when:` guard — condition met but field present | Accepted, warn rule skipped |
 | `cert-valid.yaml` | `deny when: workloadType=cert` + domain present | Accepted, deny rule skipped |
 | `cert-missing-domain.yaml` | `deny when: workloadType=cert` + domain absent | Rejected — `spec.domain is required for cert workloads` |
-| `monitoring-valid.yaml` | `deny anyOf: workloadType=app\|monitoring` + repoURL present | Accepted, deny rule skipped |
-| `monitoring-missing-repo.yaml` | `deny anyOf: workloadType=app\|monitoring` + repoURL absent | Rejected — `spec.repoURL is required for app and monitoring workloads` |
+| `monitoring-valid.yaml` | `deny or: workloadType=app\|monitoring` + repoURL present | Accepted, deny rule skipped |
+| `monitoring-missing-repo.yaml` | `deny or: workloadType=app\|monitoring` + repoURL absent | Rejected — `spec.repoURL is required for app and monitoring workloads` |
 | `app-direct-apply.yaml` | `warn when: isDirectApply .` — no provenance annotation | Accepted with `ValidationWarning` — direct apply detected |
 | `app-via-gateway.yaml` | `warn when: isDirectApply .` — `serve-target` annotation present | Accepted, warn rule skipped |
 
@@ -23,7 +23,7 @@ deny  — spec.team exists                        (unconditional)
 deny  — spec.workloadType in app,cert,monitoring (unconditional)
 deny  — spec.environment in staging,production   (unconditional)
 deny  — spec.domain exists      WHEN workloadType=cert
-deny  — spec.repoURL exists     ANYOF workloadType=app | workloadType=monitoring
+deny  — spec.repoURL exists     OR workloadType=app | workloadType=monitoring
 deny  — spec.domain unique                       (unconditional)
 warn  — spec.productionApproval exists  WHEN environment=production
 warn  — (isDirectApply detection)       WHEN isDirectApply . == true
@@ -32,10 +32,10 @@ warn  — (isDirectApply detection)       WHEN isDirectApply . == true
 ## Key assertions
 
 - `when:` rules are **skipped entirely** when the condition does not match — no violation, no log entry.
-- `anyOf:` rules are **skipped entirely** when none of the listed values match.
+- `or:` rules are **skipped entirely** when none of the listed values match.
 - A staging CR never triggers the `productionApproval` warn — even if the field is absent.
 - A cert CR never triggers the `repoURL` deny — even though repoURL is absent.
-- A monitoring CR with repoURL present passes the `anyOf` deny rule cleanly.
+- A monitoring CR with repoURL present passes the `or` deny rule cleanly.
 - A CR without any provenance annotation triggers the `isDirectApply` warn — `serve-target` annotation present skips it.
 
 ## Running manually
@@ -71,7 +71,7 @@ kubectl apply -f pkg/gateway/fixture/crs/cert-valid.yaml
 # Rejected — spec.domain is required for cert workloads
 kubectl apply -f pkg/gateway/fixture/crs/cert-missing-domain.yaml
 
-# Accepted, deny anyOf rule skipped (repoURL present)
+# Accepted, deny or rule skipped (repoURL present)
 kubectl apply -f pkg/gateway/fixture/crs/monitoring-valid.yaml
 
 # Rejected — spec.repoURL is required for app and monitoring workloads

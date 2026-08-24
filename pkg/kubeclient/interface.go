@@ -6,6 +6,7 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -41,6 +42,22 @@ type Interface interface {
 	// WithInformer returns a copy of this Interface with the primary CRD informer
 	// attached. Called by the runtime before invoking a constructor function.
 	WithInformer(inf cache.SharedIndexInformer) Interface
+
+	// WithStoreFor attaches a closure that returns the informer store for a GVK.
+	// Called by the runtime so ToClient can serve cached reads for registered types.
+	// fn is evaluated lazily at client.Get/List time — it always reflects the live
+	// factory state, including informers registered after this call.
+	WithStoreFor(fn func(schema.GroupVersionKind) cache.Store) Interface
+
+	// GetStoreFor returns the store-lookup closure, or nil if none was attached.
+	GetStoreFor() func(schema.GroupVersionKind) cache.Store
+
+	// WithIndexerFor attaches a closure that returns the cache.Indexer for a GVK.
+	// Called by the runtime so ToClient can use ByIndex for field-selector queries.
+	WithIndexerFor(fn func(schema.GroupVersionKind) cache.Indexer) Interface
+
+	// GetIndexerFor returns the indexer-lookup closure, or nil if none was attached.
+	GetIndexerFor() func(schema.GroupVersionKind) cache.Indexer
 
 	// WithEventRecorder returns a copy of this Interface with the event recorder
 	// attached. Called by the runtime before invoking a constructor function.

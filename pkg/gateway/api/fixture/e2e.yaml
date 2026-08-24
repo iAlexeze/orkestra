@@ -6,7 +6,7 @@ metadata:
   description: >
     End-to-end test for the gateway serve fixture.
     Exercises: Gateway API (app workload), conditional admission rules
-    (deny when, deny anyOf, warn when), dryRun violation response,
+    (deny when, deny or, warn when), dryRun violation response,
     schema catalog endpoint.
 
 spec:

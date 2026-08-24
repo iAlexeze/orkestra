@@ -21,7 +21,7 @@ Full step-by-step documentation is in [docs/](docs/README.md).
 | I want to… | Go to |
 |-----------|-------|
 | Understand the evaluation loop and override lifecycle | [01 — Overview](docs/01-overview.md) |
-| Write `anyOf:` / `when:` conditions | [02 — Conditions](docs/02-conditions.md) |
+| Write `or:` / `when:` conditions | [02 — Conditions](docs/02-conditions.md) |
 | Reference another CRD's metrics with `cross.<crd>.metrics.*` | [03 — Cross-Metrics](docs/03-cross-metrics.md) |
 | Understand the WorkerInfo API response | [04 — Worker Info](docs/04-worker-info.md) |
 

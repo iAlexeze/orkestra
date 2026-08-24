@@ -36,7 +36,7 @@ ork init --list
 Available packs:
 
 - `beginner` — Simple CRDs, Deployments, Services  
-- `intermediate` — Multi-resource patterns, when/anyOf, Komposer basics  
+- `intermediate` — Multi-resource patterns, when/or, Komposer basics  
 - `advanced` — Hooks, constructors, validation/mutation, registries  
 - `use-cases` — Full-stack, cross-CRD flows, external gates, once-secrets  
 

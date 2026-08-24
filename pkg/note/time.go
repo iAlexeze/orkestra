@@ -13,6 +13,7 @@ import (
 // Time notes
 // - timeAgo
 // - timeSince
+// - timeUntil
 // - isExpired
 // - timeFormat
 // - weekday / weekend
@@ -23,6 +24,7 @@ func timeNotes() template.FuncMap {
 	return template.FuncMap{
 		"timeAgo":         noteTimeAgo,
 		"timeSince":       noteTimeSince,
+		"timeUntil":       noteTimeUntil,
 		"isExpired":       noteIsExpired,
 		"timeFormat":      noteTimeFormat,
 		"durationSeconds": noteDurationSeconds,
@@ -88,6 +90,25 @@ func noteTimeSince(s string) int64 {
 		return 0
 	}
 	return int64(math.Round(time.Since(t).Seconds()))
+}
+
+// noteTimeUntil returns a Go duration string representing the time remaining
+// until the given timestamp. Returns "0s" when the timestamp is in the past
+// or unparseable. Intended for use in requeue.after: to schedule the next
+// reconcile at exactly the right moment.
+//
+//	{{ timeUntil .status.certExpiry }}  → "719h43m12s"
+//	{{ timeUntil .status.certExpiry }}  → "0s"  (already expired)
+func noteTimeUntil(s string) string {
+	t, ok := parseTime(fmt.Sprint(s))
+	if !ok {
+		return "0s"
+	}
+	d := time.Until(t)
+	if d <= 0 {
+		return "0s"
+	}
+	return d.Truncate(time.Second).String()
 }
 
 // noteIsExpired returns true when the timestamp plus the given duration is in the past.

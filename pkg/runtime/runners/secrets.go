@@ -1,13 +1,13 @@
 // pkg/runners/secrets.go
 //
 // Adds to the previous version:
-//   - orktypes.EvaluateConditions instead of evaluateConditions (fixes anyOf: being ignored)
+//   - orktypes.EvaluateConditions instead of evaluateConditions (fixes or: being ignored)
 //   - rotateAfter: <duration> support — time-based credential rotation
 //   - tls: {...} support — self-signed CA + signed certificate generation
 //
 // Execution order per secret declaration:
 //
-//  1. EvaluateConditions(when:, anyOf:)          — skip if conditions fail
+//  1. EvaluateConditions(when:, or:)          — skip if conditions fail
 //  2. Once/rotation check
 //     a. once: true, rotateAfter set       — check annotation, delete if expired
 //     b. once: true, no rotateAfter        — skip if exists
@@ -43,7 +43,7 @@ func RunSecrets(
 ) error {
 	activeNames := make(map[string]bool, len(srcs))
 	for _, s := range srcs {
-		if !orktypes.EvaluateConditions(resolver.Data(), s.Conditions, s.AnyOf, resolver.TemplateEvaluator()) {
+		if !orktypes.EvaluateConditions(resolver.Data(), s.Conditions, s.Or, resolver.TemplateEvaluator()) {
 			continue
 		}
 		n, _ := resolver.Resolve(s.Name)
@@ -59,11 +59,11 @@ func RunSecrets(
 
 	for i, src := range srcs {
 		// ── Step 1: condition evaluation ────────────────────────────────────────
-		// EvaluateConditions checks both when: (AND) and anyOf: (OR).
+		// EvaluateConditions checks both when: (AND) and or: (OR).
 		// IMPORTANT: must use resolver.Data() not the owner object directly.
 		// resolver.Data() includes .children.*, .external.*, .cross.* — the owner
 		// object alone does not have these injected fields.
-		conditionPassed := orktypes.EvaluateConditions(resolver.Data(), src.Conditions, src.AnyOf, resolver.TemplateEvaluator())
+		conditionPassed := orktypes.EvaluateConditions(resolver.Data(), src.Conditions, src.Or, resolver.TemplateEvaluator())
 
 		// Resolve name and namespace early — needed for guard check, once: checks,
 		// and DeleteIfOwned cleanup. ResolveSecretTemplate resolves these again

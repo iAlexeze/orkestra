@@ -22,7 +22,7 @@ Ordered deletion is for the cases where sequence matters:
 
 | | Hard ordered | Condition-based |
 |---|---|---|
-| Mechanism | `ordered: true` | `when:` / `anyOf:` conditions |
+| Mechanism | `ordered: true` | `when:` / `or:` conditions |
 | Finalizer | Held until complete | Never held |
 | CR can get stuck | Yes (on timeout) | Never |
 | Guarantee | Sequential, enforced | Best-effort |
@@ -33,4 +33,4 @@ Ordered deletion is for the cases where sequence matters:
 ## Where to go next
 
 - [Hard Ordered Deletion](hard-ordered/) — `ordered: true`, groups, timeouts
-- [Condition-Based Deletion](condition-based/) — `when:` / `anyOf:` sequencing without blocking
+- [Condition-Based Deletion](condition-based/) — `when:` / `or:` sequencing without blocking

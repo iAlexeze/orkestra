@@ -15,7 +15,7 @@ operatorBox:
     interval: <duration>
     cooldown: <duration>
     conditions:
-      anyOf: [<condition>, ...]
+      or: [<condition>, ...]
       when:  [<condition>, ...]
     do:
       workers: <int>
@@ -61,14 +61,14 @@ Defines when the autoscaler should apply overrides.
 
 ```yaml
 conditions:
-  anyOf: [ ... ]   # OR
+  or: [ ... ]   # OR
   when:  [ ... ]   # AND
 ```
 
 The combined logic is:
 
 ```text
-(anyOf empty OR anyOf passes)
+(or empty OR or passes)
 AND
 (when empty OR when passes)
 ```
@@ -318,7 +318,7 @@ autoscale:
   interval: 60s
   cooldown: 10m
   conditions:
-    anyOf:
+    or:
       - time:
           after: "08:00"
           before: "17:00"
@@ -334,7 +334,7 @@ autoscale:
   interval: 60s
   cooldown: 5m
   conditions:
-    anyOf:
+    or:
       - cron: "0 23 * * *"
         duration: 3h
   do:

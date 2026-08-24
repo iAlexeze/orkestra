@@ -27,7 +27,7 @@ var Packs = map[string]Pack{
 	},
 	"intermediate": {
 		Name:        "intermediate",
-		Description: "Multi-resource patterns, when/anyOf, Komposer basics.",
+		Description: "Multi-resource patterns, when/or, Komposer basics.",
 		Path:        "intermediate",
 		Order:       2,
 	},

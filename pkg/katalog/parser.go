@@ -156,6 +156,12 @@ func (k *Katalog) KomposeRuntimeKatalog(
 		if err := populateExternalCallsFromInclude(&entry, k.katalogDir); err != nil {
 			return nil, fmt.Errorf("CRD %q: %w", name, err)
 		}
+		if err := populateWatchEntriesFromInclude(&entry, k.katalogDir); err != nil {
+			return nil, fmt.Errorf("CRD %q: %w", name, err)
+		}
+		if err := populateReconcilerFromInclude(&entry, k.katalogDir); err != nil {
+			return nil, fmt.Errorf("CRD %q: %w", name, err)
+		}
 
 		// Enrich enabled CRDs
 		outcome, err := EnrichCRDEntry(&entry)

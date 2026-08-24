@@ -30,7 +30,7 @@ The replica count changes automatically on the next resync after the window open
 
 ## How it works
 
-The `autoscale:` block sits alongside the Deployment declaration. Conditions use the same `when:` / `anyOf:` engine as everything else in Orkestra:
+The `autoscale:` block sits alongside the Deployment declaration. Conditions use the same `when:` / `or:` engine as everything else in Orkestra:
 
 ```yaml
 autoscale:

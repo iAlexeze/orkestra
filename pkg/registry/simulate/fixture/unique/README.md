@@ -2,7 +2,7 @@
 
 Demonstrates `operator: unique` — field value must be unique across all
 existing instances of a CRD. Works the same way in `validation.rules` and in
-`when:`/`anyOf:` (see `status.fields.domainUnique` below), enforced only at
+`when:`/`or:` (see `status.fields.domainUnique` below), enforced only at
 reconcile time via a live checker the reconciler injects into the resolver.
 
 ## Run

@@ -59,7 +59,7 @@ func (ws *WebhookServer) evaluateValidationRules(
 	}
 	data := resolver.Data()
 	for _, rule := range cfg.Rules {
-		if !orktypes.EvaluateConditions(data, rule.When, rule.AnyOf, resolver.TemplateEvaluator()) {
+		if !orktypes.EvaluateConditions(data, rule.When, rule.Or, resolver.TemplateEvaluator()) {
 			continue
 		}
 		rv := orktypes.EvaluateValidationRule(data, resolver, rule)
@@ -110,7 +110,7 @@ func (ws *WebhookServer) applyMutationRules(
 
 	mdata := resolver.Data()
 	for _, rule := range cfg.Rules {
-		if !orktypes.EvaluateConditions(mdata, rule.When, rule.AnyOf, resolver.TemplateEvaluator()) {
+		if !orktypes.EvaluateConditions(mdata, rule.When, rule.Or, resolver.TemplateEvaluator()) {
 			continue
 		}
 

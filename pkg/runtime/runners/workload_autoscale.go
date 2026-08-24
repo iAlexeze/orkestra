@@ -123,7 +123,7 @@ func evaluateWorkloadAutoscaleForKind(
 	// ── Evaluate scale-up ────────────────────────────────────────────────────
 	if cfg.ScaleUp != nil && current < max {
 		c := cfg.ScaleUp
-		if orktypes.EvaluateConditions(data, c.Conditions.When, c.Conditions.AnyOf, eval) {
+		if orktypes.EvaluateConditions(data, c.Conditions.When, c.Conditions.Or, eval) {
 			target := resolveTarget(current, max, c, true)
 			if target != current {
 				log.Info().Int32("from", current).Int32("to", target).Msg("autoscale: scaling up")
@@ -141,7 +141,7 @@ func evaluateWorkloadAutoscaleForKind(
 	// ── Evaluate scale-down ──────────────────────────────────────────────────
 	if cfg.ScaleDown != nil && current > min {
 		c := cfg.ScaleDown
-		if orktypes.EvaluateConditions(data, c.Conditions.When, c.Conditions.AnyOf, eval) {
+		if orktypes.EvaluateConditions(data, c.Conditions.When, c.Conditions.Or, eval) {
 			target := resolveTarget(current, min, c, false)
 			if target != current {
 				log.Info().Int32("from", current).Int32("to", target).Msg("autoscale: scaling down")

@@ -2,11 +2,19 @@
 
 ## toclient mode (default)
 
-`ork migrate` (without `--mode`) produces the minimum change needed to run your reconciler inside Orkestra. Only two things change:
+`ork migrate` (without `--mode`) produces the minimum change needed to run your reconciler inside Orkestra. Three things happen:
 
 ### SetupWithManager is removed
 
-Replaced with a comment:
+Before removal, `ork migrate` scans `SetupWithManager` and extracts:
+
+- **`For(&pkg.Kind{})`** → `apiTypes.kind`, `object`, `objectList`, `version`, `location`, `alias` in `katalog.yaml`
+- **`Owns(&pkg.Kind{})`** → `constructor.managedResources:` entries (kind + apiVersion for standard k8s types)
+- **`Watches(&pkg.Kind{}, …)`** → `operatorBox.watch:` entries
+
+Only `group` and `plural` cannot be determined from Go source — they remain as TODOs.
+
+The method itself is replaced with a comment:
 
 ```go
 // SetupWithManager removed — Orkestra provides the informer, workqueue,
@@ -26,6 +34,15 @@ func NewWebAppReconciler(kube kubeclient.Interface) domain.Reconciler {
 
 `kubeclient.ToClient` returns a `client.Client` — the same type your struct field already holds. `domain.ReconcilerFrom` adapts the `ctrl.Request` signature to Orkestra's interface. Your `Reconcile` method body is completely untouched.
 
+### Orkestra imports are injected
+
+```go
+"github.com/orkspace/orkestra/domain"
+"github.com/orkspace/orkestra/pkg/kubeclient"
+```
+
+The `ctrl` import is **kept** — the Reconcile signature and body are unchanged, so `ctrl.Request`, `ctrl.Result`, and `ctrl.LoggerFrom` still compile.
+
 ---
 
 ## native mode (`--mode native`)
@@ -39,45 +56,45 @@ Full mechanical rewrite to idiomatic Orkestra style.
 func (r *WebAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error)
 
 // After
-func (r *WebAppReconciler) Reconcile(ctx context.Context, key string) error
+func (r *WebAppReconciler) Reconcile(ctx context.Context, req domain.Request) (domain.Result, error)
 ```
 
-`key` is `namespace/name` — the same as `req.String()`. Orkestra calls this from its worker pool, which already manages concurrency, retries, and leader election.
+`req.String()` returns `namespace/name` — same as before. `req.NamespacedName` is available directly on `domain.Request`. The `ctrl` import is removed.
 
 ### Return statements
 
-Every `ctrl.Result` is collapsed:
+Every `ctrl.Result` is rewritten:
 
 ```go
 // Before
 return ctrl.Result{}, err
 return ctrl.Result{}, nil
+return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 
 // After
-return err
-return nil
+return domain.Result{}, err
+return domain.Result{}, nil
+return domain.Result{RequeueAfter: 30 * time.Second}, nil
 ```
 
-`ctrl.Result{RequeueAfter: X}` cannot be collapsed mechanically — it is flagged:
-
-```go
-// TODO(ork migrate): RequeueAfter removed — Orkestra retries on non-nil error
-return nil
-```
-
-Return an error to trigger a retry. Orkestra's backoff policy applies automatically.
+`RequeueAfter` is preserved through `domain.Result` — no information is lost.
 
 ### req.NamespacedName
 
-When the body uses `req.NamespacedName`, the tool injects a key split at the top of `Reconcile` and replaces usages:
+`req.NamespacedName` is available directly on `domain.Request` — no injection needed. Call sites that pass it to `r.Get` receive a TODO comment when the tool cannot decompose it automatically:
 
 ```go
-// Injected at top of Reconcile body
-parts := strings.SplitN(key, "/", 2)
-namespace, name := parts[0], parts[1]
+r.kube.Get(ctx, namespace, name, obj /* TODO(ork migrate): extract namespace+name from: req.NamespacedName */)
+```
 
-// Usage replaced
-r.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, webapp)
+### Struct simplified
+
+The embedded `client.Client` (and any other ctrl-runtime fields) are replaced with a single `kube kubeclient.Interface` field. The constructor becomes:
+
+```go
+func NewWebAppReconciler(kube kubeclient.Interface) domain.Reconciler {
+    return &WebAppReconciler{kube: kube}
+}
 ```
 
 ### r.Status().Update()
@@ -85,7 +102,7 @@ r.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, webapp)
 Flagged inline — Orkestra uses a different status API:
 
 ```go
-nil /* TODO(ork migrate): replace with r.kube.PatchStatus(ctx, obj, GroupVersionResource, map[string]interface{}{...}) */
+nil /* TODO(ork migrate): replace with r.kube.PatchStatus(ctx, obj, map[string]interface{}{...}) */
 ```
 
 ### TODO markers

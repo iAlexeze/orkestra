@@ -402,8 +402,8 @@ func (k *Katalog) validateAutoscalerMetrics() error {
 
 		conds := crd.OperatorBox.Autoscale.Conditions
 
-		// Validate anyOf
-		for _, c := range conds.AnyOf {
+		// Validate or
+		for _, c := range conds.Or {
 			if strings.HasPrefix(c.Field, "metrics.") {
 				if err := crd.ValidateMetricField(c.Field); err != nil {
 					k.handleValidationErrors(err)

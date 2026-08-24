@@ -186,6 +186,6 @@ type RawProviderDeclaration struct {
 	// whose conditions fail are removed from the list before dispatch.
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
-	// AnyOf holds OR conditions — at least one must pass.
-	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	// Or holds OR conditions — at least one must pass.
+	Or []Condition `yaml:"or,omitempty" json:"or,omitempty"`
 }

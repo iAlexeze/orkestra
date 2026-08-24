@@ -54,7 +54,7 @@ If a Go hook is registered for this operatorBox, it runs here — before templat
 
 ## 11. Template reconciliation
 
-`onCreate` templates run on the first reconcile for a CR. `onReconcile` templates run on every reconcile. Conditions (`when:`, `anyOf:`) are evaluated, `forEach:` expansions are applied, and the resolved resources are created or updated.
+`onCreate` templates run on the first reconcile for a CR. `onReconcile` templates run on every reconcile. Conditions (`when:`, `or:`) are evaluated, `forEach:` expansions are applied, and the resolved resources are created or updated.
 
 ## 12. Drift correction
 

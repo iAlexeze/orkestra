@@ -81,7 +81,7 @@ autoscale:
   cooldown: 10m
 
   conditions:
-    anyOf:
+    or:
       - time:
           after: "08:00"
           before: "17:00"
@@ -108,7 +108,7 @@ autoscale:
   cooldown: 30m
 
   conditions:
-    anyOf:
+    or:
       - dayOfWeek:
           in: ["Saturday", "Sunday"]
 
@@ -135,7 +135,7 @@ autoscale:
   cooldown: 5m
 
   conditions:
-    anyOf:
+    or:
       - cron: "0 23 * * *"   # 23:00 every day
         duration: 3h         # active until 02:00
 
@@ -214,7 +214,7 @@ autoscale:
   cooldown: 5m
 
   conditions:
-    anyOf:
+    or:
       - time:
           after: "08:00"
           before: "17:00"
@@ -272,7 +272,7 @@ autoscale:
   cooldown: 2m
 
   conditions:
-    anyOf:
+    or:
       - cron: "0 8 * * 1-5"   # morning
         duration: 2h
       - cron: "0 18 * * 1-5"  # evening

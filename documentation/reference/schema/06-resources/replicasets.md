@@ -216,11 +216,11 @@ Autoscale declares workload autoscaling behaviour for this ReplicaSet.
 
 ---
 
-### `anyOf`
+### `or`
 
 Type: list
 
-AnyOf holds OR conditions — at least one must pass for this resource.
+Or holds OR conditions — at least one must pass for this resource.
 
 ---
 
@@ -310,7 +310,7 @@ Sleep injects an artificial delay into the reconcile of this resource. Useful fo
 | `when` | list |
 | `forEach` | object |
 | `autoscale` | object |
-| `anyOf` | list |
+| `or` | list |
 | `workingDirectory` | string |
 | `probes` | object |
 | `securityContext` | object |

@@ -93,7 +93,7 @@
 //   After reconcileImpl:
 //       patchStatusWithChildren(ctx, obj, err)
 //           ├── ReadChildren → .children.*  (API server, parallel, RV="0")
-//           ├── resolveStatusFields(when:, anyOf:, template expressions)
+//           ├── resolveStatusFields(when:, or:, template expressions)
 //           └── PATCH /status
 
 package internal
@@ -442,7 +442,9 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 			// kube client. Constructor authors access them via kube.GetInformer() etc.
 			var ctorKube kubeclient.Interface = kube.
 				WithInformer(infCopy).
-				WithEventRecorder(ev)
+				WithEventRecorder(ev).
+				WithStoreFor(infFactory.StoreFor).
+				WithIndexerFor(infFactory.IndexerFor)
 			if args := crd.ConstructorArgs(); len(args) > 0 {
 				ctorKube = ctorKube.WithArgs(kubeclient.Args(args))
 			}
@@ -464,7 +466,9 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 				for targetName, ctor := range crdCopy.TargetReconcilerFactories {
 					var targetKube kubeclient.Interface = kube.
 						WithInformer(infCopy).
-						WithEventRecorder(ev)
+						WithEventRecorder(ev).
+						WithStoreFor(infFactory.StoreFor).
+						WithIndexerFor(infFactory.IndexerFor)
 					if args := crdCopy.TargetConstructorArgs(targetName); len(args) > 0 {
 						targetKube = targetKube.WithArgs(kubeclient.Args(args))
 					}

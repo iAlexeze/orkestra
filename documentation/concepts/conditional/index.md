@@ -2,7 +2,7 @@
 
 Conditionals are the logic layer in Orkestra. They let you express *when* something should happen — without writing Go code.
 
-A conditional is a `when:` or `anyOf:` block attached to a resource, a status field, or a hook. Orkestra evaluates it on every reconcile. If the condition passes, the block runs. If it fails, the block is skipped cleanly — no error, no partial state.
+A conditional is a `when:` or `or:` block attached to a resource, a status field, or a hook. Orkestra evaluates it on every reconcile. If the condition passes, the block runs. If it fails, the block is skipped cleanly — no error, no partial state.
 
 ---
 
@@ -25,14 +25,14 @@ This service is created only when `exposePublicly` is true **and** `environment`
 
 ---
 
-## `anyOf:` — OR semantics
+## `or:` — OR semantics
 
 At least one condition must pass.
 
 ```yaml
 services:
   - name: "{{ .metadata.name }}-svc"
-    anyOf:
+    or:
       - field: spec.environment
         equals: "production"
       - field: spec.forceExpose

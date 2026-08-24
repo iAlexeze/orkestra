@@ -50,14 +50,14 @@ type IngressTemplateSource struct {
     Labels      []KV        `yaml:"labels,omitempty"`
     Annotations []KV        `yaml:"annotations,omitempty"`
     Conditions  []Condition `yaml:"when,omitempty"`
-    AnyOf       []Condition `yaml:"anyOf,omitempty"`
+    Or       []Condition `yaml:"or,omitempty"`
     Reconcile   bool        `yaml:"reconcile,omitempty"`
     ForEach     *ForEachSpec `yaml:"forEach,omitempty"`
 }
 ```
 
 Required fields:
-- `Conditions` / `AnyOf` — conditions support, maps to `when:` / `anyOf:`.
+- `Conditions` / `Or` — conditions support, maps to `when:` / `or:`.
 - `Reconcile` — the `reconcile: true` shorthand.
 - `ForEach` — forEach support (list field: `.item` = element; map field: `.item` = key, `.value` = map value).
 - `Name`, `Namespace` — always present.
@@ -371,7 +371,7 @@ func RunIngresses(
 ) error {
     activeNames := make(map[string]bool, len(srcs))
     for _, s := range srcs {
-        if !orktypes.EvaluateConditions(resolver.Data(), s.Conditions, s.AnyOf, resolver.TemplateEvaluator()) {
+        if !orktypes.EvaluateConditions(resolver.Data(), s.Conditions, s.Or, resolver.TemplateEvaluator()) {
             continue
         }
         n, _   := resolver.Resolve(s.Name)
@@ -383,7 +383,7 @@ func RunIngresses(
     }
 
     for i, src := range srcs {
-        conditionPassed := orktypes.EvaluateConditions(resolver.Data(), src.Conditions, src.AnyOf, resolver.TemplateEvaluator())
+        conditionPassed := orktypes.EvaluateConditions(resolver.Data(), src.Conditions, src.Or, resolver.TemplateEvaluator())
 
         name, _ := resolver.Resolve(src.Name)
         ns, _   := resolver.Resolve(src.Namespace)
@@ -503,7 +503,7 @@ A clean build is the acceptance criterion. No new tests are required for the run
 
 ## Checklist
 
-- [ ] `pkg/types/ingress.go` — `IngressTemplateSource` with `Conditions`, `AnyOf`, `Reconcile`, `ForEach`
+- [ ] `pkg/types/ingress.go` — `IngressTemplateSource` with `Conditions`, `Or`, `Reconcile`, `ForEach`
 - [ ] `pkg/types/katalog_spec_hooks.go` — `Ingresses []IngressTemplateSource` field on `HookTemplates`
 - [ ] `pkg/resources/ingresses/types.go` — `ResolvedIngressSpec`
 - [ ] `pkg/resources/ingresses/ingress.go` — `Create`, `Update`, `DeleteIfOwned`, `Resolve`

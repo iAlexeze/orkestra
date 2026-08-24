@@ -274,7 +274,7 @@ spec:
             label: "Certificate Issuer"
             category: "TLS"
             order: 20
-            anyOf:
+            or:
               - field: workloadType
                 equals: cert
           maintenanceMode:

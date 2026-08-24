@@ -41,7 +41,7 @@ spec:
             location: github.com/orkspace/orkestra-registry-guide/hooks
             function: DatabaseHooks
             alias: dbhooks
-            resources:          # Resources managed by this hook — required for RBAC generation
+            managedResources:          # Resources managed by this hook — required for RBAC generation
               - kind: StatefulSet
               - kind: Service
               - kind: CronJob

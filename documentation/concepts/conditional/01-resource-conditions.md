@@ -1,6 +1,6 @@
 # Resource Conditions
 
-Attach a `when:` or `anyOf:` block to any resource declaration under `onCreate`, `onReconcile`, or `onDelete`. Orkestra evaluates it before creating, updating, or skipping that resource.
+Attach a `when:` or `or:` block to any resource declaration under `onCreate`, `onReconcile`, or `onDelete`. Orkestra evaluates it before creating, updating, or skipping that resource.
 
 ---
 
@@ -42,10 +42,10 @@ Both must be true for the resource to be created.
 
 ---
 
-## OR conditions with `anyOf:`
+## OR conditions with `or:`
 
 ```yaml
-anyOf:
+or:
   - field: spec.environment
     equals: "production"
   - field: spec.forceExpose

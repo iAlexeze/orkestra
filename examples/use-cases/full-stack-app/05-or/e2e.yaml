@@ -2,9 +2,9 @@
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
-  name: anyof-e2e
+  name: or-e2e
   description: >
-    anyOf: OR conditions — a cleanup Job fires when the FlexApp phase is Failed
+    or: OR conditions — a cleanup Job fires when the FlexApp phase is Failed
     OR the CR has notify: "true". Verifies the Deployment is created in normal
     operation, and that setting notify: "true" triggers the notification Job.
 
@@ -52,7 +52,7 @@ spec:
         - run: kubectl patch flexapp my-flex-app --type=merge -p '{"spec":{"notify":"true"}}'
           exitCode: 0
 
-    - name: Notify Job created after anyOf condition met
+    - name: Notify Job created after or condition met
       after: cr-applied
       timeout: 60s
       resources:

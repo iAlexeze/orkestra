@@ -1,6 +1,6 @@
 # Serve field config for the gateway fixture.
 # Included from katalog.yaml via serve.include.
-# Tests: category, when (field + time), anyOf, disabled, required indicators, placeholders, defaults.
+# Tests: category, when (field + time), or, disabled, required indicators, placeholders, defaults.
 
 # ── Basic ─────────────────────────────────────────────────────────────────────
 fields:
@@ -85,7 +85,7 @@ fields:
 
   # ── Production guard ──────────────────────────────────────────────────────────
   # Visible when: environment is staging (always visible to devs), OR it is a
-  # weekday between 09:00–17:00 (production release window). anyOf = OR logic.
+  # weekday between 09:00–17:00 (production release window). or = OR logic.
 
   productionApproval:
     label: "Production Approval Ticket"
@@ -94,7 +94,7 @@ fields:
     required: true
     order: 40
     category: "Production"
-    anyOf:
+    or:
       - field: environment
         equals: staging
       - time:

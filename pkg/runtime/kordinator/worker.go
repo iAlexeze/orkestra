@@ -10,6 +10,9 @@ import (
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/metrics"
 	"github.com/orkspace/orkestra/pkg/runtime/queue"
+	apitypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/cache"
+	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // queueDepthReporter is a local interface satisfied by GenericReconciler so the
@@ -132,7 +135,7 @@ func (k *Kontroller) processItemForGVK(ctx context.Context, gvk string, item que
 		return
 	}
 
-	// Pre-reconcile gate: evaluate operatorBox.reconcile.when/anyOf conditions.
+	// Pre-reconcile gate: evaluate operatorBox.reconcile.when/or conditions.
 	// The reconciler is never called when conditions are not met — gated state
 	// is idle, not failure; error rate and health state are unaffected.
 	if entry, ok := k.katalog.Get(gvk); ok {
@@ -151,7 +154,8 @@ func (k *Kontroller) processItemForGVK(ctx context.Context, gvk string, item que
 	}
 
 	// safeReconcile catches panics
-	if err := k.safeReconcile(rec, k.crdHealthMap[gvk], ctx, item.Key, gvk); err != nil {
+	result, err := k.safeReconcile(rec, k.crdHealthMap[gvk], ctx, item.Key, gvk)
+	if err != nil {
 		logger.Error().Err(err).Str("gvk", gvk).Str("key", item.Key).Msg("reconcile failed")
 		wq.Queue.AddRateLimited(item)
 		k.failedReconcile(gvk)
@@ -159,6 +163,17 @@ func (k *Kontroller) processItemForGVK(ctx context.Context, gvk string, item que
 	}
 
 	wq.Queue.Forget(item)
+
+	requeueAfter := result.RequeueAfter
+	if requeueAfter == 0 {
+		if entry, ok := k.katalog.Get(gvk); ok {
+			obj := k.objectFromCache(entry, item.Key)
+			requeueAfter = k.kat.EvaluateRequeue(ctx, entry.CRD.Name, obj)
+		}
+	}
+	if requeueAfter > 0 {
+		wq.Queue.AddAfter(item, requeueAfter)
+	}
 }
 
 // safeReconcile wraps a Reconciler's Reconcile() call in a fully isolated,
@@ -181,7 +196,7 @@ func (k *Kontroller) safeReconcile(
 	ctx context.Context,
 	key string,
 	gvk string,
-) (err error) {
+) (result domain.Result, err error) {
 
 	// Track how long this reconcile took.
 	// The defer ensures duration is recorded even if a panic occurs.
@@ -212,19 +227,27 @@ func (k *Kontroller) safeReconcile(
 		}
 	}()
 
+	// Inject per-request fields into the logr context so ctrl.LoggerFrom(ctx)
+	// automatically carries the resource key on every reconciler log line.
+	ctx = ctrllog.IntoContext(ctx, ctrllog.FromContext(ctx).WithValues("resource", key, "gvk", gvk))
+
 	// Execute the operator's reconcile logic.
 	// Any returned error is treated as a reconcile failure.
-	err = rec.Reconcile(ctx, key)
+	ns, name, _ := cache.SplitMetaNamespaceKey(key)
+	result, err = rec.Reconcile(ctx, domain.Request{
+		Key:            key,
+		NamespacedName: apitypes.NamespacedName{Namespace: ns, Name: name},
+	})
 	if err != nil {
 		// Update CRD health state and metrics.
 		health.RecordFailure(err, k.failureThreshold[gvk])
 		metrics.RecordReconcile(gvk, "error")
-		return err
+		return result, err
 	}
 
 	// Successful reconcile path.
 	health.RecordSuccess()
 	k.successReconcile(gvk)
 	metrics.RecordReconcile(gvk, "success")
-	return nil
+	return result, nil
 }

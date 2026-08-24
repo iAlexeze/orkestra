@@ -104,15 +104,15 @@ type PodTemplateSource struct {
 	//	  as: region
 	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
 
-	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Or holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
 	//
-	//	anyOf:
+	//	or:
 	//	  - field: spec.tier
 	//	    equals: pro
 	//	  - field: spec.tier
 	//	    equals: enterprise
-	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	Or []Condition `yaml:"or,omitempty" json:"or,omitempty"`
 
 	// Probes — startup, liveness, and readiness probe configuration.
 	//

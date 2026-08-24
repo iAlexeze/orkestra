@@ -1,4 +1,4 @@
-# when / anyOf conditions
+# when / or conditions
 
 Conditions control whether a resource template field is written during reconciliation.
 Used inside `operatorBox` and `autoscale`.
@@ -11,7 +11,7 @@ operatorBox:
       value: "1"
       valueType: int
 
-  anyOf:
+  or:
     - field: spec.mode
       equals: production
     - field: spec.mode
@@ -23,9 +23,9 @@ operatorBox:
 | Block | Behaviour |
 |-------|-----------|
 | `when` | AND — all conditions must be true |
-| `anyOf` | OR — at least one condition must be true |
+| `or` | OR — at least one condition must be true |
 
-Both can be combined. The overall result is: `when` AND `anyOf`.
+Both can be combined. The overall result is: `when` AND `or`.
 
 ---
 
@@ -67,7 +67,7 @@ Compare a dot-notation path into the CR against a value.
 | `notBetween` | `notBetween` | Field is numerically outside an inclusive range. Value is `"min,max"` |
 | `in` | `in` | Field is one of a comma-separated list |
 | `notIn` | `notIn` | Field is none of a comma-separated list |
-| `unique` | — | Field value must be unique across all existing instances of this CRD. Works in both `validation.rules` and `when:`/`anyOf:`, enforced at both reconcile time (a live, authoritative check) and admission time (a fast best-effort check against the runtime's cache) — see [unique](07-validation.md#validationrules) for the difference between the two |
+| `unique` | — | Field value must be unique across all existing instances of this CRD. Works in both `validation.rules` and `when:`/`or:`, enforced at both reconcile time (a live, authoritative check) and admission time (a fast best-effort check against the runtime's cache) — see [unique](07-validation.md#validationrules) for the difference between the two |
 | `typeOf` / `typeMap` / `typeList` / `typeString` / `typeNumber` / `typeBool` / `typeNull` | — | Check the field's YAML type rather than its value. No shorthand — use `operator:` explicitly. |
 
 `gt`/`lt` are strict (exclusive); use `gte`/`lte` (or the `min`/`max` shorthand) for an inclusive bound. `min`/`max` and `greaterThanOrEqual`/`lessThanOrEqual` resolve to the same `gte`/`lte` operators — `min`/`max` read better for a bound on a quantity (`min: "1"`), `greaterThanOrEqual`/`lessThanOrEqual` for a direct comparison. Same operators and shorthand as [validation.rules](07-validation.md#operators) — the `Condition` type is shared by both.
