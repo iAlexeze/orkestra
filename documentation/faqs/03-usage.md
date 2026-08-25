@@ -206,13 +206,13 @@ conversion:
 
 The rule: if you control the CRD and want to tolerate different input shapes — `normalize:`. If you have committed to multiple API versions and need the API server to convert between them — `conversion.paths:`.
 
-→ [Schema Evolution](../concepts/conversion/index.md)
+→ [Schema Evolution](../concepts/schema-evolution/index.md)
 
 ---
 
 ## When do I need Go hooks?
 
-The `external:` block handles HTTP already — GET, POST, bearer tokens, chained calls where each result flows into the next via `.external.{name}.body`. `when:` and `anyOf:` handle conditional logic. For most operators, those are enough.
+The `external:` block handles HTTP already — GET, POST, bearer tokens, chained calls where each result flows into the next via `.external.{name}.body`. `when:` and `or:` handle conditional logic. For most operators, those are enough.
 
 Hooks become necessary when the work is genuinely outside HTTP:
 
@@ -245,7 +245,7 @@ cd 09-hooks
 
 ## When do I need a constructor?
 
-When you need to own the full reconcile loop — typically when integrating an existing operator without rewriting it.
+When you need to own the full reconcile loop — typically when integrating an existing controller-runtime operator without rewriting it.
 
 ```yaml
 operatorBox:
@@ -253,7 +253,9 @@ operatorBox:
     default: false   # GenericReconciler is replaced; constructor owns everything
 ```
 
-`reconciler.default: false` is the one field change that replaces the entire reconciler. Your constructor receives Orkestra's `KubeClient` and informer — no `controller-runtime` required. Declarative templates (`onCreate`, `onReconcile`, `status.fields`) are not applied when `reconciler.default: false`; the constructor is responsible for all state.
+`reconciler.default: false` is the one field change. Your constructor receives `kubeclient.Interface` — Orkestra's single interface for informer, kube calls, events, and args. If you are migrating from controller-runtime, `kubeclient.ToClient(kube)` returns a `client.Client` so your existing `Reconcile` body compiles unchanged. `domain.ReconcilerFrom` adapts the `ctrl.Request` signature.
+
+Declarative templates (`onCreate`, `onReconcile`, `status.fields`) are not applied when `reconciler.default: false` — the constructor is responsible for all state.
 
 Try it:
 

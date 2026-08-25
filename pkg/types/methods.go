@@ -85,7 +85,7 @@ func (c *CRDEntry) SkipObservedGeneration() bool {
 
 // ShouldEnrich returns true when the given enrichment target is enabled —
 // either via EnrichAll: true or an explicit entry in Enrich.
-// Condition gates (when:/anyOf:) are not evaluated here — they are handled
+// Condition gates (when:/or:) are not evaluated here — they are handled
 // higher up by ActiveEnrichTargets before the CRDEntry reaches each enricher.
 func (c *CRDEntry) ShouldEnrich(target string) bool {
 	if c.EnrichAll {
@@ -99,9 +99,9 @@ func (c *CRDEntry) ShouldEnrich(target string) bool {
 	return false
 }
 
-// ActiveEnrichTargets returns the subset of Enrich entries whose when:/anyOf:
+// ActiveEnrichTargets returns the subset of Enrich entries whose when:/or:
 // conditions pass for the given data map and evaluator. Unconditional entries
-// (no when: or anyOf:) always pass. Called from ReadChildren to pre-filter
+// (no when: or or:) always pass. Called from ReadChildren to pre-filter
 // crd.Enrich before dispatching to individual enricher functions.
 func (c *CRDEntry) ActiveEnrichTargets(data map[string]interface{}, eval TemplateEvaluator) []EnrichTarget {
 	if c.EnrichAll {
@@ -109,24 +109,24 @@ func (c *CRDEntry) ActiveEnrichTargets(data map[string]interface{}, eval Templat
 	}
 	result := make([]EnrichTarget, 0, len(c.Enrich))
 	for _, t := range c.Enrich {
-		if len(t.When) == 0 && len(t.AnyOf) == 0 {
+		if len(t.When) == 0 && len(t.Or) == 0 {
 			result = append(result, t)
 			continue
 		}
-		if EvaluateConditions(data, t.When, t.AnyOf, eval) {
+		if EvaluateConditions(data, t.When, t.Or, eval) {
 			result = append(result, t)
 		}
 	}
 	return result
 }
 
-// UnconditionalEnrichTargets returns entries with no when:/anyOf: conditions.
+// UnconditionalEnrichTargets returns entries with no when:/or: conditions.
 // These run in phase 1 of ReadChildren so that .children.* is populated before
 // conditional gates are evaluated.
 func (c *CRDEntry) UnconditionalEnrichTargets() []EnrichTarget {
 	result := make([]EnrichTarget, 0, len(c.Enrich))
 	for _, t := range c.Enrich {
-		if len(t.When) == 0 && len(t.AnyOf) == 0 {
+		if len(t.When) == 0 && len(t.Or) == 0 {
 			result = append(result, t)
 		}
 	}
@@ -140,10 +140,10 @@ func (c *CRDEntry) UnconditionalEnrichTargets() []EnrichTarget {
 func (c *CRDEntry) ConditionalActiveEnrichTargets(data map[string]interface{}, eval TemplateEvaluator) []EnrichTarget {
 	result := make([]EnrichTarget, 0)
 	for _, t := range c.Enrich {
-		if len(t.When) == 0 && len(t.AnyOf) == 0 {
+		if len(t.When) == 0 && len(t.Or) == 0 {
 			continue // already ran in phase 1
 		}
-		if EvaluateConditions(data, t.When, t.AnyOf, eval) {
+		if EvaluateConditions(data, t.When, t.Or, eval) {
 			result = append(result, t)
 		}
 	}
@@ -211,19 +211,31 @@ func (c *CRDEntry) WithConstructorDecl() bool {
 // managed resources for RBAC generation.
 func (c *CRDEntry) WithHookManagedResources() bool {
 	r := c.OperatorBox.Reconciler
-	return c.WithHooksDecl() && r != nil && len(r.Hooks.Resources) > 0
+	return c.WithHooksDecl() && r != nil && len(r.Hooks.ManagedResources) > 0
 }
 
 // WithConstructorManagedResources reports whether this CRD has a constructor
 // that declares managed resources for RBAC generation.
 func (c *CRDEntry) WithConstructorManagedResources() bool {
 	r := c.OperatorBox.Reconciler
-	return c.WithConstructorDecl() && r != nil && len(r.ConstructorDecl.Resources) > 0
+	return c.WithConstructorDecl() && r != nil && len(r.ConstructorDecl.ManagedResources) > 0
 }
 
-// WithAnyManagedResources reports whether hooks or constructor declare resources.
+// WithAnyManagedResources reports whether hooks or constructor declare resources,
+// including per-target operatorBox declarations.
 func (c *CRDEntry) WithAnyManagedResources() bool {
-	return c.WithHookManagedResources() || c.WithConstructorManagedResources()
+	if c.WithHookManagedResources() || c.WithConstructorManagedResources() {
+		return true
+	}
+	if c.Serve == nil || c.Serve.Target.Entries == nil {
+		return false
+	}
+	for _, entry := range c.Serve.Target.Entries {
+		if len(targetManagedResources(entry.OperatorBox)) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // HookManagedResources returns the list of managed resources declared under
@@ -232,7 +244,7 @@ func (c *CRDEntry) HookManagedResources() []ManagedResource {
 	if !c.WithHooksDecl() {
 		return nil
 	}
-	return c.OperatorBox.Reconciler.Hooks.Resources
+	return c.OperatorBox.Reconciler.Hooks.ManagedResources
 }
 
 // ConstructorManagedResources returns the list of managed resources declared
@@ -242,7 +254,81 @@ func (c *CRDEntry) ConstructorManagedResources() []ManagedResource {
 	if !c.WithConstructorDecl() {
 		return nil
 	}
-	return c.OperatorBox.Reconciler.ConstructorDecl.Resources
+	return c.OperatorBox.Reconciler.ConstructorDecl.ManagedResources
+}
+
+// AllManagedResources returns the combined list of managed resources from hooks,
+// constructor, and per-target operatorBox declarations. Duplicates across targets
+// are fine — startWatchInformers deduplicates by GVR via the covered set.
+func (c *CRDEntry) AllManagedResources() []ManagedResource {
+	hooks := c.HookManagedResources()
+	ctor := c.ConstructorManagedResources()
+	out := make([]ManagedResource, 0, len(hooks)+len(ctor))
+	out = append(out, hooks...)
+	out = append(out, ctor...)
+	if c.Serve != nil {
+		for _, entry := range c.Serve.Target.Entries {
+			out = append(out, targetManagedResources(entry.OperatorBox)...)
+		}
+	}
+	return out
+}
+
+// targetManagedResources extracts hook + constructor resources from a per-target
+// operatorBox pointer. Returns nil when the box is nil or has no resources.
+func targetManagedResources(box *OperatorBoxConfig) []ManagedResource {
+	if box.IsEmpty() || box.Reconciler.IsEmpty() {
+		return nil
+	}
+	rec := box.Reconciler
+	var out []ManagedResource
+	if rec.HasHooksDecl() {
+		out = append(out, rec.Hooks.ManagedResources...)
+	}
+	if rec.HasConstructorDecl() {
+		out = append(out, rec.ConstructorDecl.ManagedResources...)
+	}
+	return out
+}
+
+// WithWatchEntries reports whether this CRD or any per-target operatorBox declares
+// secondary watch entries.
+func (c *CRDEntry) WithWatchEntries() bool {
+	if len(c.OperatorBox.Watch) > 0 {
+		return true
+	}
+	if c.Serve == nil {
+		return false
+	}
+	for _, entry := range c.Serve.Target.Entries {
+		if entry.OperatorBox != nil && len(entry.OperatorBox.Watch) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// WithSentinels reports whether this CRD declares any preReconcile sentinels.
+func (c *CRDEntry) WithSentinels() bool {
+	return len(c.OperatorBox.PreReconcile.DeclaredSentinels()) > 0
+}
+
+// WatchEntries returns the combined secondary watch entries from the base
+// operatorBox.watch and all per-target operatorBox.watch declarations.
+// Duplicates across targets are deduplicated by startWatchInformers via covered set.
+func (c *CRDEntry) WatchEntries() []WatchEntry {
+	base := c.OperatorBox.Watch
+	if c.Serve == nil {
+		return base
+	}
+	out := make([]WatchEntry, 0, len(base))
+	out = append(out, base...)
+	for _, entry := range c.Serve.Target.Entries {
+		if entry.OperatorBox != nil {
+			out = append(out, entry.OperatorBox.Watch...)
+		}
+	}
+	return out
 }
 
 // HasTemplates reports whether this CRD declares any declarative hook templates.
@@ -756,6 +842,11 @@ func IsValidServiceType(t string) bool {
 	default:
 		return false
 	}
+}
+
+// HasUserLabels reports whether the CRD entry declares any user-defined labels.
+func (e CRDEntry) HasUserLabels() bool {
+	return len(e.Labels) > 0
 }
 
 // IsValidProtocol reports whether the provided protocol is valid.

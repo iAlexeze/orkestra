@@ -33,7 +33,7 @@ type liveUniquenessChecker struct {
 
 // newUniquenessChecker builds the checker injected into every reconcile via
 // template.Resolver.WithUniquenessChecker, so operator: unique has live CRD
-// access in both validation.rules and when:/anyOf:.
+// access in both validation.rules and when:/or:.
 func newUniquenessChecker(ctx context.Context, kube dynamicClientProvider, gvr schema.GroupVersionResource, namespaced bool) orktypes.UniquenessChecker {
 	return &liveUniquenessChecker{ctx: ctx, kube: kube, gvr: gvr, namespaced: namespaced}
 }

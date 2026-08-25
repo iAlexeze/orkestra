@@ -171,7 +171,7 @@ See [06-discovery.md](06-discovery.md).
 
 ---
 
-## See also
+## Where to go next
 
 - [Katalog schema](../02-katalog/01-top-level.md) — the Katalog under test
 - [E2E in the Orkestra Registry](../../../orkestra-registry/04-e2e.md) — how E2E gates pattern publication

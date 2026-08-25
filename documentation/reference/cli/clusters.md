@@ -300,7 +300,7 @@ Secret.
 
 ---
 
-## See also
+## Where to go next
 
 - [`gateway.clusters` schema](../schema/02-katalog/24-gateway-clusters.md)
 - [Multi-cluster routing](../../concepts/self-service/10-multi-cluster-routing.md)

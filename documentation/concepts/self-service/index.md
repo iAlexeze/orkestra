@@ -140,7 +140,7 @@ ork webhook play -f katalog.yaml --source slack --webhook platform-workspace \
 
 The serve layer is general-purpose. The same mechanism works for:
 
-- **[Internal Developer Platform](idp.md)** — developer self-service for infrastructure and application CRDs
+- Internal Developer Platforms — developer self-service for infrastructure and application CRDs
 - CI/CD pipelines submitting deploy intents via token
 - Slack bots posting to the gateway on user request
 - Any caller that needs to create or update Kubernetes resources without knowing the CRD schema
@@ -157,7 +157,6 @@ The serve layer is general-purpose. The same mechanism works for:
 - [Local Intent Testing](06-local-intent-testing.md)
 - [Live Delivery](07-live-delivery.md)
 - [Webhook Intake](09-webhook-intake.md)
-- [Internal Developer Platform](idp.md)
 
 - [Gateway API reference](../../reference/schema/02-katalog/17-gateway-api.md)
 - [Webhook credential verification](../../security/09-webhook-verification.md)

@@ -62,7 +62,7 @@ type GitHookSpec struct {
 	// .spec.image, .children.job.status.succeeded are all accessible.
 	When []Condition `yaml:"when,omitempty"`
 
-	AnyOf []Condition `yaml:"anyOf,omitempty"`
+	Or []Condition `yaml:"or,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.

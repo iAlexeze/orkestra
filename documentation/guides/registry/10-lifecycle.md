@@ -124,12 +124,7 @@ lifecycle:
     orkestra: ">=0.7.0"        # verified against Orkestra 0.7.0 and above
 ```
 
-`ork validate` checks that the range string is valid semver syntax. At apply time, the runtime compares:
-
-- `compatibility.kubernetes` against the live cluster server version
-- `compatibility.orkestra` against the version baked into the `ork` binary
-
-A mismatch produces an error before any reconcile loop starts.
+`ork validate` checks that the range string is valid semver syntax.
 
 Common range forms:
 

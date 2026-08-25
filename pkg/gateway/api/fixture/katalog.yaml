@@ -1,7 +1,7 @@
 # Gateway Serve fixture — exercises all serve features introduced in v0.7.12+.
 #
 # Sub-files:
-#   serve/platformresource.yaml           — field hints (when/anyOf/category/disabled/defaults)
+#   serve/platformresource.yaml           — field hints (when/or/category/disabled/defaults)
 #   serve/aliases/preview.yaml            — alias config for the "preview" entry point
 #   serve/aliases/internal.yaml           — alias config for the "internal" entry point
 #   admission/platformresource.yaml       — validation rules (required, unique, warn)
@@ -17,7 +17,7 @@
 #   serve.ignore             — hides system-managed fields from the form
 #   serve.fields.category    — section headings in the form
 #   serve.fields.when        — AND conditions (field-based + time-based)
-#   serve.fields.anyOf       — OR conditions
+#   serve.fields.or       — OR conditions
 #   serve.fields.disabled    — greyed-out locked fields with a reason message
 #   serve.target (map form)  — primary + alias entries with per-entry token + config (include:)
 #   getServeAlias / getServeTarget — provenance notes consumed by the operatorBox

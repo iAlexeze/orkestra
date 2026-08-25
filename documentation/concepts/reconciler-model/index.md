@@ -1,24 +1,96 @@
 # Reconciler Model
 
-When you apply a CR to your cluster, Orkestra reconciles it. It reads your Katalog, follows your instructions, and makes sure the Kubernetes resources you declared exist and stay correct — automatically, without any code.
-
-Orkestra creates one reconciler, one informer, and one worker pool **per CRD**. Each CRD in your Katalog gets its own independent reconcile loop — its own watch stream from the API server, its own workqueue, and its own configurable concurrency. Adding a second CRD does not share or contend with the first.
-
-Think of it like a recipe: you write the recipe (Katalog), you provide the ingredients (CR spec), Orkestra follows the recipe (creates resources), and Orkestra keeps checking the result (drift correction).
+When a CR is applied to your cluster, Orkestra reconciles it — reads your Katalog, acts on it, and keeps the declared state correct over time. How it does that depends on which reconciler model you are using.
 
 ---
 
-## Three flows
+## Two reconciler models
 
-**Create / Update** — the main path. A new CR appears or an existing one changes. Orkestra normalizes, mutates, validates, runs hooks, resolves templates, creates or updates resources, patches status, and records health.
+### Generic Reconciler
 
-**Delete** — a CR receives a deletion timestamp. Orkestra runs `onDelete:` hooks and templates, removes finalizers, and lets Kubernetes garbage-collect child resources via owner references.
+The default. You write YAML — `onCreate`, `onReconcile`, `onDelete`, `hooks`, conditions, status fields — and Orkestra's built-in reconciler carries out those instructions. You own the declaration; Orkestra owns the loop.
 
-**Drift correction** — a child resource is manually changed. Because the child emits a watch event that Orkestra's informer picks up, the parent CR is requeued and its `onReconcile:` templates run again, restoring the declared state.
+This is the right model for most operators. It handles drift correction, templating, status patching, finalizers, ordered deletion, external calls, and more — without any Go code.
+
+```yaml
+operatorBox:
+  onReconcile:
+    deployments:
+      - name: "{{ .Name }}-server"
+        image: "{{ .Spec.Image }}"
+```
+
+Or with minimal Go hooks for logic that belongs in code:
+
+```yaml
+operatorBox:
+  reconciler:
+    hooks:
+      location: github.com/myorg/operator/hooks
+      function: AppHooks
+```
+
+### Your Reconcile()
+
+When you need full control of the reconcile loop — or you are migrating an existing operator — you provide your own implementation by returning a `domain.Reconciler` from a constructor function declared in the Katalog.
+
+```go
+func NewAppReconciler(kube kubeclient.Interface) domain.Reconciler {
+    return &AppReconciler{client: kubeclient.ToClient(kube)}
+}
+```
+
+```yaml
+operatorBox:
+  reconciler:
+    default: false
+    constructor:
+      location: github.com/myorg/operator/controller
+      function: NewAppReconciler
+```
+
+Orkestra provides the informer, workqueue, worker pool, leader election, and metrics. Your `Reconcile` method handles the business logic. If you are migrating from controller-runtime, `ork migrate` automates the initial scaffolding — see [from-controller-runtime](../typed-operators/05-migration.md).
+
+---
+
+## What the runtime provides to both models
+
+Regardless of which model you use, Orkestra manages:
+
+- One informer per CRD — a watch stream from the API server, kept in a local store
+- One workqueue per CRD — items are deduplicated, rate-limited on error, and re-enqueued on a timer when `requeue:` is declared
+- A configurable worker pool — concurrency is set via `reconciler.workers:` and can be adjusted at runtime with `autoscale:`
+- Health tracking — each CRD moves through `pending → started → healthy → degraded` as it processes items
+- Startup sequencing — CRDs with `dependsOn:` declarations start in dependency order, not all at once
+
+---
+
+## The kordinator
+
+The kordinator is the part of the runtime that owns startup, worker management, and health. It starts each CRD's workers when its declared dependencies are met, monitors CRDs for disappearance, restarts workers when a CRD reappears, and aggregates health across all CRDs. See [Kordinator](05-kordinator.md).
+
+---
+
+## Three reconcile flows
+
+**Create / Update** — a CR appears or changes. Orkestra reads the object from the informer store, evaluates any gate conditions, runs the reconcile pipeline, patches status, and records health.
+
+**Delete** — a CR receives a deletion timestamp. The finalizer holds deletion until `onDelete:` templates and hooks have run. Then the finalizer is removed and Kubernetes garbage-collects child resources via owner references.
+
+**Drift correction** — a child resource is changed manually. Because the child emits a watch event, the parent CR is re-enqueued and the `onReconcile:` cycle runs again, restoring declared state.
+
+---
+
+## Per-target reconciliation
+
+When your Katalog declares `serve.target:` entries, CRs routed through the gateway carry a target annotation. Each reconcile cycle reads that annotation and uses the operatorBox declared for that target — different hooks, different args, different conditions, potentially a different reconciler binary — all from the same CRD type. See [Serve targets](../self-service/02-target-mode.md).
 
 ---
 
 ## Where to go next
 
-- [Create and Update](create-update/) — the 15-step reconcile pipeline
-- [Delete](delete/) — finalizer lifecycle and cleanup sequencing
+- [Create and Update](01-create-update.md) — the reconcile pipeline step by step
+- [Delete](02-delete.md) — finalizer lifecycle and cleanup sequencing
+- [Requeue](03-requeue.md) — per-object scheduled requeue after a successful reconcile
+- [resync vs requeue](04-resync-vs-requeue.md) — when to use each and how they compose
+- [Kordinator](05-kordinator.md) — startup sequencing, worker management, health

@@ -1,6 +1,6 @@
 # Condition-Based Deletion
 
-In addition to hard ordered deletion, Orkestra supports a declarative sequencing model using `when:` and `anyOf:` conditions on `onDelete:` blocks. Each deletion step becomes eligible only when its condition evaluates to true.
+In addition to hard ordered deletion, Orkestra supports a declarative sequencing model using `when:` and `or:` conditions on `onDelete:` blocks. Each deletion step becomes eligible only when its condition evaluates to true.
 
 This model is non-blocking: the CR's finalizer is never held, the CR never gets stuck.
 
@@ -25,7 +25,7 @@ onDelete:
   #   - the CR has already entered a Failed phase
   services:
     - name: "{{ .metadata.name }}-svc"
-  anyOf:
+  or:
     - "{{ not (resourceExists .children.deployment) }}"
     - "{{ eq .status.phase \"Failed\" }}"
 
@@ -43,7 +43,7 @@ onDelete:
 1. Orkestra evaluates deletion blocks in the order they appear
 2. A block with no conditions runs immediately
 3. A block with `when:` runs only when **all** conditions are true
-4. A block with `anyOf:` runs when **any** condition is true
+4. A block with `or:` runs when **any** condition is true
 5. If conditions never become true, the block is skipped
 6. The CR's finalizer is not held — deletion is non-blocking
 

@@ -434,7 +434,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 			return nil, err
 		}
 
-		// Build a template evaluator from spec.notes so when:/anyOf: expressions
+		// Build a template evaluator from spec.notes so when:/or: expressions
 		// on expect blocks can reference user-defined note functions.
 		noteEval := orktmpl.NewResolverFromMap(nil).
 			WithUserNotes(r.e2e.Spec.Notes).

@@ -3,7 +3,7 @@
 //
 // This used to be two independently hand-maintained copies of the same
 // switch statement, one in pkg/runtime/reconciler, one in
-// pkg/gateway/webhook. That's how operator: in — defined for when:/anyOf:
+// pkg/gateway/webhook. That's how operator: in — defined for when:/or:
 // conditions — went unimplemented in validation.rules in both places at
 // once, silently, without either side noticing: a rule using it always
 // passed. One implementation means one place to fix, and no way for the two
@@ -51,7 +51,7 @@ type UniquenessChecker interface {
 // reconciler wires in a live-List() checker on every reconcile, the
 // admission webhook wires in an HTTP-backed one on every admission request,
 // so operator: unique is enforced identically in both validation.rules and
-// when:/anyOf: at both points. Always passes elsewhere (e2e, template-only
+// when:/or: at both points. Always passes elsewhere (e2e, template-only
 // contexts, simulate without a seeded fixture) where there's no live CRD to
 // check against.
 const uniquenessCheckerKey = "_uniquenessChecker"

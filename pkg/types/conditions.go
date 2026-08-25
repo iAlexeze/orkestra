@@ -21,8 +21,8 @@ package types
 // Fields reference CR paths using dot notation: spec.environment, metadata.name.
 //
 // The same type is used in:
-//   - when: / anyOf: on template sources (resource conditions)
-//   - operatorBox.autoscale.conditions.anyOf and when: (autoscale conditions)
+//   - when: / or: on template sources (resource conditions)
+//   - operatorBox.autoscale.conditions.or and when: (autoscale conditions)
 //   - operatorBox.rollback.trigger (rollback conditions)
 //   - notification condition blocks
 type Condition struct {
@@ -105,18 +105,18 @@ type Condition struct {
 	// NotIn is a shorthand for operator: notIn. Comma-separated list.
 	NotIn string `yaml:"notIn,omitempty" json:"notIn,omitempty"`
 
-	// ── Time-based fields (anyOf in autoscale conditions) ────────────────────
+	// ── Time-based fields (or in autoscale conditions) ────────────────────
 
 	// Time — active when the current time is within the declared window.
 	// After and Before are both optional; omit one for a half-open range.
-	//   anyOf:
+	//   or:
 	//     - time:
 	//         after: "08:00"
 	//         before: "20:00"
 	Time *TimeWindow `yaml:"time,omitempty" json:"time,omitempty"`
 
 	// DayOfWeek — active on the specified days of the week.
-	//   anyOf:
+	//   or:
 	//     - dayOfWeek:
 	//         in: [Monday, Tuesday, Wednesday, Thursday, Friday]
 	DayOfWeek *DayOfWeekCondition `yaml:"dayOfWeek,omitempty" json:"dayOfWeek,omitempty"`
@@ -257,7 +257,7 @@ const (
 
 	// ConditionUnique — field value must not match any other existing
 	// instance of this CRD (the CR being evaluated is excluded from its own
-	// check). Works the same way in validation.rules and in when:/anyOf: —
+	// check). Works the same way in validation.rules and in when:/or: —
 	// e.g. gating a template source or mutation rule on whether a field is
 	// still available.
 	//

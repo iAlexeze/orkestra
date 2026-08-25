@@ -381,16 +381,16 @@ func evalMotifCondition(cond orktypes.Condition) bool {
 
 // passesMotifConditions reports whether all conditions pass.
 // Empty condition slice → unconditional (true).
-func passesMotifConditions(conditions []orktypes.Condition, anyOf []orktypes.Condition) bool {
+func passesMotifConditions(conditions []orktypes.Condition, or []orktypes.Condition) bool {
 	// AND conditions
 	for _, c := range conditions {
 		if !evalMotifCondition(c) {
 			return false
 		}
 	}
-	// anyOf (OR) — if any pass, the block passes
-	if len(anyOf) > 0 {
-		for _, c := range anyOf {
+	// or — if any pass, the block passes
+	if len(or) > 0 {
+		for _, c := range or {
 			if evalMotifCondition(c) {
 				return true
 			}
@@ -404,10 +404,10 @@ func passesMotifConditions(conditions []orktypes.Condition, anyOf []orktypes.Con
 // Static conditions (no {{ }}, already input-substituted) gate the resource at
 // expansion time. Runtime conditions (still contain {{ }}) are preserved on the
 // resource for the reconciler to evaluate against live CR state.
-func motifConditionFilter(conditions, anyOf []orktypes.Condition) (bool, []orktypes.Condition, []orktypes.Condition) {
+func motifConditionFilter(conditions, or []orktypes.Condition) (bool, []orktypes.Condition, []orktypes.Condition) {
 	static, runtime := splitConditions(conditions)
-	staticAnyOf, runtimeAnyOf := splitConditions(anyOf)
-	return passesMotifConditions(static, staticAnyOf), runtime, runtimeAnyOf
+	staticOr, runtimeOr := splitConditions(or)
+	return passesMotifConditions(static, staticOr), runtime, runtimeOr
 }
 
 // filterExpandedResources applies motif condition filtering to ht using HookTemplates.FilterResources.

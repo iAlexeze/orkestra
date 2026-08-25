@@ -306,7 +306,7 @@ type E2ESpec struct {
 	// runs automatically during ork push.
 	ValuesFiles []string `yaml:"valuesFiles,omitempty"`
 
-	// Notes declares user-defined note functions available in when:/anyOf: expressions.
+	// Notes declares user-defined note functions available in when:/or: expressions.
 	// Same syntax as a Katalog notes block — same FuncMap registration, same functions.
 	Notes NoteRegistry `yaml:"notes,omitempty"`
 
@@ -416,13 +416,13 @@ type E2EExpectation struct {
 	// Use commands: for anything that doesn't fit a subcommand.
 	Kubectl *E2EKubectl `yaml:"kubectl,omitempty"`
 
-	// When / AnyOf gate this expectation using the same []Condition type as
-	// katalog when:/anyOf:. An expectation whose conditions do not pass is
+	// When / Or gate this expectation using the same []Condition type as
+	// katalog when:/or:. An expectation whose conditions do not pass is
 	// skipped — not failed. Notes declared in spec.notes are available as
 	// template expressions: field: '{{ inBusinessHours }}'.
 	// Empty blocks always pass.
-	When  []Condition `yaml:"when,omitempty"`
-	AnyOf []Condition `yaml:"anyOf,omitempty"`
+	When []Condition `yaml:"when,omitempty"`
+	Or   []Condition `yaml:"or,omitempty"`
 
 	// OnFailure declares diagnostic operations to run immediately when this
 	// specific expectation fails. Runs before moving to the next expectation.

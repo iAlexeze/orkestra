@@ -6,6 +6,24 @@ import (
 	"time"
 )
 
+func TestTimeUntil(t *testing.T) {
+	future := time.Now().UTC().Add(2 * time.Hour).Format(time.RFC3339)
+	past := time.Now().UTC().Add(-1 * time.Hour).Format(time.RFC3339)
+
+	if got := noteTimeUntil(future); got == "0s" {
+		t.Errorf("timeUntil(future) = %q, want non-zero duration", got)
+	}
+	if got := noteTimeUntil(past); got != "0s" {
+		t.Errorf("timeUntil(past) = %q, want \"0s\"", got)
+	}
+	if got := noteTimeUntil(""); got != "0s" {
+		t.Errorf("timeUntil(\"\") = %q, want \"0s\"", got)
+	}
+	if got := noteTimeUntil("not-a-time"); got != "0s" {
+		t.Errorf("timeUntil(invalid) = %q, want \"0s\"", got)
+	}
+}
+
 func TestWeekdayWeekend(t *testing.T) {
 	// These are time-dependent; just assert they are mutually exclusive.
 	w := noteWeekday()

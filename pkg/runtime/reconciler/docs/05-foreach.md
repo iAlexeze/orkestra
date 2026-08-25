@@ -132,7 +132,7 @@ The helper `itemResolver(base, fi, as, i)` in `run_foreach.go` picks automatical
 `WithItemAndValue` additionally injects:
 - `.value` — the map value (object or string). Access nested fields as `.value.replicas`.
 
-`when:` and `anyOf:` conditions on a `forEach` source are evaluated per-item — each expanded copy may pass or fail independently.
+`when:` and `or:` conditions on a `forEach` source are evaluated per-item — each expanded copy may pass or fail independently.
 
 ## Calling expandForEach from runResourceGroup
 

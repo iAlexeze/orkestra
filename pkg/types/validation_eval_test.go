@@ -186,7 +186,7 @@ func TestEvaluateValidationRule_Operators(t *testing.T) {
 
 		// ── in ──────────────────────────────────────────────────────────────
 		// The exact regression this suite guards: operator: in was defined
-		// for when:/anyOf: conditions but missing from the validation-rule
+		// for when:/or: conditions but missing from the validation-rule
 		// evaluation switch, so a rule using it always passed silently, in
 		// both the reconciler and the webhook, at once.
 		{"in: value in list — passes", specData(map[string]interface{}{"workloadType": "app"}), ValidationRule{Field: "spec.workloadType", Operator: ConditionIn, Value: "app,cert,monitoring,infra", Message: "invalid"}, true},

@@ -64,21 +64,19 @@ Both resources — Deployment and Service — are created in Go. No declared tem
 
 ---
 
-### [04 — constructor: lift and change signature](../from-controller-runtime/04-constructor-migration/README.md)
+### [04 — constructor: zero changes](../from-controller-runtime/04-constructor-migration/README.md)
 
-The migration path. The existing `Reconcile` logic is lifted verbatim. Only the signature changes:
+The migration path. The existing `Reconcile` method is completely untouched — same signature, same body, same return types. Two lines wire it into Orkestra:
 
 ```go
-// Before
-func (r *WebAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error)
-
-// After — everything inside is identical
-func (r *WebAppReconciler) Reconcile(ctx context.Context, key string) error
+func NewWebAppReconciler(kube kubeclient.Interface) domain.Reconciler {
+    return domain.ReconcilerFrom(&WebAppReconciler{
+        Client: kubeclient.ToClient(kube),
+    })
+}
 ```
 
-`key` is `namespace/name` — the same as `req.String()`. Remove `SetupWithManager`, scheme registration, and `main.go`. The resource management code (Get / IsNotFound / Create / Patch) stays unchanged.
-
-What you removed: `ctrl.NewManager`, `SetupWithManager`, scheme registration. Orkestra provides the informer, workqueue, worker pool, leader election, panic recovery, and metrics.
+Remove `SetupWithManager`, `Scheme`, and `main.go`. Everything inside `Reconcile` — `r.Get`, `r.Create`, `r.Status().Update()` — stays unchanged. Orkestra provides the informer, workqueue, worker pool, leader election, panic recovery, and metrics.
 
 ```
 04-constructor-migration/
@@ -140,7 +138,7 @@ Use this to compare patterns side by side, or as the starting point before distr
 | **01 declarative** | No | No | Nothing — pure YAML |
 | **02 hybrid** | Yes — hook only | Yes | The 10% templates can't express |
 | **03 hooks only** | Yes — all resources | Yes | All child resource specs in Go |
-| **04 constructor migration** | Yes — full reconciler | Yes | Reconcile logic; manager removed |
+| **04 constructor migration** | Yes — full reconciler | Yes | Reconcile unchanged; manager removed |
 | **05 constructor resources** | Yes — full reconciler | Yes | Reconcile logic; resource ops simplified |
 | **06 ork migrate** | Yes — tool generates it | Yes | Starting from an existing operator |
 | **07 all options** | Depends on options used | Yes | All five patterns in one Komposer |

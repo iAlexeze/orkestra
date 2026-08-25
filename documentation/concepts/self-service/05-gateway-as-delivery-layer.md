@@ -96,7 +96,7 @@ The gateway owns the left side of this diagram. Everything to the right of the C
 
 ---
 
-## See also
+## Where to go next
 
 - [Deliver, Don't Reconcile](../../foundations/08-deliver-dont-reconcile.md) — the foundational principle behind this design: when the gateway is enabled, every CR delivery passes through it regardless of source, and reconciliation is never its concern.
 - [Gateway architecture](../../orkestra-core/02-gateway/index.md#standalone-deployment) — the gateway process can also run standalone as a pure admission and webhook layer without any operators deployed.

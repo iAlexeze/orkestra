@@ -160,6 +160,11 @@ type Queue struct {
 	// FailureThreshold — consecutive failures before CRD health degrades.
 	// 0 → uses FAILURE_THRESHOLD env var.
 	FailureThreshold int `yaml:"failureThreshold,omitempty" json:"failureThreshold,omitempty" validate:"omitempty,gte=0"`
+
+	// RetryBackoff — per-CRD backoff applied inside the reconcile loop when
+	// the reconciler returns an error before re-enqueuing. Shorthand ("5s")
+	// sets initial only; full form controls initial/max/multiplier/maxAttempts.
+	RetryBackoff *RetryBackoffConfig `yaml:"retryBackoff,omitempty" json:"retryBackoff,omitempty"`
 }
 
 // IsEmpty reports whether the queue configuration has no meaningful settings.
@@ -177,5 +182,13 @@ func (q *Queue) IsEmpty() bool {
 	if q.FailureThreshold != 0 {
 		return false
 	}
+	if q.RetryBackoff != nil {
+		return false
+	}
 	return true
+}
+
+// HasRetryBackoff reports whether a retryBackoff is declared on this queue.
+func (q *Queue) HasRetryBackoff() bool {
+	return q != nil && q.RetryBackoff != nil
 }

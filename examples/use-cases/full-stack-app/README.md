@@ -8,7 +8,7 @@ Six examples showing what Orkestra can express declaratively that previously req
 | [02 — External Gate](02-external-gate/README.md) | `external:` health check | `http.Get + if status != 200 { return err }` |
 | [03 — Cross-CRD](03-cross-crd/README.md) | `cross:` observation | `client.Get(otherCRD) + if notFound { requeue }` |
 | [04 — Once Secret](04-once-secret/README.md) | `once:` + random generation | `crypto/rand + secretExists check` |
-| [05 — anyOf](05-anyof/README.md) | OR conditions | `if phase == Failed \|\| phase == Succeeded` |
+| [05 — or](05-or/README.md) | OR conditions | `if phase == Failed \|\| phase == Succeeded` |
 | [06 — Full Stack](06-full-stack/README.md) | All five combined | Everything above in one CR |
 
 Each subfolder has its own `katalog.yaml` and `README.md` — run any example in isolation from inside the subfolder. To run all six at once as one operator:

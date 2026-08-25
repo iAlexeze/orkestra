@@ -14,6 +14,7 @@ import (
 	apiextclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
@@ -21,6 +22,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -45,6 +47,19 @@ type Kubeclient struct {
 	// args holds the fully-evaluated args for the current reconcile scope.
 	// Set by ScopedFor; nil means fall back to rawArgs as-is.
 	args Args
+
+	// informer is the primary CRD's SharedIndexInformer, injected by the runtime
+	// before the constructor is called. Accessible via GetInformer().
+	informer cache.SharedIndexInformer
+	// eventRecorder is the event recorder for this CRD, injected by the runtime
+	// before the constructor is called. Accessible via GetEventRecorder().
+	eventRecorder EventRecorder
+	// storeFor is a closure that returns the informer store for a GVK, injected by
+	// the runtime so ToClient can serve cached reads. Nil when not wired.
+	storeFor func(schema.GroupVersionKind) cache.Store
+	// indexerFor is a closure that returns the cache.Indexer for a GVK, injected by
+	// the runtime so ToClient can use ByIndex for field-selector queries. Nil when not wired.
+	indexerFor func(schema.GroupVersionKind) cache.Indexer
 
 	// Testing
 	FakeClientset kubernetes.Interface
@@ -239,4 +254,60 @@ func (k *Kubeclient) ScopedFor(eval func(string) (string, bool)) Interface {
 	}
 	cp.args = ResolveArgsMap(k.rawArgs, eval)
 	return &cp
+}
+
+// WithInformer returns a copy of this Interface with the primary CRD informer
+// attached. Called by the runtime before invoking a constructor function.
+func (k *Kubeclient) WithInformer(inf cache.SharedIndexInformer) Interface {
+	cp := *k
+	cp.informer = inf
+	return &cp
+}
+
+// WithEventRecorder returns a copy of this Interface with the event recorder
+// attached. Called by the runtime before invoking a constructor function.
+func (k *Kubeclient) WithEventRecorder(ev EventRecorder) Interface {
+	cp := *k
+	cp.eventRecorder = ev
+	return &cp
+}
+
+// GetInformer returns the primary CRD's SharedIndexInformer.
+// Available inside constructor functions — nil if called outside that context.
+func (k *Kubeclient) GetInformer() cache.SharedIndexInformer {
+	return k.informer
+}
+
+// GetEventRecorder returns the event recorder for this CRD.
+// Available inside constructor functions — nil if called outside that context.
+func (k *Kubeclient) GetEventRecorder() EventRecorder {
+	return k.eventRecorder
+}
+
+// WithStoreFor returns a copy of this Interface with the given store-lookup
+// closure attached. Called by the runtime before invoking a constructor so that
+// ToClient can serve cached reads for informer-backed types.
+func (k *Kubeclient) WithStoreFor(fn func(schema.GroupVersionKind) cache.Store) Interface {
+	cp := *k
+	cp.storeFor = fn
+	return &cp
+}
+
+// GetStoreFor returns the store-lookup closure, or nil if none was attached.
+func (k *Kubeclient) GetStoreFor() func(schema.GroupVersionKind) cache.Store {
+	return k.storeFor
+}
+
+// WithIndexerFor returns a copy of this Interface with the given indexer-lookup
+// closure attached. Called by the runtime before invoking a constructor so that
+// ToClient can use ByIndex for field-selector queries.
+func (k *Kubeclient) WithIndexerFor(fn func(schema.GroupVersionKind) cache.Indexer) Interface {
+	cp := *k
+	cp.indexerFor = fn
+	return &cp
+}
+
+// GetIndexerFor returns the indexer-lookup closure, or nil if none was attached.
+func (k *Kubeclient) GetIndexerFor() func(schema.GroupVersionKind) cache.Indexer {
+	return k.indexerFor
 }

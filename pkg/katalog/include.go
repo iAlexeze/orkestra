@@ -47,6 +47,45 @@ func populateConversionPathsFromInclude(entry *orktypes.CRDEntry, katalogDir str
 	return nil
 }
 
+func populateWatchEntriesFromInclude(entry *orktypes.CRDEntry, katalogDir string) error {
+	var err error
+	entry.OperatorBox.Watch, err = orktypes.ExpandWatchEntries(entry.OperatorBox.Watch, katalogDir)
+	if err != nil {
+		return fmt.Errorf("operatorBox.watch: %w", err)
+	}
+	if entry.Serve == nil {
+		return nil
+	}
+	for name, cfg := range entry.Serve.Target.Entries {
+		if cfg == nil || cfg.OperatorBox == nil {
+			continue
+		}
+		cfg.OperatorBox.Watch, err = orktypes.ExpandWatchEntries(cfg.OperatorBox.Watch, katalogDir)
+		if err != nil {
+			return fmt.Errorf("serve.target[%q].operatorBox.watch: %w", name, err)
+		}
+	}
+	return nil
+}
+
+func populateReconcilerFromInclude(entry *orktypes.CRDEntry, katalogDir string) error {
+	if err := orktypes.ExpandReconcilerInclude(entry.OperatorBox.Reconciler, katalogDir); err != nil {
+		return fmt.Errorf("operatorBox.reconciler: %w", err)
+	}
+	if entry.Serve == nil {
+		return nil
+	}
+	for name, cfg := range entry.Serve.Target.Entries {
+		if cfg == nil || cfg.OperatorBox == nil {
+			continue
+		}
+		if err := orktypes.ExpandReconcilerInclude(cfg.OperatorBox.Reconciler, katalogDir); err != nil {
+			return fmt.Errorf("serve.target[%q].operatorBox.reconciler: %w", name, err)
+		}
+	}
+	return nil
+}
+
 func populateExternalCallsFromInclude(entry *orktypes.CRDEntry, katalogDir string) error {
 	var err error
 	if entry.OperatorBox.OnReconcile != nil {

@@ -108,7 +108,7 @@ func runValidation(data map[string]interface{}, resolver *orktmpl.Resolver, cfg 
 			eval = resolver.TemplateEvaluator()
 			tr = resolver
 		}
-		if !orktypes.EvaluateConditions(data, rule.When, rule.AnyOf, eval) {
+		if !orktypes.EvaluateConditions(data, rule.When, rule.Or, eval) {
 			continue
 		}
 		ruleViolation := orktypes.EvaluateValidationRule(data, tr, rule)

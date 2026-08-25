@@ -155,7 +155,7 @@ ork simulate
 
 ---
 
-## See also
+## Where to go next
 
 - [Katalog schema](../02-katalog/01-top-level.md) — the Katalog under simulation
 - [simulate concept docs](../../../concepts/simulate/index.md) — how simulate works, aggregators, hooks and constructors

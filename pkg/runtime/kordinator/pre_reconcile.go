@@ -24,7 +24,7 @@ func (k *Kontroller) objectFromCache(entry RegistryEntry, key string) *unstructu
 	return obj
 }
 
-// evaluatePreReconcileCheck evaluates the preReconcile.when/anyOf gate for the
+// evaluatePreReconcileCheck evaluates the preReconcile.when/or gate for the
 // given CR. Returns (true, reason) when gated — reconciler must not be called.
 // Returns (false, "") when conditions pass.
 //
@@ -34,11 +34,12 @@ func (k *Kontroller) evaluatePreReconcileCheck(
 	ctx context.Context,
 	obj *unstructured.Unstructured,
 	crdName string,
+	sentinels map[string]string,
 ) (gated bool, reason string) {
 	if k.kat == nil || obj == nil {
 		return false, ""
 	}
-	allowed, reason := k.kat.EvaluatePreReconcile(ctx, crdName, obj, k.kube.Clientset())
+	allowed, reason := k.kat.EvaluatePreReconcile(ctx, crdName, obj, k.kube.Clientset(), sentinels)
 	return !allowed, reason
 }
 

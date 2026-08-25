@@ -44,70 +44,58 @@ import (
 
 	apiv1 "github.com/orkspace/from-controller-runtime-all-options/options/constructor/api/v1alpha1"
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/tools/cache"
 	sigs "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // WebAppReconciler implements domain.Reconciler for the ConstructorApp CRD.
 type WebAppReconciler struct {
-	informer cache.SharedIndexInformer
-	kube     kubeclient.KubeClient
-	ev       event.Recorder
+	kube kubeclient.Interface
 }
 
 // NewWebAppReconciler is the constructor function registered in the Katalog.
-func NewWebAppReconciler(
-	kube kubeclient.KubeClient,
-	informer cache.SharedIndexInformer,
-	ev event.Recorder,
-) domain.Reconciler {
-	return &WebAppReconciler{
-		informer: informer,
-		kube:     kube,
-		ev:       ev,
-	}
+func NewWebAppReconciler(kube kubeclient.Interface) domain.Reconciler {
+	return &WebAppReconciler{kube: kube}
 }
 
 // Reconcile is called by Orkestra's worker pool for every queued ConstructorApp key.
-// key is namespace/name — same as req.String() in controller-runtime.
-func (r *WebAppReconciler) Reconcile(ctx context.Context, key string) error {
-	raw, exists, err := r.informer.GetIndexer().GetByKey(key)
+func (r *WebAppReconciler) Reconcile(ctx context.Context, req domain.Request) (domain.Result, error) {
+	key := req.Key
+	raw, exists, err := r.kube.GetInformer().GetIndexer().GetByKey(key)
 	if err != nil {
-		return fmt.Errorf("cache lookup %q: %w", key, err)
+		return domain.Result{}, fmt.Errorf("cache lookup %q: %w", key, err)
 	}
 	if !exists {
-		return nil
+		return domain.Result{}, nil
 	}
 
 	webapp, ok := raw.(*apiv1.ConstructorApp)
 	if !ok {
-		return fmt.Errorf("unexpected type %T", raw)
+		return domain.Result{}, fmt.Errorf("unexpected type %T", raw)
 	}
 	webapp = webapp.DeepCopyObject().(*apiv1.ConstructorApp)
 
 	if webapp.DeletionTimestamp != nil {
 		// Owner references clean up Deployment and Service automatically.
-		return nil
+		return domain.Result{}, nil
 	}
 
 	if err := r.reconcileDeployment(ctx, webapp); err != nil {
-		return err
+		return domain.Result{}, err
 	}
 	if err := r.reconcileService(ctx, webapp); err != nil {
-		return err
+		return domain.Result{}, err
 	}
 
-	r.ev.Eventf(webapp, corev1.EventTypeNormal, "WebAppReconciled",
+	r.kube.GetEventRecorder().Eventf(webapp, corev1.EventTypeNormal, "WebAppReconciled",
 		"ConstructorApp %s/%s reconciled", webapp.Namespace, webapp.Name)
 
-	return r.kube.PatchStatus(ctx, webapp, map[string]interface{}{
+	return domain.Result{}, r.kube.PatchStatus(ctx, webapp, map[string]interface{}{
 		"phase":    "Running",
 		"endpoint": fmt.Sprintf("%s-svc.%s.svc.cluster.local", webapp.Name, webapp.Namespace),
 		"replicas": webapp.Spec.Replicas,

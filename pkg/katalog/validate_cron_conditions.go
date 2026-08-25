@@ -23,39 +23,39 @@ func (k *Katalog) CronConditionWarnings() []string {
 	return warnings
 }
 
-// collectHookConditions gathers all when:/anyOf: conditions from every resource in a HookTemplates.
+// collectHookConditions gathers all when:/or: conditions from every resource in a HookTemplates.
 func collectHookConditions(ht *orktypes.HookTemplates) []orktypes.Condition {
 	var out []orktypes.Condition
-	add := func(when, anyOf []orktypes.Condition) {
+	add := func(when, or []orktypes.Condition) {
 		out = append(out, when...)
-		out = append(out, anyOf...)
+		out = append(out, or...)
 	}
 	for _, r := range ht.Deployments {
-		add(r.Conditions, r.AnyOf)
+		add(r.Conditions, r.Or)
 	}
 	for _, r := range ht.StatefulSets {
-		add(r.Conditions, r.AnyOf)
+		add(r.Conditions, r.Or)
 	}
 	for _, r := range ht.ReplicaSets {
-		add(r.Conditions, r.AnyOf)
+		add(r.Conditions, r.Or)
 	}
 	for _, r := range ht.Services {
-		add(r.Conditions, r.AnyOf)
+		add(r.Conditions, r.Or)
 	}
 	for _, r := range ht.Jobs {
-		add(r.Conditions, r.AnyOf)
+		add(r.Conditions, r.Or)
 	}
 	for _, r := range ht.CronJobs {
-		add(r.Conditions, r.AnyOf)
+		add(r.Conditions, r.Or)
 	}
 	for _, r := range ht.ConfigMaps {
-		add(r.Conditions, r.AnyOf)
+		add(r.Conditions, r.Or)
 	}
 	for _, r := range ht.Secrets {
-		add(r.Conditions, r.AnyOf)
+		add(r.Conditions, r.Or)
 	}
 	for _, r := range ht.HorizontalPodAutoscalers {
-		add(r.Conditions, r.AnyOf)
+		add(r.Conditions, r.Or)
 	}
 	return out
 }

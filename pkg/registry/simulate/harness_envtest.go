@@ -233,7 +233,7 @@ func RunWithEnvtest(ctx context.Context, kat *katalog.Katalog, crdName string,
 
 	var r domain.Reconciler
 	if factoryFn, ok := orktypes.ReconcilerRegistry[gvk]; ok {
-		r = factoryFn(recKube, inf, event.Discard())
+		r = factoryFn(recKube.WithInformer(inf).WithEventRecorder(event.Discard()))
 	} else {
 		r = reconciler.NewGenericReconciler(
 			crdEntry,

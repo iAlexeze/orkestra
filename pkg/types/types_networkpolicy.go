@@ -83,8 +83,8 @@ type NetworkPolicyTemplateSource struct {
 	// Conditions (when:) — all must pass for this resource to be applied.
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
-	// AnyOf — at least one must pass.
-	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	// Or — at least one must pass.
+	Or []Condition `yaml:"or,omitempty" json:"or,omitempty"`
 
 	// Profile — named NetworkPolicy preset. Expands into ingress/egress rules and policy types.
 	// Allowed values: deny-all, deny-all-ingress, deny-all-egress, allow-same-namespace, allow-dns-egress.

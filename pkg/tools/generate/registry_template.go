@@ -64,8 +64,6 @@ import (
 	{{ if .NeedsSchemeImports }}metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	{{ end }}{{ if or .NeedsHookImports .NeedsRecImports }}"github.com/orkspace/orkestra/domain"
 	{{ end }}{{ if .NeedsRecImports }}"github.com/orkspace/orkestra/pkg/kubeclient"
-	"github.com/orkspace/orkestra/pkg/event"
-	"k8s.io/client-go/tools/cache"
 	{{ end }}
 {{ range .Imports }}	{{ .Alias }} "{{ .Location }}"
 {{ end }})
@@ -129,8 +127,8 @@ func RegisterRuntimeObjects() {
 	// {{ .Kind }} — custom reconciler constructor
 	// Calls {{ .Alias }}.{{ .Function }}() to build the user's reconciler.
 	orktypes.ReconcilerRegistry[schema.GroupVersionKind{Group: "{{ .Group }}", Version: "{{ .Version }}", Kind: "{{ .Kind }}"}] =
-		func(kube kubeclient.Interface, inf cache.SharedIndexInformer, ev event.Recorder) domain.Reconciler {
-			return {{ .Alias }}.{{ .Function }}(kube, inf, ev)
+		func(kube kubeclient.Interface) domain.Reconciler {
+			return {{ .Alias }}.{{ .Function }}(kube)
 		}
 {{ end }}{{ end }}
 {{ if .TargetHookEntries }}{{ range .TargetHookEntries }}
@@ -154,8 +152,8 @@ func RegisterRuntimeObjects() {
 		if orktypes.TargetReconcilerRegistry[gvk] == nil {
 			orktypes.TargetReconcilerRegistry[gvk] = map[string]orktypes.NewReconcilerFunc{}
 		}
-		orktypes.TargetReconcilerRegistry[gvk]["{{ .TargetName }}"] = func(kube kubeclient.Interface, inf cache.SharedIndexInformer, ev event.Recorder) domain.Reconciler {
-			return {{ .Alias }}.{{ .Function }}(kube, inf, ev)
+		orktypes.TargetReconcilerRegistry[gvk]["{{ .TargetName }}"] = func(kube kubeclient.Interface) domain.Reconciler {
+			return {{ .Alias }}.{{ .Function }}(kube)
 		}
 	}
 {{ end }}{{ end }}

@@ -66,6 +66,51 @@ func (f *Factory) handleEvent(obj interface{}) {
 	wq.Enqueue(obj, gvkStr)
 }
 
+// handleUpdateEvent routes an update event for oldObj→newObj to the correct queue.
+// When a sentinel-aware update filter is registered for the GVK, it is evaluated
+// first — both oldObj and newObj are available here for sentinel computation.
+// If the filter passes, EnqueueWithSentinels carries the sentinel map through.
+// When no update filter is registered, falls through to the standard enqueue path.
+func (f *Factory) handleUpdateEvent(gvkStr string, oldObj, newObj interface{}) {
+	<-f.ready
+
+	namespace := extractNamespace(newObj)
+	if !f.namespaceAllowed(gvkStr, namespace) {
+		logger.Debug().
+			Str("gvk", gvkStr).
+			Str("namespace", namespace).
+			Msg("informer: update dropped — namespace not allowed")
+		return
+	}
+
+	allowed, sentinels, hasUpdateFilter := f.updateEnqueueAllowed(gvkStr, oldObj, newObj)
+	if hasUpdateFilter {
+		if !allowed {
+			return
+		}
+		wq, ok := f.queueRegistry.For(gvkStr)
+		if !ok {
+			logger.Warn().Str("gvk", gvkStr).Msg("no per-CRD queue — falling back to default queue")
+			f.defaultWq.EnqueueWithSentinels(newObj, gvkStr, sentinels)
+			return
+		}
+		wq.EnqueueWithSentinels(newObj, gvkStr, sentinels)
+		return
+	}
+
+	// No update filter — standard path (same as handleEvent).
+	if !f.enqueueAllowed(gvkStr, newObj) {
+		return
+	}
+	wq, ok := f.queueRegistry.For(gvkStr)
+	if !ok {
+		logger.Warn().Str("gvk", gvkStr).Msg("no per-CRD queue — falling back to default queue")
+		f.defaultWq.Enqueue(newObj, gvkStr)
+		return
+	}
+	wq.Enqueue(newObj, gvkStr)
+}
+
 // newListWatch returns a ListWatch for the given object type.
 // Both List and Watch block on f.ready so they never run before Start().
 // When opts.Namespace is set (Tier 1 single-namespace filter), the ListerWatcher

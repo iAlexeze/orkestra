@@ -44,7 +44,7 @@ func RunCronJobs(
 	// typeOf conditions both targeting {{ .metadata.name }}.
 	activeNames := make(map[string]bool, len(srcs))
 	for _, s := range srcs {
-		if !orktypes.EvaluateConditions(resolver.Data(), s.Conditions, s.AnyOf, resolver.TemplateEvaluator()) {
+		if !orktypes.EvaluateConditions(resolver.Data(), s.Conditions, s.Or, resolver.TemplateEvaluator()) {
 			continue
 		}
 		n, _ := resolver.Resolve(s.Name)
@@ -57,7 +57,7 @@ func RunCronJobs(
 
 	for i, src := range srcs {
 		// 1. Evaluate conditions BEFORE resolving templates
-		conditionPassed := orktypes.EvaluateConditions(resolver.Data(), src.Conditions, src.AnyOf, resolver.TemplateEvaluator())
+		conditionPassed := orktypes.EvaluateConditions(resolver.Data(), src.Conditions, src.Or, resolver.TemplateEvaluator())
 
 		// Early name/ns resolution — needed for guard check and DeleteIfOwned cleanup.
 		name, _ := resolver.Resolve(src.Name)

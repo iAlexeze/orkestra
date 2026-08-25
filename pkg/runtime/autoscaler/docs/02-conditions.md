@@ -6,7 +6,7 @@
 operatorBox:
   autoscale:
     conditions:
-      anyOf:          # OR — at least one must match
+      or:          # OR — at least one must match
         - time: ...
         - dayOfWeek: ...
         - cron: ...
@@ -18,14 +18,14 @@ operatorBox:
       workers: 8
 ```
 
-**`anyOf` is OR, `when` is AND.**
+**`or` is OR, `when` is AND.**
 
-Full condition expression: `(anyOf passes OR anyOf is empty) AND (all when entries pass OR when is empty)`.
+Full condition expression: `(or passes OR or is empty) AND (all when entries pass OR when is empty)`.
 
-## anyOf — time window
+## or — time window
 
 ```yaml
-anyOf:
+or:
   - time:
       after: "08:00"
       before: "20:00"
@@ -33,26 +33,26 @@ anyOf:
 
 Both `after` and `before` are optional. Either alone is valid. Times are in 24-hour `HH:MM` format, evaluated against the local clock of the operator process.
 
-## anyOf — day of week
+## or — day of week
 
 ```yaml
-anyOf:
+or:
   - dayOfWeek:
       in: [Monday, Tuesday, Wednesday, Thursday, Friday]
 ```
 
 ```yaml
-anyOf:
+or:
   - dayOfWeek:
       notIn: [Saturday, Sunday]
 ```
 
 `in` and `notIn` are mutually exclusive. Day names are case-insensitive.
 
-## anyOf — cron
+## or — cron
 
 ```yaml
-anyOf:
+or:
   - cron: "0 9 * * 1-5"   # 09:00 every weekday
     duration: 9h            # window stays open for 9 hours
 ```
@@ -61,15 +61,15 @@ The cron expression uses standard five-field syntax (via `robfig/cron`). When th
 
 Window state is tracked per cron expression string in `state.CronWindowsOpenAt` via `types.TickCronWindow`. This is stateful across evaluation ticks: a cron fire that occurs between two ticks is not missed — the window remains open until `duration` elapses. `TickCronWindow` is a general-purpose function; any Orkestra component (future job runner, etc.) can bring its own `map[string]time.Time` and call it on each evaluation cycle.
 
-## anyOf — inline metric
+## or — inline metric
 
 ```yaml
-anyOf:
+or:
   - field: metrics.workersBusyPercent
     greaterThan: "90"
 ```
 
-An inline metric in `anyOf` participates in the OR — if the metric threshold is met, the whole `anyOf` block passes even if time/day conditions do not.
+An inline metric in `or` participates in the OR — if the metric threshold is met, the whole `or` block passes even if time/day conditions do not.
 
 ## when — metric conditions
 
@@ -102,7 +102,7 @@ For cross-CRD metrics see [03 — Cross-Metrics](03-cross-metrics.md).
 
 - An unknown `field` value returns `""` and evaluates as **false** (conservative — does not trigger override).
 - Both `greaterThan` and `lessThan` compare as floating-point numbers. Non-numeric values are always false.
-- Empty `anyOf` and empty `when` both evaluate as **pass** — omitting them means "always apply the override".
+- Empty `or` and empty `when` both evaluate as **pass** — omitting them means "always apply the override".
 
 ---
 

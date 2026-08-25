@@ -185,9 +185,9 @@ type ValidationRule struct {
 	// Empty means unconditional.
 	When []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
-	// AnyOf — at least one condition must pass for this rule to be evaluated (OR).
-	// When both When and AnyOf are declared, both blocks must pass.
-	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	// Or — at least one condition must pass for this rule to be evaluated (OR).
+	// When both When and Or are declared, both blocks must pass.
+	Or []Condition `yaml:"or,omitempty" json:"or,omitempty"`
 
 	// Fires controls at which lifecycle points this rule is evaluated.
 	// Absent: fires at both admission and reconcile time.
@@ -348,8 +348,8 @@ type MutationRule struct {
 	// When — all conditions must pass for this rule to be applied (AND).
 	When []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
-	// AnyOf — at least one condition must pass for this rule to be applied (OR).
-	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	// Or — at least one condition must pass for this rule to be applied (OR).
+	Or []Condition `yaml:"or,omitempty" json:"or,omitempty"`
 
 	// Fires controls at which lifecycle points this rule is applied.
 	// Absent: fires at both admission and reconcile time.

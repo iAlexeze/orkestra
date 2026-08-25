@@ -264,9 +264,9 @@ type ServeFieldConfig struct {
 	// template source when: blocks.
 	When []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
-	// AnyOf is a list of conditions where at least ONE must be true for the
+	// Or is a list of conditions where at least ONE must be true for the
 	// field to be visible. OR counterpart to When (AND).
-	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	Or []Condition `yaml:"or,omitempty" json:"or,omitempty"`
 
 	// Required, when true, marks the field as mandatory in the serve form —
 	// the browser enforces this natively (asterisk on the label, form cannot

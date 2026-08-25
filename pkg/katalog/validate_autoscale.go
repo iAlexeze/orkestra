@@ -99,7 +99,7 @@ func autoscaleIsProfileOnly(spec *orktypes.AutoscaleSpec) bool {
 
 	// Any manual field invalidates profile usage
 	if spec.HasCooldownDuration() || spec.HasIntervalDuration() ||
-		spec.HasWhenConditions() || spec.HasAnyOfConditions() ||
+		spec.HasWhenConditions() || spec.HasOrConditions() ||
 		spec.HasDoWorkers() || spec.HasDoQueueDepth() ||
 		spec.HasDoResync() {
 		return false

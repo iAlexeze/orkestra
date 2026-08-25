@@ -36,7 +36,7 @@ spec:
             label: "Certificate Issuer"
             category: "TLS"
             order: 20
-            anyOf:
+            or:
               - field: workloadType
                 equals: cert
           maintenanceMode:
@@ -85,8 +85,8 @@ fields:
 | `category` | Section heading in the form. Fields with the same category are grouped together. Empty defaults to `"Spec"`. |
 | `order` | Sort order within the form *and* validation-rule priority — see note below. `0`/unset follows every field that declares one. |
 | `when` | All conditions must pass for this field to be shown (AND). Uses the same `Condition` type as resource templates — see [06-when-conditions.md](06-when-conditions.md). Evaluated client-side in the Control Center; gateway/admission is the backstop. |
-| `anyOf` | At least one condition must pass for this field to be shown (OR). When both `when` and `anyOf` are declared, both blocks must pass. |
-| `required` | When `true`, marks the field as mandatory — enforced both client-side (the browser shows an asterisk and blocks submission while empty) and server-side: an implicit `exists` rule with `action: deny` is synthesized automatically at load time, so every caller of the Gateway API is covered, not just the Control Center form. No matching `validation.rules` entry needs to be hand-written. Has no effect on fields currently hidden by a `when:` or `anyOf:` condition. |
+| `or` | At least one condition must pass for this field to be shown (OR). When both `when` and `or` are declared, both blocks must pass. |
+| `required` | When `true`, marks the field as mandatory — enforced both client-side (the browser shows an asterisk and blocks submission while empty) and server-side: an implicit `exists` rule with `action: deny` is synthesized automatically at load time, so every caller of the Gateway API is covered, not just the Control Center form. No matching `validation.rules` entry needs to be hand-written. Has no effect on fields currently hidden by a `when:` or `or:` condition. |
 | `disabled` | Non-empty string — field is rendered greyed-out with this message. Useful for platform-managed fields that should be visible but not editable. |
 | `path` | — | Dot-notation path mapping the field to a nested location in the CRD `spec`. When set, the field value is written to `spec.<path>` instead of `spec.<name>`. See [`path` — nested spec paths](#servefieldspath) below. |
 | `value` | — | Template expression that transforms the submitted value before writing to `spec.<path>` (or `spec.<name>`). Use `.value` for the raw submitted value. Mutually exclusive with `values`. → [Field translation](22-serve-field-translation.md) |
@@ -1000,7 +1000,7 @@ When an OIDC token matches, the verified `sub` claim is stamped on the CR as `or
 | `vaultOIDC.allow` must not be empty | Declare at least one field — empty block accepts any Vault entity token |
 | Duplicate token names | Reported at first duplicate |
 
-## See also
+## Where to go next
 
 - **Conceptual overview:** → [idp](../../../concepts/self-service/)
 - **Aliases and intent provenance:** → [concepts/self-service/04-aliases-and-provenance.md](../../../concepts/self-service/04-aliases-and-provenance.md)

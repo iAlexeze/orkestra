@@ -26,6 +26,10 @@ spec:
         - pods
         - events
 
+      labels:
+        app: "{{ .metadata.name }}"
+        env: production
+
       labelSelector:
         app: my-operator
       fieldSelector:
@@ -133,6 +137,50 @@ dependsOn:
 | `maxDepth` | int | `100` (`QUEUE_DEPTH` env) | Max items in the queue before new items are dropped. |
 | `failureThreshold` | int | `5` (`FAILURE_THRESHOLD` env) | Consecutive reconcile failures before health transitions to degraded. |
 
+## `labels`
+
+Additional labels to attach to each CR managed by this CRD entry. Labels are applied on every reconcile cycle alongside the standard Orkestra ownership labels.
+
+```yaml
+labels:
+  app: "{{ .metadata.name }}"
+  env: production
+  team: platform
+```
+
+**Keys** must be valid Kubernetes label keys (static — no template syntax).  
+**Values** are Go templates resolved against the CR at reconcile time. All CR fields and user-defined notes are available as template variables.
+
+This is distinct from `labelSelector`, which *filters* which CRs are watched. `labels:` *writes* labels onto CRs that are already being reconciled.
+
+## `labelSelector`
+
+Filters which resources this CRD entry watches and reconciles. Only objects whose labels match **all** declared key-value pairs are picked up by the informer.
+
+```yaml
+labelSelector:
+  app: my-operator
+  env: production
+```
+
+**Required for built-in types** (ConfigMap, Pod, Secret, etc.) — without a selector, Orkestra would reconcile every instance of that type in the cluster. Optional for custom CRDs, where it can narrow scope within a group.
+
+Values are static strings. Template syntax is not supported here.
+
+## `fieldSelector`
+
+Filters resources by field values rather than labels. Field selectors are evaluated server-side before the informer pipeline receives any events, reducing watch traffic.
+
+```yaml
+fieldSelector:
+  metadata.namespace: production
+  metadata.name: my-config
+```
+
+Only fields exposed by the Kubernetes API server are valid — arbitrary user-defined fields are not supported. Common uses: restrict by namespace or target a single object by name.
+
+`fieldSelector` is optional for all types. When omitted, all objects allowed by `labelSelector` and namespace restrictions are watched.
+
 ## `enrich`
 
 → [enrich](15-enrich.md)
@@ -226,7 +274,7 @@ spec:
             label: "Certificate Issuer"
             category: "TLS"
             order: 20
-            anyOf:
+            or:
               - field: workloadType
                 equals: cert
           maintenanceMode:
@@ -237,7 +285,7 @@ spec:
 
 **Full reference:** → [serve](20-serve.md) — `serve.fields`, `serve labels/annotations`, `serve.name`, `serve.namespace`, `serve.config.response`, `serve.tokens`.
 
-## See also
+## Where to go next
 **Conceptual overview:** → [concepts/self-service](../../../concepts/self-service/)
 **Gateway API:** → [gateway-api](17-gateway-api.md)
 

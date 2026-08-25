@@ -66,8 +66,8 @@ type WorkloadScaleConditions struct {
 	// When — AND semantics. All conditions must be true.
 	When []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
-	// AnyOf — OR semantics. At least one condition must be true.
-	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	// Or — OR semantics. At least one condition must be true.
+	Or []Condition `yaml:"or,omitempty" json:"or,omitempty"`
 }
 
 // EffectiveCooldown returns the cooldown duration, applying the default of 1m when absent.

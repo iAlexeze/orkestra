@@ -54,12 +54,12 @@ Each rule sets one field. Rules are applied in order.
 | `override` | one of | **Always** set, regardless of current value. Supports Go templates. |
 | `valueType` | no | `string` (default), `int`, `float`, `bool` |
 | `when` | no | All conditions must pass for this rule to be applied (AND). Empty means unconditional. Conditions support Go template expressions via `EvaluateConditions`. |
-| `anyOf` | no | At least one condition must pass for this rule to be applied (OR). When both `when` and `anyOf` are declared, both blocks must pass. |
+| `or` | no | At least one condition must pass for this rule to be applied (OR). When both `when` and `or` are declared, both blocks must pass. |
 | `fires.reconcile` | no | `true` (default). Set `false` to make this rule admission-only — the reconciler skips it. |
 
 Declare either `default` or `override` on each rule, not both.
 
-`when` and `anyOf` use the same `Condition` type as resource templates — see [06-when-conditions.md](06-when-conditions.md) for the full operator reference.
+`when` and `or` use the same `Condition` type as resource templates — see [06-when-conditions.md](06-when-conditions.md) for the full operator reference.
 
 ```yaml
 mutation:

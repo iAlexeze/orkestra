@@ -30,7 +30,7 @@ operatorBox:
     hooks:
       location: github.com/myorg/webapp-operator/hooks
       function: WebAppHooks
-      resources:
+      managedResources:
         - kind: Service
 ```
 

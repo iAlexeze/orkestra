@@ -45,7 +45,7 @@ status:
 
 ---
 
-## `when:` and `anyOf:`
+## `when:` and `or:`
 
 Gate a field on conditions — the same condition engine used in resource templates and validation rules.
 
@@ -68,14 +68,14 @@ status:
 
     - path: phase
       value: "Pending"
-      anyOf:
+      or:
         - field: external.healthCheck.called
           equals: "false"
         - field: "{{ allReplicasReady .children.deployment }}"
           equals: "false"
 ```
 
-`when:` requires all conditions to pass (AND). `anyOf:` requires at least one to pass (OR). When both are declared, both blocks must pass.
+`when:` requires all conditions to pass (AND). `or:` requires at least one to pass (OR). When both are declared, both blocks must pass.
 
 A path can appear multiple times with different conditions — the first matching entry wins. Use this to build declarative state machines.
 
@@ -118,9 +118,9 @@ Included fields come first. Inline `fields:` append after. The path is resolved 
 
 **Paths are relative to `status`.** `phase` writes to `status.phase`. `database.host` writes to `status.database.host`. Dot-notation works at any depth.
 
-**Unconditional fields are only written on successful reconcile.** A field with no `when:` or `anyOf:` is skipped when reconcile fails — writing it on error would produce misleading status (e.g. `phase: Active` while the CR is denied).
+**Unconditional fields are only written on successful reconcile.** A field with no `when:` or `or:` is skipped when reconcile fails — writing it on error would produce misleading status (e.g. `phase: Active` while the CR is denied).
 
-**Conditional fields always evaluate.** A field with `when:` or `anyOf:` is evaluated on both success and failure. This is what allows status to reflect *why* reconcile failed — for example, surfacing an external health check result or the denial reason as `phase: Degraded`.
+**Conditional fields always evaluate.** A field with `when:` or `or:` is evaluated on both success and failure. This is what allows status to reflect *why* reconcile failed — for example, surfacing an external health check result or the denial reason as `phase: Degraded`.
 
 ---
 

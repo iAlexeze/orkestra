@@ -156,7 +156,11 @@ type CRDEntry struct {
 	// ── OperatorBox ────────────────────────────────────────────────────
 	OperatorBox OperatorBoxConfig `yaml:"operatorBox,omitempty" json:"operatorBox,omitempty"`
 
-	// Labels           Labels  `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
+	// Labels specifies additional metadata labels to attach to the CR of this CRD entry.
+	// These labels can be used for organization, watch filtering, or identification purposes.
+	// They are not used for reconciliation filtering (see LabelSelector for that).
+	Labels Labels `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
+
 	// LabelSelector filters which resources this CRD entry reconciles.
 	// Only resources whose labels match ALL declared key-value pairs are watched.
 	// Required for built-in types (ConfigMap, Pod, etc.) — without a selector,
@@ -350,8 +354,8 @@ func mergeReconcilerConfig(base, target *ReconcilerConfig) *ReconcilerConfig {
 			if target.Hooks.Alias != "" {
 				h.Alias = target.Hooks.Alias
 			}
-			if len(target.Hooks.Resources) > 0 {
-				h.Resources = target.Hooks.Resources
+			if len(target.Hooks.ManagedResources) > 0 {
+				h.ManagedResources = target.Hooks.ManagedResources
 			}
 			// Args: merge key-by-key; target overrides CRD-level per key.
 			if len(target.Hooks.Args) > 0 {

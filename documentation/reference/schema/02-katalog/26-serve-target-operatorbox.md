@@ -91,7 +91,7 @@ operatorBox:
       when:
         - field: "{{ len .spec.regions }}"
           notEquals: "0"
-      anyOf:
+      or:
         - field: '{{ .spec.tier }}'
           equals: premium
 ```
@@ -186,7 +186,7 @@ spec:
 
 ---
 
-## See also
+## Where to go next
 
 - [operatorBox](04-operatorbox.md) — full `preReconcile` gate reference, `when:` conditions, `external:` calls
 - [serve.target](20-serve.md#servetarget) — target map declaration, tokens, response config

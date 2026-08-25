@@ -29,8 +29,8 @@ expect:
 | `resources` | no | Resource state assertions, polled until passing. |
 | `commands` | no | Shell command assertions, run in the same polling loop. |
 | `kubectl` | no | Structured kubectl subcommand assertions. See [kubectl block](07-kubectl.md). |
-| `when` | no | AND-gate: all conditions must be true or the checkpoint is skipped. See [Conditional checkpoints](#conditional-checkpoints-when-and-anyof). |
-| `anyOf` | no | OR-gate: at least one condition must be true or the checkpoint is skipped. See [Conditional checkpoints](#conditional-checkpoints-when-and-anyof). |
+| `when` | no | AND-gate: all conditions must be true or the checkpoint is skipped. See [Conditional checkpoints](#conditional-checkpoints-when-and-or). |
+| `or` | no | OR-gate: at least one condition must be true or the checkpoint is skipped. See [Conditional checkpoints](#conditional-checkpoints-when-and-or). |
 | `onFailure` | no | Diagnostic kubectl and shell commands to run and print when this specific checkpoint fails. See [Per-expectation onFailure](#per-expectation-onfailure). |
 | `include` | no | Path to a YAML file containing a bare list of checkpoints to expand in place. See [Composing expectations](#composing-expectations-with-include). |
 
@@ -111,11 +111,11 @@ commands:
 | `exists` | no | Output (trimmed) must be non-empty — field is present and has a value. |
 | `notExists` | no | Output (trimmed) must be empty — field is absent or unset. |
 
-Multiple assertion fields on the same entry all apply — every one set must pass. These are evaluated with the same `Condition` operators as `when:`/`anyOf:` (see [when/anyOf conditions § Operators](../02-katalog/06-when-conditions.md#operators)), against a single synthetic `output` field holding the trimmed command output.
+Multiple assertion fields on the same entry all apply — every one set must pass. These are evaluated with the same `Condition` operators as `when:`/`or:` (see [when/or conditions § Operators](../02-katalog/06-when-conditions.md#operators)), against a single synthetic `output` field holding the trimmed command output.
 
 ---
 
-## Conditional checkpoints: `when` and `anyOf`
+## Conditional checkpoints: `when` and `or`
 
 A checkpoint can be gated by runtime conditions. When the gate does not pass, the checkpoint is **skipped** — not failed. Skipped checkpoints appear in results as `~ name (skipped)` and are counted separately from passed and failed.
 
@@ -146,7 +146,7 @@ expect:
   - name: Feature disabled outside business hours
     after: cr-applied
     timeout: 30s
-    anyOf:
+    or:
       - field: '{{ inBusinessHours }}'
         equals: "false"
     kubectl:
@@ -170,21 +170,21 @@ when:
     equals: "true"
 ```
 
-### `anyOf` — OR gate
+### `or` — OR gate
 
-At least one condition in `anyOf` must be true. If no condition is true, the checkpoint is skipped.
+At least one condition in `or` must be true. If no condition is true, the checkpoint is skipped.
 
 ```yaml
-anyOf:
+or:
   - field: '{{ inBusinessHours }}'
     equals: "false"
 ```
 
-Each entry in `when` or `anyOf` is a `Condition` — the same type used in Katalog `when:` blocks. See [Conditions reference](../02-katalog/06-when-conditions.md) for the full field list.
+Each entry in `when` or `or` is a `Condition` — the same type used in Katalog `when:` blocks. See [Conditions reference](../02-katalog/06-when-conditions.md) for the full field list.
 
 Template expressions in `field` are evaluated using note functions declared in `spec.notes`. Built-in notes (`weekday`, `timeInWindow`, etc.) are always available.
 
-Both `when` and `anyOf` can appear together on the same checkpoint — both gates must pass.
+Both `when` and `or` can appear together on the same checkpoint — both gates must pass.
 
 ---
 

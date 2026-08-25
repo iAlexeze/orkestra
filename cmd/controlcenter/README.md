@@ -296,5 +296,5 @@ For maintainers and contributors who need to understand the internals:
 
 ## Related Projects
 
-- [Orkestra Runtime](https://github.com/orkspace/orkestra) – The declarative operator runtime
+- [Orkestra Runtime](https://github.com/orkspace/orkestra) – The Kubernetes operator runtime
 - [Orkestra Registry](https://github.com/orkspace/orkestra-registry) – OCI/Git-based pattern registry

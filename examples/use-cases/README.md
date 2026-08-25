@@ -12,7 +12,7 @@ ork init my-operator --pack use-cases
 
 | Example | Pattern | What you learn |
 |---------|---------|----------------|
-| [full-stack-app](./full-stack-app/) | Multi-feature composition | `forEach`, `external`, `cross`, `once`, `anyOf` in one CR |
+| [full-stack-app](./full-stack-app/) | Multi-feature composition | `forEach`, `external`, `cross`, `once`, `or` in one CR |
 | [multi-region-map](./multi-region-map/) | Multi-target deployment | `forEach` over a map — deploy to N regions from one CR |
 | [crd-conversion](./crd-conversion/) | Schema evolution | Multi-version CRDs with and without a conversion webhook |
 | [custom-operator](./custom-operator/) | Third-party test harness | `spec.custom.target: kubernetes` — use `ork e2e` to test any operator |

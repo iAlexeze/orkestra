@@ -1,0 +1,26 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Simulate
+metadata:
+  name: webapp-ctrlruntime-sim
+  description: >
+    Run with: ork simulate
+
+    The reconciler is written in controller-runtime style: it receives a
+    reconcile.Request, fetches the WebApp via client.Get, and creates a
+    Deployment via client.Create / client.Patch. kubeclient.ToClient and
+    domain.ReconcilerFrom bridge the two APIs at the constructor boundary —
+    the reconciler body never changes.
+
+spec:
+  katalog: ./katalog.yaml
+  cr: ./cr-webapp.yaml
+  cycles: 3
+
+  expect:
+    steady: true
+    noErrors: true
+    ops:
+      - cycle: 1
+        verb: apply
+        resource: deployments
+        name: 04-ctrlruntime-demo

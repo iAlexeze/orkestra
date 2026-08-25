@@ -1,4 +1,4 @@
-# 04 — Conditions, when:, anyOf:, and the activeNames Guard
+# 04 — Conditions, when:, or:, and the activeNames Guard
 
 ## How conditions are declared in YAML
 
@@ -16,19 +16,19 @@ onCreate:
         - field: spec.enabled
           equals: "true"
       # OR: at least one must pass
-      anyOf:
+      or:
         - field: spec.tier
           equals: premium
         - field: spec.tier
           equals: enterprise
 ```
 
-`when:` conditions are AND'd. `anyOf:` conditions are OR'd. When both are declared, both must pass.
+`when:` conditions are AND'd. `or:` conditions are OR'd. When both are declared, both must pass.
 
 ## EvaluateConditions
 
 ```go
-orktypes.EvaluateConditions(data map[string]interface{}, allOf []Condition, anyOf []Condition) bool
+orktypes.EvaluateConditions(data map[string]interface{}, allOf []Condition, or []Condition) bool
 ```
 
 `data` is `resolver.Data()` — the full CR data map including injected fields:
@@ -117,7 +117,7 @@ Before the main loop, build a set of every `(ns/name)` that has **at least one p
 ```go
 activeNames := make(map[string]bool, len(srcs))
 for _, s := range srcs {
-    if !orktypes.EvaluateConditions(resolver.Data(), s.Conditions, s.AnyOf) {
+    if !orktypes.EvaluateConditions(resolver.Data(), s.Conditions, s.Or) {
         continue
     }
     n, _   := resolver.Resolve(s.Name)
@@ -152,15 +152,15 @@ In all other cases, include the pre-pass. The cost is one extra loop over the so
 
 | Field | Used by | Notes |
 |-------|---------|-------|
-| `time:` | Autoscale `anyOf:` | Clock window (`after:` / `before:` in HH:MM) |
-| `dayOfWeek:` | Autoscale `anyOf:` | Day filter (`in:` / `notIn:`) |
-| `cron:` + `duration:` | Autoscale `anyOf:` | Cron-gated window, tracked statefully across ticks |
+| `time:` | Autoscale `or:` | Clock window (`after:` / `before:` in HH:MM) |
+| `dayOfWeek:` | Autoscale `or:` | Day filter (`in:` / `notIn:`) |
+| `cron:` + `duration:` | Autoscale `or:` | Cron-gated window, tracked statefully across ticks |
 | `notify:` | Template `when:`, autoscale `when:` | Alert teams when the condition passes |
 | `source:` | Autoscale `when:` on cross-metrics | HTTP fallback for cross-binary `cross.<crd>.metrics.*` |
 
-These fields are valid on any `Condition` struct (including template `when:`/`anyOf:`) and are evaluated by the shared `EvaluateOneCond` path. Time-based conditions on template sources evaluate against the operator process's wall clock at reconcile time — they do not inject cron window state into the resolver, so stateful `TickCronWindow` tracking is the autoscaler's responsibility.
+These fields are valid on any `Condition` struct (including template `when:`/`or:`) and are evaluated by the shared `EvaluateOneCond` path. Time-based conditions on template sources evaluate against the operator process's wall clock at reconcile time — they do not inject cron window state into the resolver, so stateful `TickCronWindow` tracking is the autoscaler's responsibility.
 
-## The Conditions and AnyOf fields on template source types
+## The Conditions and Or fields on template source types
 
 Every `XxxTemplateSource` struct in `pkg/types/` must carry:
 
@@ -169,14 +169,14 @@ type IngressTemplateSource struct {
     Name       string      `yaml:"name"`
     Namespace  string      `yaml:"namespace,omitempty"`
     Conditions []Condition `yaml:"when,omitempty"`
-    AnyOf      []Condition `yaml:"anyOf,omitempty"`
+    Or      []Condition `yaml:"or,omitempty"`
     Reconcile  bool        `yaml:"reconcile,omitempty"`
     ForEach    *ForEachSpec `yaml:"forEach,omitempty"`
     // ... resource-specific fields
 }
 ```
 
-The `Conditions` field maps to `when:` and the `AnyOf` field maps to `anyOf:`. Both are optional — empty slices always pass.
+The `Conditions` field maps to `when:` and the `Or` field maps to `or:`. Both are optional — empty slices always pass.
 
 ---
 

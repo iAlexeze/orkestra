@@ -63,15 +63,15 @@ type PVCTemplateSource struct {
 	// behavior, and conditional provisioning without writing Go code.
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
-	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Or holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
 	//
-	//	anyOf:
+	//	or:
 	//	  - field: spec.tier
 	//	    equals: pro
 	//	  - field: spec.tier
 	//	    equals: enterprise
-	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	Or []Condition `yaml:"or,omitempty" json:"or,omitempty"`
 
 	// ForEach declares dynamic expansion over a list field.
 	// When set, one source declaration becomes N declarations — one per list element.
@@ -167,15 +167,15 @@ type PVTemplateSource struct {
 	// behavior, and conditional provisioning without writing Go code.
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
-	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Or holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
 	//
-	//	anyOf:
+	//	or:
 	//	  - field: spec.tier
 	//	    equals: pro
 	//	  - field: spec.tier
 	//	    equals: enterprise
-	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	Or []Condition `yaml:"or,omitempty" json:"or,omitempty"`
 
 	// ForEach declares dynamic expansion over a list field.
 	// When set, one source declaration becomes N declarations — one per list element.

@@ -21,6 +21,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	k8stesting "k8s.io/client-go/testing"
+	"k8s.io/client-go/tools/cache"
 	sigs "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -51,8 +52,12 @@ type FakeKubeclient struct {
 	scheme    *runtime.Scheme
 	shared    *fakeShared
 
-	rawArgs map[string]interface{}
-	args    kubeclient.Args
+	rawArgs       map[string]interface{}
+	args          kubeclient.Args
+	informer      cache.SharedIndexInformer
+	eventRecorder kubeclient.EventRecorder
+	storeFor      func(schema.GroupVersionKind) cache.Store
+	indexerFor    func(schema.GroupVersionKind) cache.Indexer
 }
 
 // dynamicObjects seeds the fake dynamic client's tracker at construction —
@@ -142,6 +147,39 @@ func (f *FakeKubeclient) ScopedFor(eval func(string) (string, bool)) kubeclient.
 	}
 	cp.args = kubeclient.ResolveArgsMap(f.rawArgs, eval)
 	return &cp
+}
+
+func (f *FakeKubeclient) WithInformer(inf cache.SharedIndexInformer) kubeclient.Interface {
+	cp := *f
+	cp.informer = inf
+	return &cp
+}
+
+func (f *FakeKubeclient) WithEventRecorder(ev kubeclient.EventRecorder) kubeclient.Interface {
+	cp := *f
+	cp.eventRecorder = ev
+	return &cp
+}
+
+func (f *FakeKubeclient) GetInformer() cache.SharedIndexInformer     { return f.informer }
+func (f *FakeKubeclient) GetEventRecorder() kubeclient.EventRecorder { return f.eventRecorder }
+
+func (f *FakeKubeclient) WithStoreFor(fn func(schema.GroupVersionKind) cache.Store) kubeclient.Interface {
+	cp := *f
+	cp.storeFor = fn
+	return &cp
+}
+
+func (f *FakeKubeclient) GetStoreFor() func(schema.GroupVersionKind) cache.Store { return f.storeFor }
+
+func (f *FakeKubeclient) WithIndexerFor(fn func(schema.GroupVersionKind) cache.Indexer) kubeclient.Interface {
+	cp := *f
+	cp.indexerFor = fn
+	return &cp
+}
+
+func (f *FakeKubeclient) GetIndexerFor() func(schema.GroupVersionKind) cache.Indexer {
+	return f.indexerFor
 }
 
 // AdvanceCycle increments the cycle counter. Call between simulated reconciles.

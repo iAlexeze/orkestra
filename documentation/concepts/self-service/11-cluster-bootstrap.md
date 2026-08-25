@@ -138,7 +138,7 @@ katalog (useful after adding a new CRD to `serve:`), existing token Secrets are
 reused, and the credential Secret in the gateway cluster is updated if it already
 exists.
 
-## See also
+## Where to go next
 
 - [`ork clusters bootstrap` reference](../../reference/cli/clusters.md#ork-clusters-bootstrap)
 - [Multi-cluster routing](10-multi-cluster-routing.md)

@@ -14,6 +14,10 @@ var defaultVerbs = []string{
 	"get", "list", "watch", "create", "update", "patch", "delete",
 }
 
+// watchVerbs is the minimal verb set for secondary watch resources.
+// Watch entries only observe — they never write to watched resources.
+var watchVerbs = []string{"get", "list", "watch"}
+
 // rbacVerbsFor returns the appropriate verb set for a built-in resource.
 //
 // Roles and ClusterRoles require two extra verbs beyond standard CRUD:
@@ -166,6 +170,19 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 					Verbs:     defaultVerbs,
 				})
 			}
+		}
+
+		// Watch-entry resources — read-only
+		for _, w := range crd.WatchEntries() {
+			gvr, ok := k.ResolveGVR(w.ToManagedResource())
+			if !ok {
+				continue
+			}
+			rules = append(rules, rbacv1.PolicyRule{
+				APIGroups: []string{gvr.Group},
+				Resources: []string{gvr.Resource},
+				Verbs:     watchVerbs,
+			})
 		}
 	}
 
@@ -349,6 +366,19 @@ func (k *Katalog) GenerateRuntimeRBACRules() []rbacv1.PolicyRule {
 					Verbs:     defaultVerbs,
 				})
 			}
+		}
+
+		// Watch-entry resources — read-only
+		for _, w := range crd.WatchEntries() {
+			gvr, ok := k.ResolveGVR(w.ToManagedResource())
+			if !ok {
+				continue
+			}
+			rules = append(rules, rbacv1.PolicyRule{
+				APIGroups: []string{gvr.Group},
+				Resources: []string{gvr.Resource},
+				Verbs:     watchVerbs,
+			})
 		}
 	}
 
@@ -725,6 +755,17 @@ func (k *Katalog) GeneratePerCRDRBACRules() map[string][]rbacv1.PolicyRule {
 						Verbs:     defaultVerbs,
 					})
 				}
+			}
+		}
+
+		// Watch-entry resources — read-only
+		for _, w := range crd.WatchEntries() {
+			if gvr, ok := k.ResolveGVR(w.ToManagedResource()); ok {
+				rules = append(rules, rbacv1.PolicyRule{
+					APIGroups: []string{gvr.Group},
+					Resources: []string{gvr.Resource},
+					Verbs:     watchVerbs,
+				})
 			}
 		}
 

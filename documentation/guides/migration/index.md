@@ -24,7 +24,7 @@ Each directory is a self-contained, runnable step. Work through them in order or
 - How to go declarative — zero Go, no binary — when it fits
 - How the hybrid pattern (90% declarative, 10% Go hook) works and when to use it
 - How to drop all declarations and let a Go hook own every resource
-- How to lift an existing `Reconcile` method into Orkestra with a one-line signature change
+- How to bring an existing `Reconcile` method into Orkestra with zero changes — two lines in a constructor are all it takes
 - How `pkg/resources` simplifies the Get / Create / Patch pattern
 - How `ork migrate` automates the constructor path for an existing operator file
 
@@ -38,7 +38,7 @@ Each directory is a self-contained, runnable step. Work through them in order or
 | Declarative | `01-declarative` | No | Nothing — pure YAML |
 | Hybrid | `02-hybrid` | Yes — hook only | The 10% templates can't express |
 | Hooks only | `03-hooks-only` | Yes — all resources | All child resource specs in Go |
-| Constructor — lift | `04-constructor-migration` | Yes — full reconciler | Reconcile logic; manager removed |
+| Constructor — zero change | `04-constructor-migration` | Yes — full reconciler | Reconcile unchanged; manager removed |
 | Constructor — resources | `05-constructor-orkestra-resources` | Yes — full reconciler | Reconcile logic; resource ops simplified |
 | ork migrate | `06-ork-migrate` | — | Automated constructor path from an existing file |
 
@@ -52,7 +52,7 @@ Each directory is a self-contained, runnable step. Work through them in order or
 | [Declarative](./02-declarative.md) | Zero Go, zero binary — pure Katalog |
 | [Hybrid](./03-hybrid.md) | 90/10: declare everything Orkestra handles, write Go for the rest |
 | [Hooks only](./04-hooks-only.md) | When type-safe control over every resource matters more than YAML |
-| [Constructor — lift](./05-constructor.md) | One signature change, every resource op untouched |
+| [Constructor — zero change](./05-constructor.md) | Zero changes to your reconciler — two lines in a constructor |
 | [Constructor — resources](./06-constructor-resources.md) | `pkg/resources`: Get / Create / Patch → one Update call |
 | [ork migrate](./07-ork-migrate.md) | Automate the constructor path for an existing operator file |
 
@@ -82,8 +82,8 @@ For typed operators (options 02–06), build first:
 ```bash
 cd from-controller-runtime/02-hybrid
 make registry && make build
-./ork simulate
-./ork run --dev
+ork simulate
+ork run --dev
 ```
 
 To try the automated path with your own operator:
@@ -93,3 +93,12 @@ cd from-controller-runtime/06-ork-migrate
 # Follow the README
 ork migrate ../00-controller-runtime-baseline/controller/webapp_controller.go -o ./output
 ```
+
+## Where to go next
+- [The Baseline](./01-baseline.md)
+- [Declarative](./02-declarative.md)
+- [Hybrid](./03-hybrid.md)
+- [Hooks only](./04-hooks-only.md)
+- [Constructor — zero change](./05-constructor.md)
+- [Constructor — resources](./06-constructor-resources.md)
+- [ork migrate](./07-ork-migrate.md)

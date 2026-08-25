@@ -138,12 +138,12 @@ func (a *Autoscaler) evaluate(ctx context.Context) {
 
 // conditionsMet builds a data map from live metrics and delegates to EvaluateConditions —
 // the same general condition evaluator used by the reconciler for template
-// when:/anyOf: conditions. Time-based conditions (time:, dayOfWeek:, cron:) are
+// when:/or: conditions. Time-based conditions (time:, dayOfWeek:, cron:) are
 // handled inside EvaluateOneCond. Metric conditions are pre-populated into the
 // data map so NavigateDotPath resolves them as normal dot-paths.
 func (a *Autoscaler) conditionsMet(_ context.Context) bool {
 	data := a.buildConditionData()
-	return orktypes.EvaluateConditions(data, a.spec.Conditions.When, a.spec.Conditions.AnyOf, nil)
+	return orktypes.EvaluateConditions(data, a.spec.Conditions.When, a.spec.Conditions.Or, nil)
 }
 
 // buildConditionData returns the data map passed to EvaluateConditions.
@@ -157,7 +157,7 @@ func (a *Autoscaler) buildConditionData() map[string]interface{} {
 		"metrics": a.metrics.AsMap(),
 	}
 
-	all := append(a.spec.Conditions.AnyOf, a.spec.Conditions.When...)
+	all := append(a.spec.Conditions.Or, a.spec.Conditions.When...)
 	for _, cond := range all {
 		// Cross-metric resolution
 		if orktypes.IsCrossMetricField(cond.Field) {

@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to Orkestra.
 
-Orkestra is a declarative Kubernetes operator runtime. Operators are described as YAML — the runtime, gateway, and control center turn those descriptions into running reconciliation loops, webhook servers, and an observable UI.
+Orkestra is the Kubernetes operator runtime. Operators are described as YAML — the runtime, gateway, and control center turn those descriptions into running reconciliation loops, webhook servers, and an observable UI.
 
 ---
 

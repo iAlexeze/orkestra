@@ -1,37 +1,60 @@
 # Generated files
 
-`ork migrate -o ./my-operator` writes five files. All have `TODO(ork migrate):` markers where the tool could not infer values from the source.
+`ork migrate -o ./my-operator` writes five files. Fields marked `TODO(ork migrate):` could not be inferred from the source and need manual review.
 
 ## katalog.yaml
 
-The constructor Katalog stub. Fields you must fill in:
+The constructor Katalog stub. `ork migrate` extracts what it can from `SetupWithManager`:
+
+| Field | Source | Detected? |
+|-------|--------|-----------|
+| `kind` | `For(&pkg.Kind{})` struct name | ✓ |
+| `object` / `objectList` | same struct name + `List` suffix | ✓ |
+| `version` | import path last segment (`v1alpha1`, `v1`) | ✓ |
+| `location` | full import path of the type package | ✓ |
+| `alias` | import alias in source | ✓ |
+| `managedResources:` | each `Owns(&pkg.Kind{})` call | ✓ |
+| `watch:` | each `Watches(&pkg.Kind{}, …)` call | ✓ |
+| `group` | not in source (CRD marker or YAML) | ✗ TODO |
+| `plural` | not in source | ✗ TODO |
+
+Example output for a reconciler with `For(&demov1alpha1.WebApp{})`, `Owns(&appsv1.Deployment{})`, `Watches(&demov1alpha1.Config{}, …)`:
 
 ```yaml
 metadata:
-  name: webapp-reconciler    # derived from receiver type
-  author: myorg              # TODO: set your org
+  name: web-app-reconciler   # derived from receiver type
 
 spec:
   crds:
-    webapp-reconciler:
+    web-app:
       apiTypes:
-        group: TODO          # TODO: your CRD group (e.g. apps.myorg.io)
-        version: v1alpha1
-        kind: TODO           # TODO: your CRD kind (e.g. WebApp)
-        plural: TODO
-        object: TODO
-        objectList: TODOList
-        location: github.com/myorg/my-operator/api/v1alpha1  # adjust package path
+        group: TODO           # TODO(ork migrate): your CRD group
+        version: v1alpha1     # from import path
+        kind: WebApp          # from For()
+        plural: TODO          # TODO(ork migrate)
+        object: WebApp        # from For()
+        objectList: WebAppList
+        location: github.com/example/webapp-operator/api/v1alpha1
+        alias: demov1alpha1
 
       operatorBox:
-        default: false       # constructor owns the full loop
+        watch:
+          - apiVersion: TODO  # TODO(ork migrate): verify (custom package)
+            kind: Config
+            on: [create, update, delete]
 
-        constructor:
-          location: github.com/myorg/my-operator/controller  # adjust
-          function: NewWebAppReconciler                       # derived from receiver type
-          resources:
-            - kind: TODO     # TODO: list the resource kinds you manage
+        reconciler:
+          default: false
+
+          constructor:
+            location: github.com/example/webapp-operator/controller
+            function: NewWebAppReconciler
+            managedResources:
+              - kind: Deployment
+                apiVersion: apps/v1
 ```
+
+Only `group` and `plural` remain as TODOs for standard k8s `Owns()` types.
 
 ## simulate.yaml
 
@@ -89,3 +112,7 @@ Run `go mod tidy` to resolve indirect dependencies.
 ## The rewritten reconciler
 
 Same filename as the input. See [01-output.md](01-output.md) for what changed.
+
+---
+
+Next: [Limitations](03-limitations.md)

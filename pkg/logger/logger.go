@@ -4,8 +4,10 @@ import (
 	"context"
 	"strings"
 
+	"github.com/go-logr/zerologr"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 func init() {
@@ -34,6 +36,11 @@ func Init(level string) {
 	default:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
+
+	// Wire zerolog as the backend for logr / controller-runtime log.
+	// Constructor writers calling ctrl/log.FromContext(ctx) or logr.FromContext(ctx)
+	// get a logger that emits through zerolog automatically.
+	ctrllog.SetLogger(zerologr.New(&log.Logger))
 }
 
 func FromContext(ctx context.Context) *zerolog.Logger {

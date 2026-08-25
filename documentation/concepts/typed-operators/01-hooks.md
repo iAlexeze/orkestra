@@ -113,7 +113,10 @@ spec:
 
 For private modules with `fetch: true`, set `GOPRIVATE` and ensure credentials are available before running `ork generate registry`.
 
-`resources` declares what Kubernetes resources the hook manages — required for RBAC generation.
+`resources` declares what Kubernetes resources the hook manages. It serves two purposes:
+
+- **RBAC generation** — Orkestra generates `get/list/watch/create/update/patch/delete` permissions for each declared type.
+- **Implicit watch informer** — Orkestra automatically starts a watch informer for each declared resource, giving cache-backed reads and automatic re-enqueue of the primary CR when an owned resource changes via ownerReference. Explicit `watch:` entries take priority if the same type is declared in both.
 
 `args` passes configuration from the Katalog into the hook at reconcile time. **String values support Go template expressions** — the GenericReconciler evaluates them against the current CR before the hook runs, so the hook sees fully-resolved values:
 
@@ -174,7 +177,7 @@ func onReconcile(ctx context.Context, obj *apiv1.App) error {
 }
 ```
 
-`external:` under `hooks:` uses the same field schema as the top-level `external:` block — including `when:` / `anyOf:` gating, `continueOnError`, and response accessors (`.body`, `.status`, `.headers`). Any infrastructure available to declarative external calls is automatically available to hooks for free as the feature evolves.
+`external:` under `hooks:` uses the same field schema as the top-level `external:` block — including `when:` / `or:` gating, `continueOnError`, and response accessors (`.body`, `.status`, `.headers`). Any infrastructure available to declarative external calls is automatically available to hooks for free as the feature evolves.
 
 ---
 

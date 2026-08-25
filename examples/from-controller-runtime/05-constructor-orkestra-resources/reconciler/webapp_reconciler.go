@@ -33,66 +33,55 @@ import (
 
 	apiv1 "github.com/orkspace/from-controller-runtime-demo/api/v1alpha1"
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	orkdeploy "github.com/orkspace/orkestra/pkg/resources/deployments"
 	orksvc "github.com/orkspace/orkestra/pkg/resources/services"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/cache"
 )
 
 // WebAppReconciler implements domain.Reconciler for the WebApp CRD.
 type WebAppReconciler struct {
-	informer cache.SharedIndexInformer
-	kube     kubeclient.KubeClient
-	ev       event.Recorder
+	kube kubeclient.Interface
 }
 
 // NewWebAppReconciler is the constructor function registered in the Katalog.
-func NewWebAppReconciler(
-	kube kubeclient.KubeClient,
-	informer cache.SharedIndexInformer,
-	ev event.Recorder,
-) domain.Reconciler {
-	return &WebAppReconciler{
-		informer: informer,
-		kube:     kube,
-		ev:       ev,
-	}
+func NewWebAppReconciler(kube kubeclient.Interface) domain.Reconciler {
+	return &WebAppReconciler{kube: kube}
 }
 
 // Reconcile is called by Orkestra's worker pool for every queued WebApp key.
-func (r *WebAppReconciler) Reconcile(ctx context.Context, key string) error {
-	raw, exists, err := r.informer.GetIndexer().GetByKey(key)
+func (r *WebAppReconciler) Reconcile(ctx context.Context, req domain.Request) (domain.Result, error) {
+	key := req.Key
+	raw, exists, err := r.kube.GetInformer().GetIndexer().GetByKey(key)
 	if err != nil {
-		return fmt.Errorf("cache lookup %q: %w", key, err)
+		return domain.Result{}, fmt.Errorf("cache lookup %q: %w", key, err)
 	}
 	if !exists {
-		return nil
+		return domain.Result{}, nil
 	}
 
 	webapp, ok := raw.(*apiv1.WebApp)
 	if !ok {
-		return fmt.Errorf("unexpected type %T", raw)
+		return domain.Result{}, fmt.Errorf("unexpected type %T", raw)
 	}
 	webapp = webapp.DeepCopyObject().(*apiv1.WebApp)
 
 	if webapp.DeletionTimestamp != nil {
-		return nil
+		return domain.Result{}, nil
 	}
 
 	if err := r.reconcileDeployment(ctx, webapp); err != nil {
-		return err
+		return domain.Result{}, err
 	}
 	if err := r.reconcileService(ctx, webapp); err != nil {
-		return err
+		return domain.Result{}, err
 	}
 
-	r.ev.Eventf(webapp, corev1.EventTypeNormal, "WebAppReconciled",
+	r.kube.GetEventRecorder().Eventf(webapp, corev1.EventTypeNormal, "WebAppReconciled",
 		"WebApp %s/%s reconciled", webapp.Namespace, webapp.Name)
 
-	return r.kube.PatchStatus(ctx, webapp, map[string]interface{}{
+	return domain.Result{}, r.kube.PatchStatus(ctx, webapp, map[string]interface{}{
 		"phase":    "Running",
 		"endpoint": fmt.Sprintf("%s-svc.%s.svc.cluster.local", webapp.Name, webapp.Namespace),
 		"replicas": webapp.Spec.Replicas,

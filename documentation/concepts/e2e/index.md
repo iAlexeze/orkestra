@@ -82,7 +82,7 @@ imports:
   - ./01-multi-region/e2e.yaml
   - ./03-cross-crd/e2e.yaml
   - ./04-once-secret/e2e.yaml
-  - ./05-anyof/e2e.yaml
+  - ./05-or/e2e.yaml
 ```
 
 One `ork e2e` runs the whole suite — one cluster, four tests, sequential. The suite file has no test of its own; it exists only to compose.
@@ -106,7 +106,7 @@ ork e2e -f e2e.yaml
 
 ---
 
-## See also
+## Where to go next
 
 - [ork simulate](../simulate/index.md) — the fast inner loop; use before E2E
 - [Declarative Integration Testing](../envtest/index.md) — the middle tier: real API server, no cluster

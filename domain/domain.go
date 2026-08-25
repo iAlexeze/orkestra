@@ -18,6 +18,8 @@ type Komponent interface {
 }
 
 type Reconciler interface {
-	// Reconcile handles the actual business logic for a resource
-	Reconcile(ctx context.Context, key string) error
+	// Reconcile handles the actual business logic for a resource.
+	// Return a non-zero Result.RequeueAfter to schedule a precise re-enqueue
+	// after a successful reconcile. Return an error to trigger retryBackoff.
+	Reconcile(ctx context.Context, req Request) (Result, error)
 }

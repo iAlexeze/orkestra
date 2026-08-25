@@ -20,7 +20,7 @@ ork init --pack from-controller-runtime
 | **01 — declarative** | No | Nothing — pure YAML |
 | **02 — hybrid** | Yes — hook only | The 10% templates can't express |
 | **03 — hooks only** | Yes — all resources | All child resource specs in Go |
-| **04 — constructor: lift and change** | Yes — full reconciler | Reconcile logic; manager removed |
+| **04 — constructor: minimal migration** | Yes — full reconciler | Reconcile logic; two lines added, nothing changed |
 | **05 — constructor: Orkestra resources** | Yes — full reconciler | Reconcile logic; resource ops simplified |
 
 Start at `00` and follow the READMEs — each step removes one layer of machinery.
@@ -29,7 +29,7 @@ Start at `00` and follow the READMEs — each step removes one layer of machiner
 
 ## The mechanical path: `ork migrate`
 
-`ork migrate` automates option 04 — it takes your reconciler file, rewrites the signature, and generates the scaffolding:
+`ork migrate` automates option 04. It takes your reconciler file, makes the minimum change needed to run inside Orkestra, and generates the scaffolding:
 
 ```bash
 ork migrate ./controller/webapp_controller.go -o ./my-operator
@@ -39,8 +39,8 @@ Output:
 
 ```text
 my-operator/
-  webapp_controller.go   rewritten — signature changed, ctrl.Result collapsed
-  katalog.yaml           constructor Katalog stub — fill in group, kind, location
+  webapp_controller.go   SetupWithManager removed, constructor injected — Reconcile untouched
+  katalog.yaml           constructor Katalog stub — fill in group, kind, plural
   simulate.yaml          simulation stub — fill in expected resources
   e2e.yaml               end-to-end stub — fill in CR assertions
   go.mod                 module file with Orkestra pinned to this CLI version
@@ -48,73 +48,34 @@ my-operator/
 
 ### What the rewrite does
 
-**Signature change — the only mechanical step:**
+**SetupWithManager is removed** and replaced with a comment. Before removal, `ork migrate` scans it to extract `For()`, `Owns()`, and `Watches()` — those become `apiTypes`, `managedResources:`, and `watch:` entries in the generated `katalog.yaml`.
+
+**A constructor is injected** — two lines:
 
 ```go
-// Before
-func (r *WebAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error)
-
-// After
-func (r *WebAppReconciler) Reconcile(ctx context.Context, key string) error
-```
-
-`key` is `namespace/name` — the same as `req.String()`. Orkestra calls this from its worker pool.
-
-**Return values collapsed:**
-
-```go
-return ctrl.Result{}, err   →   return err
-return ctrl.Result{}, nil   →   return nil
-```
-
-**Struct and constructor rewritten:**
-
-The embedded `client.Client` is replaced with Orkestra's interfaces, and a constructor function is generated:
-
-```go
-// Before
-type WebAppReconciler struct {
-    client.Client
-    Scheme *runtime.Scheme
-}
-
-// After
-type WebAppReconciler struct {
-    informer cache.SharedIndexInformer
-    kube     kubeclient.KubeClient
-    ev       event.Recorder
-}
-
-func NewWebAppReconciler(
-    kube kubeclient.KubeClient,
-    informer cache.SharedIndexInformer,
-    ev event.Recorder,
-) domain.Reconciler {
-    return &WebAppReconciler{kube: kube, informer: informer, ev: ev}
+func NewWebAppReconciler(kube kubeclient.Interface) domain.Reconciler {
+    return domain.ReconcilerFrom(&WebAppReconciler{
+        client: kubeclient.ToClient(kube),
+    })
 }
 ```
 
-**SetupWithManager removed:**
+`kubeclient.ToClient` returns a `client.Client` — the same type your struct field already holds. `domain.ReconcilerFrom` adapts the `ctrl.Request` signature to Orkestra's interface. Your `Reconcile` method body is completely untouched.
 
-```go
-// Replaced with a comment:
-// SetupWithManager removed — Orkestra provides the informer, workqueue,
-// worker pool, leader election, panic recovery, and metrics.
-```
+**`ctrl.Result{RequeueAfter: X}` is preserved** — the bridge forwards it to Orkestra's workqueue. No changes needed.
 
-**What still needs manual review:**
+**Imports are injected** — `domain` and `kubeclient`.
 
-- `r.Get`, `r.Create`, `r.Patch` in sub-methods — change to `r.kube.*` calls
-- `r.Status().Update()` — flagged `// TODO(ork migrate):` — replace with `r.kube.PatchStatus()`
-- `ctrl.Result{RequeueAfter: X}` — flagged — Orkestra uses exponential backoff; return an error to retry
-- Fill in `group`, `kind`, `location` in `katalog.yaml`
-- Delete `main.go`, scheme registration, and manager setup
-
-Search after migration:
+### What still needs manual review
 
 ```bash
 grep -rn "TODO(ork migrate)" ./my-operator/
 ```
+
+- Set `group`, `kind`, `plural`, `location` in `katalog.yaml`
+- Review `managedResources:` entries — add any resource kinds the operator manages that were not detected from `Owns()`
+- Fill in resource assertions in `simulate.yaml` and `e2e.yaml`
+- Delete `main.go`, scheme registration, and manager setup
 
 ---
 
@@ -125,11 +86,11 @@ After completing option 04, you can go one step further and replace the manual G
 ```go
 // Before — manual (option 04)
 existing := &appsv1.Deployment{}
-err := r.kube.Get(ctx, namespace, name, existing)
-if errors.IsNotFound(err) { return r.kube.Create(ctx, desired) }
-patch := sigs.MergeFrom(existing.DeepCopy())
+err := r.client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, existing)
+if errors.IsNotFound(err) { return r.client.Create(ctx, desired) }
+patch := client.MergeFrom(existing.DeepCopy())
 existing.Spec = desired.Spec
-return r.kube.Patch(ctx, existing, patch)
+return r.client.Patch(ctx, existing, patch)
 
 // After — Orkestra resources (option 05)
 return orkdeploy.Update(ctx, r.kube, webapp, spec)
@@ -139,7 +100,7 @@ return orkdeploy.Update(ctx, r.kube, webapp, spec)
 
 ---
 
-## See also
+## Where to go next
 
 - `from-controller-runtime` pack — `ork init --pack from-controller-runtime`
 - [ork migrate reference](../../reference/cli/migrate.md)

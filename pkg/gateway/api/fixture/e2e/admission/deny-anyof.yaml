@@ -1,5 +1,5 @@
 expect:
-  - name: Admission blocks app workload missing repoURL (deny anyOf)
+  - name: Admission blocks app workload missing repoURL (deny or)
     after: cr-applied
     timeout: 30s
     commands:
@@ -18,7 +18,7 @@ expect:
         exitCode: 1
         outputContains: "spec.repoURL is required for app and monitoring workloads"
 
-  - name: Admission blocks monitoring workload missing repoURL (deny anyOf)
+  - name: Admission blocks monitoring workload missing repoURL (deny or)
     after: cr-applied
     timeout: 30s
     commands:
@@ -38,7 +38,7 @@ expect:
         exitCode: 1
         outputContains: "spec.repoURL is required for app and monitoring workloads"
 
-  - name: Deny anyOf skipped for monitoring with repoURL present
+  - name: Deny or skipped for monitoring with repoURL present
     after: cr-applied
     timeout: 30s
     kubectl:
@@ -68,7 +68,7 @@ expect:
         name: platform-monitor
         namespace: team-platform
 
-  - name: Deny anyOf skipped for cert workload (not in anyOf list)
+  - name: Deny or skipped for cert workload (not in or list)
     after: cr-applied
     timeout: 30s
     kubectl:

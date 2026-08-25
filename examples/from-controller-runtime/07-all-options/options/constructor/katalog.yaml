@@ -38,6 +38,6 @@ spec:
           constructor:
             location: github.com/orkspace/from-controller-runtime-all-options/options/constructor/reconciler
             function: NewWebAppReconciler
-            resources:
+            managedResources:
               - kind: Deployment
               - kind: Service

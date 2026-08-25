@@ -7,7 +7,7 @@ This directory explains how the `pkg/runtime/autoscaler` package works and how t
 | File | What it covers |
 |------|----------------|
 | [01-overview.md](01-overview.md) | The evaluation loop, override lifecycle, and baseline restore |
-| [02-conditions.md](02-conditions.md) | `anyOf:` (time/cron/day) and `when:` (metric) condition evaluation |
+| [02-conditions.md](02-conditions.md) | `or:` (time/cron/day) and `when:` (metric) condition evaluation |
 | [03-cross-metrics.md](03-cross-metrics.md) | Observing another CRD's runtime metrics via `cross.<crd>.metrics.*` |
 | [04-worker-info.md](04-worker-info.md) | `WorkerInfo` — the CRD endpoint's worker snapshot and what each field means |
 

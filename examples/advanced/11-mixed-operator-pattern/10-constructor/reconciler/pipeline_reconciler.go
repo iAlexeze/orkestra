@@ -33,7 +33,6 @@ import (
 
 	apiv1 "github.com/orkspace/orkestra-mixed-operator-pattern/10-constructor/api/v1alpha1"
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	orkjobs "github.com/orkspace/orkestra/pkg/resources/jobs"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -53,59 +52,49 @@ const (
 //
 //	Pending → Running → Succeeded | Failed
 type PipelineReconciler struct {
-	informer cache.SharedIndexInformer
-	kube     kubeclient.KubeClient
-	ev       event.Recorder
+	kube kubeclient.Interface
 }
 
 // NewPipelineReconciler is the constructor function registered in the Katalog.
-// Signature matches orktypes.NewReconcilerFunc: (kube, informer, ev) → domain.Reconciler.
-func NewPipelineReconciler(
-	kube kubeclient.KubeClient,
-	informer cache.SharedIndexInformer,
-	ev event.Recorder,
-) domain.Reconciler {
-	return &PipelineReconciler{
-		informer: informer,
-		kube:     kube,
-		ev:       ev,
-	}
+func NewPipelineReconciler(kube kubeclient.Interface) domain.Reconciler {
+	return &PipelineReconciler{kube: kube}
 }
 
 // Reconcile is called by Orkestra's worker pool for every queued Pipeline key.
 // It is wrapped in safeReconcile — panics are caught and returned as errors.
-func (r *PipelineReconciler) Reconcile(ctx context.Context, key string) error {
+func (r *PipelineReconciler) Reconcile(ctx context.Context, req domain.Request) (domain.Result, error) {
+	key := req.Key
 	namespace, _, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		return fmt.Errorf("invalid key %q: %w", key, err)
+		return domain.Result{}, fmt.Errorf("invalid key %q: %w", key, err)
 	}
 
 	// Read from the informer cache — no API call
-	raw, exists, err := r.informer.GetIndexer().GetByKey(key)
+	raw, exists, err := r.kube.GetInformer().GetIndexer().GetByKey(key)
 	if err != nil {
-		return fmt.Errorf("cache lookup %q: %w", key, err)
+		return domain.Result{}, fmt.Errorf("cache lookup %q: %w", key, err)
 	}
 	if !exists {
 		// CR deleted and finalizers already removed — nothing to do
-		return nil
+		return domain.Result{}, nil
 	}
 
 	pipeline, ok := raw.(*apiv1.Pipeline)
 	if !ok {
-		return fmt.Errorf("unexpected type %T for key %q", raw, key)
+		return domain.Result{}, fmt.Errorf("unexpected type %T for key %q", raw, key)
 	}
 	pipeline = pipeline.DeepCopyObject().(*apiv1.Pipeline)
 
 	// ── Deletion handling ──────────────────────────────────────────────────
 	if pipeline.DeletionTimestamp != nil {
-		return r.handleDeletion(ctx, pipeline)
+		return domain.Result{}, r.handleDeletion(ctx, pipeline)
 	}
 
 	// ── Finalizer ─────────────────────────────────────────────────────────
 	if !containsFinalizer(pipeline, finalizerName) {
 		pipeline.Finalizers = append(pipeline.Finalizers, finalizerName)
 		if err := r.kube.PatchFinalizers(ctx, pipeline, pipeline.Finalizers); err != nil {
-			return fmt.Errorf("adding finalizer: %w", err)
+			return domain.Result{}, fmt.Errorf("adding finalizer: %w", err)
 		}
 	}
 
@@ -114,14 +103,14 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, key string) error {
 	// ── State machine ─────────────────────────────────────────────────────
 	switch pipeline.Status.Phase {
 	case "", apiv1.PipelinePhasePending:
-		return r.handlePending(ctx, pipeline)
+		return domain.Result{}, r.handlePending(ctx, pipeline)
 	case apiv1.PipelinePhaseRunning:
-		return r.handleRunning(ctx, pipeline)
+		return domain.Result{}, r.handleRunning(ctx, pipeline)
 	case apiv1.PipelinePhaseSucceeded, apiv1.PipelinePhaseFailed:
 		// Terminal state — nothing to reconcile
-		return nil
+		return domain.Result{}, nil
 	default:
-		return fmt.Errorf("unknown phase %q for pipeline %s/%s",
+		return domain.Result{}, fmt.Errorf("unknown phase %q for pipeline %s/%s",
 			pipeline.Status.Phase, pipeline.Namespace, pipeline.Name)
 	}
 }
@@ -155,7 +144,7 @@ func (r *PipelineReconciler) handlePending(ctx context.Context, p *apiv1.Pipelin
 	p.Status.CurrentStep = firstStep.Name
 	p.Status.StartTime = &now
 
-	r.ev.Eventf(p, corev1.EventTypeNormal, "PipelineStarted",
+	r.kube.GetEventRecorder().Eventf(p, corev1.EventTypeNormal, "PipelineStarted",
 		"Pipeline %s/%s started — step: %s", p.Namespace, p.Name, firstStep.Name)
 
 	return r.patchStatus(ctx, p)
@@ -178,7 +167,7 @@ func (r *PipelineReconciler) handleRunning(ctx context.Context, p *apiv1.Pipelin
 
 	// Check Job outcome
 	if isJobFailed(job) {
-		r.ev.Eventf(p, corev1.EventTypeWarning, "StepFailed",
+		r.kube.GetEventRecorder().Eventf(p, corev1.EventTypeWarning, "StepFailed",
 			"Pipeline step %q failed", p.Status.CurrentStep)
 		return r.setPhase(ctx, p, apiv1.PipelinePhaseFailed,
 			fmt.Sprintf("step %q failed", p.Status.CurrentStep))
@@ -209,7 +198,7 @@ func (r *PipelineReconciler) advanceStep(ctx context.Context, p *apiv1.Pipeline)
 		// All steps complete
 		now := metav1.NewTime(time.Now())
 		p.Status.CompletionTime = &now
-		r.ev.Eventf(p, corev1.EventTypeNormal, "PipelineSucceeded",
+		r.kube.GetEventRecorder().Eventf(p, corev1.EventTypeNormal, "PipelineSucceeded",
 			"Pipeline %s/%s completed all %d steps", p.Namespace, p.Name, len(p.Spec.Steps))
 		return r.setPhase(ctx, p, apiv1.PipelinePhaseSucceeded, "all steps completed")
 	}
@@ -231,7 +220,7 @@ func (r *PipelineReconciler) advanceStep(ctx context.Context, p *apiv1.Pipeline)
 	}
 
 	p.Status.CurrentStep = nextStep.Name
-	r.ev.Eventf(p, corev1.EventTypeNormal, "StepStarted",
+	r.kube.GetEventRecorder().Eventf(p, corev1.EventTypeNormal, "StepStarted",
 		"Pipeline advancing to step %q", nextStep.Name)
 
 	return r.patchStatus(ctx, p)

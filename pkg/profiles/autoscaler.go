@@ -138,7 +138,7 @@ func expandBatch(b orktypes.AutoscaleBaseline, cfg profileConfig) *orktypes.Auto
 		Interval: orktypes.Duration{Duration: cfg.interval},
 		Cooldown: orktypes.Duration{Duration: cfg.cooldown},
 		Conditions: orktypes.AutoscaleConditions{
-			AnyOf: []orktypes.Condition{{Cron: "0 23 * * *", Duration: orktypes.Duration{Duration: 3 * time.Hour}}},
+			Or: []orktypes.Condition{{Cron: "0 23 * * *", Duration: orktypes.Duration{Duration: 3 * time.Hour}}},
 		},
 		Do: orktypes.AutoscaleAction{Workers: intPtr(workers), QueueDepth: intPtr(queue)},
 	}

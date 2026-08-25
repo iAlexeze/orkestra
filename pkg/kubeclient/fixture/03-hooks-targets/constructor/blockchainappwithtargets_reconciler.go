@@ -6,11 +6,9 @@ import (
 
 	apiv1 "github.com/orkspace/orkestra-args-hooks-targets/api/v1alpha1"
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	orkdeploy "github.com/orkspace/orkestra/pkg/resources/deployments"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
-	"k8s.io/client-go/tools/cache"
 )
 
 // BlockchainAppWithTargetsReconciler is the per-target constructor reconciler
@@ -18,47 +16,38 @@ import (
 // (declared in katalog serve.target.<name>.operatorBox.reconciler.constructor.args)
 // rather than calling a live feature-flag endpoint.
 type BlockchainAppWithTargetsReconciler struct {
-	informer cache.SharedIndexInformer
-	kube     kubeclient.Interface
-	ev       event.Recorder
+	kube kubeclient.Interface
 }
 
 // NewBlockchainAppWithTargetsReconciler is the constructor registered in
 // serve.target.v2-ctor.operatorBox.reconciler.constructor.
-func NewBlockchainAppWithTargetsReconciler(
-	kube kubeclient.Interface,
-	informer cache.SharedIndexInformer,
-	ev event.Recorder,
-) domain.Reconciler {
-	return &BlockchainAppWithTargetsReconciler{
-		informer: informer,
-		kube:     kube,
-		ev:       ev,
-	}
+func NewBlockchainAppWithTargetsReconciler(kube kubeclient.Interface) domain.Reconciler {
+	return &BlockchainAppWithTargetsReconciler{kube: kube}
 }
 
-func (r *BlockchainAppWithTargetsReconciler) Reconcile(ctx context.Context, key string) error {
-	raw, exists, err := r.informer.GetIndexer().GetByKey(key)
+func (r *BlockchainAppWithTargetsReconciler) Reconcile(ctx context.Context, req domain.Request) (domain.Result, error) {
+	key := req.Key
+	raw, exists, err := r.kube.GetInformer().GetIndexer().GetByKey(key)
 	if err != nil {
-		return fmt.Errorf("cache lookup %q: %w", key, err)
+		return domain.Result{}, fmt.Errorf("cache lookup %q: %w", key, err)
 	}
 	if !exists {
-		return nil
+		return domain.Result{}, nil
 	}
 
 	app, ok := raw.(*apiv1.BlockchainAppWithTargets)
 	if !ok {
-		return fmt.Errorf("unexpected type %T for key %q", raw, key)
+		return domain.Result{}, fmt.Errorf("unexpected type %T for key %q", raw, key)
 	}
 	app = app.DeepCopyObject().(*apiv1.BlockchainAppWithTargets)
 
 	if app.DeletionTimestamp != nil {
-		return nil
+		return domain.Result{}, nil
 	}
 
 	resolver, err := orktmpl.NewResolver(ctx, app)
 	if err != nil {
-		return fmt.Errorf("building resolver: %w", err)
+		return domain.Result{}, fmt.Errorf("building resolver: %w", err)
 	}
 	kube := r.kube.ScopedFor(resolver.TemplateEvaluator())
 
@@ -85,10 +74,10 @@ func (r *BlockchainAppWithTargetsReconciler) Reconcile(ctx context.Context, key 
 		},
 	}
 	if err := orkdeploy.Apply(ctx, kube, app, spec); err != nil {
-		return fmt.Errorf("blockchainappwithtargets deployment: %w", err)
+		return domain.Result{}, fmt.Errorf("blockchainappwithtargets deployment: %w", err)
 	}
 
-	return kube.PatchStatus(ctx, app, map[string]any{
+	return domain.Result{}, kube.PatchStatus(ctx, app, map[string]any{
 		"phase":          "Running",
 		"network":        app.Spec.Network,
 		"featureEnabled": annotation,

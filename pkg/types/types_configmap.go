@@ -74,9 +74,9 @@ type ConfigMapTemplateSource struct {
 	// .item and .<as> are available in template expressions within this declaration.
 	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
 
-	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Or holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
-	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	Or []Condition `yaml:"or,omitempty" json:"or,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.

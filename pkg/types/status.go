@@ -97,15 +97,15 @@ type StatusFieldSpec struct {
 	// .spec.image, .children.job.status.succeeded are all accessible.
 	When []Condition `yaml:"when,omitempty"`
 
-	// AnyOf — optional OR-conditions. If any condition passes, the field is written.
+	// Or — optional OR-conditions. If any condition passes, the field is written.
 	// Useful for multi-branch declarative state machines.
-	AnyOf []Condition `yaml:"anyOf,omitempty"`
+	Or []Condition `yaml:"or,omitempty"`
 
-	// ClearOnFalse — when true and the when:/anyOf: condition evaluates to false,
+	// ClearOnFalse — when true and the when:/or: condition evaluates to false,
 	// the field is explicitly written as "" rather than left untouched.
 	// Use this for transient fields (e.g. crashReason) that should disappear
 	// once the condition that produced them is no longer true.
-	// Has no effect when no when:/anyOf: conditions are declared.
+	// Has no effect when no when:/or: conditions are declared.
 	ClearOnFalse bool `yaml:"clearOnFalse,omitempty" json:"clearOnFalse,omitempty"`
 }
 

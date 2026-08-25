@@ -16,14 +16,14 @@ Autoscale conditions are expressed using two blocks:
 
 ```yaml
 conditions:
-  anyOf:   # OR
+  or:   # OR
   when:    # AND
 ```
 
 The combined logic is:
 
 ```text
-(anyOf is empty OR anyOf evaluates to true)
+(or is empty OR or evaluates to true)
 AND
 (when is empty OR when evaluates to true)
 ```
@@ -93,7 +93,7 @@ If the referenced operator is not found, the metrics block is omitted and the co
 Clock conditions define a time window using `after:` and/or `before:`.
 
 ```yaml
-anyOf:
+or:
   - time:
       after: "08:00"
       before: "17:00"
@@ -113,7 +113,7 @@ Rules:
 Day‑of‑week conditions activate on specific days.
 
 ```yaml
-anyOf:
+or:
   - dayOfWeek:
       in: ["Saturday", "Sunday"]
 ```
@@ -137,7 +137,7 @@ Cron expressions define **when a time window opens**.
 The optional `duration:` defines how long the window stays open.
 
 ```yaml
-anyOf:
+or:
   - cron: "0 8 * * 1-5"
     duration: 9h
 ```
@@ -156,7 +156,7 @@ minute hour dayOfMonth month dayOfWeek
 
 The autoscaler evaluates conditions in this order:
 
-1. **Evaluate anyOf (OR)**  
+1. **Evaluate or (OR)**  
    - empty → true  
    - any entry true → pass  
    - all false → fail  
@@ -167,7 +167,7 @@ The autoscaler evaluates conditions in this order:
 
 3. **Final result**  
    ```
-   final = anyOf_passes AND when_passes
+   final = or_passes AND when_passes
    ```
 
 If `final == true` → apply `do:` overrides.  
@@ -192,7 +192,7 @@ conditions:
 
 ```yaml
 conditions:
-  anyOf:
+  or:
     - cron: "0 23 * * *"
       duration: 3h
   when:
@@ -204,7 +204,7 @@ conditions:
 
 ```yaml
 conditions:
-  anyOf:
+  or:
     - dayOfWeek:
         in: ["Saturday", "Sunday"]
 ```

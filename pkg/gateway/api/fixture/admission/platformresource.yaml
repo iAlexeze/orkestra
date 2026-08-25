@@ -25,12 +25,12 @@ rules:
       - field: spec.workloadType
         equals: cert
 
-  # Deny when: anyOf — app or monitoring workload must declare a repoURL.
+  # Deny when: or — app or monitoring workload must declare a repoURL.
   - field: spec.repoURL
     operator: exists
     message: "spec.repoURL is required for app and monitoring workloads"
     action: deny
-    anyOf:
+    or:
       - field: spec.workloadType
         equals: app
       - field: spec.workloadType

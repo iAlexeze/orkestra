@@ -19,7 +19,7 @@ import (
 //
 // preReconcile.external runs first (shared enrichment), then reconcileGate.external,
 // then conditions are evaluated against the accumulated resolver.
-func (k *Katalog) EvaluatePreReconcile(ctx context.Context, crdName string, obj *unstructured.Unstructured, cs kubernetes.Interface) (allowed bool, reason string) {
+func (k *Katalog) EvaluatePreReconcile(ctx context.Context, crdName string, obj *unstructured.Unstructured, cs kubernetes.Interface, sentinels map[string]string) (allowed bool, reason string) {
 	if obj == nil {
 		return true, ""
 	}
@@ -47,22 +47,28 @@ func (k *Katalog) EvaluatePreReconcile(ctx context.Context, crdName string, obj 
 	if intent := orktypes.ServeIntentFromObject(resolver.Data()); intent != nil {
 		resolver = resolver.WithRequest(intent)
 	}
+	if len(sentinels) > 0 {
+		resolver = resolver.WithSentinels(rc.DeclaredSentinels(), sentinels)
+	}
 
 	gvk := entry.GVKString()
 
 	if rc.HasPreReconcileExternal() {
 		if resolver, err = external.Run(ctx, gvk, resolver, rc.External, cs); err != nil {
-			return true, ""
+			return true, "" // shared pre-reconcile external: always fail-open
 		}
 	}
 	if rc.HasReconcileGateExternal() {
 		if resolver, err = external.Run(ctx, gvk, resolver, rc.ReconcileGate.External, cs); err != nil {
+			if rc.ReconcileGate.FailPolicy == orktypes.FailPolicyClosed {
+				return false, "reconcileGate: external evaluation failed (failPolicy: closed)"
+			}
 			return true, ""
 		}
 	}
 
 	eval := resolver.TemplateEvaluator()
-	if !orktypes.EvaluateConditions(resolver.Data(), rc.WhenConditions(), rc.AnyOfConditions(), eval) {
+	if !orktypes.EvaluateConditions(resolver.Data(), rc.WhenConditions(), rc.OrConditions(), eval) {
 		return false, preReconcileGateReason(rc, resolver)
 	}
 	return true, ""
@@ -74,7 +80,7 @@ func (k *Katalog) EvaluatePreReconcile(ctx context.Context, crdName string, obj 
 //
 // preReconcile.external runs first (shared enrichment), then enqueueGate.external,
 // then conditions are evaluated against the accumulated resolver.
-func (k *Katalog) EvaluateEnqueueFilter(ctx context.Context, crdName string, obj domain.Object, cs kubernetes.Interface) bool {
+func (k *Katalog) EvaluateEnqueueFilter(ctx context.Context, crdName string, obj domain.Object, cs kubernetes.Interface, sentinels map[string]string) bool {
 	if obj == nil {
 		return true
 	}
@@ -102,6 +108,9 @@ func (k *Katalog) EvaluateEnqueueFilter(ctx context.Context, crdName string, obj
 	if intent := orktypes.ServeIntentFromObject(resolver.Data()); intent != nil {
 		resolver = resolver.WithRequest(intent)
 	}
+	if len(sentinels) > 0 {
+		resolver = resolver.WithSentinels(rc.DeclaredSentinels(), sentinels)
+	}
 
 	gvk := entry.GVKString()
 
@@ -113,12 +122,15 @@ func (k *Katalog) EvaluateEnqueueFilter(ctx context.Context, crdName string, obj
 	g := rc.EnqueueGate
 	if rc.HasEnqueueGateExternal() {
 		if resolver, err = external.Run(ctx, gvk, resolver, g.External, cs); err != nil {
+			if g.FailPolicy == orktypes.FailPolicyClosed {
+				return false
+			}
 			return true
 		}
 	}
 
 	eval := resolver.TemplateEvaluator()
-	return orktypes.EvaluateConditions(resolver.Data(), g.WhenConditions(), g.AnyOfConditions(), eval)
+	return orktypes.EvaluateConditions(resolver.Data(), g.WhenConditions(), g.OrConditions(), eval)
 }
 
 // preReconcileGateReason returns a human-readable description of why the gate fired.
@@ -130,5 +142,5 @@ func preReconcileGateReason(rc *orktypes.PreReconcileConfig, resolver *orktmpl.R
 			return fmt.Sprintf("when: %q = %q, want %q", cond.Field, val, cond.Equals)
 		}
 	}
-	return "anyOf: no condition satisfied"
+	return "or: no condition satisfied"
 }

@@ -15,7 +15,7 @@ Each layer is a no-op when its key is absent from `enrich`.
 
 ## Conditional enrichment targets
 
-Enrichment targets can be gated with `when:` or `anyOf:` conditions so that the API calls only happen when needed:
+Enrichment targets can be gated with `when:` or `or:` conditions so that the API calls only happen when needed:
 
 ```yaml
 enrich:

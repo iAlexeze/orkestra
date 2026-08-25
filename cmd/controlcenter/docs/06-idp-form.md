@@ -39,7 +39,7 @@ Browser GET /controlcenter/katalog/{kat}/crd/{crd}/cr/create
          field.order       →  sort order (0/unset sorts last)
          field.category    →  section heading (fields with no category group
                                under a single default "Fields" section)
-         field.when/anyOf  →  data-when/data-anyof — evaluated client-side to
+         field.when/or  →  data-when/data-or — evaluated client-side to
                                show/hide the field as the form is filled
 
 Browser POST /controlcenter/katalog/{kat}/crd/{crd}/cr/create

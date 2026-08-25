@@ -45,7 +45,7 @@ Do **not** use it on `phase` or other fields that describe the last stable state
 
 ## Effect on always-written fields
 
-`clearOnFalse` has no effect when no `when:` or `anyOf:` conditions are declared. Fields written unconditionally are not affected.
+`clearOnFalse` has no effect when no `when:` or `or:` conditions are declared. Fields written unconditionally are not affected.
 
 ---
 

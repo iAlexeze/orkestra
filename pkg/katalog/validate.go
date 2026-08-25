@@ -287,6 +287,20 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	}
 
 	// -------------------------------------------------------------------------
+	// 34a. Validate watch entries and preReconcile sentinels
+	// -------------------------------------------------------------------------
+	if err := k.validateWatchEntries(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 34b. Validate CRD entry labels (static keys, template values)
+	// -------------------------------------------------------------------------
+	if err := k.validateCRDEntryLabels(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
 	// 35. Validate envFrom refs (suffix requires keys)
 	// -------------------------------------------------------------------------
 	if err := k.validateEnvFromRefs(); err != nil {
@@ -339,6 +353,22 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	// 44. Validate Publish config
 	// -------------------------------------------------------------------------
 	if err := k.validatePublish(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 46. Validate retryBackoff — hard errors for invalid values; warnings when
+	//     worst-case delay exceeds the effective resync window.
+	// -------------------------------------------------------------------------
+	if err := k.validateRetryBackoff(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 47. Validate requeue.after — must be a template expression or a valid
+	//     Go duration string.
+	// -------------------------------------------------------------------------
+	if err := k.validateRequeue(); err != nil {
 		return nil, err
 	}
 

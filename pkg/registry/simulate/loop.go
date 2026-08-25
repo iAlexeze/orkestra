@@ -5,6 +5,7 @@ import (
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	apitypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -29,7 +30,11 @@ func runLoop(ctx context.Context, r domain.Reconciler, kube loopKube, key string
 		kube.AdvanceCycle()
 
 		cycleResult := CycleResult{Cycle: cycle}
-		cycleResult.Error = r.Reconcile(ctx, key)
+		ns, name, _ := cache.SplitMetaNamespaceKey(key)
+		_, cycleResult.Error = r.Reconcile(ctx, domain.Request{
+			Key:            key,
+			NamespacedName: apitypes.NamespacedName{Namespace: ns, Name: name},
+		})
 		cycleResult.Ops = kube.OpsForCycle(cycle)
 		result.Cycles = append(result.Cycles, cycleResult)
 

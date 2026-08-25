@@ -115,7 +115,7 @@ func runStatusPatch[PTR domain.Object](
 	}
 
 	// ── Layer 2: Declared status fields ───────────────────────────────────
-	// Conditional fields (with when:/anyOf:) are always evaluated so that
+	// Conditional fields (with when:/or:) are always evaluated so that
 	// status can reflect why reconcile failed (e.g. external health check result).
 	// Unconditional fields are only written on success — on error they would
 	// write stale or misleading values (e.g. phase: Active while denied).
@@ -132,7 +132,7 @@ func runStatusPatch[PTR domain.Object](
 		if reconcileErr != nil {
 			var conditional []orktypes.StatusFieldSpec
 			for _, f := range fields {
-				if len(f.When) > 0 || len(f.AnyOf) > 0 {
+				if len(f.When) > 0 || len(f.Or) > 0 {
 					conditional = append(conditional, f)
 				}
 			}

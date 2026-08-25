@@ -10,55 +10,44 @@ import (
 
 	apiv1 "github.com/orkspace/orkestra-args-constructor/api/v1alpha1"
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	orkdeploy "github.com/orkspace/orkestra/pkg/resources/deployments"
 	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
-	"k8s.io/client-go/tools/cache"
 )
 
 // BlockchainNodeReconciler implements domain.Reconciler for the BlockchainNode CRD.
 type BlockchainNodeReconciler struct {
-	informer cache.SharedIndexInformer
-	kube     kubeclient.Interface
-	ev       event.Recorder
+	kube kubeclient.Interface
 }
 
 // NewBlockchainNodeReconciler is the constructor function registered in the Katalog.
-func NewBlockchainNodeReconciler(
-	kube kubeclient.Interface,
-	informer cache.SharedIndexInformer,
-	ev event.Recorder,
-) domain.Reconciler {
-	return &BlockchainNodeReconciler{
-		informer: informer,
-		kube:     kube,
-		ev:       ev,
-	}
+func NewBlockchainNodeReconciler(kube kubeclient.Interface) domain.Reconciler {
+	return &BlockchainNodeReconciler{kube: kube}
 }
 
-func (r *BlockchainNodeReconciler) Reconcile(ctx context.Context, key string) error {
-	raw, exists, err := r.informer.GetIndexer().GetByKey(key)
+func (r *BlockchainNodeReconciler) Reconcile(ctx context.Context, req domain.Request) (domain.Result, error) {
+	key := req.Key
+	raw, exists, err := r.kube.GetInformer().GetIndexer().GetByKey(key)
 	if err != nil {
-		return fmt.Errorf("cache lookup %q: %w", key, err)
+		return domain.Result{}, fmt.Errorf("cache lookup %q: %w", key, err)
 	}
 	if !exists {
-		return nil
+		return domain.Result{}, nil
 	}
 
 	node, ok := raw.(*apiv1.BlockchainNode)
 	if !ok {
-		return fmt.Errorf("unexpected type %T for key %q", raw, key)
+		return domain.Result{}, fmt.Errorf("unexpected type %T for key %q", raw, key)
 	}
 	node = node.DeepCopyObject().(*apiv1.BlockchainNode)
 
 	if node.DeletionTimestamp != nil {
-		return nil
+		return domain.Result{}, nil
 	}
 
 	resolver, err := orktmpl.NewResolver(ctx, node)
 	if err != nil {
-		return fmt.Errorf("building resolver: %w", err)
+		return domain.Result{}, fmt.Errorf("building resolver: %w", err)
 	}
 	kube := r.kube.ScopedFor(resolver.TemplateEvaluator())
 
@@ -92,10 +81,10 @@ func (r *BlockchainNodeReconciler) Reconcile(ctx context.Context, key string) er
 		},
 	}
 	if err := orkdeploy.Apply(ctx, kube, node, spec); err != nil {
-		return fmt.Errorf("blockchainnode deployment: %w", err)
+		return domain.Result{}, fmt.Errorf("blockchainnode deployment: %w", err)
 	}
 
-	return kube.PatchStatus(ctx, node, map[string]any{
+	return domain.Result{}, kube.PatchStatus(ctx, node, map[string]any{
 		"phase":           "Running",
 		"network":         node.Spec.Network,
 		"featureEnabled":  annotation,

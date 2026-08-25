@@ -28,7 +28,7 @@
 //	my-app-eu-west-1
 //	my-app-ap-southeast-1
 //
-// Each declaration is fully independent — when:, anyOf:, labels, and all
+// Each declaration is fully independent — when:, or:, labels, and all
 // other fields are evaluated per-item with .item in context.
 //
 // forEach works on all resource types: deployments, services, secrets,

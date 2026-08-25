@@ -48,7 +48,7 @@ spec:
             function: WebAppHooks
             alias: webhooks
             runHooksFirst: true
-            resources:
+            managedResources:
               - kind: Service
 
         status:

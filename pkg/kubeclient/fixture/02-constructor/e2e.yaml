@@ -60,7 +60,7 @@ spec:
     - name: Feature flag annotation false (outside hours)
       after: cr-applied
       timeout: 30s
-      anyOf:
+      or:
         - field: '{{ inBusinessHours }}'
           equals: "false"
       kubectl:

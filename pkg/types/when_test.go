@@ -475,7 +475,7 @@ func TestEvaluateOneCond_Unique_AlwaysTrue(t *testing.T) {
 	assert.True(t, orktypes.EvaluateOneCond(d, c, nil))
 }
 
-// ── EvaluateConditions — allOf / anyOf ──────────────────────────────────────────────
+// ── EvaluateConditions — allOf / or ──────────────────────────────────────────────
 
 func TestEvaluateConditions_EmptyBothPasses(t *testing.T) {
 	assert.True(t, orktypes.EvaluateConditions(nil, nil, nil, nil))
@@ -499,42 +499,42 @@ func TestEvaluateConditions_AllOfOneFails(t *testing.T) {
 	assert.False(t, orktypes.EvaluateConditions(d, allOf, nil, nil))
 }
 
-func TestEvaluateConditions_AnyOfOneMatches(t *testing.T) {
+func TestEvaluateConditions_OrOneMatches(t *testing.T) {
 	d := data("phase", "Failed")
-	anyOf := []orktypes.Condition{
+	or := []orktypes.Condition{
 		{Field: "phase", Equals: "Failed"},
 		{Field: "phase", Equals: "Succeeded"},
 	}
-	assert.True(t, orktypes.EvaluateConditions(d, nil, anyOf, nil))
+	assert.True(t, orktypes.EvaluateConditions(d, nil, or, nil))
 }
 
-func TestEvaluateConditions_AnyOfNoneMatch(t *testing.T) {
+func TestEvaluateConditions_OrNoneMatch(t *testing.T) {
 	d := data("phase", "Running")
-	anyOf := []orktypes.Condition{
+	or := []orktypes.Condition{
 		{Field: "phase", Equals: "Failed"},
 		{Field: "phase", Equals: "Succeeded"},
 	}
-	assert.False(t, orktypes.EvaluateConditions(d, nil, anyOf, nil))
+	assert.False(t, orktypes.EvaluateConditions(d, nil, or, nil))
 }
 
 func TestEvaluateConditions_BothMustPass(t *testing.T) {
 	d := data("env", "prod", "phase", "Failed")
 	allOf := []orktypes.Condition{{Field: "env", Equals: "prod"}}
-	anyOf := []orktypes.Condition{
+	or := []orktypes.Condition{
 		{Field: "phase", Equals: "Failed"},
 		{Field: "phase", Equals: "Succeeded"},
 	}
-	assert.True(t, orktypes.EvaluateConditions(d, allOf, anyOf, nil))
+	assert.True(t, orktypes.EvaluateConditions(d, allOf, or, nil))
 }
 
-func TestEvaluateConditions_AllOfPassAnyOfFails(t *testing.T) {
+func TestEvaluateConditions_AllOfPassOrFails(t *testing.T) {
 	d := data("env", "prod", "phase", "Running")
 	allOf := []orktypes.Condition{{Field: "env", Equals: "prod"}}
-	anyOf := []orktypes.Condition{
+	or := []orktypes.Condition{
 		{Field: "phase", Equals: "Failed"},
 		{Field: "phase", Equals: "Succeeded"},
 	}
-	assert.False(t, orktypes.EvaluateConditions(d, allOf, anyOf, nil))
+	assert.False(t, orktypes.EvaluateConditions(d, allOf, or, nil))
 }
 
 // ── EvaluateOneCond — cron window injection via _cronWindows ─────────────────
