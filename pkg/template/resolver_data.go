@@ -1,4 +1,4 @@
-// pkg/resources/template/resolver_data.go
+// pkg/template/resolver_data.go
 //
 // Resolver extensions — context injection methods and data access.
 //

@@ -7,8 +7,9 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/external"
 	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
-	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
+	orktmpl "github.com/orkspace/orkestra/pkg/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils/common"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/kubernetes"
 )
@@ -19,57 +20,45 @@ import (
 //
 // preReconcile.external runs first (shared enrichment), then reconcileGate.external,
 // then conditions are evaluated against the accumulated resolver.
-func (k *Katalog) EvaluatePreReconcile(ctx context.Context, crdName string, obj *unstructured.Unstructured, cs kubernetes.Interface, sentinels map[string]string) (allowed bool, reason string) {
-	if obj == nil {
-		return true, ""
-	}
-	entry, ok := k.CRDEntry(crdName)
-	if !ok {
-		return true, ""
-	}
-	target := orktarget.ResolveTargetFromAnnotations(obj.GetAnnotations())
-	box := entry.EffectiveOperatorBox(target)
-	rc := box.PreReconcile
-	if rc == nil || !rc.HasReconcileGate() {
+func (k *Katalog) EvaluatePreReconcile(ctx context.Context, gvk string, obj *unstructured.Unstructured, cs kubernetes.Interface, sentinels map[string]string) (allowed bool, reason string) {
+	box := k.effectiveBox(obj, gvk)
+	if box.Empty() {
 		return true, ""
 	}
 
-	resolver, err := orktmpl.NewResolver(ctx, obj)
-	if err != nil {
+	pr := box.PreReconcile
+	if pr.Empty() || !pr.HasReconcileGate() {
 		return true, ""
 	}
-	if !k.Profiles.IsEmpty() {
-		resolver = resolver.WithProfiles(k.Profiles)
-	}
-	if !k.Notes.IsEmpty() {
-		resolver = resolver.WithUserNotes(k.Notes)
-	}
-	if intent := orktypes.ServeIntentFromObject(resolver.Data()); intent != nil {
-		resolver = resolver.WithRequest(intent)
-	}
-	if len(sentinels) > 0 {
-		resolver = resolver.WithSentinels(rc.DeclaredSentinels(), sentinels)
+
+	resolver := k.effectiveResolver(ctx, obj, pr, sentinels)
+	if resolver.Empty() {
+		return true, ""
 	}
 
-	gvk := entry.GVKString()
-
-	if rc.HasPreReconcileExternal() {
-		if resolver, err = external.Run(ctx, gvk, resolver, rc.External, cs); err != nil {
+	var err error
+	if pr.HasPreReconcileExternal() {
+		if resolver, err = external.Run(ctx, gvk, resolver, pr.External, cs); err != nil {
 			return true, "" // shared pre-reconcile external: always fail-open
 		}
 	}
-	if rc.HasReconcileGateExternal() {
-		if resolver, err = external.Run(ctx, gvk, resolver, rc.ReconcileGate.External, cs); err != nil {
-			if rc.ReconcileGate.FailPolicy == orktypes.FailPolicyClosed {
+	g := pr.ReconcileGate
+	if pr.HasReconcileGateExternal() {
+		if resolver, err = external.Run(ctx, gvk, resolver, g.External, cs); err != nil {
+			if g.FailPolicy == orktypes.FailPolicyClosed {
 				return false, "reconcileGate: external evaluation failed (failPolicy: closed)"
 			}
 			return true, ""
 		}
 	}
 
-	eval := resolver.TemplateEvaluator()
-	if !orktypes.EvaluateConditions(resolver.Data(), rc.WhenConditions(), rc.OrConditions(), eval) {
-		return false, preReconcileGateReason(rc, resolver)
+	// Evaluate reconcileGate.sentinels (shorthand) - first match wins
+	if g.HasSentinels() {
+		return g.SentinelsAllowed(sentinels), ""
+	}
+
+	if !orktypes.EvaluateConditions(resolver.Data(), pr.WhenConditions(), pr.OrConditions(), resolver.TemplateEvaluator()) {
+		return false, preReconcileGateReason(pr, resolver)
 	}
 	return true, ""
 }
@@ -80,47 +69,30 @@ func (k *Katalog) EvaluatePreReconcile(ctx context.Context, crdName string, obj 
 //
 // preReconcile.external runs first (shared enrichment), then enqueueGate.external,
 // then conditions are evaluated against the accumulated resolver.
-func (k *Katalog) EvaluateEnqueueFilter(ctx context.Context, crdName string, obj domain.Object, cs kubernetes.Interface, sentinels map[string]string) bool {
-	if obj == nil {
-		return true
-	}
-	entry, ok := k.CRDEntry(crdName)
-	if !ok {
-		return true
-	}
-	target := orktarget.ResolveTargetFromAnnotations(obj.GetAnnotations())
-	box := entry.EffectiveOperatorBox(target)
-	rc := box.PreReconcile
-	if rc == nil || !rc.HasEnqueueGate() {
+func (k *Katalog) EvaluateEnqueueFilter(ctx context.Context, gvk string, obj domain.Object, cs kubernetes.Interface, sentinels map[string]string) bool {
+	box := k.effectiveBox(obj, gvk)
+	if box.Empty() {
 		return true
 	}
 
-	resolver, err := orktmpl.NewResolver(ctx, obj)
-	if err != nil {
+	pr := box.PreReconcile
+	if pr.Empty() || !pr.HasEnqueueGate() {
 		return true
 	}
-	if !k.Profiles.IsEmpty() {
-		resolver = resolver.WithProfiles(k.UserProfiles())
-	}
-	if !k.Notes.IsEmpty() {
-		resolver = resolver.WithUserNotes(k.UserNotes())
-	}
-	if intent := orktypes.ServeIntentFromObject(resolver.Data()); intent != nil {
-		resolver = resolver.WithRequest(intent)
-	}
-	if len(sentinels) > 0 {
-		resolver = resolver.WithSentinels(rc.DeclaredSentinels(), sentinels)
+
+	resolver := k.effectiveResolver(ctx, obj, pr, sentinels)
+	if resolver.Empty() {
+		return true
 	}
 
-	gvk := entry.GVKString()
-
-	if rc.HasPreReconcileExternal() {
-		if resolver, err = external.Run(ctx, gvk, resolver, rc.External, cs); err != nil {
-			return true
+	var err error
+	if pr.HasPreReconcileExternal() {
+		if resolver, err = external.Run(ctx, gvk, resolver, pr.External, cs); err != nil {
+			return true // shared pre-reconcile external: always fail-open
 		}
 	}
-	g := rc.EnqueueGate
-	if rc.HasEnqueueGateExternal() {
+	g := pr.EnqueueGate
+	if pr.HasEnqueueGateExternal() {
 		if resolver, err = external.Run(ctx, gvk, resolver, g.External, cs); err != nil {
 			if g.FailPolicy == orktypes.FailPolicyClosed {
 				return false
@@ -129,14 +101,94 @@ func (k *Katalog) EvaluateEnqueueFilter(ctx context.Context, crdName string, obj
 		}
 	}
 
-	eval := resolver.TemplateEvaluator()
-	return orktypes.EvaluateConditions(resolver.Data(), g.WhenConditions(), g.OrConditions(), eval)
+	// Evaluate enqueueGate.sentinels (shorthand) - first match wins
+	if g.HasSentinels() {
+		return g.SentinelsAllowed(sentinels)
+	}
+
+	return orktypes.EvaluateConditions(resolver.Data(), g.WhenConditions(), g.OrConditions(), resolver.TemplateEvaluator())
+}
+
+// EvaluateQueueBehaviourConditions completes the queue behaviour evaluation started by the
+// workqueue but delegated to the informer. Evaluates queue.behaviour conditions for the named CRD.
+// Returns true when the object should be enqueued, false when it should be dropped.
+// Accepts domain.Object so it works for both dynamic and typed CRDs.
+//
+// Here because it influences 'pre-reconcile' decisions.
+func (k *Katalog) EvaluateQueueBehaviourConditions(ctx context.Context, gvk string, obj domain.Object, sentinels map[string]string) bool {
+	box := k.effectiveBox(obj, gvk)
+	if box.Empty() {
+		return true
+	}
+
+	rc := box.Reconciler
+	q := rc.Queue
+	if rc.Empty() || q.Empty() || !q.HasBehaviourCondition() {
+		return true
+	}
+
+	resolver := k.effectiveResolver(ctx, obj, box.PreReconcile, sentinels)
+	if resolver == nil {
+		return true
+	}
+
+	if q.HasOnLimitConditions() {
+		return orktypes.EvaluateConditions(resolver.Data(), q.OnLimitWhen(), q.OnLimitOr(), resolver.TemplateEvaluator())
+	}
+	if q.HasOnThresholdConditions() {
+		return orktypes.EvaluateConditions(resolver.Data(), q.OnThresholdWhen(), q.OnThresholdOr(), resolver.TemplateEvaluator())
+	}
+
+	return true
+}
+
+// effectiveResolver computes the common resolver used by all evaluators
+func (k *Katalog) effectiveResolver(ctx context.Context, obj domain.Object, pr *orktypes.PreReconcileConfig, sentinels map[string]string) *orktmpl.Resolver {
+	resolver, err := orktmpl.NewResolver(ctx, obj)
+	if err != nil {
+		return nil
+	}
+	if !k.Profiles.Empty() {
+		resolver = resolver.WithProfiles(k.UserProfiles())
+	}
+	if !k.Notes.Empty() {
+		resolver = resolver.WithUserNotes(k.UserNotes())
+	}
+	// .request context
+	if intent := orktarget.ResolveIntentFromObject(resolver.Data()); intent != nil {
+		resolver = resolver.WithRequest(intent)
+	}
+	// .metrics context
+	if metrics := common.ResolveResourceMetricFromObject(resolver.Data()); metrics != nil {
+		resolver = resolver.WithMetrics(metrics)
+	}
+	// .health context
+	if health := common.ResolveResourceHealthFromObject(resolver.Data()); health != nil {
+		resolver = resolver.WithHealth(health)
+	}
+	if len(sentinels) > 0 {
+		resolver = resolver.WithSentinels(pr.DeclaredSentinels(), sentinels)
+	}
+	return resolver
+}
+
+// effectiveBox computes the common operatorBox used by all evaluators
+func (k *Katalog) effectiveBox(obj domain.Object, gvk string) *orktypes.OperatorBoxConfig {
+	if obj == nil {
+		return nil
+	}
+	entry := k.LookupByGVKString(gvk).Entry()
+	if entry == nil {
+		return nil
+	}
+	target := orktarget.ResolveTargetFromAnnotations(obj.GetAnnotations())
+	return entry.EffectiveOperatorBox(target)
 }
 
 // preReconcileGateReason returns a human-readable description of why the gate fired.
-func preReconcileGateReason(rc *orktypes.PreReconcileConfig, resolver *orktmpl.Resolver) string {
+func preReconcileGateReason(pr *orktypes.PreReconcileConfig, resolver *orktmpl.Resolver) string {
 	eval := resolver.TemplateEvaluator()
-	for _, cond := range rc.WhenConditions() {
+	for _, cond := range pr.WhenConditions() {
 		if !orktypes.EvaluateConditions(resolver.Data(), []orktypes.Condition{cond}, nil, eval) {
 			val, _ := resolver.Resolve(cond.Field)
 			return fmt.Sprintf("when: %q = %q, want %q", cond.Field, val, cond.Equals)

@@ -1,4 +1,4 @@
-// pkg/resources/template/resolver_status.go
+// pkg/template/resolver_status.go
 package template
 
 import (

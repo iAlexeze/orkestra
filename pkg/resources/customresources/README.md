@@ -31,7 +31,7 @@ Guarded deletion. Resolves the GVR, fetches the resource, and deletes it only wh
 
 ### `Resolve(src, ownerName)`
 
-Converts a `CustomResourceTemplateSource` (which may still contain raw template expressions) into a `ResolvedCustomResourceSpec`. Template expression evaluation is the caller's responsibility and must happen before `Resolve` is called — see `pkg/resources/template`. If `metadata.name` is empty after resolution, the name defaults to `<ownerName>-custom`.
+Converts a `CustomResourceTemplateSource` (which may still contain raw template expressions) into a `ResolvedCustomResourceSpec`. Template expression evaluation is the caller's responsibility and must happen before `Resolve` is called — see `pkg/template`. If `metadata.name` is empty after resolution, the name defaults to `<ownerName>-custom`.
 
 ---
 
@@ -106,5 +106,5 @@ Typical use cases:
 
 - `pkg/runtime/reconciler/run_customresource.go` — how the reconciler drives `Create`/`Update` per lifecycle hook
 - `pkg/runtime/reconciler/expand_customresources.go` — template expansion for `customResources:` declarations
-- `pkg/resources/template/` — the `Resolver` that evaluates Go templates before `Resolve` is called
+- `pkg/template/` — the `Resolver` that evaluates Go templates before `Resolve` is called
 - `pkg/resources/README.md` — top-level contract shared by all registry packages

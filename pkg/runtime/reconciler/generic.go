@@ -12,19 +12,19 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/gateway/notification"
+	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
-	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
 	"github.com/orkspace/orkestra/pkg/runtime/autoscaler"
 	"github.com/orkspace/orkestra/pkg/runtime/kordinator"
 	orkqueue "github.com/orkspace/orkestra/pkg/runtime/queue"
 	"github.com/orkspace/orkestra/pkg/runtime/runners"
+	orktmpl "github.com/orkspace/orkestra/pkg/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -79,7 +79,7 @@ type GenericReconciler[PTR domain.Object] struct {
 	hooks domain.ObjectHooks
 
 	// targetHooks holds per-target hook sets for CRDs that have distinct hook
-	// binaries per serve.target entry (TargetHookFactories non-empty).
+	// binaries per serve.target entry (TargetHookFactories non-Empty().
 	// Built once at construction time; read concurrently during reconcile.
 	// When empty, all targets fall back to the CRD-level hooks field.
 	targetHooks map[string]domain.ObjectHooks
@@ -232,6 +232,7 @@ func NewGenericReconciler[PTR domain.Object](
 			Resync:   box.Reconciler.Resync.Duration,
 		}
 		r.autoscaler = autoscaler.NewAutoscaler(
+			kube.Clientset(),
 			crd.APITypes.Kind,
 			box.Autoscale,
 			baseline,
@@ -327,16 +328,16 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	if len(normalizeChanges) > 0 {
 		resolver = resolver.WithNormalizeChanges(normalizeChanges)
 	}
-	if r.kat != nil && !r.kat.Profiles.IsEmpty() {
+	if r.kat != nil && !r.kat.Profiles.Empty() {
 		resolver = resolver.WithProfiles(r.kat.Profiles)
 	}
-	if r.kat != nil && !r.kat.Notes.IsEmpty() {
+	if r.kat != nil && !r.kat.Notes.Empty() {
 		resolver = resolver.WithUserNotes(r.kat.UserNotes())
 	}
 	// Inject raw serve intent as .request.<field> so operatorBox templates,
 	// mutation rules, and validation rules can all read the caller's vocabulary.
 	// Only present when the CR was submitted through the Gateway API in target mode.
-	if intent := orktypes.ServeIntentFromObject(resolver.Data()); intent != nil {
+	if intent := orktarget.ResolveIntentFromObject(resolver.Data()); intent != nil {
 		resolver = resolver.WithRequest(intent)
 	}
 	// Gives operator: unique live CRD access for the rest of this reconcile
@@ -376,11 +377,7 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 	//
 	// ──────────────────────────────────────────────────────────────────────────────
 	if obj.GetObjectKind().GroupVersionKind().Empty() {
-		obj.GetObjectKind().SetGroupVersionKind(schema.GroupVersionKind{
-			Group:   r.crd.APITypes.Group,
-			Version: r.crd.APITypes.Version,
-			Kind:    r.crd.APITypes.Kind,
-		})
+		obj.GetObjectKind().SetGroupVersionKind(r.crd.GVK())
 	}
 	// Check if resource is being deleted
 	if obj.GetDeletionTimestamp() != nil {
@@ -671,9 +668,15 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 	// This surfaces the operatorbox health endpoint directly into templates,
 	// enabling CR status fields to show live reconcile health, uptime,
 	// dependency health, and error information without any API calls.
-	if h, ok := r.crdHealthRegistry[r.crd.GVKString()]; ok {
+	h, healthOk := r.crdHealthRegistry[r.crd.GVKString()]
+	if healthOk {
 		resolver = resolver.WithHealth(h.HealthAsMap())
 	}
+
+	// Inject live runtime metrics/health also to the object as annotation so that the gateway
+	// Uses it for metrics-level and health-level gating in validation and mutation rules.
+	// This respects crossAccess and endpoint security declaration
+	r.injectRuntimeHealthAndMetrics(obj, metricsMap, h.HealthAsMap(), healthOk)
 
 	// Always patch status — best-effort, never fails reconcile.
 	// Called with the outcome so Ready condition reflects reality.

@@ -1,4 +1,4 @@
-// pkg/resources/template/resolver_ns.go
+// pkg/template/resolver_ns.go
 //
 // Namespace resolution helper.
 //

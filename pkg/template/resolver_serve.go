@@ -1,4 +1,4 @@
-// pkg/resources/template/resolver_serve.go
+// pkg/template/resolver_serve.go
 //
 // Resolver extensions for the serve layer — intent payload and field
 // translation context injection.

@@ -22,13 +22,12 @@ package cli
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/orkspace/orkestra/cmd/internal"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/merger"
-	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
+	orktmpl "github.com/orkspace/orkestra/pkg/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/spf13/cobra"
 )
@@ -72,7 +71,7 @@ Example:
 			return fmt.Errorf("parsing Katalog: %w", err)
 		}
 
-		crData, err := os.ReadFile(crFile)
+		crData, err := readLocal(crFile)
 		if err != nil {
 			return fmt.Errorf("reading CR %q: %w", crFile, err)
 		}
