@@ -159,6 +159,12 @@ func (k *Katalog) Len() int {
 	return len(k.enabledCRDs)
 }
 
+// SetKonfig sets the konfig on the Katalog. Called by pipeline.NewKatalog
+// before KomposeRuntimeKatalog so that konfig-dependent methods work correctly.
+func (k *Katalog) SetKonfig(kfg *konfig.Konfig) {
+	k.konfig = kfg
+}
+
 // WithCRDFiles returns the names of CRDs that declared a crdFile.
 // Populated during KomposeRuntimeKatalog before the field is cleared,
 // so callers can inspect which CRDs used the local-file shortcut even

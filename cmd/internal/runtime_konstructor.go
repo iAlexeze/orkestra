@@ -107,6 +107,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/health"
 	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/katalog/pipeline"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -150,7 +151,7 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 	// Loads and validates the YAML Katalog. After this point, kat.Enabled()
 	// returns only CRDs that passed schema validation and are not disabled.
 	// Invalid CRDs are logged and excluded — they do not block the operator.
-	kat := katalog.NewKatalog(kfg, m)
+	kat := pipeline.NewKatalog(kfg, m)
 
 	if registryURL := kfg.RegistryConfig().RegistryURL; registryURL != "" {
 		m.SetRegistryURL(registryURL)

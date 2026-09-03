@@ -15,23 +15,6 @@ import (
 //
 // -----------------------------------------------------------------------------
 
-// BuildExpanded is the canonical pipeline for CLI commands that need a fully
-// ready Katalog: merge → expand motifs → validate.
-//
-// Use this instead of calling KomposeRuntimeKatalog + Validate separately.
-// For the rare case where validation must be skipped (e.g. ork template --no-validate),
-// call KomposeRuntimeKatalog directly.
-func BuildExpanded(kfg *konfig.Konfig, m *merger.Merger) (*Katalog, error) {
-	var k Katalog
-	if _, err := k.KomposeRuntimeKatalog(kfg, m); err != nil {
-		return nil, err
-	}
-	if _, err := k.Validate(kfg); err != nil {
-		return nil, err
-	}
-	return &k, nil
-}
-
 // KomposeRuntimeKatalog composes the runtime Katalog for Orkestra from merged configuration sources.
 //
 // This function is the central entry point for transforming the declarative Katalog
@@ -158,10 +141,10 @@ func (k *Katalog) KomposeRuntimeKatalog(
 
 	// Apply defaults/GVK so CLI tools (simulate, validate, plan) get the same
 	// field values as the runtime without needing to call Validate.
-	if err := k.setDefaults(kfg); err != nil {
+	if err := k.SetDefaults(kfg); err != nil {
 		return nil, err
 	}
-	if err := k.setGroupVersionKind(); err != nil {
+	if err := k.SetGroupVersionKind(); err != nil {
 		return nil, err
 	}
 
