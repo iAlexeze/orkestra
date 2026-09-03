@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/katalog/pipeline"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/registry/e2e"
 	motifpkg "github.com/orkspace/orkestra/pkg/registry/motif"
@@ -96,7 +97,7 @@ Examples:
 		}
 		spin.Stop()
 
-		k, err := katalog.BuildExpanded(kfg, m.m)
+		k, err := pipeline.BuildExpanded(kfg, m.m)
 		if err != nil {
 			var typedErr *katalog.TypedOperatorError
 			if errors.As(err, &typedErr) {

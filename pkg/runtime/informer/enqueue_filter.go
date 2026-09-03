@@ -68,7 +68,7 @@ func (f *Factory) enqueueAllowed(ctx context.Context, gvkStr string, obj interfa
 		return true // can't evaluate — let it through
 	}
 
-	if !f.katalog.EvaluateEnqueueFilter(ctx, gvkStr, domObj, f.cs, nil) {
+	if f.katalog != nil && !f.katalog.EvaluateEnqueueFilter(ctx, gvkStr, domObj, f.cs, nil) {
 		logger.Debug().
 			Str("gvk", gvkStr).
 			Str("name", domObj.GetName()).
@@ -93,12 +93,15 @@ func (f *Factory) enqueueAllowedWithSentinelAndBehaviour(
 	// Honor the response from pkg/queue and drop any failing items before update considerations
 	// This is the last step in completing what the queue started that it couldn't finish and
 	// delegated to the informer here - so done first with domain.Katalog which
-	if wq != nil && wq.NeedsBehaviourEval() {
+	if f.katalog != nil && wq != nil && wq.NeedsBehaviourEval() {
 		if !f.katalog.EvaluateQueueBehaviourConditions(ctx, gvkStr, domObj, sentinels) {
 			return false, true
 		}
 	}
 
 	// Evaluate enqueue filters
+	if f.katalog == nil {
+		return true, true
+	}
 	return f.katalog.EvaluateEnqueueFilter(ctx, gvkStr, domObj, f.cs, sentinels), true
 }

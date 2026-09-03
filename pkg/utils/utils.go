@@ -105,7 +105,7 @@ func Reversed[T any](s []T) []T {
 // Exit exits in error with a code
 func Exit(err error) {
 	if err != nil {
-		os.Stderr.WriteString(err.Error() + "\n")
+		os.Stderr.WriteString(FailureMark() + " " + err.Error() + "\n")
 	}
 	os.Exit(1)
 }

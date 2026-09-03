@@ -26,6 +26,7 @@ import (
 
 	"github.com/orkspace/orkestra/cmd/internal"
 	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/katalog/pipeline"
 	"github.com/orkspace/orkestra/pkg/merger"
 	orktmpl "github.com/orkspace/orkestra/pkg/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -66,7 +67,7 @@ Example:
 		if err := m.Merge(); err != nil {
 			return fmt.Errorf("merging Katalog: %w", err)
 		}
-		kat, err := katalog.BuildExpanded(kfg, m)
+		kat, err := pipeline.BuildExpanded(kfg, m)
 		if err != nil {
 			return fmt.Errorf("parsing Katalog: %w", err)
 		}

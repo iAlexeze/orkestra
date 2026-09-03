@@ -13,6 +13,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/gateway/api"
 	orktarget "github.com/orkspace/orkestra/pkg/intent/target"
 	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/katalog/pipeline"
 	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/registry/simulate"
 	orktmpl "github.com/orkspace/orkestra/pkg/template"
@@ -221,7 +222,7 @@ func runSimulateWithCR(ctx context.Context, specPath, crFile string) error {
 	if err := m.Merge(); err != nil {
 		return fmt.Errorf("merging Katalog: %w", err)
 	}
-	kat, err := katalog.BuildExpanded(kfg, m)
+	kat, err := pipeline.BuildExpanded(kfg, m)
 	if err != nil {
 		return fmt.Errorf("parsing Katalog: %w", err)
 	}
@@ -271,7 +272,7 @@ func runIntentPlay(katalogPath, intentFile string) (string, error) {
 	if err := m.Merge(); err != nil {
 		return "", fmt.Errorf("merging katalog: %w", err)
 	}
-	k, err := katalog.BuildExpanded(kfg, m)
+	k, err := pipeline.BuildExpanded(kfg, m)
 	if err != nil {
 		return "", fmt.Errorf("building katalog: %w", err)
 	}

@@ -564,3 +564,19 @@ func (k *Katalog) CertValidFor() time.Duration {
 func (k *Katalog) CertValidForStr() string {
 	return k.Security.ValidForVal(k.securityEnvDefaults().CertValidForStr())
 }
+
+// GatewayTokenNames returns the names of all tokens declared in
+// gateway.api.auth.tokens. Returns nil when the gateway is not enabled.
+func (k *Katalog) GatewayTokenNames() []string {
+	if !k.IsGatewayEnabled() {
+		return nil
+	}
+	if !k.Gateway.HasAPI() || k.Gateway.API.Auth.Empty() {
+		return nil
+	}
+	names := make([]string, 0, len(k.Gateway.API.Auth.Tokens))
+	for _, t := range k.Gateway.API.Auth.Tokens {
+		names = append(names, t.Name)
+	}
+	return names
+}

@@ -427,7 +427,6 @@ func fieldHasPrefix(field, prefix string) bool {
 	return strings.HasPrefix(s, prefix)
 }
 
-
 // ── MutationRule ──────────────────────────────────────────────────────────
 
 // MutationRule declares one field mutation.

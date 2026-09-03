@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/katalog/pipeline"
 	"github.com/orkspace/orkestra/pkg/merger"
 	orke2e "github.com/orkspace/orkestra/pkg/registry/e2e"
 	"github.com/orkspace/orkestra/pkg/registry/simulate"
@@ -120,7 +121,7 @@ func runSimulate(ctx context.Context, katalogFile, crFile string, cliOpts cliSim
 	if err := m.Merge(); err != nil {
 		return fmt.Errorf("merging Katalog: %w", err)
 	}
-	kat, err := katalog.BuildExpanded(kfg, m)
+	kat, err := pipeline.BuildExpanded(kfg, m)
 	if err != nil {
 		var typedErr *katalog.TypedOperatorError
 		if errors.As(err, &typedErr) {
@@ -635,7 +636,7 @@ func runSimulateFromSpec(ctx context.Context, path string, cliOpts cliSimulateOp
 		return fmt.Errorf("merging Katalog: %w", err)
 	}
 
-	kat, err := katalog.BuildExpanded(kfg, m)
+	kat, err := pipeline.BuildExpanded(kfg, m)
 	if err != nil {
 		var typedErr *katalog.TypedOperatorError
 		if errors.As(err, &typedErr) {

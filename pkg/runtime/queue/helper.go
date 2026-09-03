@@ -9,6 +9,9 @@ import "github.com/orkspace/orkestra/pkg/logger"
 // Fast path: IsUnlimited() — where maxDepth == 0, all items are always enqueued.
 func (q *Workqueue) evaluateQueueBehaviour(item QueueItem) bool {
 	cfg := q.queueCfg
+	if cfg == nil {
+		return true
+	}
 	if !cfg.IsUnlimited() {
 		switch {
 		case cfg.HasOnThreshold():

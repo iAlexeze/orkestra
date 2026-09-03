@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/katalog/pipeline"
 	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/registry"
 	"github.com/orkspace/orkestra/pkg/registry/e2e"
@@ -155,7 +156,7 @@ var pushCmd = &cobra.Command{
 			if err := m.Merge(); err != nil {
 				return fmt.Errorf("  ✗ %s: %w", registry.FileKatalog, err)
 			}
-			k, err := katalog.BuildExpanded(kfg, m)
+			k, err := pipeline.BuildExpanded(kfg, m)
 			if err != nil {
 				return fmt.Errorf("  ✗ %s: %w", registry.FileKatalog, err)
 			}

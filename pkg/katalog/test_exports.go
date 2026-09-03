@@ -5,6 +5,26 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
+// NewKatalogWithLifecycleForTest builds a minimal Katalog with the lifecycle
+// block set, for use in validate package tests that cannot set the unexported field.
+func NewKatalogWithLifecycleForTest(kind string, lc *orktypes.KatalogLifecycle) *Katalog {
+	return &Katalog{Kind: kind, lifecycle: lc}
+}
+
+// NewKatalogWithPolicyForTest builds a minimal Katalog with the policy block set.
+func NewKatalogWithPolicyForTest(kind string, p *orktypes.KatalogPolicy) *Katalog {
+	return &Katalog{Kind: kind, policy: p}
+}
+
+// NewKatalogWithMetadataForTest builds a Katalog with a specific metadata block
+// and an optional enabledCRDs map. Nil crds is treated as empty.
+func NewKatalogWithMetadataForTest(m orktypes.KatalogMeta, crds map[string]orktypes.CRDEntry) *Katalog {
+	if crds == nil {
+		crds = map[string]orktypes.CRDEntry{}
+	}
+	return &Katalog{metadata: m, enabledCRDs: crds}
+}
+
 // wireForTest runs the same setGroupVersionKind → setDefaults sequence
 // Validate() runs in production (see validate.go), so a Katalog built by
 // NewKatalogForTest/NewFromEntryPointers is immediately usable by
@@ -16,8 +36,8 @@ import (
 func (k *Katalog) wireForTest() *Katalog {
 	// setGroupVersionKind is best-effort: graph-only fixtures (e.g. cycle
 	// detection tests) legitimately omit apiTypes, so we skip rather than panic.
-	_ = k.setGroupVersionKind()
-	if err := k.setDefaults(konfig.NewDefaultKonfig()); err != nil {
+	_ = k.SetGroupVersionKind()
+	if err := k.SetDefaults(konfig.NewDefaultKonfig()); err != nil {
 		panic("katalog test fixture: " + err.Error())
 	}
 	// Pre-build the serve-enabled cache so ServeEnabledCRDs() returns the
@@ -44,6 +64,19 @@ func NewKatalogForTest(crds map[string]orktypes.CRDEntry) *Katalog {
 	return (&Katalog{enabledCRDs: crds}).wireForTest()
 }
 
+// SetKatalogDirForTest sets the katalogDir field on a Katalog for use in tests
+// that exercise publish-path validation which reads files relative to that directory.
+func (k *Katalog) SetKatalogDirForTest(dir string) { k.katalogDir = dir }
+
+// SetEnabledCRDsForTest replaces the enabledCRDs map on an existing Katalog.
+// Allows tests that build up a Katalog in stages to set CRDs after construction.
+func (k *Katalog) SetEnabledCRDsForTest(crds map[string]orktypes.CRDEntry) {
+	if crds == nil {
+		crds = map[string]orktypes.CRDEntry{}
+	}
+	k.enabledCRDs = crds
+}
+
 // NewFromEntryPointers creates a Katalog from a map of CRD entry pointers.
 // Useful when you have pointers and want to avoid copying. See
 // NewKatalogForTest for what gets wired.
@@ -64,9 +97,4 @@ func NewFromEntryPointers(entries map[string]*orktypes.CRDEntry) *Katalog {
 		}
 	}
 	return kat.wireForTest()
-}
-
-// DetectCyclesForTest exposes detectDependencyCycles for integration tests.
-func DetectCyclesForTest(k *Katalog) error {
-	return k.detectDependencyCycles()
 }
