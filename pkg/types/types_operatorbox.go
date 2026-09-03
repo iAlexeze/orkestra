@@ -2,6 +2,7 @@
 package types
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/orkspace/orkestra/domain"
@@ -25,6 +26,11 @@ const (
 	// Use on reconcileGate when unknown state is worse than a missed reconcile.
 	FailPolicyClosed FailPolicy = "closed"
 )
+
+// String() stringifies a policy
+func (f FailPolicy) String() string {
+	return string(f)
+}
 
 // ValidFailPolicies returns all known failPolicy values in declaration order.
 func ValidFailPolicies() []string {
@@ -53,6 +59,13 @@ type GateConditions struct {
 	// available in when:/or: field expressions.
 	External []ExternalCallSpec `yaml:"external,omitempty" json:"external,omitempty"`
 
+	// Sentinels declares the event-time values this operator uses in gate conditions.
+	// Declared here as a shorthand instead of when/or conditions. It uses the same
+	// semantics as 'or' conditions since first match passes. Must be a valid subset of
+	// preReconcile.sentinels. Checked first before the conditions. Use when to require
+	// more than one sentinel
+	Sentinels []string `yaml:"sentinels,omitempty" json:"sentinels,omitempty"`
+
 	// When declares AND conditions. All must be true for the gate to pass.
 	When []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
@@ -73,7 +86,56 @@ func (g *GateConditions) HasConditions() bool {
 
 // HasGate reports whether the gate has anything to evaluate — conditions or external calls.
 func (g *GateConditions) HasGate() bool {
-	return g != nil && (len(g.When) > 0 || len(g.Or) > 0 || len(g.External) > 0)
+	// return g != nil && (len(g.When) > 0 || len(g.Or) > 0 || len(g.External) > 0)
+	return g != nil
+}
+
+// HasSentinels reports whether the gate has declared sentinels
+func (g *GateConditions) HasSentinels() bool {
+	return g != nil && len(g.Sentinels) > 0
+}
+
+// SentinelContains reports true if s is declared in g.Sentinels.
+func (g *GateConditions) SentinelContains(s string) bool {
+	if !g.HasSentinels() {
+		return false
+	}
+	for _, name := range g.Sentinels {
+		if name == s {
+			return true
+		}
+	}
+	return false
+}
+
+// SentinelsAllowed implements the fast-path shorthand for gate conditions
+// that declared sentinels. Returns true on the first match (OR semantics,
+// same as the or: block).
+//
+//	preReconcile:
+//	  enqueueGate:
+//	    sentinels:
+//	    - generationChanged
+//	    - ownerReferenceChanged
+//
+//	  reconcileGate:
+//	    sentinels:
+//	     - namespaceChanged
+//	     - uidChanged
+func (g *GateConditions) SentinelsAllowed(declared map[string]string) bool {
+	if !g.HasSentinels() {
+		return false
+	}
+
+	for k, v := range declared {
+		if g.SentinelContains(k) {
+			if v == "true" {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // WhenConditions returns the AND conditions, safe on nil receiver.
@@ -112,6 +174,11 @@ const (
 	WatchEventDelete WatchEvent = "delete"
 )
 
+// String() stringifies a watch event
+func (w WatchEvent) String() string {
+	return string(w)
+}
+
 // ValidWatchEvents returns all known watch event values in declaration order.
 func ValidWatchEvents() []string {
 	return []string{
@@ -130,27 +197,19 @@ func IsValidWatchEvent(s string) bool {
 	return false
 }
 
-// ── Sentinel names ────────────────────────────────────────────────────────
-
-// Sentinel is the string type for event-time sentinel names declared under
-// preReconcile.sentinels and used in enqueueGate/reconcileGate templates.
-// The canonical type and constants live in pkg/runtime/sentinel; these are
-// re-exported here so callers only need to import pkg/types.
-type Sentinel = sentinel.Sentinel
-
-const (
-	SentinelGenerationChanged  = sentinel.GenerationChanged
-	SentinelLabelsChanged      = sentinel.LabelsChanged
-	SentinelAnnotationsChanged = sentinel.AnnotationsChanged
-	SentinelDeletionStarted    = sentinel.DeletionStarted
-	SentinelFinalizersChanged  = sentinel.FinalizersChanged
-)
-
-// ValidSentinels returns all known sentinel names in declaration order.
-func ValidSentinels() []string { return sentinel.ValidSentinels() }
-
-// IsValidSentinel reports whether s is a known sentinel name.
-func IsValidSentinel(s string) bool { return sentinel.IsValid(s) }
+// IsAllValid reports if a slice of watch event strings are valid
+func IsAllValid(events []string) (bool, []string) {
+	var unknown []string
+	for _, event := range events {
+		if !IsValidWatchEvent(event) {
+			unknown = append(unknown, event)
+		}
+	}
+	if len(unknown) > 0 {
+		return false, unknown
+	}
+	return true, nil
+}
 
 // ── WatchEntry ────────────────────────────────────────────────────────────────
 
@@ -230,11 +289,11 @@ type WatchEntry struct {
 
 // WatchIndex declares one field-path indexer on a watch: entry informer.
 // Name is used as the index key — it must match the key passed to client.MatchingFields.
-// Field is a dot-separated JSON path into the watched object (e.g. ".spec.owner").
+// Field is a dot-separated JSON path into the watched object (e.g. "spec.owner").
 type WatchIndex struct {
 	// Name is the index name. Must match the key in client.MatchingFields.
 	Name string `yaml:"name" json:"name"`
-	// Field is the JSON path to index on (e.g. ".spec.owner", ".metadata.labels.app").
+	// Field is the JSON path to index on (e.g. ".spec.owner", "metadata.labels.app").
 	Field string `yaml:"field" json:"field"`
 }
 
@@ -336,7 +395,7 @@ type PreReconcileConfig struct {
 	// can reference it. The informer computes only declared sentinels.
 	//
 	// Valid values: SentinelGenerationChanged, SentinelLabelsChanged, SentinelAnnotationsChanged,
-	// SentinelDeletionStarted, SentinelFinalizersChanged.
+	// SentinelDeletionStarted, SentinelFinalizersChanged and 9more.
 	//
 	// ork validate fails if a sentinel is used in a gate template but not declared
 	// here, or if a sentinel is used outside the preReconcile context.
@@ -354,6 +413,14 @@ type PreReconcileConfig struct {
 	ReconcileGate *GateConditions `yaml:"reconcileGate,omitempty" json:"reconcileGate,omitempty"`
 }
 
+// HasSentinels returns true if sentinels are declared
+func (r *PreReconcileConfig) HasSentinels() bool {
+	if r == nil {
+		return false
+	}
+	return r.Sentinels != nil
+}
+
 // DeclaredSentinels returns the sentinel names declared under preReconcile.sentinels.
 // Returns nil when no sentinels are declared. Safe on nil receiver.
 func (r *PreReconcileConfig) DeclaredSentinels() []string {
@@ -369,13 +436,29 @@ func (r *PreReconcileConfig) InvalidSentinels() []string {
 	if r == nil {
 		return nil
 	}
-	var invalid []string
-	for _, s := range r.Sentinels {
-		if !IsValidSentinel(s) {
-			invalid = append(invalid, s)
+	_, invalid := sentinel.IsAllValid(r.Sentinels)
+	return invalid
+}
+
+// InvalidGateSentinels returns any sentinel values that are not subset of preReconcile.sentinels.
+// It does not check for validity of the sentinel. That is already done by the upstream preReconcile InvalidSentinels()
+// Returns nil, false when all values are valid. Safe on nil receiver.
+func (r *PreReconcileConfig) InvalidGateSentinels(g *GateConditions) ([]string, bool) {
+	if r == nil && g == nil {
+		return nil, false
+	}
+
+	invalid := []string{}
+	for _, sent := range g.Sentinels {
+		if !slices.Contains(r.Sentinels, sent) {
+			invalid = append(invalid, sent)
 		}
 	}
-	return invalid
+	if len(invalid) > 0 {
+		return invalid, true
+	}
+
+	return nil, false
 }
 
 // HasPreReconcileConditions reports whether reconcileGate has any when/or conditions declared.
@@ -396,6 +479,16 @@ func (r *PreReconcileConfig) HasReconcileGate() bool {
 // HasPreReconcileExternal reports whether preReconcile-level external calls are declared.
 func (r *PreReconcileConfig) HasPreReconcileExternal() bool {
 	return r != nil && len(r.External) > 0
+}
+
+// HasEnqueueGateSentinel reports whether the enqueueGate declares sentinels.
+func (r *PreReconcileConfig) HasEnqueueGateSentinel() bool {
+	return r != nil && r.EnqueueGate != nil && len(r.EnqueueGate.Sentinels) > 0
+}
+
+// HasReconcileGateSentinel reports whether the reconcileGate declares sentinels.
+func (r *PreReconcileConfig) HasReconcileGateSentinel() bool {
+	return r != nil && r.ReconcileGate != nil && len(r.ReconcileGate.Sentinels) > 0
 }
 
 // HasEnqueueGateExternal reports whether the enqueueGate declares external calls.
@@ -569,45 +662,24 @@ func (r *ReconcilerConfig) IsRequeueEmpty() bool {
 	return rc.After == "" && len(rc.When) == 0 && len(rc.Or) == 0
 }
 
-// IsEmpty reports whether this requeue configuration has no effective behavior.
-func (rc *RequeueConfig) IsEmpty() bool {
+// Empty reports whether this requeue configuration has no effective behavior.
+func (rc *RequeueConfig) Empty() bool {
 	if rc == nil {
 		return true
 	}
 	return rc.After == "" && len(rc.When) == 0 && len(rc.Or) == 0
 }
 
-// IsEmpty reports whether the reconciler config has no meaningful settings.
+// Empty reports whether the PreReconcile config has no meaningful settings.
 // Used to skip unnecessary config blocks in the Katalog.
-func (r *ReconcilerConfig) IsEmpty() bool {
-	if r == nil {
-		return true
-	}
-	if r.Default != nil {
-		return false
-	}
-	if r.Hooks != nil {
-		return false
-	}
-	if r.ConstructorDecl != nil {
-		return false
-	}
-	if r.Profile != "" {
-		return false
-	}
-	if r.Workers != 0 {
-		return false
-	}
-	if r.Resync.Duration != 0 {
-		return false
-	}
-	if !r.Queue.IsEmpty() {
-		return false
-	}
-	if r.Requeue.IsEmpty() {
-		return false
-	}
-	return true
+func (p *PreReconcileConfig) Empty() bool {
+	return p == nil
+}
+
+// Empty reports whether the reconciler config has no meaningful settings.
+// Used to skip unnecessary config blocks in the Katalog.
+func (r *ReconcilerConfig) Empty() bool {
+	return r == nil
 }
 
 // OperatorBoxConfig is the per-CRD configuration block in a Katalog. It controls
@@ -693,12 +765,14 @@ type OperatorBoxConfig struct {
 	// nil → no autoscaling; CRD runs with its declared static worker count.
 	Autoscale *AutoscaleSpec `yaml:"autoscale,omitempty" json:"autoscale,omitempty"`
 
+	// IN DEVELOPMENT
 	// Rollback declares failure-recovery behavior for this operatorbox.
 	// When declared, Orkestra tracks consecutive reconcile failures and re-applies
 	// the last known good spec when the trigger threshold is crossed.
 	// nil → no rollback; failures are retried indefinitely.
 	Rollback *RollbackBlock `yaml:"rollback,omitempty" json:"rollback,omitempty"`
 
+	// IN DEVELOPMENT
 	// RollBackOnError is a zero-config rollback shorthand.
 	//
 	// When true, Orkestra automatically rolls back to the previous spec whenever
@@ -740,8 +814,8 @@ type OperatorBoxConfig struct {
 	Or []Condition `yaml:"or,omitempty"`
 }
 
-// IsEmpty reports true when this operatorBox is empty
-func (box *OperatorBoxConfig) IsEmpty() bool {
+// Empty reports true when this operatorBox is empty
+func (box *OperatorBoxConfig) Empty() bool {
 	return box == nil
 }
 

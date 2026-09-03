@@ -3,8 +3,6 @@ package katalog
 import (
 	"fmt"
 	"strings"
-
-	"k8s.io/apimachinery/pkg/api/validate/content"
 )
 
 // validateCRDEntryLabels validates the labels: block on each CRD entry.
@@ -23,7 +21,7 @@ func (k *Katalog) validateCRDEntryLabels() error {
 			if isTemplate(key) {
 				return fmt.Errorf("%s CRD %q: labels: key %q must be a static label key, not a template", failureMark(), crdName, key)
 			}
-			if errs := content.IsLabelKey(key); len(errs) > 0 {
+			if errs := isValidLabelKey(key); len(errs) > 0 {
 				return fmt.Errorf("%s CRD %q: labels: key %q is not a valid Kubernetes label key: %s", failureMark(), crdName, key, strings.Join(errs, "; "))
 			}
 			if err := validateTemplate("labels", crdName, key, "value", value, funcMap); err != nil {

@@ -15,45 +15,45 @@ func katalogWithServe(serve *orktypes.ServeConfig) *Katalog {
 	}
 }
 
-func TestValidateServeAdditionalFields_NilServe(t *testing.T) {
+func TestValidateServeLabelAndAnnotationFields_NilServe(t *testing.T) {
 	k := katalogWithServe(nil)
-	if err := k.validateServeAdditionalFields(); err != nil {
+	if err := k.validateServeLabelAndAnnotationFields(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-func TestValidateServeAdditionalFields_NoAdditionalFields(t *testing.T) {
+func TestValidateServeLabelAndAnnotationFields_NoLabelsAndAnnotations(t *testing.T) {
 	k := katalogWithServe(&orktypes.ServeConfig{Enabled: true})
-	if err := k.validateServeAdditionalFields(); err != nil {
+	if err := k.validateServeLabelAndAnnotationFields(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-// TestValidateServeAdditionalFields_TypeOmittedDefaultsToValid guards against a
+// TestValidateServeLabelAndAnnotationFields_TypeOmittedDefaultsToValid guards against a
 // regression where an omitted Type (which defaults to "string" per
 // ServeFieldConfig's doc comment) was incorrectly rejected as an invalid type.
 // Deliberately uses a single field with no collision and no key-syntax issue
 // so nothing else can make this pass for the wrong reason.
-func TestValidateServeAdditionalFields_TypeOmittedDefaultsToValid(t *testing.T) {
+func TestValidateServeLabelAndAnnotationFields_TypeOmittedDefaultsToValid(t *testing.T) {
 	k := katalogWithServe(&orktypes.ServeConfig{
 		Enabled: true,
 		Labels: map[string]orktypes.ServeFieldConfig{
 			"tier": {Label: "Tier"}, // Type intentionally omitted
 		},
 	})
-	if err := k.validateServeAdditionalFields(); err != nil {
+	if err := k.validateServeLabelAndAnnotationFields(); err != nil {
 		t.Fatalf("omitted Type should default to valid (string), got error: %v", err)
 	}
 }
 
-func TestValidateServeAdditionalFields_InvalidType(t *testing.T) {
+func TestValidateServeLabelAndAnnotationFields_InvalidType(t *testing.T) {
 	k := katalogWithServe(&orktypes.ServeConfig{
 		Enabled: true,
 		Labels: map[string]orktypes.ServeFieldConfig{
 			"tier": {Label: "Tier", Type: "sting"}, // typo
 		},
 	})
-	err := k.validateServeAdditionalFields()
+	err := k.validateServeLabelAndAnnotationFields()
 	if err == nil {
 		t.Fatal("expected error for invalid type")
 	}
@@ -62,7 +62,7 @@ func TestValidateServeAdditionalFields_InvalidType(t *testing.T) {
 	}
 }
 
-func TestValidateServeAdditionalFields_Valid(t *testing.T) {
+func TestValidateServeLabelAndAnnotationFields_Valid(t *testing.T) {
 	k := katalogWithServe(&orktypes.ServeConfig{
 		Enabled: true,
 		Fields: map[string]orktypes.ServeFieldConfig{
@@ -75,19 +75,19 @@ func TestValidateServeAdditionalFields_Valid(t *testing.T) {
 			"platform.example.io/monitoring": {Label: "Monitoring", Type: "boolean"},
 		},
 	})
-	if err := k.validateServeAdditionalFields(); err != nil {
+	if err := k.validateServeLabelAndAnnotationFields(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-func TestValidateServeAdditionalFields_InvalidLabelKey(t *testing.T) {
+func TestValidateServeLabelAndAnnotationFields_InvalidLabelKey(t *testing.T) {
 	k := katalogWithServe(&orktypes.ServeConfig{
 		Enabled: true,
 		Labels: map[string]orktypes.ServeFieldConfig{
 			"Not Valid Key!": {Label: "Bad"},
 		},
 	})
-	err := k.validateServeAdditionalFields()
+	err := k.validateServeLabelAndAnnotationFields()
 	if err == nil {
 		t.Fatal("expected error for invalid label key")
 	}
@@ -96,26 +96,26 @@ func TestValidateServeAdditionalFields_InvalidLabelKey(t *testing.T) {
 	}
 }
 
-func TestValidateServeAdditionalFields_InvalidAnnotationKey(t *testing.T) {
+func TestValidateServeLabelAndAnnotationFields_InvalidAnnotationKey(t *testing.T) {
 	k := katalogWithServe(&orktypes.ServeConfig{
 		Enabled: true,
 		Annotations: map[string]orktypes.ServeFieldConfig{
 			"has spaces": {Label: "Bad"},
 		},
 	})
-	if err := k.validateServeAdditionalFields(); err == nil {
+	if err := k.validateServeLabelAndAnnotationFields(); err == nil {
 		t.Fatal("expected error for invalid annotation key")
 	}
 }
 
-func TestValidateServeAdditionalFields_EnumEmpty(t *testing.T) {
+func TestValidateServeLabelAndAnnotationFields_EnumEmpty(t *testing.T) {
 	k := katalogWithServe(&orktypes.ServeConfig{
 		Enabled: true,
 		Labels: map[string]orktypes.ServeFieldConfig{
 			"tier": {Label: "Tier", Type: "enum"},
 		},
 	})
-	err := k.validateServeAdditionalFields()
+	err := k.validateServeLabelAndAnnotationFields()
 	if err == nil {
 		t.Fatal("expected error for empty enum")
 	}
@@ -124,7 +124,7 @@ func TestValidateServeAdditionalFields_EnumEmpty(t *testing.T) {
 	}
 }
 
-func TestValidateServeAdditionalFields_CollisionWithFields(t *testing.T) {
+func TestValidateServeLabelAndAnnotationFields_CollisionWithFields(t *testing.T) {
 	k := katalogWithServe(&orktypes.ServeConfig{
 		Enabled: true,
 		Fields: map[string]orktypes.ServeFieldConfig{
@@ -134,7 +134,7 @@ func TestValidateServeAdditionalFields_CollisionWithFields(t *testing.T) {
 			"image": {Label: "Image dup"},
 		},
 	})
-	err := k.validateServeAdditionalFields()
+	err := k.validateServeLabelAndAnnotationFields()
 	if err == nil {
 		t.Fatal("expected collision error")
 	}
@@ -143,7 +143,7 @@ func TestValidateServeAdditionalFields_CollisionWithFields(t *testing.T) {
 	}
 }
 
-func TestValidateServeAdditionalFields_CollisionBetweenLabelsAndAnnotations(t *testing.T) {
+func TestValidateServeLabelAndAnnotationFields_CollisionBetweenLabelsAndAnnotations(t *testing.T) {
 	k := katalogWithServe(&orktypes.ServeConfig{
 		Enabled: true,
 		Labels: map[string]orktypes.ServeFieldConfig{
@@ -153,12 +153,12 @@ func TestValidateServeAdditionalFields_CollisionBetweenLabelsAndAnnotations(t *t
 			"tier": {Label: "Tier (annotation)"},
 		},
 	})
-	if err := k.validateServeAdditionalFields(); err == nil {
+	if err := k.validateServeLabelAndAnnotationFields(); err == nil {
 		t.Fatal("expected collision error between labels and annotations")
 	}
 }
 
-func TestValidateServeAdditionalFields_MultipleCRDs(t *testing.T) {
+func TestValidateServeLabelAndAnnotationFields_MultipleCRDs(t *testing.T) {
 	k := &Katalog{
 		enabledCRDs: map[string]orktypes.CRDEntry{
 			"good": {Serve: &orktypes.ServeConfig{
@@ -171,7 +171,7 @@ func TestValidateServeAdditionalFields_MultipleCRDs(t *testing.T) {
 			}},
 		},
 	}
-	if err := k.validateServeAdditionalFields(); err == nil {
+	if err := k.validateServeLabelAndAnnotationFields(); err == nil {
 		t.Fatal("expected error from the bad CRD entry")
 	}
 }

@@ -8,8 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func boolPtr(b bool) *bool { return &b }
-
 // ── Deletion protection ───────────────────────────────────────────────────────
 
 func TestIsDeletionProtectionEnabled(t *testing.T) {
@@ -41,7 +39,7 @@ func TestDeletionProtectionServiceName(t *testing.T) {
 
 	t.Run("falls back to hard default when no konfig", func(t *testing.T) {
 		k := &Katalog{}
-		assert.Equal(t, "orkestra", k.DeletionProtectionServiceName())
+		assert.Equal(t, orkGate, k.DeletionProtectionServiceName())
 	})
 }
 
@@ -118,7 +116,7 @@ func TestNamespaceProtectionServiceName(t *testing.T) {
 
 	t.Run("falls back to hard default when no konfig", func(t *testing.T) {
 		k := &Katalog{}
-		assert.Equal(t, "orkestra", k.NamespaceProtectionServiceName())
+		assert.Equal(t, orkGate, k.NamespaceProtectionServiceName())
 	})
 }
 
@@ -198,7 +196,7 @@ func TestWebhooksServiceName(t *testing.T) {
 
 	t.Run("falls back to hard default when no konfig", func(t *testing.T) {
 		k := &Katalog{}
-		assert.Equal(t, "orkestra", k.WebhooksServiceName())
+		assert.Equal(t, orkGate, k.WebhooksServiceName())
 	})
 }
 

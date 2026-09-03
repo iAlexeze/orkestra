@@ -2,8 +2,8 @@ package katalog
 
 import "github.com/orkspace/orkestra/pkg/konfig"
 
-// Validate Config
-func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
+// Validate Katalog
+func (k *Katalog) Validate(kfg *konfig.Konfig) (*Katalog, error) {
 
 	// -------------------------------------------------------------------------
 	// 1. Field-level validation (required, DNS group, workers <= 5, etc.)
@@ -53,9 +53,9 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	}
 
 	// -------------------------------------------------------------------------
-	// 5. Validate Reconciler modes
+	// 5. Validate Reconciler config
 	// -------------------------------------------------------------------------
-	if err := k.validateReconcilerMode(); err != nil {
+	if err := k.validateReconciler(); err != nil {
 		return nil, err
 	}
 
@@ -287,44 +287,37 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	}
 
 	// -------------------------------------------------------------------------
-	// 34a. Validate watch entries and preReconcile sentinels
+	// 34. Validate watch entries and preReconcile sentinels
 	// -------------------------------------------------------------------------
 	if err := k.validateWatchEntries(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 34b. Validate CRD entry labels (static keys, template values)
+	// 345. Validate CRD entry labels (static keys, template values)
 	// -------------------------------------------------------------------------
 	if err := k.validateCRDEntryLabels(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 35. Validate envFrom refs (suffix requires keys)
+	// 36. Validate envFrom refs (suffix requires keys)
 	// -------------------------------------------------------------------------
 	if err := k.validateEnvFromRefs(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 36. Validate Serve configuration
+	// 37. Validate Serve configuration
 	// -------------------------------------------------------------------------
 	if err := k.ValidateServe(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 37. Validate validation.rules / mutation.rules operators are known
+	// 38. Validate all validation.rules
 	// -------------------------------------------------------------------------
-	if err := k.validateAdmissionOperators(); err != nil {
-		return nil, err
-	}
-
-	// -------------------------------------------------------------------------
-	// 38. Validate validation.rules link: values
-	// -------------------------------------------------------------------------
-	if err := k.validateValidationRuleLinks(); err != nil {
+	if err := k.validateAdmissionRules(); err != nil {
 		return nil, err
 	}
 
@@ -369,6 +362,13 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	//     Go duration string.
 	// -------------------------------------------------------------------------
 	if err := k.validateRequeue(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 48. Validate cross declaration
+	// -------------------------------------------------------------------------
+	if err := k.validateCrossDecl(); err != nil {
 		return nil, err
 	}
 

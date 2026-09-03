@@ -2,7 +2,9 @@ package domain
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/cache"
 )
 
 type Object interface {
@@ -13,4 +15,30 @@ type Object interface {
 type ObjectList interface {
 	metav1.ListInterface
 	runtime.Object
+}
+
+// ToDomainObject unwraps a cache tombstone and asserts to domain.Object.
+func ToDomainObject(obj interface{}) (Object, bool) {
+	if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+		obj = tombstone.Obj
+	}
+	d, ok := obj.(Object)
+	return d, ok
+}
+
+// UnwrapCacheTombstone unwraps a cache tombstone and returns the object.
+func UnwrapCacheTombstone(obj interface{}) interface{} {
+	if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+		obj = tombstone.Obj
+	}
+	return obj
+}
+
+// ToUnstructured unwraps a cache tombstone and asserts to *unstructured.Unstructured.
+func ToUnstructured(obj interface{}) (*unstructured.Unstructured, bool) {
+	if ts, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+		obj = ts.Obj
+	}
+	u, ok := obj.(*unstructured.Unstructured)
+	return u, ok
 }

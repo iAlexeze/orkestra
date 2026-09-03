@@ -133,6 +133,15 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 				ResourceNames: []string{crd.APITypes.Plural + "." + crd.APITypes.Group},
 			})
 		}
+
+		// Cross Declarations with secret references
+		if crd.HasCrossSecretRef() {
+			rules = append(rules, rbacv1.PolicyRule{
+				APIGroups: []string{},
+				Resources: []string{"secrets"},
+				Verbs:     []string{"get"},
+			})
+		}
 	}
 
 	// ───────────────────────────────────────────────
@@ -259,17 +268,10 @@ func (k *Katalog) HasExternalSecretRefs() bool {
 		if crd.Mutation != nil {
 			calls = append(calls, crd.Mutation.External...)
 		}
-		if hasSecretRef(calls) {
-			return true
-		}
-	}
-	return false
-}
-
-func hasSecretRef(calls []orktypes.ExternalCallSpec) bool {
-	for _, c := range calls {
-		if c.Auth != nil && c.Auth.SecretRef != nil {
-			return true
+		for _, call := range calls {
+			if call.HasSecretRef() {
+				return true
+			}
 		}
 	}
 	return false
@@ -704,7 +706,7 @@ func (k *Katalog) ResolveGVR(r orktypes.ManagedResource) (schema.GroupVersionRes
 // secrets, namespaces, webhook configurations) — use GenerateRuntimeRBACRules /
 // GenerateGatewayRBACRules for those.
 func (k *Katalog) GeneratePerCRDRBACRules() map[string][]rbacv1.PolicyRule {
-	result := make(map[string][]rbacv1.PolicyRule, len(k.enabledCRDs))
+	result := make(map[string][]rbacv1.PolicyRule, k.Len())
 
 	for name, crd := range k.Enabled() {
 		var rules []rbacv1.PolicyRule

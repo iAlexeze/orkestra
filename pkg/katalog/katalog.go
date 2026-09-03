@@ -50,7 +50,7 @@ func NewKatalog(kfg *konfig.Konfig, m *merger.Merger) *Katalog {
 		}
 	}
 
-	kat, err := katalog.ValidateConfig(kfg)
+	kat, err := katalog.Validate(kfg)
 	if err != nil {
 		exit(err)
 	}
@@ -105,7 +105,7 @@ func NewSchemeRegistry(k *Katalog) (*runtime.Scheme, error) {
 func (k *Katalog) updateResourceMapAndReturn() (*Katalog, error) {
 	// Map the type of the object
 	for _, c := range k.enabledCRDs {
-		if len(k.enabledCRDs) == 0 {
+		if k.EnabledCRDsEmpty() {
 			return nil, fmt.Errorf("no enabled CRDs found")
 		}
 

@@ -63,7 +63,7 @@ func (nr NoteRegistry) MergeImport(src NoteRegistry, srcLabel string, seen map[s
 	return result, nil
 }
 
-// IsEmpty reports whether the registry contains no notes.
-func (nr NoteRegistry) IsEmpty() bool {
+// Empty reports whether the registry contains no notes.
+func (nr NoteRegistry) Empty() bool {
 	return len(nr.Functions) == 0
 }

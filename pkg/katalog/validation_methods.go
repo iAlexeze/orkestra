@@ -74,7 +74,7 @@ func (k *Katalog) validateGVKUniqueness() error {
 
 func (k *Katalog) validateDependsOn() error {
 	// Build lookup set from enabled CRD names (map keys)
-	exists := make(map[string]bool, len(k.enabledCRDs))
+	exists := make(map[string]bool, k.Len())
 	for name := range k.enabledCRDs {
 		exists[name] = true
 	}
@@ -100,7 +100,7 @@ func (k *Katalog) validateDependsOn() error {
 // -----------------------------------------------------------------------------
 
 func (k *Katalog) detectDependencyCycles() error {
-	graph := make(map[string][]string, len(k.enabledCRDs))
+	graph := make(map[string][]string, k.Len())
 	for name, crd := range k.enabledCRDs {
 		graph[name] = crd.DependsOn.Names()
 	}
@@ -198,39 +198,55 @@ func (k *Katalog) setGroupVersionKind() error {
 func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 	for name, crd := range k.enabledCRDs {
 		// Add katalog Name
-		if k.metadata.Name != "" {
-			crd.KatalogName = k.metadata.Name
+		metaN := k.metadata.Name
+		if metaN != "" {
+			if errs := validation.IsDNS1123Label(metaN); len(errs) > 0 {
+				return fmt.Errorf("%s CRD with key '%s': invalid metadata.Name %q: %s", failureMark(), name, metaN, strings.Join(errs, "; "))
+			}
+			crd.KatalogName = metaN
 		} else {
-			crd.KatalogName = k.metadata.ClusterName + "-" + name
+			crd.KatalogName = k.ClusterName() + "-" + name
 		}
 
 		// Propagate katalog namespace — merger stamps it, but ensure the
 		// default is applied for any path that bypasses the merger (e.g. Go-mode).
 		if crd.KatalogNamespace == "" {
-			if k.metadata.Namespace != "" {
-				crd.KatalogNamespace = k.metadata.Namespace
+			metaNs := k.metadata.Namespace
+			if metaNs != "" {
+				if errs := validation.IsDNS1123Label(metaNs); len(errs) > 0 {
+					return fmt.Errorf("%s CRD with key '%s': invalid metadata.Namespace %q: %s", failureMark(), name, metaNs, strings.Join(errs, "; "))
+				}
+				crd.KatalogNamespace = metaNs
 			} else {
 				crd.KatalogNamespace = "default"
 			}
 		}
 
-		// Name is already set from map key — normalise it
+		// Set Name if not already set from map key — normalise it
+		crd.Name = name
 		crd.Name = strings.ReplaceAll(crd.Name, " ", "")
 		crd.Name = strings.ToLower(crd.Name)
 
 		if crd.Name == "" {
-			return fmt.Errorf("CRD with key '%s': empty name after normalisation", name)
+			return fmt.Errorf("%s CRD with key '%s': empty name after normalisation", failureMark(), name)
 		}
 
 		// Standard Kubernetes name check.
 		if errs := validation.IsDNS1123Label(crd.Name); len(errs) > 0 {
-			return fmt.Errorf("CRD with key '%s': invalid name %q: %s", name, crd.Name, strings.Join(errs, "; "))
+			return fmt.Errorf("%s CRD with key '%s': invalid name %q: %s", failureMark(), name, crd.Name, strings.Join(errs, "; "))
 		}
 
 		// Handle namespaced and cluster-scoped crds
 		if !crd.IsNamespaced() && crd.Namespace != "" {
-			logger.Warn().Msgf("%s is clusterscoped. Namespace %s will be ignored", crd.APITypes.Kind, crd.Namespace)
+			warning := fmt.Sprintf("%s is clusterscoped. Namespace %s will be ignored", crd.APITypes.Kind, crd.Namespace)
+			crd.Warnings.AddWarning(warning)
 			crd.Namespace = ""
+		}
+
+		if crd.IsNamespaced() && crd.Namespace != "" {
+			if errs := validation.IsDNS1123Label(crd.Namespace); len(errs) > 0 {
+				return fmt.Errorf("%s CRD with key '%s': invalid crd namespace %q: %s", failureMark(), name, crd.Namespace, strings.Join(errs, "; "))
+			}
 		}
 
 		// Handle API path
@@ -246,19 +262,17 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		}
 
 		// Handle finalizers
-		if len(crd.OperatorBox.Finalizers) == 0 {
-			crd.OperatorBox.Finalizers = k.Spec.Finalizers
-			if crd.HasServeTarget() {
-				for _, target := range crd.Serve.Target.Entries {
-					if target.OperatorBox.IsEmpty() {
-						continue
-					}
-					if target.OperatorBox.Finalizers == nil {
-						crd.OperatorBox.Finalizers = target.OperatorBox.Finalizers
-					}
+		boxFinalizers := crd.OperatorBox.Finalizers
+		boxFinalizers = append(boxFinalizers, k.Spec.Finalizers...)
+		if crd.HasServeTarget() {
+			for _, target := range crd.Serve.Target.Entries {
+				if target.OperatorBox.Empty() {
+					continue
 				}
+				boxFinalizers = append(boxFinalizers, target.OperatorBox.Finalizers...)
 			}
 		}
+		crd.OperatorBox.Finalizers = boxFinalizers
 
 		// Ensure operatorBox.reconciler is always initialised so runtime callsites
 		// can read from it directly without nil-checking.
@@ -271,7 +285,7 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		if rec.Profile != "" {
 			result, err := profiles.ApplyReconcilerProfile(rec.Profile, k.Profiles)
 			if err != nil {
-				return fmt.Errorf("CRD %q: %w", name, err)
+				return fmt.Errorf("%s CRD %q: %w", failureMark(), name, err)
 			}
 			if rec.Workers == 0 {
 				rec.Workers = result.Workers
@@ -291,8 +305,13 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		if rec.Resync.Duration == 0 {
 			rec.Resync.Duration = kfg.Katalog().DefaultResync()
 		}
+
+		// Default is 0 - unlimited
 		if rec.Queue.MaxDepth == 0 {
-			rec.Queue.MaxDepth = kfg.Katalog().DefaultQueueDepth()
+			// Add warning instead
+			crd.Warnings.AddWarning(fmt.Sprintf("CRD %q has uses unlimited queue: 'queue.maxDepth: 0'", name))
+
+			// rec.Queue.MaxDepth = kfg.Katalog().DefaultQueueDepth()
 		}
 		if rec.Queue.FailureThreshold == 0 {
 			rec.Queue.FailureThreshold = kfg.Katalog().DefaultFailureThreshold()
@@ -351,7 +370,7 @@ func (k *Katalog) addRuntimeObjects() error {
 		}
 		listFn, ok := orktypes.ListRegistry[gvk]
 		if !ok {
-			err := fmt.Errorf("addRuntimeObjects: no list constructor registered for %s", gvk)
+			err := fmt.Errorf("%s addRuntimeObjects: no list constructor registered for %s", failureMark(), gvk)
 			if crd.RegistryRef != "" {
 				return &TypedOperatorError{Ref: crd.RegistryRef, Err: err}
 			}
@@ -407,7 +426,7 @@ func (k *Katalog) validateAutoscalerMetrics() error {
 			if strings.HasPrefix(c.Field, "metrics.") {
 				if err := crd.ValidateMetricField(c.Field); err != nil {
 					k.handleValidationErrors(err)
-					return err
+					return fmt.Errorf(failureMark(), err)
 				}
 			}
 		}
@@ -417,7 +436,7 @@ func (k *Katalog) validateAutoscalerMetrics() error {
 			if strings.HasPrefix(c.Field, "metrics.") {
 				if err := crd.ValidateMetricField(c.Field); err != nil {
 					k.handleValidationErrors(err)
-					return err
+					return fmt.Errorf(failureMark(), err)
 				}
 			}
 		}
@@ -455,8 +474,8 @@ func (k *Katalog) validateNamespaceProtection() error {
 		// Both restricted and allowed are defined → invalid
 		if crd.HasAllowedNamespaces() && crd.HasRestrictedNamespaces() {
 			return fmt.Errorf(
-				"CRD %q cannot define both allowedNamespaces and restrictedNamespaces — choose one",
-				name, // invalid
+				"%s CRD %q cannot define both allowedNamespaces and restrictedNamespaces — choose one",
+				failureMark(), name, // invalid
 			)
 		}
 	}
@@ -532,14 +551,14 @@ func (k *Katalog) validateTimeDuration() error {
 // Helpers
 func durationError(crdName, secretName, field, value string, err error) error {
 	return fmt.Errorf(
-		"invalid duration %q in CRD %q (secret %q, field %q): %v\n\n"+
+		"%s invalid duration %q in CRD %q (secret %q, field %q): %v\n\n"+
 			"Allowed units:\n"+
 			"  d   = days (24h)\n"+
 			"  w   = weeks (7d)\n"+
 			"  mo  = months (30d)\n"+
 			"  y   = years (365d)\n\n"+
 			"Examples: 30d, 2w, 3mo, 1y",
-		value, crdName, secretName, field, err,
+		failureMark(), value, crdName, secretName, field, err,
 	)
 }
 
@@ -555,7 +574,7 @@ func (k *Katalog) validateHPAReference() error {
 		if crd.HasOnCreate() {
 			for _, h := range crd.OperatorBox.OnCreate.HorizontalPodAutoscalers {
 				if err := validateOneHPARef(crdName, h.Name, h.ScaleTargetRef); err != nil {
-					return err
+					return fmt.Errorf(failureMark(), err)
 				}
 			}
 		}
@@ -564,7 +583,7 @@ func (k *Katalog) validateHPAReference() error {
 		if crd.HasOnReconcile() {
 			for _, h := range crd.OperatorBox.OnReconcile.HorizontalPodAutoscalers {
 				if err := validateOneHPARef(crdName, h.Name, h.ScaleTargetRef); err != nil {
-					return err
+					return fmt.Errorf(failureMark(), err)
 				}
 			}
 		}
@@ -581,25 +600,25 @@ func validateOneHPARef(crdName, hpaName string, ref orktypes.ScaleTargetRef) err
 	}
 	if ref.APIVersion == "" {
 		return fmt.Errorf(
-			"invalid HPA ScaleTargetRef in CRD %q (hpa %q): missing apiVersion\n\n"+
+			"%s invalid HPA ScaleTargetRef in CRD %q (hpa %q): missing apiVersion\n\n"+
 				"Example:\n"+
 				"  ScaleTargetRef:\n"+
 				"    apiVersion: apps/v1\n"+
 				"    kind: Deployment\n"+
 				"    name: my-app",
-			crdName, hpaName,
+			failureMark(), crdName, hpaName,
 		)
 	}
 
 	if ref.Kind == "" {
 		return fmt.Errorf(
-			"invalid HPA ScaleTargetRef in CRD %q (hpa %q): missing kind\n\n"+
+			"%s invalid HPA ScaleTargetRef in CRD %q (hpa %q): missing kind\n\n"+
 				"Example:\n"+
 				"  ScaleTargetRef:\n"+
 				"    apiVersion: apps/v1\n"+
 				"    kind: ReplicaSet\n"+
 				"    name: my-app",
-			crdName, hpaName,
+			failureMark(), crdName, hpaName,
 		)
 	}
 
@@ -652,9 +671,9 @@ func (k *Katalog) validateStatusTypes() error {
 					// valid
 				default:
 					return fmt.Errorf(
-						"invalid status field type %q in CRD %q (path: %q):\n"+
+						"%s invalid status field type %q in CRD %q (path: %q):\n"+
 							"  must be one of: string, str, int, integer, bool, boolean, float, auto\n",
-						f.Type, name, f.Path,
+						failureMark(), f.Type, name, f.Path,
 					)
 				}
 			}
@@ -691,7 +710,7 @@ func (k *Katalog) validateTeams() error {
 
 	for name := range k.enabledCRDs {
 		if _, ok := k.Notification.Teams[name]; !ok {
-			return fmt.Errorf("%s team not found", name)
+			return fmt.Errorf("%s  %s team not found", failureMark(), name)
 		}
 	}
 	return nil

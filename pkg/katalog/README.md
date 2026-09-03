@@ -21,14 +21,14 @@ Nothing in Orkestra hardcodes a CRD — everything is driven by what the Katalog
 merger.Merger (merges N katalog YAML files)
     ↓
 NewKatalog(merger, konfig)
-    → KomposeRuntimeKatalog  — decode YAML, enrich entries
-    → ValidateConfig          — field-level, uniqueness, dependency, GVK, defaults
-    → updateResourceMapAndReturn — build GVK → type index
+    → KomposeRuntimeKatalog         — decode YAML, enrich entries
+    → Validate                      — field-level, uniqueness, dependency, GVK, defaults
+    → updateResourceMapAndReturn    — build GVK → type index
     ↓
 *Katalog (ready to use)
 ```
 
-`NewKatalog` calls `utils.Exit` on any validation failure — the operator does not start with a broken Katalog.
+`NewKatalog` calls `utils.Exit` on any validation failure — the runtime does not start with a broken Katalog.
 
 ## CRD entry lifecycle
 
@@ -45,7 +45,7 @@ Each `CRDEntry` goes through several enrichment phases before it is considered r
 
 After this pipeline, `k.enabledCRDs` contains fully-prepared entries. All runtime code reads from this map — it is never mutated after boot.
 
-Step 2 (crdFile population) runs inside `KomposeRuntimeKatalog`, before `ValidateConfig`. By the time any validation runs, `APITypes` is fully populated regardless of whether the user declared `apiTypes:` or `crdFile:` or both.
+Step 2 (crdFile population) runs inside `KomposeRuntimeKatalog`, before `Validate`. By the time any validation runs, `APITypes` is fully populated regardless of whether the user declared `apiTypes:` or `crdFile:` or both.
 
 ## Motif support
 
