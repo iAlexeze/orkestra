@@ -134,7 +134,7 @@ dependsOn:
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `shared` | bool | `false` | Use the shared default workqueue instead of a per-CRD queue. |
-| `maxDepth` | int | `100` (`QUEUE_DEPTH` env) | Max items in the queue before new items are dropped. |
+| `maxDepth` | int | `0` (unlimited) | Depth reference for `queue.behaviour:`. `0` means unlimited. Has no effect without a `behaviour:` declaration. |
 | `failureThreshold` | int | `5` (`FAILURE_THRESHOLD` env) | Consecutive reconcile failures before health transitions to degraded. |
 
 ## `labels`
