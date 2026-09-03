@@ -385,8 +385,9 @@ func (c *ValidationConfig) HasUniqueRule() bool {
 	return false
 }
 
-// HasHealthField reports whether any rule's field expression references .health.
-func (c *ValidationConfig) HasHealthField() bool {
+// HasHealthField reports whether any rule's field expression references .health,
+// including through a user-defined note whose expression body references .health.
+func (c *ValidationConfig) HasHealthField(nr NoteRegistry) bool {
 	if c == nil {
 		return false
 	}
@@ -394,17 +395,24 @@ func (c *ValidationConfig) HasHealthField() bool {
 		if fieldHasPrefix(r.Field, ".health.") {
 			return true
 		}
+		if IsNoteRef(r.Field) && nr.ContainsInExpression(NoteRefName(r.Field), ".health.") {
+			return true
+		}
 	}
 	return false
 }
 
-// HasMetricsField reports whether any rule's field expression references .metrics.
-func (c *ValidationConfig) HasMetricsField() bool {
+// HasMetricsField reports whether any rule's field expression references .metrics,
+// including through a user-defined note whose expression body references .metrics.
+func (c *ValidationConfig) HasMetricsField(nr NoteRegistry) bool {
 	if c == nil {
 		return false
 	}
 	for _, r := range c.Rules {
 		if fieldHasPrefix(r.Field, ".metrics.") {
+			return true
+		}
+		if IsNoteRef(r.Field) && nr.ContainsInExpression(NoteRefName(r.Field), ".metrics.") {
 			return true
 		}
 	}
@@ -418,6 +426,7 @@ func fieldHasPrefix(field, prefix string) bool {
 	s = strings.TrimSpace(s)
 	return strings.HasPrefix(s, prefix)
 }
+
 
 // ── MutationRule ──────────────────────────────────────────────────────────
 
@@ -627,13 +636,18 @@ func (c *MutationConfig) HasUniqueRule() bool {
 	return false
 }
 
-// HasHealthField reports whether any rule's field, default, or override expression references .health.
-func (c *MutationConfig) HasHealthField() bool {
+// HasHealthField reports whether any rule's field, default, or override expression
+// references .health, including through a user-defined note whose expression body
+// references .health.
+func (c *MutationConfig) HasHealthField(nr NoteRegistry) bool {
 	if c == nil {
 		return false
 	}
 	for _, r := range c.Rules {
 		if fieldHasPrefix(r.Field, ".health.") {
+			return true
+		}
+		if IsNoteRef(r.Field) && nr.ContainsInExpression(NoteRefName(r.Field), ".health.") {
 			return true
 		}
 		if s, ok := r.Default.(string); ok && fieldHasPrefix(s, ".health.") {
@@ -646,13 +660,18 @@ func (c *MutationConfig) HasHealthField() bool {
 	return false
 }
 
-// HasMetricsField reports whether any rule's field, default, or override expression references .metrics.
-func (c *MutationConfig) HasMetricsField() bool {
+// HasMetricsField reports whether any rule's field, default, or override expression
+// references .metrics, including through a user-defined note whose expression body
+// references .metrics.
+func (c *MutationConfig) HasMetricsField(nr NoteRegistry) bool {
 	if c == nil {
 		return false
 	}
 	for _, r := range c.Rules {
 		if fieldHasPrefix(r.Field, ".metrics.") {
+			return true
+		}
+		if IsNoteRef(r.Field) && nr.ContainsInExpression(NoteRefName(r.Field), ".metrics.") {
 			return true
 		}
 		if s, ok := r.Default.(string); ok && fieldHasPrefix(s, ".metrics.") {

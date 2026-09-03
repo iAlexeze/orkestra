@@ -35,8 +35,10 @@ func (ws *WebhookServer) evaluateValidationRules(
 
 	resolver := orktmpl.NewResolverFromMap(obj)
 	kat := ws.katalog
+	var notes orktypes.NoteRegistry
 	if kat != nil {
-		resolver = resolver.WithUserNotes(kat.UserNotes())
+		notes = kat.UserNotes()
+		resolver = resolver.WithUserNotes(notes)
 	}
 	// Inject the raw intent payload as .request so validation rules can gate on
 	// intent-vocabulary fields (e.g. request.schedule) before field translation.
@@ -54,7 +56,9 @@ func (ws *WebhookServer) evaluateValidationRules(
 	// Runtime data — fetched via HTTP from the running operator.
 	// Each call is gated on whether any rule actually references it,
 	// so CRDs with no unique/health/metrics rules pay zero HTTP cost.
-	if kat != nil && ws.konfig != nil && (cfg.HasUniqueRule() || cfg.HasHealthField() || cfg.HasMetricsField()) {
+	// Note bodies are scanned so a rule like {{ inBusinessHours }} correctly
+	// triggers a fetch when inBusinessHours references .health.* or .metrics.*.
+	if kat != nil && ws.konfig != nil && (cfg.HasUniqueRule() || cfg.HasHealthField(notes) || cfg.HasMetricsField(notes)) {
 		result := ws.katalog.LookupByKind(kindName)
 		if result.Entry() != nil {
 			crdName := result.Entry().Name
@@ -62,10 +66,10 @@ func (ws *WebhookServer) evaluateValidationRules(
 			if cfg.HasUniqueRule() {
 				resolver = resolver.WithUniquenessChecker(q)
 			}
-			if cfg.HasHealthField() {
+			if cfg.HasHealthField(notes) {
 				resolver = resolver.WithHealth(q.ForHealth())
 			}
-			if cfg.HasMetricsField() {
+			if cfg.HasMetricsField(notes) {
 				resolver = resolver.WithMetrics(q.ForMetrics())
 			}
 		}
@@ -118,8 +122,10 @@ func (ws *WebhookServer) applyMutationRules(
 
 	resolver := orktmpl.NewResolverFromMap(obj)
 	kat := ws.katalog
+	var notes orktypes.NoteRegistry
 	if kat != nil {
-		resolver = resolver.WithUserNotes(kat.UserNotes())
+		notes = kat.UserNotes()
+		resolver = resolver.WithUserNotes(notes)
 	}
 
 	// Inject the raw intent payload as .request so mutation rules can default/override on
@@ -135,7 +141,7 @@ func (ws *WebhookServer) applyMutationRules(
 			logger.FromContext(ctx).Warn().Err(err).Str("kind", kindName).Msg("admission/mutate: external call failed")
 		}
 	}
-	if kat != nil && ws.konfig != nil && (cfg.HasUniqueRule() || cfg.HasHealthField() || cfg.HasMetricsField()) {
+	if kat != nil && ws.konfig != nil && (cfg.HasUniqueRule() || cfg.HasHealthField(notes) || cfg.HasMetricsField(notes)) {
 		result := kat.LookupByKind(kindName)
 		if result.Entry() != nil {
 			crdName := result.Entry().Name
@@ -143,10 +149,10 @@ func (ws *WebhookServer) applyMutationRules(
 			if cfg.HasUniqueRule() {
 				resolver = resolver.WithUniquenessChecker(q)
 			}
-			if cfg.HasHealthField() {
+			if cfg.HasHealthField(notes) {
 				resolver = resolver.WithHealth(q.ForHealth())
 			}
-			if cfg.HasMetricsField() {
+			if cfg.HasMetricsField(notes) {
 				resolver = resolver.WithMetrics(q.ForMetrics())
 			}
 		}
