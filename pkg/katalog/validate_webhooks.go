@@ -12,7 +12,7 @@ import (
 // declared in gateway.api.auth.tokens. Returns nil when no webhooks are
 // configured.
 func (k *Katalog) GatewayWebhookEntryNames() []string {
-	if !k.IsGatewayEnabled() || k.Gateway.Webhooks.IsEmpty() {
+	if !k.IsGatewayEnabled() || k.Gateway.Webhooks.Empty() {
 		return nil
 	}
 	w := k.Gateway.Webhooks
@@ -51,7 +51,7 @@ func (k *Katalog) GatewayWebhookEntryNames() []string {
 //     file content) and branch.
 //  7. Slack entries require at least one command.
 func (k *Katalog) validateGatewayWebhooks() error {
-	if !k.IsGatewayEnabled() || k.Gateway.Webhooks.IsEmpty() {
+	if !k.IsGatewayEnabled() || k.Gateway.Webhooks.Empty() {
 		return nil
 	}
 

@@ -85,38 +85,3 @@ func populateReconcilerFromInclude(entry *orktypes.CRDEntry, katalogDir string) 
 	}
 	return nil
 }
-
-func populateExternalCallsFromInclude(entry *orktypes.CRDEntry, katalogDir string) error {
-	var err error
-	if entry.OperatorBox.OnReconcile != nil {
-		entry.OperatorBox.OnReconcile.External, err = orktypes.ExpandExternalCalls(entry.OperatorBox.OnReconcile.External, katalogDir)
-		if err != nil {
-			return fmt.Errorf("onReconcile.external: %w", err)
-		}
-	}
-	if entry.OperatorBox.OnCreate != nil {
-		entry.OperatorBox.OnCreate.External, err = orktypes.ExpandExternalCalls(entry.OperatorBox.OnCreate.External, katalogDir)
-		if err != nil {
-			return fmt.Errorf("onCreate.external: %w", err)
-		}
-	}
-	if r := entry.OperatorBox.Reconciler; r != nil && r.Hooks != nil {
-		r.Hooks.External, err = orktypes.ExpandExternalCalls(r.Hooks.External, katalogDir)
-		if err != nil {
-			return fmt.Errorf("hooks.external: %w", err)
-		}
-	}
-	if entry.Validation != nil {
-		entry.Validation.External, err = orktypes.ExpandExternalCalls(entry.Validation.External, katalogDir)
-		if err != nil {
-			return fmt.Errorf("validation.external: %w", err)
-		}
-	}
-	if entry.Mutation != nil {
-		entry.Mutation.External, err = orktypes.ExpandExternalCalls(entry.Mutation.External, katalogDir)
-		if err != nil {
-			return fmt.Errorf("mutation.external: %w", err)
-		}
-	}
-	return nil
-}

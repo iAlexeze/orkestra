@@ -55,7 +55,7 @@ Examples:
 			return fmt.Errorf("unknown --mode %q: valid values are toclient, native", modeFlag)
 		}
 
-		src, err := os.ReadFile(inputPath)
+		src, err := readLocal(inputPath)
 		if err != nil {
 			return fmt.Errorf("read %s: %w", inputPath, err)
 		}

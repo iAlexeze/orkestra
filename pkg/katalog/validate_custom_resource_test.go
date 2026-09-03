@@ -19,11 +19,11 @@ func TestValidateCustomResource_Valid(t *testing.T) {
 			Namespace: "argocd",
 		},
 	}
-	assert.NoError(t, ValidateCustomResource(cr, "test.onCreate.custom[0]"))
+	assert.NoError(t, ValidateCustomResource(nil, cr, "test.onCreate.custom[0]"))
 }
 
 func TestValidateCustomResource_Nil(t *testing.T) {
-	err := ValidateCustomResource(nil, "test.onCreate.custom[0]")
+	err := ValidateCustomResource(nil, nil, "test.onCreate.custom[0]")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "nil")
 }
@@ -36,7 +36,7 @@ func TestValidateCustomResource_MissingAPIVersion(t *testing.T) {
 			Namespace: "argocd",
 		},
 	}
-	err := ValidateCustomResource(cr, "test.onCreate.custom[0]")
+	err := ValidateCustomResource(nil, cr, "test.onCreate.custom[0]")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "apiVersion")
 }
@@ -50,7 +50,7 @@ func TestValidateCustomResource_InvalidAPIVersionFormat(t *testing.T) {
 			Namespace: "default",
 		},
 	}
-	err := ValidateCustomResource(cr, "test.onCreate.custom[0]")
+	err := ValidateCustomResource(nil, cr, "test.onCreate.custom[0]")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "group/version")
 }
@@ -63,7 +63,7 @@ func TestValidateCustomResource_MissingKind(t *testing.T) {
 			Namespace: "argocd",
 		},
 	}
-	err := ValidateCustomResource(cr, "test.onCreate.custom[0]")
+	err := ValidateCustomResource(nil, cr, "test.onCreate.custom[0]")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "kind")
 }
@@ -76,7 +76,7 @@ func TestValidateCustomResource_MissingName(t *testing.T) {
 			Namespace: "argocd",
 		},
 	}
-	err := ValidateCustomResource(cr, "test.onCreate.custom[0]")
+	err := ValidateCustomResource(nil, cr, "test.onCreate.custom[0]")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "metadata.name")
 }
@@ -90,7 +90,7 @@ func TestValidateCustomResource_MissingNamespace(t *testing.T) {
 			// Namespace omitted — should fail for namespaced (default)
 		},
 	}
-	err := ValidateCustomResource(cr, "test.onCreate.custom[0]")
+	err := ValidateCustomResource(nil, cr, "test.onCreate.custom[0]")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "metadata.namespace")
 }
@@ -104,7 +104,7 @@ func TestValidateCustomResource_ClusterScopedNoNamespace(t *testing.T) {
 			Namespaced: boolPtr(false),
 		},
 	}
-	assert.NoError(t, ValidateCustomResource(cr, "test.onCreate.custom[0]"))
+	assert.NoError(t, ValidateCustomResource(nil, cr, "test.onCreate.custom[0]"))
 }
 
 func TestValidateCustomResource_ClusterScopedWithNamespace(t *testing.T) {
@@ -117,7 +117,7 @@ func TestValidateCustomResource_ClusterScopedWithNamespace(t *testing.T) {
 			Namespaced: boolPtr(false),
 		},
 	}
-	err := ValidateCustomResource(cr, "test.onCreate.custom[0]")
+	err := ValidateCustomResource(nil, cr, "test.onCreate.custom[0]")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "namespaced=false")
 }
@@ -138,7 +138,7 @@ func TestValidateCustomResource_NativeType_NetworkPolicy(t *testing.T) {
 			Namespace: "{{ .spec.targetNamespace }}",
 		},
 	}
-	err := ValidateCustomResource(cr, "clusterPolicy.onCreate.custom[0]")
+	err := ValidateCustomResource(nil, cr, "clusterPolicy.onCreate.custom[0]")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "networkPolicies")
 	assert.Contains(t, err.Error(), "native Orkestra resource")
@@ -153,7 +153,7 @@ func TestValidateCustomResource_NativeType_Deployment(t *testing.T) {
 			Namespace: "default",
 		},
 	}
-	err := ValidateCustomResource(cr, "test.onCreate.custom[0]")
+	err := ValidateCustomResource(nil, cr, "test.onCreate.custom[0]")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "deployments")
 	assert.Contains(t, err.Error(), "native Orkestra resource")
@@ -171,7 +171,7 @@ func TestValidateCustomResource_NativeType_ConfigMap(t *testing.T) {
 			Namespace: "default",
 		},
 	}
-	err := ValidateCustomResource(cr, "test.onCreate.custom[0]")
+	err := ValidateCustomResource(nil, cr, "test.onCreate.custom[0]")
 	require.Error(t, err)
 	// Must fail on format (no slash), not reach the native guard.
 	assert.Contains(t, err.Error(), "group/version")
@@ -186,7 +186,7 @@ func TestValidateCustomResource_NativeType_HPA(t *testing.T) {
 			Namespace: "default",
 		},
 	}
-	err := ValidateCustomResource(cr, "test.onCreate.custom[0]")
+	err := ValidateCustomResource(nil, cr, "test.onCreate.custom[0]")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "hpa")
 	assert.Contains(t, err.Error(), "native Orkestra resource")
@@ -202,7 +202,7 @@ func TestValidateCustomResource_NonNative_Crossplane(t *testing.T) {
 			Namespace: "default",
 		},
 	}
-	assert.NoError(t, ValidateCustomResource(cr, "test.onCreate.custom[0]"))
+	assert.NoError(t, ValidateCustomResource(nil, cr, "test.onCreate.custom[0]"))
 }
 
 func TestValidateCustomResource_NonNative_ArgoCD(t *testing.T) {
@@ -214,5 +214,5 @@ func TestValidateCustomResource_NonNative_ArgoCD(t *testing.T) {
 			Namespace: "argocd",
 		},
 	}
-	assert.NoError(t, ValidateCustomResource(cr, "test.onCreate.custom[0]"))
+	assert.NoError(t, ValidateCustomResource(nil, cr, "test.onCreate.custom[0]"))
 }

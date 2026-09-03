@@ -40,6 +40,8 @@ func (k *Katalog) validateRetryBackoff() error {
 			}
 		}
 
+		// queue.behaviour.onLimit.retryBackoff — applies per queue item on limit.
+
 		// external[].retryBackoff — applies per external call.
 		for _, phase := range allExternalPhases(crd) {
 			for i, ext := range phase {

@@ -29,7 +29,7 @@ KomposeRuntimeKatalog
   ├─ populateAPITypesFromCRDFile (crdfile.go) ← reads CRD YAML, fills APITypes
   └─ EnrichCRDEntry (enrichment.go)           ← sees fully-specified APITypes, skips built-in lookup
   ↓
-ValidateConfig
+Validate
   ├─ setGroupVersionKind                      ← APITypes already set, just copies to GVK fields
   └─ ...
 ```

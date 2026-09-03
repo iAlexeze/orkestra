@@ -17,6 +17,22 @@ func (e CRDEntry) Config() OperatorBoxConfig {
 	return e.OperatorBox
 }
 
+// ReconcilerConfig returns the reconciler configuration for this CRD.
+func (e CRDEntry) ReconcilerConfig() *ReconcilerConfig {
+	if e.OperatorBox.Reconciler == nil {
+		return nil
+	}
+	return e.OperatorBox.Reconciler
+}
+
+// QueueConfig returns the Queue configuration for this CRD.
+func (e CRDEntry) QueueConfig() *Queue {
+	if e.OperatorBox.Reconciler == nil {
+		return &Queue{}
+	}
+	return &e.OperatorBox.Reconciler.Queue
+}
+
 // PreReconcileCheck returns the gate config for this CRD.
 // nil means no gate — the reconciler is always called.
 func (e CRDEntry) PreReconcileCheck() *PreReconcileConfig {
@@ -277,7 +293,7 @@ func (c *CRDEntry) AllManagedResources() []ManagedResource {
 // targetManagedResources extracts hook + constructor resources from a per-target
 // operatorBox pointer. Returns nil when the box is nil or has no resources.
 func targetManagedResources(box *OperatorBoxConfig) []ManagedResource {
-	if box.IsEmpty() || box.Reconciler.IsEmpty() {
+	if box.Empty() || box.Reconciler.Empty() {
 		return nil
 	}
 	rec := box.Reconciler
@@ -311,6 +327,11 @@ func (c *CRDEntry) WithWatchEntries() bool {
 // WithSentinels reports whether this CRD declares any preReconcile sentinels.
 func (c *CRDEntry) WithSentinels() bool {
 	return len(c.OperatorBox.PreReconcile.DeclaredSentinels()) > 0
+}
+
+// WithQueueBehaviours reports whether this CRD declares any queue.behaviour.
+func (c *CRDEntry) WithQueueBehaviours() bool {
+	return c.QueueConfig().HasBehaviour()
 }
 
 // WatchEntries returns the combined secondary watch entries from the base
@@ -435,6 +456,15 @@ func (c *CRDEntry) CrossAccessEnabled() bool {
 	return c.CrossAccess == nil || *c.CrossAccess
 }
 
+// CrossAccessEnabled reports whether cross: reads are permitted for this CRD.
+// Defaults to true when omitted.
+func (c *CRDEntry) HasCrossDecl() bool {
+	if c == nil {
+		return false
+	}
+	return !c.OperatorBox.Empty() && len(c.OperatorBox.Cross) > 0
+}
+
 // HasHooks reports whether this CRD has hooks wired — either a YAML-declared
 // hooks block or a Go-registered HookFactory.
 func (c *CRDEntry) HasHooks() bool {
@@ -513,11 +543,11 @@ func (c *CRDEntry) HasTargetConstructorFactories() bool {
 	}
 	for _, entry := range c.Serve.Target.Entries {
 		box := entry.OperatorBox
-		if box.IsEmpty() {
+		if box.Empty() {
 			continue
 		}
 		rec := box.Reconciler
-		if rec.IsEmpty() || rec.IsDefault() || !rec.HasConstructorDecl() {
+		if rec.Empty() || rec.IsDefault() || !rec.HasConstructorDecl() {
 			continue
 		}
 		return true

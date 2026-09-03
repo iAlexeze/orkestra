@@ -614,8 +614,8 @@ func (h *CRDHealth) StateAndStatus() (string, int) {
 // Available in conditions status.fields templates as:
 //
 //		{{ .health.healthy }}            — bool: reconciler is healthy
-//	 {{ .health.state }}              — string: "healthy" / "degraded" / "pending" / "not started"
-//	 {{ .health.status }}             — int: HTTP status code representing health state
+//	 	{{ .health.state }}              — string: "healthy" / "degraded" / "pending" / "not started"
+//	 	{{ .health.status }}             — int: HTTP status code representing health state
 //		{{ .health.started }}            — bool: reconciler has started
 //		{{ .health.pending }}            — bool: reconciler is pending
 //		{{ .health.degraded }}           — bool: reconciler is degraded

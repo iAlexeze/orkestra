@@ -175,7 +175,7 @@ func (k *Katalog) validateServeTokenRestrictions() error {
 			}
 
 			// 6. (Warning) All permissions are empty — token grants nothing.
-			if perms.Permissions.IsEmpty() {
+			if perms.Permissions.Empty() {
 				crd.Warnings.AddWarning(fmt.Sprintf(
 					"%s crd %q: serve.tokens[%q] has no permissions declared — "+
 						"the token can authenticate but cannot perform any operation on this CRD",

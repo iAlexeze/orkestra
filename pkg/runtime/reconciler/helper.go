@@ -8,6 +8,7 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils/common"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -168,4 +169,31 @@ func copyStringMap(m map[string]string) map[string]string {
 		out[k] = v
 	}
 	return out
+}
+
+func toUnstructured(obj domain.Object) *unstructured.Unstructured {
+	res, ok := domain.ToUnstructured(obj)
+	if !ok {
+		return nil
+	}
+	return res
+}
+
+// Inject live runtime metrics/health also to the object as annotation so that the gateway
+// Uses it for metrics-level and health-level gating in validation and mutation rules.
+// This respects crossAccess and endpoint security declaration
+func (r *GenericReconciler[PTR]) injectRuntimeHealthAndMetrics(obj domain.Object, metricsMap, healthMap map[string]interface{}, healthOk bool) {
+	unObj := toUnstructured(obj)
+
+	if r.crd.CrossAccessEnabled() {
+		if unObj != nil {
+			common.InjectMetricsAnnotation(unObj, metricsMap)
+		}
+	}
+	if r.crd.Endpoints.IsHealthEnabled() {
+		if unObj != nil && healthOk {
+			common.InjectHealthAnnotation(unObj, healthMap)
+		}
+
+	}
 }

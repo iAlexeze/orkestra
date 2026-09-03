@@ -595,6 +595,14 @@ func (c *CRDEntry) HasServeNamespace() bool {
 	return c.Serve != nil && c.Serve.Namespace != ""
 }
 
+// ServeFields returns serve.fields. Nil-safe.
+func (c *CRDEntry) ServeFields() map[string]ServeFieldConfig {
+	if c.Serve == nil {
+		return nil
+	}
+	return c.Serve.Fields
+}
+
 // ServeLabels returns serve.labels. Nil-safe.
 func (c *CRDEntry) ServeLabels() map[string]ServeFieldConfig {
 	if c.Serve == nil {
