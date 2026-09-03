@@ -5,7 +5,8 @@ import (
 	"strings"
 	"text/template"
 
-	orktemplate "github.com/orkspace/orkestra/pkg/resources/template"
+	"github.com/orkspace/orkestra/pkg/runtime/sentinel"
+	orktemplate "github.com/orkspace/orkestra/pkg/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
@@ -59,7 +60,7 @@ func (k *Katalog) validateGateFailPolicies(crdName string) error {
 		if g == nil {
 			continue
 		}
-		if g.FailPolicy != "" && !orktypes.IsValidFailPolicy(string(g.FailPolicy)) {
+		if g.FailPolicy != "" && !orktypes.IsValidFailPolicy((g.FailPolicy).String()) {
 			return fmt.Errorf("%s crd %q: %s.failPolicy %q is not valid. Valid values: %s",
 				failureMark(), crdName, gi.location, g.FailPolicy, orktypes.FailPolicyJoined())
 		}
@@ -159,12 +160,29 @@ func validateWatchKeyFrom(crdName string, idx int, w orktypes.WatchEntry) error 
 }
 
 func validateCRDSentinels(crdName string, crd orktypes.CRDEntry) error {
-	invalid := crd.OperatorBox.PreReconcile.InvalidSentinels()
+	pr := crd.OperatorBox.PreReconcile
+	invalid := pr.InvalidSentinels()
 	if len(invalid) == 0 {
+		if pr.HasEnqueueGateSentinel() {
+			enqGateInvalid, invalid := pr.InvalidGateSentinels(pr.EnqueueGate)
+			if invalid {
+				return fmt.Errorf("%s crd %q: preReconcile.enqueueGate.sentinels: unregistered sentinel(s) [%s] in preReconcile.sentinels — valid values: %s",
+					failureMark(), crdName, strings.Join(enqGateInvalid, ", "), strings.Join(pr.DeclaredSentinels(), ", "))
+			}
+		}
+
+		if pr.HasReconcileGateSentinel() {
+			recGateInvalid, invalid := pr.InvalidGateSentinels(pr.ReconcileGate)
+			if invalid {
+				return fmt.Errorf("%s crd %q: preReconcile.reconcileGate.sentinels: unregistered sentinel(s) [%s] in preReconcile.sentinels — valid values: %s",
+					failureMark(), crdName, strings.Join(recGateInvalid, ", "), strings.Join(pr.DeclaredSentinels(), ", "))
+			}
+		}
+
 		return nil
 	}
 	return fmt.Errorf("%s crd %q: preReconcile.sentinels: unknown sentinel(s) [%s] — valid values: %s",
-		failureMark(), crdName, strings.Join(invalid, ", "), strings.Join(orktypes.ValidSentinels(), ", "))
+		failureMark(), crdName, strings.Join(invalid, ", "), strings.Join(sentinel.ValidSentinels(), ", "))
 }
 
 // validatePreReconcileGateTemplates parses enqueueGate and reconcileGate templates

@@ -1,4 +1,4 @@
-// pkg/resources/template/resolver_children.go
+// pkg/template/resolver_children.go
 package template
 
 // WithChildren returns a new Resolver that includes child resource state

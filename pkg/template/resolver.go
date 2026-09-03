@@ -1,4 +1,4 @@
-// pkg/resources/template/resolver.go
+// pkg/template/resolver.go
 package template
 
 import (
@@ -97,7 +97,7 @@ func (r *Resolver) WithProfiles(reg orktypes.ProfileRegistry) *Resolver {
 // Built-in notes remain available; user notes may call built-in notes and
 // each other inside their expressions.
 func (r *Resolver) WithUserNotes(reg orktypes.NoteRegistry) *Resolver {
-	if reg.IsEmpty() {
+	if reg.Empty() {
 		return r
 	}
 	// merged holds built-ins + user notes. Closures capture it by reference
@@ -205,6 +205,11 @@ var orkNotes = note.Map()
 func (r *Resolver) Resolve(value string) (string, error) {
 	out, _, err := r.resolve(value)
 	return out, err
+}
+
+// Empty reports whether the Resolver has no meaningful settings
+func (r *Resolver) Empty() bool {
+	return r == nil
 }
 
 // ResolveStrict evaluates value like Resolve, but also reports whether any
