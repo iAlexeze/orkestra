@@ -94,3 +94,4 @@ When your Katalog declares `serve.target:` entries, CRs routed through the gatew
 - [Requeue](03-requeue.md) — per-object scheduled requeue after a successful reconcile
 - [resync vs requeue](04-resync-vs-requeue.md) — when to use each and how they compose
 - [Kordinator](05-kordinator.md) — startup sequencing, worker management, health
+- [Queue behaviour](06-queue-behaviour.md) — controlled back-pressure at the queue boundary: `onLimit`, `onThreshold`, and two-tier conditional evaluation
