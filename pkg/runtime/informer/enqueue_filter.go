@@ -14,69 +14,44 @@
 package informer
 
 import (
+	"context"
+
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/runtime/queue"
 	"github.com/orkspace/orkestra/pkg/runtime/sentinel"
-	"k8s.io/client-go/tools/cache"
 )
 
-// RegisterEnqueueFilter stores a pre-enqueue condition gate for a GVK.
-// fn returns true when the object should be enqueued, false to drop it.
-// Called during CRD registration, before informers are started.
-func (f *Factory) RegisterEnqueueFilter(gvkStr string, fn func(domain.Object) bool) {
-	if fn == nil {
-		return
-	}
-
-	f.mu.Lock()
-	defer f.mu.Unlock()
-
-	f.enqueueFilters[gvkStr] = fn
-}
-
-// RegisterUpdateEnqueueFilter registers sentinel configuration for a GVK.
-// declared is the list of sentinel names from preReconcile.sentinels; gate
-// decides whether to enqueue and receives the already-computed sentinel values.
-// Sentinel computation (old vs new comparison) happens inside handleUpdateEvent —
-// the caller only passes configuration, not computation.
-// Only one config per GVK — subsequent calls overwrite.
-func (f *Factory) RegisterUpdateEnqueueFilter(gvkStr string, declared []string, gate func(domain.Object, map[string]string) bool) {
-	if gate == nil {
+// RegisterEnqueueFilter registers sentinel configuration for a GVK.
+// declared is the list of sentinel names from preReconcile.sentinels;
+//
+// Simplified filter registration
+func (f *Factory) RegisterEnqueueFilter(gvkStr string, declared []string) {
+	if declared == nil {
 		return
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.updateFilters[gvkStr] = &updateFilterCfg{declared: declared, gate: gate}
+	f.enqueueFilters[gvkStr] = &enqueueFiltersCfg{declared: declared}
 }
 
-// updateEnqueueAllowed evaluates the registered update config for the given GVK.
 // Sentinel computation happens here using oldObj and newObj — the result is passed
-// to the gate function. Returns (true, nil, false) when no config is registered.
-func (f *Factory) updateEnqueueAllowed(gvkStr string, oldObj, newObj interface{}) (bool, map[string]string, bool) {
+// to the gate function. Returns nil when no config is registered.
+func (f *Factory) computeSentinels(gvkStr string, oldObj, newObj interface{}) map[string]string {
 	f.mu.RLock()
-	cfg, ok := f.updateFilters[gvkStr]
+	cfg, ok := f.enqueueFilters[gvkStr]
 	f.mu.RUnlock()
 	if !ok {
-		return true, nil, false
+		return nil
 	}
 
-	oldDomain, okOld := toDomainObject(oldObj)
-	newDomain, okNew := toDomainObject(newObj)
+	oldDomain, okOld := domain.ToDomainObject(oldObj)
+	newDomain, okNew := domain.ToDomainObject(newObj)
 	if !okOld || !okNew {
-		return true, nil, true
+		return nil
 	}
-	sentinels := sentinel.Compute(cfg.declared, oldDomain, newDomain)
-	allowed := cfg.gate(newDomain, sentinels)
-	return allowed, sentinels, true
-}
 
-// toDomainObject unwraps a cache tombstone and asserts to domain.Object.
-func toDomainObject(obj interface{}) (domain.Object, bool) {
-	if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
-		obj = tombstone.Obj
-	}
-	d, ok := obj.(domain.Object)
-	return d, ok
+	return sentinel.Compute(cfg.declared, oldDomain, newDomain)
 }
 
 // enqueueAllowed evaluates the registered enqueue filter for the given GVK.
@@ -85,23 +60,15 @@ func toDomainObject(obj interface{}) (domain.Object, bool) {
 //
 // Unwraps cache.DeletedFinalStateUnknown tombstones and asserts to domain.Object
 // before calling the registered function — works for both typed and dynamic CRDs.
-func (f *Factory) enqueueAllowed(gvkStr string, obj interface{}) bool {
-	f.mu.RLock()
-	fn, ok := f.enqueueFilters[gvkStr]
-	f.mu.RUnlock()
-
-	if !ok {
-		return true
-	}
-
+func (f *Factory) enqueueAllowed(ctx context.Context, gvkStr string, obj interface{}) bool {
 	// Unwrap tombstone — produced when a deletion event arrives after the object
 	// has already been removed from the cache.
-	domObj, ok := toDomainObject(obj)
+	domObj, ok := domain.ToDomainObject(obj)
 	if !ok {
 		return true // can't evaluate — let it through
 	}
 
-	if !fn(domObj) {
+	if !f.katalog.EvaluateEnqueueFilter(ctx, gvkStr, domObj, f.cs, nil) {
 		logger.Debug().
 			Str("gvk", gvkStr).
 			Str("name", domObj.GetName()).
@@ -109,4 +76,29 @@ func (f *Factory) enqueueAllowed(gvkStr string, obj interface{}) bool {
 		return false
 	}
 	return true
+}
+
+// enqueueAllowedWithSentinelAndBehaviour evaluates the registered enqueue filter for the given GVK.
+// it starts with completing the first tier evaluation started at the workqueue for this CRD.
+// Applies behaviour in tier 2 of the queue behaviour evauation, and then evaluates the sentinel-aware
+// filter. Returns (true, true) when both evaluation passes.
+func (f *Factory) enqueueAllowedWithSentinelAndBehaviour(
+	ctx context.Context, gvkStr string,
+	obj interface{}, wq *queue.Workqueue,
+	sentinels map[string]string) (bool, bool) {
+	domObj, objFound := domain.ToDomainObject(obj)
+	if !objFound {
+		return false, false
+	}
+	// Honor the response from pkg/queue and drop any failing items before update considerations
+	// This is the last step in completing what the queue started that it couldn't finish and
+	// delegated to the informer here - so done first with domain.Katalog which
+	if wq != nil && wq.NeedsBehaviourEval() {
+		if !f.katalog.EvaluateQueueBehaviourConditions(ctx, gvkStr, domObj, sentinels) {
+			return false, true
+		}
+	}
+
+	// Evaluate enqueue filters
+	return f.katalog.EvaluateEnqueueFilter(ctx, gvkStr, domObj, f.cs, sentinels), true
 }
