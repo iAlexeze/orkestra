@@ -629,7 +629,7 @@ func (k *DependencyKordinator) stopCRDWorkers(gvk string) {
 	// Without this, workers that finished their reconcile and
 	// are waiting for work will never exit.
 	if wq, ok := k.queueReg.For(gvk); ok {
-		wq.Queue.ShutDown()
+		wq.Queue().ShutDown()
 	}
 
 	if !okWG {
