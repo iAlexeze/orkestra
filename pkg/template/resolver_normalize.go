@@ -1,4 +1,4 @@
-// pkg/resources/template/resolver_normalize.go
+// pkg/template/resolver_normalize.go
 package template
 
 import orktypes "github.com/orkspace/orkestra/pkg/types"

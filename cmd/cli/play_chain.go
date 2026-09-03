@@ -15,7 +15,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/registry/simulate"
-	orktmpl "github.com/orkspace/orkestra/pkg/resources/template"
+	orktmpl "github.com/orkspace/orkestra/pkg/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -198,7 +198,7 @@ func runSimulateWithCR(ctx context.Context, specPath, crFile string) error {
 	if abs, err := filepath.Abs(specPath); err == nil {
 		specPath = abs
 	}
-	data, err := os.ReadFile(specPath)
+	data, err := readLocal(specPath)
 	if err != nil {
 		return fmt.Errorf("reading simulate config %q: %w", specPath, err)
 	}
@@ -226,7 +226,7 @@ func runSimulateWithCR(ctx context.Context, specPath, crFile string) error {
 		return fmt.Errorf("parsing Katalog: %w", err)
 	}
 
-	crData, err := os.ReadFile(crFile)
+	crData, err := readLocal(crFile)
 	if err != nil {
 		return fmt.Errorf("reading CR: %w", err)
 	}

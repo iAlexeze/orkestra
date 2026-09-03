@@ -6,7 +6,7 @@ import (
 )
 
 // wireForTest runs the same setGroupVersionKind → setDefaults sequence
-// ValidateConfig runs in production (see validate.go), so a Katalog built by
+// Validate() runs in production (see validate.go), so a Katalog built by
 // NewKatalogForTest/NewFromEntryPointers is immediately usable by
 // LookupByKind/LookupByName/GVR/etc. without every test remembering to call
 // BuildLookupIndexes (or hitting Kind()/GVR() silently returning zero values
@@ -27,9 +27,9 @@ func (k *Katalog) wireForTest() *Katalog {
 }
 
 // NewKatalogForTest creates a Katalog with pre-set enabledCRDs for testing.
-// Bypasses YAML parsing and ValidateConfig's other steps (uniqueness,
+// Bypasses YAML parsing and Validate()'s other steps (uniqueness,
 // dependsOn, reconciler mode, …) but still wires GVK/GVR/lookup indexes and
-// defaults exactly as ValidateConfig would, so lookups and field defaults
+// defaults exactly as Validate() would, so lookups and field defaults
 // behave the same as a fully loaded Katalog.
 func NewKatalogForTest(crds map[string]orktypes.CRDEntry) *Katalog {
 	if crds == nil {

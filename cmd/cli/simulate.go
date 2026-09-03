@@ -19,7 +19,6 @@ import (
 	"github.com/orkspace/orkestra/pkg/registry/simulate"
 	"github.com/orkspace/orkestra/pkg/tools/devserver"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	orkutils "github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -130,7 +129,7 @@ func runSimulate(ctx context.Context, katalogFile, crFile string, cliOpts cliSim
 		return fmt.Errorf("parsing Katalog: %w", err)
 	}
 
-	crData, err := os.ReadFile(crFile)
+	crData, err := readLocal(crFile)
 	if err != nil {
 		return fmt.Errorf("reading CR: %w", err)
 	}
@@ -549,7 +548,7 @@ func resolveCRInputs(crs map[string][]*unstructured.Unstructured, kind string) (
 
 // isSimulateDoc returns true when the file's kind is "Simulate".
 func isSimulateDoc(path string) bool {
-	data, err := os.ReadFile(path)
+	data, err := readLocal(path)
 	if err != nil {
 		return false
 	}
@@ -567,12 +566,12 @@ func runSimulateFromSpec(ctx context.Context, path string, cliOpts cliSimulateOp
 		path = abs
 	}
 
-	data, err := os.ReadFile(path)
+	data, err := readLocal(path)
 	if err != nil {
 		return fmt.Errorf("reading %s: %w", path, err)
 	}
 	var doc orktypes.Simulate
-	if err := orkutils.StrictUnmarshal(data, &doc); err != nil {
+	if err := strictUnmarshal(data, &doc); err != nil {
 		return fmt.Errorf("parsing %s:\n%s", path, err)
 	}
 
@@ -652,7 +651,7 @@ func runSimulateFromSpec(ctx context.Context, path string, cliOpts cliSimulateOp
 		if !filepath.IsAbs(abs) {
 			abs = filepath.Join(dir, abs)
 		}
-		data, err := os.ReadFile(abs)
+		data, err := readLocal(abs)
 		if err != nil {
 			return fmt.Errorf("reading CR %s: %w", abs, err)
 		}
@@ -705,7 +704,7 @@ func runSimulateFromSpec(ctx context.Context, path string, cliOpts cliSimulateOp
 
 // isE2EDoc returns true when the file's kind is "E2E".
 func isE2EDoc(path string) bool {
-	data, err := os.ReadFile(path)
+	data, err := readLocal(path)
 	if err != nil {
 		return false
 	}
@@ -852,7 +851,7 @@ observed cycle-1 create operations as expect: rules. Edit and refine from there.
 		if err != nil {
 			return fmt.Errorf("parsing Katalog: %w", err)
 		}
-		crData, err := os.ReadFile(crFile)
+		crData, err := readLocal(crFile)
 		if err != nil {
 			return fmt.Errorf("reading CR: %w", err)
 		}

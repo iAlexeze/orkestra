@@ -1,6 +1,7 @@
 package katalog
 
 import (
+	"strings"
 	"testing"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -25,6 +26,7 @@ func katalogWithMutationRule(crdName string, rules ...orktypes.MutationRule) *Ka
 			crdName: {
 				Name:     crdName,
 				Mutation: &orktypes.MutationConfig{Rules: rules},
+				Warnings: orktypes.Warnings{},
 			},
 		},
 	}
@@ -121,7 +123,8 @@ func TestValidateValidationRuleLinks_NoLink(t *testing.T) {
 
 func TestValidateValidationRuleLinks_MatchesAdditionalLabelField(t *testing.T) {
 	serve := &orktypes.ServeConfig{
-		Labels: map[string]orktypes.ServeFieldConfig{"team": {Label: "Team"}},
+		Enabled: true,
+		Labels:  map[string]orktypes.ServeFieldConfig{"team": {Label: "Team"}},
 	}
 	k := katalogWithServeValidationRule("app", serve, orktypes.ValidationRule{
 		Field: `{{ isDNS1123Subdomain team }}`, Link: "team", Equals: "true", Message: "must be a valid subdomain",
@@ -131,6 +134,7 @@ func TestValidateValidationRuleLinks_MatchesAdditionalLabelField(t *testing.T) {
 
 func TestValidateValidationRuleLinks_MatchesAdditionalAnnotationField(t *testing.T) {
 	serve := &orktypes.ServeConfig{
+		Enabled:     true,
 		Annotations: map[string]orktypes.ServeFieldConfig{"platform.myorg.io/jira-ticket": {Label: "Jira Ticket"}},
 	}
 	k := katalogWithServeValidationRule("app", serve, orktypes.ValidationRule{
@@ -143,9 +147,10 @@ func TestValidateValidationRuleLinks_SpecFieldWithWrappingExpression(t *testing.
 	// link: pointing at a spec field is valid when Field wraps it in
 	// something other than the plain "spec.<name>" path — e.g. a format
 	// check built on a notes: function.
-	serve := &orktypes.ServeConfig{Fields: map[string]orktypes.ServeFieldConfig{
-		"repoURL": {Label: "Repository URL"},
-	}}
+	serve := &orktypes.ServeConfig{
+		Enabled: true, Fields: map[string]orktypes.ServeFieldConfig{
+			"repoURL": {Label: "Repository URL"},
+		}}
 	k := katalogWithServeValidationRule("app", serve, orktypes.ValidationRule{
 		Field: `{{ isValidGitRepository .spec.repoURL }}`, Link: "repoURL", Equals: "true", Message: "must be a valid git repository",
 	})
@@ -153,9 +158,11 @@ func TestValidateValidationRuleLinks_SpecFieldWithWrappingExpression(t *testing.
 }
 
 func TestValidateValidationRuleLinks_RedundantSpecFieldLink(t *testing.T) {
-	serve := &orktypes.ServeConfig{Fields: map[string]orktypes.ServeFieldConfig{
-		"team": {Label: "Team"},
-	}}
+	serve := &orktypes.ServeConfig{
+		Enabled: true,
+		Fields: map[string]orktypes.ServeFieldConfig{
+			"team": {Label: "Team"},
+		}}
 	k := katalogWithServeValidationRule("app", serve, orktypes.ValidationRule{
 		Field: "spec.team", Link: "team", Operator: orktypes.ConditionExists, Message: "team is required",
 	})
@@ -167,7 +174,8 @@ func TestValidateValidationRuleLinks_RedundantSpecFieldLink(t *testing.T) {
 
 func TestValidateValidationRuleLinks_UnknownLink(t *testing.T) {
 	serve := &orktypes.ServeConfig{
-		Labels: map[string]orktypes.ServeFieldConfig{"team": {Label: "Team"}},
+		Enabled: true,
+		Labels:  map[string]orktypes.ServeFieldConfig{"team": {Label: "Team"}},
 	}
 	k := katalogWithServeValidationRule("app", serve, orktypes.ValidationRule{
 		Field: `{{ isDNS1123Subdomain typo }}`, Link: "typo", Equals: "true", Message: "must be valid",
@@ -185,4 +193,160 @@ func TestValidateValidationRuleLinks_NoServeConfig(t *testing.T) {
 	err := k.validateValidationRuleLinks()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "team")
+}
+
+// Mutation Rules
+func TestValidateMutationRules_FieldDefault(t *testing.T) {
+	k := katalogWithMutationRule("app", orktypes.MutationRule{
+		Field:   "metadata.name",
+		Default: "my-app",
+	})
+	err := k.validateMutationRules()
+	assert.NoError(t, err)
+}
+
+func TestValidateMutationRules_FieldOverride(t *testing.T) {
+	k := katalogWithMutationRule("app", orktypes.MutationRule{
+		Field:    "metadata.name",
+		Override: "my-app",
+	})
+	err := k.validateMutationRules()
+	assert.NoError(t, err)
+}
+
+func TestValidateMutationRules_FieldEmpty(t *testing.T) {
+	k := katalogWithMutationRule("app", orktypes.MutationRule{
+		Default:   3,
+		ValueType: "int",
+	})
+	err := k.validateMutationRules()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "field is required")
+}
+
+func TestValidateMutationRules_DefaultAndOverride(t *testing.T) {
+	k := katalogWithMutationRule("app", orktypes.MutationRule{
+		Field:     "spec.deploy.replicas",
+		Default:   3,
+		Override:  6,
+		ValueType: "int",
+	})
+
+	err := k.validateMutationRules()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	crd := k.enabledCRDs["app"]
+	if !crd.Warnings.HasWarnings() {
+		t.Fatal("expected warning for default and override definition")
+	}
+
+	assert.NoError(t, err)
+
+	warn := "CRD: app - mutation.rules[0] has both default and override defined. default will be ignored."
+	containsWarn := crd.Warnings.Contains(warn)
+	if !containsWarn {
+		t.Fatalf("expected true: got %v - %q", containsWarn, strings.Join(crd.Warnings, ", "))
+	}
+}
+
+// With Serve Synthesis
+func TestValidateMutationRules_ServeFieldEmpty(t *testing.T) {
+	k := katalogWithMutationRule("app", orktypes.MutationRule{
+		Default:   3,
+		ValueType: "int",
+	})
+	err := k.validateMutationRules()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "field is required")
+}
+
+func TestValidateMutationRules_ServeFieldOverride(t *testing.T) {
+	k := katalogWithServe(&orktypes.ServeConfig{
+		Enabled: true,
+		Fields: map[string]orktypes.ServeFieldConfig{
+			"image": {
+				Label:    "Image",
+				Override: "my-app/v1",
+			},
+		},
+	})
+	err := k.validateMutationRules()
+	assert.NoError(t, err)
+}
+
+func TestValidateMutationRules_ServeFieldDefault(t *testing.T) {
+	k := katalogWithServe(&orktypes.ServeConfig{
+		Enabled: true,
+		Fields: map[string]orktypes.ServeFieldConfig{
+			"image": {
+				Label:   "Image",
+				Default: "my-app/v1",
+			},
+		},
+	})
+
+	err := k.validateMutationRules()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "'default' is not allowed for serve.fields.image")
+}
+
+func TestValidateMutationRules_ServeLabelDefaultAndOverride(t *testing.T) {
+	k := katalogWithServe(&orktypes.ServeConfig{
+		Enabled: true,
+		Labels: map[string]orktypes.ServeFieldConfig{
+			"image": {
+				Label:    "Image",
+				Default:  "my-app/v1",
+				Override: "my-app/v2",
+			},
+		},
+	})
+
+	err := k.validateMutationRules()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	crd := k.enabledCRDs["myresource"]
+	if !crd.Warnings.HasWarnings() {
+		t.Fatal("expected warning for default and override definition")
+	}
+
+	assert.NoError(t, err)
+
+	warn := "CRD: myresource - serve.labels.image has both default and override defined. default will be ignored."
+	containsWarn := crd.Warnings.Contains(warn)
+	if !containsWarn {
+		t.Fatalf("expected true: got %v - %q", containsWarn, strings.Join(crd.Warnings, ", "))
+	}
+}
+
+func TestValidateMutationRules_ServeAnnotationDefaultAndOverride(t *testing.T) {
+	k := katalogWithServe(&orktypes.ServeConfig{
+		Enabled: true,
+		Annotations: map[string]orktypes.ServeFieldConfig{
+			"image": {
+				Label:    "Image",
+				Default:  "my-app/v1",
+				Override: "my-app/v2",
+			},
+		},
+	})
+
+	err := k.validateMutationRules()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	crd := k.enabledCRDs["myresource"]
+	if !crd.Warnings.HasWarnings() {
+		t.Fatal("expected warning for default and override definition")
+	}
+
+	assert.NoError(t, err)
+
+	warn := "CRD: myresource - serve.annotations.image has both default and override defined. default will be ignored."
+	containsWarn := crd.Warnings.Contains(warn)
+	if !containsWarn {
+		t.Fatalf("expected true: got %v - %q", containsWarn, strings.Join(crd.Warnings, ", "))
+	}
 }

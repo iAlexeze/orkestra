@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/api/validate/content"
-
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
@@ -20,8 +18,8 @@ func (k *Katalog) ValidateServe() error {
 		return err
 	}
 
-	// 2. Validate serve.additionalFields (key syntax, enum, uniqueness)
-	if err := k.validateServeAdditionalFields(); err != nil {
+	// 2. Validate serve.labels and serve.annotations (key syntax, enum, uniqueness)
+	if err := k.validateServeLabelAndAnnotationFields(); err != nil {
 		return err
 	}
 
@@ -82,11 +80,11 @@ func (k *Katalog) ValidateServe() error {
 	return nil
 }
 
-// validateServeAdditionalFields checks serve.labels/annotations
+// validateServeLabelAndAnnotationFields checks serve.labels/annotations
 // keys are syntactically valid Kubernetes label/annotation keys, that
 // type: enum fields declare a non-empty enum, and that no key collides with
 // serve.fields or between the labels/annotations buckets themselves.
-func (k *Katalog) validateServeAdditionalFields() error {
+func (k *Katalog) validateServeLabelAndAnnotationFields() error {
 	for crdName, crd := range k.enabledCRDs {
 		if !crd.HasServeLabelsOrAnnotations() {
 			continue
@@ -99,17 +97,17 @@ func (k *Katalog) validateServeAdditionalFields() error {
 			seen[name] = "fields"
 		}
 
-		if err := validateServeAdditionalBucket(crdName, "labels", labels, seen); err != nil {
+		if err := validateServeLabelAndAnnotationBucket(crdName, "labels", labels, seen); err != nil {
 			return err
 		}
-		if err := validateServeAdditionalBucket(crdName, "annotations", annotations, seen); err != nil {
+		if err := validateServeLabelAndAnnotationBucket(crdName, "annotations", annotations, seen); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// validateServeFieldOrder rejects two serve.fields / serve.additionalFields
+// validateServeFieldOrder rejects two serve.fields / serve.labels and serve.annotations
 // entries on the same CRD sharing an explicit (non-zero) order: value.
 // order: now decides synthesized validation-rule priority — see
 // CRDEntry.DuplicateServeFieldOrders — not just form layout, so a collision
@@ -136,7 +134,7 @@ func errServeOrderCollision(crd string, order int, names []string) error {
 %s serve field order collision: order: %s shared by %s
    CRD: %s
 
-Each serve.fields / serve.additionalFields entry needs a distinct order: value
+Each serve.fields / serve.labels and serve.annotations entry needs a distinct order: value
 (0/unset doesn't count — any number of fields may leave it unset).
 Order also decides which field's violation is reported when more than one fails at
 once, not just where it renders on the form.
@@ -226,19 +224,18 @@ serve.namespace might resolve to.
 ──────────────────────────────────────────────`, failureMark(), crd, tmpl, pinned, pinned)
 }
 
-func validateServeAdditionalBucket(crdName, bucket string, fields map[string]orktypes.ServeFieldConfig, seen map[string]string) error {
-	bucketPath := "additionalFields." + bucket
+func validateServeLabelAndAnnotationBucket(crdName, bucket string, fields map[string]orktypes.ServeFieldConfig, seen map[string]string) error {
 	for key, cfg := range fields {
 		// Validate that the key is a valid Kubernetes label/annotation key
-		if errs := content.IsLabelKey(key); len(errs) > 0 {
+		if errs := isValidLabelKey(key); len(errs) > 0 {
 			return errInvalidServeKey(crdName, bucket, key, errs[0])
 		}
 
 		// Check for key collisions across serve.fields and other buckets
 		if owner, ok := seen[key]; ok {
-			return errServeKeyCollision(crdName, key, owner, bucketPath)
+			return errServeKeyCollision(crdName, key, owner, bucket)
 		}
-		seen[key] = bucketPath
+		seen[key] = bucket
 
 		// Validate that the type is one of the allowed types.
 		if !orktypes.IsValidServeFieldType(cfg.Type) {
@@ -274,8 +271,8 @@ func errServeKeyCollision(crd, key, firstBucket, secondBucket string) error {
    CRD: %s
    Declared in both: serve.%s and serve.%s
 
-A field name must be unique across serve.fields and every
-serve.additionalFields bucket.
+A field name must be unique across serve.fields,
+serve.labels and serve.annotations bucket.
 ──────────────────────────────────────────────`, failureMark(), key, crd, firstBucket, secondBucket)
 }
 

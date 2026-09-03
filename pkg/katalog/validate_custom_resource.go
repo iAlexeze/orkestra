@@ -10,29 +10,25 @@ import (
 )
 
 // validateCustomResources validates any Custom resources declared under the
-// OperatorBox hooks (onCreate/onReconcile/onDelete). It is intentionally
-// conservative: if the CRD does not declare hooks/constructor we fast-path
-// and skip validation because there is nothing to manage.
-//
+// OperatorBox hooks (onCreate/onReconcile/onDelete).
 // This function delegates per-item structural checks to types.validateCustomResource
 // which enforces apiVersion/kind/metadata/name/namespace/labels/annotations/template
 // rules and the namespaced defaulting semantics.
 func (k *Katalog) validateCustomResources() error {
 	for name, crd := range k.enabledCRDs {
-		// Fast path: nothing to validate if no hooks/constructor declared.
-		// Hooks/constructor are the only places custom resources are meaningful.
-		if crd.WithHooksDecl() && crd.WithConstructorDecl() {
+		// Fast path: nothing to validate if constructor is declared (reconciler.default: false).
+		if crd.WithConstructorDecl() {
 			logger.Debug().
 				Str("crd", name).
-				Msg("skipping custom resource validation: hooks or constructor declared")
-			return nil
+				Msg("skipping custom resource validation: constructor declared")
+			continue
 		}
 
 		if !crd.HasAnyHookTemplates() {
 			logger.Debug().
 				Str("crd", name).
 				Msg("skipping custom resource validation: no hook templates")
-			return nil
+			continue
 		}
 
 		// Fast path: if the CRD doesn't declare any custom resources, skip.
@@ -40,7 +36,7 @@ func (k *Katalog) validateCustomResources() error {
 			logger.Debug().
 				Str("crd", name).
 				Msg("no custom resources declared in onCreate/onReconcile; skipping validation")
-			return nil
+			continue
 		}
 
 		// Validate OnCreate custom resources
@@ -48,7 +44,7 @@ func (k *Katalog) validateCustomResources() error {
 			for i, cr := range crd.OperatorBox.OnCreate.CustomResource {
 				path := fmt.Sprintf("%s.onCreate.custom[%d]", name, i)
 				// Delegate structural validation to the types package.
-				if err := ValidateCustomResource(&cr, path); err != nil {
+				if err := ValidateCustomResource(&crd, &cr, path); err != nil {
 					return err
 				}
 
@@ -70,7 +66,7 @@ func (k *Katalog) validateCustomResources() error {
 		if crd.HasOnReconcile() && crd.OperatorBox.OnReconcile.CustomResource != nil {
 			for i, cr := range crd.OperatorBox.OnReconcile.CustomResource {
 				path := fmt.Sprintf("%s.onReconcile.custom[%d]", name, i)
-				if err := ValidateCustomResource(&cr, path); err != nil {
+				if err := ValidateCustomResource(&crd, &cr, path); err != nil {
 					return err
 				}
 
@@ -100,12 +96,12 @@ func (k *Katalog) validateCustomResources() error {
 //   - Enforce namespaced vs cluster-scoped semantics using Metadata.Namespaced
 //     with a defensive default of namespaced=true.
 //   - Validate labels and annotations.
-//   - Validate template syntax for spec/status/other fields.
+//   - Validate template syntax for spec/status/other fields. (TODO)
 //   - Validate hasStatus semantics and warn when user-provided status will be ignored.
 //   - Return path-aware errors so callers can point users to the exact declaration.
 //
 
-func ValidateCustomResource(cr *orktypes.CustomResourceTemplateSource, path string) error {
+func ValidateCustomResource(crd *orktypes.CRDEntry, cr *orktypes.CustomResourceTemplateSource, path string) error {
 	if cr == nil {
 		return fmt.Errorf("%s %s: custom resource declaration is nil", failureMark(), path)
 	}
@@ -139,10 +135,36 @@ func ValidateCustomResource(cr *orktypes.CustomResourceTemplateSource, path stri
 
 	// --- metadata -----------------------------------------------------------
 	// Defensive: metadata must be present and name required after templating.
-	if strings.TrimSpace(cr.Metadata.Name) == "" {
+	name := cr.Metadata.Name
+	if strings.TrimSpace(name) == "" {
 		return fmt.Errorf("%s %s: metadata.name is required", failureMark(), path)
 	}
+	if !isTemplate(name) {
+		if err := isValidK8sName(name); err != nil {
+			return fmt.Errorf("%s metadata.name: %w", failureMark(), err)
+		}
+	}
 
+	// --- metadata.labels/annotations -----------------------------------------------------------
+	// Validate that the key is a valid Kubernetes label/annotation key
+	labels := cr.Metadata.Labels
+	annotations := cr.Metadata.Annotations
+	for k, v := range labels {
+		if errs := isValidLabelKey(k); len(errs) > 0 {
+			return fmt.Errorf("%s %s: metadata.labels is not a valid label key", failureMark(), k)
+		}
+		if isTemplate(v) {
+			continue
+		}
+		if errs := isValidLabelValue(v); len(errs) > 0 {
+			return fmt.Errorf("%s %s: metadata.labels is not a valid label value", failureMark(), k)
+		}
+	}
+	for k := range annotations {
+		if errs := isValidLabelKey(k); len(errs) > 0 {
+			return fmt.Errorf("%s %s: metadata.annotations is not a valid annotation key", failureMark(), k)
+		}
+	}
 	// Namespaced defaulting: nil => true (namespaced by default)
 	namespaced := true
 	if cr.Metadata.Namespaced != nil {
@@ -154,9 +176,9 @@ func ValidateCustomResource(cr *orktypes.CustomResourceTemplateSource, path stri
 		return fmt.Errorf("%s %s: metadata.namespaced=false but metadata.namespace is set (cluster-scoped resources must not set namespace)", failureMark(), path)
 	}
 
-	// If namespaced (default) then namespace must be present (non-empty).
+	// If namespaced (default) then namespace must be present (non-Empty().
 	// Note: We allow empty namespace when the reconciler will template it to a value,
-	// but at validation time we require the field to be present (non-empty) to avoid
+	// but at validation time we require the field to be present (non-Empty() to avoid
 	// accidental cluster-scoped creations. If you prefer to allow templated empty
 	// namespaces, relax this check accordingly.
 	if namespaced && strings.TrimSpace(cr.Metadata.Namespace) == "" {
@@ -167,7 +189,8 @@ func ValidateCustomResource(cr *orktypes.CustomResourceTemplateSource, path stri
 	// Only type/semantic check: YAML/JSON parsing guarantees boolean type.
 	// Warn if user provided status but explicitly disabled status writes.
 	if cr.HasStatus != nil && !*cr.HasStatus && len(cr.Status) > 0 {
-		logger.Warn().Msgf("warning: %s: status provided but hasStatus=false — status will be ignored", path)
+		warning := fmt.Sprintf("%s: status provided but hasStatus=false — status will be ignored", path)
+		crd.Warnings.AddWarning(warning)
 	}
 
 	return nil

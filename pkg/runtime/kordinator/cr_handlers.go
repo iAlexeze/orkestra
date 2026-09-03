@@ -74,8 +74,7 @@ type CRSummary struct {
 	// operator: unique check other instances without a live List() call
 	// against the API server: the informer cache already holds full spec
 	// data, this just surfaces one field of it instead of discarding
-	// everything but the summary. See pkg/gateway/webhook's
-	// runtimeUniquenessChecker.
+	// everything but the summary. See pkg/utils/common/query.
 	Value string `json:"value,omitempty"`
 }
 

@@ -3,7 +3,6 @@ package katalog
 import (
 	"fmt"
 
-	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/profiles"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
@@ -16,7 +15,7 @@ import (
 //  3. Each profile entry must have a non-empty name.
 func (k *Katalog) validateUserProfiles() error {
 	reg := k.Profiles
-	if reg.IsEmpty() {
+	if reg.Empty() {
 		return nil
 	}
 
@@ -95,10 +94,9 @@ func (k *Katalog) validateUserProfiles() error {
 			}
 			seen[name] = true
 			if c.isBuiltin != nil && c.isBuiltin(name) {
-				logger.Warn().Msgf(
-					"profiles.%s %q shadows a built-in Orkestra profile — the user-defined version will be used instead",
-					c.class, name,
-				)
+				warning := fmt.Sprintf("profiles.%s %q shadows a built-in Orkestra profile — the user-defined version will be used instead",
+					c.class, name)
+				k.Warnings.AddWarning(warning)
 			}
 		}
 	}

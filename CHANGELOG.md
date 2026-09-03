@@ -1,3 +1,66 @@
+## v0.7.17 — Queue behaviour, pre-reconcile gating, admission runtime query
+
+### Breaking: default queue is unlimited
+
+`queue.maxDepth` defaults to `0` (unlimited). Previously an internal default cap was applied. Operators that relied on implicit back-pressure must now declare `queue.maxDepth:` explicitly and add `queue.behaviour:` if needed.
+
+### Breaking: `cross.labels` renamed to `cross.labelSelector`
+
+The YAML field for label-based cross-CRD matching is now `labelSelector`. The old name is rejected at load time.
+
+### Breaking: `cross.source.type` renamed to `cross.source.protocol`
+
+Values: `cr`, `health`, `metrics`, `info`, `events`. The old name is rejected at load time.
+
+### Queue back-pressure with conditional behaviour
+
+Declare what happens when the queue approaches or reaches `maxDepth`:
+
+```yaml
+queue:
+  maxDepth: 500
+  behaviour:
+    onThreshold:
+      value: 80
+      when:
+        - field: "{{ inBusinessHours }}"
+          equals: "false"
+    onLimit:
+      drop: true
+```
+
+`onThreshold` fires at N% of `maxDepth`; `onLimit` fires at 100%. Both support `when:`/`or:` conditions evaluated with the full resolver context — time functions, notes, gate fields. Items are dropped only when conditions pass.
+
+### Pre-reconcile gating
+
+`preReconcile.enqueueGate` and `preReconcile.reconcileGate` conditions now delegate evaluation to `domain.Katalog` at informer time — the konstruktor registers configuration only, no closures. This breaks the import cycle between informer and pkg/katalog and makes gating consistent with queue behaviour evaluation.
+
+### Operational state on the CR
+
+The runtime stamps `.health` and `.metrics` onto each CR after every reconcile. These fields are readable in preReconcile conditions, validation rules, and cross-CRD references — no HTTP call needed:
+
+```yaml
+preReconcile:
+  reconcileGate:
+    when:
+      - field: "{{ .health.status }}"
+        equals: "healthy"
+```
+
+### Admission — conditional runtime query
+
+The admission webhook fetches live runtime data (health, metrics, uniqueness) only when a validation or mutation rule actually references it. CRDs with no `.health.*` or `.metrics.*` rules pay zero HTTP cost at admission time.
+
+### Cross-CRD reads (ONCOP path 2b fix)
+
+`readCross` rewritten with a clean two-step model: find informer (CRD-based or label-based), find CR (matchLabels → label → name), HTTP fallback. Fixes ONCOP path 2b where the URL was built but not passed to the HTTP fetch.
+
+### Resolver moved to `pkg/template`
+
+`pkg/resources/template` → `pkg/template`. Any operator code importing the resolver directly must update the import path.
+
+---
+
 ## v0.7.16 — Per-target operatorBox, lifecycle:, controller-runtime compatibility
 
 ### Breaking: `anyOf:` renamed to `or:`

@@ -2,12 +2,12 @@
 
 `pkg/katalog` runs a sequential validation pipeline on every loaded Katalog. Each
 validator is a method on `*Katalog` (or a package-level function) in its own
-`validate_*.go` file. `ValidateConfig` in `validate.go` is the single entry point
+`validate_*.go` file. `Validate` in `validate.go` is the single entry point
 — it calls them in order and returns on the first error.
 
 ## Pipeline order
 
-`ValidateConfig` runs validators in 41 numbered steps. Broadly:
+`Validate` runs validators in 41 numbered steps. Broadly:
 
 1. **Struct validation** — field-level constraints via `konfig.Validate`
 2. **Structural consistency** — uniqueness, dependsOn cycles, GVK, defaults
@@ -52,16 +52,16 @@ by the resolver.
 
 ## Runtime policy checks
 
-Some checks belong after validation but are not part of the `ValidateConfig` pipeline — because `ork validate` is a pre-flight tool and must not block, while the check is only meaningful at runtime startup.
+Some checks belong after validation but are not part of the `Validate` pipeline — because `ork validate` is a pre-flight tool and must not block, while the check is only meaningful at runtime startup.
 
-These live in their own files (e.g. [`deprecation_policy.go`](./deprecation_policy.go)) and are called in `NewKatalog` after `ValidateConfig` succeeds. They use `exit(err)` on failure. The distinction: validators enforce correctness of the spec; policy checks enforce operational intent.
+These live in their own files (e.g. [`deprecation_policy.go`](./deprecation_policy.go)) and are called in `NewKatalog` after `Validate` succeeds. They use `exit(err)` on failure. The distinction: validators enforce correctness of the spec; policy checks enforce operational intent.
 
 ## Adding a validator
 
 1. Create `validate_<topic>.go` in `pkg/katalog`.
 2. Write the method (or function) with the `failureMark()` convention on every
    error return.
-3. Add a call in `ValidateConfig` at the appropriate step number.
+3. Add a call in `Validate` at the appropriate step number.
 4. Write a `validate_<topic>_test.go` with at least one valid and one invalid fixture.
 5. Add a minimal katalog YAML to [`testdata/validate/valid/`](./testdata/validate/valid/) and [`testdata/validate/invalid/`](./testdata/validate/invalid/)
    for end-to-end coverage with `ork validate`. Use `crdFile: ../crd.yaml` (the shared

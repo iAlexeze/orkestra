@@ -127,6 +127,54 @@ func TestValidateSentinels_AllValid(t *testing.T) {
 	assert.NoError(t, k.validateWatchEntries())
 }
 
+func TestValidateSentinels_EnqueueGateValid(t *testing.T) {
+	k := katalogWithWatch("myapp", orktypes.OperatorBoxConfig{
+		PreReconcile: &orktypes.PreReconcileConfig{
+			Sentinels: []string{"generationChanged", "labelsChanged", "annotationsChanged"},
+			EnqueueGate: &orktypes.GateConditions{
+				Sentinels: []string{"generationChanged", "labelsChanged"},
+			},
+		},
+	})
+	assert.NoError(t, k.validateWatchEntries())
+}
+
+func TestValidateSentinels_EnqueueGateInValid(t *testing.T) {
+	k := katalogWithWatch("myapp", orktypes.OperatorBoxConfig{
+		PreReconcile: &orktypes.PreReconcileConfig{
+			Sentinels: []string{"generationChanged", "labelsChanged", "annotationsChanged"},
+			EnqueueGate: &orktypes.GateConditions{
+				Sentinels: []string{"generationChanging", "labelsChanged"},
+			},
+		},
+	})
+	assert.Error(t, k.validateWatchEntries())
+}
+
+func TestValidateSentinels_ReconcileGateValid(t *testing.T) {
+	k := katalogWithWatch("myapp", orktypes.OperatorBoxConfig{
+		PreReconcile: &orktypes.PreReconcileConfig{
+			Sentinels: []string{"generationChanged", "labelsChanged", "annotationsChanged"},
+			ReconcileGate: &orktypes.GateConditions{
+				Sentinels: []string{"generationChanged", "labelsChanged"},
+			},
+		},
+	})
+	assert.NoError(t, k.validateWatchEntries())
+}
+
+func TestValidateSentinels_ReconcileGateInValid(t *testing.T) {
+	k := katalogWithWatch("myapp", orktypes.OperatorBoxConfig{
+		PreReconcile: &orktypes.PreReconcileConfig{
+			Sentinels: []string{"generationChanged", "labelsChanged", "annotationsChanged"},
+			ReconcileGate: &orktypes.GateConditions{
+				Sentinels: []string{"generationChanging", "labelsChanged"},
+			},
+		},
+	})
+	assert.Error(t, k.validateWatchEntries())
+}
+
 func TestValidateGateTemplate_DeclaredSentinelParsesOK(t *testing.T) {
 	k := katalogWithWatch("myapp", orktypes.OperatorBoxConfig{
 		PreReconcile: &orktypes.PreReconcileConfig{

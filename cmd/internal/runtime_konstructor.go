@@ -170,6 +170,7 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 	// Created here, started later by orkestra in registration order.
 
 	kube := kubeclient.NewKubeclient(kfg, scheme)
+	cs := kube.Clientset()
 
 	// kubeclient is started immediately — the informer factory's missing-CRD
 	// check needs the REST config during construction, before orkestra.Start().
@@ -187,7 +188,7 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 
 	// Default work queue — rate-limiting reconcile queue shared by controllers that
 	// do not need a dedicated queue. Bounded to prevent runaway reconcile storms.
-	defaultWq := queue.NewWorkqueue()
+	defaultWq := queue.NewWorkqueue("default workqueue")
 
 	// Queue registry — maps GVK strings to dedicated work queues. Controllers
 	// register here so that cross-controller enqueues are dispatched correctly.
@@ -225,14 +226,14 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 	// Creates one SharedIndexInformer per CRD. On Start(), each informer opens
 	// a watch against the API server and populates its in-memory cache.
 	// Watch events are routed into per-CRD workqueues via handleEvent.
-	infFactory := informer.SharedInformerFactory(
-		provider,
-		kube.RestConfig(),
-		queueRegistry,
-		defaultWq,
-		scheme,
-		kfg,
-	)
+	infFactory := informer.SharedInformerFactory(kube.RestConfig(), informer.FactoryOptions{
+		Provider:  provider,
+		Scheme:    scheme,
+		DefaultWq: defaultWq,
+		Konfig:    kfg,
+		Katalog:   kat,
+		ClientSet: cs,
+	})
 
 	// ── 4c. Provider registry ─────────────────────────────────────────────────
 	// External infrastructure providers (AWS, MongoDB, etc.).
@@ -275,7 +276,7 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 		gvk := crd.GVKString()
 		object, _ := crd.GetRuntimeObjects()
 
-		wq := queueRegistry.Register(gvk, crd.OperatorBox.Reconciler.Queue.MaxDepth)
+		wq := queueRegistry.Register(gvk, crd.QueueConfig())
 
 		// compute selectors
 		labelSelector := orktypes.Labels(crd.LabelSelector).String()
@@ -317,35 +318,17 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 		}
 
 		// ── Enqueue filter — Tier 2b (pre-enqueue condition gate) ─────────────
-		// Two paths depending on whether sentinels are declared:
-		//
-		// 1. No sentinels — single-object filter; only newObj available.
-		//    EvaluateEnqueueFilter evaluates enqueueGate with no sentinel values.
-		//
-		// 2. Sentinels declared — update filter; oldObj and newObj both available.
-		//    Sentinels are computed here and carried through the QueueItem so
-		//    reconcileGate can rebuild the same preReconcile resolver after dequeue.
-		//    Also covers CRDs with sentinels but no enqueueGate — sentinel map
-		//    is still computed and forwarded for reconcileGate use.
-		crdNameForFilter := crd.Name
-		katForFilter := kat
-		cs := kube.Clientset()
+		// Registers declared sentinel names for the GVK. The informer computes
+		// sentinel values from oldObj→newObj at event time and carries the map
+		// through the QueueItem so reconcileGate can rebuild the same preReconcile
+		// resolver after dequeue. Covers CRDs with sentinels, an enqueueGate, or both.
 
-		if crd.WithSentinels() {
-			declared := crd.OperatorBox.PreReconcile.DeclaredSentinels()
-			infFactory.RegisterUpdateEnqueueFilter(gvk, declared, func(new domain.Object, sentinels map[string]string) bool {
-				return katForFilter.EvaluateEnqueueFilter(ctx, crdNameForFilter, new, cs, sentinels)
-			})
+		declared := crd.OperatorBox.PreReconcile.DeclaredSentinels()
+		if crd.WithSentinels() || crd.HasAnyEnqueueGate() {
+			infFactory.RegisterEnqueueFilter(gvk, declared)
 			logger.Debug().
 				Str("crd", crd.APITypes.Kind).
-				Msg("informer: sentinel update filter registered (Tier 2b)")
-		} else if crd.HasAnyEnqueueGate() {
-			infFactory.RegisterEnqueueFilter(gvk, func(obj domain.Object) bool {
-				return katForFilter.EvaluateEnqueueFilter(ctx, crdNameForFilter, obj, cs, nil)
-			})
-			logger.Debug().
-				Str("crd", crd.APITypes.Kind).
-				Msg("informer: enqueue filter registered (Tier 2b)")
+				Msg("informer: sentinel/enqueue filter registered (Tier 2b)")
 		}
 
 		// Choose typed or dynamic informer.

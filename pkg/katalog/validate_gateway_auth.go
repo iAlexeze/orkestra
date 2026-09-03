@@ -9,7 +9,7 @@ import (
 
 // validateGatewayTokens is the dispatcher for gateway.api.auth.tokens validation.
 func (k *Katalog) validateGatewayTokens() error {
-	if !k.IsGatewayEnabled() || !k.Gateway.HasAPI() || k.Gateway.API.Auth.IsEmpty() {
+	if !k.IsGatewayEnabled() || !k.Gateway.HasAPI() || k.Gateway.API.Auth.Empty() {
 		return nil
 	}
 	if err := k.validateGatewayTokensCommon(); err != nil {
@@ -35,7 +35,7 @@ func (k *Katalog) GatewayTokenNames() []string {
 	}
 
 	// Gateway is enabled, so API should exist
-	if !k.Gateway.HasAPI() || k.Gateway.API.Auth.IsEmpty() {
+	if !k.Gateway.HasAPI() || k.Gateway.API.Auth.Empty() {
 		return nil
 	}
 

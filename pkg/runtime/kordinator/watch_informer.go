@@ -25,6 +25,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/runtime/queue"
@@ -156,10 +157,8 @@ func (k *DependencyKordinator) startOneWatchInformer(
 			if !localInf.HasSynced() || !watchEntry.WatchesOn(string(orktypes.WatchEventDelete)) {
 				return
 			}
-			if ts, ok := obj.(cache.DeletedFinalStateUnknown); ok {
-				obj = ts.Obj
-			}
-			k.resolveAndEnqueue(obj, watchEntry, crd, primaryGVK, wq, broadcastAllowed)
+
+			k.resolveAndEnqueue(domain.UnwrapCacheTombstone(obj), watchEntry, crd, primaryGVK, wq, broadcastAllowed)
 		},
 	})
 
@@ -185,7 +184,7 @@ func (k *DependencyKordinator) startOneWatchInformer(
 //  3. ownerReference — owner of the watched object matches the primary CRD
 //  4. broadcast      — no match found; enqueue all known primary CRs
 func (k *DependencyKordinator) resolveAndEnqueue(obj interface{}, w orktypes.WatchEntry, crd orktypes.CRDEntry, primaryGVK string, wq *queue.Workqueue, broadcastAllowed bool) {
-	u, ok := watchedToUnstructured(obj)
+	u, ok := domain.ToUnstructured(obj)
 	if !ok {
 		return
 	}
@@ -263,15 +262,6 @@ func (k *DependencyKordinator) resolveAndEnqueue(obj interface{}, w orktypes.Wat
 		Str("primary", primaryKind).
 		Str("watched", u.GetKind()).
 		Msg("watch: broadcasted to all primary CRs")
-}
-
-// watchedToUnstructured unwraps a cache tombstone and asserts to *unstructured.Unstructured.
-func watchedToUnstructured(obj interface{}) (*unstructured.Unstructured, bool) {
-	if ts, ok := obj.(cache.DeletedFinalStateUnknown); ok {
-		obj = ts.Obj
-	}
-	u, ok := obj.(*unstructured.Unstructured)
-	return u, ok
 }
 
 // splitWatchField converts a dot-separated field path to path segments for

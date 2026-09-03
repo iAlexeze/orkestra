@@ -7,6 +7,17 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
+// validateReconciler validates all reconciler configuration
+func (k *Katalog) validateReconciler() error {
+	if err := k.validateReconcilerMode(); err != nil {
+		return err
+	}
+	if err := k.validateQueue(); err != nil {
+		return err
+	}
+	return nil
+}
+
 // -----------------------------------------------------------------------------
 // Validation: Reconciler Mode (entrypoint)
 // -----------------------------------------------------------------------------
@@ -202,6 +213,59 @@ func (k *Katalog) validateManagedResources(name string, crd *orktypes.CRDEntry) 
 			crd.OperatorBox.Reconciler.ConstructorDecl.Location,
 			crd.OperatorBox.Reconciler.ConstructorDecl.Function,
 		)
+	}
+
+	return nil
+}
+
+// -----------------------------------------------------------------------------
+// validateQueue
+// -----------------------------------------------------------------------------
+
+// queue.behaviour has 2 knobs: onLimit and onThreshold
+// Rules:
+//   - No Queue behaviour allowed if queue is unlimited
+//   - No value for onLimit declaration
+//   - onThreshold without value is a hard error
+//   - onThreshold.value must be between 1 and 100
+//   - Warn if onThreshold is declared and drop is false (always true)
+func (k *Katalog) validateQueue() error {
+	if k.Empty() {
+		return nil
+	}
+	for name, crd := range k.enabledCRDs {
+		q := crd.QueueConfig()
+		if q.Empty() {
+			continue
+		}
+
+		if q.HasBehaviour() {
+			if q.IsUnlimited() {
+				return fmt.Errorf("%s CRD %q: (unlimited queue - maxDepth = 0): 'queue.behaviour' configuration is only valid when 'queue.maxDepth' is greater than 0. Consider increasing maxDepth",
+					failureMark(), name)
+			}
+			cfg := q.Behaviour()
+			if cfg.HasOnLimit() {
+				if cfg.OnLimit.Value > 0 {
+					return fmt.Errorf("%s CRD %q: 'value' is not allowed in onLimit configuration 'behaviour.onLimit.value' - %v",
+						failureMark(), name, cfg.OnLimit.Value)
+				}
+			}
+
+			if cfg.HasOnThreshold() {
+				if !cfg.OnThreshold.HasValue() {
+					return fmt.Errorf("%s CRD %q: 'value' is required in onThreshold configuration - (eg: 70)",
+						failureMark(), name)
+				}
+				if !cfg.OnThreshold.ShouldDrop() {
+					crd.Warnings.AddWarning("disabling drop when onThreshold is declared is redundant. Drop will be ignored")
+				}
+
+				cfg.OnThreshold.Drop = boolPtr(true)
+			}
+		}
+
+		k.enabledCRDs[name] = crd
 	}
 
 	return nil

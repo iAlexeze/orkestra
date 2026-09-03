@@ -17,7 +17,7 @@ import (
 //  5. Warns when a note name shadows a built-in unless shadow: true is set.
 func (k *Katalog) validateUserNotes() error {
 	reg := k.Notes
-	if reg.IsEmpty() {
+	if reg.Empty() {
 		return nil
 	}
 

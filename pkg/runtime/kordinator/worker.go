@@ -43,7 +43,7 @@ func (k *Kontroller) runWorkerForGVK(ctx context.Context, gvk string, workerID s
 			// (already idle from previous iteration or initialization)
 
 			// Wait for an item
-			item, shutdown := wq.Queue.Get()
+			item, shutdown := wq.Queue().Get()
 			if shutdown {
 				logger.Debug().Str("worker_id", workerID).Str("gvk", gvk).Msg("worker stopping (queue shutdown)")
 				return
@@ -54,7 +54,7 @@ func (k *Kontroller) runWorkerForGVK(ctx context.Context, gvk string, workerID s
 
 			// Process the item
 			func() {
-				defer wq.Queue.Done(item)
+				defer wq.Queue().Done(item)
 				k.processItemForGVK(ctx, gvk, item)
 			}()
 
@@ -101,7 +101,7 @@ func (k *Kontroller) processItemForGVK(ctx context.Context, gvk string, item que
 	// The queue is intact for reactivation. No ShutDown() called.
 	// TODO: Currently does not shutdown the workers
 	if item.Key == drainSentinel {
-		wq.Queue.Forget(item)
+		wq.Queue().Forget(item)
 		return
 	}
 
@@ -115,11 +115,11 @@ func (k *Kontroller) processItemForGVK(ctx context.Context, gvk string, item que
 				Str("expected", gvk).
 				Str("got", item.GVK).
 				Msg("GVK mismatch in per-CRD queue — dropping item")
-			wq.Queue.Forget(item)
+			wq.Queue().Forget(item)
 		} else {
 			// Default queue — item belongs to a different GVK, put it back
 			// This is the only valid re-queue case
-			wq.Queue.AddRateLimited(item)
+			wq.Queue().AddRateLimited(item)
 		}
 		return
 	}
@@ -131,7 +131,7 @@ func (k *Kontroller) processItemForGVK(ctx context.Context, gvk string, item que
 
 	if rec == nil {
 		logger.Error().Str("gvk", gvk).Str("key", item.Key).Msg("no reconciler found — dropping item")
-		wq.Queue.Forget(item)
+		wq.Queue().Forget(item)
 		return
 	}
 
@@ -147,7 +147,7 @@ func (k *Kontroller) processItemForGVK(ctx context.Context, gvk string, item que
 			}
 			if gated, reason := k.evaluatePreReconcileCheck(ctx, obj, entry.CRD.Name, sentinelMap); gated {
 				k.crdHealthMap[gvk].RecordGated(reason)
-				wq.Queue.Forget(item)
+				wq.Queue().Forget(item)
 				return
 			}
 		}
@@ -157,12 +157,12 @@ func (k *Kontroller) processItemForGVK(ctx context.Context, gvk string, item que
 	result, err := k.safeReconcile(rec, k.crdHealthMap[gvk], ctx, item.Key, gvk)
 	if err != nil {
 		logger.Error().Err(err).Str("gvk", gvk).Str("key", item.Key).Msg("reconcile failed")
-		wq.Queue.AddRateLimited(item)
+		wq.Queue().AddRateLimited(item)
 		k.failedReconcile(gvk)
 		return
 	}
 
-	wq.Queue.Forget(item)
+	wq.Queue().Forget(item)
 
 	requeueAfter := result.RequeueAfter
 	if requeueAfter == 0 {
@@ -172,7 +172,7 @@ func (k *Kontroller) processItemForGVK(ctx context.Context, gvk string, item que
 		}
 	}
 	if requeueAfter > 0 {
-		wq.Queue.AddAfter(item, requeueAfter)
+		wq.Queue().AddAfter(item, requeueAfter)
 	}
 }
 
