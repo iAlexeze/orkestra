@@ -5,7 +5,6 @@ package cli
 import (
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
@@ -16,7 +15,6 @@ import (
 	"github.com/orkspace/orkestra/pkg/registry/e2e"
 	motifpkg "github.com/orkspace/orkestra/pkg/registry/motif"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	orkutils "github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -207,7 +205,7 @@ Examples:
 
 // detectKindFromFile peeks at a YAML file to read its kind field.
 func detectKindFromFile(path string) (string, error) {
-	data, err := os.ReadFile(path)
+	data, err := readLocal(path)
 	if err != nil {
 		return "", err
 	}
@@ -226,13 +224,13 @@ func validateE2EFile(path string) error {
 	fmt.Println(bold("Validating E2E..."))
 	fmt.Println()
 
-	data, err := os.ReadFile(path)
+	data, err := readLocal(path)
 	if err != nil {
 		return fmt.Errorf("reading %s: %w", path, err)
 	}
 
 	var doc orktypes.E2E
-	if err := orkutils.StrictUnmarshal(data, &doc); err != nil {
+	if err := strictUnmarshal(data, &doc); err != nil {
 		return fmt.Errorf("parsing %s: %w", path, err)
 	}
 
@@ -427,7 +425,7 @@ func validateSimulateFileOpts(path string, quiet, playMode bool) error {
 		fmt.Println()
 	}
 
-	data, err := os.ReadFile(path)
+	data, err := readLocal(path)
 	if err != nil {
 		return fmt.Errorf("reading %s: %w", path, err)
 	}
@@ -652,7 +650,7 @@ func validateMotifFile(path string) error {
 // and their counts, e.g. "networkPolicies(2) resourceQuotas(1)".
 func motifProfileSummary(m *orktypes.Motif) string {
 	reg := m.Profiles
-	if reg.IsEmpty() {
+	if reg.Empty() {
 		return ""
 	}
 	var parts []string
@@ -708,7 +706,7 @@ func motifResourceSummary(m *orktypes.Motif) string {
 }
 
 func printValidateProfiles(reg orktypes.ProfileRegistry) {
-	if reg.IsEmpty() {
+	if reg.Empty() {
 		return
 	}
 	type entry struct{ kind, name string }
@@ -760,7 +758,7 @@ func printValidateProfiles(reg orktypes.ProfileRegistry) {
 }
 
 func printValidateNotes(reg orktypes.NoteRegistry) {
-	if reg.IsEmpty() {
+	if reg.Empty() {
 		return
 	}
 	maxLen := 0

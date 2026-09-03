@@ -455,7 +455,7 @@ func detectTypedKatalog(katalogPath string) *registry.PatternTyped {
 // simulateFileHasAssertions returns true when simulate.yaml contains an
 // expect: block — meaning the simulate gate will actually assert something.
 func simulateFileHasAssertions(path string) bool {
-	data, err := os.ReadFile(path)
+	data, err := readLocal(path)
 	if err != nil {
 		return false
 	}
@@ -474,7 +474,7 @@ func simulateFileHasAssertions(path string) bool {
 // simulate.yaml: each ops/absent rule counts as one, plus one each for
 // steady, steadyAt, and noErrors when set. Recurses into crds: sub-expects.
 func countSimulateAssertions(path string) int {
-	data, err := os.ReadFile(path)
+	data, err := readLocal(path)
 	if err != nil {
 		return 0
 	}
