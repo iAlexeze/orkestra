@@ -137,7 +137,7 @@ func (f *Factory) getOrCreate(
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			normalizeInformerObject(newObj, gvk)
-			f.handleSentinelBehaviourAwareEvent(ctx, gvkStr, oldObj, newObj)
+			f.handleUpdate(ctx, gvkStr, oldObj, newObj)
 		},
 		DeleteFunc: func(obj interface{}) {
 			normalizeInformerObject(obj, gvk)

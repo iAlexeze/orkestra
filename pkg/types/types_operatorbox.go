@@ -66,6 +66,13 @@ type GateConditions struct {
 	// more than one sentinel
 	Sentinels []string `yaml:"sentinels,omitempty" json:"sentinels,omitempty"`
 
+	// EventAware preserves individual events through queue deduplication for this gate.
+	// When true, each event that reaches the reconcile gate is evaluated as a distinct
+	// work item. When false, normal queue coalescing applies and gate evaluation is
+	// state-oriented: multiple events for the same resource may collapse into one
+	// reconciliation.
+	EventAware bool `yaml:"eventAware,omitempty" json:"eventAware,omitempty"`
+
 	// When declares AND conditions. All must be true for the gate to pass.
 	When []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
@@ -93,6 +100,11 @@ func (g *GateConditions) HasGate() bool {
 // HasSentinels reports whether the gate has declared sentinels
 func (g *GateConditions) HasSentinels() bool {
 	return g != nil && len(g.Sentinels) > 0
+}
+
+// IsEventAware reports whether this gate requires per-event evaluation.
+func (g *GateConditions) IsEventAware() bool {
+	return g != nil && g.EventAware
 }
 
 // SentinelContains reports true if s is declared in g.Sentinels.
@@ -474,6 +486,11 @@ func (r *PreReconcileConfig) HasEnqueueGate() bool {
 // HasReconcileGate reports whether the reconcile gate has anything to evaluate.
 func (r *PreReconcileConfig) HasReconcileGate() bool {
 	return r != nil && (r.ReconcileGate.HasGate() || len(r.External) > 0)
+}
+
+// IsEventAware reports whether this reconcile gate requires per-event evaluation.
+func (r *PreReconcileConfig) IsEventAware() bool {
+	return r != nil && r.HasReconcileGate() && r.ReconcileGate.IsEventAware()
 }
 
 // HasPreReconcileExternal reports whether preReconcile-level external calls are declared.

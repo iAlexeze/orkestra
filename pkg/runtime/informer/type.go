@@ -81,22 +81,9 @@ type Factory struct {
 	// Checked in handleEvent before enqueue — read lock only on the hot path.
 	namespaceFilters map[string]*NamespaceFilter
 
-	// enqueueFilters maps GVK string to a sentinel-aware update config.
-	// The factory computes sentinels from declared names at event time and
-	// calls gate to decide whether to enqueue. Splitting the two means
-	// runtime_konstructor.go only passes configuration; computation stays here.
-	enqueueFilters map[string]*enqueueFiltersCfg
-
 	// katalog is the domain.Katalog with useful interface methods for the informer
 	katalog domain.Katalog
 	cs      kubernetes.Interface
-}
-
-// enqueueFiltersCfg holds the sentinel names declared for a GVK.
-// Sentinel computation happens in the informer at event time; evaluation
-// is delegated to domain.Katalog — no gate closure stored here.
-type enqueueFiltersCfg struct {
-	declared []string
 }
 
 type FactoryOptions struct {
@@ -107,7 +94,6 @@ type FactoryOptions struct {
 	Konfig        *konfig.Konfig
 	Katalog       domain.Katalog
 	ClientSet     kubernetes.Interface
-	Sentinels     func(gvk string) map[string]string
 }
 
 func SharedInformerFactory(restConfig *rest.Config, opts FactoryOptions) *Factory {
@@ -125,6 +111,5 @@ func SharedInformerFactory(restConfig *rest.Config, opts FactoryOptions) *Factor
 		missing:          make(map[string]*InformerEntry),
 		ready:            make(chan struct{}),
 		namespaceFilters: make(map[string]*NamespaceFilter),
-		enqueueFilters:   make(map[string]*enqueueFiltersCfg),
 	}
 }

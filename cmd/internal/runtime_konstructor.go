@@ -318,20 +318,6 @@ func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context)
 				Msg("informer: namespace filter registered (Tier 2)")
 		}
 
-		// ── Enqueue filter — Tier 2b (pre-enqueue condition gate) ─────────────
-		// Registers declared sentinel names for the GVK. The informer computes
-		// sentinel values from oldObj→newObj at event time and carries the map
-		// through the QueueItem so reconcileGate can rebuild the same preReconcile
-		// resolver after dequeue. Covers CRDs with sentinels, an enqueueGate, or both.
-
-		declared := crd.OperatorBox.PreReconcile.DeclaredSentinels()
-		if crd.WithSentinels() || crd.HasAnyEnqueueGate() {
-			infFactory.RegisterEnqueueFilter(gvk, declared)
-			logger.Debug().
-				Str("crd", crd.APITypes.Kind).
-				Msg("informer: sentinel/enqueue filter registered (Tier 2b)")
-		}
-
 		// Choose typed or dynamic informer.
 		// Dynamic CRDs use *unstructured.Unstructured — no Go type needed.
 		// Typed CRDs use the registered concrete Go type for type-safe access.

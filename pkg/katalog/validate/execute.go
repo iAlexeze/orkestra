@@ -292,5 +292,10 @@ func (e *executor) run() error {
 		return err
 	}
 
+	// 53. PreReconcile
+	if err := e.validatePreReconcile(); err != nil {
+		return err
+	}
+
 	return nil
 }

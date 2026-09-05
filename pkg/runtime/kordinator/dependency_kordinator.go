@@ -398,7 +398,7 @@ func (k *DependencyKordinator) Kordinate(ctx context.Context) {
 	for _, name := range shutdownOrder {
 		logger.Info().Str("crd", name).Msg("shutting down CRD")
 		gvk := k.depGraph.GetNode(name).CRD.GroupVersionKind.String()
-		k.stopCRDWorkers(gvk)
+		k.stopCRDWorkers(ctx, gvk)
 	}
 
 	logger.Info().Str("component", k.Name()).Msg("drained and stopped")
@@ -613,7 +613,7 @@ func (k *DependencyKordinator) startCRDWorkers(ctx context.Context, gvk string, 
 }
 
 // stopCRDWorkers cancels the CRD context and waits for all workers to drain.
-func (k *DependencyKordinator) stopCRDWorkers(gvk string) {
+func (k *DependencyKordinator) stopCRDWorkers(ctx context.Context, gvk string) {
 	k.mu.RLock()
 	cancel, okCancel := k.cancelFuncs[gvk]
 	wg, okWG := k.wgs[gvk]
@@ -629,7 +629,7 @@ func (k *DependencyKordinator) stopCRDWorkers(gvk string) {
 	// Without this, workers that finished their reconcile and
 	// are waiting for work will never exit.
 	if wq, ok := k.queueReg.For(gvk); ok {
-		wq.Queue().ShutDown()
+		wq.Shutdown(ctx)
 	}
 
 	if !okWG {

@@ -354,7 +354,7 @@ func (k *DependencyKordinator) deactivateCRD(gvk string) {
 	if wq, ok := k.queueReg.For(gvk); ok {
 		numWorkers := k.katalog.GetWorkers(gvk, k.defaultWorkers)
 		for i := 0; i < numWorkers; i++ {
-			wq.Queue().Add(queue.QueueItem{GVK: gvk, Key: drainSentinel})
+			wq.Add(queue.QueueItem{GVK: gvk, Key: drainSentinel})
 		}
 	}
 

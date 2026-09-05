@@ -2,26 +2,41 @@ package queue
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/logger"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
 
-// For controller queueing
+// QueueItem identifies a unit of work in the controller queue.
+//
+// EventID controls queue identity:
+//   - EventID == 0: normal work. Items for the same Key/GVK compare equal
+//     and are coalesced by the client-go workqueue.
+//   - EventID != 0: event-aware work. Each event receives a unique EventID,
+//     so events for the same Key/GVK remain distinct in the queue.
+//
+// Sentinel values are intentionally not stored on QueueItem. They are
+// event-time payload and are kept separately by Workqueue so that merely
+// having sentinel values does not disable normal queue deduplication.
 type QueueItem struct {
-	Key string
-	GVK string
-	// SentinelMap carries event-time sentinel values computed in the informer's
-	// UpdateFunc (oldObj vs newObj). Both enqueueGate and reconcileGate share the
-	// same preReconcile context — reconcileGate rebuilds the resolver from this map
-	// after dequeue, when oldObj is no longer available.
-	// nil when no preReconcile.sentinels are declared (common case — deduplication
-	// behaviour is unchanged). Non-nil items dedup by pointer identity, meaning
-	// each sentinel-bearing enqueue is treated as a distinct work item.
-	SentinelMap *map[string]string
+	Key     string
+	GVK     string
+	EventID uint64
+}
+
+// queueItemIdentity is the key used to associate event-time sentinel values
+// with a QueueItem.
+//
+// EventID is zero for normal/coalescing work and non-zero for event-aware
+// work. This mirrors the equality semantics of QueueItem.
+type queueItemIdentity struct {
+	Key     string
+	GVK     string
+	EventID uint64
 }
 
 type Workqueue struct {
@@ -31,6 +46,22 @@ type Workqueue struct {
 	evaluateCond *BehaviourEval // whether or not to evaluate additional conditions in informer before enqueuing
 	maxDepth     atomic.Int32   // 0 = unlimited; enforced atomically in Enqueue
 	started      atomic.Bool
+
+	// nextEventID provides a unique identity for event-aware queue items.
+	// A non-zero EventID makes otherwise identical events distinct to the
+	// client-go workqueue and therefore prevents them from being coalesced.
+	nextEventID atomic.Uint64
+
+	// sentinelMu protects sentinels because informer and worker goroutines
+	// access the queue concurrently.
+	sentinelMu sync.RWMutex
+
+	// sentinels stores event-time sentinel values separately from QueueItem.
+	//
+	// This separation is important: sentinel availability must not itself
+	// change queue deduplication semantics. Only EventID determines whether
+	// an item is event-aware.
+	sentinels map[queueItemIdentity]map[string]string
 }
 
 type BehaviourEval struct {
@@ -48,9 +79,11 @@ func NewWorkqueue(name string) *Workqueue {
 	if name == "" {
 		name = "default workqueue"
 	}
+
 	return &Workqueue{
-		name:  name,
-		queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[QueueItem]()),
+		name:      name,
+		queue:     workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[QueueItem]()),
+		sentinels: make(map[queueItemIdentity]map[string]string),
 	}
 }
 
@@ -65,60 +98,27 @@ func (q *Workqueue) Queue() workqueue.TypedRateLimitingInterface[QueueItem] {
 	return q.queue
 }
 
-// Enqueue adds the object's key to the workqueue.
-// When a non-zero maxDepth is set, new items are dropped (with a warning)
-// once the queue is at or beyond that limit and the effective configured
-// behaviour is drop. Items already in the queue are
-// not evicted — only incoming enqueues are rejected.
-func (q *Workqueue) Enqueue(obj interface{}, gvk string) {
-	// Handle tombstone (deleted objects)
-	obj = domain.UnwrapCacheTombstone(obj)
-
-	key, err := cache.MetaNamespaceKeyFunc(obj)
-	if err != nil {
-		logger.Error().Err(err).Str("gvk", gvk).Msg("enqueue: failed to get key")
+// Forget marks an item as completely processed and releases any sentinel
+// payload associated with it.
+//
+// Sentinel payload must not be removed on Get/Done because the same QueueItem
+// may be returned to the queue through AddRateLimited or AddAfter.
+func (q *Workqueue) Forget(item QueueItem) {
+	if q == nil || q.queue == nil {
 		return
 	}
 
-	item := QueueItem{Key: key, GVK: gvk}
+	q.queue.Forget(item)
 
-	if ok := q.evaluateQueueBehaviour(item); !ok {
-		return
-	}
-	q.queue.Add(item)
-}
-
-// EnqueueKey adds a pre-computed key directly to the workqueue.
-// Used when the key is resolved from an ownerReference or another indirect source
-// rather than from the object itself.
-func (q *Workqueue) EnqueueKey(key, gvk string) {
-	item := QueueItem{Key: key, GVK: gvk}
-	q.queue.Add(item)
-	if ok := q.evaluateQueueBehaviour(item); !ok {
-		return
-	}
-}
-
-// EnqueueWithSentinels adds a key to the workqueue alongside the sentinel values
-// computed at event time (oldObj vs newObj in the informer UpdateFunc).
-// The sentinel map is passed as a pointer so the item remains comparable — two
-// sentinel-bearing enqueues for the same key are treated as distinct items.
-func (q *Workqueue) EnqueueWithSentinels(obj interface{}, gvk string, sentinels map[string]string) {
-	obj = domain.UnwrapCacheTombstone(obj)
-
-	key, err := cache.MetaNamespaceKeyFunc(obj)
-	if err != nil {
-		logger.Error().Err(err).Str("gvk", gvk).Msg("enqueue: failed to get key")
-		return
+	identity := queueItemIdentity{
+		Key:     item.Key,
+		GVK:     item.GVK,
+		EventID: item.EventID,
 	}
 
-	item := QueueItem{Key: key, GVK: gvk, SentinelMap: &sentinels}
-	if ok := q.evaluateQueueBehaviour(item); !ok {
-		return
-	}
-
-	q.queue.Add(item)
-	logger.Debug().Str("key", key).Str("gvk", gvk).Msg("enqueued")
+	q.sentinelMu.Lock()
+	delete(q.sentinels, identity)
+	q.sentinelMu.Unlock()
 }
 
 // SetQueueDepth adjusts the queue depth limit at runtime.
@@ -195,7 +195,7 @@ func (q *Workqueue) Depth() int {
 
 // IsUnlimited returns true when maxDepth is zero
 func (q *Workqueue) IsUnlimited() bool {
-	return q.queue.Len() == 0
+	return q.MaxDepth() == 0
 }
 
 // DepthReached returns true when current depth is greater or equals maxDepth
@@ -249,3 +249,33 @@ func (q *Workqueue) NeedsBehaviourEval() bool {
 
 // MaxDepth returns the current maximum queue depth (0 = unlimited).
 func (q *Workqueue) MaxDepth() int { return int(q.maxDepth.Load()) }
+
+// Get retrieves the next item from the queue.
+func (q *Workqueue) Get() (QueueItem, bool) {
+	return q.queue.Get()
+}
+
+// Done marks the item as processed and removes it from the queue.
+func (q *Workqueue) Done(item QueueItem) {
+	q.queue.Done(item)
+}
+
+// Add inserts an item into the queue.
+func (q *Workqueue) Add(item QueueItem) {
+	q.queue.Add(item)
+}
+
+// AddAfter inserts an item into the queue after the specified duration.
+func (q *Workqueue) AddAfter(item QueueItem, duration time.Duration) {
+	q.queue.AddAfter(item, duration)
+}
+
+// AddRateLimited inserts an item into the queue with rate limiting.
+func (q *Workqueue) AddRateLimited(item QueueItem) {
+	q.queue.AddRateLimited(item)
+}
+
+// Len returns the current number of items in the queue.
+func (q *Workqueue) Len() int {
+	return q.queue.Len()
+}

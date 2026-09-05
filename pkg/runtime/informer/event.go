@@ -54,12 +54,12 @@ func (f *Factory) handleEvent(ctx context.Context, obj interface{}) {
 	wq.Enqueue(obj, gvkStr)
 }
 
-// handleSentinelBehaviourAwareEvent routes an update event for oldObj→newObj to the correct queue.
+// handleUpdate routes an update event for oldObj→newObj to the correct queue.
 // When a sentinel-aware update filter is registered for the GVK, it is evaluated
 // first — both oldObj and newObj are available here for sentinel computation.
 // If the filter passes, EnqueueWithSentinels carries the sentinel map through.
 // When no update filter is registered, falls through to the standard enqueue path.
-func (f *Factory) handleSentinelBehaviourAwareEvent(ctx context.Context, gvkStr string, oldObj, newObj interface{}) {
+func (f *Factory) handleUpdate(ctx context.Context, gvkStr string, oldObj, newObj interface{}) {
 	<-f.ready
 
 	namespace := extractNamespace(newObj)
@@ -73,19 +73,47 @@ func (f *Factory) handleSentinelBehaviourAwareEvent(ctx context.Context, gvkStr 
 
 	wq, qFound := f.queueRegistry.For(gvkStr)
 	sentinels := f.computeSentinels(gvkStr, oldObj, newObj)
-	allowed, hasUpdateFilter := f.enqueueAllowedWithSentinelAndBehaviour(ctx, gvkStr, newObj, wq, sentinels)
+	allowed, hasUpdateFilter := f.allowEnqueue(ctx, gvkStr, newObj, wq, sentinels)
 
 	if hasUpdateFilter {
 		if !allowed {
 			return
 		}
+
+		eventAware := f.katalog.IsEventAware(gvkStr)
+
 		if !qFound {
 			logger.Warn().Str("gvk", gvkStr).Msg("no per-CRD queue — falling back to default queue")
-			f.defaultWq.EnqueueWithSentinels(newObj, gvkStr, sentinels)
+			if eventAware {
+				f.defaultWq.EnqueueWithEventSentinels(
+					newObj,
+					gvkStr,
+					sentinels,
+				)
+			} else {
+				f.defaultWq.EnqueueWithSentinels(
+					newObj,
+					gvkStr,
+					sentinels,
+				)
+			}
+
 			return
 		}
-		wq.EnqueueWithSentinels(newObj, gvkStr, sentinels)
-		return
+		if eventAware {
+			wq.EnqueueWithEventSentinels(
+				newObj,
+				gvkStr,
+				sentinels,
+			)
+			return
+		}
+
+		wq.EnqueueWithSentinels(
+			newObj,
+			gvkStr,
+			sentinels,
+		)
 	}
 
 	// No update filter — standard path (same as handleEvent).

@@ -27,6 +27,24 @@ type Katalog interface {
 	// Returns (false, reason) when gated — reconciler must not be called.
 	EvaluatePreReconcile(ctx context.Context, gvk string, obj *unstructured.Unstructured, cs kubernetes.Interface, sentinels map[string]string) (allowed bool, reason string)
 
+	// IsEventAware reports whether the named CRD has opted into event-aware
+	// reconcileGate evaluation.
+	//
+	// When true, events entering the CRD's workqueue must retain their individual
+	// event identity rather than being coalesced with other events for the same
+	// object. This applies to the entire reconcileGate evaluation, not only
+	// sentinel conditions.
+	IsEventAware(gvkString string) bool
+
+	// GetPreReconcileSentinels returns the sentinel names declared by
+	// preReconcile.sentinels for the named CRD.
+	//
+	// The informer uses this declaration to compute event-time sentinel values
+	// from old and new objects. Sentinel declaration is owned by the Katalog;
+	// the informer does not maintain a separate sentinel configuration registry.
+	// Returns nil when the CRD is unknown or declares no sentinels.
+	GetPreReconcileSentinels(gvkString string) []string
+
 	// CRD name lookups — resolve a GVK/GVR/kind/target string to the katalog CRD entry name.
 	GetNameByGVKString(gvkString string) string
 	GetNameByGVRString(gvrString string) string

@@ -14,6 +14,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// compile time check
+var _ domain.Katalog = (*Katalog)(nil)
+
 // EvaluatePreReconcile evaluates preReconcile.reconcileGate conditions for the named CRD.
 // Returns (true, "") when conditions pass and the reconciler should run.
 // Returns (false, reason) when gated — reconciler must not be called.
@@ -195,4 +198,44 @@ func preReconcileGateReason(pr *orktypes.PreReconcileConfig, resolver *orktmpl.R
 		}
 	}
 	return "or: no condition satisfied"
+}
+
+// IsEventAware reports whether the named CRD has opted into event-aware
+// reconcileGate evaluation.
+//
+// When true, events entering the CRD's workqueue must retain their individual
+// event identity rather than being coalesced with other events for the same
+// object. This applies to the entire reconcileGate evaluation, not only
+// sentinel conditions.
+func (k *Katalog) IsEventAware(name string) bool {
+	if k == nil {
+		return false
+	}
+
+	if crd, ok := k.enabledCRDs[name]; ok {
+		if crd.HasAnyReconcileGate() {
+			return crd.PreReconcileCheck().IsEventAware()
+		}
+	}
+
+	return false
+}
+
+// GetPreReconcileSentinels returns the sentinel names declared by
+// preReconcile.sentinels for the named CRD.
+//
+// The informer uses this declaration to compute event-time sentinel values
+// from old and new objects. Sentinel declaration is owned by the Katalog;
+// the informer does not maintain a separate sentinel configuration registry.
+// Returns nil when the CRD is unknown or declares no sentinels.
+func (k *Katalog) GetPreReconcileSentinels(gvkString string) []string {
+	if k == nil {
+		return nil
+	}
+
+	if crd, ok := k.enabledCRDs[gvkString]; ok {
+		return crd.OperatorBox.PreReconcile.DeclaredSentinels()
+	}
+
+	return nil
 }

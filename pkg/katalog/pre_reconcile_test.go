@@ -1,51 +1,14 @@
 package katalog
 
 import (
-	"context"
-	// "testing"
+	"testing"
 
-	"github.com/orkspace/orkestra/domain"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	// "github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"github.com/stretchr/testify/assert"
 )
 
-type preReconcileTest struct {
-	ctx                    context.Context
-	katalog                *Katalog
-	prSentinels            []string
-	object                 metav1.Object
-	enqueuGateSentinels    []string
-	reconcileGateSentinels []string
-	entry                  *orktypes.CRDEntry
-}
-
-func newCRSkeleton(crd *orktypes.CRDEntry, labels, annotations, spec map[string]interface{}) *unstructured.Unstructured {
-	return &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": crd.APIVersion(),
-			"kind":       crd.Kind(),
-			"metadata": map[string]interface{}{
-				"labels":      labels,
-				"annotations": annotations,
-			},
-			"spec": spec,
-		},
-	}
-}
-
-func domObj(obj interface{}) domain.Object {
-	domObj, ok := domain.ToDomainObject(obj)
-	if !ok {
-		return nil
-	}
-	return domObj
-}
-
-// katalogWithPreReconcile returns the katalog and sentinels
-func katalogWithPreReconcile(pr orktypes.PreReconcileConfig) (rec *preReconcileTest) {
-	kat := &Katalog{
+func katalogWithPreReconcile(pr orktypes.PreReconcileConfig) *Katalog {
+	return &Katalog{
 		enabledCRDs: map[string]orktypes.CRDEntry{
 			"app": {
 				APITypes: orktypes.APITypes{
@@ -59,28 +22,114 @@ func katalogWithPreReconcile(pr orktypes.PreReconcileConfig) (rec *preReconcileT
 			},
 		},
 	}
-	entry := rec.katalog.enabledCRDs["app"]
-	if !pr.Empty() {
-		rec.prSentinels = entry.OperatorBox.PreReconcile.Sentinels
-		if pr.HasEnqueueGate() {
-			rec.enqueuGateSentinels = pr.EnqueueGate.Sentinels
-		}
-		if pr.HasReconcileGate() {
-			rec.enqueuGateSentinels = pr.EnqueueGate.Sentinels
-		}
-	}
-	rec.entry = &entry
-	rec.ctx = context.Background()
-	rec.katalog = kat
-	return rec
 }
 
-// func TestEvaluatePreReconcile_Nil(t *testing.T) {
-// 	k := katalogWithPreReconcile(orktypes.PreReconcileConfig{})
+func TestIsEventAware(t *testing.T) {
+	tests := []struct {
+		name     string
+		katalog  *Katalog
+		gvk      string
+		expected bool
+	}{
+		{
+			name: "event aware gate",
+			katalog: katalogWithPreReconcile(orktypes.PreReconcileConfig{
+				ReconcileGate: &orktypes.GateConditions{
+					EventAware: true,
+				},
+			}),
+			gvk:      "app",
+			expected: true,
+		},
+		{
+			name: "event aware disabled",
+			katalog: katalogWithPreReconcile(orktypes.PreReconcileConfig{
+				ReconcileGate: &orktypes.GateConditions{
+					EventAware: false,
+				},
+			}),
+			gvk:      "app",
+			expected: false,
+		},
+		{
+			name: "reconcile gate without event awareness",
+			katalog: katalogWithPreReconcile(orktypes.PreReconcileConfig{
+				ReconcileGate: &orktypes.GateConditions{
+					When: []orktypes.Condition{
+						{
+							Field:  "{{ .metadata.name }}",
+							Equals: "app",
+						},
+					},
+				},
+			}),
+			gvk:      "app",
+			expected: false,
+		},
+		{
+			name:     "unknown gvk",
+			katalog:  katalogWithPreReconcile(orktypes.PreReconcileConfig{}),
+			gvk:      "does-not-exist",
+			expected: false,
+		},
+		{
+			name:     "nil katalog",
+			katalog:  nil,
+			gvk:      "app",
+			expected: false,
+		},
+	}
 
-// 	ob, ok := domain.ToDomainObject(newCRSkeleton(k.entry, nil, nil, nil))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got bool
 
-// 	allowed, _ := k.katalog.EvaluatePreReconcile(k.ctx, k.entry.GVKString(), domObj(ob), nil, nil)
+			if tt.katalog == nil {
+				got = (*Katalog)(nil).IsEventAware(tt.gvk)
+			} else {
+				got = tt.katalog.IsEventAware(tt.gvk)
+			}
 
-// 	assert.True(t, allowed)
-// }
+			assert.Equal(t, tt.expected, got)
+		})
+	}
+}
+
+func TestGetPreReconcileSentinels_ReturnsDeclared(t *testing.T) {
+	k := katalogWithPreReconcile(orktypes.PreReconcileConfig{
+		Sentinels: []string{
+			"generationChanged",
+			"labelsChanged",
+		},
+	})
+
+	sentinels := k.GetPreReconcileSentinels("app")
+
+	assert.Equal(t, []string{"generationChanged", "labelsChanged"}, sentinels)
+}
+
+func TestGetPreReconcileSentinels_NoSentinels(t *testing.T) {
+	k := katalogWithPreReconcile(orktypes.PreReconcileConfig{})
+
+	sentinels := k.GetPreReconcileSentinels("app")
+
+	assert.Empty(t, sentinels)
+}
+
+func TestGetPreReconcileSentinels_Unknown(t *testing.T) {
+	k := katalogWithPreReconcile(orktypes.PreReconcileConfig{
+		Sentinels: []string{"generationChanged"},
+	})
+
+	sentinels := k.GetPreReconcileSentinels("unknown")
+
+	assert.Nil(t, sentinels)
+}
+
+func TestGetPreReconcileSentinels_NilKatalog(t *testing.T) {
+	var k *Katalog
+
+	sentinels := k.GetPreReconcileSentinels("app")
+
+	assert.Nil(t, sentinels)
+}

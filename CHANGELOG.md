@@ -47,6 +47,16 @@ preReconcile:
         equals: "healthy"
 ```
 
+### Event-aware reconcile gating
+
+`eventAware: true` on reconcileGate preserves individual event identity through the workqueue, preventing updates for the same object from being coalesced before reconcile-gate evaluation. Each event retains its own sentinel context. Defaults to `false`; use when event-specific gate evaluation is required.
+
+```yaml
+preReconcile:
+  reconcileGate:
+    eventAware: true
+```
+
 ### Admission — conditional runtime query
 
 The admission webhook fetches live runtime data (health, metrics, uniqueness) only when a validation or mutation rule actually references it. CRDs with no `.health.*` or `.metrics.*` rules pay zero HTTP cost at admission time.
